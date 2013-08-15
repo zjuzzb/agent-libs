@@ -222,7 +222,7 @@ VISIBILITY_PRIVATE
 	sinsp_evt m_evt;
 	string m_lasterr;
 	int64_t m_tid_to_remove;
-	int64_t m_fd_to_remove;
+	vector<int64_t>* m_fds_to_remove;
 	int64_t m_tid_of_fd_to_remove;
 	uint64_t m_lastevent_ts;
 	// the parsing engine

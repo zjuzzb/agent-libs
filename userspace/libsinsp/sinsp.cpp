@@ -33,6 +33,8 @@ sinsp::sinsp() :
 	m_stats.clear();
 #endif
 	m_thread_manager = NULL;
+
+	m_fds_to_remove = new vector<int64_t>;
 }
 
 sinsp::~sinsp()
@@ -139,6 +141,11 @@ void sinsp::close()
 		delete m_thread_manager;
 		m_thread_manager = NULL;
 	}
+
+	if(m_fds_to_remove)
+	{
+		delete m_fds_to_remove;
+	}
 }
 
 void sinsp::start_dump(string dump_filename)
@@ -221,7 +228,6 @@ void sinsp::init()
 	// Basic inits
 	//
 	m_tid_to_remove = -1;
-	m_fd_to_remove = -1;
 	m_lastevent_ts = 0;
 
 	import_ifaddr_list();
@@ -236,6 +242,8 @@ void sinsp::remove_expired_connections(uint64_t ts)
 
 int32_t sinsp::next(OUT sinsp_evt **evt)
 {
+	uint32_t j;
+
 	//
 	// Get the event from libscap
 	//
@@ -259,8 +267,14 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 
 		return res;
 	}
+
+	//
+	// Store a couple of values that we'll need later inside the event.
+	//
+	m_evt.m_evtnum = get_num_events();
+	m_lastevent_ts = m_evt.get_ts();
 /*
-if(m_evt.get_tid() != 16160)
+if(m_evt.get_tid() != 7123)
 {
 	return SCAP_TIMEOUT;
 }
@@ -276,12 +290,6 @@ if(m_evt.get_tid() != 16160)
 			throw sinsp_exception(scap_getlasterr(m_h));
 		}
 	}
-
-	//
-	// Store a couple of values that we'll need later inside the event.
-	//
-	m_evt.m_evtnum = get_num_events();
-	m_lastevent_ts = m_evt.get_ts();
 
 #ifndef USE_ANALYZER
 	//
@@ -308,7 +316,9 @@ if(m_evt.get_tid() != 16160)
 	// Deleayed removal of the fd, so that
 	// things like exit() or close() can be parsed.
 	//
-	if(m_fd_to_remove != -1)
+	uint32_t nfdr = m_fds_to_remove->size();
+
+	if(nfdr != 0)
 	{
 		sinsp_threadinfo* ptinfo = get_thread(m_tid_of_fd_to_remove, true);
 		if(!ptinfo)
@@ -317,8 +327,12 @@ if(m_evt.get_tid() != 16160)
 			return res;
 		}
 
-		ptinfo->remove_fd(m_fd_to_remove);
-		m_fd_to_remove = -1;
+		for(j = 0; j < nfdr; j++)
+		{
+			ptinfo->remove_fd(m_fds_to_remove->at(j));
+		}
+
+		m_fds_to_remove->clear();
 	}
 
 	//

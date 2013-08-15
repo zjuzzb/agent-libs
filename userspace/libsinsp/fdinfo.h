@@ -193,4 +193,6 @@ private:
 	//
 	int64_t m_last_accessed_fd;
 	sinsp_fdinfo *m_last_accessed_fdinfo;
+
+	friend class sinsp_parser;
 };

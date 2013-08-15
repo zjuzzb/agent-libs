@@ -190,7 +190,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 	}
 }
 
-sinsp_fdtable *sinsp_threadinfo::get_fd_table()
+sinsp_fdtable* sinsp_threadinfo::get_fd_table()
 {
 	sinsp_threadinfo* root;
 

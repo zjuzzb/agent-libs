@@ -59,6 +59,7 @@ private:
 	void update_fd(sinsp_evt *evt, sinsp_evt_param* parinfo);
 	void set_addresses_and_ports(sinsp_fdinfo* fdinfo, char* packed_data);
 	void set_unix_info(sinsp_fdinfo* fdinfo, char* packed_data);
+	void erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* fdinfo, uint64_t ts);
 
 	//
 	// Pointers to inspector context

@@ -1187,11 +1187,57 @@ void sinsp_parser::parse_close_enter(sinsp_evt *evt)
 	evt->m_fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
 }
 
+//
+// This function takes care of cleanung up the FD and removing it from all the tables
+// (process FD table, connection table...).
+// It's invoked when a close() or a threadexit happens.
+//
+void sinsp_parser::erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* fdinfo, uint64_t ts)
+{
+	//
+	// Schedule the fd for removal
+	//
+	m_inspector->m_tid_of_fd_to_remove = tinfo->m_tid;
+	m_inspector->m_fds_to_remove->push_back(fd);
+
+	//
+	// If the fd is in the transaction table, get rid of it there too
+	//
+	if(fdinfo->is_transaction())
+	{
+		sinsp_transaction_manager *pttable = tinfo->get_transaction_manager();
+		pttable->remove_transaction(tinfo->m_tid, tinfo->m_lastevent_fd, ts);
+	}
+
+	//
+	// If the fd is in the connection table, schedule the connection for removal
+	//
+	if(fdinfo->is_tcp_socket() && 
+		!fdinfo->has_no_role() &&
+		!(fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == 0))
+	{
+#ifdef USE_ANALYZER
+		m_inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info, false);
+#else
+		m_inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info);
+#endif
+	}
+	else if(fdinfo->is_unix_socket() && 
+		!fdinfo->has_no_role() &&
+		!(fdinfo->m_info.m_unixinfo.m_fields.m_source == 0 && fdinfo->m_info.m_unixinfo.m_fields.m_source ==  0))
+	{
+#ifdef USE_ANALYZER
+		m_inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo, false);
+#else
+		m_inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo);
+#endif
+	}
+}
+
 void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t retval;
-	int64_t tid = evt->get_tid();
 
 	//
 	// Extract the return value
@@ -1222,43 +1268,9 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		//m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
 
 		//
-		// Schedule the fd for removal
+		// Remove the fd from the different tables
 		//
-		m_inspector->m_tid_of_fd_to_remove = evt->get_tid();
-		m_inspector->m_fd_to_remove = evt->m_tinfo->m_lastevent_fd;
-
-		//
-		// If the fd is in the transaction table, get rid of it there too
-		//
-		if(evt->m_fdinfo->is_transaction())
-		{
-			sinsp_transaction_manager *pttable = evt->m_tinfo->get_transaction_manager();
-			pttable->remove_transaction(tid, evt->m_tinfo->m_lastevent_fd, evt->get_ts());
-		}
-
-		//
-		// If the fd is in the connection table, schedule the connection for removal
-		//
-		if(evt->m_fdinfo->is_tcp_socket() && 
-			!evt->m_fdinfo->has_no_role() &&
-			!(evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == 0))
-		{
-#ifdef USE_ANALYZER
-			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info, false);
-#else
-			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
-#endif
-		}
-		else if(evt->m_fdinfo->is_unix_socket() && 
-			!evt->m_fdinfo->has_no_role() &&
-			!(evt->m_fdinfo->m_info.m_unixinfo.m_fields.m_source == 0 && evt->m_fdinfo->m_info.m_unixinfo.m_fields.m_source ==  0))
-		{
-#ifdef USE_ANALYZER
-			m_inspector->m_unix_connections->remove_connection(evt->m_fdinfo->m_info.m_unixinfo, false);
-#else
-			m_inspector->m_unix_connections->remove_connection(evt->m_fdinfo->m_info.m_unixinfo);
-#endif
-		}
+		erase_fd(evt->m_tinfo->m_lastevent_fd, evt->m_tinfo, evt->m_fdinfo, evt->get_ts());
 	}
 	else
 	{
@@ -1385,6 +1397,20 @@ void sinsp_parser::parse_pipe_exit(sinsp_evt *evt)
 
 void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 {
+	//
+	// Erase all the FDs that this process owns
+	//
+	unordered_map<int64_t, sinsp_fdinfo> fdtable = evt->m_tinfo->get_fd_table()->m_fdtable;
+	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+
+	for(it = fdtable.begin(); it != fdtable.end(); ++it)
+	{
+		erase_fd(it->first, evt->m_tinfo, &(it->second), evt->get_ts());
+	}
+
+	//
+	// Schedule the process for removal
+	//
 	if(evt->m_tinfo)
 	{
 #ifdef USE_ANALYZER
