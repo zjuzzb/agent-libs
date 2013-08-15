@@ -47,7 +47,7 @@ public:
 		m_use_shutdown = use_shutdown;
 		m_use_accept4 = use_accept4;
 		m_ntransactions = ntransactions;
-		m_exit_no_close = false;
+		m_exit_no_close = exit_no_close;
 	}
 
 	void run()
@@ -58,6 +58,7 @@ public:
 		struct sockaddr_in client_address;
 		unsigned int client_len;
 		uint32_t j;
+		int port = (m_exit_no_close)? SERVER_PORT + 1 : SERVER_PORT;
 
 		m_tid = syscall(SYS_gettid);
 
@@ -72,7 +73,7 @@ public:
 		memset(&server_address, 0, sizeof(server_address));   /* Zero out structure */
 		server_address.sin_family = AF_INET;                /* Internet address family */
 		server_address.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
-		server_address.sin_port = htons(SERVER_PORT);      /* Local port */
+		server_address.sin_port = htons(port);      /* Local port */
 
 		int yes = 1;
 		if(setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
@@ -250,6 +251,7 @@ public:
 		int payload_length;
 		int bytes_received;
 		uint32_t j;
+		int port = (m_exit_no_close)? SERVER_PORT + 1: SERVER_PORT;
 
 		m_tid = syscall(SYS_gettid);
 
@@ -264,7 +266,7 @@ public:
 		memset(&server_address, 0, sizeof(server_address));     /* Zero out structure */
 		server_address.sin_family      = AF_INET;             /* Internet address family */
 		server_address.sin_addr.s_addr = m_server_ip_address;   /* Server IP address */
-		server_address.sin_port        = htons(SERVER_PORT); /* Server port */
+		server_address.sin_port        = htons(port); /* Server port */
 
 		/* Establish the connection to the server */
 		if(connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
@@ -505,7 +507,10 @@ void runtest(iotype iot,
 
 			EXPECT_EQ(2, (int)dst.count());
 			EXPECT_EQ(server_address, dst[0]);
-			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			if(!exit_no_close)
+			{
+				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			}
 			log_param(param);
 			callnum++;
 		}
@@ -551,7 +556,10 @@ void runtest(iotype iot,
 
 			EXPECT_EQ(2, (int)dst.count());
 			EXPECT_EQ(server_address, dst[0]);
-			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			if(!exit_no_close)
+			{
+				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			}
 
 			log_param(param);
 			callnum++;
@@ -598,8 +606,11 @@ void runtest(iotype iot,
 
 			EXPECT_EQ(2, (int)dst.count());
 			EXPECT_EQ(server_address, dst[0]);
-			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
-
+			if(!exit_no_close)
+			{
+				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			}
+			
 			log_param(param);
 			callnum++;
 		}
