@@ -1,0 +1,4 @@
+python searchstress.py &
+python filestress.py &
+python userstress.py &
+python cartstress.py

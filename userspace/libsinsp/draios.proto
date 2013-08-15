@@ -1,0 +1,112 @@
+package draiosproto;
+
+option optimize_for = LITE_RUNTIME;
+option java_package = "com.draios.model.protobuf";
+option java_outer_classname = "Agent";
+
+message counter {
+  optional uint64 time_ns = 1;
+  optional uint32 count = 2;
+  optional uint32 bytes = 3;
+}
+
+message time_categories {
+	optional counter unknown = 1;
+	optional counter other = 2;
+	optional counter file = 3;
+	optional counter net = 4;
+	optional counter ipc = 5;
+	optional counter memory = 6;
+	optional counter process = 7;
+	optional counter sleep = 8;
+	optional counter system = 9;
+	optional counter signal = 10;
+	optional counter user = 11;
+	optional counter time = 12;
+	optional counter io = 13;
+//	optional counter io_file = 14;
+//	optional counter io_net = 15;
+//	optional counter io_other = 16;
+	optional counter wait = 17;
+	optional counter processing = 18;
+}
+
+//
+// PROCESS
+// This descriptive info for a process, i.e. a collection of threads.
+// NOTE: this is process info only, the main thread of a process will have a 
+// separate thread message with tid=process pid.
+//
+message process {
+  required uint64 pid = 1; // The ID of process this thread belongs to
+
+  required string comm = 2;	// Command name (e.g. "top")
+  required string exe = 3; // Full command name (e.g. "/bin/top")
+  repeated string args = 4; // Command line arguments (e.g. "-d1")
+
+  optional time_categories tcounters = 5; // The time counters for this thread
+}
+
+//
+// THREAD
+// This contains all the operational info (counters, etc.) for one of the threads.
+//
+message thread {
+  required uint64 pid = 1; // The ID of process this thread belongs to
+  required uint64 tid = 2; // The thread ID. If tid=pid, this is the main thread for this process.
+  optional time_categories tcounters = 3; // The time counters for this thread
+
+  // XXX Do we need this?
+  //optional string cwd = 4; // Current working directory. This is set only if this thread has its 
+                             // own working directory, which happens for main threads and threads 
+							 // started with the CLONE_FS flag
+}
+
+//
+// IPv4 CONNECTION
+//
+message ipv4tuple {
+  required uint32 sip = 1;
+  required uint32 dip = 2;
+  required uint32 sport = 3;
+  required uint32 dport = 4;
+  required uint32 l4proto = 5;
+}
+
+message ipv4_connection {
+  required ipv4tuple tuple = 1;
+
+  optional uint64 spid = 2; // The pid of the client
+  optional uint64 stid = 3; // The tid of the client
+  // XXX is this required?
+  //optional uint64 sfd = 4; // The fd number of the client
+
+  optional uint64 dpid = 5; // The pid of the server
+  optional uint64 dtid = 6; // The tid of the server
+  // XXX is this required?
+  //optional uint64 dfd = 7; // The fd number of the server
+}
+
+//
+// NETWORK INTERFACE
+//
+message ipv4_network_interface {
+  required string name = 1; // ifconfig entry name, e.g. eth0
+  required uint32 addr = 2; // IP address
+  required uint32 netmask = 3; // netmask
+  optional uint32 bcast = 4; // broadcast address
+}
+
+//
+// ENTRY POINT MESSAGE
+//
+message metrics {
+  required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+  optional string hostname = 2; // The name of the host sending the data
+  required string machine_id = 3; // The unique ID of the machine that is sending this data
+  required string customer_id = 4; // The unique ID of the customer that this machine belongs to
+  repeated process processes = 5; // The list of processes
+  repeated thread threads = 6; // The list of threads
+  repeated ipv4_connection ipv4_connections = 7; // The list of threads
+  repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
+}

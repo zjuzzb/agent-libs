@@ -1,0 +1,32 @@
+#!/bin/bash
+set -ex
+
+rm -rf build/debug/*rpm
+rm -rf build/debug/*deb
+rm -rf build/release/*rpm
+rm -rf build/release/*deb
+
+DEPENDENCIES=/work/dependencies ./setup-dependencies
+make -C build/debug package
+make -C build/release package
+
+RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+rm -rf /tmp/rpm
+mkdir -p /tmp/rpm
+cp build/debug/*rpm /tmp/rpm
+cp build/release/*rpm /tmp/rpm
+createrepo /tmp/rpm
+s3cmd --acl-public sync /tmp/rpm/* s3://download.draios.com/rpm/$RPM_BASEARCH/
+s3cmd --acl-public put scripts/draios.repo s3://download.draios.com/rpm/
+
+DEB_BASEARCH=$(dpkg --print-architecture)
+
+rm -rf /tmp/deb
+mkdir -p /tmp/deb
+cp build/debug/*deb /tmp/deb
+cp build/release/*deb /tmp/deb
+dpkg-scanpackages /tmp/deb | sed s/\\/tmp\\/deb/stable-$DEB_BASEARCH/ | gzip -9c > /tmp/deb/Packages.gz
+s3cmd --acl-public sync /tmp/deb/* s3://download.draios.com/deb/stable-$DEB_BASEARCH/
+
+s3cmd --acl-public sync scripts/deploy s3://download.draios.com/

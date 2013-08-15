@@ -1,0 +1,47 @@
+path.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+marker#ok {
+  fill: #220011;
+}
+
+path.link.ok {
+  stroke: #220011;
+}
+
+marker#warning {
+  fill: yellow;
+}
+
+path.link.warning {
+  stroke: #cccc22;
+/*  stroke-dasharray: 0,2 1; */
+}
+
+marker#error {
+  fill: red;
+}
+
+path.link.error {
+  stroke: red;
+}
+
+circle {
+  fill: #ccc;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+text.zoomlabels {
+  font: 10px sans-serif;
+  pointer-events: none;
+  font-weight: bold;
+}
+
+text.headerlabels {
+  font: 14px sans-serif;
+  pointer-events: none;
+}

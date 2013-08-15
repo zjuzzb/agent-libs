@@ -1,0 +1,440 @@
+#include "main.h"
+
+//
+// Signal management
+//
+bool ctrl_c_pressed = false;
+
+static void signal_callback(int signal)
+{
+	ctrl_c_pressed = true;
+}
+
+//
+// Log management
+//
+Logger* g_log = NULL;
+
+void g_logger_callback(char* str, uint32_t sev)
+{
+	switch(sev)
+	{
+	case sinsp_logger::SEV_DEBUG:
+		g_log->debug(str);
+		break;
+	case sinsp_logger::SEV_INFO:
+		g_log->information(str);
+		break;
+	case sinsp_logger::SEV_WARNING:
+		g_log->warning(str);
+		break;
+	case sinsp_logger::SEV_ERROR:
+		g_log->error(str);
+		break;
+	case sinsp_logger::SEV_CRITICAL:
+		g_log->critical(str);
+		break;
+	default:
+		ASSERT(false);
+	}
+}
+
+//
+// Capture information class
+//
+class captureinfo
+{
+public:
+	captureinfo()
+	{
+		m_nevts = 0;
+		m_time = 0;
+	}
+
+	uint64_t m_nevts;
+	uint64_t m_time;
+};
+
+//
+// The main application class
+//
+class dragent_app: public Poco::Util::ServerApplication
+{
+public:
+	dragent_app(): m_help_requested(false)
+	{
+		m_evtcnt = 0;
+		m_customerid = "<invalid>";
+	}
+	
+	~dragent_app()
+	{
+	}
+
+protected:
+	void initialize(Application& self)
+	{
+		//
+		// load the configuration file.
+		// First try the local dir
+		//
+		try
+		{
+			loadConfiguration("dragent.properties"); 
+		}
+		catch(...)
+		{
+			//
+			// Then try /opt/draios
+			//
+			try
+			{
+				Path p;
+				p.parseDirectory("/opt/draios");
+				p.setFileName("dragent.properties");
+				loadConfiguration(p.toString()); 
+			}
+			catch(...)
+			{
+			}
+		}
+
+		ServerApplication::initialize(self);
+	}
+		
+	void uninitialize()
+	{
+		ServerApplication::uninitialize();
+	}
+
+	void defineOptions(OptionSet& options)
+	{
+		ServerApplication::defineOptions(options);
+		
+		options.addOption(
+			Option("help", "h", "display help information on command line arguments")
+				.required(false)
+				.repeatable(false));
+
+		options.addOption(
+			Option("consolepriority", "", "min priotity of the log messages that go on console. Can be 'error', 'warning', 'info' or 'debug'.")
+				.required(false)
+				.repeatable(false)
+				.argument("priority"));
+
+		options.addOption(
+			Option("filepriority", "", "min priotity of the log messages that go on file. Can be 'error', 'warning', 'info' or 'debug'.")
+				.required(false)
+				.repeatable(false)
+				.argument("priority"));
+
+		options.addOption(
+			Option("readfile", "r", "file to open.")
+				.required(false)
+				.repeatable(false)
+				.argument("filename"));
+
+		options.addOption(
+			Option("evtcount", "c", "numer of events after which the capture stops.")
+				.required(false)
+				.repeatable(false)
+				.argument("count"));
+
+		options.addOption(
+			Option("idcustomer", "i", "force the cusomer id.")
+				.required(false)
+				.repeatable(false)
+				.argument("id"));
+
+		options.addOption(
+			Option("writefile", "w", "specify this flag to save all the capture events to the 'filename' file.")
+				.required(false)
+				.repeatable(false)
+				.argument("filename"));
+	}
+
+	void handleOption(const std::string& name, const std::string& value)
+	{
+		ServerApplication::handleOption(name, value);
+
+		if(name == "help")
+		{
+			m_help_requested = true;
+		}
+		else if(name == "consolepriority")
+		{
+			if(value == "error")
+			{
+				m_min_console_priority = Message::PRIO_ERROR;
+			}
+			else if(value == "warning")
+			{
+				m_min_console_priority = Message::PRIO_WARNING;
+			}
+			else if(value == "info")
+			{
+				m_min_console_priority = Message::PRIO_INFORMATION;
+			}
+			else if(value == "debug")
+			{
+				m_min_console_priority = Message::PRIO_DEBUG;
+			}
+			else
+			{
+				printf("invalid consolepriority. Accepted values are: 'error', 'warning', 'info' or 'debug'.");
+				exit(0);
+			}
+		}
+		else if(name == "filepriority")
+		{
+			if(value == "error")
+			{
+				m_min_file_priority = Message::PRIO_ERROR;
+			}
+			else if(value == "warning")
+			{
+				m_min_file_priority = Message::PRIO_WARNING;
+			}
+			else if(value == "info")
+			{
+				m_min_file_priority = Message::PRIO_INFORMATION;
+			}
+			else if(value == "debug")
+			{
+				m_min_file_priority = Message::PRIO_DEBUG;
+			}
+			else
+			{
+				printf("invalid filepriority. Accepted values are: 'error', 'warning', 'info' or 'debug'.");
+				exit(0);
+			}
+		}
+		else if(name == "readfile")
+		{
+			m_filename = value;
+		}
+		else if(name == "evtcount")
+		{
+			m_evtcnt = NumberParser::parse64(value);
+		}
+		else if(name == "customerid")
+		{
+			m_customerid = value;
+		}
+		else if(name == "writefile")
+		{
+			m_writefile = value;
+		}
+	}
+
+	void displayHelp()
+	{
+		HelpFormatter helpFormatter(options());
+		helpFormatter.setCommand(commandName());
+		helpFormatter.setUsage("OPTIONS");
+		helpFormatter.setHeader("Draios Agent.");
+		helpFormatter.format(std::cout);
+	}
+
+	captureinfo do_inspect()
+	{
+		captureinfo retval;
+		int32_t res;
+		sinsp_evt* ev;
+		uint64_t ts;
+		uint64_t deltats = 0;
+		uint64_t firstts = 0;
+
+		//
+		// Create the inspector
+		//
+		while(1)
+		{
+			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || ctrl_c_pressed)
+			{
+				break;
+			}
+
+			res = m_inspector.next(&ev);
+
+			if(res == SCAP_TIMEOUT)
+			{
+				continue;
+			}
+			else if(res == SCAP_EOF)
+			{
+				break;
+			}
+			else if(res != SCAP_SUCCESS)
+			{
+				cerr << "res = " << res << endl;
+				throw sinsp_exception(m_inspector.getlasterr().c_str());
+			}
+
+			//
+			// Update the event count
+			//
+			retval.m_nevts++;
+
+			//
+			// Update the time 
+			//
+			ts = ev->get_ts();
+
+			if(firstts == 0)
+			{
+				firstts = ts;
+			}
+
+			deltats = ts - firstts;
+		}
+
+		retval.m_time = deltats;
+		return retval;
+	}
+
+	int main(const std::vector<std::string>& args)
+	{
+		if(m_help_requested)
+		{
+			displayHelp();
+		}
+
+		//
+		// Create the logs directory if it doesn't exist
+		//
+		string logdir = config().getString("logfile.location", "logs");
+		File d(logdir);
+		d.createDirectories();
+		Path p;
+		p.parseDirectory(logdir);
+		p.setFileName("draios.log");
+		string logsdir = p.toString();
+
+		//
+		// Setup the logging
+		//
+		AutoPtr<SplitterChannel> splitterChannel(new SplitterChannel());
+
+		AutoPtr<Channel> consoleChannel(new ConsoleChannel());
+		AutoPtr<FileChannel> rotatedFileChannel(new FileChannel(logsdir));
+
+		rotatedFileChannel->setProperty("rotation", "100000");
+		rotatedFileChannel->setProperty("purgeCount", "5");
+		rotatedFileChannel->setProperty("archive", "timestamp");
+
+		splitterChannel->addChannel(consoleChannel);
+		splitterChannel->addChannel(rotatedFileChannel);
+
+
+		AutoPtr<Formatter> formatter(new PatternFormatter("%h-%M-%S.%i, %l, %t"));
+		AutoPtr<Channel> formattingChannel(new FormattingChannel(formatter, splitterChannel));
+
+		Logger& logger = Logger::create("TestLog", formattingChannel, Message::PRIO_DEBUG);
+		g_log = &logger;
+
+		g_log->information("Agent starting");
+
+		//
+		// Create the metrics directory if it doesn't exist
+		//
+		string metricsdir = config().getString("metricsfile.location", "metrics");
+		File md(metricsdir);
+		md.createDirectories();
+
+		//
+		// Set the CRTL+C signal
+		//
+		if(signal(SIGINT, signal_callback) == SIG_ERR)
+		{
+			fprintf(stderr, "An error occurred while setting a signal handler.\n");
+			return EXIT_FAILURE;
+		}
+
+		//
+		// From now on we can get an exception from sinsp
+		//
+		try
+		{
+			m_inspector.set_log_callback(g_logger_callback);
+			if(config().hasOption("metricsfile.location"))
+			{
+				m_inspector.get_configuration()->set_emit_metrics_to_file(true);
+				m_inspector.get_configuration()->set_metrics_directory(metricsdir);
+			}
+			else
+			{
+				g_log->information("metricsfile.location not specified, metrics won't be saved to disk.");
+			}
+
+			//
+			// The machine id is the MAC address of the first physical adapter
+			//
+			m_inspector.get_configuration()->set_machine_id(Environment::nodeId());
+
+			//
+			// The customer id is currently specified by the user
+			//
+			m_inspector.get_configuration()->set_customer_id(m_customerid);
+
+			//
+			// Start the capture with sinsp
+			//
+			g_log->information("Opening the capture source");
+			if(m_filename != "")
+			{
+				m_inspector.open(m_filename);
+			}
+			else
+			{
+				m_inspector.open("");
+			}
+
+			//
+			//
+			//
+			if(m_writefile != "")
+			{
+				m_inspector.start_dump(m_writefile);
+			}
+
+			//
+			// Start consuming the captured events
+			//
+			do_inspect();
+		}
+		catch(sinsp_exception e)
+		{
+			g_log->error(e.what());
+			return Application::EXIT_SOFTWARE;
+		}
+		catch(Poco::Exception e)
+		{
+			g_log->error(e.displayText());
+			return Application::EXIT_SOFTWARE;
+		}
+		catch(...)
+		{
+			return Application::EXIT_SOFTWARE;
+		}
+
+		return Application::EXIT_OK;
+	}
+	
+private:
+	bool m_help_requested;
+	Message::Priority m_min_console_priority;
+	Message::Priority m_min_file_priority;
+	sinsp m_inspector;
+	string m_filename;
+	uint64_t m_evtcnt;
+	string m_customerid;
+	string m_writefile;
+};
+
+
+int main(int argc, char** argv)
+{
+	dragent_app app;
+	return app.run(argc, argv);
+}

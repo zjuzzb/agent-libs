@@ -1,0 +1,7 @@
+mkdir target
+gcc -o target/stress1 stress1.c -lpthread
+gcc -o target/stress2 stress2.c
+gcc -o target/stress3 stress3.c
+gcc -o target/stress4 stress4.c
+gcc -o target/stress5-fork stress5-fork.c
+gcc -o target/memory memory.c

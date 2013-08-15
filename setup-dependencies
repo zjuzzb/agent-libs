@@ -1,0 +1,84 @@
+#!/bin/bash
+set -e 
+
+SCRIPT=$(readlink -f $0)
+TOP=$(dirname $SCRIPT)
+
+if [ -z "$DEPENDENCIES" ]; then
+	DEPENDENCIES=$TOP/dependencies
+fi
+
+if [ ! -d "$DEPENDENCIES" ]; then
+	mkdir -p $DEPENDENCIES
+fi
+
+ZLIB_DIR=$DEPENDENCIES/zlib-1.2.8
+if [ ! -d "$ZLIB_DIR" ]; then
+	cd $DEPENDENCIES
+	wget http://zlib.net/zlib-1.2.8.tar.gz
+	tar -xzf zlib-1.2.8.tar.gz
+	cd $ZLIB_DIR
+	./configure
+	make
+fi
+
+PROTBUF_DIR=$DEPENDENCIES/protobuf-2.5.0
+if [ ! -d "$PROTBUF_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
+	tar -xjf protobuf-2.5.0.tar.bz2
+	cd $PROTBUF_DIR
+	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib
+	make
+fi
+
+POCO_DIR=$DEPENDENCIES/poco-1.4.6p1
+if [ ! -d "$POCO_DIR" ]; then
+	cd $DEPENDENCIES
+	wget http://pocoproject.org/releases/poco-1.4.6/poco-1.4.6p1.tar.gz
+	tar -xzf poco-1.4.6p1.tar.gz
+	cd $POCO_DIR
+	./configure --prefix=./target --static
+	make install
+	cd ..
+fi
+
+GTEST_DIR=$DEPENDENCIES/gtest-1.6.0
+if [ ! -d "$GTEST_DIR" ]; then
+	cd $DEPENDENCIES
+	wget http://googletest.googlecode.com/files/gtest-1.6.0.zip
+	unzip gtest-1.6.0.zip
+	cd $GTEST_DIR
+	g++ -Iinclude -c fused-src/gtest/gtest-all.cc -o gtest-all.o
+	g++ -Iinclude -c fused-src/gtest/gtest_main.cc -o gtest_main.o
+  	ar -rv libgtest.a gtest-all.o
+  	ar -rv libgtest_main.a gtest_main.o
+fi
+
+if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
+	cd $DEPENDENCIES
+	wget http://simpleopt.googlecode.com/files/simpleopt-3.6.zip
+	unzip simpleopt-3.6.zip
+fi
+
+CMAKE_DIR=$DEPENDENCIES/cmake-2.8.11.2
+if [ ! -d "$CMAKE_DIR" ]; then
+	cd $DEPENDENCIES
+	wget http://www.cmake.org/files/v2.8/cmake-2.8.11.2.tar.gz
+	tar -xzf cmake-2.8.11.2.tar.gz
+	cd $CMAKE_DIR
+	patch -p1 < $TOP/patches/0001-Make-deb-package-options-configurable-per-component.patch
+	./bootstrap
+	make
+fi
+
+BUILD_DIR=$TOP/build
+if [ ! -d "$BUILD_DIR" ]; then
+	mkdir $BUILD_DIR
+	mkdir $BUILD_DIR/debug
+	cd $BUILD_DIR/debug
+	$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES $TOP
+	mkdir $BUILD_DIR/release
+	cd $BUILD_DIR/release
+	$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES $TOP
+fi

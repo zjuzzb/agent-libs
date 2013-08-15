@@ -1,0 +1,76 @@
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.ko
+*.ko.unsigned
+*.cmd
+*.a
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.dmg
+*.gz
+*.tgz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Windows #
+###########
+*vcxproj*
+*.tlog
+*.obj
+*.suo
+*.pdb
+*.idb
+#*.sln
+#*.vc*proj*
+#*.filters
+*.log
+*.unsuccessfulbuild
+*.lastbuildstate
+*.*sdf
+*.ilk
+*.lib
+*.exp
+*.user
+*.vspx
+*.psess
+
+# misc #
+######################
+userspace/libscap/Debug
+userspace/libscap/Release
+userspace/libscap/tests/*/*.sln
+*.scap
+*~
+core*
+driver/.tmp_versions/
+driver/Module.symvers
+driver/modules.order
+driver/ppm.mod.c
+/experiments/multithreaded_poll/build/
+/experiments/multithreaded_poll/dist/
+# astyle file backup
+*.orig
+.libs/
+
+# ignore test result files
+test_detail.xml
+
+#ignore dependencies directory
+dependencies/
+
+#ignore build directory
+build/
+
+metrics

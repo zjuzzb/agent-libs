@@ -1,0 +1,76 @@
+////////////////////////////////////////////////////////////////////////////
+// Public definitions for the scap library
+////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+class sinsp_parser
+{
+public:
+	sinsp_parser(sinsp* inspector);
+	~sinsp_parser();
+
+	//
+	// Processing entry point
+	//
+	void process_event(sinsp_evt* evt);
+
+private:
+	//
+	// Helpers
+	//
+	bool reset(sinsp_evt *evt);
+	void store_event(sinsp_evt* evt);
+	bool retrieve_enter_event(sinsp_evt* enter_evt, sinsp_evt* exit_evt);
+
+	//
+	// Parsers
+	//
+	void parse_clone_exit(sinsp_evt* evt); 
+	void parse_execve_exit(sinsp_evt* evt); 
+	void proc_schedule_removal(sinsp_evt* evt);
+	void parse_open_openat_creat_exit(sinsp_evt* evt);	
+	void parse_pipe_exit(sinsp_evt* evt);
+	void parse_socketpair_exit(sinsp_evt* evt);
+	void parse_socket_exit(sinsp_evt* evt);	
+	void parse_connect_exit(sinsp_evt* evt);
+	void parse_accept_exit(sinsp_evt* evt, bool is_accept4);
+	void parse_close_enter(sinsp_evt* evt);
+	void parse_close_exit(sinsp_evt* evt);
+	void parse_thread_exit(sinsp_evt* evt);
+	void parse_rw_exit(sinsp_evt* evt);
+	void parse_fstat_exit(sinsp_evt* evt);
+	void parse_eventfd_exit(sinsp_evt* evt);
+	void parse_bind_exit(sinsp_evt* evt);
+	void parse_chdir_exit(sinsp_evt* evt);
+	void parse_fchdir_exit(sinsp_evt* evt);
+	void parse_getcwd_exit(sinsp_evt* evt);
+	void parse_shutdown_exit(sinsp_evt* evt);
+	void parse_dup_exit(sinsp_evt* evt);
+	void parse_signalfd_exit(sinsp_evt* evt);
+	void parse_timerfd_create_exit(sinsp_evt* evt);
+	void parse_inotify_init_exit(sinsp_evt* evt);
+
+	inline void add_socket(sinsp_evt* evt, int64_t fd, uint32_t domain, uint32_t type, uint32_t protocol);
+	inline void add_pipe(sinsp_evt *evt, int64_t tid, int64_t fd, uint64_t ino);
+	// XXX this function has way too many parameters. Fix it.
+	inline void handle_read(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t len);
+	// XXX this function has way too many parameters. Fix it.
+	inline void handle_write(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t len);
+	void update_fd(sinsp_evt *evt, sinsp_evt_param* parinfo);
+	void set_addresses_and_ports(sinsp_fdinfo* fdinfo, char* packed_data);
+	void set_unix_info(sinsp_fdinfo* fdinfo, char* packed_data);
+
+	//
+	// Pointers to inspector context
+	//
+	sinsp* m_inspector;
+
+	// Temporary storage to avoid memory allocation
+	sinsp_evt m_tmp_evt;
+	// The support class for http parsing
+	sinsp_http_parser m_http_parser;
+	// The transaction table. Key pair is <tid, fd>.
+//	unordered_map<pair<int64_t, int64_t>, sinsp_transactinfo> m_transactable;
+
+	friend class sinsp_analyzer;
+};

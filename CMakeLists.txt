@@ -1,0 +1,55 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(draios) 
+
+set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
+#set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
+
+set(CMAKE_C_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall -ggdb --std=c++11 ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
+
+set(DRAIOS_VERSION "0.1.1")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(DRAIOS_PACKAGE_NAME "draios-debug")
+else()
+	set(DRAIOS_PACKAGE_NAME "draios")
+endif()
+set(DRAIOS_BIN_PREFIX "/opt/draios")
+set(DRAIOS_SRC_PREFIX "/usr/src/draios-${DRAIOS_VERSION}")
+
+add_subdirectory(driver)
+add_subdirectory(userspace/dragent)
+add_subdirectory(userspace/libscap)
+add_subdirectory(userspace/libsinsp)
+add_subdirectory(test)
+
+set(CPACK_PACKAGE_NAME "${DRAIOS_PACKAGE_NAME}")
+set(CPACK_PACKAGE_VENDOR "Draios Inc")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Draios agent")
+set(CPACK_PACKAGE_VERSION "${DRAIOS_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/description.txt")
+set(CPACK_PROJECT_CONFIG_FILE "${PROJECT_SOURCE_DIR}/CMakeCPackOptions.cmake")
+set(CPACK_STRIP_FILES "ON")
+
+set(CPACK_GENERATOR DEB RPM)
+
+set(CPACK_DEB_COMPONENT_INSTALL "ON")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Gianluca Borello <gianluca@draios.com>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.draios.com")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "dkms (>= 2.1.0.0)")
+set(CPACK_DEBIAN_PACKAGE_agent_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/scripts/debian/postinst;${PROJECT_SOURCE_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
+set(CPACK_DEBIAN_PACKAGE_tests_CONTROL_EXTRA " ")
+
+set(CPACK_RPM_COMPONENT_INSTALL "ON")
+set(CPACK_RPM_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl")
+set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
+set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
+set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+
+include(CPack)

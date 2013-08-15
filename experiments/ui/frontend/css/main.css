@@ -1,0 +1,93 @@
+body {
+  padding-top: 60px;
+}
+.sidebar-nav {
+  padding: 9px 0;
+}
+
+.hero-unit.sequence {
+  padding-top: 0px;
+  margin-left: 0px;
+}      
+      
+.hero-unit.viz {
+  margin-left: 0px;
+  background-color: #FFFFFF;
+  padding: 0px;
+}
+
+.breadcrumb.smallbc {
+  padding: 4px 14px;
+  margin: 0 0 5px;
+}
+
+.d3viz {
+  background-color: #FF0000;  
+}
+
+.chart {
+  display: block;
+  margin: auto;
+  margin-top: 10px;
+}
+
+rect {
+  fill: none;
+}
+
+text {
+  font: 10px sans-serif;
+  pointer-events: none;
+}
+
+text.celltext {
+  font: 10px sans-serif;
+  fill: #442222;
+}
+
+text.containertext {
+  font: 11px sans-serif;
+  pointer-events: none;
+}
+
+text.containertextshadow {
+  font: 11px sans-serif;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-opacity: .8;
+}
+
+.dropdown-menu table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.dropdown-menu td { 
+  width: 140px; 
+}
+  
+/*
+.dropdown-title {
+  display:block;
+  padding:0px 10px;
+  clear:both;
+  font-weight:normal;
+  line-height:18px;
+  color:#000000;
+  white-space:nowrap;
+}
+
+.dropdown-list td { 
+  vertical-align:top;
+  text-align:left;
+}
+*/
+
+.slider{
+  width:130px; 
+  float:left;
+}
+
+.slider, #slider1, #slider2, table{
+  margin:3px;
+}

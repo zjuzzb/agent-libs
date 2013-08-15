@@ -1,0 +1,40 @@
+#!/bin/bash
+set -e
+
+#
+# To be run on CentOS 6
+#
+
+#
+# Update the system
+#
+yum -y update
+
+#
+# Download a GCC with C++11 support
+#
+curl -o /etc/yum.repos.d/devtools-1.1.repo http://people.centos.org/tru/devtools-1.1/devtools-1.1.repo
+yum -y install devtoolset-1.1
+
+#
+# Install dpkg
+#
+rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
+yum -y install dpkg dpkg-devel
+
+#
+# Install various crap
+#
+yum -y install java-1.7.0-openjdk rpm-build unzip git createrepo s3cmd
+
+#
+# Prepare Jenkins working directory
+#
+mkdir -p /work/jenkins
+
+#
+# Manual steps:
+# Copy git key
+#
+s3cmd --configure
+git clone git@github.com:ldegio/draios.git
