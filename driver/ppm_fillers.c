@@ -826,7 +826,9 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 	int fd;
 	uint16_t size = 0;
 	char* targetbuf = args->ringinfo->str_storage;
+#ifdef __x86_64__
 	unsigned long val;
+#endif
 
 	//
 	// Push the result
