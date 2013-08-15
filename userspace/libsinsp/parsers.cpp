@@ -1240,7 +1240,8 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		// If the fd is in the connection table, schedule the connection for removal
 		//
 		if(evt->m_fdinfo->is_tcp_socket() && 
-			!evt->m_fdinfo->has_no_role())
+			!evt->m_fdinfo->has_no_role() &&
+			!(evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == 0))
 		{
 #ifdef USE_ANALYZER
 			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info, false);
