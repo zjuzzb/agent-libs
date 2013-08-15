@@ -975,8 +975,19 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		sinsp_connection* conn = m_inspector->m_ipv4_connections->get_connection(
 			evt->m_fdinfo->m_info.m_ipv4info,
 			evt->get_ts());
+
 		if(conn)
 		{
+			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
+			{
+				//
+				// There is a closed connection with the same key. We drop its content and reuse it.
+				// We also mark it as reused so that the analyzer is aware of it
+				//
+				conn->reset();
+				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
+			}
+
 			ASSERT(evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == SCAP_L4_UDP);
 			m_inspector->m_ipv4_connections->remove_connection(
 				evt->m_fdinfo->m_info.m_ipv4info);
@@ -1231,15 +1242,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		if(evt->m_fdinfo->is_tcp_socket() && !evt->m_fdinfo->has_no_role())
 		{
 #ifdef USE_ANALYZER
-			sinsp_connection* cinfo = m_inspector->m_ipv4_connections->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
-			if(cinfo)
-			{
-				cinfo->m_analysis_flags |= sinsp_connection::AF_CLOSED;				
-			}
-			else
-			{
-				ASSERT(false);
-			}
+			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info, false);
 #else
 			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
 #endif
@@ -1247,15 +1250,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		else if(evt->m_fdinfo->is_unix_socket() && !evt->m_fdinfo->has_no_role())
 		{
 #ifdef USE_ANALYZER
-			sinsp_connection* cinfo = m_inspector->m_unix_connections->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
-			if(cinfo)
-			{
-				cinfo->m_analysis_flags |= sinsp_connection::AF_CLOSED;
-			}
-			else
-			{
-//				ASSERT(false);
-			}			
+			m_inspector->m_unix_connections->remove_connection(evt->m_fdinfo->m_info.m_unixinfo, false);
 #else
 			m_inspector->m_unix_connections->remove_connection(evt->m_fdinfo->m_info.m_unixinfo);
 #endif
@@ -1430,30 +1425,44 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				bool do_add = true;
-				if(connection->is_server_only())
+				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
 				{
-					evt->m_fdinfo->set_role_client();
-				}
-				else if(connection->is_client_only())
-				{
-					evt->m_fdinfo->set_role_server();
+					//
+					// There is a closed connection with the same key. We drop its content and reuse it.
+					// We also mark it as reused so that the analyzer is aware of it
+					//
+					connection->reset();
+					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 				}
 				else
 				{
-					do_add = false;
-					ASSERT(false);
+					if(connection->is_server_only())
+					{
+						evt->m_fdinfo->set_role_client();
+					}
+					else if(connection->is_client_only())
+					{
+						evt->m_fdinfo->set_role_server();
+					}
+					else
+					{
+						//
+						// FDs don't match but the connection has not been closed yet.
+						// This seem to heppen with unix sockets, whose addresses are reused when 
+						// just on of the endpoints has been closed.
+						// Jusr recycle the connection.
+						//
+						connection->reset();
+						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					}
 				}
 
-				if(do_add)
-				{
-					m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-							evt->m_tinfo,
-							tid,
-							fd,
-							evt->m_fdinfo->has_role_client(),
-							evt->get_ts());
-				}
+				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+						evt->m_tinfo,
+						tid,
+						fd,
+						evt->m_fdinfo->has_role_client(),
+						evt->get_ts());
 			}
 
 
@@ -1486,30 +1495,42 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				bool do_add = true;
-				if(connection->is_server_only())
+				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
 				{
-					evt->m_fdinfo->set_role_client();
-				}
-				else if(connection->is_client_only())
-				{
-					evt->m_fdinfo->set_role_server();
+					//
+					// There is a closed connection with the same key. We drop its content and reuse it.
+					// We also mark it as reused so that the analyzer is aware of it
+					//
+					connection->reset();
+					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 				}
 				else
 				{
-					do_add = false;
-					ASSERT(false);
+					if(connection->is_server_only())
+					{
+						evt->m_fdinfo->set_role_client();
+					}
+					else if(connection->is_client_only())
+					{
+						evt->m_fdinfo->set_role_server();
+					}
+					else
+					{
+						//
+						// FDs don't match but the connection has not been closed yet.
+						// This can happen in case of event drops.
+						//
+						connection->reset();
+						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					}
 				}
 
-				if(do_add)
-				{
-					m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-							evt->m_tinfo,
-							tid,
-							fd,
-							evt->m_fdinfo->has_role_client(),
-							evt->get_ts());
-				}
+				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+						evt->m_tinfo,
+						tid,
+						fd,
+						evt->m_fdinfo->has_role_client(),
+						evt->get_ts());
 			}
 
 
@@ -1632,30 +1653,44 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				bool do_add = true;
-				if(connection->is_server_only())
+				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
 				{
-					evt->m_fdinfo->set_role_client();
-				}
-				else if(connection->is_client_only())
-				{
-					evt->m_fdinfo->set_role_server();
+					//
+					// There is a closed connection with the same key. We drop its content and reuse it.
+					// We also mark it as reused so that the analyzer is aware of it
+					//
+					connection->reset();
+					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 				}
 				else
 				{
-					do_add = false;
-					ASSERT(false);
+					if(connection->is_server_only())
+					{
+						evt->m_fdinfo->set_role_client();
+					}
+					else if(connection->is_client_only())
+					{
+						evt->m_fdinfo->set_role_server();
+					}
+					else
+					{
+						//
+						// FDs don't match but the connection has not been closed yet.
+						// This seem to heppen with unix sockets, whose addresses are reused when 
+						// just on of the endpoints has been closed.
+						// Jusr recycle the connection.
+						//
+						connection->reset();
+						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					}
 				}
 
-				if(do_add)
-				{
-					m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-							evt->m_tinfo,
-							tid,
-							fd,
-							evt->m_fdinfo->has_role_client(),
-							evt->get_ts());
-				}
+				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+						evt->m_tinfo,
+						tid,
+						fd,
+						evt->m_fdinfo->has_role_client(),
+						evt->get_ts());
 			}
 		}
 		else if(evt->m_fdinfo->is_tcp_socket())
@@ -1682,30 +1717,42 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				bool do_add = true;
-				if(connection->is_server_only())
+				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
 				{
-					evt->m_fdinfo->set_role_client();
-				}
-				else if(connection->is_client_only())
-				{
-					evt->m_fdinfo->set_role_server();
+					//
+					// There is a closed connection with the same key. We drop its content and reuse it.
+					// We also mark it as reused so that the analyzer is aware of it
+					//
+					connection->reset();
+					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 				}
 				else
 				{
-					do_add = false;
-					ASSERT(false);
+					if(connection->is_server_only())
+					{
+						evt->m_fdinfo->set_role_client();
+					}
+					else if(connection->is_client_only())
+					{
+						evt->m_fdinfo->set_role_server();
+					}
+					else
+					{
+						//
+						// FDs don't match but the connection has not been closed yet.
+						// This can happen in case of event drops.
+						//
+						connection->reset();
+						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					}
 				}
 
-				if(do_add)
-				{
-					m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-							evt->m_tinfo,
-							tid,
-							fd,
-							evt->m_fdinfo->has_role_client(),
-							evt->get_ts());
-				}
+				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+						evt->m_tinfo,
+						tid,
+						fd,
+						evt->m_fdinfo->has_role_client(),
+						evt->get_ts());
 			}
 		}
 
@@ -1757,6 +1804,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 	else if(evt->m_fdinfo->is_pipe())
 	{
 		sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
+
 		if(NULL == connection || connection->is_client_only())
 		{
 			m_inspector->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,

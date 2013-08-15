@@ -10,7 +10,7 @@ sinsp_configuration::sinsp_configuration()
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_length_ns = ANALYZER_SAMPLE_LENGTH_NS;
-	m_metrics_directory = DIR_PATH_SEPARATOR;
+	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)

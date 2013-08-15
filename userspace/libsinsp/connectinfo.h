@@ -9,7 +9,16 @@ public:
 	enum analysis_flags
 	{
 	    AF_NONE = 0,
-	    AF_CLOSED = (1 << 1), // connection has been closed. It will have to be removed from the connection table.
+		// Connection has been closed. It will have to be removed from the 
+		// connection table.
+	    AF_CLOSED = (1 << 1), 
+		// Connection has been closed and reopened with the same key. 
+		// I've seen this happen with unix sockets. A successive unix socket pair 
+		// can be assigned the same addresses of a just closed one.
+		// When that happens, the old connection is removed and the new one is
+		// added with the AF_REUSED flag, so that the analyzer can detect that
+		// connection is different.
+		AF_REUSED = (1 << 2), 
 	};
 
 	int64_t m_spid;
@@ -26,17 +35,11 @@ public:
 
 	uint64_t m_timestamp;
 
-	bool is_client_only()
-	{
-		return 0 != m_stid && 0 == m_dtid;
-	}
-
-	bool is_server_only()
-	{
-		return 0 == m_stid && 0 != m_dtid;
-	}
-
 	uint8_t m_analysis_flags; // Flags word used by the analysis engine.
+
+	void reset();
+	bool is_client_only();
+	bool is_server_only();
 };
 
 
@@ -49,7 +52,7 @@ public:
 #endif
 
 	void add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
-	void remove_connection(const TKey& key);
+	void remove_connection(const TKey& key, bool now = true);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
 
@@ -108,6 +111,8 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 	}
 	else
 	{
+		ASSERT(cit->second.m_analysis_flags != sinsp_connection::AF_CLOSED);
+
 		cit->second.m_refcount++;
 		ASSERT(cit->second.m_refcount <= 2);
 		cit->second.m_timestamp = timestamp;
@@ -135,7 +140,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 };
 
 template<class TKey, class THash, class TCompare>
-void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key)
+void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key, bool now = true)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
@@ -155,7 +160,14 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 #ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_stats.m_n_removed_connections++;
 #endif
-			m_connections.erase(cit);
+			if(now)
+			{
+				m_connections.erase(cit);
+			}
+			else
+			{
+				cit->second.m_analysis_flags |= sinsp_connection::AF_CLOSED;
+			}
 		}
 	}
 };
