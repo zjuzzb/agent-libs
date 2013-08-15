@@ -6,7 +6,7 @@ rm -rf build/debug/*deb
 rm -rf build/release/*rpm
 rm -rf build/release/*deb
 
-DEPENDENCIES=/work/dependencies ./setup-dependencies
+./setup-dependencies
 make -C build/debug package
 make -C build/release package
 
