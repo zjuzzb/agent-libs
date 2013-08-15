@@ -47,7 +47,7 @@ public:
 		m_use_shutdown = use_shutdown;
 		m_use_accept4 = use_accept4;
 		m_ntransactions = ntransactions;
-		m_exit_no_close = exit_no_close;
+		m_exit_no_close = false;
 	}
 
 	void run()

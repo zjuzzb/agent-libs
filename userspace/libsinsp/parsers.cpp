@@ -1616,11 +1616,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 
 void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t len)
 {
-	if(evt->get_num() == 3979)
-	{
-		int a = 0;
-	}
-
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
 		if(evt->m_fdinfo->is_unix_socket())

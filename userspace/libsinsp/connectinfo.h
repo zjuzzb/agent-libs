@@ -140,7 +140,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 };
 
 template<class TKey, class THash, class TCompare>
-void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key, bool now = true)
+void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key, bool now)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
