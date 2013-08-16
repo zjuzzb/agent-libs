@@ -40,6 +40,11 @@ sinsp::sinsp() :
 sinsp::~sinsp()
 {
 	close();
+
+	if(m_fds_to_remove)
+	{
+		delete m_fds_to_remove;
+	}
 }
 
 void sinsp::open(uint32_t timeout_ms)
@@ -140,11 +145,6 @@ void sinsp::close()
 	{
 		delete m_thread_manager;
 		m_thread_manager = NULL;
-	}
-
-	if(m_fds_to_remove)
-	{
-		delete m_fds_to_remove;
 	}
 }
 
