@@ -1192,13 +1192,13 @@ void sinsp_parser::parse_close_enter(sinsp_evt *evt)
 // (process FD table, connection table...).
 // It's invoked when a close() or a threadexit happens.
 //
-void sinsp_parser::erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* fdinfo, uint64_t ts)
+void sinsp_parser::erase_fd(sinsp* inspector, int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* fdinfo, uint64_t ts)
 {
 	//
 	// Schedule the fd for removal
 	//
-	m_inspector->m_tid_of_fd_to_remove = tinfo->m_tid;
-	m_inspector->m_fds_to_remove->push_back(fd);
+	inspector->m_tid_of_fd_to_remove = tinfo->m_tid;
+	inspector->m_fds_to_remove->push_back(fd);
 
 	//
 	// If the fd is in the transaction table, get rid of it there too
@@ -1216,18 +1216,18 @@ void sinsp_parser::erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* f
 		!fdinfo->has_no_role())
 	{
 #ifdef USE_ANALYZER
-		m_inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info, false);
+		inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info, false);
 #else
-		m_inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info);
+		inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info);
 #endif
 	}
 	else if(fdinfo->is_unix_socket() && 
 		!fdinfo->has_no_role())
 	{
 #ifdef USE_ANALYZER
-		m_inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo, false);
+		inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo, false);
 #else
-		m_inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo);
+		inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo);
 #endif
 	}
 }
@@ -1268,7 +1268,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		//
 		// Remove the fd from the different tables
 		//
-		erase_fd(evt->m_tinfo->m_lastevent_fd, evt->m_tinfo, evt->m_fdinfo, evt->get_ts());
+		erase_fd(m_inspector, evt->m_tinfo->m_lastevent_fd, evt->m_tinfo, evt->m_fdinfo, evt->get_ts());
 	}
 	else
 	{
@@ -1395,17 +1395,6 @@ void sinsp_parser::parse_pipe_exit(sinsp_evt *evt)
 
 void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 {
-	//
-	// Erase all the FDs that this process owns
-	//
-	unordered_map<int64_t, sinsp_fdinfo> fdtable = evt->m_tinfo->get_fd_table()->m_fdtable;
-	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
-
-	for(it = fdtable.begin(); it != fdtable.end(); ++it)
-	{
-		erase_fd(it->first, evt->m_tinfo, &(it->second), evt->get_ts());
-	}
-
 	//
 	// Schedule the process for removal
 	//

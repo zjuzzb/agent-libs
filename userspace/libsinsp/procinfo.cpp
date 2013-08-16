@@ -508,6 +508,21 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		}
 
 		//
+		// Erase all the FDs that this thread owns
+		//
+		unordered_map<int64_t, sinsp_fdinfo> fdtable = it->second.get_fd_table()->m_fdtable;
+		unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
+
+		for(fdit = fdtable.begin(); fdit != fdtable.end(); ++fdit)
+		{
+			sinsp_parser::erase_fd(m_inspector,
+				fdit->first, 
+				&(it->second), 
+				&(fdit->second), 
+				m_inspector->m_lastevent_ts);
+		}
+
+		//
 		// Reset the cache
 		//
 		m_last_tid = 0;

@@ -195,4 +195,5 @@ private:
 	sinsp_fdinfo *m_last_accessed_fdinfo;
 
 	friend class sinsp_parser;
+	friend class sinsp_thread_manager;
 };
