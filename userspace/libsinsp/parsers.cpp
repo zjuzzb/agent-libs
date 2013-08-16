@@ -33,7 +33,7 @@ sinsp_parser::~sinsp_parser()
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
 /*
-if(evt->get_num() == 3307)
+if(evt->get_num() == 39306)
 {
 	int a = 0;
 }
@@ -766,9 +766,13 @@ inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain
 	{
 		fdi.m_type = SCAP_FD_IPV4_SOCK;
 
-		if(protocol == IPPROTO_ICMP)
+		if(protocol == IPPROTO_TCP)
 		{
-			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_ICMP;
+			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
+		}
+		else if(protocol == IPPROTO_UDP)
+		{
+			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_UDP;
 		}
 		else if(protocol == IPPROTO_IP)
 		{
@@ -790,6 +794,11 @@ inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain
 				ASSERT(false);
 			}
 		}
+		else if(protocol == IPPROTO_ICMP)
+		{
+			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_ICMP;
+		}
+
 	}
 	else
 	{
@@ -1215,6 +1224,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	//
 	// If the fd is in the connection table, schedule the connection for removal
 	//
+	// xxxx
 	if(params->m_fdinfo->is_tcp_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
