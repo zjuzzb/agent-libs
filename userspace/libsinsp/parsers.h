@@ -13,7 +13,7 @@ public:
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt);
-	static void erase_fd(sinsp* inspector, int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* fdinfo, uint64_t ts);
+	static void erase_fd(erase_fd_params* params);
 
 private:
 	//

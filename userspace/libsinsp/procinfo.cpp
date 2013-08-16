@@ -515,13 +515,18 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 			unordered_map<int64_t, sinsp_fdinfo> fdtable = it->second.get_fd_table()->m_fdtable;
 			unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 
+			erase_fd_params eparams;
+			eparams.m_dont_remove_from_table = true;
+			eparams.m_inspector = m_inspector;
+			eparams.m_tinfo = &(it->second);
+			eparams.m_ts = m_inspector->m_lastevent_ts;
+
 			for(fdit = fdtable.begin(); fdit != fdtable.end(); ++fdit)
 			{
-				sinsp_parser::erase_fd(m_inspector,
-					fdit->first, 
-					&(it->second), 
-					&(fdit->second), 
-					m_inspector->m_lastevent_ts);
+				eparams.m_fd = fdit->first;
+				eparams.m_fdinfo = &(fdit->second);
+
+				sinsp_parser::erase_fd(&eparams);
 			}
 		}
 
