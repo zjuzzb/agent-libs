@@ -31,7 +31,7 @@ public:
 	int64_t m_dfd;
 	string m_dcomm;
 
-	uint8_t m_refcount;
+	int8_t m_refcount;
 
 	uint64_t m_timestamp;
 
@@ -113,14 +113,28 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 	{
 		ASSERT(cit->second.m_analysis_flags != sinsp_connection::AF_CLOSED);
 
-		cit->second.m_refcount++;
-		ASSERT(cit->second.m_refcount <= 2);
+//		ASSERT(cit->second.m_refcount <= 2);
 		cit->second.m_timestamp = timestamp;
 		if(isclient)
 		{
-			ASSERT(cit->second.m_stid == 0);
-			ASSERT(cit->second.m_sfd == 0);
-			ASSERT(cit->second.m_spid == 0);
+			//ASSERT(cit->second.m_stid == 0);
+			//ASSERT(cit->second.m_sfd == 0);
+			//ASSERT(cit->second.m_spid == 0);
+
+			//
+			// Increment the refcount, but only if this is a brand new connection,
+			// not if it's overwriting a new one
+			//
+			if(cit->second.m_stid == 0)
+			{
+				cit->second.m_refcount++;
+			}
+			else
+			{
+				cit->second.m_analysis_flags = sinsp_connection::AF_REUSED;
+				//ASSERT(false);
+			}
+
 			cit->second.m_stid = tid;
 			cit->second.m_sfd = fd;
 			cit->second.m_spid = ptinfo->m_pid;
@@ -128,9 +142,24 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 		}
 		else
 		{
-			ASSERT(cit->second.m_dtid == 0);
-			ASSERT(cit->second.m_dfd == 0);
-			ASSERT(cit->second.m_dpid == 0);
+			//ASSERT(cit->second.m_dtid == 0);
+			//ASSERT(cit->second.m_dfd == 0);
+			//ASSERT(cit->second.m_dpid == 0);
+
+			//
+			// Increment the refcount, but only if this is a brand new connection,
+			// not if it's overwriting a new one
+			//
+			if(cit->second.m_dtid == 0)
+			{
+				cit->second.m_refcount++;
+			}
+			else
+			{
+				cit->second.m_analysis_flags = sinsp_connection::AF_REUSED;
+				//ASSERT(false);
+			}
+
 			cit->second.m_dtid = tid;
 			cit->second.m_dfd = fd;
 			cit->second.m_dpid = ptinfo->m_pid;
@@ -152,9 +181,9 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 	else
 	{
 		cit->second.m_refcount--;
-		ASSERT(cit->second.m_refcount >= 0 && cit->second.m_refcount <= 2);
+		ASSERT((cit->second.m_refcount >= 0 && cit->second.m_refcount <= 2) || ((cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED) != 0));
 
-		if(cit->second.m_refcount == 0)
+		if(cit->second.m_refcount <= 0)
 		{
 #ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_stats.m_n_removed_connections++;
