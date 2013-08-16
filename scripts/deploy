@@ -2,64 +2,69 @@
 set -ex
 
 function smoke_tests {
-	sudo service dragent start
-	sudo service dragent status
-	sudo pgrep dragent
-	sudo service dragent stop
-	if sudo service dragent status
+	service dragent start
+	service dragent status
+	pgrep dragent
+	service dragent stop
+	if service dragent status
 	then
 		false
 	fi
-	if sudo pgrep dragent
+	if pgrep dragent
 	then
 		false
 	fi
 
-	sudo modprobe ppm
-	sudo sh -c "cd /opt/draios/test; ./test"
-	sudo rmmod ppm
+	modprobe ppm
+	sh -c "cd /opt/draios/test; ./test"
+	rmmod ppm
 }
 
-case "$1" in
-	"rhel")
-		sudo curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/rpm/draios.repo
-		sudo yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-		sudo yum -y install draios-agent draios-tests
-	    ;;
-	"rhel-dkms")
-		sudo rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm # needed for dkms
-		sudo curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/rpm/draios.repo
-		sudo yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-		sudo yum -y install draios-agent draios-tests
-		;;
-	"fedora")
-		sudo curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/rpm/draios.repo
-		sudo yum -y install kernel-PAE-devel # this is needed if the customer doesn't have the most updated kernel version
-		sudo yum -y install draios-agent draios-tests
-	    ;;
-	"debian")
-		sudo sh -c 'echo deb http://download.draios.com/deb stable-\$\(ARCH\)/ > /etc/apt/sources.list.d/draios.list'
-		sudo apt-get update
-		sudo apt-get -y install linux-headers-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-		sudo apt-get -y --force-yes install draios-agent draios-tests
-	    ;;
-	*)
-	    ;;
-esac
+function install_rpm {
+	if ! yum info dkms; then
+		rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm # needed for dkms
+	fi
+
+	curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/rpm/draios.repo
+	yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
+	yum -y install draios-agent draios-tests
+}
+
+function install_deb {
+	sh -c 'echo deb http://download.draios.com/deb stable-\$\(ARCH\)/ > /etc/apt/sources.list.d/draios.list'
+	apt-get update
+	apt-get -y install linux-headers-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
+	apt-get -y --force-yes install draios-agent draios-tests
+}
+
+function install_debug_rpm {
+	yum -y erase draios-agent draios-tests
+	yum -y install draios-debug-agent draios-debug-tests
+}
+
+function install_debug_deb {
+	apt-get -y purge draios-agent draios-tests
+	apt-get -y --force-yes install draios-debug-agent draios-debug-tests
+}
+
+if [ -f /etc/debian_version ]; then
+    install_deb
+elif [ -f /etc/redhat-release ]; then
+    install_rpm
+else
+    echo "Unable to detect operating system."
+    exit 1
+fi
 
 smoke_tests
 
-case "$1" in
-	"amazon"|"rhel"|"fedora")
-		sudo yum -y erase draios-agent draios-tests
-		sudo yum -y install draios-debug-agent draios-debug-tests
-		;;
-	"debian")
-		sudo apt-get -y purge draios-agent draios-tests
-		sudo apt-get -y --force-yes install draios-debug-agent draios-debug-tests
-	    ;;
-	*)
-	    ;;
-esac
+if [ -f /etc/debian_version ]; then
+    install_debug_deb
+elif [ -f /etc/redhat-release ]; then
+    install_debug_rpm
+else
+    echo "Unable to detect operating system."
+    exit 1
+fi
 
 smoke_tests
