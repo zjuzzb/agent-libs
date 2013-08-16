@@ -332,12 +332,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	int64_t childtid;
 	unordered_map<int64_t, sinsp_threadinfo>::iterator it;
 	bool is_inverted_clone = false; // true if clone() in the child returns before the one in the parent
-/*
-if(evt->get_num() == 3837)
-{
-	int a = 0;
-}
-*/
+
 	//
 	// Validate the return value and get the child tid
 	//
@@ -586,9 +581,14 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	//  scap_fd_free_table(handle, tinfo);
 
 	//
-	// Clean the flags for this thread
+	// Clean the flags for this thread, making sure to propagate the inverted flag
 	//
+	bool inverted = ((evt->m_tinfo->m_flags & PPM_CL_CLONE_INVERTED) != 0);
 	evt->m_tinfo->m_flags = 0;
+	if(inverted)
+	{
+		evt->m_tinfo->m_flags |= PPM_CL_CLONE_INVERTED;
+	}
 /*
 	//
 	// Clean the FD table

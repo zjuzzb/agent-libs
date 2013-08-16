@@ -461,7 +461,7 @@ if(it->second.m_tid == 1748)
 			}
 
 			//
-			// Go though the list of IPv4 connection and emit the data for each of them
+			// Go though the list of IPv4 connections and emit the data for each of them
 			//
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
@@ -505,6 +505,61 @@ if(it->second.m_tid == 1748)
 					++cit;
 				}
 			}
+
+			//
+			// Go though the list of unix connections and for the moment just clean it up
+			//
+			g_logger.format(sinsp_logger::SEV_DEBUG, 
+				"unix table size:%d",
+				m_inspector->m_unix_connections->m_connections.size());
+
+			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
+			for(ucit = m_inspector->m_unix_connections->m_connections.begin(); 
+				ucit != m_inspector->m_unix_connections->m_connections.end();)
+			{
+				//
+				// Has this connection been closed druring this sample?
+				//
+				if(ucit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				{
+					//
+					// Yes, remove the connection from the table
+					//
+					m_inspector->m_unix_connections->m_connections.erase(ucit++);
+				}
+				else
+				{
+					++ucit;
+				}
+			}
+
+			//
+			// Go though the list of pipe connections and for the moment just clean it up
+			//
+			g_logger.format(sinsp_logger::SEV_DEBUG, 
+				"pipe table size:%d",
+				m_inspector->m_pipe_connections->m_connections.size());
+
+			unordered_map<uint64_t, sinsp_connection, hash<uint64_t>, equal_to<uint64_t>>::iterator pcit;
+			for(pcit = m_inspector->m_pipe_connections->m_connections.begin(); 
+				pcit != m_inspector->m_pipe_connections->m_connections.end();)
+			{
+				//
+				// Has this connection been closed druring this sample?
+				//
+				if(pcit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				{
+					//
+					// Yes, remove the connection from the table
+					//
+					m_inspector->m_pipe_connections->m_connections.erase(pcit++);
+				}
+				else
+				{
+					++pcit;
+				}
+			}
+
 
 			//
 			// Go though the list of network interfaces and emit each of them
