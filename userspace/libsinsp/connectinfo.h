@@ -147,7 +147,6 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 	cit = m_connections.find(key);
 	if(cit == m_connections.end())
 	{
-		ASSERT(false);
 		return;
 	}
 	else

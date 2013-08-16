@@ -1213,8 +1213,7 @@ void sinsp_parser::erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* f
 	// If the fd is in the connection table, schedule the connection for removal
 	//
 	if(fdinfo->is_tcp_socket() && 
-		!fdinfo->has_no_role() &&
-		!(fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == 0))
+		!fdinfo->has_no_role())
 	{
 #ifdef USE_ANALYZER
 		m_inspector->m_ipv4_connections->remove_connection(fdinfo->m_info.m_ipv4info, false);
@@ -1223,8 +1222,7 @@ void sinsp_parser::erase_fd(int64_t fd, sinsp_threadinfo* tinfo, sinsp_fdinfo* f
 #endif
 	}
 	else if(fdinfo->is_unix_socket() && 
-		!fdinfo->has_no_role() &&
-		!(fdinfo->m_info.m_unixinfo.m_fields.m_source == 0 && fdinfo->m_info.m_unixinfo.m_fields.m_source ==  0))
+		!fdinfo->has_no_role())
 	{
 #ifdef USE_ANALYZER
 		m_inspector->m_unix_connections->remove_connection(fdinfo->m_info.m_unixinfo, false);
