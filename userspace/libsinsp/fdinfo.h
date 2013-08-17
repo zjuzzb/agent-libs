@@ -1,8 +1,6 @@
 #pragma once
 
-#include <limits>
-
-#ifdef __WIN32
+#ifdef _WIN32
 #define CANCELED_FD_NUMBER INT64_MAX
 #else
 #define CANCELED_FD_NUMBER std::numeric_limits<int64_t>::max()

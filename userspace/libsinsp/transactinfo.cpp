@@ -29,10 +29,10 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 	{
 		sinsp_transaction_time tinfo(tr->m_prev_start_time, tr->m_prev_end_time);
 
-		oit = m_open_connections.find(tr->m_tid);
-		if(oit == m_open_connections.end())
+		oit = m_open_transactions.find(tr->m_tid);
+		if(oit == m_open_transactions.end())
 		{
-			m_open_connections[tr->m_tid][tr->m_fd] = tinfo;
+			m_open_transactions[tr->m_tid][tr->m_fd] = tinfo;
 		}
 		else
 		{
@@ -44,8 +44,8 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 	{
 		sinsp_transaction_time tinfo(tr->m_prev_start_time, tr->m_prev_end_time);
 
-		oit = m_open_connections.find(tr->m_tid);
-		if(oit == m_open_connections.end())
+		oit = m_open_transactions.find(tr->m_tid);
+		if(oit == m_open_transactions.end())
 		{
 			//
 			// This can happen if we drop events or if a connection
@@ -145,12 +145,12 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 		}
 
 		//
-		// Do the cleanup in the m_open_connections table
+		// Do the cleanup in the m_open_transactions table
 		//
 		oit->second.erase(tit);
 		if(oit->second.size() == 0)
 		{
-			m_open_connections.erase(oit);
+			m_open_transactions.erase(oit);
 		}
 	}
 }

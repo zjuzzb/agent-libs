@@ -147,18 +147,18 @@ public:
 	void emit(sinsp_partial_transaction *tr, uint32_t len);
 
 	//
-	// Stored the global list of connections
+	// Stores the global list of transactions.
 	// Key is the tid
 	//
 	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
 
 	//
-	// Stores temporary info of a connection that is currently in progress
+	// Stores temporary info of a transaction that is currently in progress
 	// Key is the tid for the big map, fd for the second map.
 	// The second map is not an unordered_map because we assume it will be
 	// small, and we don't want the memory overhead of an hash table.
 	//
-	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> > m_open_connections;
+	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> > m_open_transactions;
 
 	friend class sinsp_partial_transaction;
 };
