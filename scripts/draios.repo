@@ -1,5 +1,5 @@
 [draios]
 name=Draios
-baseurl=http://download.draios.com/rpm/$basearch
+baseurl=http://download.draios.com/_REPOSITORY_/rpm/$basearch
 enabled=1
 gpgcheck=0

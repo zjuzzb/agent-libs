@@ -1,0 +1,28 @@
+#!/bin/bash
+set -exu
+
+SCRIPT=$(readlink -f "$0")
+SCRIPTS_DIR=$(dirname "$SCRIPT")
+PACKAGES_DIR="$1"
+REPOSITORY_NAME="$2"
+
+RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+rm -rf /tmp/repo
+
+mkdir -p /tmp/repo/rpm/$RPM_BASEARCH
+cp $PACKAGES_DIR/*rpm /tmp/repo/rpm/$RPM_BASEARCH
+createrepo /tmp/repo/rpm/$RPM_BASEARCH
+cp $SCRIPTS_DIR/draios.repo /tmp/repo/rpm
+sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g /tmp/repo/rpm/draios.repo
+
+DEB_BASEARCH=$(dpkg --print-architecture)
+
+mkdir -p /tmp/repo/deb/stable-$DEB_BASEARCH
+cp $PACKAGES_DIR/*deb /tmp/repo/deb/stable-$DEB_BASEARCH
+dpkg-scanpackages /tmp/repo/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// | gzip -9c > /tmp/repo/deb/stable-$DEB_BASEARCH/Packages.gz
+cp $SCRIPTS_DIR/draios.list /tmp/repo/deb
+sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g /tmp/repo/deb/draios.list
+
+s3cmd --delete-removed --acl-public sync /tmp/repo/ s3://download.draios.com/$REPOSITORY_NAME/
+s3cmd --acl-public sync scripts/deploy s3://download.draios.com/
