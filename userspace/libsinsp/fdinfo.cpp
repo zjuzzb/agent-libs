@@ -156,6 +156,8 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 			//
 			fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
 			fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
+			
+			m_fdtable[CANCELED_FD_NUMBER] = fdit->second;
 		}
 		else
 		{

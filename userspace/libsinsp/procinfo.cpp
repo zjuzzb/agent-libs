@@ -516,7 +516,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 			unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 
 			erase_fd_params eparams;
-			eparams.m_dont_remove_from_table = true;
+			eparams.m_remove_from_table = false;
 			eparams.m_inspector = m_inspector;
 			eparams.m_tinfo = &(it->second);
 			eparams.m_ts = m_inspector->m_lastevent_ts;
@@ -524,6 +524,10 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 			for(fdit = fdtable.begin(); fdit != fdtable.end(); ++fdit)
 			{
 				eparams.m_fd = fdit->first;
+				// The canceled fd should always be deleted immediately, so if it appears
+				// here it means we have a problem.
+				//
+				ASSERT(eparams.m_fd != CANCELED_FD_NUMBER);
 				eparams.m_fdinfo = &(fdit->second);
 
 				sinsp_parser::erase_fd(&eparams);

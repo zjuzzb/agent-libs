@@ -6,7 +6,7 @@
 
 typedef struct erase_fd_params
 {
-	bool m_dont_remove_from_table;
+	bool m_remove_from_table;
 	sinsp* m_inspector;
 	int64_t m_fd;
 	sinsp_threadinfo* m_tinfo;

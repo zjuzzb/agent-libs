@@ -1203,7 +1203,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	//
 	// Schedule the fd for removal
 	//
-	if(!params->m_dont_remove_from_table)
+	if(params->m_remove_from_table)
 	{
 		params->m_inspector->m_tid_of_fd_to_remove = params->m_tinfo->m_tid;
 		params->m_inspector->m_fds_to_remove->push_back(params->m_fd);
@@ -1221,7 +1221,6 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	//
 	// If the fd is in the connection table, schedule the connection for removal
 	//
-	// xxxx
 	if(params->m_fdinfo->is_ipv4_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
@@ -1268,10 +1267,18 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		// a close gets canceled when the same fd is created succesfully between
 		// close enter and close exit.
 		//
+		erase_fd_params eparams;
+
 		if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)
 		{
 			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
-			return;
+			eparams.m_fd = CANCELED_FD_NUMBER;
+			eparams.m_fdinfo = evt->m_tinfo->get_fd(CANCELED_FD_NUMBER);
+		}
+		else
+		{
+			eparams.m_fd = evt->m_tinfo->m_lastevent_fd;
+			eparams.m_fdinfo = evt->m_fdinfo;
 		}
 
 		//m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
@@ -1279,12 +1286,9 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		//
 		// Remove the fd from the different tables
 		//
-		erase_fd_params eparams;
-		eparams.m_dont_remove_from_table = false;
+		eparams.m_remove_from_table = true;
 		eparams.m_inspector = m_inspector;
-		eparams.m_fd = evt->m_tinfo->m_lastevent_fd;
 		eparams.m_tinfo = evt->m_tinfo;
-		eparams.m_fdinfo = evt->m_fdinfo;
 		eparams.m_ts = evt->get_ts();
 
 		erase_fd(&eparams);
