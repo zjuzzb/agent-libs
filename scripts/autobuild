@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -exu
 
 rm -rf build/debug/*rpm
 rm -rf build/debug/*deb
@@ -17,7 +17,7 @@ mkdir -p /tmp/rpm
 cp build/debug/*rpm /tmp/rpm
 cp build/release/*rpm /tmp/rpm
 createrepo /tmp/rpm
-s3cmd --acl-public sync /tmp/rpm/* s3://download.draios.com/rpm/$RPM_BASEARCH/
+s3cmd --skip-existing --acl-public sync /tmp/rpm/* s3://download.draios.com/rpm/$RPM_BASEARCH/
 s3cmd --acl-public put scripts/draios.repo s3://download.draios.com/rpm/
 
 DEB_BASEARCH=$(dpkg --print-architecture)
@@ -27,6 +27,6 @@ mkdir -p /tmp/deb
 cp build/debug/*deb /tmp/deb
 cp build/release/*deb /tmp/deb
 dpkg-scanpackages /tmp/deb | sed s/\\/tmp\\/deb/stable-$DEB_BASEARCH/ | gzip -9c > /tmp/deb/Packages.gz
-s3cmd --acl-public sync /tmp/deb/* s3://download.draios.com/deb/stable-$DEB_BASEARCH/
+s3cmd --skip-existing --acl-public sync /tmp/deb/* s3://download.draios.com/deb/stable-$DEB_BASEARCH/
 
 s3cmd --acl-public sync scripts/deploy s3://download.draios.com/
