@@ -32,12 +32,8 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-/*
-if(evt->get_num() == 39306)
-{
-	int a = 0;
-}
-*/
+//BRK(1918758);
+
 	//
 	// Cleanup the event-related state
 	//
@@ -1203,6 +1199,7 @@ void sinsp_parser::parse_close_enter(sinsp_evt *evt)
 //
 void sinsp_parser::erase_fd(erase_fd_params* params)
 {
+
 	//
 	// Schedule the fd for removal
 	//
@@ -1273,6 +1270,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		//
 		if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)
 		{
+			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
 			return;
 		}
 

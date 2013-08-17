@@ -154,6 +154,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 			// If this is the case, mark the new entry so that the successive close exit won't
 			// destroy it.
 			//
+			fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
 			fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
 		}
 		else

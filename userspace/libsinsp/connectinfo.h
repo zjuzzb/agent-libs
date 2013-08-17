@@ -111,7 +111,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& k
 	}
 	else
 	{
-		ASSERT(cit->second.m_analysis_flags != sinsp_connection::AF_CLOSED);
+//		ASSERT(cit->second.m_analysis_flags != sinsp_connection::AF_CLOSED);
 
 //		ASSERT(cit->second.m_refcount <= 2);
 		cit->second.m_timestamp = timestamp;
