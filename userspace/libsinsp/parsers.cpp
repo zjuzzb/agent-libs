@@ -32,7 +32,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(1918758);
+//BRK(2181157);
 
 	//
 	// Cleanup the event-related state
@@ -1222,7 +1222,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	// If the fd is in the connection table, schedule the connection for removal
 	//
 	// xxxx
-	if(params->m_fdinfo->is_tcp_socket() && 
+	if(params->m_fdinfo->is_ipv4_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
 #ifdef USE_ANALYZER
@@ -1507,7 +1507,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				evt->m_fdinfo->set_is_transaction();
 			}
 		}
-		else if(evt->m_fdinfo->is_tcp_socket())
+		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
 			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			if(connection == NULL)
@@ -1724,7 +1724,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						evt->get_ts());
 			}
 		}
-		else if(evt->m_fdinfo->is_tcp_socket())
+		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
 			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			if(connection == NULL)
