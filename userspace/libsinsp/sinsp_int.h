@@ -62,6 +62,7 @@ using namespace std;
 #define BRK(X) {if(evt->get_num() == X)__debugbreak();}
 #else
 #define SINSP_PUBLIC
+#define BRK(X)
 #endif
 
 //
