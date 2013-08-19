@@ -24,5 +24,8 @@ dpkg-scanpackages /tmp/repo/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb
 cp $SCRIPTS_DIR/draios.list /tmp/repo/deb
 sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g /tmp/repo/deb/draios.list
 
-s3cmd --delete-removed --acl-public sync /tmp/repo/ s3://download.draios.com/$REPOSITORY_NAME/
+s3cmd --acl-public put /tmp/repo/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/
+s3cmd --delete-removed --acl-public sync /tmp/repo/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/
+s3cmd --acl-public put /tmp/repo/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
+s3cmd --delete-removed --acl-public sync /tmp/repo/deb/stable-$DEB_BASEARCH s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
 s3cmd --acl-public sync scripts/deploy s3://download.draios.com/
