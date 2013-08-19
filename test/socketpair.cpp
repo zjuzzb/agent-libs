@@ -83,6 +83,7 @@ TEST_F(sys_call_test, socketpair)
 				perror("writing stream message");
 			}
 
+			usleep(200);
 			close(sockets[1]);
 
 			while (semctl(mutex, 0, GETVAL) == 0) ;
@@ -100,6 +101,7 @@ TEST_F(sys_call_test, socketpair)
 				perror("reading stream message");
 			}
 
+			usleep(200);
 			close(sockets[0]);
 
 			semctl(mutex, 0, SETVAL, 1);
