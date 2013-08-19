@@ -222,7 +222,7 @@ TEST_F(sys_call_test, poll_timeout)
 					//
 					// On EC2 called from jenkins stdin returns POLLHUP
 					//
-					EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p20 1:p4");
+					EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p21 1:p4");
 					break;
 				default:
 					FAIL();
