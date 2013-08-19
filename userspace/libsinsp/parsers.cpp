@@ -1041,6 +1041,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		        evt->m_tinfo->m_lastevent_fd,
 		        true,
 		        evt->get_ts());
+
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
 	}
 
@@ -1210,12 +1211,37 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	}
 
 	//
-	// If the fd is in the transaction table, get rid of it there too
+	// If this fd has an active transaction transaction table, mark it as unititialized
 	//
 	if(params->m_fdinfo->is_transaction())
 	{
-		sinsp_transaction_manager *pttable = params->m_tinfo->get_transaction_manager();
-		pttable->remove_transaction(params->m_tinfo->m_tid, params->m_tinfo->m_lastevent_fd, params->m_ts);
+		sinsp_connection *connection;
+
+		if(params->m_fdinfo->is_ipv4_socket())
+		{
+			connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_ipv4info, 
+				params->m_ts);
+		}
+		else if(params->m_fdinfo->is_unix_socket())
+		{
+			connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_unixinfo, 
+				params->m_ts);
+		}
+		else
+		{
+			ASSERT(false);
+		}
+
+		params->m_fdinfo->m_transaction.update(params->m_inspector,
+			params->m_tinfo,
+			connection,
+			params->m_ts, 
+			params->m_ts, 
+			params->m_tinfo->m_tid, 
+			sinsp_partial_transaction::DIR_CLOSE, 
+			0);
+
+		params->m_fdinfo->m_transaction.m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
 	}
 
 	//
@@ -1435,6 +1461,11 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 {
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
+		sinsp_connection *connection = NULL;
+
+		/////////////////////////////////////////////////////////////////////////////
+		// Handle the connection
+		/////////////////////////////////////////////////////////////////////////////
 		if(evt->m_fdinfo->is_unix_socket())
 		{
 			// ignore invalid destination addresses
@@ -1443,7 +1474,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				return;
 			}
 
-			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			if(connection == NULL)
 			{
 				//
@@ -1452,7 +1483,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// (we assume that a server usually starts with a read).
 				//
 				evt->m_fdinfo->set_role_server();
-				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
@@ -1497,7 +1528,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					}
 				}
 
-				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
 						evt->m_tinfo,
 						tid,
 						fd,
@@ -1513,7 +1544,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
-			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+			
 			if(connection == NULL)
 			{
 				//
@@ -1522,7 +1554,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// (we assume that a server usually starts with a read).
 				//
 				evt->m_fdinfo->set_role_server();
-				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
@@ -1567,7 +1599,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					}
 				}
 
-				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 						evt->m_tinfo,
 						tid,
 						fd,
@@ -1582,35 +1614,17 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			}
 		}
 
+		/////////////////////////////////////////////////////////////////////////////
+		// Handle the transaction
+		/////////////////////////////////////////////////////////////////////////////
 		if(evt->m_fdinfo->has_role_server())
 		{
 			//
 			// See if there's already a transaction
 			//
-			sinsp_transaction_manager *pttable = evt->m_tinfo->get_transaction_manager();
-
-			sinsp_partial_transaction *trinfo = pttable->get_transaction(fd);
-			if(trinfo == NULL)
+ 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
 			{
-				//
-				// No transaction yet.
-				//
-				sinsp_partial_transaction *newtrinfo;
-				if(evt->m_fdinfo->is_unix_socket())
-				{
-					newtrinfo = pttable->add_transaction(fd, &evt->m_fdinfo->m_info.m_unixinfo);
-				}
-				else
-				{
-					newtrinfo = pttable->add_transaction(fd, &evt->m_fdinfo->m_info.m_ipv4info);
-				}
-
-				if(!newtrinfo)
-				{
-					ASSERT(false);
-					return;
-				}
-
 				//
 				// Try to parse this as HTTP
 				//
@@ -1619,9 +1633,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					//
 					// Success. Add an HTTP entry to the transaction table for this fd
 					//
-					newtrinfo->m_type = sinsp_partial_transaction::TYPE_HTTP;
-					newtrinfo->m_protoinfo.push_back(m_http_parser.m_url);
-					newtrinfo->m_protoinfo.push_back(m_http_parser.m_agent);
+					trinfo->m_type = sinsp_partial_transaction::TYPE_HTTP;
+					trinfo->m_protoinfo.push_back(m_http_parser.m_url);
+					trinfo->m_protoinfo.push_back(m_http_parser.m_agent);
 				}
 				else
 				{
@@ -1629,16 +1643,22 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					// The message has not been recognized as HTTP.
 					// Add an IP entry to the transaction table for this fd
 					//
-					newtrinfo->m_type = sinsp_partial_transaction::TYPE_IP;
+					trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
 				}
-
-				trinfo = newtrinfo;
 			}
 
 			//
-			// There is already a transaction. Update its state.
+			// Update the transaction state.
 			//
-			trinfo->update(evt->m_tinfo->m_lastevent_ts, evt->get_ts(), tid, sinsp_partial_transaction::DIR_IN, len);
+			ASSERT(connection != NULL);
+			trinfo->update(m_inspector,
+				evt->m_tinfo,
+				connection,
+				evt->m_tinfo->m_lastevent_ts, 
+				evt->get_ts(), 
+				tid, 
+				sinsp_partial_transaction::DIR_IN, 
+				len);
 		}
 	}
 	else if(evt->m_fdinfo->is_pipe())
@@ -1660,6 +1680,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 {
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
+		sinsp_connection *connection = NULL; 
+
 		if(evt->m_fdinfo->is_unix_socket())
 		{
 			// ignore invalid destination addresses
@@ -1668,7 +1690,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				return;
 			}
 
-			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			if(connection == NULL)
 			{
 				//
@@ -1683,6 +1705,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        fd,
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
+
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			}
 			else if(fd != connection->m_sfd && fd != connection->m_dfd)
 			{
@@ -1730,11 +1754,14 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						fd,
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
+
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			}
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
-			sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+
 			if(connection == NULL)
 			{
 				//
@@ -1749,6 +1776,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        fd,
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
+
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			}
 			else if(fd != connection->m_sfd && fd != connection->m_dfd)
 			{
@@ -1792,6 +1821,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						fd,
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
+
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			}
 		}
 
@@ -1800,44 +1831,28 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			//
 			// See if there's already a transaction
 			//
-			sinsp_transaction_manager *pttable = evt->m_tinfo->get_transaction_manager();
-
-			sinsp_partial_transaction *trinfo = pttable->get_transaction(fd);
-			if(trinfo == NULL)
+ 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
 			{
-				//
-				// No transaction yet.
-				//
-				sinsp_partial_transaction *newtrinfo;
-				if(evt->m_fdinfo->is_unix_socket())
-				{
-					newtrinfo = pttable->add_transaction(fd, &evt->m_fdinfo->m_info.m_unixinfo);
-				}
-				else
-				{
-					newtrinfo = pttable->add_transaction(fd, &evt->m_fdinfo->m_info.m_ipv4info);
-				}
-
-				if(!newtrinfo)
-				{
-					ASSERT(false);
-					return;
-				}
-
 				//
 				// For the moment, we assume that a transaction that starts with
 				// a write is just IP.
 				// Stuff like mysql starts with a write
 				//
-				newtrinfo->m_type = sinsp_partial_transaction::TYPE_IP;
-
-				trinfo = newtrinfo;
+				trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
 			}
 
 			//
 			// There is already a transaction. Update its state.
 			//
-			trinfo->update(evt->m_tinfo->m_lastevent_ts, evt->get_ts(), tid, sinsp_partial_transaction::DIR_OUT, len);
+			trinfo->update(m_inspector,
+				evt->m_tinfo,
+				connection,
+				evt->m_tinfo->m_lastevent_ts, 
+				evt->get_ts(), 
+				tid, 
+				sinsp_partial_transaction::DIR_OUT, 
+				len);
 		}
 	}
 	else if(evt->m_fdinfo->is_pipe())
@@ -2174,7 +2189,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 	retval = *(int64_t *)parinfo->m_val;
 
 	//
-	// If the close() was successful, do the cleanup
+	// If the operation was successful, do the cleanup
 	//
 	if(retval >= 0)
 	{
@@ -2183,17 +2198,31 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 			return;
 		}
 
+//BRK(220017);
 		//
-		// If the fd is in the transaction table, get rid of it there
+		// If this fd has an active transaction, update it and then mark it as unititialized
 		//
-		sinsp_transaction_manager *pttable = evt->m_tinfo->get_transaction_manager();
+		sinsp_connection* connection;
 
-		if(evt->m_fdinfo->is_transaction())
+		if(evt->m_fdinfo->is_ipv4_socket())
 		{
-			pttable->remove_transaction(tid,
-			                            evt->m_tinfo->m_lastevent_fd,
-			                            evt->get_ts());
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 		}
+		else
+		{
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
+		}
+
+		evt->m_fdinfo->m_transaction.update(m_inspector,
+			evt->m_tinfo,
+			connection,
+			evt->get_ts(), 
+			evt->get_ts(), 
+			tid, 
+			sinsp_partial_transaction::DIR_CLOSE, 
+			0);
+
+		evt->m_fdinfo->m_transaction.m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
 	}
 }
 

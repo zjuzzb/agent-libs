@@ -14,7 +14,6 @@ static void copy_ipv6_address(uint32_t* src, uint32_t* dest)
 }
 
 sinsp_threadinfo::sinsp_threadinfo() :
-	m_transaction_manager(NULL),
 	m_fdtable(NULL)
 {
 	m_pid = (uint64_t) - 1LL;
@@ -30,7 +29,6 @@ sinsp_threadinfo::sinsp_threadinfo() :
 }
 
 sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
-	m_transaction_manager(inspector),
 	m_fdtable(inspector)
 {
 	m_inspector = inspector;
@@ -209,27 +207,6 @@ sinsp_fdtable* sinsp_threadinfo::get_fd_table()
 	}
 
 	return &(root->m_fdtable);
-}
-
-sinsp_transaction_manager* sinsp_threadinfo::get_transaction_manager()
-{
-	sinsp_threadinfo* root;
-
-	if(m_flags & PPM_CL_CLONE_FILES)
-	{
-		root = this;
-	}
-	else
-	{
-		root = get_main_thread();
-		if(NULL == root)
-		{
-			ASSERT(false);
-			return NULL;
-		}
-	}
-
-	return &(root->m_transaction_manager);
 }
 
 void sinsp_threadinfo::add_fd(int64_t fd, sinsp_fdinfo *fdinfo)
@@ -588,11 +565,9 @@ void sinsp_thread_manager::update_statistics()
 	m_inspector->m_stats.m_n_threads = get_thread_count();
 
 	m_inspector->m_stats.m_n_fds = 0;
-	m_inspector->m_stats.m_n_pending_transactions = 0;
 	for(threadinfo_map_iterator_t it = m_threadtable.begin(); it != m_threadtable.end(); it++)
 	{
 		m_inspector->m_stats.m_n_fds += it->second.get_fd_table()->size();
-		m_inspector->m_stats.m_n_pending_transactions += it->second.get_transaction_manager()->get_size();
 	}
 #endif
 }

@@ -37,7 +37,6 @@ public:
 	uint64_t m_n_transactions;
 	uint64_t m_n_added_transactions;
 	uint64_t m_n_removed_transactions;
-	uint64_t m_n_pending_transactions;
 	uint64_t m_n_added_pending_transactions;
 	uint64_t m_n_removed_pending_transactions;
 	uint64_t m_n_connections;

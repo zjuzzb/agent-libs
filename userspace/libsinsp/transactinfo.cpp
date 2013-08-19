@@ -19,7 +19,10 @@ sinsp_transaction_table::~sinsp_transaction_table()
 {
 }
 
-void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
+void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
+								   sinsp_connection *pconn,
+								   sinsp_partial_transaction *tr, 
+								   uint32_t len)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
 	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> >::iterator oit;
@@ -76,7 +79,6 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 		tfi.m_trinfo.m_prev_start_time = tit->second.m_start_time;
 		tfi.m_trinfo.m_prev_end_time = tit->second.m_end_time;
 
-		sinsp_threadinfo *ptinfo = tr->m_manager->m_inspector->get_thread(tr->m_tid, true);
 		if(ptinfo)
 		{
 			tfi.m_pid = ptinfo->m_pid;
@@ -99,19 +101,6 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 		// Get the connection information and, if we get it, resolve the other
 		// endpoint's process info
 		//
-		sinsp_connection *pconn = NULL;
-		if(tr->is_ipv4_flow())
-		{
-			pconn = tr->m_manager->m_inspector->get_connection(tr->m_ipv4_flow, tr->m_end_time);
-		}
-		else if(tr->is_unix_flow())
-		{
-			pconn = tr->m_manager->m_inspector->get_connection(tr->m_unix_flow, tr->m_end_time);
-		}
-		else
-		{
-			ASSERT(false);
-		}
 		if(pconn)
 		{
 			tfi.m_peer_tid = pconn->m_stid;
@@ -125,7 +114,7 @@ void sinsp_transaction_table::emit(sinsp_partial_transaction *tr, uint32_t len)
 			tfi.m_peer_fd = -1;
 			tfi.m_peer_pid = -1;
 			tfi.m_peer_comm = "";
-//			ASSERT(false);
+			ASSERT(false);
 		}
 
 		//
@@ -281,7 +270,7 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
-	m_type = TYPE_IP;
+	m_type = TYPE_UNKNOWN;
 	m_direction = DIR_UNKNOWN;
 	m_start_time = 0;
 	m_end_time = 0;
@@ -413,137 +402,21 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 	}
 }
 
-sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(uint64_t enter_ts, uint64_t exit_ts, int64_t tid, direction dir, uint32_t len)
+sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(sinsp* inspector, 
+	sinsp_threadinfo *ptinfo,
+	sinsp_connection *pconn,
+	uint64_t enter_ts, 
+	uint64_t exit_ts, 
+	int64_t tid, 
+	direction dir, 
+	uint32_t len)
 {
 	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, dir, len);
 	if(res == STATE_SWITCHED)
 	{
-		ASSERT(m_manager);
 		m_tid = tid;
-		m_manager->m_inspector->m_trans_table->emit(this, len);
+		inspector->m_trans_table->emit(ptinfo, pconn, this, len);
 	}
 
 	return res;
-}
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_transacttable_manager implementation
-///////////////////////////////////////////////////////////////////////////////
-sinsp_transaction_manager::sinsp_transaction_manager(sinsp *inspector)
-{
-	m_inspector = inspector;
-}
-
-sinsp_transaction_manager::~sinsp_transaction_manager()
-{
-}
-
-sinsp_partial_transaction *sinsp_transaction_manager::add_transaction(int64_t fd, ipv4tuple *tuple)
-{
-	sinsp_partial_transaction tinfo(tuple);
-	return add_transaction(fd, &tinfo);
-}
-
-sinsp_partial_transaction *sinsp_transaction_manager::add_transaction(int64_t fd, unix_tuple *tuple)
-{
-	sinsp_partial_transaction tinfo(tuple);
-	return add_transaction(fd, &tinfo);
-}
-
-sinsp_partial_transaction *sinsp_transaction_manager::add_transaction(int64_t fd,  sinsp_partial_transaction *tinfo)
-{
-	unordered_map<int64_t, sinsp_partial_transaction>::iterator tit;
-
-	tinfo->m_manager = this;
-	tinfo->m_tid = -1;
-	tinfo->m_fd = fd;
-
-	//
-	// XXX
-	// This is a very inefficient way to add an element and then get a pointer to it.
-	// We'll have to find a better way to do it.
-	//
-	m_table[fd] = *tinfo;
-
-	//
-	// Update the stats
-	//
-#ifdef GATHER_INTERNAL_STATS
-	m_inspector->m_stats.m_n_added_pending_transactions++;
-#endif
-
-	return &(m_table[fd]);
-}
-
-void sinsp_transaction_manager::remove_transaction(int64_t tid, int64_t fd, uint64_t ts)
-{
-	unordered_map<int64_t, sinsp_partial_transaction>::iterator tit;
-
-	tit = m_table.find(fd);
-	if(tit == m_table.end())
-	{
-		//ASSERT(false);
-		return;
-	}
-
-	tit->second.update(ts, ts, tid, sinsp_partial_transaction::DIR_CLOSE, 0);
-	m_table.erase(tit);
-
-	//
-	// Update the stats
-	//
-#ifdef GATHER_INTERNAL_STATS
-	m_inspector->m_stats.m_n_removed_pending_transactions++;
-#endif
-}
-
-sinsp_partial_transaction *sinsp_transaction_manager::get_transaction(int64_t fd)
-{
-	unordered_map<int64_t, sinsp_partial_transaction>::iterator tit;
-
-	tit = m_table.find(fd);
-	if(tit != m_table.end())
-	{
-		return &(tit->second);
-	}
-	else
-	{
-		return NULL;
-	}
-}
-
-void sinsp_transaction_manager::push_fd_op(int64_t fd, sinsp_fdinfo *fdinfo)
-{
-	/*
-	    //
-	    // Update the transaction table with this fd's info
-	    //
-	    if(!(fdinfo->m_flags & sinsp_fdinfo::FLAGS_TRANSACTION))
-	    {
-	        unordered_map<int64_t, sinsp_transactinfo>::iterator trit;
-
-	        for(trit = m_table.begin(); trit != m_table.end(); ++trit)
-	        {
-	            unordered_map<int64_t, sinsp_transactfd>::iterator fdit;
-
-	            fdit = trit->second.m_fdmap.find(fd);
-
-	            //
-	            // Check if this fd is already in the transaction's table
-	            //
-	            if(fdit == trit->second.m_fdmap.end())
-	            {
-	                trit->second.m_fdmap[m_fd] = sinsp_transactfd(0);
-	            }
-	        }
-	    }
-	*/
-}
-
-void sinsp_transaction_manager::remove_fd(int64_t fd, sinsp_fdinfo *fdinfo)
-{
-}
-
-uint32_t sinsp_transaction_manager::get_size()
-{
-	return m_table.size();
 }

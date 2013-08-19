@@ -1,7 +1,8 @@
 #pragma once
 
-typedef class sinsp_fdinfo sinsp_fdinfo;
-typedef class sinsp_transaction_manager sinsp_transaction_manager;
+class sinsp_fdinfo;
+class sinsp_transaction_manager;
+class sinsp_connection;
 
 //
 // This class describes an fd that is active during a transaction
@@ -29,10 +30,12 @@ class SINSP_PUBLIC sinsp_partial_transaction
 public:
 	enum type
 	{
+	    TYPE_UNKNOWN,
 	    TYPE_IP,
 	    TYPE_HTTP,
 	};
 
+	// XXX get rid of this
 	enum flow_type
 	{
 	    IP,
@@ -57,7 +60,14 @@ public:
 	~sinsp_partial_transaction();
 	sinsp_partial_transaction(ipv4tuple *flow);
 	sinsp_partial_transaction(unix_tuple *flow);
-	sinsp_partial_transaction::updatestate update(uint64_t enter_ts, uint64_t exit_ts, int64_t tid, direction dir, uint32_t len);
+	sinsp_partial_transaction::updatestate update(sinsp* inspector, 
+		sinsp_threadinfo *ptinfo,
+		sinsp_connection *pconn,
+		uint64_t enter_ts, 
+		uint64_t exit_ts, 
+		int64_t tid, 
+		direction dir, 
+		uint32_t len);
 
 	bool is_ipv4_flow()
 	{
@@ -69,7 +79,6 @@ public:
 		return m_flow_type == flow_type::UNIX;
 	}
 
-	sinsp_transaction_manager *m_manager;
 	sinsp_partial_transaction::type m_type;
 	direction m_direction;
 	int64_t m_tid;
@@ -144,7 +153,10 @@ public:
 	void clear();
 
 	//private:
-	void emit(sinsp_partial_transaction *tr, uint32_t len);
+	void emit(sinsp_threadinfo *ptinfo, 
+		sinsp_connection *pconn,
+		sinsp_partial_transaction *tr, 
+		uint32_t len);
 
 	//
 	// Stores the global list of transactions.
@@ -159,33 +171,6 @@ public:
 	// small, and we don't want the memory overhead of an hash table.
 	//
 	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> > m_open_transactions;
-
-	friend class sinsp_partial_transaction;
-};
-
-//
-// Transaction table manager class
-// This stores the transactions that are currently in progress.
-//
-class SINSP_PUBLIC sinsp_transaction_manager
-{
-public:
-	sinsp_transaction_manager(sinsp *inspector);
-	~sinsp_transaction_manager();
-
-	sinsp_partial_transaction *add_transaction(int64_t fd, ipv4tuple *tuple);
-	sinsp_partial_transaction *add_transaction(int64_t fd, unix_tuple *tuple);
-	void remove_transaction(int64_t tid, int64_t fd, uint64_t ts);
-	sinsp_partial_transaction *get_transaction(int64_t fd);
-	void push_fd_op(int64_t fd, sinsp_fdinfo *fdinfo);
-	void remove_fd(int64_t fd, sinsp_fdinfo *fdinfo);
-	uint32_t get_size();
-
-	sinsp *m_inspector;
-
-private:
-	unordered_map<int64_t, sinsp_partial_transaction> m_table;
-	sinsp_partial_transaction *add_transaction(int64_t fd, sinsp_partial_transaction *tinfo);
 
 	friend class sinsp_partial_transaction;
 };

@@ -25,7 +25,6 @@ void sinsp_stats::clear()
 	m_n_transactions = 0;
 	m_n_added_transactions = 0;
 	m_n_removed_transactions = 0;
-	m_n_pending_transactions = 0;
 	m_n_added_pending_transactions = 0;
 	m_n_removed_pending_transactions = 0;
 	m_n_connections = 0;
@@ -60,7 +59,6 @@ void sinsp_stats::emit(FILE* f)
 	fprintf(f, "n. transactions: %" PRIu64 "\n", m_n_transactions);
 	fprintf(f, "added transactions: %" PRIu64 "\n", m_n_added_transactions);
 	fprintf(f, "removed transactions: %" PRIu64 "\n", m_n_removed_transactions);
-	fprintf(f, "n. pending transactions: %" PRIu64 "\n", m_n_pending_transactions);
 	fprintf(f, "added pending transactions: %" PRIu64 "\n", m_n_added_pending_transactions);
 	fprintf(f, "removed pending transactions: %" PRIu64 "\n", m_n_removed_pending_transactions);
 	fprintf(f, "added connections: %" PRIu64 "\n", m_n_added_connections);

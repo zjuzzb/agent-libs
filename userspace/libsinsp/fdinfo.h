@@ -146,6 +146,8 @@ public:
 private:
 	void add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen);
 
+	sinsp_partial_transaction m_transaction;
+
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
 };

@@ -95,15 +95,11 @@ VISIBILITY_PRIVATE
 	void add_fd(int64_t fd, sinsp_fdinfo *fdinfo);
 	void remove_fd(int64_t fd);
 	sinsp_fdtable* get_fd_table();
-	sinsp_transaction_manager *get_transaction_manager();
 	sinsp_threadinfo* get_main_thread();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
 
 	//  void push_fdop(sinsp_fdop* op);
-
-	// The transaction table. Key is fd.
-	sinsp_transaction_manager m_transaction_manager;
 	// the queue of recent fd operations
 	//  std::deque<sinsp_fdop> m_last_fdop;
 

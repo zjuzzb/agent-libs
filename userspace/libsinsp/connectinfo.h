@@ -21,6 +21,15 @@ public:
 		AF_REUSED = (1 << 2), 
 	};
 
+	sinsp_connection()
+	{
+	}
+
+	sinsp_connection(uint64_t timestamp)
+	{
+		m_timestamp = timestamp;
+	}
+
 	int64_t m_spid;
 	int64_t m_stid;
 	int64_t m_sfd;
@@ -51,7 +60,8 @@ public:
 	typedef class unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator iterator_t;
 #endif
 
-	void add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
+	// Returns the pointer to the new connection
+	sinsp_connection* add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
 	void remove_connection(const TKey& key, bool now = true);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
@@ -72,100 +82,101 @@ public:
 };
 
 template<class TKey, class THash, class TCompare>
-void sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp)
+sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp)
 {
-	sinsp_connection data;
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
-	cit = m_connections.find(key);
-	if(cit == m_connections.end())
+	std::pair<typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator,
+		bool> element;
+
+	element = m_connections.emplace(key, timestamp);
+	sinsp_connection& conn = element.first->second;
+	if(element.second == true)
 	{
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_added_connections++;
 #endif
-		data.m_refcount = 1;
-		data.m_analysis_flags = 0;
-		data.m_timestamp = timestamp;
+
+		conn.m_refcount = 1;
+		conn.m_analysis_flags = 0;
 		if(isclient)
 		{
-			data.m_stid = tid;
-			data.m_sfd = fd;
-			data.m_spid = ptinfo->m_pid;
-			data.m_scomm = ptinfo->get_comm();
-			data.m_dtid = 0;
-			data.m_dfd = 0;
-			data.m_dpid = 0;
+			conn.m_stid = tid;
+			conn.m_sfd = fd;
+			conn.m_spid = ptinfo->m_pid;
+			conn.m_scomm = ptinfo->get_comm();
+			conn.m_dtid = 0;
+			conn.m_dfd = 0;
+			conn.m_dpid = 0;
 		}
 		else
 		{
-			data.m_stid = 0;
-			data.m_sfd = 0;
-			data.m_spid = 0;
-			data.m_dtid = tid;
-			data.m_dfd = fd;
-			data.m_dpid = ptinfo->m_pid;
-			data.m_dcomm = ptinfo->get_comm();
+			conn.m_stid = 0;
+			conn.m_sfd = 0;
+			conn.m_spid = 0;
+			conn.m_dtid = tid;
+			conn.m_dfd = fd;
+			conn.m_dpid = ptinfo->m_pid;
+			conn.m_dcomm = ptinfo->get_comm();
 		}
-
-		m_connections[key] = data;
 	}
 	else
 	{
-//		ASSERT(cit->second.m_analysis_flags != sinsp_connection::AF_CLOSED);
-
-//		ASSERT(cit->second.m_refcount <= 2);
-		cit->second.m_timestamp = timestamp;
+//		ASSERT(conn.m_analysis_flags != sinsp_connection::AF_CLOSED);
+//		ASSERT(conn.m_refcount <= 2);
 		if(isclient)
 		{
-			//ASSERT(cit->second.m_stid == 0);
-			//ASSERT(cit->second.m_sfd == 0);
-			//ASSERT(cit->second.m_spid == 0);
+			//ASSERT(conn.m_stid == 0);
+			//ASSERT(conn.m_sfd == 0);
+			//ASSERT(conn.m_spid == 0);
 
 			//
 			// Increment the refcount, but only if this is a brand new connection,
 			// not if it's overwriting a new one
 			//
-			if(cit->second.m_stid == 0)
+			if(conn.m_stid == 0)
 			{
-				cit->second.m_refcount++;
+				conn.m_refcount++;
 			}
 			else
 			{
-				cit->second.m_analysis_flags = sinsp_connection::AF_REUSED;
+				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
 				//ASSERT(false);
 			}
 
-			cit->second.m_stid = tid;
-			cit->second.m_sfd = fd;
-			cit->second.m_spid = ptinfo->m_pid;
-			cit->second.m_scomm = ptinfo->get_comm();
+			conn.m_stid = tid;
+			conn.m_sfd = fd;
+			conn.m_spid = ptinfo->m_pid;
+			conn.m_scomm = ptinfo->get_comm();
 		}
 		else
 		{
-			//ASSERT(cit->second.m_dtid == 0);
-			//ASSERT(cit->second.m_dfd == 0);
-			//ASSERT(cit->second.m_dpid == 0);
+			//ASSERT(conn.m_dtid == 0);
+			//ASSERT(conn.m_dfd == 0);
+			//ASSERT(conn.m_dpid == 0);
 
 			//
 			// Increment the refcount, but only if this is a brand new connection,
 			// not if it's overwriting a new one
 			//
-			if(cit->second.m_dtid == 0)
+			if(conn.m_dtid == 0)
 			{
-				cit->second.m_refcount++;
+				conn.m_refcount++;
 			}
 			else
 			{
-				cit->second.m_analysis_flags = sinsp_connection::AF_REUSED;
+				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
 				//ASSERT(false);
 			}
 
-			cit->second.m_dtid = tid;
-			cit->second.m_dfd = fd;
-			cit->second.m_dpid = ptinfo->m_pid;
-			cit->second.m_dcomm = ptinfo->get_comm();
+			conn.m_dtid = tid;
+			conn.m_dfd = fd;
+			conn.m_dpid = ptinfo->m_pid;
+			conn.m_dcomm = ptinfo->get_comm();
 		}
 	}
+
+	return &conn;
 };
 
 template<class TKey, class THash, class TCompare>
