@@ -5,17 +5,20 @@ REPOSITORY_NAME="$1"
 
 function smoke_tests {
 	service dragent start
+	test -e /var/run/dragent.pid
 	service dragent status
-	pgrep dragent
+	MONITOR_PID=$(cat /var/run/dragent.pid)
+	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
+	kill -SIGKILL $AGENT_PID
+	sleep 2
+	pidof -o $MONITOR_PID dragent
+	service dragent restart
+	MONITOR_PID=$(cat /var/run/dragent.pid)
+	pidof -o $MONITOR_PID dragent
 	service dragent stop
-	if service dragent status
-	then
-		false
-	fi
-	if pgrep dragent
-	then
-		false
-	fi
+	test ! -e /var/run/dragent.pid
+	service dragent status && false
+	pidof dragent && false
 
 	modprobe ppm
 	sh -c "cd /opt/draios/test; ./test"
@@ -35,7 +38,7 @@ function install_rpm {
 }
 
 function install_deb {
-	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests
+	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
 	
 	curl -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
 	apt-get update
@@ -49,7 +52,7 @@ function install_debug_rpm {
 }
 
 function install_debug_deb {
-	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests
+	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
 	apt-get -y --force-yes install draios-debug-agent draios-debug-tests
 }
 

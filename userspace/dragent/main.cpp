@@ -1,13 +1,69 @@
 #include "main.h"
+#include <sys/prctl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 //
 // Signal management
 //
-bool ctrl_c_pressed = false;
+static bool g_terminate = false;
 
 static void signal_callback(int signal)
 {
-	ctrl_c_pressed = true;
+	g_terminate = true;
+}
+
+static void run_monitor()
+{
+	//
+	// Start the monitor process
+	// 
+	int result = fork();
+
+	if(result < 0)
+	{
+		exit(EXIT_FAILURE);
+	}
+
+	if(result)
+	{
+		//
+		// Father. It will be the monitor process
+		//
+		while(true)
+		{
+			int status = 0;
+			wait(&status);
+
+			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
+			{
+				//
+				// Sleep for a bit and run another dragent
+				//
+				sleep(1);
+
+				result = fork();
+				if(result == 0)
+				{
+					break;
+				}
+
+				if(result < 0)
+				{
+					exit(EXIT_FAILURE);
+				}
+			}
+			else
+			{
+				exit(EXIT_SUCCESS);
+			}
+		}
+	}
+
+	//
+	// We want to terminate when the monitor is killed by init
+	//
+	prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
 
 //
@@ -250,7 +306,7 @@ protected:
 		//
 		while(1)
 		{
-			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || ctrl_c_pressed)
+			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate)
 			{
 				break;
 			}
@@ -298,6 +354,24 @@ protected:
 		if(m_help_requested)
 		{
 			displayHelp();
+			return Application::EXIT_OK;
+		}
+
+		if(config().getBool("application.runAsDaemon", false))
+		{
+			run_monitor();
+		}
+
+		if(signal(SIGINT, signal_callback) == SIG_ERR)
+		{
+			ASSERT(false);
+			return EXIT_FAILURE;
+		}
+
+		if(signal(SIGTERM, signal_callback) == SIG_ERR)
+		{
+			ASSERT(false);
+			return EXIT_FAILURE;
 		}
 
 		//
@@ -341,15 +415,6 @@ protected:
 		string metricsdir = config().getString("metricsfile.location", "metrics");
 		File md(metricsdir);
 		md.createDirectories();
-
-		//
-		// Set the CRTL+C signal
-		//
-		if(signal(SIGINT, signal_callback) == SIG_ERR)
-		{
-			fprintf(stderr, "An error occurred while setting a signal handler.\n");
-			return EXIT_FAILURE;
-		}
 
 		//
 		// From now on we can get an exception from sinsp
@@ -401,6 +466,8 @@ protected:
 			//
 			// Start consuming the captured events
 			//
+			// sleep(3);
+			// throw exception();
 			do_inspect();
 		}
 		catch(sinsp_exception e)
@@ -415,9 +482,11 @@ protected:
 		}
 		catch(...)
 		{
+			g_log->error("Application::EXIT_SOFTWARE\n");
 			return Application::EXIT_SOFTWARE;
 		}
 
+		g_log->error("Application::EXIT_OK\n");
 		return Application::EXIT_OK;
 	}
 	
