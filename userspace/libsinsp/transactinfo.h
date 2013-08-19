@@ -93,31 +93,13 @@ public:
 	direction m_prev_direction;
 	uint64_t m_prev_start_time;
 	uint64_t m_prev_end_time;
+	uint64_t m_prev_prev_start_time;
+	uint64_t m_prev_prev_end_time;
 	flow_type m_flow_type;
 	//  unordered_map<int64_t, sinsp_transactfd> m_fdmap;
 
 private:
 	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len);
-};
-
-//
-// Simple class that stores timing information for a transaction
-//
-class sinsp_transaction_time
-{
-public:
-	sinsp_transaction_time()
-	{
-	}
-
-	sinsp_transaction_time(uint64_t start_time, uint64_t end_time)
-	{
-		m_start_time = start_time;
-		m_end_time = end_time;
-	}
-
-	uint64_t m_start_time;
-	uint64_t m_end_time;
 };
 
 //
@@ -163,14 +145,6 @@ public:
 	// Key is the tid
 	//
 	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
-
-	//
-	// Stores temporary info of a transaction that is currently in progress
-	// Key is the tid for the big map, fd for the second map.
-	// The second map is not an unordered_map because we assume it will be
-	// small, and we don't want the memory overhead of an hash table.
-	//
-	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> > m_open_transactions;
 
 	friend class sinsp_partial_transaction;
 };

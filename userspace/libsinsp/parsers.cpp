@@ -32,7 +32,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(1636932);
+//BRK(193);
 
 	//
 	// Cleanup the event-related state
@@ -1699,14 +1699,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// (we assume that a client usually starts with a write)
 				//
 				evt->m_fdinfo->set_role_client();
-				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
-
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			}
 			else if(fd != connection->m_sfd && fd != connection->m_dfd)
 			{
@@ -1748,14 +1746,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					}
 				}
 
-				m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
 						evt->m_tinfo,
 						tid,
 						fd,
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
-
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			}
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
@@ -1770,14 +1766,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// (we assume that a client usually starts with a write)
 				//
 				evt->m_fdinfo->set_role_client();
-				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
-
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			}
 			else if(fd != connection->m_sfd && fd != connection->m_dfd)
 			{
@@ -1815,14 +1809,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					}
 				}
 
-				m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 						evt->m_tinfo,
 						tid,
 						fd,
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
-
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
 			}
 		}
 
@@ -2198,7 +2190,6 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 			return;
 		}
 
-//BRK(220017);
 		//
 		// If this fd has an active transaction, update it and then mark it as unititialized
 		//

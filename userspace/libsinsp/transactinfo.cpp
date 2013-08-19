@@ -25,45 +25,21 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 								   uint32_t len)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
-	unordered_map<int64_t, map<int64_t, sinsp_transaction_time> >::iterator oit;
-	map<int64_t, sinsp_transaction_time>::iterator tit;
 
 	if(tr->m_prev_direction == sinsp_partial_transaction::DIR_IN)
 	{
-		sinsp_transaction_time tinfo(tr->m_prev_start_time, tr->m_prev_end_time);
-
-		oit = m_open_transactions.find(tr->m_tid);
-		if(oit == m_open_transactions.end())
-		{
-			m_open_transactions[tr->m_tid][tr->m_fd] = tinfo;
-		}
-		else
-		{
-			oit->second[tr->m_fd] = tinfo;
-		}
+		tr->m_prev_prev_start_time = tr->m_prev_start_time;
+		tr->m_prev_prev_end_time = tr->m_prev_end_time;
 	}
 	else if(tr->m_prev_direction == sinsp_partial_transaction::DIR_OUT ||
 	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE)
 	{
-		sinsp_transaction_time tinfo(tr->m_prev_start_time, tr->m_prev_end_time);
-
-		oit = m_open_transactions.find(tr->m_tid);
-		if(oit == m_open_transactions.end())
+		if(tr->m_prev_prev_start_time == 0)
 		{
 			//
 			// This can happen if we drop events or if a connection
 			// starts with a write, which can happen with fucked up protocols
 			// like the mysql one
-			//
-			return;
-		}
-
-		tit = oit->second.find(tr->m_fd);
-
-		if(tit == oit->second.end())
-		{
-			//
-			// See previous comment.
 			//
 			return;
 		}
@@ -76,8 +52,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 
 		tfi.m_trinfo.m_start_time = tfi.m_trinfo.m_prev_start_time;
 		tfi.m_trinfo.m_end_time = tfi.m_trinfo.m_prev_end_time;
-		tfi.m_trinfo.m_prev_start_time = tit->second.m_start_time;
-		tfi.m_trinfo.m_prev_end_time = tit->second.m_end_time;
+		tfi.m_trinfo.m_prev_start_time = tr->m_prev_prev_start_time;
+		tfi.m_trinfo.m_prev_end_time = tr->m_prev_prev_end_time;
 
 		if(ptinfo)
 		{
@@ -134,13 +110,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		}
 
 		//
-		// Do the cleanup in the m_open_transactions table
+		// Mark the transaction as done
 		//
-		oit->second.erase(tit);
-		if(oit->second.size() == 0)
-		{
-			m_open_transactions.erase(oit);
-		}
+		tr->m_prev_prev_start_time = 0;
 	}
 }
 
@@ -277,6 +249,8 @@ sinsp_partial_transaction::sinsp_partial_transaction()
 	m_prev_direction = DIR_UNKNOWN;
 	m_prev_start_time = 0;
 	m_prev_end_time = 0;
+	m_prev_prev_start_time = 0;
+	m_prev_prev_end_time = 0;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
@@ -305,6 +279,8 @@ sinsp_partial_transaction::sinsp_partial_transaction(unix_tuple *flow)
 	m_prev_direction = DIR_UNKNOWN;
 	m_prev_start_time = 0;
 	m_prev_end_time = 0;
+	m_prev_prev_start_time = 0;
+	m_prev_prev_end_time = 0;
 	m_unix_flow = *flow;
 	m_flow_type = flow_type::UNIX;
 }
