@@ -1,0 +1,19 @@
+#!/bin/bash
+set -exu
+
+rmmod ppm || true
+./setup-dependencies
+
+make -C build/debug package
+insmod driver/ppm.ko
+cd build/debug/test
+./test
+rmmod ppm
+cd -
+
+make -C build/release package
+insmod driver/ppm.ko
+cd build/release/test
+./test
+rmmod ppm
+cd -
