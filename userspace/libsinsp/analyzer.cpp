@@ -312,7 +312,7 @@ void sinsp_analyzer::serialize_to_file(uint64_t ts)
 		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
 		throw sinsp_exception(estr);
 	}
-
+/*
 	// first there's a 32bit frame length...
 	uint32_t nbo_frame_length = htonl(buflen);
 	if(fwrite(&nbo_frame_length, sizeof(nbo_frame_length), 1, fp) != 1)
@@ -321,7 +321,7 @@ void sinsp_analyzer::serialize_to_file(uint64_t ts)
 		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
 		throw sinsp_exception(estr);
 	}
-
+*/
 	// ..and then there's the actual data
 	if(fwrite(buf, buflen, 1, fp) != 1)
 	{
