@@ -1,0 +1,34 @@
+#!/bin/bash
+set -exu
+
+if [ ! -d phoronix-test-suite ]; then
+	wget http://phoronix-test-suite.com/releases/phoronix-test-suite-4.8.1.tar.gz
+	tar -xzf phoronix-test-suite-4.8.1.tar.gz
+fi
+
+cd phoronix-test-suite
+rm -rf ~/.phoronix-test-suite/test-results/201*
+rm -rf ~/.phoronix-test-suite/test-results/merge*
+
+if [ ! -d ~/.phoronix-test-suite/test-results/no-agent ]; then	
+	rm -rf ~/.phoronix-test-suite/test-results
+
+	service dragent stop
+	service dragent status || true
+
+	./phoronix-test-suite batch-benchmark pts/nginx pts/apache
+	TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
+	echo no-agent | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
+	mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/no-agent
+fi
+
+service dragent start
+
+./phoronix-test-suite batch-benchmark pts/nginx pts/apache
+TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
+echo agent | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/agent
+
+service dragent status
+
+./phoronix-test-suite merge-results $(ls ~/.phoronix-test-suite/test-results)
