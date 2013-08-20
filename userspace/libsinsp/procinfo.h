@@ -65,7 +65,7 @@ public:
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
 	uint32_t m_flags; // The thread flags.
 	uint64_t m_refcount; // When this is 0 the process can be deleted (i.e. no children)
-	uint64_t m_n_active_transactions;
+//	uint64_t m_n_active_transactions;
 
 	//
 	// State for multi-event processing
@@ -85,6 +85,7 @@ public:
 	uint32_t m_n_threads; // If this is a process' main thread, the Number of threads that the process contains. Otherwise zero.
 	uint32_t m_n_active_threads; // If this is a process' main thread, the Number of threads that were active for this process during the last sample. Otherwise zero.
 	sinsp_counters m_metrics; // The analyzer metrics
+	sinsp_transaction_counters m_transaction_metrics; // The analyzer transaction metrics
 
 	//
 	// Global state

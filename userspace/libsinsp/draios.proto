@@ -31,6 +31,11 @@ message time_categories {
 	optional counter processing = 18;
 }
 
+message transaction_categories {
+	optional counter incoming = 1;
+	optional counter outgoing = 2;
+}
+
 //
 // PROCESS
 // This descriptive info for a process, i.e. a collection of threads.
@@ -45,6 +50,7 @@ message process {
   repeated string args = 4; // Command line arguments (e.g. "-d1")
 
   optional time_categories tcounters = 5; // The time counters for this thread
+  optional transaction_categories transaction_counters = 6; // The transaction counters for this process
 }
 
 //
@@ -60,6 +66,8 @@ message thread {
   //optional string cwd = 4; // Current working directory. This is set only if this thread has its 
                              // own working directory, which happens for main threads and threads 
 							 // started with the CLONE_FS flag
+
+  optional transaction_categories transaction_counters = 5; // The transaction counters for this thread
 }
 
 //
@@ -85,6 +93,8 @@ message ipv4_connection {
   optional uint64 dtid = 6; // The tid of the server
   // XXX is this required?
   //optional uint64 dfd = 7; // The fd number of the server
+
+  optional transaction_categories transaction_counters = 8; // The transaction counters for this connection
 }
 
 //

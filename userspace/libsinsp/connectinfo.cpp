@@ -2,6 +2,15 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 
+sinsp_connection::sinsp_connection()
+{
+}
+
+sinsp_connection::sinsp_connection(uint64_t timestamp)
+{
+	m_timestamp = timestamp;
+}
+
 void sinsp_connection::reset()
 {
 	m_spid = 0;

@@ -34,6 +34,7 @@ void protobuf_ShutdownFile_draios_2eproto();
 
 class counter;
 class time_categories;
+class transaction_categories;
 class process;
 class thread;
 class ipv4tuple;
@@ -399,6 +400,103 @@ class time_categories : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
+class transaction_categories : public ::google::protobuf::MessageLite {
+ public:
+  transaction_categories();
+  virtual ~transaction_categories();
+
+  transaction_categories(const transaction_categories& from);
+
+  inline transaction_categories& operator=(const transaction_categories& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  static const transaction_categories& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const transaction_categories* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(transaction_categories* other);
+
+  // implements Message ----------------------------------------------
+
+  transaction_categories* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const transaction_categories& from);
+  void MergeFrom(const transaction_categories& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional .draiosproto.counter incoming = 1;
+  inline bool has_incoming() const;
+  inline void clear_incoming();
+  static const int kIncomingFieldNumber = 1;
+  inline const ::draiosproto::counter& incoming() const;
+  inline ::draiosproto::counter* mutable_incoming();
+  inline ::draiosproto::counter* release_incoming();
+  inline void set_allocated_incoming(::draiosproto::counter* incoming);
+
+  // optional .draiosproto.counter outgoing = 2;
+  inline bool has_outgoing() const;
+  inline void clear_outgoing();
+  static const int kOutgoingFieldNumber = 2;
+  inline const ::draiosproto::counter& outgoing() const;
+  inline ::draiosproto::counter* mutable_outgoing();
+  inline ::draiosproto::counter* release_outgoing();
+  inline void set_allocated_outgoing(::draiosproto::counter* outgoing);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.transaction_categories)
+ private:
+  inline void set_has_incoming();
+  inline void clear_has_incoming();
+  inline void set_has_outgoing();
+  inline void clear_has_outgoing();
+
+  ::draiosproto::counter* incoming_;
+  ::draiosproto::counter* outgoing_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_draios_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_draios_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static transaction_categories* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class process : public ::google::protobuf::MessageLite {
  public:
   process();
@@ -508,6 +606,15 @@ class process : public ::google::protobuf::MessageLite {
   inline ::draiosproto::time_categories* release_tcounters();
   inline void set_allocated_tcounters(::draiosproto::time_categories* tcounters);
 
+  // optional .draiosproto.transaction_categories transaction_counters = 6;
+  inline bool has_transaction_counters() const;
+  inline void clear_transaction_counters();
+  static const int kTransactionCountersFieldNumber = 6;
+  inline const ::draiosproto::transaction_categories& transaction_counters() const;
+  inline ::draiosproto::transaction_categories* mutable_transaction_counters();
+  inline ::draiosproto::transaction_categories* release_transaction_counters();
+  inline void set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -518,15 +625,18 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_exe();
   inline void set_has_tcounters();
   inline void clear_has_tcounters();
+  inline void set_has_transaction_counters();
+  inline void clear_has_transaction_counters();
 
   ::google::protobuf::uint64 pid_;
   ::std::string* comm_;
   ::std::string* exe_;
   ::google::protobuf::RepeatedPtrField< ::std::string> args_;
   ::draiosproto::time_categories* tcounters_;
+  ::draiosproto::transaction_categories* transaction_counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -617,6 +727,15 @@ class thread : public ::google::protobuf::MessageLite {
   inline ::draiosproto::time_categories* release_tcounters();
   inline void set_allocated_tcounters(::draiosproto::time_categories* tcounters);
 
+  // optional .draiosproto.transaction_categories transaction_counters = 5;
+  inline bool has_transaction_counters() const;
+  inline void clear_transaction_counters();
+  static const int kTransactionCountersFieldNumber = 5;
+  inline const ::draiosproto::transaction_categories& transaction_counters() const;
+  inline ::draiosproto::transaction_categories* mutable_transaction_counters();
+  inline ::draiosproto::transaction_categories* release_transaction_counters();
+  inline void set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters);
+
   // @@protoc_insertion_point(class_scope:draiosproto.thread)
  private:
   inline void set_has_pid();
@@ -625,13 +744,16 @@ class thread : public ::google::protobuf::MessageLite {
   inline void clear_has_tid();
   inline void set_has_tcounters();
   inline void clear_has_tcounters();
+  inline void set_has_transaction_counters();
+  inline void clear_has_transaction_counters();
 
   ::google::protobuf::uint64 pid_;
   ::google::protobuf::uint64 tid_;
   ::draiosproto::time_categories* tcounters_;
+  ::draiosproto::transaction_categories* transaction_counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -859,6 +981,15 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 dtid() const;
   inline void set_dtid(::google::protobuf::uint64 value);
 
+  // optional .draiosproto.transaction_categories transaction_counters = 8;
+  inline bool has_transaction_counters() const;
+  inline void clear_transaction_counters();
+  static const int kTransactionCountersFieldNumber = 8;
+  inline const ::draiosproto::transaction_categories& transaction_counters() const;
+  inline ::draiosproto::transaction_categories* mutable_transaction_counters();
+  inline ::draiosproto::transaction_categories* release_transaction_counters();
+  inline void set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters);
+
   // @@protoc_insertion_point(class_scope:draiosproto.ipv4_connection)
  private:
   inline void set_has_tuple();
@@ -871,15 +1002,18 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   inline void clear_has_dpid();
   inline void set_has_dtid();
   inline void clear_has_dtid();
+  inline void set_has_transaction_counters();
+  inline void clear_has_transaction_counters();
 
   ::draiosproto::ipv4tuple* tuple_;
   ::google::protobuf::uint64 spid_;
   ::google::protobuf::uint64 stid_;
   ::google::protobuf::uint64 dpid_;
   ::google::protobuf::uint64 dtid_;
+  ::draiosproto::transaction_categories* transaction_counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1899,6 +2033,94 @@ inline void time_categories::set_allocated_processing(::draiosproto::counter* pr
 
 // -------------------------------------------------------------------
 
+// transaction_categories
+
+// optional .draiosproto.counter incoming = 1;
+inline bool transaction_categories::has_incoming() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void transaction_categories::set_has_incoming() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void transaction_categories::clear_has_incoming() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void transaction_categories::clear_incoming() {
+  if (incoming_ != NULL) incoming_->::draiosproto::counter::Clear();
+  clear_has_incoming();
+}
+inline const ::draiosproto::counter& transaction_categories::incoming() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return incoming_ != NULL ? *incoming_ : *default_instance().incoming_;
+#else
+  return incoming_ != NULL ? *incoming_ : *default_instance_->incoming_;
+#endif
+}
+inline ::draiosproto::counter* transaction_categories::mutable_incoming() {
+  set_has_incoming();
+  if (incoming_ == NULL) incoming_ = new ::draiosproto::counter;
+  return incoming_;
+}
+inline ::draiosproto::counter* transaction_categories::release_incoming() {
+  clear_has_incoming();
+  ::draiosproto::counter* temp = incoming_;
+  incoming_ = NULL;
+  return temp;
+}
+inline void transaction_categories::set_allocated_incoming(::draiosproto::counter* incoming) {
+  delete incoming_;
+  incoming_ = incoming;
+  if (incoming) {
+    set_has_incoming();
+  } else {
+    clear_has_incoming();
+  }
+}
+
+// optional .draiosproto.counter outgoing = 2;
+inline bool transaction_categories::has_outgoing() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void transaction_categories::set_has_outgoing() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void transaction_categories::clear_has_outgoing() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void transaction_categories::clear_outgoing() {
+  if (outgoing_ != NULL) outgoing_->::draiosproto::counter::Clear();
+  clear_has_outgoing();
+}
+inline const ::draiosproto::counter& transaction_categories::outgoing() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return outgoing_ != NULL ? *outgoing_ : *default_instance().outgoing_;
+#else
+  return outgoing_ != NULL ? *outgoing_ : *default_instance_->outgoing_;
+#endif
+}
+inline ::draiosproto::counter* transaction_categories::mutable_outgoing() {
+  set_has_outgoing();
+  if (outgoing_ == NULL) outgoing_ = new ::draiosproto::counter;
+  return outgoing_;
+}
+inline ::draiosproto::counter* transaction_categories::release_outgoing() {
+  clear_has_outgoing();
+  ::draiosproto::counter* temp = outgoing_;
+  outgoing_ = NULL;
+  return temp;
+}
+inline void transaction_categories::set_allocated_outgoing(::draiosproto::counter* outgoing) {
+  delete outgoing_;
+  outgoing_ = outgoing;
+  if (outgoing) {
+    set_has_outgoing();
+  } else {
+    clear_has_outgoing();
+  }
+}
+
+// -------------------------------------------------------------------
+
 // process
 
 // required uint64 pid = 1;
@@ -2149,6 +2371,48 @@ inline void process::set_allocated_tcounters(::draiosproto::time_categories* tco
   }
 }
 
+// optional .draiosproto.transaction_categories transaction_counters = 6;
+inline bool process::has_transaction_counters() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void process::set_has_transaction_counters() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void process::clear_has_transaction_counters() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void process::clear_transaction_counters() {
+  if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
+  clear_has_transaction_counters();
+}
+inline const ::draiosproto::transaction_categories& process::transaction_counters() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
+#else
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
+#endif
+}
+inline ::draiosproto::transaction_categories* process::mutable_transaction_counters() {
+  set_has_transaction_counters();
+  if (transaction_counters_ == NULL) transaction_counters_ = new ::draiosproto::transaction_categories;
+  return transaction_counters_;
+}
+inline ::draiosproto::transaction_categories* process::release_transaction_counters() {
+  clear_has_transaction_counters();
+  ::draiosproto::transaction_categories* temp = transaction_counters_;
+  transaction_counters_ = NULL;
+  return temp;
+}
+inline void process::set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters) {
+  delete transaction_counters_;
+  transaction_counters_ = transaction_counters;
+  if (transaction_counters) {
+    set_has_transaction_counters();
+  } else {
+    clear_has_transaction_counters();
+  }
+}
+
 // -------------------------------------------------------------------
 
 // thread
@@ -2236,6 +2500,48 @@ inline void thread::set_allocated_tcounters(::draiosproto::time_categories* tcou
     set_has_tcounters();
   } else {
     clear_has_tcounters();
+  }
+}
+
+// optional .draiosproto.transaction_categories transaction_counters = 5;
+inline bool thread::has_transaction_counters() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void thread::set_has_transaction_counters() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void thread::clear_has_transaction_counters() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void thread::clear_transaction_counters() {
+  if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
+  clear_has_transaction_counters();
+}
+inline const ::draiosproto::transaction_categories& thread::transaction_counters() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
+#else
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
+#endif
+}
+inline ::draiosproto::transaction_categories* thread::mutable_transaction_counters() {
+  set_has_transaction_counters();
+  if (transaction_counters_ == NULL) transaction_counters_ = new ::draiosproto::transaction_categories;
+  return transaction_counters_;
+}
+inline ::draiosproto::transaction_categories* thread::release_transaction_counters() {
+  clear_has_transaction_counters();
+  ::draiosproto::transaction_categories* temp = transaction_counters_;
+  transaction_counters_ = NULL;
+  return temp;
+}
+inline void thread::set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters) {
+  delete transaction_counters_;
+  transaction_counters_ = transaction_counters;
+  if (transaction_counters) {
+    set_has_transaction_counters();
+  } else {
+    clear_has_transaction_counters();
   }
 }
 
@@ -2485,6 +2791,48 @@ inline ::google::protobuf::uint64 ipv4_connection::dtid() const {
 inline void ipv4_connection::set_dtid(::google::protobuf::uint64 value) {
   set_has_dtid();
   dtid_ = value;
+}
+
+// optional .draiosproto.transaction_categories transaction_counters = 8;
+inline bool ipv4_connection::has_transaction_counters() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void ipv4_connection::set_has_transaction_counters() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void ipv4_connection::clear_has_transaction_counters() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void ipv4_connection::clear_transaction_counters() {
+  if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
+  clear_has_transaction_counters();
+}
+inline const ::draiosproto::transaction_categories& ipv4_connection::transaction_counters() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
+#else
+  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
+#endif
+}
+inline ::draiosproto::transaction_categories* ipv4_connection::mutable_transaction_counters() {
+  set_has_transaction_counters();
+  if (transaction_counters_ == NULL) transaction_counters_ = new ::draiosproto::transaction_categories;
+  return transaction_counters_;
+}
+inline ::draiosproto::transaction_categories* ipv4_connection::release_transaction_counters() {
+  clear_has_transaction_counters();
+  ::draiosproto::transaction_categories* temp = transaction_counters_;
+  transaction_counters_ = NULL;
+  return temp;
+}
+inline void ipv4_connection::set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters) {
+  delete transaction_counters_;
+  transaction_counters_ = transaction_counters;
+  if (transaction_counters) {
+    set_has_transaction_counters();
+  } else {
+    clear_has_transaction_counters();
+  }
 }
 
 // -------------------------------------------------------------------

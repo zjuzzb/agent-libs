@@ -1,13 +1,21 @@
 #pragma once
 
+//
+// Forward declarations
+//
 class sinsp_counter_with_size;
+
 namespace draiosproto
 {
     class metrics;
 	class time_categories;
 	class counter;
+	class transaction_categories;
 };
 
+//
+// A basic counter: total time + count
+//
 class sinsp_counter_basic
 {
 public:
@@ -22,6 +30,9 @@ public:
 	uint64_t m_time_ns;
 };
 
+//
+// A basic counter + size in bytes, useful for I/O metrics
+//
 class sinsp_counter_with_size
 {
 public:
@@ -36,6 +47,9 @@ public:
 	uint32_t m_bytes;
 };
 
+//
+// A collection of counters for basic operation of a process or machine
+//
 class sinsp_counters
 {
 public:
@@ -64,6 +78,23 @@ public:
 	void print_on(FILE* f);
 };
 
+//
+// Transaction counters (for processes, connections, etc)
+//
+class sinsp_transaction_counters
+{
+public:
+	sinsp_counter_basic m_incoming;
+	sinsp_counter_basic m_outgoing;
+
+	void clear();
+	void get_total(sinsp_counter_basic* tot);
+	void to_protobuf(draiosproto::transaction_categories* protobuf_msg);
+};
+
+//
+// The main analyzer class
+//
 class sinsp_analyzer
 {
 public:
@@ -77,7 +108,6 @@ public:
 	void add_syscall_time(sinsp_counters* metrics, ppm_event_category cat, uint64_t delta, bool inc_count);
 
 private:
-
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize_to_file(uint64_t ts);
 	void flush(uint64_t ts, bool is_eof);

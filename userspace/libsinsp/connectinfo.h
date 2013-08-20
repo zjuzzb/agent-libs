@@ -21,14 +21,11 @@ public:
 		AF_REUSED = (1 << 2), 
 	};
 
-	sinsp_connection()
-	{
-	}
-
-	sinsp_connection(uint64_t timestamp)
-	{
-		m_timestamp = timestamp;
-	}
+	sinsp_connection();
+	sinsp_connection(uint64_t timestamp);
+	void reset();
+	bool is_client_only();
+	bool is_server_only();
 
 	int64_t m_spid;
 	int64_t m_stid;
@@ -44,11 +41,11 @@ public:
 
 	uint64_t m_timestamp;
 
+	//
+	// Analyzer state
+	//
 	uint8_t m_analysis_flags; // Flags word used by the analysis engine.
-
-	void reset();
-	bool is_client_only();
-	bool is_server_only();
+	sinsp_transaction_counters m_transaction_metrics;
 };
 
 

@@ -187,6 +187,27 @@ void sinsp_counters::print_on(FILE* f)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_transaction_counters implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_transaction_counters::clear()
+{
+	m_incoming.clear();
+	m_outgoing.clear();
+}
+
+void sinsp_transaction_counters::get_total(sinsp_counter_basic* tot)
+{
+	tot->add(&m_incoming);
+	tot->add(&m_outgoing);
+}
+
+void sinsp_transaction_counters::to_protobuf(draiosproto::transaction_categories* protobuf_msg)
+{
+	m_incoming.to_protobuf(protobuf_msg->mutable_incoming());
+	m_outgoing.to_protobuf(protobuf_msg->mutable_outgoing());
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_analyzer implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -291,16 +312,16 @@ void sinsp_analyzer::serialize_to_file(uint64_t ts)
 		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
 		throw sinsp_exception(estr);
 	}
-/*
+
 	// first there's a 32bit frame length...
 	uint32_t nbo_frame_length = htonl(buflen);
 	if(fwrite(&nbo_frame_length, sizeof(nbo_frame_length), 1, fp) != 1)
 	{
 		ASSERT(false);
-		char *estr = g_logger.print(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
+		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
 		throw sinsp_exception(estr);
 	}
-*/
+
 	// ..and then there's the actual data
 	if(fwrite(buf, buflen, 1, fp) != 1)
 	{
@@ -421,6 +442,7 @@ if(it->second.m_tid == 1748)
 					// CWD is currently disabed in the protocol
 					//thread->set_cwd(it->second.m_cwd);
 					it->second.m_metrics.to_protobuf(thread->mutable_tcounters());
+					it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
 				}
 				
 				//
@@ -456,6 +478,7 @@ if(it->second.m_tid == 1748)
 					// Clear the thread metrics, so we're ready for the next sample
 					//
 					it->second.m_metrics.clear();
+					it->second.m_transaction_metrics.clear();
 					++it;
 				}
 			}
@@ -486,6 +509,8 @@ if(it->second.m_tid == 1748)
 				conn->set_dpid(cit->second.m_dpid);
 				conn->set_dtid(cit->second.m_dtid);
 
+				cit->second.m_transaction_metrics.to_protobuf(conn->mutable_transaction_counters());
+
 				//
 				// Has this connection been closed druring this sample?
 				//
@@ -501,7 +526,7 @@ if(it->second.m_tid == 1748)
 					//
 					// Clear the connection metrics, so we're ready for the next sample
 					//
-					//cit->second.m_metrics.clear();
+					cit->second.m_transaction_metrics.clear();
 					++cit;
 				}
 			}
@@ -594,9 +619,9 @@ if(it->second.m_tid == 1748)
 	//
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"Transaction table size:%d",
-		m_inspector->get_transactions()->get_size());
+		m_inspector->get_transactions()->m_n_transactions);
 
-	m_inspector->get_transactions()->clear();
+	m_inspector->get_transactions()->m_n_transactions = 0;
 
 	//
 	// Run the periodic connection and thread table cleanup

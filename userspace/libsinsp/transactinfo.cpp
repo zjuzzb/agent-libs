@@ -13,6 +13,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_transaction_table::sinsp_transaction_table()
 {
+	m_n_transactions = 0;
 }
 
 sinsp_transaction_table::~sinsp_transaction_table()
@@ -94,20 +95,30 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		}
 
 		//
-		// Add the entry to the table
+		// Update the metrics related to this transaction
 		//
-		it = m_table.find(tr->m_tid);
-		if(it == m_table.end())
-		{
-			vector<sinsp_transaction> tv;
+		m_n_transactions++;
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
+		ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
+		pconn->m_transaction_metrics.m_incoming.add(1, delta);
 
-			tv.push_back(tfi);
-			m_table[tr->m_tid] = tv;
-		}
-		else
-		{
-			it->second.push_back(tfi);
-		}
+		//
+		// Add the entry to the table
+		// NOTE: this is disabled because for the moment we only gather summaries about
+		//       transaction activity, not every single transaction.
+		//
+		//it = m_table.find(tr->m_tid);
+		//if(it == m_table.end())
+		//{
+		//	vector<sinsp_transaction> tv;
+
+		//	tv.push_back(tfi);
+		//	m_table[tr->m_tid] = tv;
+		//}
+		//else
+		//{
+		//	it->second.push_back(tfi);
+		//}
 
 		//
 		// Mark the transaction as done

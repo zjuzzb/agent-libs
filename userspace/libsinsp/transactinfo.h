@@ -145,6 +145,7 @@ public:
 	// Key is the tid
 	//
 	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
+	uint32_t m_n_transactions;
 
 	friend class sinsp_partial_transaction;
 };
