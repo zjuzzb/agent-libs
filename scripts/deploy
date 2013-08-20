@@ -5,6 +5,7 @@ REPOSITORY_NAME="$1"
 
 function smoke_tests {
 	service dragent start
+	sleep 2
 	test -e /var/run/dragent.pid
 	service dragent status
 	MONITOR_PID=$(cat /var/run/dragent.pid)
@@ -13,6 +14,7 @@ function smoke_tests {
 	sleep 2
 	pidof -o $MONITOR_PID dragent
 	service dragent restart
+	sleep 2
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	pidof -o $MONITOR_PID dragent
 	service dragent stop
