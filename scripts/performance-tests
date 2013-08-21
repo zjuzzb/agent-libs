@@ -1,6 +1,37 @@
 #!/bin/bash
 set -exu
 
+REPOSITORY_NAME="$1"
+
+function install_rpm {
+	if ! yum info dkms; then
+		rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm # needed for dkms
+	fi
+
+	curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
+	yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
+	yum -y install draios-agent
+}
+
+function install_deb {
+	curl -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
+	apt-get update
+	apt-get -y install linux-headers-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
+	apt-get -y --force-yes install draios-agent
+}
+
+if [ -f /etc/debian_version ]; then
+    install_deb
+    apt-get install php5-cli php5-json php5-gd
+elif [ -f /etc/redhat-release ]; then
+    install_rpm
+elif [ -f /etc/system-release-cpe ]; then
+    install_rpm
+else
+    echo "Unable to detect operating system."
+    exit 1
+fi
+
 if [ ! -d phoronix-test-suite ]; then
 	wget http://phoronix-test-suite.com/releases/phoronix-test-suite-4.8.1.tar.gz
 	tar -xzf phoronix-test-suite-4.8.1.tar.gz
