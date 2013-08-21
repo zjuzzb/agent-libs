@@ -7,6 +7,11 @@ if [ ! -d phoronix-test-suite ]; then
 fi
 
 cd phoronix-test-suite
+
+if [ ! -d ~/.phoronix-test-suite ]; then	
+	echo -e Y\\nY\\nY\\nY\\nN\\nN\\nN\\nN\\nN\\nY | ./phoronix-test-suite batch-setup
+fi
+
 rm -rf ~/.phoronix-test-suite/test-results/201*
 rm -rf ~/.phoronix-test-suite/test-results/merge*
 
