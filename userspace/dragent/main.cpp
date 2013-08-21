@@ -1,7 +1,9 @@
 #include "main.h"
+#ifndef _WIN32
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#endif
 
 //
 // Signal management
@@ -13,6 +15,7 @@ static void signal_callback(int signal)
 	g_terminate = true;
 }
 
+#ifndef _WIN32
 static void run_monitor()
 {
 	//
@@ -65,6 +68,7 @@ static void run_monitor()
 	//
 	prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
+#endif
 
 //
 // Log management
@@ -357,10 +361,12 @@ protected:
 			return Application::EXIT_OK;
 		}
 
+#ifndef _WIN32
 		if(config().getBool("application.runAsDaemon", false))
 		{
 			run_monitor();
 		}
+#endif
 
 		if(signal(SIGINT, signal_callback) == SIG_ERR)
 		{
