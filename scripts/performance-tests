@@ -10,7 +10,7 @@ function install_rpm {
 
 	curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
 	yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-	yum -y install draios-agent
+	yum -y install draios-agent draios-tests
 }
 
 function install_deb {
@@ -45,26 +45,35 @@ fi
 
 rm -rf ~/.phoronix-test-suite/test-results/201*
 rm -rf ~/.phoronix-test-suite/test-results/merge*
+rm -rf ~/.phoronix-test-suite/test-results/driver
+rm -rf ~/.phoronix-test-suite/test-results/agent
 
 if [ ! -d ~/.phoronix-test-suite/test-results/no-agent ]; then	
 	rm -rf ~/.phoronix-test-suite/test-results
-
-	service dragent stop
-	service dragent status || true
-
 	./phoronix-test-suite batch-benchmark pts/nginx pts/apache
 	TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
 	echo no-agent | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
 	mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/no-agent
 fi
 
-service dragent start
+service dragent stop
+service dragent status || true
 
+modprobe ppm
+/opt/draios/bin/scap-open &
+./phoronix-test-suite batch-benchmark pts/nginx pts/apache
+TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
+echo driver | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/driver
+killall -9 scap-open
+rmmod ppm
+
+service dragent start
 ./phoronix-test-suite batch-benchmark pts/nginx pts/apache
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
 echo agent | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
 mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/agent
-
 service dragent status
+service dragent stop
 
 ./phoronix-test-suite merge-results $(ls ~/.phoronix-test-suite/test-results)
