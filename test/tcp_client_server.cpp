@@ -647,7 +647,9 @@ void runtest(iotype iot,
 			}
 
 			state = 1;
-			ASSERT_EQ(ntransactions, (uint32_t)param.m_inspector->get_transactions()->m_table[evt->get_tid()].size());
+
+			sinsp_threadinfo* ti = evt->get_thread_info();
+			ASSERT_EQ(ntransactions, ti->m_transaction_metrics.m_incoming.m_count);
 		}
 	};
 
@@ -739,7 +741,8 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && evt->get_tid() == server.get_tid())
 		{
 			state = 1;
-			ASSERT_EQ(1, (int)param.m_inspector->get_transactions()->m_table[evt->get_tid()].size());
+			sinsp_threadinfo* ti = evt->get_thread_info();
+			ASSERT_EQ(1, (int)ti->m_transaction_metrics.m_incoming.m_count);
 		}
 
 	};

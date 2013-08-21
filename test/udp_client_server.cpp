@@ -1,3 +1,5 @@
+#define VISIBILITY_PRIVATE
+
 #include "sys_call_test.h"
 #include <stdio.h>
 #include <sys/types.h>
@@ -268,7 +270,8 @@ TEST_F(sys_call_test, udp_client_server)
 		uint16_t type = e->get_type();
 		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
 		{
-			ASSERT_EQ(2, (int)param.m_inspector->get_transactions()->m_table[e->get_tid()].size());
+			sinsp_threadinfo* ti = e->get_thread_info();
+			ASSERT_EQ(2, (int)ti->m_transaction_metrics.m_incoming.m_count);
 		}
 
 		if(type == PPME_SOCKET_RECVFROM_E)
@@ -455,7 +458,11 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 
 			callnum++;
 		}
-		transaction_count = param.m_inspector->get_transactions()->m_table[server.get_tid()].size();
+		sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
+		if(ti)
+		{
+			transaction_count = (int)ti->m_transaction_metrics.m_incoming.m_count;			
+		}
 	};
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 	ASSERT_EQ(1, callnum);

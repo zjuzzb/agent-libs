@@ -350,7 +350,8 @@ TEST_F(sys_call_test, unix_client_server)
 		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->get_comm(), "unix_server.py"))
 		{
 			state = 1;
-			ASSERT_EQ(1, (int)param.m_inspector->get_transactions()->m_table[evt->get_tid()].size());
+			sinsp_threadinfo* ti = evt->get_thread_info();
+			ASSERT_EQ(1, (int)ti->m_transaction_metrics.m_incoming.m_count);
 		}
 
 	};
