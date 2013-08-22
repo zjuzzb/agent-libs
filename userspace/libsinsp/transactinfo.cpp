@@ -31,6 +31,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 	sinsp_partial_transaction::direction startdir;
 	sinsp_partial_transaction::direction enddir;
 
+	//
+	// Detect the side and and determine the trigger directions
+	//
 	ASSERT(tr->m_side != sinsp_partial_transaction::SIDE_UNKNOWN);
 	if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 	{
@@ -43,6 +46,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		enddir = sinsp_partial_transaction::DIR_IN;
 	}
 
+	//
+	// Based on the direction, add the transaction
+	//
 	if(tr->m_prev_direction == startdir)
 	{
 		tr->m_prev_prev_start_time = tr->m_prev_start_time;

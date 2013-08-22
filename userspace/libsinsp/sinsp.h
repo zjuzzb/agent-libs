@@ -29,7 +29,6 @@ using namespace std;
 #include "logger.h"
 #include "event.h"
 #include "stats.h"
-#include "analyzer.h"
 #include "config.h"
 
 #ifndef VISIBILITY_PRIVATE
@@ -81,7 +80,8 @@ typedef union _unix_tuple
 
 #include "transactinfo.h"
 #include "fdinfo.h"
-#include "procinfo.h"
+#include "metrics.h"
+#include "threadinfo.h"
 #include "ifinfo.h"
 
 template<typename OBJ> class simple_lifo_queue;

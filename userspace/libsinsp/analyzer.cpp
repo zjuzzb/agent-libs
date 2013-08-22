@@ -21,6 +21,7 @@ using namespace google::protobuf::io;
 #include "sinsp_int.h"
 #include "parsers.h"
 #include "connectinfo.h"
+#include "metrics.h"
 #include "analyzer.h"
 #include "draios.pb.h"
 
@@ -29,187 +30,6 @@ using namespace google::protobuf::io;
 //#undef ANALYZER_SAMPLE_DURATION_NS
 //#define ANALYZER_SAMPLE_DURATION_NS 5000000000
 
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_counter_basic implementation
-///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_basic::sinsp_counter_basic()
-{
-	clear();
-}
-
-void sinsp_counter_basic::add(uint32_t cnt_delta, uint64_t time_delta)
-{
-	ASSERT(cnt_delta <= 1);
-
-	m_count += cnt_delta;
-	m_time_ns += time_delta;
-}
-
-void sinsp_counter_basic::add(sinsp_counter_basic* other)
-{
-	m_count += other->m_count;
-	m_time_ns += other->m_time_ns;
-}
-
-void sinsp_counter_basic::add(sinsp_counter_with_size* other)
-{
-	m_count += other->m_count;
-	m_time_ns += other->m_time_ns;
-}
-
-void sinsp_counter_basic::clear()
-{
-	m_count = 0;
-	m_time_ns = 0;
-}
-
-void sinsp_counter_basic::to_protobuf(draiosproto::counter* protobuf_msg)
-{
-	protobuf_msg->set_time_ns(m_time_ns);
-	protobuf_msg->set_count(m_count);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_counter_with_size implementation
-///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_with_size::sinsp_counter_with_size()
-{
-	clear();
-}
-
-void sinsp_counter_with_size::add(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
-{
-	ASSERT(cnt_delta <= 1);
-
-	m_count += cnt_delta;
-	m_time_ns += time_delta;
-	m_bytes += bytes_delta;
-}
-
-void sinsp_counter_with_size::add(sinsp_counter_with_size* other)
-{
-	m_count += other->m_count;
-	m_time_ns += other->m_time_ns;
-	m_bytes += other->m_bytes;
-}
-
-void sinsp_counter_with_size::clear()
-{
-	m_count = 0;
-	m_time_ns = 0;
-	m_bytes = 0;
-}
-
-void sinsp_counter_with_size::to_protobuf(draiosproto::counter* protobuf_msg)
-{
-	protobuf_msg->set_time_ns(m_time_ns);
-	protobuf_msg->set_count(m_count);
-	protobuf_msg->set_bytes(m_bytes);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_counters implementation
-///////////////////////////////////////////////////////////////////////////////
-void sinsp_counters::clear()
-{
-	m_unknown.clear();
-	m_other.clear();
-	m_file.clear();
-	m_net.clear();
-	m_ipc.clear();
-	m_memory.clear();
-	m_process.clear();
-	m_sleep.clear();
-	m_system.clear();
-	m_signal.clear();
-	m_user.clear();
-	m_time.clear();
-	m_io.clear();
-	m_wait.clear();
-	m_processing.clear();
-}
-
-void sinsp_counters::get_total(sinsp_counter_basic* tot)
-{
-	tot->add(&m_unknown);
-	tot->add(&m_other);
-	tot->add(&m_file);
-	tot->add(&m_net);
-	tot->add(&m_ipc);
-	tot->add(&m_memory);
-	tot->add(&m_process);
-	tot->add(&m_sleep);
-	tot->add(&m_system);
-	tot->add(&m_signal);
-	tot->add(&m_user);
-	tot->add(&m_time);
-	tot->add(&m_io);
-	tot->add(&m_wait);
-	tot->add(&m_processing);
-}
-
-void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
-{
-	m_unknown.to_protobuf(protobuf_msg->mutable_unknown());
-	m_other.to_protobuf(protobuf_msg->mutable_other());
-	m_file.to_protobuf(protobuf_msg->mutable_file());
-	m_net.to_protobuf(protobuf_msg->mutable_net());
-	m_ipc.to_protobuf(protobuf_msg->mutable_ipc());
-	m_memory.to_protobuf(protobuf_msg->mutable_memory());
-	m_process.to_protobuf(protobuf_msg->mutable_process());
-	m_sleep.to_protobuf(protobuf_msg->mutable_sleep());
-	m_system.to_protobuf(protobuf_msg->mutable_system());
-	m_signal.to_protobuf(protobuf_msg->mutable_signal());
-	m_user.to_protobuf(protobuf_msg->mutable_user());
-	m_time.to_protobuf(protobuf_msg->mutable_time());
-	m_io.to_protobuf(protobuf_msg->mutable_io());
-	m_wait.to_protobuf(protobuf_msg->mutable_wait());
-	m_processing.to_protobuf(protobuf_msg->mutable_processing());
-}
-
-void sinsp_counters::print_on(FILE* f)
-{
-	sinsp_counter_basic tot;
-
-	get_total(&tot);
-
-	//
-	// tot counts the WHOLE time spent by this process in the last interval,
-	// and therefore it should always be a perfect multiple of the delta time.
-	// This assertion validates it.
-	//
-/*
-	fprintf(f, "count:%" PRIu32 ", time:%.9lf\n",
-		tot.m_count,
-		(double)tot.m_time_ns / 1000000000);
-*/		
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_transaction_counters implementation
-///////////////////////////////////////////////////////////////////////////////
-void sinsp_transaction_counters::clear()
-{
-	m_incoming.clear();
-	m_outgoing.clear();
-}
-
-void sinsp_transaction_counters::get_total(sinsp_counter_basic* tot)
-{
-	tot->add(&m_incoming);
-	tot->add(&m_outgoing);
-}
-
-void sinsp_transaction_counters::to_protobuf(draiosproto::transaction_categories* protobuf_msg)
-{
-	m_incoming.to_protobuf(protobuf_msg->mutable_incoming());
-	m_outgoing.to_protobuf(protobuf_msg->mutable_outgoing());
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_analyzer implementation
-///////////////////////////////////////////////////////////////////////////////
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_inspector = inspector;
@@ -371,19 +191,17 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 			m_metrics->set_hostname(sinsp_gethostname());
 
+			////////////////////////////////////////////////////////////////////////////
+			// EMIT PROCESSES
+			////////////////////////////////////////////////////////////////////////////
 			//
-			// Go though the list of threads and emit the data for each of them
+			// First pass of the list of threads: emit the metrics (if defined)
+			// and aggregate them into processes
 			//
 			threadinfo_map_iterator_t it;
 			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-				it != m_inspector->m_thread_manager->m_threadtable.end();)
+				it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 			{
-/*
-if(it->second.m_tid == 1748)
-{
-	int a= 0;
-}
-*/
 				//
 				// Attribute the last pending event to this second
 				//
@@ -417,20 +235,18 @@ if(it->second.m_tid == 1748)
 					it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
 				}
 
-//if(it->second.m_tid == 4090)
-//{
-/*
-	fprintf(stderr, "    %" PRIu64 "(%s) ",
-		it->first,
-		it->second.get_comm().c_str());
-	it->second.m_metrics.print_on(stderr);
-*/
-//}
+				//
+				// Add this thread's counters to the process ones
+				//
+
 				//
 				// Dump the thread info into the protobuf
 				//
 				sinsp_counter_basic tot;
+				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+				mtinfo->add_proc_metrics(&it->second);
 
+#ifdef ANALYZER_EMITS_THREADS
 				it->second.m_metrics.get_total(&tot);
 				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
@@ -444,21 +260,55 @@ if(it->second.m_tid == 1748)
 					it->second.m_metrics.to_protobuf(thread->mutable_tcounters());
 					it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
 				}
-				
+#endif
+			}
+
+			//
+			// Second pass of the list of threads: emit the processes
+			//
+			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+				it != m_inspector->m_thread_manager->m_threadtable.end();)
+			{
 				//
 				// If this is the main thread of a process, add an entry into the processes
 				// section too
 				//
 				if(it->second.is_main_thread())
 				{
-					draiosproto::process* proc = m_metrics->add_processes();
-					proc->set_pid(it->second.m_pid);
-					proc->set_comm(it->second.m_comm);
-					proc->set_exe(it->second.m_exe);
-					for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-						arg_it != it->second.m_args.end(); ++arg_it)
+					sinsp_counter_basic tot;
+	
+					ASSERT(it->second.m_proc_metrics);
+					it->second.m_proc_metrics->get_total(&tot);
+					ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+
+					if(tot.m_count != 0)
 					{
-						proc->add_args(*arg_it);
+						draiosproto::process* proc = m_metrics->add_processes();
+						proc->set_pid(it->second.m_pid);
+						proc->set_comm(it->second.m_comm);
+						proc->set_exe(it->second.m_exe);
+						for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+							arg_it != it->second.m_args.end(); ++arg_it)
+						{
+							proc->add_args(*arg_it);
+						}
+
+						it->second.m_proc_metrics->to_protobuf(proc->mutable_tcounters());
+						it->second.m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
+
+#ifdef _DEBUG
+						if(it->second.m_proc_transaction_metrics->m_incoming.m_count +
+							it->second.m_proc_transaction_metrics->m_outgoing.m_count != 0)
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, 
+								"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
+								it->second.m_comm.c_str(),
+								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+								it->second.m_tid,
+								it->second.m_proc_transaction_metrics->m_incoming.m_count,
+								it->second.m_proc_transaction_metrics->m_outgoing.m_count);
+						}
+#endif
 					}
 				}
 
@@ -479,13 +329,19 @@ if(it->second.m_tid == 1748)
 					//
 					it->second.m_metrics.clear();
 					it->second.m_transaction_metrics.clear();
+					if(it->second.m_proc_metrics)
+					{
+						ASSERT(it->second.is_main_thread());
+						it->second.m_proc_metrics->clear();
+						it->second.m_proc_transaction_metrics->clear();
+					}
 					++it;
 				}
 			}
 
-			//
-			// Go though the list of IPv4 connections and emit the data for each of them
-			//
+			////////////////////////////////////////////////////////////////////////////
+			// EMIT CONNECTIONS
+			////////////////////////////////////////////////////////////////////////////
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
@@ -585,10 +441,9 @@ if(it->second.m_tid == 1748)
 				}
 			}
 
-
-			//
-			// Go though the list of network interfaces and emit each of them
-			//
+			////////////////////////////////////////////////////////////////////////////
+			// EMIT INTERFACES
+			////////////////////////////////////////////////////////////////////////////
 			vector<sinsp_ipv4_ifinfo>* v4iflist = m_inspector->m_network_interfaces->get_ipv4_list();
 			for(uint32_t k = 0; k < v4iflist->size(); k++)
 			{
@@ -599,9 +454,9 @@ if(it->second.m_tid == 1748)
 				ni->set_netmask(v4iflist->at(k).m_netmask);
 			}
 
-			//
+			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
-			//
+			////////////////////////////////////////////////////////////////////////////
 			if(m_inspector->m_configuration.get_emit_metrics_to_file())
 			{
 				serialize_to_file(m_prev_flush_time_ns);

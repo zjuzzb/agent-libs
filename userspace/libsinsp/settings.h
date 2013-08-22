@@ -21,6 +21,12 @@
 #define ANALYZER_SAMPLE_LENGTH_NS 1000000000
 
 //
+// If this is defined, the analyzer will include thread information inside
+// the protocol buffers that it sends to the agent
+//
+#undef ANALYZER_EMITS_THREADS
+
+//
 // The min and max size for the memory buffer used as a target for protobuf 
 // serialization. Min is the starting value, while max is the growth limit.
 // This imposes a limit to the number of bytes that can be sent out by

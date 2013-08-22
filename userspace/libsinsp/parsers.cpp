@@ -13,6 +13,7 @@
 #include "sinsp_int.h"
 #include "parsers.h"
 #include "connectinfo.h"
+#include "metrics.h"
 #include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
@@ -32,7 +33,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(29682);
+//BRK(2587);
 
 	//
 	// Cleanup the event-related state
@@ -1673,6 +1674,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		// Update the transaction state.
 		//
+//BRK(2585);
 		ASSERT(connection != NULL);
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
@@ -1863,6 +1865,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		//
 		// Update the transaction state.
 		//
+//BRK(2587);
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
 			connection,

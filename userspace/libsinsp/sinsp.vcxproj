@@ -98,11 +98,12 @@
     <ClCompile Include="ifinfo.cpp" />
     <ClCompile Include="internal_metrics.cpp" />
     <ClCompile Include="logger.cpp" />
-    <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="sinsp.cpp" />
     <ClCompile Include="parsers.cpp" />
     <ClCompile Include="parser_http.cpp" />
+    <ClCompile Include="metrics.cpp" />
     <ClCompile Include="stats.cpp" />
+    <ClCompile Include="threadinfo.cpp" />
     <ClCompile Include="transactinfo.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -116,13 +117,14 @@
     <ClInclude Include="draios.pb.h" />
     <ClInclude Include="event.h" />
     <ClInclude Include="fdinfo.h" />
+    <ClInclude Include="metrics.h" />
     <ClInclude Include="ifinfo.h" />
     <ClInclude Include="internal_metrics.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="parser_http.h" />
-    <ClInclude Include="procinfo.h" />
     <ClInclude Include="sinsp_signal.h" />
     <ClInclude Include="stats.h" />
+    <ClInclude Include="threadinfo.h" />
     <ClInclude Include="transactinfo.h" />
     <ClInclude Include="sinsp_errno.h" />
     <ClInclude Include="utils.h" />

@@ -13,6 +13,9 @@ static void copy_ipv6_address(uint32_t* src, uint32_t* dest)
 	dest[3] = src[3];
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_threadinfo implementation
+///////////////////////////////////////////////////////////////////////////////
 sinsp_threadinfo::sinsp_threadinfo() :
 	m_fdtable(NULL)
 {
@@ -26,6 +29,8 @@ sinsp_threadinfo::sinsp_threadinfo() :
 	m_flags = 0;
 	m_n_threads = 0;
 	m_refcount = 0;
+	m_proc_metrics = NULL;
+	m_proc_transaction_metrics = NULL;
 }
 
 sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
@@ -42,6 +47,21 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 	m_flags = 0;
 	m_n_threads = 0;
 	m_refcount = 0;
+	m_proc_metrics = NULL;
+	m_proc_transaction_metrics = NULL;
+}
+
+sinsp_threadinfo::~sinsp_threadinfo()
+{
+	if(m_proc_metrics)
+	{
+		delete m_proc_metrics;
+		delete m_proc_transaction_metrics;
+	}
+	else
+	{
+		ASSERT(m_proc_transaction_metrics == NULL);
+	}
 }
 
 void sinsp_threadinfo::init(const scap_threadinfo* pi)
@@ -347,6 +367,25 @@ void sinsp_threadinfo::print_on(FILE* f)
 	fprintf(f,"\n");
 }
 
+const sinsp_counters* sinsp_threadinfo::get_metrics()
+{
+	return (const sinsp_counters*)&m_metrics;
+}
+
+void sinsp_threadinfo::add_proc_metrics(sinsp_threadinfo* other)
+{
+	if(m_proc_metrics == NULL)
+	{
+		ASSERT(m_proc_transaction_metrics == NULL);
+
+		m_proc_metrics = new sinsp_counters();
+		m_proc_transaction_metrics = new sinsp_transaction_counters();
+	}
+
+	m_proc_metrics->add(&other->m_metrics);
+	m_proc_transaction_metrics->add(&other->m_transaction_metrics);
+}
+
 /*
 void sinsp_threadinfo::push_fdop(sinsp_fdop* op)
 {
@@ -359,6 +398,9 @@ void sinsp_threadinfo::push_fdop(sinsp_fdop* op)
 }
 */
 
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_thread_manager implementation
+///////////////////////////////////////////////////////////////////////////////
 sinsp_thread_manager::sinsp_thread_manager(sinsp* inspector)
 {
 	m_inspector = inspector;

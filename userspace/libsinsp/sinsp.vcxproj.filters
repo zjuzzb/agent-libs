@@ -46,7 +46,10 @@
     <ClCompile Include="logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="procinfo.cpp">
+    <ClCompile Include="metrics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="threadinfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -117,7 +120,10 @@
     <ClInclude Include="logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="procinfo.h">
+    <ClInclude Include="metrics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="threadinfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

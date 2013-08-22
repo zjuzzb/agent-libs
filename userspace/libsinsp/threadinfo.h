@@ -34,6 +34,7 @@ public:
 	sinsp_threadinfo();
 	//sinsp_threadinfo(const sinsp_threadinfo &orig);
 	sinsp_threadinfo(sinsp *inspector);
+	~sinsp_threadinfo();
 	void init(const scap_threadinfo* pi);
 	string get_comm();
 	string get_cwd();
@@ -49,17 +50,13 @@ public:
 
 	void print_on(FILE *f);
 
-	const sinsp_counters* get_metrics()
-	{
-		return (const sinsp_counters*)&m_metrics;
-	}
+	const sinsp_counters* get_metrics();
 
 	//
 	// Core state
 	//
 	int64_t m_tid;  // The id of this thread
 	int64_t m_pid; // The id of the process containing this thread. In single thread threads, this is equal to tid.
-//	int64_t m_ptid; // The id of the process that created this thread using clone.
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // Full command name (e.g. "/bin/top")
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
@@ -81,11 +78,24 @@ public:
 	//
 	// Analyzer state
 	//
-	uint8_t m_analysis_flags; // Flags word used by the analysis engine.
-	uint32_t m_n_threads; // If this is a process' main thread, the Number of threads that the process contains. Otherwise zero.
-	uint32_t m_n_active_threads; // If this is a process' main thread, the Number of threads that were active for this process during the last sample. Otherwise zero.
-	sinsp_counters m_metrics; // The analyzer metrics
-	sinsp_transaction_counters m_transaction_metrics; // The analyzer transaction metrics
+	// Flags word used by the analysis engine.
+	uint8_t m_analysis_flags;
+	// If this is a process' main thread, the Number of threads that the process contains. 
+	// Otherwise zero.
+	uint32_t m_n_threads; 
+	// If this is a process' main thread, the Number of threads that were active for 
+	// this process during the last sample. Otherwise zero.
+	uint32_t m_n_active_threads;
+	// The analyzer metrics
+	sinsp_counters m_metrics; 
+	// The analyzer transaction metrics
+	sinsp_transaction_counters m_transaction_metrics; 
+	// Aggreaged metrics for the process.
+	// This field is allocated only for process main threads.
+	sinsp_counters* m_proc_metrics; 
+	// Aggreaged transaction metrics for the process.
+	// This field is allocated only for process main threads.
+	sinsp_transaction_counters* m_proc_transaction_metrics; 
 
 	//
 	// Global state
@@ -99,6 +109,7 @@ VISIBILITY_PRIVATE
 	sinsp_threadinfo* get_main_thread();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
+	void add_proc_metrics(sinsp_threadinfo* other);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
