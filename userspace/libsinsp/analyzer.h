@@ -34,8 +34,12 @@ private:
 	char* m_serialization_buffer;
 	uint32_t m_serialization_buffer_size;
 
+#ifdef ANALYZER_EMITS_PROGRAMS
 	//
-	// The temporary process table that we build while scanning the thread list
+	// The temporary table that we build while scanning the process list.
+	// Each entry contains a "program", i.e. a group of processes with the same 
+	// full executable path.
 	//
-	unordered_map<int64_t, sinsp_threadinfo> m_proctable;
+	unordered_map<string, sinsp_threadinfo*> m_program_table;
+#endif
 };

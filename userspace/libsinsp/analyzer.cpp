@@ -264,10 +264,19 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			}
 
 			//
-			// Second pass of the list of threads: emit the processes
+			// Second pass of the list of threads: aggreagate processes into programs.
+			// NOTE: this pass can be integrated in the previous one. We keep it seperate for.
+			// the moment so we have the option to emit single processes. This is useful until
+			// we clearly decide what to put in the UI.
 			//
+			m_program_table.clear();
+
 			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-				it != m_inspector->m_thread_manager->m_threadtable.end();)
+				it != m_inspector->m_thread_manager->m_threadtable.end(); 
+#ifdef ANALYZER_EMITS_PROGRAMS
+				++it
+#endif
+				)
 			{
 				//
 				// If this is the main thread of a process, add an entry into the processes
@@ -275,6 +284,24 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				//
 				if(it->second.is_main_thread())
 				{
+#ifdef ANALYZER_EMITS_PROGRAMS
+
+					//
+					// Do the aggregation into programs
+					//
+					std::pair<unordered_map<string, sinsp_threadinfo*>::iterator, bool> &element = 
+						m_program_table.insert(unordered_map<string, sinsp_threadinfo*>::value_type(it->second.m_exe, &it->second));
+					if(element.second == false)
+					{
+						ASSERT(element.first->second != &it->second);
+						element.first->second->add_proc_metrics(&it->second);
+					}
+#endif
+
+					//
+					// If defined, emti the processes
+					//
+#ifdef ANALYZER_EMITS_PROCESSES
 					sinsp_counter_basic tot;
 	
 					ASSERT(it->second.m_proc_metrics);
@@ -308,10 +335,94 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 								it->second.m_proc_transaction_metrics->m_incoming.m_count,
 								it->second.m_proc_transaction_metrics->m_outgoing.m_count);
 						}
-#endif
+#endif // _DEBUG
 					}
+#endif // ANALYZER_EMITS_PROCESSES
 				}
 
+#ifndef ANALYZER_EMITS_PROGRAMS
+				//
+				// Has this thread been closed druring this sample?
+				//
+				if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
+				{
+					//
+					// Yes, remove the thread from the table
+					//
+					m_inspector->m_thread_manager->remove_thread(it++);
+				}
+				else
+				{
+					//
+					// Clear the thread metrics, so we're ready for the next sample
+					//
+					it->second.m_metrics.clear();
+					it->second.m_transaction_metrics.clear();
+					if(it->second.m_proc_metrics)
+					{
+						ASSERT(it->second.is_main_thread());
+						it->second.m_proc_metrics->clear();
+						it->second.m_proc_transaction_metrics->clear();
+					}
+					++it;
+				}
+#endif
+			}
+
+			//
+			// Third pass of the list of threads: emit the programs
+			//
+#ifdef ANALYZER_EMITS_PROGRAMS
+			unordered_map<string, sinsp_threadinfo*>::iterator prit;
+			for(prit = m_program_table.begin(); 
+				prit != m_program_table.end(); ++ prit)
+			{
+				//
+				// If defined, emti the processes
+				//
+				sinsp_counter_basic tot;
+	
+				ASSERT(prit->second->m_proc_metrics);
+				prit->second->m_proc_metrics->get_total(&tot);
+				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+
+				if(tot.m_count != 0)
+				{
+					draiosproto::process* proc = m_metrics->add_processes();
+					proc->set_pid(prit->second->m_pid);
+					proc->set_comm(prit->second->m_comm);
+					proc->set_exe(prit->second->m_exe);
+					for(vector<string>::const_iterator arg_it = prit->second->m_args.begin(); 
+						arg_it != prit->second->m_args.end(); ++arg_it)
+					{
+						proc->add_args(*arg_it);
+					}
+
+					prit->second->m_proc_metrics->to_protobuf(proc->mutable_tcounters());
+					prit->second->m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
+
+#ifdef _DEBUG
+					if(prit->second->m_proc_transaction_metrics->m_incoming.m_count +
+						prit->second->m_proc_transaction_metrics->m_outgoing.m_count != 0)
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, 
+							"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
+							prit->second->m_comm.c_str(),
+							(prit->second->m_args.size() != 0)? prit->second->m_args[0].c_str() : "",
+							prit->second->m_tid,
+							prit->second->m_proc_transaction_metrics->m_incoming.m_count,
+							prit->second->m_proc_transaction_metrics->m_outgoing.m_count);
+					}
+#endif // _DEBUG
+				}
+			}
+
+			//
+			// fourth pass: thread table cleanup
+			//
+			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+				it != m_inspector->m_thread_manager->m_threadtable.end();)
+			{
 				//
 				// Has this thread been closed druring this sample?
 				//
@@ -338,6 +449,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					++it;
 				}
 			}
+#endif // ANALYZER_EMITS_PROGRAMS
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS

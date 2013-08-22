@@ -27,6 +27,18 @@
 #undef ANALYZER_EMITS_THREADS
 
 //
+// If this is defined, the analyzer will include process information inside
+// the protocol buffers that it sends to the agent
+//
+#define ANALYZER_EMITS_PROCESSES
+
+//
+// If this is defined, the analyzer will include program information inside
+// the protocol buffers that it sends to the agent
+//
+#undef ANALYZER_EMITS_PROGRAMS
+
+//
 // The min and max size for the memory buffer used as a target for protobuf 
 // serialization. Min is the starting value, while max is the growth limit.
 // This imposes a limit to the number of bytes that can be sent out by
