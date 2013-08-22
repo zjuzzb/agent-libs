@@ -269,7 +269,9 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			// the moment so we have the option to emit single processes. This is useful until
 			// we clearly decide what to put in the UI.
 			//
+#ifdef ANALYZER_EMITS_PROGRAMS
 			m_program_table.clear();
+#endif
 
 			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 				it != m_inspector->m_thread_manager->m_threadtable.end(); 
