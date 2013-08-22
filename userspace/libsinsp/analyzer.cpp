@@ -618,16 +618,22 @@ if(it->second.m_tid == 1748)
 	// Clear the transaction table
 	//
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
-		"Transaction table size:%d",
-		m_inspector->get_transactions()->m_n_transactions);
+		"# Client Transactions:%d",
+		m_inspector->get_transactions()->m_n_client_transactions);
+	g_logger.format(sinsp_logger::SEV_DEBUG, 
+		"# Server Transactions:%d",
+		m_inspector->get_transactions()->m_n_server_transactions);
 
-	m_inspector->get_transactions()->m_n_transactions = 0;
+	m_inspector->get_transactions()->m_n_client_transactions = 0;
+	m_inspector->get_transactions()->m_n_server_transactions = 0;
 
 	//
 	// Run the periodic connection and thread table cleanup
 	//
 	m_inspector->remove_expired_connections(ts);
 	m_inspector->m_thread_manager->remove_inactive_threads();
+
+	g_logger.log("-----------------------", sinsp_logger::SEV_DEBUG);
 }
 
 void sinsp_analyzer::process_event(sinsp_evt* evt)

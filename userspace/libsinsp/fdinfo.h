@@ -109,11 +109,13 @@ public:
 	void set_role_server()
 	{
 		m_flags |= sinsp_fdinfo::FLAGS_ROLE_SERVER;
+		m_transaction.m_side = sinsp_partial_transaction::SIDE_SERVER;
 	}
 
 	void set_role_client()
 	{
 		m_flags |= sinsp_fdinfo::FLAGS_ROLE_CLIENT;
+		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
 	}
         
 	void reset_flags()

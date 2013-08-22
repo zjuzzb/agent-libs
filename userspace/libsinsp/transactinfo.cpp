@@ -13,7 +13,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_transaction_table::sinsp_transaction_table()
 {
-	m_n_transactions = 0;
+	m_n_client_transactions = 0;
+	m_n_server_transactions = 0;
 }
 
 sinsp_transaction_table::~sinsp_transaction_table()
@@ -27,12 +28,27 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
 
-	if(tr->m_prev_direction == sinsp_partial_transaction::DIR_IN)
+	sinsp_partial_transaction::direction startdir;
+	sinsp_partial_transaction::direction enddir;
+
+	ASSERT(tr->m_side != sinsp_partial_transaction::SIDE_UNKNOWN);
+	if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
+	{
+		startdir = sinsp_partial_transaction::DIR_IN;
+		enddir = sinsp_partial_transaction::DIR_OUT;
+	}
+	else
+	{
+		startdir = sinsp_partial_transaction::DIR_OUT;
+		enddir = sinsp_partial_transaction::DIR_IN;
+	}
+
+	if(tr->m_prev_direction == startdir)
 	{
 		tr->m_prev_prev_start_time = tr->m_prev_start_time;
 		tr->m_prev_prev_end_time = tr->m_prev_end_time;
 	}
-	else if(tr->m_prev_direction == sinsp_partial_transaction::DIR_OUT ||
+	else if(tr->m_prev_direction == enddir ||
 	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE)
 	{
 		if(tr->m_prev_prev_start_time == 0)
@@ -45,6 +61,28 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			return;
 		}
 
+		//
+		// Update the metrics related to this transaction
+		//
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
+
+		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
+		{
+			m_n_server_transactions++;
+			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
+			pconn->m_transaction_metrics.m_incoming.add(1, delta);
+		}
+		else
+		{
+			m_n_client_transactions++;
+			ptinfo->m_transaction_metrics.m_outgoing.add(1, delta);
+			pconn->m_transaction_metrics.m_outgoing.add(1, delta);
+		}
+
+//
+// NOTE: this is disabled because for the moment we only gather summaries about
+//       transaction activity, not every single transaction.
+#if 0
 		//
 		// Init the new table entry
 		//
@@ -95,34 +133,25 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		}
 
 		//
-		// Update the metrics related to this transaction
-		//
-		m_n_transactions++;
-		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
-		ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
-		pconn->m_transaction_metrics.m_incoming.add(1, delta);
-
-		//
 		// Add the entry to the table
-		// NOTE: this is disabled because for the moment we only gather summaries about
-		//       transaction activity, not every single transaction.
 		//
-		//it = m_table.find(tr->m_tid);
-		//if(it == m_table.end())
-		//{
-		//	vector<sinsp_transaction> tv;
+		it = m_table.find(tr->m_tid);
+		if(it == m_table.end())
+		{
+			vector<sinsp_transaction> tv;
 
-		//	tv.push_back(tfi);
-		//	m_table[tr->m_tid] = tv;
-		//}
-		//else
-		//{
-		//	it->second.push_back(tfi);
-		//}
+			tv.push_back(tfi);
+			m_table[tr->m_tid] = tv;
+		}
+		else
+		{
+			it->second.push_back(tfi);
+		}
 
-		//
-		// Mark the transaction as done
-		//
+		
+		 Mark the transaction as done
+#endif		
+
 		tr->m_prev_prev_start_time = 0;
 	}
 }
@@ -131,6 +160,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 
 void sinsp_transaction_table::print_on(FILE *stream)
 {
+
 	uint32_t j;
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
 	uint32_t nfilelines = 0;
@@ -278,7 +308,7 @@ sinsp_partial_transaction::sinsp_partial_transaction(ipv4tuple *flow)
 	m_prev_start_time = 0;
 	m_prev_end_time = 0;
 	m_ipv4_flow = *flow;
-	m_flow_type = flow_type::IP;
+	m_family = family::IP;
 }
 
 sinsp_partial_transaction::sinsp_partial_transaction(unix_tuple *flow)
@@ -293,7 +323,7 @@ sinsp_partial_transaction::sinsp_partial_transaction(unix_tuple *flow)
 	m_prev_prev_start_time = 0;
 	m_prev_prev_end_time = 0;
 	m_unix_flow = *flow;
-	m_flow_type = flow_type::UNIX;
+	m_family = family::UNIX;
 }
 
 
@@ -394,15 +424,14 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(sinsp* 
 	sinsp_connection *pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 
-	int64_t tid, 
 	direction dir, 
-	uint32_t len)
+	uint32_t datalen)
 {
-	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, dir, len);
+	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, dir, datalen);
 	if(res == STATE_SWITCHED)
 	{
-		m_tid = tid;
-		inspector->m_trans_table->emit(ptinfo, pconn, this, len);
+		m_tid = ptinfo->m_tid;
+		inspector->m_trans_table->emit(ptinfo, pconn, this, datalen);
 	}
 
 	return res;

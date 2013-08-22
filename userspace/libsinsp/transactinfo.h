@@ -35,8 +35,7 @@ public:
 	    TYPE_HTTP,
 	};
 
-	// XXX get rid of this
-	enum flow_type
+	enum family
 	{
 	    IP,
 	    UNIX
@@ -56,6 +55,13 @@ public:
 	    STATE_SWITCHED = (1 << 1),
 	};
 
+	enum side
+	{
+	    SIDE_UNKNOWN,
+	    SIDE_CLIENT,
+	    SIDE_SERVER,
+	};
+
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
 	sinsp_partial_transaction(ipv4tuple *flow);
@@ -65,18 +71,17 @@ public:
 		sinsp_connection *pconn,
 		uint64_t enter_ts, 
 		uint64_t exit_ts, 
-		int64_t tid, 
 		direction dir, 
-		uint32_t len);
+		uint32_t datalen);
 
 	bool is_ipv4_flow()
 	{
-		return m_flow_type == flow_type::IP;
+		return m_family == family::IP;
 	}
 
 	bool is_unix_flow()
 	{
-		return m_flow_type == flow_type::UNIX;
+		return m_family == family::UNIX;
 	}
 
 	sinsp_partial_transaction::type m_type;
@@ -95,7 +100,8 @@ public:
 	uint64_t m_prev_end_time;
 	uint64_t m_prev_prev_start_time;
 	uint64_t m_prev_prev_end_time;
-	flow_type m_flow_type;
+	family m_family;
+	side m_side;
 	//  unordered_map<int64_t, sinsp_transactfd> m_fdmap;
 
 private:
@@ -145,7 +151,8 @@ public:
 	// Key is the tid
 	//
 	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
-	uint32_t m_n_transactions;
+	uint32_t m_n_client_transactions;
+	uint32_t m_n_server_transactions;
 
 	friend class sinsp_partial_transaction;
 };

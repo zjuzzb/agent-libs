@@ -32,7 +32,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(193);
+//BRK(29682);
 
 	//
 	// Cleanup the event-related state
@@ -959,6 +959,11 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	evt->m_fdinfo->set_role_client();
 
 	//
+	// Mark this fd as a transaction
+	//
+	evt->m_fdinfo->set_is_transaction();
+
+	//
 	// Fill the fd with the socket info
 	//
 	if(family == AF_INET)
@@ -1018,8 +1023,6 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		        evt->m_tinfo->m_lastevent_fd,
 		        true,
 		        evt->get_ts());
-
-		return;
 	}
 	else
 	{
@@ -1150,6 +1153,10 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 	// Mark this fd as a server
 	//
 	fdi.set_role_server();
+
+	//
+	// Mark this fd as a transaction
+	//
 	fdi.set_is_transaction();
 /*
 	//
@@ -1237,7 +1244,6 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 			connection,
 			params->m_ts, 
 			params->m_ts, 
-			params->m_tinfo->m_tid, 
 			sinsp_partial_transaction::DIR_CLOSE, 
 			0);
 
@@ -1536,11 +1542,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						evt->get_ts());
 			}
 
-
-			if(evt->m_fdinfo->has_role_server())
-			{
-				evt->m_fdinfo->set_is_transaction();
-			}
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
@@ -1606,17 +1607,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
 			}
-
-
-			if(evt->m_fdinfo->has_role_server())
-			{
-				evt->m_fdinfo->set_is_transaction();
-			}
 		}
 
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
+/*
 		if(evt->m_fdinfo->has_role_server())
 		{
 			//
@@ -1656,10 +1652,36 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				connection,
 				evt->m_tinfo->m_lastevent_ts, 
 				evt->get_ts(), 
-				tid, 
 				sinsp_partial_transaction::DIR_IN, 
 				len);
 		}
+*/
+		//
+		// See if there's already a transaction
+		//
+ 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+		if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
+		{
+			//
+			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
+			//
+			trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
+		}
+
+		evt->m_fdinfo->set_is_transaction();
+
+		//
+		// Update the transaction state.
+		//
+		ASSERT(connection != NULL);
+		trinfo->update(m_inspector,
+			evt->m_tinfo,
+			connection,
+			evt->m_tinfo->m_lastevent_ts, 
+			evt->get_ts(), 
+			sinsp_partial_transaction::DIR_IN, 
+			len);
+
 	}
 	else if(evt->m_fdinfo->is_pipe())
 	{
@@ -1680,6 +1702,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 {
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
+		/////////////////////////////////////////////////////////////////////////////
+		// Handle the connection
+		/////////////////////////////////////////////////////////////////////////////
 		sinsp_connection *connection = NULL; 
 
 		if(evt->m_fdinfo->is_unix_socket())
@@ -1818,34 +1843,33 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			}
 		}
 
-		if(evt->m_fdinfo->has_role_server())
+		/////////////////////////////////////////////////////////////////////////////
+		// Handle the transaction
+		/////////////////////////////////////////////////////////////////////////////
+		//
+		// See if there's already a transaction
+		//
+ 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+		if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
 		{
 			//
-			// See if there's already a transaction
+			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
- 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
-			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
-			{
-				//
-				// For the moment, we assume that a transaction that starts with
-				// a write is just IP.
-				// Stuff like mysql starts with a write
-				//
-				trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
-			}
-
-			//
-			// There is already a transaction. Update its state.
-			//
-			trinfo->update(m_inspector,
-				evt->m_tinfo,
-				connection,
-				evt->m_tinfo->m_lastevent_ts, 
-				evt->get_ts(), 
-				tid, 
-				sinsp_partial_transaction::DIR_OUT, 
-				len);
+			trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
 		}
+
+		evt->m_fdinfo->set_is_transaction();
+
+		//
+		// Update the transaction state.
+		//
+		trinfo->update(m_inspector,
+			evt->m_tinfo,
+			connection,
+			evt->m_tinfo->m_lastevent_ts, 
+			evt->get_ts(), 
+			sinsp_partial_transaction::DIR_OUT, 
+			len);
 	}
 	else if(evt->m_fdinfo->is_pipe())
 	{
@@ -1941,10 +1965,8 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				{
 					evt->m_fdinfo->m_name = evt->get_param_as_str(2, &parstr, sinsp_evt::PF_SIMPLE);
 				}
-				if(evt->m_fdinfo->has_role_server())
-				{
-					evt->m_fdinfo->set_is_transaction();
-				}
+
+				evt->m_fdinfo->set_is_transaction();
 			}
 
 			//
@@ -2209,7 +2231,6 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 			connection,
 			evt->get_ts(), 
 			evt->get_ts(), 
-			tid, 
 			sinsp_partial_transaction::DIR_CLOSE, 
 			0);
 
