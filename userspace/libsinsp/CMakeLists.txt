@@ -13,9 +13,10 @@ add_library(sinsp STATIC
 	ifinfo.cpp
 	internal_metrics.cpp
 	logger.cpp
+	metrics.cpp
 	parser_http.cpp
 	parsers.cpp
-	procinfo.cpp
+	threadinfo.cpp
 	sinsp.cpp
 	stats.cpp
 	transactinfo.cpp

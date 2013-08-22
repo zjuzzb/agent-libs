@@ -111,8 +111,13 @@ TEST_F(sys_call_test, net_web_requests)
 
 				// get the server's reply
 				bzero(reqbody, BUFSIZE);
-				while(read(sockfd, reqbody, BUFSIZE) != 0)
+				while(true)
 				{
+					n = read(sockfd, reqbody, BUFSIZE);
+					if(n == 0)
+					{
+						break;
+					}
 					if(n < 0) 
 					{
 						error((char*)"ERROR reading from socket");
@@ -150,6 +155,11 @@ TEST_F(sys_call_test, net_web_requests)
 						nconns++;
 					}
 				}
+
+				sinsp_threadinfo* ti = evt->get_thread_info();
+				ASSERT_EQ(0, (int)ti->m_transaction_metrics.m_incoming.m_count);
+				// Note: +1 is because of the DNS lookup
+				ASSERT_EQ(N_CONNECTIONS + 1, (int)ti->m_transaction_metrics.m_outgoing.m_count);
 			}
 		}
 	};
