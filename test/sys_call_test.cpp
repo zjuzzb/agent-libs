@@ -23,6 +23,7 @@
 #include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/timerfd.h>
 
@@ -470,7 +471,7 @@ TEST_F(sys_call_test, timestamp)
 		struct timeval tv;
 		for(uint32_t j = 0; j < sizeof(timestampv) / sizeof(timestampv[0]); ++j)
 		{
-			gettimeofday(&tv, NULL);
+			syscall(SYS_gettimeofday, &tv, NULL);
 			timestampv[j] = tv.tv_sec * 1000000000LL + tv.tv_usec * 1000;
 			usleep(sleep_period);
 			sleep_period *= 2;
