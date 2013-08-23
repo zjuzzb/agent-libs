@@ -23,6 +23,7 @@
 #include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/timerfd.h>
 
 using namespace std;
@@ -450,4 +451,42 @@ TEST_F(sys_call_test, timerfd)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 	EXPECT_EQ(3, callnum);
+}
+
+TEST_F(sys_call_test, timestamp)
+{
+	static const uint64_t TIMESTAMP_DELTA_NS = 1000000; // We should at least always have 1 ms resolution
+	uint64_t timestampv[20];
+	int callnum = 0;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		useconds_t sleep_period = 10;
+		struct timeval tv;
+		for(uint32_t j = 0; j < sizeof(timestampv) / sizeof(timestampv[0]); ++j)
+		{
+			gettimeofday(&tv, NULL);
+			timestampv[j] = tv.tv_sec * 1000000000LL + tv.tv_usec * 1000;
+			usleep(sleep_period);
+			sleep_period *= 2;
+		}
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if(param.m_evt->get_type() == PPME_GENERIC_X && param.m_evt->get_param_value_str("ID") == "gettimeofday")
+		{
+			EXPECT_LE(param.m_evt->get_ts(), timestampv[callnum] + TIMESTAMP_DELTA_NS);
+			EXPECT_GE(param.m_evt->get_ts(), timestampv[callnum] - TIMESTAMP_DELTA_NS);
+			++callnum;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ((int) (sizeof(timestampv) / sizeof(timestampv[0])), callnum);
 }
