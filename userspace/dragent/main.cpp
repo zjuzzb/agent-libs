@@ -399,7 +399,7 @@ protected:
 		AutoPtr<Channel> consoleChannel(new ConsoleChannel());
 		AutoPtr<FileChannel> rotatedFileChannel(new FileChannel(logsdir));
 
-		rotatedFileChannel->setProperty("rotation", "100000");
+		rotatedFileChannel->setProperty("rotation", "10M");
 		rotatedFileChannel->setProperty("purgeCount", "5");
 		rotatedFileChannel->setProperty("archive", "timestamp");
 
