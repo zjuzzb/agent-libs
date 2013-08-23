@@ -45,9 +45,10 @@ public:
 	{
 		SC_UNKNOWN = 0,
 		SC_NONE = 1,
-		SC_FILE = 2,
-		SC_NET = 3,
-		SC_IPC = 4,
+		SC_OTHER = 2,
+		SC_FILE = 3,
+		SC_NET = 4,
+		SC_IPC = 5,
 	};
 
 	//

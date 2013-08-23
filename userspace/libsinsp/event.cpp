@@ -880,7 +880,14 @@ void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 					case SCAP_FD_FIFO:
 					case SCAP_FD_UNIX_SOCK:
 					case SCAP_FD_EVENT:
+					case SCAP_FD_SIGNALFD:
+					case SCAP_FD_INOTIFY:
 						cat->m_subcategory = SC_IPC;
+						break;
+					case SCAP_FD_UNSUPPORTED:
+					case SCAP_FD_EVENTPOLL:
+					case SCAP_FD_TIMERFD:
+						cat->m_subcategory = SC_OTHER;
 						break;
 					default:
 						ASSERT(false);
