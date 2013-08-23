@@ -65,10 +65,10 @@ public:
 	sinsp_counter_basic m_signal;
 	sinsp_counter_basic m_user;
 	sinsp_counter_basic m_time;
-	sinsp_counter_with_size m_io;
-//	sinsp_counter_with_size m_io_file;
-//	sinsp_counter_with_size m_io_net;
-//	sinsp_counter_with_size m_io_other;
+//	sinsp_counter_with_size m_io;
+	sinsp_counter_with_size m_io_file;
+	sinsp_counter_with_size m_io_net;
+	sinsp_counter_with_size m_io_other;
 	sinsp_counter_basic m_wait;
 	sinsp_counter_basic m_processing;
 

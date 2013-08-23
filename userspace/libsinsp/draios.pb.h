@@ -308,14 +308,32 @@ class time_categories : public ::google::protobuf::MessageLite {
   inline ::draiosproto::counter* release_time();
   inline void set_allocated_time(::draiosproto::counter* time);
 
-  // optional .draiosproto.counter io = 13;
-  inline bool has_io() const;
-  inline void clear_io();
-  static const int kIoFieldNumber = 13;
-  inline const ::draiosproto::counter& io() const;
-  inline ::draiosproto::counter* mutable_io();
-  inline ::draiosproto::counter* release_io();
-  inline void set_allocated_io(::draiosproto::counter* io);
+  // optional .draiosproto.counter io_file = 14;
+  inline bool has_io_file() const;
+  inline void clear_io_file();
+  static const int kIoFileFieldNumber = 14;
+  inline const ::draiosproto::counter& io_file() const;
+  inline ::draiosproto::counter* mutable_io_file();
+  inline ::draiosproto::counter* release_io_file();
+  inline void set_allocated_io_file(::draiosproto::counter* io_file);
+
+  // optional .draiosproto.counter io_net = 15;
+  inline bool has_io_net() const;
+  inline void clear_io_net();
+  static const int kIoNetFieldNumber = 15;
+  inline const ::draiosproto::counter& io_net() const;
+  inline ::draiosproto::counter* mutable_io_net();
+  inline ::draiosproto::counter* release_io_net();
+  inline void set_allocated_io_net(::draiosproto::counter* io_net);
+
+  // optional .draiosproto.counter io_other = 16;
+  inline bool has_io_other() const;
+  inline void clear_io_other();
+  static const int kIoOtherFieldNumber = 16;
+  inline const ::draiosproto::counter& io_other() const;
+  inline ::draiosproto::counter* mutable_io_other();
+  inline ::draiosproto::counter* release_io_other();
+  inline void set_allocated_io_other(::draiosproto::counter* io_other);
 
   // optional .draiosproto.counter wait = 17;
   inline bool has_wait() const;
@@ -361,8 +379,12 @@ class time_categories : public ::google::protobuf::MessageLite {
   inline void clear_has_user();
   inline void set_has_time();
   inline void clear_has_time();
-  inline void set_has_io();
-  inline void clear_has_io();
+  inline void set_has_io_file();
+  inline void clear_has_io_file();
+  inline void set_has_io_net();
+  inline void clear_has_io_net();
+  inline void set_has_io_other();
+  inline void clear_has_io_other();
   inline void set_has_wait();
   inline void clear_has_wait();
   inline void set_has_processing();
@@ -380,12 +402,14 @@ class time_categories : public ::google::protobuf::MessageLite {
   ::draiosproto::counter* signal_;
   ::draiosproto::counter* user_;
   ::draiosproto::counter* time_;
-  ::draiosproto::counter* io_;
+  ::draiosproto::counter* io_file_;
+  ::draiosproto::counter* io_net_;
+  ::draiosproto::counter* io_other_;
   ::draiosproto::counter* wait_;
   ::draiosproto::counter* processing_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1905,57 +1929,141 @@ inline void time_categories::set_allocated_time(::draiosproto::counter* time) {
   }
 }
 
-// optional .draiosproto.counter io = 13;
-inline bool time_categories::has_io() const {
+// optional .draiosproto.counter io_file = 14;
+inline bool time_categories::has_io_file() const {
   return (_has_bits_[0] & 0x00001000u) != 0;
 }
-inline void time_categories::set_has_io() {
+inline void time_categories::set_has_io_file() {
   _has_bits_[0] |= 0x00001000u;
 }
-inline void time_categories::clear_has_io() {
+inline void time_categories::clear_has_io_file() {
   _has_bits_[0] &= ~0x00001000u;
 }
-inline void time_categories::clear_io() {
-  if (io_ != NULL) io_->::draiosproto::counter::Clear();
-  clear_has_io();
+inline void time_categories::clear_io_file() {
+  if (io_file_ != NULL) io_file_->::draiosproto::counter::Clear();
+  clear_has_io_file();
 }
-inline const ::draiosproto::counter& time_categories::io() const {
+inline const ::draiosproto::counter& time_categories::io_file() const {
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_ != NULL ? *io_ : *default_instance().io_;
+  return io_file_ != NULL ? *io_file_ : *default_instance().io_file_;
 #else
-  return io_ != NULL ? *io_ : *default_instance_->io_;
+  return io_file_ != NULL ? *io_file_ : *default_instance_->io_file_;
 #endif
 }
-inline ::draiosproto::counter* time_categories::mutable_io() {
-  set_has_io();
-  if (io_ == NULL) io_ = new ::draiosproto::counter;
-  return io_;
+inline ::draiosproto::counter* time_categories::mutable_io_file() {
+  set_has_io_file();
+  if (io_file_ == NULL) io_file_ = new ::draiosproto::counter;
+  return io_file_;
 }
-inline ::draiosproto::counter* time_categories::release_io() {
-  clear_has_io();
-  ::draiosproto::counter* temp = io_;
-  io_ = NULL;
+inline ::draiosproto::counter* time_categories::release_io_file() {
+  clear_has_io_file();
+  ::draiosproto::counter* temp = io_file_;
+  io_file_ = NULL;
   return temp;
 }
-inline void time_categories::set_allocated_io(::draiosproto::counter* io) {
-  delete io_;
-  io_ = io;
-  if (io) {
-    set_has_io();
+inline void time_categories::set_allocated_io_file(::draiosproto::counter* io_file) {
+  delete io_file_;
+  io_file_ = io_file;
+  if (io_file) {
+    set_has_io_file();
   } else {
-    clear_has_io();
+    clear_has_io_file();
+  }
+}
+
+// optional .draiosproto.counter io_net = 15;
+inline bool time_categories::has_io_net() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void time_categories::set_has_io_net() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void time_categories::clear_has_io_net() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void time_categories::clear_io_net() {
+  if (io_net_ != NULL) io_net_->::draiosproto::counter::Clear();
+  clear_has_io_net();
+}
+inline const ::draiosproto::counter& time_categories::io_net() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return io_net_ != NULL ? *io_net_ : *default_instance().io_net_;
+#else
+  return io_net_ != NULL ? *io_net_ : *default_instance_->io_net_;
+#endif
+}
+inline ::draiosproto::counter* time_categories::mutable_io_net() {
+  set_has_io_net();
+  if (io_net_ == NULL) io_net_ = new ::draiosproto::counter;
+  return io_net_;
+}
+inline ::draiosproto::counter* time_categories::release_io_net() {
+  clear_has_io_net();
+  ::draiosproto::counter* temp = io_net_;
+  io_net_ = NULL;
+  return temp;
+}
+inline void time_categories::set_allocated_io_net(::draiosproto::counter* io_net) {
+  delete io_net_;
+  io_net_ = io_net;
+  if (io_net) {
+    set_has_io_net();
+  } else {
+    clear_has_io_net();
+  }
+}
+
+// optional .draiosproto.counter io_other = 16;
+inline bool time_categories::has_io_other() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void time_categories::set_has_io_other() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void time_categories::clear_has_io_other() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void time_categories::clear_io_other() {
+  if (io_other_ != NULL) io_other_->::draiosproto::counter::Clear();
+  clear_has_io_other();
+}
+inline const ::draiosproto::counter& time_categories::io_other() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return io_other_ != NULL ? *io_other_ : *default_instance().io_other_;
+#else
+  return io_other_ != NULL ? *io_other_ : *default_instance_->io_other_;
+#endif
+}
+inline ::draiosproto::counter* time_categories::mutable_io_other() {
+  set_has_io_other();
+  if (io_other_ == NULL) io_other_ = new ::draiosproto::counter;
+  return io_other_;
+}
+inline ::draiosproto::counter* time_categories::release_io_other() {
+  clear_has_io_other();
+  ::draiosproto::counter* temp = io_other_;
+  io_other_ = NULL;
+  return temp;
+}
+inline void time_categories::set_allocated_io_other(::draiosproto::counter* io_other) {
+  delete io_other_;
+  io_other_ = io_other;
+  if (io_other) {
+    set_has_io_other();
+  } else {
+    clear_has_io_other();
   }
 }
 
 // optional .draiosproto.counter wait = 17;
 inline bool time_categories::has_wait() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00008000u) != 0;
 }
 inline void time_categories::set_has_wait() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00008000u;
 }
 inline void time_categories::clear_has_wait() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline void time_categories::clear_wait() {
   if (wait_ != NULL) wait_->::draiosproto::counter::Clear();
@@ -1991,13 +2099,13 @@ inline void time_categories::set_allocated_wait(::draiosproto::counter* wait) {
 
 // optional .draiosproto.counter processing = 18;
 inline bool time_categories::has_processing() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00010000u) != 0;
 }
 inline void time_categories::set_has_processing() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00010000u;
 }
 inline void time_categories::clear_has_processing() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00010000u;
 }
 inline void time_categories::clear_processing() {
   if (processing_ != NULL) processing_->::draiosproto::counter::Clear();

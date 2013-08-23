@@ -336,6 +336,8 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 {
 	if(dir == DIR_IN)
 	{
+		m_incoming_bytes += len;
+
 		if(m_direction != DIR_IN)
 		{
 			updatestate res;
@@ -373,6 +375,8 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 	}
 	else if(dir == DIR_OUT)
 	{
+		m_outgoing_bytes += len;
+
 		if(m_direction != DIR_OUT)
 		{
 			updatestate res;

@@ -54,9 +54,9 @@ private:
 	inline void add_socket(sinsp_evt* evt, int64_t fd, uint32_t domain, uint32_t type, uint32_t protocol);
 	inline void add_pipe(sinsp_evt *evt, int64_t tid, int64_t fd, uint64_t ino);
 	// XXX this function has way too many parameters. Fix it.
-	inline void handle_read(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t len);
+	inline void handle_read(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t original_len, uint32_t len);
 	// XXX this function has way too many parameters. Fix it.
-	inline void handle_write(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t len);
+	inline void handle_write(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t original_len, uint32_t len);
 	void update_fd(sinsp_evt *evt, sinsp_evt_param* parinfo);
 	void set_addresses_and_ports(sinsp_fdinfo* fdinfo, char* packed_data);
 	void set_unix_info(sinsp_fdinfo* fdinfo, char* packed_data);

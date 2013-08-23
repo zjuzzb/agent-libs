@@ -13,7 +13,11 @@ public:
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt);
-	void add_syscall_time(sinsp_counters* metrics, ppm_event_category cat, uint64_t delta, bool inc_count);
+	void add_syscall_time(sinsp_counters* metrics, 
+		sinsp_evt::category* cat, 
+		uint64_t delta, 
+		uint32_t bytes, 
+		bool inc_count);
 
 private:
 	char* serialize_to_bytebuf(OUT uint32_t *len);

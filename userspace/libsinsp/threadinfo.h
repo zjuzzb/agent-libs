@@ -73,7 +73,7 @@ public:
 	uint16_t m_lastevent_type;
 	uint16_t m_lastevent_cpuid;
 	uint64_t m_lastaccess_ts;
-	ppm_event_category m_lastevent_category;
+	sinsp_evt::category m_lastevent_category;
 
 	//
 	// Analyzer state

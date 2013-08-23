@@ -33,7 +33,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(256952);
+//BRK(749);
 
 	//
 	// Cleanup the event-related state
@@ -713,8 +713,7 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 			evt->m_fdinfo = evt->m_tinfo->get_fd(dirfd);
 			if(evt->m_fdinfo == NULL)
 			{
-				/// xxx loris
-				//ASSERT(false);
+				ASSERT(false);
 				sdir = "<UNKNOWN>";
 			}
 			else
@@ -1502,8 +1501,10 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	}
 }
 
-void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t len)
+void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
+	evt->set_iosize(original_len);
+
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
 		sinsp_connection *connection = NULL;
@@ -1720,7 +1721,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			evt->get_ts(), 
 			sinsp_partial_transaction::DIR_IN, 
 			len);
-
 	}
 	else if(evt->m_fdinfo->is_pipe())
 	{
@@ -1737,8 +1737,10 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 	}
 }
 
-void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t len)
+void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
+	evt->set_iosize(original_len);
+
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
 		/////////////////////////////////////////////////////////////////////////////
@@ -2024,7 +2026,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			datalen = parinfo->m_len;
 			data = parinfo->m_val;
 
-			handle_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, datalen);
+			handle_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 		}
 		else
 		{
@@ -2055,7 +2057,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			datalen = parinfo->m_len;
 			data = parinfo->m_val;
 
-			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, datalen);
+			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 		}
 
 		//
@@ -2233,7 +2235,6 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t retval;
-	int64_t tid = evt->get_tid();
 
 	//
 	// Extract the return value

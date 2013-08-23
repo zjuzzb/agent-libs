@@ -326,7 +326,9 @@ const int time_categories::kSystemFieldNumber;
 const int time_categories::kSignalFieldNumber;
 const int time_categories::kUserFieldNumber;
 const int time_categories::kTimeFieldNumber;
-const int time_categories::kIoFieldNumber;
+const int time_categories::kIoFileFieldNumber;
+const int time_categories::kIoNetFieldNumber;
+const int time_categories::kIoOtherFieldNumber;
 const int time_categories::kWaitFieldNumber;
 const int time_categories::kProcessingFieldNumber;
 #endif  // !_MSC_VER
@@ -410,10 +412,22 @@ void time_categories::InitAsDefaultInstance() {
   time_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
 #endif
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  io_ = const_cast< ::draiosproto::counter*>(
+  io_file_ = const_cast< ::draiosproto::counter*>(
       ::draiosproto::counter::internal_default_instance());
 #else
-  io_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+  io_file_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  io_net_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  io_net_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  io_other_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  io_other_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
 #endif
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   wait_ = const_cast< ::draiosproto::counter*>(
@@ -449,7 +463,9 @@ void time_categories::SharedCtor() {
   signal_ = NULL;
   user_ = NULL;
   time_ = NULL;
-  io_ = NULL;
+  io_file_ = NULL;
+  io_net_ = NULL;
+  io_other_ = NULL;
   wait_ = NULL;
   processing_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -477,7 +493,9 @@ void time_categories::SharedDtor() {
     delete signal_;
     delete user_;
     delete time_;
-    delete io_;
+    delete io_file_;
+    delete io_net_;
+    delete io_other_;
     delete wait_;
     delete processing_;
   }
@@ -543,12 +561,20 @@ void time_categories::Clear() {
     if (has_time()) {
       if (time_ != NULL) time_->::draiosproto::counter::Clear();
     }
-    if (has_io()) {
-      if (io_ != NULL) io_->::draiosproto::counter::Clear();
+    if (has_io_file()) {
+      if (io_file_ != NULL) io_file_->::draiosproto::counter::Clear();
+    }
+    if (has_io_net()) {
+      if (io_net_ != NULL) io_net_->::draiosproto::counter::Clear();
+    }
+    if (has_io_other()) {
+      if (io_other_ != NULL) io_other_->::draiosproto::counter::Clear();
     }
     if (has_wait()) {
       if (wait_ != NULL) wait_->::draiosproto::counter::Clear();
     }
+  }
+  if (_has_bits_[16 / 32] & (0xffu << (16 % 32))) {
     if (has_processing()) {
       if (processing_ != NULL) processing_->::draiosproto::counter::Clear();
     }
@@ -725,17 +751,45 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(106)) goto parse_io;
+        if (input->ExpectTag(114)) goto parse_io_file;
         break;
       }
 
-      // optional .draiosproto.counter io = 13;
-      case 13: {
+      // optional .draiosproto.counter io_file = 14;
+      case 14: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_io:
+         parse_io_file:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_io()));
+               input, mutable_io_file()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(122)) goto parse_io_net;
+        break;
+      }
+
+      // optional .draiosproto.counter io_net = 15;
+      case 15: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_io_net:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_io_net()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(130)) goto parse_io_other;
+        break;
+      }
+
+      // optional .draiosproto.counter io_other = 16;
+      case 16: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_io_other:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_io_other()));
         } else {
           goto handle_uninterpreted;
         }
@@ -860,10 +914,22 @@ void time_categories::SerializeWithCachedSizes(
       12, this->time(), output);
   }
 
-  // optional .draiosproto.counter io = 13;
-  if (has_io()) {
+  // optional .draiosproto.counter io_file = 14;
+  if (has_io_file()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      13, this->io(), output);
+      14, this->io_file(), output);
+  }
+
+  // optional .draiosproto.counter io_net = 15;
+  if (has_io_net()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      15, this->io_net(), output);
+  }
+
+  // optional .draiosproto.counter io_other = 16;
+  if (has_io_other()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      16, this->io_other(), output);
   }
 
   // optional .draiosproto.counter wait = 17;
@@ -970,11 +1036,25 @@ int time_categories::ByteSize() const {
           this->time());
     }
 
-    // optional .draiosproto.counter io = 13;
-    if (has_io()) {
+    // optional .draiosproto.counter io_file = 14;
+    if (has_io_file()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->io());
+          this->io_file());
+    }
+
+    // optional .draiosproto.counter io_net = 15;
+    if (has_io_net()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->io_net());
+    }
+
+    // optional .draiosproto.counter io_other = 16;
+    if (has_io_other()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->io_other());
     }
 
     // optional .draiosproto.counter wait = 17;
@@ -984,6 +1064,8 @@ int time_categories::ByteSize() const {
           this->wait());
     }
 
+  }
+  if (_has_bits_[16 / 32] & (0xffu << (16 % 32))) {
     // optional .draiosproto.counter processing = 18;
     if (has_processing()) {
       total_size += 2 +
@@ -1044,12 +1126,20 @@ void time_categories::MergeFrom(const time_categories& from) {
     if (from.has_time()) {
       mutable_time()->::draiosproto::counter::MergeFrom(from.time());
     }
-    if (from.has_io()) {
-      mutable_io()->::draiosproto::counter::MergeFrom(from.io());
+    if (from.has_io_file()) {
+      mutable_io_file()->::draiosproto::counter::MergeFrom(from.io_file());
+    }
+    if (from.has_io_net()) {
+      mutable_io_net()->::draiosproto::counter::MergeFrom(from.io_net());
+    }
+    if (from.has_io_other()) {
+      mutable_io_other()->::draiosproto::counter::MergeFrom(from.io_other());
     }
     if (from.has_wait()) {
       mutable_wait()->::draiosproto::counter::MergeFrom(from.wait());
     }
+  }
+  if (from._has_bits_[16 / 32] & (0xffu << (16 % 32))) {
     if (from.has_processing()) {
       mutable_processing()->::draiosproto::counter::MergeFrom(from.processing());
     }
@@ -1081,7 +1171,9 @@ void time_categories::Swap(time_categories* other) {
     std::swap(signal_, other->signal_);
     std::swap(user_, other->user_);
     std::swap(time_, other->time_);
-    std::swap(io_, other->io_);
+    std::swap(io_file_, other->io_file_);
+    std::swap(io_net_, other->io_net_);
+    std::swap(io_other_, other->io_other_);
     std::swap(wait_, other->wait_);
     std::swap(processing_, other->processing_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);

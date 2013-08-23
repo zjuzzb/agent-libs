@@ -39,15 +39,15 @@ public:
 	};
 
 	//
-	// Event category specialization based on the fd type
+	// Event subcategory specialization based on the fd type
 	//
-	enum domain
+	enum subcategory
 	{
-		UNKNOWN = 0,
-		NONE = 1,
-		FILE = 2,
-		NET = 3,
-		IPC = 4,
+		SC_UNKNOWN = 0,
+		SC_NONE = 1,
+		SC_FILE = 2,
+		SC_NET = 3,
+		SC_IPC = 4,
 	};
 
 	//
@@ -56,8 +56,7 @@ public:
 	struct category
 	{
 		ppm_event_category m_category;	// Event category from the driver
-		domain m_domain;				// Domain for IO and wait events
-		scap_fd_type m_fdtype;			// Detailed FD type (e.g. IPv4 socket)
+		subcategory m_subcategory;		// Domain for IO and wait events
 	};
 
 	sinsp_evt();
@@ -74,6 +73,8 @@ public:
 	const char* get_name();
 	event_direction get_direction();
 	int64_t get_tid();
+	void set_iosize(uint32_t size);
+	uint32_t get_iosize();
 	sinsp_threadinfo* get_thread_info(bool query_os_if_not_found = false);
 	uint32_t get_num_params();
 	sinsp_evt_param* get_param(uint32_t id);
@@ -82,7 +83,7 @@ public:
 	const char* get_param_as_str(uint32_t id, OUT const char** resolved_str, param_fmt fmt = PF_NORMAL);
 	string get_param_value_str(const char* name, bool resolved = true);
 	string get_param_value_str(string& name, bool resolved = true);
-	ppm_event_category get_category();
+	void get_category(OUT sinsp_evt::category* cat);
 
 //	int32_t to_str(IN evt_param_info* param, OUT char* str, uint32_t strlen);
 private:
@@ -100,6 +101,7 @@ private:
 	char m_resolved_paramstr_storage[1024];
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
+	uint32_t m_iosize;
 
 	friend class sinsp;
 	friend class sinsp_parser;

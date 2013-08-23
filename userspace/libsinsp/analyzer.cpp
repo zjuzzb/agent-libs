@@ -157,7 +157,9 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 {
 	uint32_t j;
 	uint64_t delta;
-	ppm_event_category cat;
+	sinsp_evt::category* cat;
+	sinsp_evt::category tcat;
+
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
@@ -217,16 +219,19 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 
 					if(PPME_IS_ENTER(it->second.m_lastevent_type))
 					{
-						cat = it->second.m_lastevent_category;
+						cat = &it->second.m_lastevent_category;
 					}
 					else
 					{
-						cat = EC_PROCESSING;
+						tcat.m_category = EC_PROCESSING;
+						tcat.m_subcategory = sinsp_evt::SC_NONE;
+						cat = &tcat;
 					}
 
 					add_syscall_time(&it->second.m_metrics, 
 						cat, 
 						delta,
+						0,
 						false);
 
 					//
@@ -609,7 +614,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 {
 	uint64_t ts;
 	uint64_t delta;
-	ppm_event_category cat;
+	sinsp_evt::category cat;
 
 	//
 	// If there is no event, assume that this is an EOF and use the 
@@ -617,12 +622,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	if(evt)
 	{
-/*
-if(evt->get_num() == 3307)
-{
-	int a = 0;
-}
-*/
 		ts = evt->get_ts();
 	}
 	else
@@ -655,7 +654,7 @@ if(evt->get_num() == 3307)
 	//
 	// Get the event category and type
 	//
-	cat = evt->get_category();
+	evt->get_category(&cat);
 	uint16_t etype = evt->get_type();
 
 	//
@@ -693,7 +692,7 @@ if(evt->get_num() == 3307)
 		//
 		// Switch the category to processing
 		//
-		cat = EC_PROCESSING;
+		cat.m_category = EC_PROCESSING;
 	}
 	else
 	{
@@ -702,36 +701,34 @@ if(evt->get_num() == 3307)
 			//
 			// There was some kind of drop and the enter event is not matching
 			//
-			cat = EC_UNKNOWN;
+			cat.m_category = EC_UNKNOWN;
 		}
 
 		//
 		// If a sample flush happens after this event, the time will have to
 		// be attributed to processing.
 		//
-		evt->m_tinfo->m_lastevent_category = EC_PROCESSING;
+		evt->m_tinfo->m_lastevent_category.m_category = EC_PROCESSING;
 	}
 
-	bool do_inc_counter = (cat != EC_PROCESSING);
+	bool do_inc_counter = (cat.m_category != EC_PROCESSING);
 
-	add_syscall_time(&evt->m_tinfo->m_metrics, cat, delta, do_inc_counter);
-
-/*
-if(do_inc_counter)
-{
-	fprintf(stderr, "%llu\n", evt->get_num());
-}
-*/
+	add_syscall_time(&evt->m_tinfo->m_metrics, 
+		&cat,
+		delta, 
+		evt->get_iosize(),
+		do_inc_counter);
 }
 
 void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics, 
-									  ppm_event_category cat, 
+									  sinsp_evt::category* cat, 
 									  uint64_t delta, 
+									  uint32_t bytes, 
 									  bool inc_count)
 {
 	uint32_t cnt_delta = (inc_count)? 1 : 0;
 
-	switch(cat)
+	switch(cat->m_category)
 	{
 		case EC_UNKNOWN:
 			metrics->m_unknown.add(cnt_delta, delta);
@@ -772,7 +769,32 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 			metrics->m_processing.add(cnt_delta, delta);
 			break;
 		case EC_IO:
-			metrics->m_io.add(cnt_delta, delta, 0);
+			{
+				switch(cat->m_subcategory)
+				{
+				case sinsp_evt::SC_FILE:
+					metrics->m_io_file.add(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NET:
+					metrics->m_io_net.add(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_IPC:
+					metrics->m_ipc.add(cnt_delta, delta);
+					break;
+				case sinsp_evt::SC_UNKNOWN:
+					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NONE:
+					ASSERT(false);
+					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					break;
+				default:
+					ASSERT(false);
+					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					break;
+				}
+
+			}
 			break;
 		case EC_WAIT:
 			metrics->m_wait.add(cnt_delta, delta);

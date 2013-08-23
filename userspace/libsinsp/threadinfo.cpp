@@ -24,7 +24,7 @@ sinsp_threadinfo::sinsp_threadinfo() :
 	m_lastevent_type = -1;
 	m_lastevent_ts = 0;
 	m_lastaccess_ts = 0;
-	m_lastevent_category = EC_UNKNOWN;
+	m_lastevent_category.m_category = EC_UNKNOWN;
 	m_analysis_flags = AF_PARTIAL_METRIC;
 	m_flags = 0;
 	m_n_threads = 0;
@@ -43,7 +43,7 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 	m_lastevent_type = -1;
 	m_lastevent_ts = 0;
 	m_lastaccess_ts = inspector->m_lastevent_ts;
-	m_lastevent_category = EC_UNKNOWN;
+	m_lastevent_category.m_category = EC_UNKNOWN;
 	m_flags = 0;
 	m_n_threads = 0;
 	m_refcount = 0;

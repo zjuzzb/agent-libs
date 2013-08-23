@@ -23,10 +23,10 @@ message time_categories {
 	optional counter signal = 10;
 	optional counter user = 11;
 	optional counter time = 12;
-	optional counter io = 13;
-//	optional counter io_file = 14;
-//	optional counter io_net = 15;
-//	optional counter io_other = 16;
+//	optional counter io = 13;
+	optional counter io_file = 14;
+	optional counter io_net = 15;
+	optional counter io_other = 16;
 	optional counter wait = 17;
 	optional counter processing = 18;
 }

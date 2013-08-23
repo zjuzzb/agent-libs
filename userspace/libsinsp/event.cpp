@@ -47,6 +47,7 @@ void sinsp_evt::init()
 	m_info = scap_event_getinfo(m_pevt);
 	m_tinfo = NULL;
 	m_fdinfo = NULL;
+	m_iosize = 0;
 }
 
 void sinsp_evt::init(uint8_t *evdata, uint16_t cpuid)
@@ -56,6 +57,7 @@ void sinsp_evt::init(uint8_t *evdata, uint16_t cpuid)
 	m_info = scap_event_getinfo(m_pevt);
 	m_tinfo = NULL;
 	m_fdinfo = NULL;
+	m_iosize = 0;
 	m_cpuid = cpuid;
 	m_evtnum = 0;
 }
@@ -98,6 +100,16 @@ event_direction sinsp_evt::get_direction()
 int64_t sinsp_evt::get_tid()
 {
 	return m_pevt->tid;
+}
+
+void sinsp_evt::set_iosize(uint32_t size)
+{
+	m_iosize = size;
+}
+
+uint32_t sinsp_evt::get_iosize()
+{
+	return m_iosize;
 }
 
 sinsp_threadinfo* sinsp_evt::get_thread_info(bool query_os_if_not_found)
@@ -816,7 +828,7 @@ void sinsp_evt::load_params()
 	}
 }
 
-ppm_event_category sinsp_evt::get_category()
+void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 {
 	if(get_type() == PPME_GENERIC_E || 
 		get_type() == PPME_GENERIC_E)
@@ -825,7 +837,8 @@ ppm_event_category sinsp_evt::get_category()
 		// This event is a syscall that doesn't have a filler yet.
 		// The category can be found in g_syscall_info_table.
 		//
-		return g_infotables.m_syscall_info_table[0].category;
+		cat->m_category = g_infotables.m_syscall_info_table[0].category;
+		cat->m_subcategory = sinsp_evt::SC_NONE;
 	}
 	else
 	{
@@ -833,53 +846,48 @@ ppm_event_category sinsp_evt::get_category()
 		// This event has a real filler.
 		// The category can be found in the info struct.
 		//
-		return m_info->category;
-	}
+		cat->m_category = m_info->category;
 
-/*
-	//
-	// For EC_IO and EC_WAIT events, we dig into the fd state to get the category
-	// and fdtype
-	//
-	if(cat->m_category == EC_IO)
-	{
-		if(!fdinfo)
+		//
+		// For EC_IO and EC_WAIT events, we dig into the fd state to get the category
+		// and fdtype
+		//
+		if(cat->m_category == EC_IO)
 		{
-			//
-			// The fd info is not present, likely because we missed its creation.
-			//
-			cat->m_fdtype = SCAP_FD_UNKNOWN;
-			cat->m_domain = UNKNOWN;
-			return;
-		}
-
-		cat->m_fdtype = fdinfo->m_type;
-
-		switch(cat->m_fdtype)
-		{
-			case SCAP_FD_FILE:
-			case SCAP_FD_DIRECTORY:
-				cat->m_domain = FILE;
-				break;
-			case SCAP_FD_IPV4_SOCK:
-			case SCAP_FD_IPV6_SOCK:
-				cat->m_domain = NET;
-			case SCAP_FD_IPV4_SERVSOCK:
-			case SCAP_FD_IPV6_SERVSOCK:
-				// AFAIK, there shouldn't be IO on a server socket
-				ASSERT(false);
-				cat->m_domain = NET;
-				break;
-			case SCAP_FD_FIFO:
-			case SCAP_FD_UNIX_SOCK:
-			case SCAP_FD_EVENT:
-				cat->m_domain = IPC;
-				break;
-			default:
-				ASSERT(false);
-				cat->m_domain = UNKNOWN;
-				break;
+			if(!m_fdinfo)
+			{
+				//
+				// The fd info is not present, likely because we missed its creation.
+				//
+				cat->m_subcategory = SC_UNKNOWN;
+				return;
+			}
+			else
+			{
+				switch(m_fdinfo->m_type)
+				{
+					case SCAP_FD_FILE:
+					case SCAP_FD_DIRECTORY:
+						cat->m_subcategory = SC_FILE;
+						break;
+					case SCAP_FD_IPV4_SOCK:
+					case SCAP_FD_IPV6_SOCK:
+						cat->m_subcategory = SC_NET;
+					case SCAP_FD_IPV4_SERVSOCK:
+					case SCAP_FD_IPV6_SERVSOCK:
+						cat->m_subcategory = SC_NET;
+						break;
+					case SCAP_FD_FIFO:
+					case SCAP_FD_UNIX_SOCK:
+					case SCAP_FD_EVENT:
+						cat->m_subcategory = SC_IPC;
+						break;
+					default:
+						ASSERT(false);
+						cat->m_subcategory = SC_UNKNOWN;
+						break;
+				}
+			}
 		}
 	}
-*/
 }

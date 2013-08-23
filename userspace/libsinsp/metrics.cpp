@@ -103,7 +103,10 @@ void sinsp_counters::clear()
 	m_signal.clear();
 	m_user.clear();
 	m_time.clear();
-	m_io.clear();
+//	m_io.clear();
+	m_io_file.clear();
+	m_io_net.clear();
+	m_io_other.clear();
 	m_wait.clear();
 	m_processing.clear();
 }
@@ -122,7 +125,10 @@ void sinsp_counters::get_total(sinsp_counter_basic* tot)
 	tot->add(&m_signal);
 	tot->add(&m_user);
 	tot->add(&m_time);
-	tot->add(&m_io);
+//	tot->add(&m_io);
+	tot->add(&m_io_file);
+	tot->add(&m_io_net);
+	tot->add(&m_io_other);
 	tot->add(&m_wait);
 	tot->add(&m_processing);
 }
@@ -141,7 +147,10 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_signal.add(&other->m_signal);
 	m_user.add(&other->m_user);
 	m_time.add(&other->m_time);
-	m_io.add(&other->m_io);
+//	m_io.add(&other->m_io);
+	m_io_file.add(&other->m_io_file);
+	m_io_net.add(&other->m_io_net);
+	m_io_other.add(&other->m_io_other);
 	m_wait.add(&other->m_wait);
 	m_processing.add(&other->m_processing);
 }
@@ -160,7 +169,10 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 	m_signal.to_protobuf(protobuf_msg->mutable_signal());
 	m_user.to_protobuf(protobuf_msg->mutable_user());
 	m_time.to_protobuf(protobuf_msg->mutable_time());
-	m_io.to_protobuf(protobuf_msg->mutable_io());
+//	m_io.to_protobuf(protobuf_msg->mutable_io());
+	m_io_file.to_protobuf(protobuf_msg->mutable_io_file());
+	m_io_net.to_protobuf(protobuf_msg->mutable_io_net());
+	m_io_other.to_protobuf(protobuf_msg->mutable_io_other());
 	m_wait.to_protobuf(protobuf_msg->mutable_wait());
 	m_processing.to_protobuf(protobuf_msg->mutable_processing());
 }
