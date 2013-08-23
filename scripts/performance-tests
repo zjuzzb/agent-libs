@@ -2,7 +2,9 @@
 set -exu
 
 REPOSITORY_NAME="$1"
-TESTS="pts/server"
+
+# Long interesting tests: pts/sqlite pts/fs-mark pts/iozone pts/dbench pts/pgbench
+TESTS="pts/apache pts/nginx pts/postmark pts/phpbench pts/blogbench"
 
 function install_rpm {
 	sudo yum -y erase draios-agent draios-tests draios-debug-agent draios-debug-tests
@@ -49,6 +51,7 @@ fi
 
 rm -rf ~/.phoronix-test-suite/test-results/201*
 rm -rf ~/.phoronix-test-suite/test-results/merge
+rm -rf /var/crash/*
 
 sudo service dragent stop
 sudo service dragent status || true
@@ -69,6 +72,7 @@ echo driver-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $
 mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/driver-$TEST_DIR
 sudo killall -9 scap-open
 sudo rmmod ppm
+[ "$(ls /var/crash)" ] && false
 
 sudo service dragent start
 ./phoronix-test-suite batch-benchmark $TESTS
@@ -77,6 +81,7 @@ echo agent-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $T
 mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/agent-$TEST_DIR
 sudo service dragent status
 sudo service dragent stop
+[ "$(ls /var/crash)" ] && false
 
 ./phoronix-test-suite merge-results $(ls ~/.phoronix-test-suite/test-results)
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
