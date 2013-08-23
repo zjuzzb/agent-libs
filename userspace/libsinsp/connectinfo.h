@@ -83,7 +83,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
-	std::pair<typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator,
+	const std::pair<typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator,
 		bool>& element = m_connections.emplace(key, timestamp);
 
 	sinsp_connection& conn = element.first->second;

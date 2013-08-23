@@ -2196,7 +2196,6 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t retval;
-	int64_t tid = evt->get_tid();
 
 	//
 	// Extract the return value
