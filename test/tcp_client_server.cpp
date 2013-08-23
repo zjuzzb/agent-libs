@@ -1,3 +1,5 @@
+#define VISIBILITY_PRIVATE
+
 #include "sys_call_test.h"
 #include <gtest.h>
 #include <algorithm>
@@ -9,6 +11,8 @@
 #include <Poco/Process.h>
 #include <Poco/PipeStream.h>
 #include <Poco/StringTokenizer.h>
+#include <Poco/NumberFormatter.h>
+#include <Poco/NumberParser.h>
 #include <list>
 #include <cassert>
 #include <sys/types.h>
@@ -18,6 +22,8 @@
 #include <sys/syscall.h>
 
 using Poco::StringTokenizer;
+using Poco::NumberFormatter;
+using Poco::NumberParser;
 
 #define SERVER_PORT     3555
 #define SERVER_PORT_STR "3555"
@@ -423,6 +429,7 @@ void runtest(iotype iot,
 	char *server_address = inet_ntoa(server_in_addr);
 	string sport;
 	int state = 0;
+	int ctid;
 
 	//
 	// FILTER
@@ -448,7 +455,11 @@ void runtest(iotype iot,
 			ntransactions,
 			exit_no_close);
 		client.run();
+		ctid = client.get_tid();
 		server_thread.join(100);
+
+		// We use a random call to tee to signal that we're done
+		tee(-1, -1, 0, 0);		
 	};
 
 	function<void (const callback_param&) > log_param = [](const callback_param& param)
@@ -651,13 +662,35 @@ void runtest(iotype iot,
 			sinsp_threadinfo* ti = evt->get_thread_info();
 			ASSERT_EQ(ntransactions, ti->m_transaction_metrics.m_incoming.m_count);
 		}
+
+		if(!(use_shutdown || exit_no_close))
+		{
+			if(evt->get_type() == PPME_GENERIC_E)
+			{
+				if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+				{
+					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
+					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, ti->m_metrics.m_io_net.m_bytes);
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), ti->m_metrics.m_io_net.m_count);
+
+					ti = param.m_inspector->get_thread(ctid, false);
+					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, ti->m_metrics.m_io_net.m_bytes);
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), ti->m_metrics.m_io_net.m_count);
+					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_count);
+					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_bytes);
+				}
+			}
+		}		
 	};
 
 
 	//
 	// OUTPUT VALDATION
 	//
-	ASSERT_NO_FATAL_FAILURE( { event_capture::run(test, callback, filter);});
+	sinsp_configuration configuration;
+	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+
+	ASSERT_NO_FATAL_FAILURE( { event_capture::run(test, callback, filter, configuration);});
 	
 // #ifdef __i386__
 // 	EXPECT_EQ(8, callnum);
