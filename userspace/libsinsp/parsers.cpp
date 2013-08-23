@@ -33,7 +33,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(2587);
+//BRK(256952);
 
 	//
 	// Cleanup the event-related state
@@ -242,6 +242,29 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			{
 //              ASSERT(false);
 				return false;
+			}
+			else if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)
+			{
+				//
+				// A close gets canceled when the same fd is created succesfully between
+				// close enter and close exit.
+				// If that happens
+				//
+				erase_fd_params eparams;
+
+				evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
+				eparams.m_fd = CANCELED_FD_NUMBER;
+				eparams.m_fdinfo = evt->m_tinfo->get_fd(CANCELED_FD_NUMBER);
+
+				//
+				// Remove the fd from the different tables
+				//
+				eparams.m_remove_from_table = false;
+				eparams.m_inspector = m_inspector;
+				eparams.m_tinfo = evt->m_tinfo;
+				eparams.m_ts = evt->get_ts();
+
+				erase_fd(&eparams);
 			}
 		}
 	}
@@ -690,7 +713,8 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 			evt->m_fdinfo = evt->m_tinfo->get_fd(dirfd);
 			if(evt->m_fdinfo == NULL)
 			{
-//				ASSERT(false);
+				/// xxx loris
+				//ASSERT(false);
 				sdir = "<UNKNOWN>";
 			}
 			else
@@ -1208,6 +1232,20 @@ void sinsp_parser::parse_close_enter(sinsp_evt *evt)
 //
 void sinsp_parser::erase_fd(erase_fd_params* params)
 {
+	if(params->m_fdinfo == NULL)
+	{
+		//
+		// This happens when more than one close has been canceled at the same time for 
+		// this thread. Since we currently handle just one canceling at at time (we
+		// don't have a list of canceled closes, just a single entry), the second one 
+		// will generate a failed FD lookup. We do nothing.
+		// NOTE: I realize that this can cause a connection leak, I just assume that it's
+		//       rare enough that the delayed connection cleanup (when the timestamp expires)
+		//       is acceptable.
+		//
+		ASSERT(params->m_fd == CANCELED_FD_NUMBER);
+		return;
+	}
 
 	//
 	// Schedule the fd for removal
@@ -2195,6 +2233,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t retval;
+	int64_t tid = evt->get_tid();
 
 	//
 	// Extract the return value
