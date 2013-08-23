@@ -782,6 +782,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 					metrics->m_ipc.add(cnt_delta, delta);
 					break;
 				case sinsp_evt::SC_UNKNOWN:
+				case sinsp_evt::SC_OTHER:
 					metrics->m_io_other.add(cnt_delta, delta, bytes);
 					break;
 				case sinsp_evt::SC_NONE:

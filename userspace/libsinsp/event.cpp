@@ -889,6 +889,9 @@ void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 					case SCAP_FD_TIMERFD:
 						cat->m_subcategory = SC_OTHER;
 						break;
+					case SCAP_FD_UNKNOWN:
+						cat->m_subcategory = SC_OTHER;
+						break;
 					default:
 						ASSERT(false);
 						cat->m_subcategory = SC_UNKNOWN;
