@@ -332,7 +332,6 @@ sinsp_partial_transaction::sinsp_partial_transaction(unix_tuple *flow)
 	m_family = family::UNIX;
 }
 
-
 sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len)
 {
 	if(dir == DIR_IN)
@@ -441,4 +440,16 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(sinsp* 
 	}
 
 	return res;
+}
+
+void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction::type newtype)
+{
+	m_type = newtype;
+	m_incoming_bytes = 0;
+	m_outgoing_bytes = 0;
+}
+
+void sinsp_partial_transaction::mark_inactive()
+{
+	m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
 }

@@ -73,6 +73,12 @@ public:
 		uint64_t exit_ts, 
 		direction dir, 
 		uint32_t datalen);
+	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
+	void mark_inactive();
+	bool is_active()
+	{
+		return m_type != type::TYPE_UNKNOWN;
+	}
 
 	bool is_ipv4_flow()
 	{
@@ -102,6 +108,8 @@ public:
 	uint64_t m_prev_prev_end_time;
 	family m_family;
 	side m_side;
+	uint32_t m_incoming_bytes;
+	uint32_t m_outgoing_bytes;
 	//  unordered_map<int64_t, sinsp_transactfd> m_fdmap;
 
 private:

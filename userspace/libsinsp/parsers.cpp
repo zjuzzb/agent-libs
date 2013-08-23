@@ -690,7 +690,7 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 			evt->m_fdinfo = evt->m_tinfo->get_fd(dirfd);
 			if(evt->m_fdinfo == NULL)
 			{
-				ASSERT(false);
+//				ASSERT(false);
 				sdir = "<UNKNOWN>";
 			}
 			else
@@ -1248,7 +1248,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 			sinsp_partial_transaction::DIR_CLOSE, 
 			0);
 
-		params->m_fdinfo->m_transaction.m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
+		params->m_fdinfo->m_transaction.mark_inactive();
 	}
 
 	//
@@ -1661,12 +1661,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		// See if there's already a transaction
 		//
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
-		if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
+		if(!trinfo->is_active())
 		{
 			//
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
-			trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
+			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
 		}
 
 		evt->m_fdinfo->set_is_transaction();
@@ -1674,7 +1674,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		// Update the transaction state.
 		//
-//BRK(2585);
 		ASSERT(connection != NULL);
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
@@ -1852,12 +1851,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		// See if there's already a transaction
 		//
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
-		if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
+		if(!trinfo->is_active())
 		{
 			//
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
-			trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
+			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
 		}
 
 		evt->m_fdinfo->set_is_transaction();
@@ -2236,7 +2235,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 			sinsp_partial_transaction::DIR_CLOSE, 
 			0);
 
-		evt->m_fdinfo->m_transaction.m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
+		evt->m_fdinfo->m_transaction.mark_inactive();
 	}
 }
 
