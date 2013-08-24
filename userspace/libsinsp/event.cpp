@@ -9,7 +9,6 @@
 #include "sinsp_int.h"
 
 #include "../libscap/scap.h"
-#include "../libscap/scap-int.h"
 
 extern sinsp_evttables g_infotables;
 

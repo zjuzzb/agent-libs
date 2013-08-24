@@ -321,6 +321,9 @@ uint32_t scap_event_getnumparams(scap_evt* e);
 // Fill a evt_param_info structure with the details of one of the event parameters
 int32_t scap_event_getparam(scap_evt* e, uint32_t paramid, OUT evt_param_info* param);
 
+// Get the event table entry for the given event
+const struct ppm_event_info* scap_event_getinfo(scap_evt* e);
+
 int32_t scap_param_to_str(IN evt_param_info* param, OUT char* str, uint32_t strlen);
 
 // Get the information about a process.

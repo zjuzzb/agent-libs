@@ -472,8 +472,6 @@ protected:
 			//
 			// Start consuming the captured events
 			//
-			// sleep(3);
-			// throw exception();
 			do_inspect();
 		}
 		catch(sinsp_exception e)

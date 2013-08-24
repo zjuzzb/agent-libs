@@ -118,8 +118,6 @@ void scap_fd_remove(scap_t* handle, scap_threadinfo* pi, int64_t fd);
 int32_t scap_read_init(scap_t* handle, FILE* f);
 // Read an event from disk
 int32_t scap_next_offline(scap_t* handle, OUT scap_evt** pevent, OUT uint16_t* pcpuid);
-// Get the event table entry for the given event
-const struct ppm_event_info* scap_event_getinfo(scap_evt* e);
 // read the filedescriptors for a given process directory
 int32_t scap_fd_scan_fd_dir(scap_t* handle, char * procdir, scap_threadinfo* pi, scap_fdinfo * sockets, char *error);
 // read tcp or udp sockets from the proc filesystem

@@ -79,7 +79,15 @@ using Poco::Path;
 using Poco::Environment;
 
 #ifdef _DEBUG
-#define ASSERT(X) assert(X)
+#define ASSERT(X) \
+	if(!(X)) \
+	{ \
+		if(g_log) \
+		{ \
+			g_log->error(Poco::format("ASSERTION %s at %s:%d", string(#X), string(__FILE__), __LINE__)); \
+		} \
+		assert(X); \
+	} 
 #else // _DEBUG
 #define ASSERT(X)
 #endif // _DEBUG
