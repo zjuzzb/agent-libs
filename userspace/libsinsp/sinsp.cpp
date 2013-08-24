@@ -34,6 +34,7 @@ sinsp::sinsp() :
 	m_stats.clear();
 #endif
 	m_thread_manager = NULL;
+	m_analyzer_callback = NULL;
 
 	m_fds_to_remove = new vector<int64_t>;
 }
@@ -219,6 +220,11 @@ void sinsp::init()
 	//
 	m_parser = new sinsp_parser(this);
 	m_analyzer = new sinsp_analyzer(this);
+	if(m_analyzer_callback)
+	{
+		set_analyzer_callback(m_analyzer_callback);
+	}
+
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(this);
 	m_unix_connections = new sinsp_unix_connection_manager(this);
 	m_pipe_connections = new sinsp_pipe_connection_manager(this);
@@ -581,34 +587,14 @@ void sinsp::set_log_callback(sinsp_logger_callback cb)
 	g_logger.add_callback_log(cb);
 }
 
-/*
-draios::metrics* sinsp::get_metrics()
+void sinsp::set_analyzer_callback(sinsp_analyzer_callback cb)
 {
-#ifdef USE_ANALYZER
-	draios::metrics* metrics = new draios::metrics;
-	threadinfo_map_t* threads = m_threadess_manager->get_processes();
-	procinfo_map_iterator_t it = processes->begin();
-	
-	for(;it != processes->end();it++)
+	if(m_analyzer == NULL)
 	{
-		sinsp_threadinfo& proc = it->second;
-		draios::process* process = metrics->add_procs();
-		process->set_pid(proc.m_pid);
-		process->set_tid(proc.m_tid);
-		process->set_clone_files(proc.m_flags & PPM_CL_CLONE_FILES);
-		if(!proc.is_not_main_thread())
-		{
-			process->set_comm(proc.m_comm);
-			process->set_exe(proc.m_exe);
-			process->set_args(proc.m_args);
-			process->set_cwd(proc.m_cwd);
-		}
+		m_analyzer_callback = cb;
 	}
-
-	return metrics;
-#else
-	return NULL;
-#endif
-	return NULL;
+	else
+	{
+		m_analyzer->set_sample_callback(cb);
+	}
 }
-*/

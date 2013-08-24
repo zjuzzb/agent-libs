@@ -116,6 +116,13 @@ struct sinsp_exception : std::exception
 	string m_error_str;
 };
 
+#ifdef USE_ANALYZER
+//
+// Prototype of the callback invoked by the analyzer when a sample is ready
+//
+typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
+#endif
+
 //
 // The root system inspection class
 //
@@ -172,6 +179,11 @@ public:
 	void start_capture();
 
 	//
+	// Set the callback that receives the analyzer output
+	//
+	void set_analyzer_callback(sinsp_analyzer_callback cb);
+
+	//
 	// Get processing stats
 	//
 #ifdef GATHER_INTERNAL_STATS
@@ -186,6 +198,9 @@ public:
 		return m_lasterr;
 	}
 
+	//
+	// Set the target for the log strings
+	//
 	void set_log_callback(sinsp_logger_callback cb);
 
 	//
@@ -243,7 +258,7 @@ VISIBILITY_PRIVATE
 
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
-
+	sinsp_analyzer_callback m_analyzer_callback;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

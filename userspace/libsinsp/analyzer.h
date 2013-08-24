@@ -9,6 +9,7 @@ public:
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
+	void set_sample_callback(sinsp_analyzer_callback cb);
 	//
 	// Processing entry point
 	//
@@ -21,7 +22,7 @@ public:
 
 private:
 	char* serialize_to_bytebuf(OUT uint32_t *len);
-	void serialize_to_file(uint64_t ts);
+	void serialize(uint64_t ts);
 	void flush(uint64_t ts, bool is_eof);
 
 	//
@@ -37,6 +38,11 @@ private:
 	draiosproto::metrics* m_metrics;
 	char* m_serialization_buffer;
 	uint32_t m_serialization_buffer_size;
+
+	//
+	// The callback we invoke when a sample is ready
+	//
+	sinsp_analyzer_callback m_sample_callback;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

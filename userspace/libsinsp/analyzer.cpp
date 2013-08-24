@@ -45,6 +45,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 		throw sinsp_exception(string(tbuf));
 	}
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
+	m_sample_callback = NULL;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -58,6 +59,13 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		free(m_serialization_buffer);
 	}
+}
+
+void sinsp_analyzer::set_sample_callback(sinsp_analyzer_callback cb)
+{
+	ASSERT(cb != NULL);
+	ASSERT(m_sample_callback == NULL);
+	m_sample_callback = cb;
 }
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
@@ -99,7 +107,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
 	return m_serialization_buffer;
 }
 
-void sinsp_analyzer::serialize_to_file(uint64_t ts)
+void sinsp_analyzer::serialize(uint64_t ts)
 {
 	char fname[128];
 	uint32_t buflen;
@@ -119,38 +127,49 @@ void sinsp_analyzer::serialize_to_file(uint64_t ts)
 	}
 
 	//
+	// If we have a callback, invoke it with the data
+	//
+	if(m_sample_callback != NULL)
+	{
+		(*m_sample_callback)(buf, buflen);
+	}
+
+	//
 	// Write the data to file
 	//
-	snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
-		m_inspector->m_configuration.get_metrics_directory().c_str(),
-		ts / 1000000000);
-	FILE* fp = fopen(fname, "wb");
-
-	if(!fp)
+	if(m_inspector->m_configuration.get_emit_metrics_to_file())
 	{
-		ASSERT(false);
-		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
-		throw sinsp_exception(estr);
-	}
+		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
+			m_inspector->m_configuration.get_metrics_directory().c_str(),
+			ts / 1000000000);
+		FILE* fp = fopen(fname, "wb");
+
+		if(!fp)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
+			throw sinsp_exception(estr);
+		}
 /*
-	// first there's a 32bit frame length...
-	uint32_t nbo_frame_length = htonl(buflen);
-	if(fwrite(&nbo_frame_length, sizeof(nbo_frame_length), 1, fp) != 1)
-	{
-		ASSERT(false);
-		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
-		throw sinsp_exception(estr);
-	}
+		// first there's a 32bit frame length...
+		uint32_t nbo_frame_length = htonl(buflen);
+		if(fwrite(&nbo_frame_length, sizeof(nbo_frame_length), 1, fp) != 1)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
+			throw sinsp_exception(estr);
+		}
 */
-	// ..and then there's the actual data
-	if(fwrite(buf, buflen, 1, fp) != 1)
-	{
-		ASSERT(false);
-		char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
-		throw sinsp_exception(estr);
-	}
+		// ..and then there's the actual data
+		if(fwrite(buf, buflen, 1, fp) != 1)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
+			throw sinsp_exception(estr);
+		}
 
-	fclose(fp);
+		fclose(fp);
+	}
 }
 
 void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
@@ -577,10 +596,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
 			////////////////////////////////////////////////////////////////////////////
-			if(m_inspector->m_configuration.get_emit_metrics_to_file())
-			{
-				serialize_to_file(m_prev_flush_time_ns);
-			}
+			serialize(m_prev_flush_time_ns);
 
 //			m_inspector->m_overall_metrics.print_on(stderr);
 //			m_inspector->m_overall_metrics.clear();

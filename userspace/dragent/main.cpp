@@ -100,6 +100,19 @@ void g_logger_callback(char* str, uint32_t sev)
 }
 
 //
+// This function is called every time the sinsp analyzer has a new sample ready
+//
+Poco::Net::SocketAddress* sa = NULL;
+Poco::Net::StreamSocket* srvsocket = NULL;
+
+void g_analyzer_callback(char* str, uint32_t len)
+{
+	ASSERT(sa != NULL);
+	ASSERT(socket != NULL);
+	srvsocket->sendBytes(str, len);
+}
+
+//
 // Capture information class
 //
 class captureinfo
@@ -134,6 +147,8 @@ public:
 protected:
 	void initialize(Application& self)
 	{
+		m_serverport = 0;
+
 		//
 		// load the configuration file.
 		// First try the local dir
@@ -211,6 +226,18 @@ protected:
 				.required(false)
 				.repeatable(false)
 				.argument("filename"));
+
+		options.addOption(
+			Option("srvaddr", "", "the address of the server to connect to.")
+				.required(false)
+				.repeatable(false)
+				.argument("address"));
+
+		options.addOption(
+			Option("srvport", "", "the TCP port to use.")
+				.required(false)
+				.repeatable(false)
+				.argument("port"));
 	}
 
 	void handleOption(const std::string& name, const std::string& value)
@@ -284,6 +311,14 @@ protected:
 		else if(name == "writefile")
 		{
 			m_writefile = value;
+		}
+		else if(name == "srvaddr")
+		{
+			m_serveraddr = value;
+		}
+		else if(name == "srvport")
+		{
+			m_serverport = (uint16_t)NumberParser::parse(value);
 		}
 	}
 
@@ -423,10 +458,33 @@ protected:
 		md.createDirectories();
 
 		//
-		// From now on we can get an exception from sinsp
+		// From now on we can get exceptions
 		//
 		try
 		{
+			//
+			// Connect to the server
+			//
+			if(m_serveraddr == "")
+			{
+				m_serveraddr = config().getString("server.address", "");
+			}
+
+			if(m_serverport == 0)
+			{
+				m_serverport = config().getInt("server.port", 0);
+			}
+
+			if(m_serveraddr != "" && m_serverport != 0)
+			{
+				sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
+				srvsocket = new Poco::Net::StreamSocket(*sa);
+				m_inspector.set_analyzer_callback(g_analyzer_callback);
+			}
+
+			//
+			// Plug the sinsp logger into our one
+			//
 			m_inspector.set_log_callback(g_logger_callback);
 			if(config().hasOption("metricsfile.location"))
 			{
@@ -503,6 +561,8 @@ private:
 	uint64_t m_evtcnt;
 	string m_customerid;
 	string m_writefile;
+	string m_serveraddr;
+	uint16_t m_serverport;
 };
 
 
