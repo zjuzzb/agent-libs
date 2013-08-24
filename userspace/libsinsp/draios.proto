@@ -36,6 +36,13 @@ message transaction_categories {
 	optional counter outgoing = 2;
 }
 
+message connection_categories {
+	optional counter server_incoming = 1;
+	optional counter server_outgoing = 2;
+	optional counter client_incoming = 3;
+	optional counter client_outgoing = 4;
+}
+
 //
 // PROCESS
 // This descriptive info for a process, i.e. a collection of threads.
@@ -94,7 +101,8 @@ message ipv4_connection {
   // XXX is this required?
   //optional uint64 dfd = 7; // The fd number of the server
 
-  optional transaction_categories transaction_counters = 8; // The transaction counters for this connection
+  optional connection_categories counters = 8; // The counters for this connection
+  optional transaction_categories transaction_counters = 9; // The transaction counters for this connection
 }
 
 //

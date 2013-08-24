@@ -9,14 +9,14 @@ using namespace google::protobuf::io;
 #include "draios.pb.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_counter_basic implementation
+// sinsp_counter_time implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_basic::sinsp_counter_basic()
+sinsp_counter_time::sinsp_counter_time()
 {
 	clear();
 }
 
-void sinsp_counter_basic::add(uint32_t cnt_delta, uint64_t time_delta)
+void sinsp_counter_time::add(uint32_t cnt_delta, uint64_t time_delta)
 {
 	ASSERT(cnt_delta <= 1);
 
@@ -24,39 +24,73 @@ void sinsp_counter_basic::add(uint32_t cnt_delta, uint64_t time_delta)
 	m_time_ns += time_delta;
 }
 
-void sinsp_counter_basic::add(sinsp_counter_basic* other)
+void sinsp_counter_time::add(sinsp_counter_time* other)
 {
 	m_count += other->m_count;
 	m_time_ns += other->m_time_ns;
 }
 
-void sinsp_counter_basic::add(sinsp_counter_with_size* other)
+void sinsp_counter_time::add(sinsp_counter_time_bytes* other)
 {
 	m_count += other->m_count;
 	m_time_ns += other->m_time_ns;
 }
 
-void sinsp_counter_basic::clear()
+void sinsp_counter_time::clear()
 {
 	m_count = 0;
 	m_time_ns = 0;
 }
 
-void sinsp_counter_basic::to_protobuf(draiosproto::counter* protobuf_msg)
+void sinsp_counter_time::to_protobuf(draiosproto::counter* protobuf_msg)
 {
 	protobuf_msg->set_time_ns(m_time_ns);
 	protobuf_msg->set_count(m_count);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_counter_with_size implementation
+// sinsp_counter_bytes implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_with_size::sinsp_counter_with_size()
+sinsp_counter_bytes::sinsp_counter_bytes()
 {
 	clear();
 }
 
-void sinsp_counter_with_size::add(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
+void sinsp_counter_bytes::add(uint32_t cnt_delta, uint32_t bytes_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count += cnt_delta;
+	m_bytes += bytes_delta;
+}
+
+void sinsp_counter_bytes::add(sinsp_counter_bytes* other)
+{
+	m_count += other->m_count;
+	m_bytes += other->m_bytes;
+}
+
+void sinsp_counter_bytes::clear()
+{
+	m_count = 0;
+	m_bytes = 0;
+}
+
+void sinsp_counter_bytes::to_protobuf(draiosproto::counter* protobuf_msg)
+{
+	protobuf_msg->set_bytes(m_bytes);
+	protobuf_msg->set_count(m_count);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_counter_time_bytes implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_counter_time_bytes::sinsp_counter_time_bytes()
+{
+	clear();
+}
+
+void sinsp_counter_time_bytes::add(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
 {
 	ASSERT(cnt_delta <= 1);
 
@@ -65,21 +99,21 @@ void sinsp_counter_with_size::add(uint32_t cnt_delta, uint64_t time_delta, uint3
 	m_bytes += bytes_delta;
 }
 
-void sinsp_counter_with_size::add(sinsp_counter_with_size* other)
+void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 {
 	m_count += other->m_count;
 	m_time_ns += other->m_time_ns;
 	m_bytes += other->m_bytes;
 }
 
-void sinsp_counter_with_size::clear()
+void sinsp_counter_time_bytes::clear()
 {
 	m_count = 0;
 	m_time_ns = 0;
 	m_bytes = 0;
 }
 
-void sinsp_counter_with_size::to_protobuf(draiosproto::counter* protobuf_msg)
+void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter* protobuf_msg)
 {
 	protobuf_msg->set_time_ns(m_time_ns);
 	protobuf_msg->set_count(m_count);
@@ -111,7 +145,7 @@ void sinsp_counters::clear()
 	m_processing.clear();
 }
 
-void sinsp_counters::get_total(sinsp_counter_basic* tot)
+void sinsp_counters::get_total(sinsp_counter_time* tot)
 {
 	tot->add(&m_unknown);
 	tot->add(&m_other);
@@ -179,7 +213,7 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 
 void sinsp_counters::print_on(FILE* f)
 {
-	sinsp_counter_basic tot;
+	sinsp_counter_time tot;
 
 	get_total(&tot);
 
@@ -204,7 +238,7 @@ void sinsp_transaction_counters::clear()
 	m_outgoing.clear();
 }
 
-void sinsp_transaction_counters::get_total(sinsp_counter_basic* tot)
+void sinsp_transaction_counters::get_total(sinsp_counter_time* tot)
 {
 	tot->add(&m_incoming);
 	tot->add(&m_outgoing);
@@ -220,4 +254,23 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
 	m_incoming.add(&other->m_incoming);
 	m_outgoing.add(&other->m_outgoing);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_connection_counters implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_connection_counters::clear()
+{
+	m_server_incoming.clear();
+	m_server_outgoing.clear();
+	m_client_incoming.clear();
+	m_client_outgoing.clear();
+}
+
+void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* protobuf_msg)
+{
+	m_server_incoming.to_protobuf(protobuf_msg->mutable_server_incoming());
+	m_server_outgoing.to_protobuf(protobuf_msg->mutable_server_outgoing());
+	m_client_incoming.to_protobuf(protobuf_msg->mutable_client_incoming());
+	m_client_outgoing.to_protobuf(protobuf_msg->mutable_client_outgoing());
 }

@@ -45,6 +45,7 @@ public:
 	// Analyzer state
 	//
 	uint8_t m_analysis_flags; // Flags word used by the analysis engine.
+	sinsp_connection_counters m_metrics;
 	sinsp_transaction_counters m_transaction_metrics;
 };
 

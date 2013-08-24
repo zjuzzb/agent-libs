@@ -247,7 +247,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				//
 				// Dump the thread info into the protobuf
 				//
-				sinsp_counter_basic tot;
+				sinsp_counter_time tot;
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 				mtinfo->add_proc_metrics(&it->second);
 
@@ -309,7 +309,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					// If defined, emti the processes
 					//
 #ifdef ANALYZER_EMITS_PROCESSES
-					sinsp_counter_basic tot;
+					sinsp_counter_time tot;
 	
 					ASSERT(it->second.m_proc_metrics);
 					it->second.m_proc_metrics->get_total(&tot);
@@ -387,7 +387,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				//
 				// If defined, emti the processes
 				//
-				sinsp_counter_basic tot;
+				sinsp_counter_time tot;
 	
 				ASSERT(prit->second->m_proc_metrics);
 				prit->second->m_proc_metrics->get_total(&tot);
@@ -484,6 +484,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				conn->set_dpid(cit->second.m_dpid);
 				conn->set_dtid(cit->second.m_dtid);
 
+				cit->second.m_metrics.to_protobuf(conn->mutable_counters());
 				cit->second.m_transaction_metrics.to_protobuf(conn->mutable_transaction_counters());
 
 				//

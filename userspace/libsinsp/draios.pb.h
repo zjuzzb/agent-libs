@@ -35,6 +35,7 @@ void protobuf_ShutdownFile_draios_2eproto();
 class counter;
 class time_categories;
 class transaction_categories;
+class connection_categories;
 class process;
 class thread;
 class ipv4tuple;
@@ -518,6 +519,127 @@ class transaction_categories : public ::google::protobuf::MessageLite {
 
   void InitAsDefaultInstance();
   static transaction_categories* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class connection_categories : public ::google::protobuf::MessageLite {
+ public:
+  connection_categories();
+  virtual ~connection_categories();
+
+  connection_categories(const connection_categories& from);
+
+  inline connection_categories& operator=(const connection_categories& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  static const connection_categories& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const connection_categories* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(connection_categories* other);
+
+  // implements Message ----------------------------------------------
+
+  connection_categories* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const connection_categories& from);
+  void MergeFrom(const connection_categories& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional .draiosproto.counter server_incoming = 1;
+  inline bool has_server_incoming() const;
+  inline void clear_server_incoming();
+  static const int kServerIncomingFieldNumber = 1;
+  inline const ::draiosproto::counter& server_incoming() const;
+  inline ::draiosproto::counter* mutable_server_incoming();
+  inline ::draiosproto::counter* release_server_incoming();
+  inline void set_allocated_server_incoming(::draiosproto::counter* server_incoming);
+
+  // optional .draiosproto.counter server_outgoing = 2;
+  inline bool has_server_outgoing() const;
+  inline void clear_server_outgoing();
+  static const int kServerOutgoingFieldNumber = 2;
+  inline const ::draiosproto::counter& server_outgoing() const;
+  inline ::draiosproto::counter* mutable_server_outgoing();
+  inline ::draiosproto::counter* release_server_outgoing();
+  inline void set_allocated_server_outgoing(::draiosproto::counter* server_outgoing);
+
+  // optional .draiosproto.counter client_incoming = 3;
+  inline bool has_client_incoming() const;
+  inline void clear_client_incoming();
+  static const int kClientIncomingFieldNumber = 3;
+  inline const ::draiosproto::counter& client_incoming() const;
+  inline ::draiosproto::counter* mutable_client_incoming();
+  inline ::draiosproto::counter* release_client_incoming();
+  inline void set_allocated_client_incoming(::draiosproto::counter* client_incoming);
+
+  // optional .draiosproto.counter client_outgoing = 4;
+  inline bool has_client_outgoing() const;
+  inline void clear_client_outgoing();
+  static const int kClientOutgoingFieldNumber = 4;
+  inline const ::draiosproto::counter& client_outgoing() const;
+  inline ::draiosproto::counter* mutable_client_outgoing();
+  inline ::draiosproto::counter* release_client_outgoing();
+  inline void set_allocated_client_outgoing(::draiosproto::counter* client_outgoing);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.connection_categories)
+ private:
+  inline void set_has_server_incoming();
+  inline void clear_has_server_incoming();
+  inline void set_has_server_outgoing();
+  inline void clear_has_server_outgoing();
+  inline void set_has_client_incoming();
+  inline void clear_has_client_incoming();
+  inline void set_has_client_outgoing();
+  inline void clear_has_client_outgoing();
+
+  ::draiosproto::counter* server_incoming_;
+  ::draiosproto::counter* server_outgoing_;
+  ::draiosproto::counter* client_incoming_;
+  ::draiosproto::counter* client_outgoing_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_draios_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_draios_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static connection_categories* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -1005,10 +1127,19 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 dtid() const;
   inline void set_dtid(::google::protobuf::uint64 value);
 
-  // optional .draiosproto.transaction_categories transaction_counters = 8;
+  // optional .draiosproto.connection_categories counters = 8;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 8;
+  inline const ::draiosproto::connection_categories& counters() const;
+  inline ::draiosproto::connection_categories* mutable_counters();
+  inline ::draiosproto::connection_categories* release_counters();
+  inline void set_allocated_counters(::draiosproto::connection_categories* counters);
+
+  // optional .draiosproto.transaction_categories transaction_counters = 9;
   inline bool has_transaction_counters() const;
   inline void clear_transaction_counters();
-  static const int kTransactionCountersFieldNumber = 8;
+  static const int kTransactionCountersFieldNumber = 9;
   inline const ::draiosproto::transaction_categories& transaction_counters() const;
   inline ::draiosproto::transaction_categories* mutable_transaction_counters();
   inline ::draiosproto::transaction_categories* release_transaction_counters();
@@ -1026,6 +1157,8 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   inline void clear_has_dpid();
   inline void set_has_dtid();
   inline void clear_has_dtid();
+  inline void set_has_counters();
+  inline void clear_has_counters();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
 
@@ -1034,10 +1167,11 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint64 stid_;
   ::google::protobuf::uint64 dpid_;
   ::google::protobuf::uint64 dtid_;
+  ::draiosproto::connection_categories* counters_;
   ::draiosproto::transaction_categories* transaction_counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -2229,6 +2363,178 @@ inline void transaction_categories::set_allocated_outgoing(::draiosproto::counte
 
 // -------------------------------------------------------------------
 
+// connection_categories
+
+// optional .draiosproto.counter server_incoming = 1;
+inline bool connection_categories::has_server_incoming() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void connection_categories::set_has_server_incoming() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void connection_categories::clear_has_server_incoming() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void connection_categories::clear_server_incoming() {
+  if (server_incoming_ != NULL) server_incoming_->::draiosproto::counter::Clear();
+  clear_has_server_incoming();
+}
+inline const ::draiosproto::counter& connection_categories::server_incoming() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return server_incoming_ != NULL ? *server_incoming_ : *default_instance().server_incoming_;
+#else
+  return server_incoming_ != NULL ? *server_incoming_ : *default_instance_->server_incoming_;
+#endif
+}
+inline ::draiosproto::counter* connection_categories::mutable_server_incoming() {
+  set_has_server_incoming();
+  if (server_incoming_ == NULL) server_incoming_ = new ::draiosproto::counter;
+  return server_incoming_;
+}
+inline ::draiosproto::counter* connection_categories::release_server_incoming() {
+  clear_has_server_incoming();
+  ::draiosproto::counter* temp = server_incoming_;
+  server_incoming_ = NULL;
+  return temp;
+}
+inline void connection_categories::set_allocated_server_incoming(::draiosproto::counter* server_incoming) {
+  delete server_incoming_;
+  server_incoming_ = server_incoming;
+  if (server_incoming) {
+    set_has_server_incoming();
+  } else {
+    clear_has_server_incoming();
+  }
+}
+
+// optional .draiosproto.counter server_outgoing = 2;
+inline bool connection_categories::has_server_outgoing() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void connection_categories::set_has_server_outgoing() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void connection_categories::clear_has_server_outgoing() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void connection_categories::clear_server_outgoing() {
+  if (server_outgoing_ != NULL) server_outgoing_->::draiosproto::counter::Clear();
+  clear_has_server_outgoing();
+}
+inline const ::draiosproto::counter& connection_categories::server_outgoing() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return server_outgoing_ != NULL ? *server_outgoing_ : *default_instance().server_outgoing_;
+#else
+  return server_outgoing_ != NULL ? *server_outgoing_ : *default_instance_->server_outgoing_;
+#endif
+}
+inline ::draiosproto::counter* connection_categories::mutable_server_outgoing() {
+  set_has_server_outgoing();
+  if (server_outgoing_ == NULL) server_outgoing_ = new ::draiosproto::counter;
+  return server_outgoing_;
+}
+inline ::draiosproto::counter* connection_categories::release_server_outgoing() {
+  clear_has_server_outgoing();
+  ::draiosproto::counter* temp = server_outgoing_;
+  server_outgoing_ = NULL;
+  return temp;
+}
+inline void connection_categories::set_allocated_server_outgoing(::draiosproto::counter* server_outgoing) {
+  delete server_outgoing_;
+  server_outgoing_ = server_outgoing;
+  if (server_outgoing) {
+    set_has_server_outgoing();
+  } else {
+    clear_has_server_outgoing();
+  }
+}
+
+// optional .draiosproto.counter client_incoming = 3;
+inline bool connection_categories::has_client_incoming() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void connection_categories::set_has_client_incoming() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void connection_categories::clear_has_client_incoming() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void connection_categories::clear_client_incoming() {
+  if (client_incoming_ != NULL) client_incoming_->::draiosproto::counter::Clear();
+  clear_has_client_incoming();
+}
+inline const ::draiosproto::counter& connection_categories::client_incoming() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return client_incoming_ != NULL ? *client_incoming_ : *default_instance().client_incoming_;
+#else
+  return client_incoming_ != NULL ? *client_incoming_ : *default_instance_->client_incoming_;
+#endif
+}
+inline ::draiosproto::counter* connection_categories::mutable_client_incoming() {
+  set_has_client_incoming();
+  if (client_incoming_ == NULL) client_incoming_ = new ::draiosproto::counter;
+  return client_incoming_;
+}
+inline ::draiosproto::counter* connection_categories::release_client_incoming() {
+  clear_has_client_incoming();
+  ::draiosproto::counter* temp = client_incoming_;
+  client_incoming_ = NULL;
+  return temp;
+}
+inline void connection_categories::set_allocated_client_incoming(::draiosproto::counter* client_incoming) {
+  delete client_incoming_;
+  client_incoming_ = client_incoming;
+  if (client_incoming) {
+    set_has_client_incoming();
+  } else {
+    clear_has_client_incoming();
+  }
+}
+
+// optional .draiosproto.counter client_outgoing = 4;
+inline bool connection_categories::has_client_outgoing() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void connection_categories::set_has_client_outgoing() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void connection_categories::clear_has_client_outgoing() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void connection_categories::clear_client_outgoing() {
+  if (client_outgoing_ != NULL) client_outgoing_->::draiosproto::counter::Clear();
+  clear_has_client_outgoing();
+}
+inline const ::draiosproto::counter& connection_categories::client_outgoing() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return client_outgoing_ != NULL ? *client_outgoing_ : *default_instance().client_outgoing_;
+#else
+  return client_outgoing_ != NULL ? *client_outgoing_ : *default_instance_->client_outgoing_;
+#endif
+}
+inline ::draiosproto::counter* connection_categories::mutable_client_outgoing() {
+  set_has_client_outgoing();
+  if (client_outgoing_ == NULL) client_outgoing_ = new ::draiosproto::counter;
+  return client_outgoing_;
+}
+inline ::draiosproto::counter* connection_categories::release_client_outgoing() {
+  clear_has_client_outgoing();
+  ::draiosproto::counter* temp = client_outgoing_;
+  client_outgoing_ = NULL;
+  return temp;
+}
+inline void connection_categories::set_allocated_client_outgoing(::draiosproto::counter* client_outgoing) {
+  delete client_outgoing_;
+  client_outgoing_ = client_outgoing;
+  if (client_outgoing) {
+    set_has_client_outgoing();
+  } else {
+    clear_has_client_outgoing();
+  }
+}
+
+// -------------------------------------------------------------------
+
 // process
 
 // required uint64 pid = 1;
@@ -2901,15 +3207,57 @@ inline void ipv4_connection::set_dtid(::google::protobuf::uint64 value) {
   dtid_ = value;
 }
 
-// optional .draiosproto.transaction_categories transaction_counters = 8;
-inline bool ipv4_connection::has_transaction_counters() const {
+// optional .draiosproto.connection_categories counters = 8;
+inline bool ipv4_connection::has_counters() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void ipv4_connection::set_has_transaction_counters() {
+inline void ipv4_connection::set_has_counters() {
   _has_bits_[0] |= 0x00000020u;
 }
-inline void ipv4_connection::clear_has_transaction_counters() {
+inline void ipv4_connection::clear_has_counters() {
   _has_bits_[0] &= ~0x00000020u;
+}
+inline void ipv4_connection::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::connection_categories::Clear();
+  clear_has_counters();
+}
+inline const ::draiosproto::connection_categories& ipv4_connection::counters() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return counters_ != NULL ? *counters_ : *default_instance().counters_;
+#else
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
+#endif
+}
+inline ::draiosproto::connection_categories* ipv4_connection::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::connection_categories;
+  return counters_;
+}
+inline ::draiosproto::connection_categories* ipv4_connection::release_counters() {
+  clear_has_counters();
+  ::draiosproto::connection_categories* temp = counters_;
+  counters_ = NULL;
+  return temp;
+}
+inline void ipv4_connection::set_allocated_counters(::draiosproto::connection_categories* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
+}
+
+// optional .draiosproto.transaction_categories transaction_counters = 9;
+inline bool ipv4_connection::has_transaction_counters() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ipv4_connection::set_has_transaction_counters() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ipv4_connection::clear_has_transaction_counters() {
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void ipv4_connection::clear_transaction_counters() {
   if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();

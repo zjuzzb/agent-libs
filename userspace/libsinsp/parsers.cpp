@@ -1581,7 +1581,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
 			}
-
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
@@ -1649,6 +1648,23 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			}
 		}
 
+		//
+		// Attribute the read bytes to the proper connection side
+		//
+		ASSERT(connection != NULL);
+		if(evt->m_fdinfo->has_role_server())
+		{
+			connection->m_metrics.m_server_incoming.add(1, original_len);
+		}
+		else if (evt->m_fdinfo->has_role_client())
+		{
+			connection->m_metrics.m_client_incoming.add(1, original_len);
+		}
+		else
+		{
+			ASSERT(false);
+		}
+
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
@@ -1696,6 +1712,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				len);
 		}
 */
+
 		//
 		// See if there's already a transaction
 		//
@@ -1882,6 +1899,23 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						evt->m_fdinfo->has_role_client(),
 						evt->get_ts());
 			}
+		}
+
+		//
+		// Attribute the read bytes to the proper connection side
+		//
+		ASSERT(connection != NULL);
+		if(evt->m_fdinfo->has_role_server())
+		{
+			connection->m_metrics.m_server_outgoing.add(1, original_len);
+		}
+		else if(evt->m_fdinfo->has_role_client())
+		{
+			connection->m_metrics.m_client_outgoing.add(1, original_len);
+		}
+		else
+		{
+			ASSERT(false);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////

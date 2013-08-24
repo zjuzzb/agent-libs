@@ -18,6 +18,7 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete counter::default_instance_;
   delete time_categories::default_instance_;
   delete transaction_categories::default_instance_;
+  delete connection_categories::default_instance_;
   delete process::default_instance_;
   delete thread::default_instance_;
   delete ipv4tuple::default_instance_;
@@ -41,6 +42,7 @@ void protobuf_AddDesc_draios_2eproto() {
   counter::default_instance_ = new counter();
   time_categories::default_instance_ = new time_categories();
   transaction_categories::default_instance_ = new transaction_categories();
+  connection_categories::default_instance_ = new connection_categories();
   process::default_instance_ = new process();
   thread::default_instance_ = new thread();
   ipv4tuple::default_instance_ = new ipv4tuple();
@@ -50,6 +52,7 @@ void protobuf_AddDesc_draios_2eproto() {
   counter::default_instance_->InitAsDefaultInstance();
   time_categories::default_instance_->InitAsDefaultInstance();
   transaction_categories::default_instance_->InitAsDefaultInstance();
+  connection_categories::default_instance_->InitAsDefaultInstance();
   process::default_instance_->InitAsDefaultInstance();
   thread::default_instance_->InitAsDefaultInstance();
   ipv4tuple::default_instance_->InitAsDefaultInstance();
@@ -1407,6 +1410,310 @@ void transaction_categories::Swap(transaction_categories* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int connection_categories::kServerIncomingFieldNumber;
+const int connection_categories::kServerOutgoingFieldNumber;
+const int connection_categories::kClientIncomingFieldNumber;
+const int connection_categories::kClientOutgoingFieldNumber;
+#endif  // !_MSC_VER
+
+connection_categories::connection_categories()
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+}
+
+void connection_categories::InitAsDefaultInstance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  server_incoming_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  server_incoming_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  server_outgoing_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  server_outgoing_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  client_incoming_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  client_incoming_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  client_outgoing_ = const_cast< ::draiosproto::counter*>(
+      ::draiosproto::counter::internal_default_instance());
+#else
+  client_outgoing_ = const_cast< ::draiosproto::counter*>(&::draiosproto::counter::default_instance());
+#endif
+}
+
+connection_categories::connection_categories(const connection_categories& from)
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void connection_categories::SharedCtor() {
+  _cached_size_ = 0;
+  server_incoming_ = NULL;
+  server_outgoing_ = NULL;
+  client_incoming_ = NULL;
+  client_outgoing_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+connection_categories::~connection_categories() {
+  SharedDtor();
+}
+
+void connection_categories::SharedDtor() {
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  if (this != &default_instance()) {
+  #else
+  if (this != default_instance_) {
+  #endif
+    delete server_incoming_;
+    delete server_outgoing_;
+    delete client_incoming_;
+    delete client_outgoing_;
+  }
+}
+
+void connection_categories::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const connection_categories& connection_categories::default_instance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  protobuf_AddDesc_draios_2eproto();
+#else
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+#endif
+  return *default_instance_;
+}
+
+connection_categories* connection_categories::default_instance_ = NULL;
+
+connection_categories* connection_categories::New() const {
+  return new connection_categories;
+}
+
+void connection_categories::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_server_incoming()) {
+      if (server_incoming_ != NULL) server_incoming_->::draiosproto::counter::Clear();
+    }
+    if (has_server_outgoing()) {
+      if (server_outgoing_ != NULL) server_outgoing_->::draiosproto::counter::Clear();
+    }
+    if (has_client_incoming()) {
+      if (client_incoming_ != NULL) client_incoming_->::draiosproto::counter::Clear();
+    }
+    if (has_client_outgoing()) {
+      if (client_outgoing_ != NULL) client_outgoing_->::draiosproto::counter::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+bool connection_categories::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional .draiosproto.counter server_incoming = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_server_incoming()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_server_outgoing;
+        break;
+      }
+
+      // optional .draiosproto.counter server_outgoing = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_server_outgoing:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_server_outgoing()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_client_incoming;
+        break;
+      }
+
+      // optional .draiosproto.counter client_incoming = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_incoming:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_client_incoming()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_client_outgoing;
+        break;
+      }
+
+      // optional .draiosproto.counter client_outgoing = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_outgoing:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_client_outgoing()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void connection_categories::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional .draiosproto.counter server_incoming = 1;
+  if (has_server_incoming()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      1, this->server_incoming(), output);
+  }
+
+  // optional .draiosproto.counter server_outgoing = 2;
+  if (has_server_outgoing()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      2, this->server_outgoing(), output);
+  }
+
+  // optional .draiosproto.counter client_incoming = 3;
+  if (has_client_incoming()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      3, this->client_incoming(), output);
+  }
+
+  // optional .draiosproto.counter client_outgoing = 4;
+  if (has_client_outgoing()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      4, this->client_outgoing(), output);
+  }
+
+}
+
+int connection_categories::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional .draiosproto.counter server_incoming = 1;
+    if (has_server_incoming()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->server_incoming());
+    }
+
+    // optional .draiosproto.counter server_outgoing = 2;
+    if (has_server_outgoing()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->server_outgoing());
+    }
+
+    // optional .draiosproto.counter client_incoming = 3;
+    if (has_client_incoming()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->client_incoming());
+    }
+
+    // optional .draiosproto.counter client_outgoing = 4;
+    if (has_client_outgoing()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->client_outgoing());
+    }
+
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void connection_categories::CheckTypeAndMergeFrom(
+    const ::google::protobuf::MessageLite& from) {
+  MergeFrom(*::google::protobuf::down_cast<const connection_categories*>(&from));
+}
+
+void connection_categories::MergeFrom(const connection_categories& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_server_incoming()) {
+      mutable_server_incoming()->::draiosproto::counter::MergeFrom(from.server_incoming());
+    }
+    if (from.has_server_outgoing()) {
+      mutable_server_outgoing()->::draiosproto::counter::MergeFrom(from.server_outgoing());
+    }
+    if (from.has_client_incoming()) {
+      mutable_client_incoming()->::draiosproto::counter::MergeFrom(from.client_incoming());
+    }
+    if (from.has_client_outgoing()) {
+      mutable_client_outgoing()->::draiosproto::counter::MergeFrom(from.client_outgoing());
+    }
+  }
+}
+
+void connection_categories::CopyFrom(const connection_categories& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool connection_categories::IsInitialized() const {
+
+  return true;
+}
+
+void connection_categories::Swap(connection_categories* other) {
+  if (other != this) {
+    std::swap(server_incoming_, other->server_incoming_);
+    std::swap(server_outgoing_, other->server_outgoing_);
+    std::swap(client_incoming_, other->client_incoming_);
+    std::swap(client_outgoing_, other->client_outgoing_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::std::string connection_categories::GetTypeName() const {
+  return "draiosproto.connection_categories";
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int process::kPidFieldNumber;
 const int process::kCommFieldNumber;
 const int process::kExeFieldNumber;
@@ -2377,6 +2684,7 @@ const int ipv4_connection::kSpidFieldNumber;
 const int ipv4_connection::kStidFieldNumber;
 const int ipv4_connection::kDpidFieldNumber;
 const int ipv4_connection::kDtidFieldNumber;
+const int ipv4_connection::kCountersFieldNumber;
 const int ipv4_connection::kTransactionCountersFieldNumber;
 #endif  // !_MSC_VER
 
@@ -2391,6 +2699,12 @@ void ipv4_connection::InitAsDefaultInstance() {
       ::draiosproto::ipv4tuple::internal_default_instance());
 #else
   tuple_ = const_cast< ::draiosproto::ipv4tuple*>(&::draiosproto::ipv4tuple::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  counters_ = const_cast< ::draiosproto::connection_categories*>(
+      ::draiosproto::connection_categories::internal_default_instance());
+#else
+  counters_ = const_cast< ::draiosproto::connection_categories*>(&::draiosproto::connection_categories::default_instance());
 #endif
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   transaction_counters_ = const_cast< ::draiosproto::transaction_categories*>(
@@ -2413,6 +2727,7 @@ void ipv4_connection::SharedCtor() {
   stid_ = GOOGLE_ULONGLONG(0);
   dpid_ = GOOGLE_ULONGLONG(0);
   dtid_ = GOOGLE_ULONGLONG(0);
+  counters_ = NULL;
   transaction_counters_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -2428,6 +2743,7 @@ void ipv4_connection::SharedDtor() {
   if (this != default_instance_) {
   #endif
     delete tuple_;
+    delete counters_;
     delete transaction_counters_;
   }
 }
@@ -2461,6 +2777,9 @@ void ipv4_connection::Clear() {
     stid_ = GOOGLE_ULONGLONG(0);
     dpid_ = GOOGLE_ULONGLONG(0);
     dtid_ = GOOGLE_ULONGLONG(0);
+    if (has_counters()) {
+      if (counters_ != NULL) counters_->::draiosproto::connection_categories::Clear();
+    }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
     }
@@ -2547,12 +2866,26 @@ bool ipv4_connection::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(66)) goto parse_transaction_counters;
+        if (input->ExpectTag(66)) goto parse_counters;
         break;
       }
 
-      // optional .draiosproto.transaction_categories transaction_counters = 8;
+      // optional .draiosproto.connection_categories counters = 8;
       case 8: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(74)) goto parse_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.transaction_categories transaction_counters = 9;
+      case 9: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_transaction_counters:
@@ -2608,10 +2941,16 @@ void ipv4_connection::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(6, this->dtid(), output);
   }
 
-  // optional .draiosproto.transaction_categories transaction_counters = 8;
+  // optional .draiosproto.connection_categories counters = 8;
+  if (has_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      8, this->counters(), output);
+  }
+
+  // optional .draiosproto.transaction_categories transaction_counters = 9;
   if (has_transaction_counters()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      8, this->transaction_counters(), output);
+      9, this->transaction_counters(), output);
   }
 
 }
@@ -2655,7 +2994,14 @@ int ipv4_connection::ByteSize() const {
           this->dtid());
     }
 
-    // optional .draiosproto.transaction_categories transaction_counters = 8;
+    // optional .draiosproto.connection_categories counters = 8;
+    if (has_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->counters());
+    }
+
+    // optional .draiosproto.transaction_categories transaction_counters = 9;
     if (has_transaction_counters()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -2692,6 +3038,9 @@ void ipv4_connection::MergeFrom(const ipv4_connection& from) {
     if (from.has_dtid()) {
       set_dtid(from.dtid());
     }
+    if (from.has_counters()) {
+      mutable_counters()->::draiosproto::connection_categories::MergeFrom(from.counters());
+    }
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::transaction_categories::MergeFrom(from.transaction_counters());
     }
@@ -2720,6 +3069,7 @@ void ipv4_connection::Swap(ipv4_connection* other) {
     std::swap(stid_, other->stid_);
     std::swap(dpid_, other->dpid_);
     std::swap(dtid_, other->dtid_);
+    std::swap(counters_, other->counters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
