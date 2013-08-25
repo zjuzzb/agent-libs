@@ -73,20 +73,25 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
 	//
 	// Find out how many bytes we need for the serialization
 	//
-	*len = m_metrics->ByteSize();
+	uint32_t tlen = m_metrics->ByteSize();
+	
+	//
+	// We allocate 4 additional bytes for the buffer lenght
+	//
+	uint32_t full_len = tlen + sizeof(uint32_t);
 
 	//
 	// If the buffer is to small, eapnd it
 	//
-	if(m_serialization_buffer_size < *len)
+	if(m_serialization_buffer_size < (full_len))
 	{
-		if(*len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
+		if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
 		{
 			g_logger.log("Metrics sample too big. Dropping it.", sinsp_logger::SEV_ERROR);
 			return NULL;
 		}
 
-		m_serialization_buffer = (char*)realloc(m_serialization_buffer, *len);
+		m_serialization_buffer = (char*)realloc(m_serialization_buffer, full_len);
 
 		if(!m_serialization_buffer)
 		{
@@ -95,16 +100,18 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
 			throw sinsp_exception(estr);
 		}
 
-		m_serialization_buffer_size = *len;
+		m_serialization_buffer_size = full_len;
 	}
 
 	//
 	// Do the serialization
 	//
-	ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer, *len);
+	ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
    	m_metrics->SerializeToZeroCopyStream(array_output);
 
-	return m_serialization_buffer;
+	*(uint32_t*) m_serialization_buffer = tlen;
+	*len = *(uint32_t*) m_serialization_buffer;
+	return m_serialization_buffer + sizeof(uint32_t);
 }
 
 void sinsp_analyzer::serialize(uint64_t ts)
@@ -131,7 +138,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(buf, buflen);
+		m_sample_callback->sinsp_analyzer_data_ready(buf - sizeof(uint32_t));
 	}
 
 	//

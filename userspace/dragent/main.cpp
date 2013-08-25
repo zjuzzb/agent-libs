@@ -384,12 +384,16 @@ protected:
 	///////////////////////////////////////////////////////////////////////////
 	// This function is called every time the sinsp analyzer has a new sample ready
 	///////////////////////////////////////////////////////////////////////////
-	void sinsp_analyzer_data_ready(char* buffer, uint32_t buflen)
+	void sinsp_analyzer_data_ready(char* buffer)
 	{
 		ASSERT(m_sa != NULL);
 		ASSERT(m_socket != NULL);
-		m_socket->sendBytes(&buflen, sizeof(uint32_t));
-		m_socket->sendBytes(buffer, buflen);
+		uint32_t* buflen = (uint32_t*)buffer;
+		uint32_t size = *buflen + sizeof(uint32_t);
+
+		*buflen = htonl(*buflen);
+		//m_socket->sendBytes(&buflen, sizeof(uint32_t));
+		m_socket->sendBytes(buffer, size);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
