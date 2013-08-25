@@ -120,6 +120,12 @@ struct sinsp_exception : std::exception
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
+class analyzer_callback_interface
+{
+public:
+	virtual void sinsp_analyzer_data_ready(char* buffer, uint32_t buflen) = 0;
+};
+
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 #endif
 
@@ -181,7 +187,7 @@ public:
 	//
 	// Set the callback that receives the analyzer output
 	//
-	void set_analyzer_callback(sinsp_analyzer_callback cb);
+	void set_analyzer_callback(analyzer_callback_interface* cb);
 
 	//
 	// Get processing stats
@@ -258,7 +264,7 @@ VISIBILITY_PRIVATE
 
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
-	sinsp_analyzer_callback m_analyzer_callback;
+	analyzer_callback_interface* m_analyzer_callback;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

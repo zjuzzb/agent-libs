@@ -61,7 +61,7 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 }
 
-void sinsp_analyzer::set_sample_callback(sinsp_analyzer_callback cb)
+void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 {
 	ASSERT(cb != NULL);
 	ASSERT(m_sample_callback == NULL);
@@ -131,7 +131,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_sample_callback != NULL)
 	{
-		(*m_sample_callback)(buf, buflen);
+		m_sample_callback->sinsp_analyzer_data_ready(buf, buflen);
 	}
 
 	//

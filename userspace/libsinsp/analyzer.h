@@ -9,7 +9,7 @@ public:
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
-	void set_sample_callback(sinsp_analyzer_callback cb);
+	void set_sample_callback(analyzer_callback_interface* cb);
 	//
 	// Processing entry point
 	//
@@ -42,7 +42,7 @@ private:
 	//
 	// The callback we invoke when a sample is ready
 	//
-	sinsp_analyzer_callback m_sample_callback;
+	analyzer_callback_interface* m_sample_callback;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

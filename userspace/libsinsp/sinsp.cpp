@@ -587,7 +587,7 @@ void sinsp::set_log_callback(sinsp_logger_callback cb)
 	g_logger.add_callback_log(cb);
 }
 
-void sinsp::set_analyzer_callback(sinsp_analyzer_callback cb)
+void sinsp::set_analyzer_callback(analyzer_callback_interface* cb)
 {
 	if(m_analyzer == NULL)
 	{

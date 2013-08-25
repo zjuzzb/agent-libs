@@ -1,6 +1,13 @@
 import socket
 #import MySQLdb as mdb
 import sys
+import signal
+
+def signal_handler(signal, frame):
+
+  print 'You pressed Ctrl+C!'
+  sys.exit(0)
+  
 
 PORT = 8080
 
@@ -17,13 +24,12 @@ print("listening on port " + str(PORT))
 
 # Servers are "infinite" loops handling requests
 while True:
+  # Wait for a connection
+  connect, address = s.accept()
 
-        # Wait for a connection
-        connect, address = s.accept()
-
-        # Typically fork at this point
-
-        # Receive up to 1024 bytes
-        req = (connect.recv(1024)).strip()
-
-        print req
+  while True:
+    try:
+      req = connect.recv(65536)
+      print len(req)
+    except:
+      break

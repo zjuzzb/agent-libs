@@ -100,19 +100,6 @@ void g_logger_callback(char* str, uint32_t sev)
 }
 
 //
-// This function is called every time the sinsp analyzer has a new sample ready
-//
-Poco::Net::SocketAddress* sa = NULL;
-Poco::Net::StreamSocket* srvsocket = NULL;
-
-void g_analyzer_callback(char* str, uint32_t len)
-{
-	ASSERT(sa != NULL);
-	ASSERT(socket != NULL);
-	srvsocket->sendBytes(str, len);
-}
-
-//
 // Capture information class
 //
 class captureinfo
@@ -131,12 +118,16 @@ public:
 //
 // The main application class
 //
-class dragent_app: public Poco::Util::ServerApplication
+class dragent_app: 
+	public Poco::Util::ServerApplication,
+	public analyzer_callback_interface
 {
 public:
 	dragent_app(): m_help_requested(false)
 	{
 		m_evtcnt = 0;
+		m_socket = NULL;
+		m_sa = NULL;
 		m_customerid = "<invalid>";
 	}
 	
@@ -331,6 +322,11 @@ protected:
 		helpFormatter.format(std::cout);
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// Event processing loop.
+	// We don't do much other than consuming the events and updating a couple
+	// of counters.
+	///////////////////////////////////////////////////////////////////////////
 	captureinfo do_inspect()
 	{
 		captureinfo retval;
@@ -340,9 +336,6 @@ protected:
 		uint64_t deltats = 0;
 		uint64_t firstts = 0;
 
-		//
-		// Create the inspector
-		//
 		while(1)
 		{
 			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate)
@@ -388,6 +381,20 @@ protected:
 		return retval;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// This function is called every time the sinsp analyzer has a new sample ready
+	///////////////////////////////////////////////////////////////////////////
+	void sinsp_analyzer_data_ready(char* buffer, uint32_t buflen)
+	{
+		ASSERT(m_sa != NULL);
+		ASSERT(m_socket != NULL);
+		m_socket->sendBytes(&buflen, sizeof(uint32_t));
+		m_socket->sendBytes(buffer, buflen);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// MAIN
+	///////////////////////////////////////////////////////////////////////////
 	int main(const std::vector<std::string>& args)
 	{
 		if(m_help_requested)
@@ -477,9 +484,10 @@ protected:
 
 			if(m_serveraddr != "" && m_serverport != 0)
 			{
-				sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
-				srvsocket = new Poco::Net::StreamSocket(*sa);
-				m_inspector.set_analyzer_callback(g_analyzer_callback);
+				m_sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
+				m_socket = new Poco::Net::StreamSocket(*m_sa);
+				m_socket->setBlocking(false);
+				m_inspector.set_analyzer_callback(this);
 			}
 
 			//
@@ -563,6 +571,8 @@ private:
 	string m_writefile;
 	string m_serveraddr;
 	uint16_t m_serverport;
+	Poco::Net::SocketAddress* m_sa;
+	Poco::Net::StreamSocket* m_socket;
 };
 
 
