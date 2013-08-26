@@ -31,14 +31,14 @@ while True:
 
   while True:
     try:
-      time.sleep(1)
-      print "ciao"
-      continue
+      #time.sleep(1)
+      #print "ciao"
+      #continue
       req = connect.recv(4)
-      msglen = socket.ntohl(unpack('i', req)[0])
+      msglen = socket.ntohl(unpack('I', req)[0])
       print msglen
       req = connect.recv(msglen)
       print len(req)
-    except Exception:
-      print Exception
+    except Exception, e:
+      print e
       break
