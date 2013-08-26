@@ -384,7 +384,7 @@ protected:
 	///////////////////////////////////////////////////////////////////////////
 	// This function is called every time the sinsp analyzer has a new sample ready
 	///////////////////////////////////////////////////////////////////////////
-	void sinsp_analyzer_data_ready(char* buffer)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
 	{
 		ASSERT(m_sa != NULL);
 		ASSERT(m_socket != NULL);
@@ -393,7 +393,26 @@ protected:
 
 		*buflen = htonl(*buflen);
 		//m_socket->sendBytes(&buflen, sizeof(uint32_t));
-		m_socket->sendBytes(buffer, size);
+
+		try
+		{
+			m_socket->sendBytes(buffer, size);
+		}
+		catch(Poco::IOException& e)
+		{
+			if(e.code() == POCO_EWOULDBLOCK)
+			{
+				//
+				// Send buffer full.
+				// Keeping processing the data in libsinsp to minimize event drops is
+				// more important than dropping the sample, therefore we don't block
+				// and keep going.
+				//
+				g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
+					", cause:socket buffer full, len:" + NumberFormatter::format(size));
+				return;
+			}
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -490,7 +509,20 @@ protected:
 			{
 				m_sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
 				m_socket = new Poco::Net::StreamSocket(*m_sa);
+				
+				//
+				// Set the send buffer size for the socket
+				//
+				m_socket->setSendBufferSize(config().getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE));
+
+				//
+				// Put the socket in nonblocking mode
+				//
 				m_socket->setBlocking(false);
+				
+				//
+				// Attach our transmit callback to the analyzer
+				//
 				m_inspector.set_analyzer_callback(this);
 			}
 
@@ -544,13 +576,14 @@ protected:
 			//
 			do_inspect();
 		}
-		catch(sinsp_exception e)
+		catch(sinsp_exception& e)
 		{
 			g_log->error(e.what());
 			return Application::EXIT_SOFTWARE;
 		}
-		catch(Poco::Exception e)
+		catch(Poco::Exception& e)
 		{
+
 			g_log->error(e.displayText());
 			return Application::EXIT_SOFTWARE;
 		}

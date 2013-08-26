@@ -138,7 +138,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(buf - sizeof(uint32_t));
+		m_sample_callback->sinsp_analyzer_data_ready(ts, buf - sizeof(uint32_t));
 	}
 
 	//

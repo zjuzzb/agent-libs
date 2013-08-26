@@ -2,6 +2,7 @@ import socket
 #import MySQLdb as mdb
 import sys
 import signal
+import time
 from struct import *
 
 def signal_handler(signal, frame):
@@ -30,10 +31,14 @@ while True:
 
   while True:
     try:
+      time.sleep(1)
+      print "ciao"
+      continue
       req = connect.recv(4)
-      msglen = unpack('i', req)[0]
+      msglen = socket.ntohl(unpack('i', req)[0])
       print msglen
-      req = connect.recv(65536)
+      req = connect.recv(msglen)
       print len(req)
-    except:
+    except Exception:
+      print Exception
       break
