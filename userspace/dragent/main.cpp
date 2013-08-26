@@ -124,7 +124,7 @@ public:
 	sample_store()
 	{
 		m_buf = NULL;
-		m_buflen = NULL;
+		m_buflen = 0;
 	}
 
 	sample_store(char* buf, uint32_t buflen)
@@ -441,14 +441,7 @@ protected:
 			{
 				ASSERT(m_socket == NULL);
 
-				try
-				{
-					m_socket = new Poco::Net::StreamSocket(*m_sa);
-				}
-				catch(...)
-				{
-					return;
-				}
+				m_socket = new Poco::Net::StreamSocket(*m_sa);
 
 				g_log->error(string("server connection recovered. Sending ") +
 					NumberFormatter::format(store_size) + " buffered samples");
