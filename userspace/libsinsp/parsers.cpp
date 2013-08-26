@@ -1536,7 +1536,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(fd != connection->m_sfd && fd != connection->m_dfd)
+			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
+				!(tid == connection->m_dtid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1601,7 +1602,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(fd != connection->m_sfd && fd != connection->m_dfd)
+			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
+				!(tid == connection->m_dtid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1757,7 +1759,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
-
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
 		/////////////////////////////////////////////////////////////////////////////
@@ -1789,7 +1790,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(fd != connection->m_sfd && fd != connection->m_dfd)
+			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
+				!(tid == connection->m_dtid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1856,7 +1858,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(fd != connection->m_sfd && fd != connection->m_dfd)
+			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
+				!(tid == connection->m_dtid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1938,7 +1941,6 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		//
 		// Update the transaction state.
 		//
-//BRK(2587);
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
 			connection,
