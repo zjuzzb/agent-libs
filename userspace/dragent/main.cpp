@@ -70,9 +70,9 @@ static void run_monitor()
 }
 #endif
 
-//
+///////////////////////////////////////////////////////////////////////////////
 // Log management
-//
+///////////////////////////////////////////////////////////////////////////////
 Logger* g_log = NULL;
 
 void g_logger_callback(char* str, uint32_t sev)
@@ -99,9 +99,9 @@ void g_logger_callback(char* str, uint32_t sev)
 	}
 }
 
-//
+///////////////////////////////////////////////////////////////////////////////
 // Capture information class
-//
+///////////////////////////////////////////////////////////////////////////////
 class captureinfo
 {
 public:
@@ -115,9 +115,40 @@ public:
 	uint64_t m_time;
 };
 
-//
+///////////////////////////////////////////////////////////////////////////////
+// A simple class to store an analyzer sample when the backend is not reachable
+///////////////////////////////////////////////////////////////////////////////
+class sample_store
+{
+public:
+	sample_store()
+	{
+		m_buf = NULL;
+		m_buflen = NULL;
+	}
+
+	sample_store(char* buf, uint32_t buflen)
+	{
+		m_buf = new char[buflen];
+		memcpy(m_buf, buf, buflen);
+		m_buflen = buflen;
+	}
+
+	~sample_store()
+	{
+		if(m_buf)
+		{
+			delete [] m_buf;
+		}
+	}
+
+	char* m_buf;
+	uint32_t m_buflen;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // The main application class
-//
+///////////////////////////////////////////////////////////////////////////////
 class dragent_app: 
 	public Poco::Util::ServerApplication,
 	public analyzer_callback_interface
@@ -386,16 +417,54 @@ protected:
 	///////////////////////////////////////////////////////////////////////////
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
 	{
+		uint32_t j;
+
 		ASSERT(m_sa != NULL);
-		ASSERT(m_socket != NULL);
 		uint32_t* buflen = (uint32_t*)buffer;
 		uint32_t size = *buflen + sizeof(uint32_t);
 
+		//
+		// Turn the length into network byte order
+		//
 		*buflen = htonl(*buflen);
-		//m_socket->sendBytes(&buflen, sizeof(uint32_t));
 
 		try
 		{
+			//
+			// If the connection was lost, try to reconnect and send the unsent samples
+			//
+			uint32_t store_size = m_unsent_samples.size();
+
+			ASSERT(store_size < MAX_SAMPLE_STORE_SIZE);
+
+			if(store_size != 0)
+			{
+				ASSERT(m_socket == NULL);
+
+				try
+				{
+					m_socket = new Poco::Net::StreamSocket(*m_sa);
+				}
+				catch(...)
+				{
+					return;
+				}
+
+				g_log->error(string("server connection recovered. Sending ") +
+					NumberFormatter::format(store_size) + " buffered samples");
+
+				for(j = 0; j < store_size; j++)
+				{
+					m_socket->sendBytes(m_unsent_samples[j]->m_buf, m_unsent_samples[j]->m_buflen);
+					delete m_unsent_samples[j];
+				}
+			}
+
+			m_unsent_samples.clear();
+
+			//
+			// Send the current sample
+			//
 			m_socket->sendBytes(buffer, size);
 		}
 		catch(Poco::IOException& e)
@@ -410,6 +479,34 @@ protected:
 				//
 				g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
 					", cause:socket buffer full, len:" + NumberFormatter::format(size));
+				return;
+			}
+			else
+			{
+				//
+				// Looks like we lost the connection to the backend.
+				// If there's space, make a copy of this sample so we can try to send it later.
+				//
+				if(m_unsent_samples.size() == 0)
+				{
+					g_log->error("lost server connection");
+					if(m_socket != NULL)
+					{
+						delete m_socket;
+						m_socket = NULL;
+					}
+					else
+					{
+						ASSERT(false);
+					}
+				}
+
+				if(m_unsent_samples.size() < MAX_SAMPLE_STORE_SIZE)
+				{
+					sample_store* sstore = new sample_store(buffer, size);
+					m_unsent_samples.push_back(sstore);
+				}
+
 				return;
 			}
 		}
@@ -610,6 +707,7 @@ private:
 	uint16_t m_serverport;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
+	vector<sample_store*> m_unsent_samples;
 };
 
 

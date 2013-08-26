@@ -35,10 +35,13 @@ while True:
       #print "ciao"
       #continue
       req = connect.recv(4)
-      msglen = socket.ntohl(unpack('I', req)[0])
+      msglen = socket.ntohl(unpack('i', req)[0])
       print msglen
       req = connect.recv(msglen)
-      print len(req)
-    except Exception, e:
-      print e
+      print len(req) 
+      connect.close()
+      s.close()
+      sys.exit(0)
+    except Exception:
+      print Exception
       break
