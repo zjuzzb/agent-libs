@@ -222,6 +222,19 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
+			g_logger.format(sinsp_logger::SEV_DEBUG, 
+				"thread table size:%d",
+				m_inspector->m_thread_manager->get_thread_count());
+
+			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, 
+					"IPv4 table size:%d",
+					m_inspector->m_ipv4_connections->m_connections.size());
+
+				m_inspector->m_ipv4_connections->clear_n_drops();
+			}
+
 			//
 			// First pass of the list of threads: emit the metrics (if defined)
 			// and aggregate them into processes
@@ -494,6 +507,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
+
 			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, 
@@ -551,6 +565,15 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"unix table size:%d",
 				m_inspector->m_unix_connections->m_connections.size());
+
+			if(m_inspector->m_unix_connections->get_n_drops() != 0)
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, 
+					"IPv4 table size:%d",
+					m_inspector->m_unix_connections->m_connections.size());
+
+				m_inspector->m_unix_connections->clear_n_drops();
+			}
 
 			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
 			for(ucit = m_inspector->m_unix_connections->m_connections.begin(); 

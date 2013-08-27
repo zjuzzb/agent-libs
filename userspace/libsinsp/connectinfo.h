@@ -105,6 +105,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	if(m_connections.size() >= m_inspector->m_configuration.get_max_connection_table_size())
 	{
 		m_n_drops++;
+		return NULL;
 	}
 
 	//
