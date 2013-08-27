@@ -22,12 +22,29 @@
 #include <sys/socket.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
+#include "Poco/URIStreamOpener.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/Path.h"
+#include "Poco/URI.h"
+#include "Poco/Exception.h"
+#include "Poco/Net/HTTPStreamFactory.h"
+#include "Poco/Net/FTPStreamFactory.h"
+#include "Poco/NullStream.h"
 
 #include "sinsp_int.h"
 #include "connectinfo.h"
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
+
+using Poco::URIStreamOpener;
+using Poco::StreamCopier;
+using Poco::Path;
+using Poco::URI;
+using Poco::Exception;
+using Poco::Net::HTTPStreamFactory;
+using Poco::Net::FTPStreamFactory;
+using Poco::NullOutputStream;
 
 #define SITE "www.google.com"
 #define SITE1 "www.yahoo.com"
@@ -317,4 +334,84 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
 	ASSERT_EQ(1, nconns);
+}
+
+TEST_F(sys_call_test, net_connection_table_limit)
+{
+	int nconns = 0;
+	int mytid = getpid();
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		try
+		{
+			HTTPStreamFactory::registerFactory();
+			
+			NullOutputStream ostr;
+
+			URI uri("http://www.google.com");
+			std::auto_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr.get(), ostr);
+
+			// We use a random call to tee to signal that we're done
+			tee(-1, -1, 0, 0);
+		}
+		catch (Exception& exc)
+		{
+			std::cerr << exc.displayText() << std::endl;
+			FAIL();
+		}
+
+		return;
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{		
+		sinsp_evt *evt = param.m_evt;
+
+		if(evt->get_type() == PPME_GENERIC_E)
+		{
+			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			{
+				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				{
+					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
+					{
+						nconns++;
+					}
+				}
+			}
+		}
+	};
+
+	sinsp_configuration configuration;
+	//
+	// Set a very long sample time, so we're sure no connection is removed
+	//
+	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+
+	//
+	// Set a very low connection table size
+	//
+//	configuration.set_max_connection_table_size(3);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+
+//	ASSERT_EQ(1, nconns);
 }
