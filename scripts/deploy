@@ -4,6 +4,8 @@ set -exu
 REPOSITORY_NAME="$1"
 
 function smoke_tests {
+	killall -9 test || true
+	
 	service dragent start
 	sleep 2
 	test -e /var/run/dragent.pid
