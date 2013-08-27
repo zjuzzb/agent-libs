@@ -33,8 +33,6 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-//BRK(749);
-
 	//
 	// Cleanup the event-related state
 	//
@@ -1551,6 +1549,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					evt->m_fdinfo->set_role_server();
 				}
 				else
 				{
@@ -1572,7 +1571,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					}
+						evt->m_fdinfo->set_role_server();
+				}
 				}
 
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
@@ -1879,6 +1879,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+					evt->m_fdinfo->set_role_client();
 				}
 				else
 				{
@@ -1898,6 +1899,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+						evt->m_fdinfo->set_role_client();
 					}
 				}
 
