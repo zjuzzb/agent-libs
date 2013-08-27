@@ -407,6 +407,7 @@ sinsp_thread_manager::sinsp_thread_manager(sinsp* inspector)
 	m_last_tid = 0;
 	m_last_tinfo = NULL;
 	m_last_flush_time_ns = 0;
+	m_n_drops = 0;
 
 #ifdef GATHER_INTERNAL_STATS
 	m_failed_lookups = &m_inspector->m_stats.get_metrics_registry().register_counter(internal_metrics::metric_name("thread_failed_lookups","Failed thread lookups"));
@@ -463,6 +464,13 @@ void sinsp_thread_manager::add_thread(const sinsp_threadinfo& threadinfo)
 #ifdef GATHER_INTERNAL_STATS
 	m_added_threads->increment();
 #endif
+
+	if(m_threadtable.size() >= m_inspector->m_configuration.get_max_thread_table_size())
+	{
+		m_n_drops++;
+		return;
+	}
+
 	m_threadtable[threadinfo.m_tid] = threadinfo;
 
 	if(threadinfo.m_flags & PPM_CL_CLONE_THREAD)

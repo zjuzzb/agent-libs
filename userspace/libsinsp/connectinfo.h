@@ -155,16 +155,20 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 			//
 			// Increment the refcount, but only if this is a brand new connection,
-			// not if it's overwriting a new one
+			// not if it's overwriting a currently open one.
 			//
-			if(conn.m_stid == 0)
+			if(conn.m_stid != 0)
 			{
-				conn.m_refcount++;
+				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				{
+					conn.m_refcount++;
+				}
+
+				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
 			}
 			else
 			{
-				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
-				//ASSERT(false);
+				conn.m_refcount++;
 			}
 
 			conn.m_stid = tid;
@@ -180,16 +184,20 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 			//
 			// Increment the refcount, but only if this is a brand new connection,
-			// not if it's overwriting a new one
+			// not if it's overwriting a currently open one.
 			//
-			if(conn.m_dtid == 0)
+			if(conn.m_dtid != 0)
 			{
-				conn.m_refcount++;
+				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				{
+					conn.m_refcount++;
+				}
+
+				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
 			}
 			else
 			{
-				conn.m_analysis_flags = sinsp_connection::AF_REUSED;
-				//ASSERT(false);
+				conn.m_refcount++;
 			}
 
 			conn.m_dtid = tid;

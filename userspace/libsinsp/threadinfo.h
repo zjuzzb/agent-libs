@@ -162,6 +162,7 @@ private:
 	int64_t m_last_tid;
 	sinsp_threadinfo* m_last_tinfo;
 	uint64_t m_last_flush_time_ns;
+	uint32_t m_n_drops;
 
 	INTERNAL_COUNTER(m_failed_lookups);
 	INTERNAL_COUNTER(m_cached_lookups);

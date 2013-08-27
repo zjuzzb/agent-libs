@@ -26,6 +26,8 @@ public:
 	void set_analyzer_sample_length_ns(uint64_t analyzer_sample_length_ns);
 	uint32_t get_max_connection_table_size() const;
 	void set_max_connection_table_size(uint32_t max_connection_table_size);
+	uint32_t get_max_thread_table_size() const;
+	void set_max_thread_table_size(uint32_t max_thread_table_size);
 
 private:
 	uint64_t m_connection_timeout_ns;
@@ -37,4 +39,5 @@ private:
 	uint64_t m_analyzer_sample_length_ns;
 	string m_metrics_directory;
 	uint32_t m_max_connection_table_size;
+	uint32_t m_max_thread_table_size;
 };

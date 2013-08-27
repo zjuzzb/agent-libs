@@ -12,6 +12,7 @@ sinsp_configuration::sinsp_configuration()
 	m_analyzer_sample_length_ns = ANALYZER_SAMPLE_LENGTH_NS;
 	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
+	m_max_thread_table_size = MAX_THREAD_TABLE_SIZE;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -150,4 +151,14 @@ uint32_t sinsp_configuration::get_max_connection_table_size() const
 void sinsp_configuration::set_max_connection_table_size(uint32_t max_connection_table_size)
 {
 	m_max_connection_table_size = max_connection_table_size;
+}
+
+uint32_t sinsp_configuration::get_max_thread_table_size() const
+{
+	return m_max_thread_table_size;
+}
+
+void sinsp_configuration::set_max_thread_table_size(uint32_t max_thread_table_size)
+{
+	m_max_thread_table_size = max_thread_table_size;
 }
