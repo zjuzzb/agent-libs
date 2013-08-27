@@ -269,15 +269,19 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				//
 				// Add this thread's counters to the process ones
 				//
+#ifdef _DEBUG
+				sinsp_counter_time ttot;
+				it->second.m_metrics.get_total(&ttot);
+				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+#endif
+				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+				mtinfo->add_proc_metrics(&it->second);
 
 				//
 				// Dump the thread info into the protobuf
 				//
-				sinsp_counter_time tot;
-				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-				mtinfo->add_proc_metrics(&it->second);
-
 #ifdef ANALYZER_EMITS_THREADS
+				sinsp_counter_time tot;
 				it->second.m_metrics.get_total(&tot);
 				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
@@ -490,6 +494,14 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
+			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, 
+					"IPv4 table size:%d",
+					m_inspector->m_ipv4_connections->m_connections.size());
+
+				m_inspector->m_ipv4_connections->clear_n_drops();
+			}
 
 			unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 			for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
@@ -789,6 +801,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 			break;
 		case EC_TIME:
 			metrics->m_time.add(cnt_delta, delta);
+			break;
 		case EC_PROCESSING:
 			metrics->m_processing.add(cnt_delta, delta);
 			break;

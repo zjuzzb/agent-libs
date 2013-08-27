@@ -59,6 +59,10 @@ public:
 #endif
 
 	// Returns the pointer to the new connection
+	sinsp_connection_manager()
+	{
+		m_n_drops = 0;
+	}
 	sinsp_connection* add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
 	void remove_connection(const TKey& key, bool now = true);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
@@ -74,9 +78,20 @@ public:
 		return m_inspector->m_configuration;
 	}
 
+	uint32_t get_n_drops()
+	{
+		return m_n_drops;
+	}
+
+	void clear_n_drops()
+	{
+		m_n_drops = 0;
+	}
+
 	unordered_map<TKey, sinsp_connection, THash, TCompare> m_connections;
 	sinsp * m_inspector;
 	uint64_t m_last_connection_removal_ts;
+	uint32_t m_n_drops;
 };
 
 template<class TKey, class THash, class TCompare>
@@ -84,6 +99,17 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
+	//
+	// First of all, make sure there's space for this connection in the table
+	//
+	if(m_connections.size() >= m_inspector->m_configuration.get_max_connection_table_size())
+	{
+		m_n_drops++;
+	}
+
+	//
+	// Insert the new connection
+	//
 	const std::pair<typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator,
 		bool>& element = m_connections.emplace(key, timestamp);
 

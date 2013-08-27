@@ -1653,7 +1653,14 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		// Attribute the read bytes to the proper connection side
 		//
-		ASSERT(connection != NULL);
+		if(connection == NULL)
+		{
+			//
+			// This happens when the connection table is full
+			//
+			return;
+		}
+
 		if(evt->m_fdinfo->has_role_server())
 		{
 			connection->m_metrics.m_server_incoming.add(1, original_len);
@@ -1732,7 +1739,6 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		// Update the transaction state.
 		//
-		ASSERT(connection != NULL);
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
 			connection,
@@ -1907,7 +1913,14 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		//
 		// Attribute the read bytes to the proper connection side
 		//
-		ASSERT(connection != NULL);
+		if(connection == NULL)
+		{
+			//
+			// This happens when the connection table is full
+			//
+			return;
+		}
+
 		if(evt->m_fdinfo->has_role_server())
 		{
 			connection->m_metrics.m_server_outgoing.add(1, original_len);

@@ -78,3 +78,8 @@
 // How often the thread table is sacnned for inactive threads
 //
 #define DEFAULT_INACTIVE_THREAD_SCAN_TIME 600
+
+//
+// Max number size that the connection table can reach
+//
+#define MAX_CONNECTION_TABLE_SIZE 65536

@@ -562,7 +562,7 @@ protected:
 		splitterChannel->addChannel(rotatedFileChannel);
 
 
-		AutoPtr<Formatter> formatter(new PatternFormatter("%h-%M-%S.%i, %l, %t"));
+		AutoPtr<Formatter> formatter(new PatternFormatter("%h-%M-%S.%i, %p, %t"));
 		AutoPtr<Channel> formattingChannel(new FormattingChannel(formatter, splitterChannel));
 
 		Logger& logger = Logger::create("TestLog", formattingChannel, Message::PRIO_DEBUG);
@@ -683,7 +683,7 @@ protected:
 			return Application::EXIT_SOFTWARE;
 		}
 
-		g_log->error("Application::EXIT_OK\n");
+		g_log->information("Application::EXIT_OK\n");
 		return Application::EXIT_OK;
 	}
 	
