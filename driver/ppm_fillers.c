@@ -823,9 +823,12 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 {
 	int32_t res;
 	int64_t retval;
+	int err = 0;
 	int fd;
+	struct sockaddr __user* usrsockaddr;
 	uint16_t size = 0;
 	char* targetbuf = args->ringinfo->str_storage;
+	struct sockaddr_storage address;
 #ifdef __x86_64__
 	unsigned long val;
 #endif
@@ -848,13 +851,48 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 	fd = (int)args->ringinfo->socketcall_args[0];
 #endif
 
-	size = fd_to_socktuple(fd, 
-		NULL,
-		0,
-		false,
-		false, 
-		targetbuf, 
-		STR_STORAGE_SIZE);
+	if(fd >= 0)
+	{
+		//
+		// Get the address
+		//
+#ifdef __x86_64__
+		syscall_get_arguments(current, args->regs, 1, 1, &val);
+#else
+		val = args->ringinfo->socketcall_args[1];
+#endif
+		usrsockaddr = (struct sockaddr __user*)val;
+
+		//
+		// Get the address len
+		//
+#ifdef __x86_64__
+		syscall_get_arguments(current, args->regs, 2, 1, &val);
+#else
+		val = args->ringinfo->socketcall_args[2];
+#endif
+
+		if(usrsockaddr != NULL && val != 0)
+		{
+			//
+			// Copy the address
+			//
+			err = addr_to_kernel(usrsockaddr, val, (struct sockaddr *)&address);
+			if(err >= 0)
+			{
+				//
+				// Convert the fd into socket endpoint information
+				//
+				size = fd_to_socktuple(fd, 
+					(struct sockaddr *)&address,
+					val,
+					true,
+					false, 
+					targetbuf, 
+					STR_STORAGE_SIZE);
+			}
+		}
+	}
 
 	//
 	// Copy the endpoint info into the ring

@@ -540,11 +540,8 @@ uint16_t fd_to_socktuple(int fd,
 		return 0;
 	}
 
-	//
-	// Ok no error check, we won't use them in all the cases
-	//
-	sock->ops->getname(sock, (struct sockaddr *)&peer_address, &peer_address_len, 1);
-	sock->ops->getname(sock, (struct sockaddr *)&sock_address, &sock_address_len, 0);
+	err = sock->ops->getname(sock, (struct sockaddr *)&sock_address, &sock_address_len, 0);
+	ASSERT(err == 0);
 
 	family = sock->sk->sk_family;
 
@@ -556,6 +553,9 @@ uint16_t fd_to_socktuple(int fd,
 	case AF_INET:
 		if(!use_userdata)
 		{
+			err = sock->ops->getname(sock, (struct sockaddr *)&peer_address, &peer_address_len, 1);
+			ASSERT(err == 0);
+
 			if(is_inbound)
 			{
 				sip = ((struct sockaddr_in*) &peer_address)->sin_addr.s_addr;
@@ -680,6 +680,9 @@ uint16_t fd_to_socktuple(int fd,
 			}
 			else
 			{
+				err = sock->ops->getname(sock, (struct sockaddr *)&peer_address, &peer_address_len, 1);
+				ASSERT(err == 0);
+
 				us_name = ((struct sockaddr_un*) &peer_address)->sun_path;
 			}
 		}
