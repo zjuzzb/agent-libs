@@ -57,7 +57,7 @@ unsigned long ppm_copy_from_user(void *to, const void __user *from, unsigned lon
 
 	pagefault_disable();
 
-	if(access_ok(VERIFY_READ, from, n))
+	if(likely(access_ok(VERIFY_READ, from, n)))
 	{
 		res = __copy_from_user_inatomic(to, from, n);
 	}
@@ -140,7 +140,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	int32_t len = -1;
 	uint16_t* psize = (uint16_t*)(args->buffer + args->ringinfo->curarg * sizeof(uint16_t));
 
-	if(args->ringinfo->curarg >= args->ringinfo->nargs)
+	if(unlikely(args->ringinfo->curarg >= args->ringinfo->nargs))
 	{
 		printk(KERN_INFO "PPM: %u)val_to_ring: too many arguments for event #%u, type=%u, curarg=%u, nargs=%u tid:%u\n",
 		       smp_processor_id(),
@@ -158,14 +158,14 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	{
 	case PT_CHARBUF:
 	case PT_FSPATH:
-		if(val != 0)
+		if(likely(val != 0))
 		{
 			if(fromuser)
 			{
 				len = ppm_strncpy_from_user(args->buffer + args->ringinfo->arg_data_offset, 
 					(const char __user *)(unsigned long)val, args->ringinfo->arg_data_size);
 
-				if(len < 0)
+				if(unlikely(len < 0))
 				{
 					return PPM_FAILURE_INVALID_USER_MEMORY;
 				}
@@ -203,9 +203,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_SOCKADDR:
 	case PT_SOCKTUPLE:
 	case PT_FDLIST:
-		if(val != 0)
+		if(likely(val != 0))
 		{
-			if(val_len >= args->ringinfo->arg_data_size)
+			if(unlikely(val_len >= args->ringinfo->arg_data_size))
 			{
 				return PPM_FAILURE_BUFFER_FULL;
 			}
@@ -217,7 +217,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 							(const void __user*)(unsigned long)val,
 							val_len);
 
-					if(len != 0)
+					if(unlikely(len != 0))
 					{
 						return PPM_FAILURE_INVALID_USER_MEMORY;
 					}
@@ -244,7 +244,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 		break;
 	case PT_UINT8:
 	case PT_SIGTYPE:
-		if(args->ringinfo->arg_data_size >= sizeof(uint8_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(uint8_t)))
 		{
 			*(uint8_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint8_t)val;
 			len = sizeof(uint8_t);
@@ -257,7 +257,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 		break;
 	case PT_UINT16:
 	case PT_SYSCALLID:
-		if(args->ringinfo->arg_data_size >= sizeof(uint16_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(uint16_t)))
 		{
 			*(uint16_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint16_t)val;
 			len = sizeof(uint16_t);
@@ -269,7 +269,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_UINT32:
-		if(args->ringinfo->arg_data_size >= sizeof(uint32_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(uint32_t)))
 		{
 			*(uint32_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint32_t)val;
 			len = sizeof(uint32_t);
@@ -283,7 +283,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_RELTIME:
 	case PT_ABSTIME:
 	case PT_UINT64:
-		if(args->ringinfo->arg_data_size >= sizeof(uint64_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(uint64_t)))
 		{
 			*(uint64_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint64_t)val;
 			len = sizeof(uint64_t);
@@ -295,7 +295,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT8:
-		if(args->ringinfo->arg_data_size >= sizeof(int8_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(int8_t)))
 		{
 			*(int8_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int8_t)(long)val;
 			len = sizeof(int8_t);
@@ -307,7 +307,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT16:
-		if(args->ringinfo->arg_data_size >= sizeof(int16_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(int16_t)))
 		{
 			*(int16_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int16_t)(long)val;
 			len = sizeof(int16_t);
@@ -319,7 +319,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT32:
-		if(args->ringinfo->arg_data_size >= sizeof(int32_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(int32_t)))
 		{
 			*(int32_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int32_t)(long)val;
 			len = sizeof(int32_t);
@@ -334,7 +334,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_ERRNO:
 	case PT_FD:
 	case PT_PID:
-		if(args->ringinfo->arg_data_size >= sizeof(int64_t))
+		if(likely(args->ringinfo->arg_data_size >= sizeof(int64_t)))
 		{
 			*(int64_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int64_t)(long)val;
 			len = sizeof(int64_t);
@@ -368,7 +368,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 inline int32_t add_sentinel(struct event_filler_arguments* args)
 {
 #ifdef PPM_ENABLE_SENTINEL
-	if(args->ringinfo->arg_data_size >= sizeof(uint32_t))
+	if(likely(args->ringinfo->arg_data_size >= sizeof(uint32_t)))
 	{
 		*(uint32_t*)(args->buffer + args->ringinfo->arg_data_offset) = args->sentinel;
 		args->ringinfo->arg_data_offset += 4;
@@ -531,7 +531,7 @@ uint16_t fd_to_socktuple(int fd,
 	//
 	sock = sockfd_lookup(fd, &err);
 
-	if(!sock || !(sock->sk))
+	if(unlikely(!sock || !(sock->sk)))
 	{
 		//
 		// This usually happens if the call failed without being able to establish a connection,
@@ -743,17 +743,17 @@ uint16_t fd_to_socktuple(int fd,
 
 int addr_to_kernel(void __user *uaddr, int ulen, struct sockaddr *kaddr)
 {
-	if(ulen < 0 || ulen > sizeof(struct sockaddr_storage))
+	if(unlikely(ulen < 0 || ulen > sizeof(struct sockaddr_storage)))
 	{
 		return -EINVAL;
 	}
 
-	if(ulen == 0)
+	if(unlikely(ulen == 0))
 	{
 		return 0;
 	}
 
-	if(ppm_copy_from_user(kaddr, uaddr, ulen))
+	if(unlikely(ppm_copy_from_user(kaddr, uaddr, ulen)))
 	{
 		return -EFAULT;
 	}
@@ -815,7 +815,7 @@ int32_t f_sys_autofill(struct event_filler_arguments* args, const struct ppm_eve
 #endif
 
 			res = val_to_ring(args, val, 0, true);
-			if(res != PPM_SUCCESS)
+			if(unlikely(res != PPM_SUCCESS))
 			{
 				return res;
 			}
@@ -827,7 +827,7 @@ int32_t f_sys_autofill(struct event_filler_arguments* args, const struct ppm_eve
 			//
 			retval = (int64_t)(long)syscall_get_return_value(current, args->regs);
 			res = val_to_ring(args, retval, 0, false);
-			if(res != PPM_SUCCESS)
+			if(unlikely(res != PPM_SUCCESS))
 			{
 				return res;
 			}
@@ -838,7 +838,7 @@ int32_t f_sys_autofill(struct event_filler_arguments* args, const struct ppm_eve
 			// Default Value
 			//
 			res = val_to_ring(args, evinfo->autofill_args[j].default_val, 0, false);
-			if(res != PPM_SUCCESS)
+			if(unlikely(res != PPM_SUCCESS))
 			{
 				return res;
 			}

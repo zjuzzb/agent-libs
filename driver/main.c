@@ -430,24 +430,24 @@ enum ppm_event_type parse_socketcall(struct ppm_ring_buffer_context* ring, struc
 	ring->socketcall_id = args[0];
 	scargs = (unsigned long __user*)args[1];
 
-	if(ring->socketcall_id < SYS_SOCKET || 
+	if(unlikely(ring->socketcall_id < SYS_SOCKET || 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
-		ring->socketcall_id > SYS_SENDMMSG)
+		ring->socketcall_id > SYS_SENDMMSG))
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-		ring->socketcall_id > SYS_RECVMMSG)
+		ring->socketcall_id > SYS_RECVMMSG))
 #else
-		ring->socketcall_id > SYS_ACCEPT4)
+		ring->socketcall_id > SYS_ACCEPT4))
 #endif
 	{
 		return PPME_GENERIC_E;
 	}
 	
-	if(ppm_copy_from_user(ring->socketcall_args, scargs, nas[ring->socketcall_id]))
+	if(unlikely(ppm_copy_from_user(ring->socketcall_args, scargs, nas[ring->socketcall_id])))
 	{
 		return PPME_GENERIC_E;
 	}	
 
-	switch (ring->socketcall_id)
+	switch(ring->socketcall_id)
 	{
 	case SYS_SOCKET:
 		return PPME_SOCKET_SOCKET_E;
@@ -527,7 +527,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	//
 	// Preemption gate
 	//
-	if(atomic_inc_return(&ring->preempt_count) != 1)
+	if(unlikely(atomic_inc_return(&ring->preempt_count) != 1))
 	{
 		atomic_dec(&ring->preempt_count);
 		put_cpu_var(g_ring_buffers);
@@ -539,7 +539,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	ring->curevent_type = event_type;
 
 	// xxx access to ring->state should be atomic
-	if(ring->state == CS_INACTIVE)
+	if(unlikely(ring->state == CS_INACTIVE))
 	{
 		atomic_dec(&ring->preempt_count);
 		put_cpu_var(g_ring_buffers);
@@ -606,7 +606,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	// Make sure we have enough space for the event header.
 	// We need at least space for the header plus 16 bit per parameter for the lengths.
 	//
-	if(freespace >= sizeof(struct ppm_evt_hdr) + ring->arg_data_offset)
+	if(likely(freespace >= sizeof(struct ppm_evt_hdr) + ring->arg_data_offset))
 	{
 		//
 		// Populate the header
@@ -654,12 +654,12 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 			cbres = g_ppm_events[event_type].filler_callback(&args);
 		}
 
-		if(cbres == PPM_SUCCESS)
+		if(likely(cbres == PPM_SUCCESS))
 		{
 			//
 			// Validate that the filler added the right number of parameters
 			//
-			if(ring->curarg == ring->nargs)
+			if(likely(ring->curarg == ring->nargs))
 			{
 				event_size = sizeof(struct ppm_evt_hdr) + ring->arg_data_offset;
 				drop = 0;
@@ -675,7 +675,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		}
 	}
 
-	if(!drop)
+	if(likely(!drop))
 	{
 		next = ring->info->head + event_size;
 		/*
@@ -703,7 +703,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 7));
 				}
 		*/
-		if(next >= RING_BUF_SIZE)
+		if(unlikely(next >= RING_BUF_SIZE))
 		{
 			//
 			// If something has been written in the cushion space at the end of
@@ -783,14 +783,14 @@ TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id)
 {
 	trace_enter();
 
-	if(id >= 0 && id < SYSCALL_TABLE_SIZE)
+	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
 		//
 		// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
 		// kernel flag), we skip its events.
 		// XXX Decide what to do about this.
 		//
-		if(test_tsk_thread_flag(current, TIF_IA32))
+		if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
 		{
 			return;		
 		}
@@ -814,14 +814,14 @@ TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret)
 
 	id = syscall_get_nr(current, regs);
 
-	if(id >= 0 && id < SYSCALL_TABLE_SIZE)
+	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
 		//
 		// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
 		// kernel flag), we skip its events.
 		// XXX Decide what to do about this.
 		//
-		if(test_tsk_thread_flag(current, TIF_IA32))
+		if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
 		{
 			return;		
 		}
@@ -853,7 +853,7 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct pt_regs *regs, long ret)
 {
 	trace_enter();
 
-	if(current->flags & PF_KTHREAD)
+	if(unlikely(current->flags & PF_KTHREAD))
 	{
 		//
 		// We are not interested in kernel threads
