@@ -299,7 +299,6 @@ bool sinsp_parser::retrieve_enter_event(sinsp_evt *enter_evt, sinsp_evt *exit_ev
 	//
 	if(!exit_evt->m_tinfo)
 	{
-		ASSERT(false);
 		return false;
 	}
 

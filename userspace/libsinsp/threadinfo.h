@@ -144,7 +144,7 @@ public:
 	void remove_thread(threadinfo_map_iterator_t it);
 	void remove_inactive_threads();
 
-	uint64_t get_thread_count()
+	uint32_t get_thread_count()
 	{
 		return m_threadtable.size();
 	}
