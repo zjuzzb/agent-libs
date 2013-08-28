@@ -138,23 +138,23 @@ strncpy_end:
 inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, uint16_t val_len, bool fromuser)
 {
 	int32_t len = -1;
-	uint16_t* psize = (uint16_t*)(args->buffer + args->ringinfo->curarg * sizeof(uint16_t));
+	uint16_t* psize = (uint16_t*)(args->buffer + args->curarg * sizeof(uint16_t));
 
-	if(unlikely(args->ringinfo->curarg >= args->ringinfo->nargs))
+	if(unlikely(args->curarg >= args->nargs))
 	{
 		printk(KERN_INFO "PPM: %u)val_to_ring: too many arguments for event #%u, type=%u, curarg=%u, nargs=%u tid:%u\n",
 		       smp_processor_id(),
-		       args->ringinfo->nevents,
+		       args->nevents,
 		       (uint32_t)args->event_type,
-		       args->ringinfo->curarg,
-		       args->ringinfo->nargs,
+		       args->curarg,
+		       args->nargs,
 		       current->pid);
 		memory_dump(args->buffer - sizeof(struct ppm_evt_hdr), 32);
 		ASSERT(0);
 		return PPM_FAILURE_BUG;
 	}
 
-	switch(g_event_info[args->event_type].params[args->ringinfo->curarg].type)
+	switch(g_event_info[args->event_type].params[args->curarg].type)
 	{
 	case PT_CHARBUF:
 	case PT_FSPATH:
@@ -162,8 +162,8 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 		{
 			if(fromuser)
 			{
-				len = ppm_strncpy_from_user(args->buffer + args->ringinfo->arg_data_offset, 
-					(const char __user *)(unsigned long)val, args->ringinfo->arg_data_size);
+				len = ppm_strncpy_from_user(args->buffer + args->arg_data_offset, 
+					(const char __user *)(unsigned long)val, args->arg_data_size);
 
 				if(unlikely(len < 0))
 				{
@@ -172,29 +172,29 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 			}
 			else
 			{
-				char* dest = strncpy(args->buffer + args->ringinfo->arg_data_offset,
+				char* dest = strncpy(args->buffer + args->arg_data_offset,
 								(const char*)(unsigned long)val,
-								args->ringinfo->arg_data_size);
+								args->arg_data_size);
 
-				dest[args->ringinfo->arg_data_size - 1] = 0;
+				dest[args->arg_data_size - 1] = 0;
 				len = strlen(dest) + 1;
 			}
 
 			//
 			// Make sure the string is null-terminated
 			//
-			*(char*)(args->buffer + args->ringinfo->arg_data_offset + len) = 0;
+			*(char*)(args->buffer + args->arg_data_offset + len) = 0;
 		}
 		else
 		{
 			//
 			// Handle NULL pointers
 			//
-			char* dest = strncpy(args->buffer + args->ringinfo->arg_data_offset,
+			char* dest = strncpy(args->buffer + args->arg_data_offset,
 	                       "(NULL)",
-	                       args->ringinfo->arg_data_size);
+	                       args->arg_data_size);
 
-			dest[args->ringinfo->arg_data_size - 1] = 0;
+			dest[args->arg_data_size - 1] = 0;
 			len = strlen(dest) + 1;
 		}
 
@@ -205,7 +205,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_FDLIST:
 		if(likely(val != 0))
 		{
-			if(unlikely(val_len >= args->ringinfo->arg_data_size))
+			if(unlikely(val_len >= args->arg_data_size))
 			{
 				return PPM_FAILURE_BUFFER_FULL;
 			}
@@ -213,7 +213,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 			{
 				if(fromuser)
 				{
-					len = (int32_t)ppm_copy_from_user(args->buffer + args->ringinfo->arg_data_offset,
+					len = (int32_t)ppm_copy_from_user(args->buffer + args->arg_data_offset,
 							(const void __user*)(unsigned long)val,
 							val_len);
 
@@ -226,7 +226,7 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 				}
 				else
 				{
-					memcpy(args->buffer + args->ringinfo->arg_data_offset,
+					memcpy(args->buffer + args->arg_data_offset,
 						(void*)(unsigned long)val, val_len);
 
 					len = val_len;
@@ -244,9 +244,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 		break;
 	case PT_UINT8:
 	case PT_SIGTYPE:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(uint8_t)))
+		if(likely(args->arg_data_size >= sizeof(uint8_t)))
 		{
-			*(uint8_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint8_t)val;
+			*(uint8_t*)(args->buffer + args->arg_data_offset) = (uint8_t)val;
 			len = sizeof(uint8_t);
 		}
 		else
@@ -257,9 +257,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 		break;
 	case PT_UINT16:
 	case PT_SYSCALLID:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(uint16_t)))
+		if(likely(args->arg_data_size >= sizeof(uint16_t)))
 		{
-			*(uint16_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint16_t)val;
+			*(uint16_t*)(args->buffer + args->arg_data_offset) = (uint16_t)val;
 			len = sizeof(uint16_t);
 		}
 		else
@@ -269,9 +269,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_UINT32:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(uint32_t)))
+		if(likely(args->arg_data_size >= sizeof(uint32_t)))
 		{
-			*(uint32_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint32_t)val;
+			*(uint32_t*)(args->buffer + args->arg_data_offset) = (uint32_t)val;
 			len = sizeof(uint32_t);
 		}
 		else
@@ -283,9 +283,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_RELTIME:
 	case PT_ABSTIME:
 	case PT_UINT64:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(uint64_t)))
+		if(likely(args->arg_data_size >= sizeof(uint64_t)))
 		{
-			*(uint64_t*)(args->buffer + args->ringinfo->arg_data_offset) = (uint64_t)val;
+			*(uint64_t*)(args->buffer + args->arg_data_offset) = (uint64_t)val;
 			len = sizeof(uint64_t);
 		}
 		else
@@ -295,9 +295,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT8:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(int8_t)))
+		if(likely(args->arg_data_size >= sizeof(int8_t)))
 		{
-			*(int8_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int8_t)(long)val;
+			*(int8_t*)(args->buffer + args->arg_data_offset) = (int8_t)(long)val;
 			len = sizeof(int8_t);
 		}
 		else
@@ -307,9 +307,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT16:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(int16_t)))
+		if(likely(args->arg_data_size >= sizeof(int16_t)))
 		{
-			*(int16_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int16_t)(long)val;
+			*(int16_t*)(args->buffer + args->arg_data_offset) = (int16_t)(long)val;
 			len = sizeof(int16_t);
 		}
 		else
@@ -319,9 +319,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 
 		break;
 	case PT_INT32:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(int32_t)))
+		if(likely(args->arg_data_size >= sizeof(int32_t)))
 		{
-			*(int32_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int32_t)(long)val;
+			*(int32_t*)(args->buffer + args->arg_data_offset) = (int32_t)(long)val;
 			len = sizeof(int32_t);
 		}
 		else
@@ -334,9 +334,9 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	case PT_ERRNO:
 	case PT_FD:
 	case PT_PID:
-		if(likely(args->ringinfo->arg_data_size >= sizeof(int64_t)))
+		if(likely(args->arg_data_size >= sizeof(int64_t)))
 		{
-			*(int64_t*)(args->buffer + args->ringinfo->arg_data_offset) = (int64_t)(long)val;
+			*(int64_t*)(args->buffer + args->arg_data_offset) = (int64_t)(long)val;
 			len = sizeof(int64_t);
 		}
 		else
@@ -348,19 +348,19 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 	default:
 		ASSERT(0);
 		printk(KERN_INFO "PPM: val_to_ring: invalid argument type %d. Event %u (%s) might have less parameters than what has been declared in nparams\n",
-		       (int)g_event_info[args->event_type].params[args->ringinfo->curarg].type,
+		       (int)g_event_info[args->event_type].params[args->curarg].type,
 		       (uint32_t)args->event_type,
 		       g_event_info[args->event_type].name);
 		return PPM_FAILURE_BUG;
 	}
 
 	ASSERT(len <= 65535);
-	ASSERT(len <= args->ringinfo->arg_data_size);
+	ASSERT(len <= args->arg_data_size);
 
 	*psize = (uint16_t)len;
-	args->ringinfo->curarg++;
-	args->ringinfo->arg_data_offset += len;
-	args->ringinfo->arg_data_size -= len;
+	args->curarg++;
+	args->arg_data_offset += len;
+	args->arg_data_size -= len;
 
 	return PPM_SUCCESS;
 }
@@ -368,11 +368,11 @@ inline int32_t val_to_ring(struct event_filler_arguments* args, uint64_t val, ui
 inline int32_t add_sentinel(struct event_filler_arguments* args)
 {
 #ifdef PPM_ENABLE_SENTINEL
-	if(likely(args->ringinfo->arg_data_size >= sizeof(uint32_t)))
+	if(likely(args->arg_data_size >= sizeof(uint32_t)))
 	{
-		*(uint32_t*)(args->buffer + args->ringinfo->arg_data_offset) = args->sentinel;
-		args->ringinfo->arg_data_offset += 4;
-		args->ringinfo->arg_data_size -= 4;
+		*(uint32_t*)(args->buffer + args->arg_data_offset) = args->sentinel;
+		args->arg_data_offset += 4;
+		args->arg_data_size -= 4;
 		return PPM_SUCCESS;
 	}
 	else

@@ -6,15 +6,20 @@
 //
 struct event_filler_arguments
 {
-	struct ppm_ring_buffer_context* ringinfo; // the ring buffer state
 	char* buffer;	// the buffer that will be filled with the data
 	uint32_t buffer_size;	// the space in the ring buffer available for this event
 	uint32_t syscall_id;	// the system call ID
 #ifdef PPM_ENABLE_SENTINEL
 	uint32_t sentinel;
 #endif
+	uint32_t nevents;
+	uint32_t curarg;
+	uint32_t nargs;
+	uint32_t arg_data_offset;
+	uint32_t arg_data_size;
 	enum ppm_event_type event_type;	// the event type
 	struct pt_regs *regs; // the registers containing the call arguments
+	char* str_storage; // String storage. Size is one page.
 };
 
 //

@@ -635,13 +635,13 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 	{
 		if(unlikely(!mm))
 		{
-			args->ringinfo->str_storage[0] = 0;
+			args->str_storage[0] = 0;
 			printk(KERN_INFO "PPM: f_proc_startupdate drop, mm=NULL\n");
 			return PPM_FAILURE_BUG;
 		}
 		if(unlikely(!mm->arg_end))
 		{
-			args->ringinfo->str_storage[0] = 0;
+			args->str_storage[0] = 0;
 			printk(KERN_INFO "PPM: f_proc_startupdate drop, mm->arg_end=NULL\n");
 			return PPM_FAILURE_BUG;
 		}
@@ -653,10 +653,10 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 			args_len = PAGE_SIZE;
 		}
 
-		memcpy(args->ringinfo->str_storage, (void*)mm->arg_start, args_len);
-		args->ringinfo->str_storage[args_len] = 0;
+		memcpy(args->str_storage, (void*)mm->arg_start, args_len);
+		args->str_storage[args_len] = 0;
 
-		exe_len = strnlen(args->ringinfo->str_storage, args_len);
+		exe_len = strnlen(args->str_storage, args_len);
 		if(exe_len < args_len)
 		{
 			++exe_len;
@@ -667,14 +667,14 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 		//
 		// The call failed. Return empty strings for exe and args
 		//
-		*args->ringinfo->str_storage = 0;
+		*args->str_storage = 0;
 		argstr = "";
 	}
 
 	//
 	// exe
 	//
-	res = val_to_ring(args, (uint64_t)(long)args->ringinfo->str_storage, 0, false);
+	res = val_to_ring(args, (uint64_t)(long)args->str_storage, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -683,7 +683,7 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 	//
 	// Args
 	//
-	res = val_to_ring(args, (int64_t)(long)args->ringinfo->str_storage + exe_len, args_len - exe_len, false);
+	res = val_to_ring(args, (int64_t)(long)args->str_storage + exe_len, args_len - exe_len, false);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -728,7 +728,7 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 	//
 	// cwd
 	//
-	spwd = npm_getcwd(args->ringinfo->str_storage, STR_STORAGE_SIZE - 1);
+	spwd = npm_getcwd(args->str_storage, STR_STORAGE_SIZE - 1);
 	if(spwd == NULL)
 	{
 		spwd = "";
@@ -766,7 +766,7 @@ static int32_t f_sys_socket_bind_x(struct event_filler_arguments* args)
 	struct sockaddr __user* usrsockaddr;
 	unsigned long val;
 	struct sockaddr_storage address;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 
 	//
 	// res
@@ -834,7 +834,7 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 	int fd;
 	struct sockaddr __user* usrsockaddr;
 	uint16_t size = 0;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	struct sockaddr_storage address;
 	unsigned long val;
 
@@ -1032,7 +1032,7 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 {
 	int32_t res;
 	int fd;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	uint16_t size = 0;
 	unsigned long val;
 	unsigned long srvskfd;
@@ -1166,7 +1166,7 @@ static int32_t f_sys_sendto_e(struct event_filler_arguments* args)
 	unsigned long val;
 	int32_t res;
 	uint16_t size = 0;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	int fd;
 	struct sockaddr __user* usrsockaddr;
 	struct sockaddr_storage address;
@@ -1431,7 +1431,7 @@ static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args)
 	int32_t res;
 	uint16_t size = 0;
 	int64_t retval;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	int fd;
 	struct sockaddr __user* usrsockaddr;
 	struct sockaddr_storage address;
@@ -1965,14 +1965,14 @@ static int32_t poll_parse_fds(struct event_filler_arguments* args, bool enter_ev
 	// Get the fds pointer
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 
-	fds = (struct pollfd*)args->ringinfo->str_storage;
+	fds = (struct pollfd*)args->str_storage;
 	if(unlikely(ppm_copy_from_user(fds, (const void*)val, nfds * sizeof(struct pollfd))))
 	{
 		return PPM_FAILURE_INVALID_USER_MEMORY;
 	}
 
 	pos = 2;
-	targetbuf = args->ringinfo->str_storage + nfds * sizeof(struct pollfd) + pos;
+	targetbuf = args->str_storage + nfds * sizeof(struct pollfd) + pos;
 	fds_count = 0;
 
 	// Copy each fd into the temporary buffer
@@ -2232,7 +2232,7 @@ static int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, int6
 	int32_t res;
 	const struct iovec* iov;
 	unsigned long iovcnt;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	uint32_t copylen;
 	uint32_t j;
 	uint64_t size = 0;
@@ -2515,7 +2515,7 @@ static int32_t f_sys_nanosleep_e(struct event_filler_arguments* args)
 	int32_t res;
 	uint64_t longtime;
 	unsigned long val;
-	char* targetbuf = args->ringinfo->str_storage;
+	char* targetbuf = args->str_storage;
 	struct timespec* tts = (struct timespec*)targetbuf;
 	int32_t cfulen;
 

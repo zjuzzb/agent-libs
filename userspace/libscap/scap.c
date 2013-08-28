@@ -64,7 +64,6 @@ scap_t* scap_open_live(char *error)
 	//
 	// Allocate the device descriptors.
 	//
-	handle->m_page_size = sysconf(_SC_PAGESIZE);
 	len = RING_BUF_SIZE * 2;
 
 	handle->m_devs = (scap_device*)malloc(ndevs * sizeof(scap_device));
@@ -471,7 +470,7 @@ int32_t scap_readbuf(scap_t* handle, uint32_t cpuid, bool blocking, OUT char** b
 		         read_size,
 		         RING_BUF_SIZE,
 		         (handle->m_devs[cpuid].m_bufinfo->tail + read_size) % RING_BUF_SIZE);
-//		ASSERT(false);
+		ASSERT(false);
 		return SCAP_FAILURE;
 	}
 

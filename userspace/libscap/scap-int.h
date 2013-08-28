@@ -51,7 +51,6 @@ struct scap
 	FILE* m_file;
 	char* m_file_evt_buf;
 	char m_lasterr[SCAP_LASTERR_SIZE];
-	uint32_t m_page_size;
 	scap_threadinfo* m_proclist;
 	scap_threadinfo m_fake_kernel_proc;
 	uint64_t m_evtcnt;

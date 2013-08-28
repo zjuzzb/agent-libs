@@ -78,19 +78,13 @@ struct ppm_ring_buffer_context
 	ppm_capture_state state;
 	struct ppm_ring_buffer_info* info;
 	char* buffer;
-	// The following values are used when adding events to the buffer
-	uint32_t nargs;
-	uint32_t curarg;
-	uint32_t arg_data_offset;
-	uint32_t arg_data_size;
 	struct timespec last_print_time;
-	volatile uint32_t nevents;
+	uint32_t nevents;
 	atomic_t preempt_count;
 #ifndef __x86_64__
 	int socketcall_id;
 	unsigned long socketcall_args[6];
 #endif
-	enum ppm_event_type curevent_type;
 	char* str_storage;	// String storage. Size is one page.
 };
 

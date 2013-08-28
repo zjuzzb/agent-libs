@@ -508,7 +508,9 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	uint32_t usedspace;
 	struct event_filler_arguments args;
 	uint32_t ttail;
+	uint32_t head;
 	struct ppm_ring_buffer_context* ring;
+	struct ppm_ring_buffer_info* ring_info;
 	int drop = 1;
 	int32_t cbres = PPM_SUCCESS;
 	struct timespec ts;
@@ -518,11 +520,12 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	getnstimeofday(&ts);
 
 	ring = get_cpu_var(g_ring_buffers);
+	ring_info = ring->info;
 
 	//
 	// FROM THIS MOMENT ON, WE HAVE TO BE SUPER FAST
 	//
-	ring->info->n_evts++;
+	ring_info->n_evts++;
 
 	//
 	// Preemption gate
@@ -531,12 +534,10 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	{
 		atomic_dec(&ring->preempt_count);
 		put_cpu_var(g_ring_buffers);
-		ring->info->n_preemptions++;
+		ring_info->n_preemptions++;
 		ASSERT(false);
 		return;
 	}
-
-	ring->curevent_type = event_type;
 
 	// xxx access to ring->state should be atomic
 	if(unlikely(ring->state == CS_INACTIVE))
@@ -549,15 +550,16 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	//
 	// Calculate the space currently available in the buffer
 	//
-	ttail = ring->info->tail;
+	head = ring_info->head;
+	ttail = ring_info->tail;
 
-	if(ttail > ring->info->head)
+	if(ttail > head)
 	{
-		freespace = ttail - ring->info->head - 1;
+		freespace = ttail - head - 1;
 	}
 	else
 	{
-		freespace = RING_BUF_SIZE + ttail - ring->info->head -1;
+		freespace = RING_BUF_SIZE + ttail - head -1;
 	}
 
 	usedspace = RING_BUF_SIZE - freespace - 1;
@@ -565,7 +567,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	ASSERT(freespace <= RING_BUF_SIZE);
 	ASSERT(usedspace <= RING_BUF_SIZE);
 	ASSERT(ttail <= RING_BUF_SIZE);
-	ASSERT(ring->info->head <= RING_BUF_SIZE);
+	ASSERT(head <= RING_BUF_SIZE);
 
 #ifndef __x86_64__
 	//
@@ -599,19 +601,19 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	//
 	// Determine how many arguments this event has
 	//
-	ring->nargs = g_event_info[event_type].nparams;
-	ring->arg_data_offset = ring->nargs * sizeof(uint16_t);
+	args.nargs = g_event_info[event_type].nparams;
+	args.arg_data_offset = args.nargs * sizeof(uint16_t);
 
 	//
 	// Make sure we have enough space for the event header.
 	// We need at least space for the header plus 16 bit per parameter for the lengths.
 	//
-	if(likely(freespace >= sizeof(struct ppm_evt_hdr) + ring->arg_data_offset))
+	if(likely(freespace >= sizeof(struct ppm_evt_hdr) + args.arg_data_offset))
 	{
 		//
 		// Populate the header
 		//
-		struct ppm_evt_hdr* hdr = (struct ppm_evt_hdr*)(ring->buffer + ring->info->head);
+		struct ppm_evt_hdr* hdr = (struct ppm_evt_hdr*)(ring->buffer + head);
 
 #ifdef PPM_ENABLE_SENTINEL
 		hdr->sentinel_begin = ring->nevents;
@@ -623,8 +625,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		//
 		// Populate the parameters for the filler callback
 		//
-		args.ringinfo = ring;
-		args.buffer = ring->buffer + ring->info->head + sizeof(struct ppm_evt_hdr);
+		args.buffer = ring->buffer + head + sizeof(struct ppm_evt_hdr);
 #ifdef PPM_ENABLE_SENTINEL
 		args.sentinel = ring->nevents;
 #endif
@@ -632,9 +633,10 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		args.event_type = event_type;
 		args.regs = regs;
 		args.syscall_id = id;
-
-		ring->curarg = 0; // the event fillers assume that this is reset when they are called
-		ring->arg_data_size = args.buffer_size - ring->arg_data_offset;
+		args.curarg = 0;
+		args.arg_data_size = args.buffer_size - args.arg_data_offset;
+		args.nevents = ring->nevents;
+		args.str_storage = ring->str_storage;
 
 		//
 		// Fire the filler callback
@@ -659,17 +661,17 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 			//
 			// Validate that the filler added the right number of parameters
 			//
-			if(likely(ring->curarg == ring->nargs))
+			if(likely(args.curarg == args.nargs))
 			{
-				event_size = sizeof(struct ppm_evt_hdr) + ring->arg_data_offset;
+				event_size = sizeof(struct ppm_evt_hdr) + args.arg_data_offset;
 				drop = 0;
 			}
 			else
 			{
 				printk(KERN_INFO "PPM: corrupted filler for event type %d (added %u args, should have added %u)\n",
 				       event_type,
-				       ring->curarg,
-				       ring->nargs);
+				       args.curarg,
+				       args.nargs);
 				ASSERT(0);
 			}
 		}
@@ -677,30 +679,30 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 
 	if(likely(!drop))
 	{
-		next = ring->info->head + event_size;
+		next = head + event_size;
 		/*
 				printk(KERN_INFO "%u) E:%u H:%x S:%x N:%x B:%p",
 						smp_processor_id(),
 						(uint32_t)event_type,
-						ring->info->head,
+						head,
 						event_size,
 						next,
 						args.buffer);
 
-				*(ring->buffer + ring->info->head + 5) = 0x33;
-				*(ring->buffer + ring->info->head + 6) = 0x44;
+				*(ring->buffer + head + 5) = 0x33;
+				*(ring->buffer + head + 6) = 0x44;
 
 				if(event_size >=8)
 				{
 					printk(KERN_INFO "%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x ",
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 1),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 2),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 3),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 4),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 5),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 6),
-							(uint32_t)*(unsigned char*)(ring->buffer + ring->info->head + 7));
+							(uint32_t)*(unsigned char*)(ring->buffer + head),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 1),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 2),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 3),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 4),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 5),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 6),
+							(uint32_t)*(unsigned char*)(ring->buffer + head + 7));
 				}
 		*/
 		if(unlikely(next >= RING_BUF_SIZE))
@@ -728,7 +730,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		//
 		smp_wmb();
 
-		ring->info->head = next;
+		ring_info->head = next;
 
 		++ring->nevents;
 	}
@@ -736,19 +738,19 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	{
 		if(cbres == PPM_SUCCESS)
 		{
-			ASSERT(freespace < sizeof(struct ppm_evt_hdr) + ring->arg_data_offset);
-			ring->info->n_drops_buffer++;
+			ASSERT(freespace < sizeof(struct ppm_evt_hdr) + args.arg_data_offset);
+			ring_info->n_drops_buffer++;
 		}
 		else if(cbres == PPM_FAILURE_INVALID_USER_MEMORY)
 		{
 #ifdef _DEBUG
 			printk(KERN_INFO "PPM: Invalid read from user for event %d\n", event_type);
 #endif
-			ring->info->n_drops_pf++;
+			ring_info->n_drops_pf++;
 		}
 		else if(cbres == PPM_FAILURE_BUFFER_FULL)
 		{
-			ring->info->n_drops_buffer++;			
+			ring_info->n_drops_buffer++;			
 		}
 		else
 		{
@@ -763,10 +765,10 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 			printk(KERN_INFO "PPM: CPU %d, util:%d%%, ev:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu\n",
 			       smp_processor_id(),
 			       (usedspace * 100) / RING_BUF_SIZE,
-			       ring->info->n_evts,
-			       ring->info->n_drops_buffer,
-			       ring->info->n_drops_pf,
-			       ring->info->n_preemptions);
+			       ring_info->n_evts,
+			       ring_info->n_drops_buffer,
+			       ring_info->n_drops_pf,
+			       ring_info->n_preemptions);
 
 			ring->last_print_time = ts;
 		}
