@@ -266,7 +266,6 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 #ifdef USE_ANALYZER
 			m_analyzer->process_event(NULL);
 #endif
-			int a = 0;
 		}
 		else
 		{

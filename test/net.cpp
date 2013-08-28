@@ -339,7 +339,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 TEST_F(sys_call_test, net_connection_table_limit)
 {
 	int nconns = 0;
-	int mytid = getpid();
+//	int mytid = getpid();
 
 	//
 	// FILTER
@@ -361,9 +361,24 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			NullOutputStream ostr;
 
 			URI uri("http://www.google.com");
-			std::auto_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr.get(), ostr);
 
+			//
+			// 5 separate connections
+			//
+			std::unique_ptr<std::istream> pStr0(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr0.get(), ostr);
+
+			std::unique_ptr<std::istream> pStr1(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr1.get(), ostr);
+
+			std::unique_ptr<std::istream> pStr2(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr2.get(), ostr);
+
+			std::unique_ptr<std::istream> pStr3(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr3.get(), ostr);
+
+			std::unique_ptr<std::istream> pStr4(URIStreamOpener::defaultOpener().open(uri));
+			StreamCopier::copyStream(*pStr4.get(), ostr);
 			// We use a random call to tee to signal that we're done
 			tee(-1, -1, 0, 0);
 		}
@@ -391,11 +406,10 @@ TEST_F(sys_call_test, net_connection_table_limit)
 				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
 					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
 				{
-					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
-					{
-						nconns++;
-					}
+					nconns++;
 				}
+
+				ASSERT_EQ(3, nconns);
 			}
 		}
 	};
@@ -409,9 +423,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	// Set a very low connection table size
 	//
-//	configuration.set_max_connection_table_size(3);
+	configuration.set_max_connection_table_size(3);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
-
-//	ASSERT_EQ(1, nconns);
 }

@@ -410,3 +410,61 @@ TEST(procinfo, process_not_existent)
 
 	inspector.close();
 }
+
+//
+// This test is compiled in release mode only because in debug mode it would 
+// cause a million of assertions to fire
+//
+//#ifndef _DEBUG
+#if 0
+TEST_F(sys_call_test, process_thread_table_limit)
+{
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		sleep(1);
+
+		// We use a random call to tee to signal that we're done
+		tee(-1, -1, 0, 0);
+
+		return;
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{		
+		sinsp_evt *evt = param.m_evt;
+
+printf("@@@@@@@@@3\n");		
+		if(evt->get_type() == PPME_GENERIC_E)
+		{
+			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			{
+				ASSERT_EQ(3, (int)param.m_inspector->m_configuration.get_max_thread_table_size());
+
+				ASSERT_EQ(3, (int)param.m_inspector->m_thread_manager->get_thread_count());
+			}
+		}
+	};
+
+	sinsp_configuration configuration;
+	//
+	// Set a very low thread table size
+	//
+	configuration.set_max_thread_table_size(3);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+}
+#endif // _DEBUG

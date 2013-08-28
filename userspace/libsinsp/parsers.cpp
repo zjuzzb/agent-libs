@@ -33,7 +33,6 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-BRK(12267);
 	//
 	// Cleanup the event-related state
 	//
@@ -1260,6 +1259,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_transaction())
 	{
 		sinsp_connection *connection;
+		bool do_remove_transaction = true;
 
 		if(params->m_fdinfo->is_ipv4_socket())
 		{
@@ -1274,17 +1274,21 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 		else
 		{
 			ASSERT(false);
+			do_remove_transaction = false;
 		}
 
-		params->m_fdinfo->m_transaction.update(params->m_inspector,
-			params->m_tinfo,
-			connection,
-			params->m_ts, 
-			params->m_ts, 
-			sinsp_partial_transaction::DIR_CLOSE, 
-			0);
+		if(do_remove_transaction)
+		{
+			params->m_fdinfo->m_transaction.update(params->m_inspector,
+				params->m_tinfo,
+				connection,
+				params->m_ts, 
+				params->m_ts, 
+				sinsp_partial_transaction::DIR_CLOSE, 
+				0);
+		}
 
-		params->m_fdinfo->m_transaction.mark_inactive();
+		params->m_fdinfo->m_transaction.mark_inactive();			
 	}
 
 	//
