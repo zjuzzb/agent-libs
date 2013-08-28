@@ -68,8 +68,8 @@ sudo modprobe ppm
 sudo /opt/draios/bin/scap-open &
 ./phoronix-test-suite batch-benchmark $TESTS
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
-echo driver-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
-mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/driver-$TEST_DIR
+echo driver-$REPOSITORY_NAME-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/driver-$REPOSITORY_NAME-$TEST_DIR
 sudo killall -9 scap-open
 sudo rmmod ppm
 [ "$(ls /var/crash)" ] && false
@@ -77,8 +77,8 @@ sudo rmmod ppm
 sudo service dragent start
 ./phoronix-test-suite batch-benchmark $TESTS
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
-echo agent-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
-mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/agent-$TEST_DIR
+echo agent-$REPOSITORY_NAME-$TEST_DIR | ./phoronix-test-suite rename-identifier-in-result-file $TEST_DIR
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/agent-$REPOSITORY_NAME-$TEST_DIR
 sudo service dragent status
 sudo service dragent stop
 [ "$(ls /var/crash)" ] && false
