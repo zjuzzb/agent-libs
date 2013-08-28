@@ -179,6 +179,37 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	}
 }
 
+//
+// Based on the transaction counters for this process, calculate the delay in trasanction 
+// handling that the process introduces
+//
+uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_counters* trcounters)
+{
+	if(trcounters->m_incoming.m_count == 0)
+	{
+		//
+		// This is a client
+		//
+		return 0;
+	}
+	else
+	{
+		ASSERT(trcounters->m_incoming.m_time_ns != 0);
+
+		int64_t res = trcounters->m_incoming.m_time_ns - trcounters->m_outgoing.m_time_ns;
+
+		if(res <= 0)
+		{
+			ASSERT(false);
+			return 0;
+		}
+		else
+		{
+			return res;
+		}
+	}
+}
+
 void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 {
 	uint32_t j;
@@ -288,7 +319,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-				mtinfo->add_proc_metrics(&it->second);
+				mtinfo->add_all_metrics(&it->second);
 
 				//
 				// Dump the thread info into the protobuf
@@ -372,18 +403,22 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 
 						it->second.m_proc_metrics->to_protobuf(proc->mutable_tcounters());
 						it->second.m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
+						proc->set_local_transaction_delay(compute_process_transaction_delay(it->second.m_proc_transaction_metrics));
 
 #ifdef _DEBUG
 						if(it->second.m_proc_transaction_metrics->m_incoming.m_count +
 							it->second.m_proc_transaction_metrics->m_outgoing.m_count != 0)
 						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, 
-								"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%.3lf tout:%.3lf tloc:%.3lf",
 								it->second.m_comm.c_str(),
 								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_proc_transaction_metrics->m_incoming.m_count,
-								it->second.m_proc_transaction_metrics->m_outgoing.m_count);
+								it->second.m_proc_transaction_metrics->m_outgoing.m_count,
+								((double)it->second.m_proc_transaction_metrics->m_incoming.m_time_ns) / 1000000000,
+								((double)it->second.m_proc_transaction_metrics->m_outgoing.m_time_ns) / 1000000000,
+								((double)it->second.m_proc_transaction_metrics->m_incoming.m_time_ns - (double)it->second.m_proc_transaction_metrics->m_outgoing.m_time_ns) / 1000000000);
 						}
 #endif // _DEBUG
 					}

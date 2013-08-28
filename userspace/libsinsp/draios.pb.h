@@ -309,46 +309,46 @@ class time_categories : public ::google::protobuf::MessageLite {
   inline ::draiosproto::counter* release_time();
   inline void set_allocated_time(::draiosproto::counter* time);
 
-  // optional .draiosproto.counter io_file = 14;
+  // optional .draiosproto.counter io_file = 13;
   inline bool has_io_file() const;
   inline void clear_io_file();
-  static const int kIoFileFieldNumber = 14;
+  static const int kIoFileFieldNumber = 13;
   inline const ::draiosproto::counter& io_file() const;
   inline ::draiosproto::counter* mutable_io_file();
   inline ::draiosproto::counter* release_io_file();
   inline void set_allocated_io_file(::draiosproto::counter* io_file);
 
-  // optional .draiosproto.counter io_net = 15;
+  // optional .draiosproto.counter io_net = 14;
   inline bool has_io_net() const;
   inline void clear_io_net();
-  static const int kIoNetFieldNumber = 15;
+  static const int kIoNetFieldNumber = 14;
   inline const ::draiosproto::counter& io_net() const;
   inline ::draiosproto::counter* mutable_io_net();
   inline ::draiosproto::counter* release_io_net();
   inline void set_allocated_io_net(::draiosproto::counter* io_net);
 
-  // optional .draiosproto.counter io_other = 16;
+  // optional .draiosproto.counter io_other = 15;
   inline bool has_io_other() const;
   inline void clear_io_other();
-  static const int kIoOtherFieldNumber = 16;
+  static const int kIoOtherFieldNumber = 15;
   inline const ::draiosproto::counter& io_other() const;
   inline ::draiosproto::counter* mutable_io_other();
   inline ::draiosproto::counter* release_io_other();
   inline void set_allocated_io_other(::draiosproto::counter* io_other);
 
-  // optional .draiosproto.counter wait = 17;
+  // optional .draiosproto.counter wait = 16;
   inline bool has_wait() const;
   inline void clear_wait();
-  static const int kWaitFieldNumber = 17;
+  static const int kWaitFieldNumber = 16;
   inline const ::draiosproto::counter& wait() const;
   inline ::draiosproto::counter* mutable_wait();
   inline ::draiosproto::counter* release_wait();
   inline void set_allocated_wait(::draiosproto::counter* wait);
 
-  // optional .draiosproto.counter processing = 18;
+  // optional .draiosproto.counter processing = 17;
   inline bool has_processing() const;
   inline void clear_processing();
-  static const int kProcessingFieldNumber = 18;
+  static const int kProcessingFieldNumber = 17;
   inline const ::draiosproto::counter& processing() const;
   inline ::draiosproto::counter* mutable_processing();
   inline ::draiosproto::counter* release_processing();
@@ -761,6 +761,13 @@ class process : public ::google::protobuf::MessageLite {
   inline ::draiosproto::transaction_categories* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::transaction_categories* transaction_counters);
 
+  // optional uint64 local_transaction_delay = 7;
+  inline bool has_local_transaction_delay() const;
+  inline void clear_local_transaction_delay();
+  static const int kLocalTransactionDelayFieldNumber = 7;
+  inline ::google::protobuf::uint64 local_transaction_delay() const;
+  inline void set_local_transaction_delay(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -773,6 +780,8 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_tcounters();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
+  inline void set_has_local_transaction_delay();
+  inline void clear_has_local_transaction_delay();
 
   ::google::protobuf::uint64 pid_;
   ::std::string* comm_;
@@ -780,9 +789,10 @@ class process : public ::google::protobuf::MessageLite {
   ::google::protobuf::RepeatedPtrField< ::std::string> args_;
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::transaction_categories* transaction_counters_;
+  ::google::protobuf::uint64 local_transaction_delay_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -2063,7 +2073,7 @@ inline void time_categories::set_allocated_time(::draiosproto::counter* time) {
   }
 }
 
-// optional .draiosproto.counter io_file = 14;
+// optional .draiosproto.counter io_file = 13;
 inline bool time_categories::has_io_file() const {
   return (_has_bits_[0] & 0x00001000u) != 0;
 }
@@ -2105,7 +2115,7 @@ inline void time_categories::set_allocated_io_file(::draiosproto::counter* io_fi
   }
 }
 
-// optional .draiosproto.counter io_net = 15;
+// optional .draiosproto.counter io_net = 14;
 inline bool time_categories::has_io_net() const {
   return (_has_bits_[0] & 0x00002000u) != 0;
 }
@@ -2147,7 +2157,7 @@ inline void time_categories::set_allocated_io_net(::draiosproto::counter* io_net
   }
 }
 
-// optional .draiosproto.counter io_other = 16;
+// optional .draiosproto.counter io_other = 15;
 inline bool time_categories::has_io_other() const {
   return (_has_bits_[0] & 0x00004000u) != 0;
 }
@@ -2189,7 +2199,7 @@ inline void time_categories::set_allocated_io_other(::draiosproto::counter* io_o
   }
 }
 
-// optional .draiosproto.counter wait = 17;
+// optional .draiosproto.counter wait = 16;
 inline bool time_categories::has_wait() const {
   return (_has_bits_[0] & 0x00008000u) != 0;
 }
@@ -2231,7 +2241,7 @@ inline void time_categories::set_allocated_wait(::draiosproto::counter* wait) {
   }
 }
 
-// optional .draiosproto.counter processing = 18;
+// optional .draiosproto.counter processing = 17;
 inline bool time_categories::has_processing() const {
   return (_has_bits_[0] & 0x00010000u) != 0;
 }
@@ -2825,6 +2835,28 @@ inline void process::set_allocated_transaction_counters(::draiosproto::transacti
   } else {
     clear_has_transaction_counters();
   }
+}
+
+// optional uint64 local_transaction_delay = 7;
+inline bool process::has_local_transaction_delay() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void process::set_has_local_transaction_delay() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void process::clear_has_local_transaction_delay() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void process::clear_local_transaction_delay() {
+  local_transaction_delay_ = GOOGLE_ULONGLONG(0);
+  clear_has_local_transaction_delay();
+}
+inline ::google::protobuf::uint64 process::local_transaction_delay() const {
+  return local_transaction_delay_;
+}
+inline void process::set_local_transaction_delay(::google::protobuf::uint64 value) {
+  set_has_local_transaction_delay();
+  local_transaction_delay_ = value;
 }
 
 // -------------------------------------------------------------------

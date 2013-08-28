@@ -754,12 +754,12 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(114)) goto parse_io_file;
+        if (input->ExpectTag(106)) goto parse_io_file;
         break;
       }
 
-      // optional .draiosproto.counter io_file = 14;
-      case 14: {
+      // optional .draiosproto.counter io_file = 13;
+      case 13: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_io_file:
@@ -768,12 +768,12 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(122)) goto parse_io_net;
+        if (input->ExpectTag(114)) goto parse_io_net;
         break;
       }
 
-      // optional .draiosproto.counter io_net = 15;
-      case 15: {
+      // optional .draiosproto.counter io_net = 14;
+      case 14: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_io_net:
@@ -782,12 +782,12 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(130)) goto parse_io_other;
+        if (input->ExpectTag(122)) goto parse_io_other;
         break;
       }
 
-      // optional .draiosproto.counter io_other = 16;
-      case 16: {
+      // optional .draiosproto.counter io_other = 15;
+      case 15: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_io_other:
@@ -796,12 +796,12 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(138)) goto parse_wait;
+        if (input->ExpectTag(130)) goto parse_wait;
         break;
       }
 
-      // optional .draiosproto.counter wait = 17;
-      case 17: {
+      // optional .draiosproto.counter wait = 16;
+      case 16: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_wait:
@@ -810,12 +810,12 @@ bool time_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(146)) goto parse_processing;
+        if (input->ExpectTag(138)) goto parse_processing;
         break;
       }
 
-      // optional .draiosproto.counter processing = 18;
-      case 18: {
+      // optional .draiosproto.counter processing = 17;
+      case 17: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_processing:
@@ -917,34 +917,34 @@ void time_categories::SerializeWithCachedSizes(
       12, this->time(), output);
   }
 
-  // optional .draiosproto.counter io_file = 14;
+  // optional .draiosproto.counter io_file = 13;
   if (has_io_file()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      14, this->io_file(), output);
+      13, this->io_file(), output);
   }
 
-  // optional .draiosproto.counter io_net = 15;
+  // optional .draiosproto.counter io_net = 14;
   if (has_io_net()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      15, this->io_net(), output);
+      14, this->io_net(), output);
   }
 
-  // optional .draiosproto.counter io_other = 16;
+  // optional .draiosproto.counter io_other = 15;
   if (has_io_other()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      16, this->io_other(), output);
+      15, this->io_other(), output);
   }
 
-  // optional .draiosproto.counter wait = 17;
+  // optional .draiosproto.counter wait = 16;
   if (has_wait()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      17, this->wait(), output);
+      16, this->wait(), output);
   }
 
-  // optional .draiosproto.counter processing = 18;
+  // optional .draiosproto.counter processing = 17;
   if (has_processing()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      18, this->processing(), output);
+      17, this->processing(), output);
   }
 
 }
@@ -1039,28 +1039,28 @@ int time_categories::ByteSize() const {
           this->time());
     }
 
-    // optional .draiosproto.counter io_file = 14;
+    // optional .draiosproto.counter io_file = 13;
     if (has_io_file()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->io_file());
     }
 
-    // optional .draiosproto.counter io_net = 15;
+    // optional .draiosproto.counter io_net = 14;
     if (has_io_net()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->io_net());
     }
 
-    // optional .draiosproto.counter io_other = 16;
+    // optional .draiosproto.counter io_other = 15;
     if (has_io_other()) {
-      total_size += 2 +
+      total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->io_other());
     }
 
-    // optional .draiosproto.counter wait = 17;
+    // optional .draiosproto.counter wait = 16;
     if (has_wait()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -1069,7 +1069,7 @@ int time_categories::ByteSize() const {
 
   }
   if (_has_bits_[16 / 32] & (0xffu << (16 % 32))) {
-    // optional .draiosproto.counter processing = 18;
+    // optional .draiosproto.counter processing = 17;
     if (has_processing()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -1720,6 +1720,7 @@ const int process::kExeFieldNumber;
 const int process::kArgsFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
+const int process::kLocalTransactionDelayFieldNumber;
 #endif  // !_MSC_VER
 
 process::process()
@@ -1755,6 +1756,7 @@ void process::SharedCtor() {
   exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   tcounters_ = NULL;
   transaction_counters_ = NULL;
+  local_transaction_delay_ = GOOGLE_ULONGLONG(0);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1818,6 +1820,7 @@ void process::Clear() {
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
     }
+    local_transaction_delay_ = GOOGLE_ULONGLONG(0);
   }
   args_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -1911,6 +1914,22 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(56)) goto parse_local_transaction_delay;
+        break;
+      }
+
+      // optional uint64 local_transaction_delay = 7;
+      case 7: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_local_transaction_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &local_transaction_delay_)));
+          set_has_local_transaction_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1967,6 +1986,11 @@ void process::SerializeWithCachedSizes(
       6, this->transaction_counters(), output);
   }
 
+  // optional uint64 local_transaction_delay = 7;
+  if (has_local_transaction_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(7, this->local_transaction_delay(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -2008,6 +2032,13 @@ int process::ByteSize() const {
           this->transaction_counters());
     }
 
+    // optional uint64 local_transaction_delay = 7;
+    if (has_local_transaction_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->local_transaction_delay());
+    }
+
   }
   // repeated string args = 4;
   total_size += 1 * this->args_size();
@@ -2046,6 +2077,9 @@ void process::MergeFrom(const process& from) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::transaction_categories::MergeFrom(from.transaction_counters());
     }
+    if (from.has_local_transaction_delay()) {
+      set_local_transaction_delay(from.local_transaction_delay());
+    }
   }
 }
 
@@ -2069,6 +2103,7 @@ void process::Swap(process* other) {
     args_.Swap(&other->args_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(local_transaction_delay_, other->local_transaction_delay_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

@@ -372,7 +372,7 @@ const sinsp_counters* sinsp_threadinfo::get_metrics()
 	return (const sinsp_counters*)&m_metrics;
 }
 
-void sinsp_threadinfo::add_proc_metrics(sinsp_threadinfo* other)
+void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 {
 	if(m_proc_metrics == NULL)
 	{

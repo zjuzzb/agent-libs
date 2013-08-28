@@ -23,12 +23,11 @@ message time_categories {
 	optional counter signal = 10;
 	optional counter user = 11;
 	optional counter time = 12;
-//	optional counter io = 13;
-	optional counter io_file = 14;
-	optional counter io_net = 15;
-	optional counter io_other = 16;
-	optional counter wait = 17;
-	optional counter processing = 18;
+	optional counter io_file = 13;
+	optional counter io_net = 14;
+	optional counter io_other = 15;
+	optional counter wait = 16;
+	optional counter processing = 17;
 }
 
 message transaction_categories {
@@ -58,6 +57,8 @@ message process {
 
   optional time_categories tcounters = 5; // The time counters for this thread
   optional transaction_categories transaction_counters = 6; // The transaction counters for this process
+  optional uint64 local_transaction_delay = 7;	// the delay introduced by this process when processing transactions. 
+                                                // It's calculated by subtracting outgoing connection time from incoming connection time. 
 }
 
 //

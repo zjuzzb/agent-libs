@@ -109,7 +109,7 @@ VISIBILITY_PRIVATE
 	sinsp_threadinfo* get_main_thread();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
-	void add_proc_metrics(sinsp_threadinfo* other);
+	void add_all_metrics(sinsp_threadinfo* other);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
