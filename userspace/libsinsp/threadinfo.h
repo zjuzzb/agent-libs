@@ -90,12 +90,20 @@ public:
 	sinsp_counters m_metrics; 
 	// The analyzer transaction metrics
 	sinsp_transaction_counters m_transaction_metrics; 
+	// The delay that this thread introduced in transaction processing.
+	// This is calculated by subtracting the total outgoing transaction time to
+	// the total incoming transaction time.
+	uint64_t m_transaction_processing_delay_ns;
 	// Aggreaged metrics for the process.
 	// This field is allocated only for process main threads.
 	sinsp_counters* m_proc_metrics; 
 	// Aggreaged transaction metrics for the process.
 	// This field is allocated only for process main threads.
-	sinsp_transaction_counters* m_proc_transaction_metrics; 
+	sinsp_transaction_counters* m_proc_transaction_metrics;
+	// The delay that this thread introduced in transaction processing.
+	// This is calculated by subtracting the total outgoing transaction time to
+	// the total incoming transaction time.
+	uint64_t m_proc_transaction_processing_delay_ns;
 
 	//
 	// Global state
@@ -110,6 +118,7 @@ VISIBILITY_PRIVATE
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
 	void add_all_metrics(sinsp_threadinfo* other);
+	void clear_all_metrics();
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations

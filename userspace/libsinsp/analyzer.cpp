@@ -319,8 +319,9 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+				it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
 				mtinfo->add_all_metrics(&it->second);
-
+int a = 0;
 				//
 				// Dump the thread info into the protobuf
 				//
@@ -403,14 +404,14 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 
 						it->second.m_proc_metrics->to_protobuf(proc->mutable_tcounters());
 						it->second.m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
-						proc->set_local_transaction_delay(compute_process_transaction_delay(it->second.m_proc_transaction_metrics));
+						proc->set_local_transaction_delay(it->second.m_proc_transaction_processing_delay_ns);
 
 #ifdef _DEBUG
 						if(it->second.m_proc_transaction_metrics->m_incoming.m_count +
 							it->second.m_proc_transaction_metrics->m_outgoing.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%.3lf tout:%.3lf tloc:%.3lf",
+								"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf",
 								it->second.m_comm.c_str(),
 								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
@@ -418,7 +419,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 								it->second.m_proc_transaction_metrics->m_outgoing.m_count,
 								((double)it->second.m_proc_transaction_metrics->m_incoming.m_time_ns) / 1000000000,
 								((double)it->second.m_proc_transaction_metrics->m_outgoing.m_time_ns) / 1000000000,
-								((double)it->second.m_proc_transaction_metrics->m_incoming.m_time_ns - (double)it->second.m_proc_transaction_metrics->m_outgoing.m_time_ns) / 1000000000);
+								((double)it->second.m_proc_transaction_processing_delay_ns) / 1000000000);
 						}
 #endif // _DEBUG
 					}
@@ -441,14 +442,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					//
 					// Clear the thread metrics, so we're ready for the next sample
 					//
-					it->second.m_metrics.clear();
-					it->second.m_transaction_metrics.clear();
-					if(it->second.m_proc_metrics)
-					{
-						ASSERT(it->second.is_main_thread());
-						it->second.m_proc_metrics->clear();
-						it->second.m_proc_transaction_metrics->clear();
-					}
+					it->second.clear_all_metrics();
 					++it;
 				}
 #endif
@@ -523,14 +517,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					//
 					// Clear the thread metrics, so we're ready for the next sample
 					//
-					it->second.m_metrics.clear();
-					it->second.m_transaction_metrics.clear();
-					if(it->second.m_proc_metrics)
-					{
-						ASSERT(it->second.is_main_thread());
-						it->second.m_proc_metrics->clear();
-						it->second.m_proc_transaction_metrics->clear();
-					}
+					it->second.clear_all_metrics();
 					++it;
 				}
 			}
@@ -587,7 +574,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				else
 				{
 					//
-					// Clear the connection metrics, so we're ready for the next sample
+					// Clear the transaction metrics, so we're ready for the next sample
 					//
 					cit->second.m_transaction_metrics.clear();
 					++cit;
@@ -674,11 +661,6 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 			// Serialize the whole crap
 			////////////////////////////////////////////////////////////////////////////
 			serialize(m_prev_flush_time_ns);
-
-//			m_inspector->m_overall_metrics.print_on(stderr);
-//			m_inspector->m_overall_metrics.clear();
-//			fprintf(stderr, "protobuf_size: %d\n", m_metrics->ByteSize());
-//			fprintf(stderr, "**********************************\n");
 		}
 	}
 

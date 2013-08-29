@@ -31,6 +31,7 @@ sinsp_threadinfo::sinsp_threadinfo() :
 	m_refcount = 0;
 	m_proc_metrics = NULL;
 	m_proc_transaction_metrics = NULL;
+	m_transaction_processing_delay_ns = 0;
 }
 
 sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
@@ -49,6 +50,7 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 	m_refcount = 0;
 	m_proc_metrics = NULL;
 	m_proc_transaction_metrics = NULL;
+	m_transaction_processing_delay_ns = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -380,10 +382,27 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 
 		m_proc_metrics = new sinsp_counters();
 		m_proc_transaction_metrics = new sinsp_transaction_counters();
+		m_proc_transaction_processing_delay_ns = 0;
 	}
 
 	m_proc_metrics->add(&other->m_metrics);
 	m_proc_transaction_metrics->add(&other->m_transaction_metrics);
+	m_proc_transaction_processing_delay_ns += other->m_transaction_processing_delay_ns;
+}
+
+void sinsp_threadinfo::clear_all_metrics()
+{
+	if(m_proc_metrics != NULL)
+	{
+		ASSERT(is_main_thread());
+		m_proc_metrics->clear();
+		m_proc_transaction_metrics->clear();
+		m_proc_transaction_processing_delay_ns = 0;
+	}
+
+	m_metrics.clear();
+	m_transaction_metrics.clear();
+	m_transaction_processing_delay_ns = 0;
 }
 
 /*
