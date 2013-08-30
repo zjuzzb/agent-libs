@@ -829,9 +829,7 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 	uint16_t size = 0;
 	char* targetbuf = args->ringinfo->str_storage;
 	struct sockaddr_storage address;
-#ifdef __x86_64__
 	unsigned long val;
-#endif
 
 	//
 	// Push the result
