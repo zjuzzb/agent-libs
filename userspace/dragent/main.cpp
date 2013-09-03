@@ -570,6 +570,12 @@ protected:
 
 		g_log->information("Agent starting");
 
+		if(nice(19) == -1)
+		{
+			ASSERT(false);
+			g_log->error("Cannot set priority: " + string(strerror(errno)));
+		}
+
 		//
 		// Create the metrics directory if it doesn't exist
 		//
