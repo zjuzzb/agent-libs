@@ -51,7 +51,7 @@ fi
 
 rm -rf ~/.phoronix-test-suite/test-results/201*
 rm -rf ~/.phoronix-test-suite/test-results/merge
-rm -rf /var/crash/*
+sudo rm -rf /var/crash/*
 
 sudo service dragent stop
 sudo service dragent status || true
