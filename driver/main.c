@@ -421,33 +421,34 @@ static const unsigned char nas[21] =
 #undef AL
 
 #ifndef __x86_64__
-enum ppm_event_type parse_socketcall(struct ppm_ring_buffer_context* ring, struct pt_regs *regs)
+static enum ppm_event_type parse_socketcall(struct event_filler_arguments* filler_args, struct pt_regs *regs)
 {
 	unsigned long __user args[2];
 	unsigned long __user* scargs;
+	int socketcall_id;
 
 	syscall_get_arguments(current, regs, 0, 2, args);
-	ring->socketcall_id = args[0];
+	socketcall_id = args[0];
 	scargs = (unsigned long __user*)args[1];
 
-	if(unlikely(ring->socketcall_id < SYS_SOCKET || 
+	if(unlikely(socketcall_id < SYS_SOCKET || 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
-		ring->socketcall_id > SYS_SENDMMSG))
+		socketcall_id > SYS_SENDMMSG))
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-		ring->socketcall_id > SYS_RECVMMSG))
+		socketcall_id > SYS_RECVMMSG))
 #else
-		ring->socketcall_id > SYS_ACCEPT4))
+		socketcall_id > SYS_ACCEPT4))
 #endif
 	{
 		return PPME_GENERIC_E;
 	}
 	
-	if(unlikely(ppm_copy_from_user(ring->socketcall_args, scargs, nas[ring->socketcall_id])))
+	if(unlikely(ppm_copy_from_user(filler_args->socketcall_args, scargs, nas[socketcall_id])))
 	{
 		return PPME_GENERIC_E;
 	}	
 
-	switch(ring->socketcall_id)
+	switch(socketcall_id)
 	{
 	case SYS_SOCKET:
 		return PPME_SOCKET_SOCKET_E;
@@ -583,7 +584,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	if(id == __NR_socketcall)
 	{
 		enum ppm_event_type tet;
-		tet = parse_socketcall(ring, regs);
+		tet = parse_socketcall(&args, regs);
 
 		if(event_type == PPME_GENERIC_E)
 		{

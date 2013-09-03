@@ -799,7 +799,7 @@ int32_t f_sys_autofill(struct event_filler_arguments* args, const struct ppm_eve
 #else
 			if(evinfo->paramtype == APT_SOCK)
 			{
-				val = args->ringinfo->socketcall_args[evinfo->autofill_args[j].id];
+				val = args->socketcall_args[evinfo->autofill_args[j].id];
 			}
 			else
 			{

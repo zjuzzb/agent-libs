@@ -780,7 +780,7 @@ static int32_t f_sys_socket_bind_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 1, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[1];
+	val = args->socketcall_args[1];
 #endif
 	usrsockaddr = (struct sockaddr __user*)val;
 
@@ -790,7 +790,7 @@ static int32_t f_sys_socket_bind_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 2, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[2];
+	val = args->socketcall_args[2];
 #endif
 
 	if(usrsockaddr != NULL && val != 0)
@@ -853,7 +853,7 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 	fd = (int)val;
 #else
-	fd = (int)args->ringinfo->socketcall_args[0];
+	fd = (int)args->socketcall_args[0];
 #endif
 
 	if(fd >= 0)
@@ -864,7 +864,7 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 1, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[1];
+		val = args->socketcall_args[1];
 #endif
 		usrsockaddr = (struct sockaddr __user*)val;
 
@@ -874,7 +874,7 @@ static int32_t f_sys_connect_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 2, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[2];
+		val = args->socketcall_args[2];
 #endif
 
 		if(usrsockaddr != NULL && val != 0)
@@ -947,7 +947,7 @@ static int32_t f_sys_socketpair_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 3, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[3];
+		val = args->socketcall_args[3];
 #endif
 		if(unlikely(ppm_copy_from_user(fds, (const void*)val, sizeof(fds))))
 		{
@@ -1018,7 +1018,7 @@ static int32_t f_sys_accept4_e(struct event_filler_arguments* args)
 	// push the flags into the ring.
 	// XXX we don't support flags yet and so we just return zero
 	//
-//	res = val_to_ring(args, args->ringinfo->socketcall_args[3]);
+//	res = val_to_ring(args, args->socketcall_args[3]);
 	res = val_to_ring(args, 0, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
 	{
@@ -1075,7 +1075,7 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 0, 1, &srvskfd);
 #else
-	srvskfd = args->ringinfo->socketcall_args[0];
+	srvskfd = args->socketcall_args[0];
 #endif
 	sock = sockfd_lookup(srvskfd, &err);
 
@@ -1117,7 +1117,7 @@ static int32_t f_sys_send_e_common(struct event_filler_arguments* args, int* fd)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[0];
+	val = args->socketcall_args[0];
 #endif
 	res = val_to_ring(args, val, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
@@ -1133,7 +1133,7 @@ static int32_t f_sys_send_e_common(struct event_filler_arguments* args, int* fd)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 2, 1, &size);
 #else
-	size = args->ringinfo->socketcall_args[2];
+	size = args->socketcall_args[2];
 #endif
 	res = val_to_ring(args, size, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
@@ -1189,7 +1189,7 @@ static int32_t f_sys_sendto_e(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 4, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[4];
+	val = args->socketcall_args[4];
 #endif
 	usrsockaddr = (struct sockaddr __user*)val;
 
@@ -1199,7 +1199,7 @@ static int32_t f_sys_sendto_e(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 5, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[5];
+	val = args->socketcall_args[5];
 #endif
 
 	if(usrsockaddr != NULL && val != 0)
@@ -1271,7 +1271,7 @@ static int32_t f_sys_send_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 1, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[1];
+		val = args->socketcall_args[1];
 #endif
 
 		//
@@ -1301,7 +1301,7 @@ static int32_t f_sys_recv_e_common(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[0];
+	val = args->socketcall_args[0];
 #endif
 	res = val_to_ring(args, val, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
@@ -1315,7 +1315,7 @@ static int32_t f_sys_recv_e_common(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 2, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[2];
+	val = args->socketcall_args[2];
 #endif
 	res = val_to_ring(args, val, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
@@ -1389,7 +1389,7 @@ static int32_t f_sys_recv_x_common(struct event_filler_arguments* args, int64_t*
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 1, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[1];
+		val = args->socketcall_args[1];
 #endif
 
 		//
@@ -1456,7 +1456,7 @@ static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args)
 		syscall_get_arguments(current, args->regs, 0, 1, &val);
 		fd = (int)val;
 #else
-		fd = (int)args->ringinfo->socketcall_args[0];
+		fd = (int)args->socketcall_args[0];
 #endif
 
 		//
@@ -1465,7 +1465,7 @@ static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 4, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[4];
+		val = args->socketcall_args[4];
 #endif
 		usrsockaddr = (struct sockaddr __user*)val;
 
@@ -1475,7 +1475,7 @@ static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args)
 #ifdef __x86_64__
 		syscall_get_arguments(current, args->regs, 5, 1, &val);
 #else
-		val = args->ringinfo->socketcall_args[5];
+		val = args->socketcall_args[5];
 #endif
 		if(usrsockaddr != NULL && val != 0)
 		{
@@ -1637,7 +1637,7 @@ static int32_t f_sys_shutdown_e(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[0];
+	val = args->socketcall_args[0];
 #endif
 	res = val_to_ring(args, val, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
@@ -1651,7 +1651,7 @@ static int32_t f_sys_shutdown_e(struct event_filler_arguments* args)
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 1, 1, &val);
 #else
-	val = args->ringinfo->socketcall_args[1];
+	val = args->socketcall_args[1];
 #endif
 	res = val_to_ring(args, (unsigned long)shutdown_how_to_scap(val), 0, false);
 	if(unlikely(res != PPM_SUCCESS))

@@ -81,10 +81,6 @@ struct ppm_ring_buffer_context
 	struct timespec last_print_time;
 	uint32_t nevents;
 	atomic_t preempt_count;
-#ifndef __x86_64__
-	int socketcall_id;
-	unsigned long socketcall_args[6];
-#endif
 	char* str_storage;	// String storage. Size is one page.
 };
 

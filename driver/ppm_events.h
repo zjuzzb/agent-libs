@@ -20,6 +20,9 @@ struct event_filler_arguments
 	enum ppm_event_type event_type;	// the event type
 	struct pt_regs *regs; // the registers containing the call arguments
 	char* str_storage; // String storage. Size is one page.
+#ifndef __x86_64__
+	unsigned long socketcall_args[6];
+#endif
 };
 
 //
