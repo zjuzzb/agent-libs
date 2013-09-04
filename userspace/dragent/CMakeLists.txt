@@ -18,6 +18,12 @@ target_link_libraries(dragent
 #file(COPY dragent.properties 
 #	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
+	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
+
+file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
+	DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm)
+
 install(TARGETS dragent 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)

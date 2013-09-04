@@ -4,9 +4,11 @@ set -e
 SCRIPT=$(readlink -f $0)
 TOP=$(dirname $SCRIPT)
 
-if [ -z "$DEPENDENCIES" ]; then
-	DEPENDENCIES=$TOP/dependencies
+if [ -z "$WORKDIR" ]; then
+	$WORKDIR=$TOP
 fi
+
+DEPENDENCIES=$WORKDIR/dependencies
 
 if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
@@ -72,7 +74,7 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-BUILD_DIR=$TOP/build
+BUILD_DIR=$WORKDIR/build
 if [ ! -d "$BUILD_DIR" ]; then
 	mkdir $BUILD_DIR
 	mkdir $BUILD_DIR/debug
