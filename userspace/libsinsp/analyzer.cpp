@@ -321,7 +321,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 				it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
 				mtinfo->add_all_metrics(&it->second);
-int a = 0;
+				
 				//
 				// Dump the thread info into the protobuf
 				//
