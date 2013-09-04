@@ -4,6 +4,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
+#include <fstream>
+
+#define AGENT_PRIORITY 19
 
 //
 // Signal management
@@ -570,10 +573,35 @@ protected:
 
 		g_log->information("Agent starting");
 
-		if(nice(19) == -1)
+		if(config().getBool("application.runAsDaemon", false))
 		{
-			ASSERT(false);
-			g_log->error("Cannot set priority: " + string(strerror(errno)));
+			if(nice(AGENT_PRIORITY) == -1)
+			{
+				ASSERT(false);
+				g_log->error("Cannot set priority: " + string(strerror(errno)));
+			}
+
+			//
+			// Since 2.6.36, the previous code is not enough since
+			// the kernel will make the nice level of the process effective
+			// only within the process group, which is useless.
+			// I found out the following hack by looking in the kernel source
+			//
+			ofstream autogroup_file("/proc/" + NumberFormatter::format(getpid()) + "/autogroup", std::ofstream::out);
+			if(autogroup_file.is_open())
+			{
+				autogroup_file << AGENT_PRIORITY;
+				if(autogroup_file.fail())
+				{
+					g_log->warning("Cannot set the autogroup priority");
+				}
+
+				autogroup_file.close();
+			}
+			else
+			{
+				g_log->warning("Cannot open the autogroup file");
+			}
 		}
 
 		//
