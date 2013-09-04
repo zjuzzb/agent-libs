@@ -533,9 +533,8 @@ inline int32_t scap_next_live(scap_t* handle, OUT scap_evt** pevent, OUT uint16_
 	uint32_t j;
 	uint64_t max_ts = 0xffffffffffffffff;
 	uint64_t max_buf_size = 0;
-	scap_evt* pe;
+	scap_evt* pe = NULL;
 	bool waited = false;
-	uint32_t eventlen = 0;
 
 	*pcpuid = 65535;
 
@@ -586,13 +585,13 @@ inline int32_t scap_next_live(scap_t* handle, OUT scap_evt** pevent, OUT uint16_
 			//
 			pe = (scap_evt*)handle->m_devs[j].m_sn_next_event;
 
+#ifdef _DEBUG
+			ASSERT(pe->len == scap_event_compute_len(pe));
+#endif
+
 			if(pe->ts < max_ts)
 			{
-				// XXX this can be optimized by caching the length of the last event for each buffer.
-				//     it might make sense since scap_event_getlen's cost is nonzero
-				eventlen = scap_event_getlen(pe);
-
-				if(eventlen > handle->m_devs[j].m_sn_len)
+				if(pe->len > handle->m_devs[j].m_sn_len)
 				{
 					snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "scap_next buffer corruption");
 
@@ -618,9 +617,9 @@ inline int32_t scap_next_live(scap_t* handle, OUT scap_evt** pevent, OUT uint16_
 		//
 		// Update the pointers.
 		//
-		ASSERT(handle->m_devs[*pcpuid].m_sn_len >= eventlen);
-		handle->m_devs[*pcpuid].m_sn_len -= eventlen;
-		handle->m_devs[*pcpuid].m_sn_next_event += eventlen;
+		ASSERT(handle->m_devs[*pcpuid].m_sn_len >= (*pevent)->len);
+		handle->m_devs[*pcpuid].m_sn_len -= (*pevent)->len;
+		handle->m_devs[*pcpuid].m_sn_next_event += (*pevent)->len;
 
 		return SCAP_SUCCESS;
 	}

@@ -665,6 +665,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 			if(likely(args.curarg == args.nargs))
 			{
 				event_size = sizeof(struct ppm_evt_hdr) + args.arg_data_offset;
+				hdr->len = event_size;
 				drop = 0;
 			}
 			else
@@ -760,19 +761,17 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	}
 
 #ifdef _DEBUG
+	if(ts.tv_sec > ring->last_print_time.tv_sec + 1)
 	{
-		if(ts.tv_sec > ring->last_print_time.tv_sec + 1)
-		{
-			printk(KERN_INFO "PPM: CPU %d, util:%d%%, ev:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu\n",
-			       smp_processor_id(),
-			       (usedspace * 100) / RING_BUF_SIZE,
-			       ring_info->n_evts,
-			       ring_info->n_drops_buffer,
-			       ring_info->n_drops_pf,
-			       ring_info->n_preemptions);
+		printk(KERN_INFO "PPM: CPU %d, util:%d%%, ev:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu\n",
+		       smp_processor_id(),
+		       (usedspace * 100) / RING_BUF_SIZE,
+		       ring_info->n_evts,
+		       ring_info->n_drops_buffer,
+		       ring_info->n_drops_pf,
+		       ring_info->n_preemptions);
 
-			ring->last_print_time = ts;
-		}
+		ring->last_print_time = ts;
 	}
 #endif
 

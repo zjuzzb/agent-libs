@@ -30,7 +30,7 @@ const struct ppm_syscall_desc* scap_get_syscall_info_table()
 	return g_syscall_info_table;
 }
 
-uint32_t scap_event_getlen(scap_evt* e)
+uint32_t scap_event_compute_len(scap_evt* e)
 {
 	uint32_t j;
 	uint32_t res = 0;
@@ -50,6 +50,11 @@ uint32_t scap_event_getlen(scap_evt* e)
 #endif
 
 	return res;
+}
+
+uint32_t scap_event_getlen(scap_evt* e)
+{
+	return e->len;
 }
 
 uint64_t scap_event_get_num(scap_t* handle)

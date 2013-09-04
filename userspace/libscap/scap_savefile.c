@@ -410,19 +410,18 @@ int32_t scap_dump(scap_t *handle, scap_dumper_t *d, scap_evt *event, uint16_t cp
 	block_header bh;
 	uint32_t bt;
 	FILE *f = (FILE *)d;
-	uint32_t eventbuflen = scap_event_getlen(event);
 
 	//
 	// Write the section header
 	//
 	bh.block_type = EV_BLOCK_TYPE;
-	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + sizeof(cpuid) + eventbuflen + 4);
+	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + sizeof(cpuid) + event->len + 4);
 	bt = bh.block_total_length;
 
 	if(fwrite(&bh, sizeof(bh), 1, f) != 1 ||
 	        fwrite(&cpuid, sizeof(cpuid), 1, f) != 1 ||
-	        fwrite(event, eventbuflen, 1, f) != 1 ||
-	        scap_write_padding(f, sizeof(cpuid) + eventbuflen) != SCAP_SUCCESS ||
+	        fwrite(event, event->len, 1, f) != 1 ||
+	        scap_write_padding(f, sizeof(cpuid) + event->len) != SCAP_SUCCESS ||
 	        fwrite(&bt, sizeof(bt), 1, f) != 1)
 	{
 		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (6)");
