@@ -1,11 +1,11 @@
 #!/bin/bash
-set -e 
+set -ex 
 
 SCRIPT=$(readlink -f $0)
 TOP=$(dirname $SCRIPT)
 
 if [ -z "$WORKDIR" ]; then
-	$WORKDIR=$TOP
+	WORKDIR=$TOP
 fi
 
 DEPENDENCIES=$WORKDIR/dependencies
