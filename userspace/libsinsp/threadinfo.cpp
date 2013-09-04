@@ -29,8 +29,7 @@ sinsp_threadinfo::sinsp_threadinfo() :
 	m_flags = 0;
 	m_n_threads = 0;
 	m_refcount = 0;
-	m_proc_metrics = NULL;
-	m_proc_transaction_metrics = NULL;
+	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
 }
 
@@ -48,21 +47,15 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 	m_flags = 0;
 	m_n_threads = 0;
 	m_refcount = 0;
-	m_proc_metrics = NULL;
-	m_proc_transaction_metrics = NULL;
+	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
 {
-	if(m_proc_metrics)
+	if(m_procinfo)
 	{
-		delete m_proc_metrics;
-		delete m_proc_transaction_metrics;
-	}
-	else
-	{
-		ASSERT(m_proc_transaction_metrics == NULL);
+		delete m_procinfo;
 	}
 }
 
@@ -376,28 +369,25 @@ const sinsp_counters* sinsp_threadinfo::get_metrics()
 
 void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 {
-	if(m_proc_metrics == NULL)
+	if(m_procinfo == NULL)
 	{
-		ASSERT(m_proc_transaction_metrics == NULL);
-
-		m_proc_metrics = new sinsp_counters();
-		m_proc_transaction_metrics = new sinsp_transaction_counters();
-		m_proc_transaction_processing_delay_ns = 0;
+		m_procinfo = new sinsp_procinfo();
+		m_procinfo->m_proc_transaction_processing_delay_ns = 0;
 	}
 
-	m_proc_metrics->add(&other->m_metrics);
-	m_proc_transaction_metrics->add(&other->m_transaction_metrics);
-	m_proc_transaction_processing_delay_ns += other->m_transaction_processing_delay_ns;
+	m_procinfo->m_proc_metrics.add(&other->m_metrics);
+	m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
+	m_procinfo->m_proc_transaction_processing_delay_ns += other->m_transaction_processing_delay_ns;
 }
 
 void sinsp_threadinfo::clear_all_metrics()
 {
-	if(m_proc_metrics != NULL)
+	if(m_procinfo != NULL)
 	{
 		ASSERT(is_main_thread());
-		m_proc_metrics->clear();
-		m_proc_transaction_metrics->clear();
-		m_proc_transaction_processing_delay_ns = 0;
+		m_procinfo->m_proc_metrics.clear();
+		m_procinfo->m_proc_transaction_metrics.clear();
+		m_procinfo->m_proc_transaction_processing_delay_ns = 0;
 	}
 
 	m_metrics.clear();

@@ -27,6 +27,7 @@ void sinsp_evt_param::init(char *valptr, uint16_t len)
 sinsp_evt::sinsp_evt()
 {
 	m_params_loaded = false;
+	m_tinfo = NULL;
 }
 
 sinsp_evt::~sinsp_evt()
@@ -38,6 +39,7 @@ sinsp_evt::sinsp_evt(sinsp *inspector)
 {
 	m_inspector = inspector;
 	m_params_loaded = false;
+	m_tinfo = NULL;
 }
 
 void sinsp_evt::init()

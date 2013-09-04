@@ -85,10 +85,11 @@ typedef union _unix_tuple
 #include "ifinfo.h"
 
 template<typename OBJ> class simple_lifo_queue;
-typedef class sinsp_partial_transaction sinsp_partial_transaction;
-typedef class sinsp_fdinfo sinsp_fdinfo;
-typedef class sinsp_parser sinsp_parser;
-typedef class sinsp_analyzer sinsp_analyzer;
+class sinsp_partial_transaction;
+class sinsp_fdinfo;
+class sinsp_parser;
+class sinsp_analyzer;
+class sinsp_capture_filter;
 
 //
 // Exception class
@@ -184,6 +185,13 @@ public:
 	//
 	void start_capture();
 
+#ifdef _DEBUG
+	//
+	// Set the capture filter. Only in debug mode for the moment.
+	//
+	void set_filter(string filter);
+#endif
+
 	//
 	// Set the callback that receives the analyzer output
 	//
@@ -265,6 +273,7 @@ VISIBILITY_PRIVATE
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
+	sinsp_capture_filter* m_capture_filter;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

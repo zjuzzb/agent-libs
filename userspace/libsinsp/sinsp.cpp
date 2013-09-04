@@ -35,6 +35,7 @@ sinsp::sinsp() :
 #endif
 	m_thread_manager = NULL;
 	m_analyzer_callback = NULL;
+	m_capture_filter = NULL;
 
 	m_fds_to_remove = new vector<int64_t>;
 }
@@ -147,6 +148,11 @@ void sinsp::close()
 	{
 		delete m_thread_manager;
 		m_thread_manager = NULL;
+	}
+
+	if(m_capture_filter != NULL)
+	{
+		delete m_capture_filter;
 	}
 }
 
@@ -280,12 +286,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_evt.m_evtnum = get_num_events();
 	m_lastevent_ts = m_evt.get_ts();
-/*
-if(m_evt.get_tid() != 7123)
-{
-	return SCAP_TIMEOUT;
-}
-*/
+
 	//
 	// If needed, dump the event to file
 	//
@@ -346,6 +347,29 @@ if(m_evt.get_tid() != 7123)
 	// Run the stateful parsing engine
 	//
 	m_parser->process_event(&m_evt);
+
+#ifdef _DEBUG
+	if(m_capture_filter)
+	{
+		if(m_capture_filter->m_tid != -1)
+		{
+			if(m_evt.get_tid() != m_capture_filter->m_tid)
+			{
+				return SCAP_TIMEOUT;
+			}
+		}
+		else if(m_capture_filter->m_executable != "")
+		{
+			if(m_evt.get_thread_info())
+			{
+				if(m_evt.get_thread_info()->get_comm() != m_capture_filter->m_executable)
+				{
+					return SCAP_TIMEOUT;
+				}
+			}
+		}
+	}
+#endif
 
 #ifdef USE_ANALYZER
 	//
@@ -502,6 +526,28 @@ void sinsp::start_capture()
 		throw sinsp_exception(scap_getlasterr(m_h));
 	}
 }
+
+#ifdef _DEBUG
+void sinsp::set_filter(string filter)
+{
+	ASSERT(m_capture_filter == NULL);
+
+	m_capture_filter = new sinsp_capture_filter();
+	m_capture_filter->m_executable = "";
+	m_capture_filter->m_tid = -1;
+
+	vector<string> components = sinsp_split(filter, ' ');
+	
+	if(components[0] == "tid")
+	{
+		m_capture_filter->m_tid = atoi(components[1].c_str());
+	}
+	else if(components[0] == "comm")
+	{
+		m_capture_filter->m_executable = components[1];
+	}
+}
+#endif
 
 #ifdef GATHER_INTERNAL_STATS
 sinsp_stats sinsp::get_stats()

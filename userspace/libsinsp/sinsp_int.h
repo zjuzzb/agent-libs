@@ -81,3 +81,13 @@ using namespace std;
 // The logger
 //
 extern sinsp_logger g_logger;
+
+//
+//
+//
+class sinsp_capture_filter
+{
+public:
+	string m_executable;
+	int64_t m_tid;
+};

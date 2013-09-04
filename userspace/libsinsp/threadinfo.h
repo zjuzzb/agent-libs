@@ -15,6 +15,24 @@ typedef struct erase_fd_params
 }erase_fd_params;
 
 //
+// Information that is included only in process main threads
+//
+class sinsp_procinfo
+{
+public:
+	// Aggreaged metrics for the process.
+	// This field is allocated only for process main threads.
+	sinsp_counters m_proc_metrics; 
+	// Aggreaged transaction metrics for the process.
+	// This field is allocated only for process main threads.
+	sinsp_transaction_counters m_proc_transaction_metrics;
+	// The delay that this thread introduced in transaction processing.
+	// This is calculated by subtracting the total outgoing transaction time to
+	// the total incoming transaction time.
+	uint64_t m_proc_transaction_processing_delay_ns;
+};
+
+//
 // thread info entry
 //
 class SINSP_PUBLIC sinsp_threadinfo
@@ -85,7 +103,7 @@ public:
 	uint32_t m_n_threads; 
 	// If this is a process' main thread, the Number of threads that were active for 
 	// this process during the last sample. Otherwise zero.
-	uint32_t m_n_active_threads;
+	uint32_t m_n_concurrent_transactions;
 	// The analyzer metrics
 	sinsp_counters m_metrics; 
 	// The analyzer transaction metrics
@@ -94,16 +112,8 @@ public:
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
 	uint64_t m_transaction_processing_delay_ns;
-	// Aggreaged metrics for the process.
-	// This field is allocated only for process main threads.
-	sinsp_counters* m_proc_metrics; 
-	// Aggreaged transaction metrics for the process.
-	// This field is allocated only for process main threads.
-	sinsp_transaction_counters* m_proc_transaction_metrics;
-	// The delay that this thread introduced in transaction processing.
-	// This is calculated by subtracting the total outgoing transaction time to
-	// the total incoming transaction time.
-	uint64_t m_proc_transaction_processing_delay_ns;
+	// Process-specific information
+	sinsp_procinfo* m_procinfo;
 
 	//
 	// Global state

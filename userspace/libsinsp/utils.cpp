@@ -531,3 +531,20 @@ string ipv6tuple_to_string(_ipv6tuple* tuple)
 		tuple->m_fields.m_dport);
 	return string(buf);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// String split
+///////////////////////////////////////////////////////////////////////////////
+vector<string> sinsp_split(const string &s, char delim)
+{
+    vector<string> res;
+    istringstream f(s);
+    string ts;
+
+    while(getline(f, ts, delim)) 
+	{
+        res.push_back(ts);
+    }
+
+	return res;
+}
