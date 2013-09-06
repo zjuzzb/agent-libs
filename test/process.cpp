@@ -556,6 +556,7 @@ TEST_F(sys_call_test, process_rlimit)
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
+	struct rlimit orirl;
 
 	//
 	// FILTER
@@ -573,7 +574,7 @@ TEST_F(sys_call_test, process_prlimit)
 		struct rlimit newrl;
 		struct rlimit oldrl;
 
-		prlimit(getpid(), RLIMIT_NOFILE, NULL, &oldrl);		
+		prlimit(getpid(), RLIMIT_NOFILE, NULL, &orirl);
 		newrl.rlim_cur = 500;
 		newrl.rlim_max = 1000;
 		prlimit(getpid(), RLIMIT_NOFILE, &newrl, &oldrl);		
@@ -585,47 +586,39 @@ TEST_F(sys_call_test, process_prlimit)
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		return;
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_GETRLIMIT_E)
+		if(type == PPME_SYSCALL_PRLIMIT_E)
 		{
 			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			EXPECT_EQ((int64_t)getpid(), NumberParser::parse64(e->get_param_value_str("pid", false)));
 			callnum++;
 		}
-		if(type == PPME_SYSCALL_GETRLIMIT_X)
+		if(type == PPME_SYSCALL_PRLIMIT_X)
 		{
+			EXPECT_GE((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+
 			if(callnum == 1)
 			{
-				EXPECT_GT((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newcur", false)));
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_cur, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
-			else
+			else if(callnum == 3)
 			{
-				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
-
-				if(callnum == 7)
-				{
-					EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
-					EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
-				}
+				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("newcur", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_cur, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
-
-			callnum++;
-		}
-		if(type == PPME_SYSCALL_SETRLIMIT_E)
-		{
-			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
-			callnum++;
-		}
-		if(type == PPME_SYSCALL_SETRLIMIT_X)
-		{
-			EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
-
-			if(callnum == 5)
+			else if(callnum == 5)
 			{
-				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
-				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newcur", false)));
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
 
 			callnum++;
@@ -634,5 +627,5 @@ TEST_F(sys_call_test, process_prlimit)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
-//	EXPECT_EQ(8, callnum);
+	EXPECT_EQ(6, callnum);
 }

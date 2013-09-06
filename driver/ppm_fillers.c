@@ -2748,7 +2748,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 		newmax = 0;		
 	}
 
-	syscall_get_arguments(current, args->regs, 2, 1, &val);
+	syscall_get_arguments(current, args->regs, 3, 1, &val);
 
 	if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
 	{
