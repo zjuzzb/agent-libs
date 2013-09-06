@@ -47,9 +47,11 @@ public:
 	    AF_INVALID = (1 << 0),
 	    AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
 	    AF_CLOSED = (1 << 2), // thread has been closed. It will have to be removed from the thread table.
+	    AF_IS_TRANSACTION_SERVER = (1 << 3), // set if this thread serves transactions.
 	};
 
 	sinsp_threadinfo();
+	void init();
 	//sinsp_threadinfo(const sinsp_threadinfo &orig);
 	sinsp_threadinfo(sinsp *inspector);
 	~sinsp_threadinfo();
@@ -108,12 +110,16 @@ public:
 	sinsp_counters m_metrics; 
 	// The analyzer transaction metrics
 	sinsp_transaction_counters m_transaction_metrics; 
+	// The total transaction count if this is a server
+	sinsp_counter_time m_total_server_transaction_counter; 
 	// The delay that this thread introduced in transaction processing.
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
 	uint64_t m_transaction_processing_delay_ns;
 	// Process-specific information
 	sinsp_procinfo* m_procinfo;
+	// The number of transactions that this thread is currently serving
+	uint32_t m_n_active_transactions;
 
 	//
 	// Global state

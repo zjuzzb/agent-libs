@@ -19,6 +19,18 @@ static void copy_ipv6_address(uint32_t* src, uint32_t* dest)
 sinsp_threadinfo::sinsp_threadinfo() :
 	m_fdtable(NULL)
 {
+	init();
+}
+
+sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
+	m_fdtable(inspector)
+{
+	m_inspector = inspector;
+	init();
+}
+
+void sinsp_threadinfo::init()
+{
 	m_pid = (uint64_t) - 1LL;
 	set_lastevent_data_validity(false);
 	m_lastevent_type = -1;
@@ -31,24 +43,7 @@ sinsp_threadinfo::sinsp_threadinfo() :
 	m_refcount = 0;
 	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
-}
-
-sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
-	m_fdtable(inspector)
-{
-	m_inspector = inspector;
-	m_pid = (uint64_t) - 1LL;
-	set_lastevent_data_validity(false);
-	m_analysis_flags = AF_PARTIAL_METRIC;
-	m_lastevent_type = -1;
-	m_lastevent_ts = 0;
-	m_lastaccess_ts = inspector->m_lastevent_ts;
-	m_lastevent_category.m_category = EC_UNKNOWN;
-	m_flags = 0;
-	m_n_threads = 0;
-	m_refcount = 0;
-	m_procinfo = NULL;
-	m_transaction_processing_delay_ns = 0;
+	m_n_active_transactions = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()

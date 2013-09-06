@@ -88,3 +88,9 @@
 // Max size that the thread table can reach
 //
 #define MAX_THREAD_TABLE_SIZE 65536
+
+//
+// Constant for the transaction server euristic
+//
+#define TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS 2
+#define TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS (3 * ONE_SECOND_IN_NS)

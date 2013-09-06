@@ -21,6 +21,19 @@ sinsp_transaction_table::~sinsp_transaction_table()
 {
 }
 
+bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
+{
+	if(ptinfo->m_total_server_transaction_counter.m_count >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
+		ptinfo->m_total_server_transaction_counter.m_time_ns / ptinfo->m_total_server_transaction_counter.m_count < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 								   sinsp_connection *pconn,
 								   sinsp_partial_transaction *tr, 
@@ -70,19 +83,43 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		//
 		// Update the metrics related to this transaction
 		//
+		ASSERT(ptinfo != NULL);
+		ASSERT(pconn != NULL);
+
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
 			m_n_server_transactions++;
 			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
-			pconn->m_transaction_metrics.m_incoming.add(1, delta);
+			ptinfo->m_total_server_transaction_counter.add(1, delta);
+			if(pconn)
+			{
+				pconn->m_transaction_metrics.m_incoming.add(1, delta);
+			}
+/*
+			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
+			{
+				ptinfo->m_n_active_transactions++;
+			}
+			else
+			{
+				if(is_transaction_server(ptinfo))
+				{
+					ptinfo->m_analysis_flags |= sinsp_threadinfo::AF_IS_TRANSACTION_SERVER;
+				}
+			}
+*/
 		}
 		else
 		{
 			m_n_client_transactions++;
 			ptinfo->m_transaction_metrics.m_outgoing.add(1, delta);
-			pconn->m_transaction_metrics.m_outgoing.add(1, delta);
+
+			if(pconn)
+			{
+				pconn->m_transaction_metrics.m_outgoing.add(1, delta);
+			}
 		}
 
 //

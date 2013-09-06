@@ -162,5 +162,8 @@ public:
 	uint32_t m_n_client_transactions;
 	uint32_t m_n_server_transactions;
 
+private:
+	bool is_transaction_server(sinsp_threadinfo *ptinfo);
+
 	friend class sinsp_partial_transaction;
 };
