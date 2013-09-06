@@ -84,6 +84,8 @@ const char* sinsp_utils::errno_to_str(int32_t code)
 		return "ENOMEM";
 	case SE_EACCES:
 		return "EACCES";
+	case SE_EFAULT:
+		return "EFAULT";
 	case SE_ENOTBLK:
 		return "ENOTBLK";
 	case SE_EBUSY:
