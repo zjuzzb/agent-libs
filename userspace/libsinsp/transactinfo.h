@@ -66,7 +66,7 @@ public:
 	~sinsp_partial_transaction();
 	sinsp_partial_transaction(ipv4tuple *flow);
 	sinsp_partial_transaction(unix_tuple *flow);
-	sinsp_partial_transaction::updatestate update(sinsp* inspector, 
+	void update(sinsp* inspector, 
 		sinsp_threadinfo *ptinfo,
 		sinsp_connection *pconn,
 		uint64_t enter_ts, 

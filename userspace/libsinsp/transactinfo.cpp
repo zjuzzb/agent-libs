@@ -84,7 +84,6 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		// Update the metrics related to this transaction
 		//
 		ASSERT(ptinfo != NULL);
-		ASSERT(pconn != NULL);
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
 
@@ -93,10 +92,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			m_n_server_transactions++;
 			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
 			ptinfo->m_total_server_transaction_counter.add(1, delta);
-			if(pconn)
-			{
-				pconn->m_transaction_metrics.m_incoming.add(1, delta);
-			}
+			pconn->m_transaction_metrics.m_incoming.add(1, delta);
 /*
 			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
 			{
@@ -115,11 +111,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		{
 			m_n_client_transactions++;
 			ptinfo->m_transaction_metrics.m_outgoing.add(1, delta);
-
-			if(pconn)
-			{
-				pconn->m_transaction_metrics.m_outgoing.add(1, delta);
-			}
+			pconn->m_transaction_metrics.m_outgoing.add(1, delta);
 		}
 
 //
@@ -465,7 +457,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 	}
 }
 
-sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(sinsp* inspector, 
+void sinsp_partial_transaction::update(sinsp* inspector, 
 	sinsp_threadinfo *ptinfo,
 	sinsp_connection *pconn,
 	uint64_t enter_ts, 
@@ -473,14 +465,19 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update(sinsp* 
 	direction dir, 
 	uint32_t datalen)
 {
+	if(pconn == NULL)
+	{
+		ASSERT(false);
+		mark_inactive();
+		return;
+	}
+
 	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, dir, datalen);
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
 		inspector->m_trans_table->emit(ptinfo, pconn, this, datalen);
 	}
-
-	return res;
 }
 
 void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction::type newtype)
