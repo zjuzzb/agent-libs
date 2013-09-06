@@ -111,16 +111,14 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	// Insert the new connection
 	//
-	const std::pair<typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator,
-		bool>& element = m_connections.emplace(key, timestamp);
-
-	sinsp_connection& conn = element.first->second;
-	if(element.second == true)
+	sinsp_connection& conn = m_connections[key];
+	if(conn.m_timestamp == 0)
 	{
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_added_connections++;
 #endif
 
+		conn.m_timestamp = timestamp;
 		conn.m_refcount = 1;
 		conn.m_analysis_flags = 0;
 		if(isclient)
@@ -146,6 +144,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	}
 	else
 	{
+		conn.m_timestamp = timestamp;
+
 //		ASSERT(conn.m_analysis_flags != sinsp_connection::AF_CLOSED);
 //		ASSERT(conn.m_refcount <= 2);
 		if(isclient)

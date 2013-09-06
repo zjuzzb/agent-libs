@@ -4,6 +4,7 @@
 
 sinsp_connection::sinsp_connection()
 {
+	m_timestamp = 0;
 }
 
 sinsp_connection::sinsp_connection(uint64_t timestamp)
