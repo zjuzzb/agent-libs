@@ -286,7 +286,7 @@ const struct ppm_syscall_desc g_syscall_info_table[PPM_SC_MAX] =
 	/*PPM_SC_FSTATFS64*/ { EC_FILE, "fstatfs64" },
 	/*PPM_SC_FSTATAT64*/ { EC_FILE, "fstatat64" },
 	/*PPM_SC_SENDFILE64*/ { EC_FILE, "sendfile64" },
-	/*PPM_SC_UGETRLIMIT*/ { EC_PROCESS, "getrlimit" },
+	/*PPM_SC_UGETRLIMIT*/ { EC_PROCESS, "ugetrlimit" },
 	/*PPM_SC_BDFLUSH*/ { EC_OTHER, "bdflush" },	// deprecated
 	/*PPM_SC_SIGPROCMASK*/ { EC_SIGNAL, "sigprocmask" }, // examine and change blocked signals
 	/*PPM_SC_IPC*/ { EC_IPC, "ipc" },

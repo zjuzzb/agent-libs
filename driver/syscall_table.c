@@ -77,6 +77,7 @@ const struct syscall_evt_pair g_syscall_table[SYSCALL_TABLE_SIZE] =
 	[__NR_getrlimit] =		{1, PPME_SYSCALL_GETRLIMIT_E, PPME_SYSCALL_GETRLIMIT_X},
 	[__NR_setrlimit] =		{1, PPME_SYSCALL_SETRLIMIT_E, PPME_SYSCALL_SETRLIMIT_X},
 	[__NR_prlimit64] =		{1, PPME_SYSCALL_PRLIMIT_E, PPME_SYSCALL_PRLIMIT_X},
+	[__NR_ugetrlimit] =		{1, PPME_SYSCALL_GETRLIMIT_E, PPME_SYSCALL_GETRLIMIT_X},
 //	[__NR_ppoll] = 			{1, PPME_GENERIC_E, PPME_GENERIC_X},
 //	[__NR_old_select] = 	{1, PPME_GENERIC_E, PPME_GENERIC_X},
 	[__NR_pselect6] = 		{1, PPME_GENERIC_E, PPME_GENERIC_X},
