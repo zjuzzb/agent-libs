@@ -33,6 +33,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
+	BRK(11418);
 	//
 	// Cleanup the event-related state
 	//
@@ -1258,22 +1259,25 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_transaction())
 	{
 		sinsp_connection *connection;
-		bool do_remove_transaction = true;
+		bool do_remove_transaction = params->m_fdinfo->m_transaction.is_active();
 
-		if(params->m_fdinfo->is_ipv4_socket())
+		if(do_remove_transaction)
 		{
-			connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_ipv4info, 
-				params->m_ts);
-		}
-		else if(params->m_fdinfo->is_unix_socket())
-		{
-			connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_unixinfo, 
-				params->m_ts);
-		}
-		else
-		{
-			ASSERT(false);
-			do_remove_transaction = false;
+			if(params->m_fdinfo->is_ipv4_socket())
+			{
+				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_ipv4info, 
+					params->m_ts);
+			}
+			else if(params->m_fdinfo->is_unix_socket())
+			{
+				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_unixinfo, 
+					params->m_ts);
+			}
+			else
+			{
+				ASSERT(false);
+				do_remove_transaction = false;
+			}
 		}
 
 		if(do_remove_transaction)
@@ -2311,26 +2315,29 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 		//
 		// If this fd has an active transaction, update it and then mark it as unititialized
 		//
-		sinsp_connection* connection;
-
-		if(evt->m_fdinfo->is_ipv4_socket())
+		if(evt->m_fdinfo && evt->m_fdinfo->m_transaction.is_active())
 		{
-			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
-		}
-		else
-		{
-			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
-		}
+			sinsp_connection* connection;
 
-		evt->m_fdinfo->m_transaction.update(m_inspector,
-			evt->m_tinfo,
-			connection,
-			evt->get_ts(), 
-			evt->get_ts(), 
-			sinsp_partial_transaction::DIR_CLOSE, 
-			0);
+			if(evt->m_fdinfo->is_ipv4_socket())
+			{
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+			}
+			else
+			{
+				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
+			}
 
-		evt->m_fdinfo->m_transaction.mark_inactive();
+			evt->m_fdinfo->m_transaction.update(m_inspector,
+				evt->m_tinfo,
+				connection,
+				evt->get_ts(), 
+				evt->get_ts(), 
+				sinsp_partial_transaction::DIR_CLOSE, 
+				0);
+
+			evt->m_fdinfo->m_transaction.mark_inactive();
+		}
 	}
 }
 
