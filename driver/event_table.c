@@ -145,7 +145,9 @@ const struct ppm_event_info g_event_info[PPM_EVENT_MAX] =
 	/* PPME_SYSCALL_INOTIFY_INIT_E */{"inotify_init", EC_IPC, EF_CREATES_FD, 1, {{"flags", PT_UINT8, PF_HEX}}},
 	/* PPME_SYSCALL_INOTIFY_INIT_X */{"inotify_init", EC_IPC, EF_CREATES_FD, 1, {{"res", PT_FD, PF_DEC}}},
 	/* PPME_SYSCALL_GETRLIMIT_E */{"getrlimit", EC_PROCESS, EF_NONE, 1, {{"resource", PT_UINT8, PF_DEC}}},
-	/* PPME_SYSCALL_GETRLIMIT_X */{"getrlimit", EC_PROCESS, EF_NONE, 3, {{"res", PT_FD, PF_DEC}, {"cur", PT_UINT64, PF_DEC}, {"max", PT_UINT64, PF_DEC}}},
+	/* PPME_SYSCALL_GETRLIMIT_X */{"getrlimit", EC_PROCESS, EF_NONE, 3, {{"res", PT_ERRNO, PF_DEC}, {"cur", PT_UINT64, PF_DEC}, {"max", PT_UINT64, PF_DEC}}},
 	/* PPME_SYSCALL_SETRLIMIT_E */{"setrlimit", EC_PROCESS, EF_NONE, 1, {{"resource", PT_UINT8, PF_DEC}}},
-	/* PPME_SYSCALL_SETRLIMIT_X */{"setrlimit", EC_PROCESS, EF_NONE, 3, {{"res", PT_FD, PF_DEC}, {"cur", PT_UINT64, PF_DEC}, {"max", PT_UINT64, PF_DEC}}},
+	/* PPME_SYSCALL_SETRLIMIT_X */{"setrlimit", EC_PROCESS, EF_NONE, 3, {{"res", PT_ERRNO, PF_DEC}, {"cur", PT_UINT64, PF_DEC}, {"max", PT_UINT64, PF_DEC}}},
+	/* PPME_SYSCALL_PRLIMIT_E */{"prlimit", EC_PROCESS, EF_NONE, 2, {{"pid", PT_PID, PF_DEC}, {"resource", PT_UINT8, PF_DEC}}},
+	/* PPME_SYSCALL_PRLIMIT_X */{"prlimit", EC_PROCESS, EF_NONE, 5, {{"res", PT_ERRNO, PF_DEC}, {"newcur", PT_UINT64, PF_DEC}, {"newmax", PT_UINT64, PF_DEC}, {"oldcur", PT_UINT64, PF_DEC}, {"oldmax", PT_UINT64, PF_DEC}}},
 };

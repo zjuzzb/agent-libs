@@ -61,6 +61,8 @@ static int32_t f_sys_pwritev_e(struct event_filler_arguments* args);
 static int32_t f_sys_nanosleep_e(struct event_filler_arguments* args);
 static int32_t f_sys_getrlimit_setrlimit_e(struct event_filler_arguments* args);
 static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args);
+static int32_t f_sys_prlimit_e(struct event_filler_arguments* args);
+static int32_t f_sys_prlimit_x(struct event_filler_arguments* args);
 
 
 //
@@ -205,6 +207,8 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SYSCALL_GETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
 	[PPME_SYSCALL_SETRLIMIT_E] = {f_sys_getrlimit_setrlimit_e},
 	[PPME_SYSCALL_SETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
+	[PPME_SYSCALL_PRLIMIT_E] = {f_sys_prlimit_e},
+	[PPME_SYSCALL_PRLIMIT_X] = {f_sys_prlimit_x},
 };
 
 //
@@ -2658,6 +2662,136 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	// max
 	//
 	res = val_to_ring(args, max, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_prlimit_e(struct event_filler_arguments* args)
+{
+	uint8_t ppm_resource;
+	unsigned long val;
+	int32_t res;
+
+	//
+	// pid
+	//
+	syscall_get_arguments(current, args->regs, 0, 1, &val);
+
+	res = val_to_ring(args, val, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// resource
+	//
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+
+	ppm_resource = rlimit_resource_to_scap(val);
+
+	res = val_to_ring(args, (uint64_t)ppm_resource, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
+{
+	unsigned long val;
+	int32_t res;
+	int64_t retval;
+	struct rlimit rl;
+	uint64_t newcur;
+	uint64_t newmax;
+	uint64_t oldcur;
+	uint64_t oldmax;
+
+	//
+	// res
+	//
+	retval = (int64_t)(long)syscall_get_return_value(current, args->regs);
+	res = val_to_ring(args, retval, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// Copy the user structure and extract cur and max
+	//
+	if(retval >= 0)
+	{
+		syscall_get_arguments(current, args->regs, 2, 1, &val);
+
+		if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+		{
+			newcur = 0;
+			newmax = 0;
+		}
+		else
+		{
+			newcur = rl.rlim_cur;
+			newmax = rl.rlim_max;			
+		}
+	}
+	else
+	{
+		newcur = 0;
+		newmax = 0;		
+	}
+
+	syscall_get_arguments(current, args->regs, 2, 1, &val);
+
+	if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+	{
+		oldcur = 0;
+		oldmax = 0;
+	}
+	else
+	{
+		oldcur = rl.rlim_cur;
+		oldmax = rl.rlim_max;			
+	}
+
+	//
+	// newcur
+	//
+	res = val_to_ring(args, newcur, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// newmax
+	//
+	res = val_to_ring(args, newmax, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// oldcur
+	//
+	res = val_to_ring(args, oldcur, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// oldmax
+	//
+	res = val_to_ring(args, oldmax, 0, false);
 	if(res != PPM_SUCCESS)
 	{
 		return res;

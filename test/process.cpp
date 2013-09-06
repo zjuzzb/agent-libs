@@ -489,8 +489,95 @@ TEST_F(sys_call_test, process_rlimit)
 	{
 		struct rlimit rl;
 
-		getrlimit(RLIMIT_FSIZE, (struct rlimit*)33);
-		getrlimit(RLIMIT_FSIZE, &rl);
+		getrlimit(RLIMIT_NOFILE, (struct rlimit*)33);
+		getrlimit(RLIMIT_NOFILE, &rl);
+		rl.rlim_cur = 500;
+		rl.rlim_max = 1000;
+		setrlimit(RLIMIT_NOFILE, &rl);
+		getrlimit(RLIMIT_NOFILE, &rl);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_GETRLIMIT_E)
+		{
+			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_GETRLIMIT_X)
+		{
+			if(callnum == 1)
+			{
+				EXPECT_GT((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+			}
+			else
+			{
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+
+				if(callnum == 7)
+				{
+					EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
+					EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
+				}
+			}
+
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_SETRLIMIT_E)
+		{
+			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_SETRLIMIT_X)
+		{
+			EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+
+			if(callnum == 5)
+			{
+				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
+			}
+
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(8, callnum);
+}
+
+TEST_F(sys_call_test, process_prlimit)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct rlimit newrl;
+		struct rlimit oldrl;
+
+		prlimit(getpid(), RLIMIT_NOFILE, NULL, &oldrl);		
+		newrl.rlim_cur = 500;
+		newrl.rlim_max = 1000;
+		prlimit(getpid(), RLIMIT_NOFILE, &newrl, &oldrl);		
+		prlimit(getpid(), RLIMIT_NOFILE, NULL, &oldrl);		
 	};
 
 	//
@@ -499,33 +586,53 @@ TEST_F(sys_call_test, process_rlimit)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		return;
-
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_NANOSLEEP_E)
+		if(type == PPME_SYSCALL_GETRLIMIT_E)
 		{
-			if(callnum == 0)
+			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_GETRLIMIT_X)
+		{
+			if(callnum == 1)
 			{
-				if(NumberParser::parse(e->get_param_value_str("interval", false)) == 123456000)
+				EXPECT_GT((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+			}
+			else
+			{
+				EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+
+				if(callnum == 7)
 				{
-					callnum++;
+					EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
+					EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
 				}
 			}
-			else if(callnum == 2)
-			{
-				EXPECT_EQ(5000000000, NumberParser::parse64(e->get_param_value_str("interval", false)));
-				callnum++;
-			}
+
+			callnum++;
 		}
-		else if(type == PPME_SYSCALL_NANOSLEEP_X)
+		if(type == PPME_SYSCALL_SETRLIMIT_E)
 		{
-			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_SETRLIMIT_X)
+		{
+			EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
+
+			if(callnum == 5)
+			{
+				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("cur", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("max", false)));
+			}
+
 			callnum++;
 		}
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
-//	EXPECT_EQ(4, callnum);
+//	EXPECT_EQ(8, callnum);
 }
