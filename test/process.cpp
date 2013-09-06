@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <sys/resource.h>
 
 #define VISIBILITY_PRIVATE
 
@@ -468,3 +469,63 @@ printf("@@@@@@@@@3\n");
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }
 #endif // _DEBUG
+
+TEST_F(sys_call_test, process_rlimit)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct rlimit rl;
+
+		getrlimit(RLIMIT_FSIZE, (struct rlimit*)33);
+		getrlimit(RLIMIT_FSIZE, &rl);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		return;
+
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_NANOSLEEP_E)
+		{
+			if(callnum == 0)
+			{
+				if(NumberParser::parse(e->get_param_value_str("interval", false)) == 123456000)
+				{
+					callnum++;
+				}
+			}
+			else if(callnum == 2)
+			{
+				EXPECT_EQ(5000000000, NumberParser::parse64(e->get_param_value_str("interval", false)));
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_NANOSLEEP_X)
+		{
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+//	EXPECT_EQ(4, callnum);
+}

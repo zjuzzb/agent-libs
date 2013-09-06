@@ -537,6 +537,10 @@ uint16_t fd_to_socktuple(int fd,
 		// This usually happens if the call failed without being able to establish a connection,
 		// i.e. if it didn't return something like SE_EINPROGRESS.
 		//
+		if(sock)
+		{
+			sockfd_put(sock);
+		}
 		return 0;
 	}
 

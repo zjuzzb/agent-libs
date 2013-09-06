@@ -206,7 +206,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	{
 		evt->m_tinfo->m_lastevent_type = etype;
 
-		if(eflags & EC_USES_FD)
+		if(eflags & EF_USES_FD)
 		{
 			sinsp_evt_param *parinfo;
 
@@ -233,7 +233,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			return false;
 		}
 
-		if(eflags & EC_USES_FD)
+		if(eflags & EF_USES_FD)
 		{
 			evt->m_fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
 			if(evt->m_fdinfo == NULL)

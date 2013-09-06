@@ -59,9 +59,8 @@ static int32_t f_sys_writev_pwritev_x(struct event_filler_arguments* args);
 static int32_t f_sys_preadv_x(struct event_filler_arguments* args);
 static int32_t f_sys_pwritev_e(struct event_filler_arguments* args);
 static int32_t f_sys_nanosleep_e(struct event_filler_arguments* args);
-//static int32_t f_sys_preadv_e(struct event_filler_arguments* args);
-//static int32_t f_sys_preadv_x(struct event_filler_arguments* args);
-//static int32_t f_sys_pwritev_e(struct event_filler_arguments* args);
+static int32_t f_sys_getrlimit_setrlimit_e(struct event_filler_arguments* args);
+static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args);
 
 
 //
@@ -202,6 +201,10 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SYSCALL_TIMERFD_CREATE_X] = {f_sys_single_x},
 	[PPME_SYSCALL_INOTIFY_INIT_E] = {PPM_AUTOFILL, 1, APT_REG, {{AF_ID_USEDEFAULT, 0}}},
 	[PPME_SYSCALL_INOTIFY_INIT_X] = {f_sys_single_x},
+	[PPME_SYSCALL_GETRLIMIT_E] = {f_sys_getrlimit_setrlimit_e},
+	[PPME_SYSCALL_GETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
+	[PPME_SYSCALL_SETRLIMIT_E] = {f_sys_getrlimit_setrlimit_e},
+	[PPME_SYSCALL_SETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
 };
 
 //
@@ -1087,19 +1090,13 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 		sockfd_put(sock);
 	}
 
-/*
-	printk(KERN_INFO "*%s-%d %d(%d)(%d)\n", current->comm, 
-		(int)srvskfd, 
-		(int)sock->sk->sk_ack_backlog, 
-		(int)sock->sk->sk_max_ack_backlog,
-		(int)sock->sk->sk_ack_backlog * 100 / sock->sk->sk_max_ack_backlog);
-*/
-
 	res = val_to_ring(args, val, 0, false);
 	if(res != PPM_SUCCESS)
 	{
 		return res;
 	}	
+
+//	printk(KERN_INFO "***%lu", rlimit(RLIMIT_NOFILE));
 
 	return add_sentinel(args);
 }
@@ -2536,6 +2533,131 @@ static int32_t f_sys_nanosleep_e(struct event_filler_arguments* args)
 	longtime = ((uint64_t)tts->tv_sec) * 1000000000 + tts->tv_nsec;
 
 	res = val_to_ring(args, longtime, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static inline uint8_t rlimit_resource_to_scap(unsigned long rresource)
+{
+	switch(rresource)
+	{
+		case RLIMIT_CPU:
+			return PPM_RLIMIT_CPU;
+		case RLIMIT_FSIZE:
+			return PPM_RLIMIT_FSIZE;
+		case RLIMIT_DATA:
+			return PPM_RLIMIT_DATA;
+		case RLIMIT_STACK:
+			return PPM_RLIMIT_STACK;
+		case RLIMIT_CORE:
+			return PPM_RLIMIT_CORE;
+		case RLIMIT_RSS:
+			return PPM_RLIMIT_RSS;
+		case RLIMIT_NPROC:
+			return PPM_RLIMIT_NPROC;
+		case RLIMIT_NOFILE:
+			return PPM_RLIMIT_NOFILE;
+		case RLIMIT_MEMLOCK:
+			return PPM_RLIMIT_MEMLOCK;
+		case RLIMIT_AS:
+			return PPM_RLIMIT_AS;
+		case RLIMIT_LOCKS:
+			return PPM_RLIMIT_LOCKS;
+		case RLIMIT_SIGPENDING:
+			return PPM_RLIMIT_SIGPENDING;
+		case RLIMIT_MSGQUEUE:
+			return PPM_RLIMIT_MSGQUEUE;
+		case RLIMIT_NICE:
+			return PPM_RLIMIT_NICE;
+		case RLIMIT_RTPRIO:
+			return PPM_RLIMIT_RTPRIO;
+		case RLIMIT_RTTIME:
+			return PPM_RLIMIT_RTTIME;
+		default:
+			ASSERT(false);
+			return PPM_RLIMIT_UNKNOWN;
+	}
+}
+
+static int32_t f_sys_getrlimit_setrlimit_e(struct event_filler_arguments* args)
+{
+	uint8_t ppm_resource;
+	unsigned long val;
+	int32_t res;
+
+	//
+	// resource
+	//
+	syscall_get_arguments(current, args->regs, 0, 1, &val);
+
+	ppm_resource = rlimit_resource_to_scap(val);
+
+	res = val_to_ring(args, (uint64_t)ppm_resource, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
+{
+	unsigned long val;
+	int32_t res;
+	int64_t retval;
+	struct rlimit rl;
+	uint64_t cur;
+	uint64_t max;
+
+	//
+	// res
+	//
+	retval = (int64_t)(long)syscall_get_return_value(current, args->regs);
+	res = val_to_ring(args, retval, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// Copy the user structure and extract cur and max
+	//
+	if(retval >= 0 || args->event_type == PPME_SYSCALL_SETRLIMIT_X)
+	{
+		syscall_get_arguments(current, args->regs, 1, 1, &val);
+
+		if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+		{
+			return PPM_FAILURE_INVALID_USER_MEMORY;
+		}
+
+		cur = rl.rlim_cur;
+		max = rl.rlim_max;
+	}
+	else
+	{
+		cur = 0;
+		max = 0;
+	}
+
+	//
+	// cur
+	//
+	res = val_to_ring(args, cur, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
+
+	//
+	// max
+	//
+	res = val_to_ring(args, max, 0, false);
 	if(res != PPM_SUCCESS)
 	{
 		return res;

@@ -105,6 +105,45 @@
 #define PPM_AT_FDCWD -100
 
 //
+// rlimit resources
+//
+#define PPM_RLIMIT_CPU 0 // CPU time in sec
+#define PPM_RLIMIT_FSIZE 1 // Maximum filesize
+#define PPM_RLIMIT_DATA 2 // max data size
+#define PPM_RLIMIT_STACK 3 // max stack size
+#define PPM_RLIMIT_CORE 4 // max core file size
+#define PPM_RLIMIT_RSS 5 // max resident set size
+#define PPM_RLIMIT_NPROC 6 // max number of processes
+#define PPM_RLIMIT_NOFILE 7 // max number of open files
+#define PPM_RLIMIT_MEMLOCK 8 // max locked-in-memory address space
+#define PPM_RLIMIT_AS 9 // address space limit
+#define PPM_RLIMIT_LOCKS 10  // maximum file locks held
+#define PPM_RLIMIT_SIGPENDING 11 // max number of pending signals
+#define PPM_RLIMIT_MSGQUEUE 12 // maximum bytes in POSIX mqueues
+#define PPM_RLIMIT_NICE 13 // max nice prio allowed to raise to 0-39 for nice level 19 .. -20
+#define PPM_RLIMIT_RTPRIO 14 // maximum realtime priority
+#define PPM_RLIMIT_RTTIME 15 // timeout for RT tasks in us
+#define PPM_RLIMIT_UNKNOWN 255 // CPU time in sec
+
+/*
+ * SuS says limits have to be unsigned.
+ * Which makes a ton more sense anyway.
+ *
+ * Some architectures override this (for compatibility reasons):
+ */
+#ifndef RLIM_INFINITY
+# define RLIM_INFINITY          (~0UL)
+#endif
+
+/*
+ * RLIMIT_STACK default maximum - some architectures override it:
+ */
+#ifndef _STK_LIM_MAX
+# define _STK_LIM_MAX           RLIM_INFINITY
+#endif
+
+
+//
 // The list of event types
 // Enter events have even numbers while exit events have odd numbers.
 // NOTE: there can't be gaps in the numbering, because these numbers correspond
@@ -256,7 +295,11 @@ enum ppm_event_type
 	PPME_SYSCALL_TIMERFD_CREATE_X = 137,
 	PPME_SYSCALL_INOTIFY_INIT_E = 138,
 	PPME_SYSCALL_INOTIFY_INIT_X = 139,
-	PPM_EVENT_MAX = 140,
+	PPME_SYSCALL_GETRLIMIT_E = 140,
+	PPME_SYSCALL_GETRLIMIT_X = 141,
+	PPME_SYSCALL_SETRLIMIT_E = 142,
+	PPME_SYSCALL_SETRLIMIT_X = 143,
+	PPM_EVENT_MAX = 144,
 };
 
 //
@@ -588,9 +631,9 @@ typedef enum ppm_event_category
 typedef enum ppm_event_flags
 {
 	EF_NONE = 0,
-	EC_CREATES_FD = (1 << 0),
-	EC_DESTROYS_FD = (1 << 1),
-	EC_USES_FD = (1 << 2),
+	EF_CREATES_FD = (1 << 0),
+	EF_DESTROYS_FD = (1 << 1),
+	EF_USES_FD = (1 << 2),
 }ppm_event_flags;
 
 typedef enum ppm_param_type
