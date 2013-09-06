@@ -1027,6 +1027,10 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 	int fd;
 	char* targetbuf = args->ringinfo->str_storage;
 	uint16_t size = 0;
+	unsigned long val;
+	unsigned long srvskfd;
+	int err = 0;
+	struct socket* sock;
 
 	//
 	// Push the fd
@@ -1060,6 +1064,42 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 	{
 		return res;
 	}
+
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 0, 1, &srvskfd);
+#else
+	srvskfd = args->ringinfo->socketcall_args[0];
+#endif
+	sock = sockfd_lookup(srvskfd, &err);
+
+	if(!sock || !(sock->sk))
+	{
+		val = 0;
+		
+		if(sock)
+		{
+			sockfd_put(sock);			
+		}
+	}
+	else
+	{
+		val = (unsigned long)sock->sk->sk_ack_backlog * 100 / sock->sk->sk_max_ack_backlog;
+		sockfd_put(sock);
+	}
+
+/*
+	printk(KERN_INFO "*%s-%d %d(%d)(%d)\n", current->comm, 
+		(int)srvskfd, 
+		(int)sock->sk->sk_ack_backlog, 
+		(int)sock->sk->sk_max_ack_backlog,
+		(int)sock->sk->sk_ack_backlog * 100 / sock->sk->sk_max_ack_backlog);
+*/
+
+	res = val_to_ring(args, val, 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}	
 
 	return add_sentinel(args);
 }
