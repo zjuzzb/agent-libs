@@ -554,7 +554,7 @@ TEST_F(sys_call_test, process_rlimit)
 	EXPECT_EQ(8, callnum);
 }
 
-#ifdef SYS_prlimit64
+#if 0
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
