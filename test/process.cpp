@@ -4,6 +4,7 @@
 #include <sys/ioctl.h>
 #include <poll.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 
 #define VISIBILITY_PRIVATE
 
@@ -553,6 +554,7 @@ TEST_F(sys_call_test, process_rlimit)
 	EXPECT_EQ(8, callnum);
 }
 
+#ifdef SYS_prlimit64
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
@@ -629,3 +631,4 @@ TEST_F(sys_call_test, process_prlimit)
 
 	EXPECT_EQ(6, callnum);
 }
+#endif
