@@ -226,7 +226,7 @@ static int32_t f_sys_generic(struct event_filler_arguments* args)
 	int32_t res;
 
 #ifndef __x86_64__
-	if(args->syscall_id == __NR_socketcall)
+	if(unlikely(args->syscall_id == __NR_socketcall))
 	{
 		//
 		// All the socket calls should be implemented
@@ -1079,7 +1079,7 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 #endif
 	sock = sockfd_lookup(srvskfd, &err);
 
-	if(!sock || !(sock->sk))
+	if(unlikely(!sock || !(sock->sk)))
 	{
 		val = 0;
 		
@@ -1561,7 +1561,7 @@ static int32_t f_sys_pipe_x(struct event_filler_arguments* args)
 
 	file = fget(fds[0]);
 	val = 0;
-	if(file != NULL)
+	if(likely(file != NULL))
 	{
 		val = file->f_dentry->d_inode->i_ino;
 		fput(file);
@@ -2601,7 +2601,7 @@ static int32_t f_sys_getrlimit_setrlimit_e(struct event_filler_arguments* args)
 	ppm_resource = rlimit_resource_to_scap(val);
 
 	res = val_to_ring(args, (uint64_t)ppm_resource, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2623,7 +2623,7 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	//
 	retval = (int64_t)(long)syscall_get_return_value(current, args->regs);
 	res = val_to_ring(args, retval, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2635,7 +2635,7 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	{
 		syscall_get_arguments(current, args->regs, 1, 1, &val);
 
-		if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+		if(unlikely(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit))))
 		{
 			return PPM_FAILURE_INVALID_USER_MEMORY;
 		}
@@ -2653,7 +2653,7 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	// cur
 	//
 	res = val_to_ring(args, cur, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2662,7 +2662,7 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	// max
 	//
 	res = val_to_ring(args, max, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2682,7 +2682,7 @@ static int32_t f_sys_prlimit_e(struct event_filler_arguments* args)
 	syscall_get_arguments(current, args->regs, 0, 1, &val);
 
 	res = val_to_ring(args, val, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2695,7 +2695,7 @@ static int32_t f_sys_prlimit_e(struct event_filler_arguments* args)
 	ppm_resource = rlimit_resource_to_scap(val);
 
 	res = val_to_ring(args, (uint64_t)ppm_resource, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2719,7 +2719,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	//
 	retval = (int64_t)(long)syscall_get_return_value(current, args->regs);
 	res = val_to_ring(args, retval, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2731,7 +2731,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	{
 		syscall_get_arguments(current, args->regs, 2, 1, &val);
 
-		if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+		if(unlikely(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit))))
 		{
 			newcur = 0;
 			newmax = 0;
@@ -2750,7 +2750,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 
 	syscall_get_arguments(current, args->regs, 3, 1, &val);
 
-	if(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit)))
+	if(unlikely(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit))))
 	{
 		oldcur = 0;
 		oldmax = 0;
@@ -2765,7 +2765,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	// newcur
 	//
 	res = val_to_ring(args, newcur, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2774,7 +2774,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	// newmax
 	//
 	res = val_to_ring(args, newmax, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2783,7 +2783,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	// oldcur
 	//
 	res = val_to_ring(args, oldcur, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
@@ -2792,7 +2792,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	// oldmax
 	//
 	res = val_to_ring(args, oldmax, 0, false);
-	if(res != PPM_SUCCESS)
+	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
 	}
