@@ -164,6 +164,8 @@ const char* sinsp_utils::errno_to_str(int32_t code)
 		return "ENOTSOCK";
 	case SE_ERESTART_RESTARTBLOCK:
 		return "ERESTART_RESTARTBLOCK";
+	case SE_EADDRINUSE:
+		return "EADDRINUSE";
 	default:
 		ASSERT(false);
 		return "";

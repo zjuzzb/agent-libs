@@ -575,6 +575,7 @@ protected:
 
 		if(config().getBool("application.runAsDaemon", false))
 		{
+#ifndef _WIN32
 			if(nice(AGENT_PRIORITY) == -1)
 			{
 				ASSERT(false);
@@ -602,6 +603,7 @@ protected:
 			{
 				g_log->warning("Cannot open the autogroup file");
 			}
+#endif
 		}
 
 		//

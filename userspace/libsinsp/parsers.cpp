@@ -386,7 +386,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 			childtid = tid;
 
 			//
-			// Get the flags, and check if this is a thread or a new thread
+			// Get the flags, and check if this is a process or a new thread
 			//
 			parinfo = evt->get_param(8);
 			ASSERT(parinfo->m_len == sizeof(int32_t));
@@ -1019,9 +1019,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
 			}
 
-			ASSERT(evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto == SCAP_L4_UDP);
-			m_inspector->m_ipv4_connections->remove_connection(
-				evt->m_fdinfo->m_info.m_ipv4info);
+			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
 		}
 
 		//

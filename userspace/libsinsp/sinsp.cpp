@@ -15,6 +15,8 @@
 #include "metrics.h"
 #include "analyzer.h"
 
+#include "drfilterParser.h"
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -221,6 +223,12 @@ void sinsp::import_ifaddr_list()
 
 void sinsp::init()
 {
+/*
+char* filter = "a = 33";
+char err[1024];
+char* retval = compile_filter(filter, sizeof(filter), err, sizeof(err));
+*/
+
 	//
 	// Allocations
 	//
