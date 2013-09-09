@@ -50,6 +50,13 @@ typedef enum ppm_capture_state
 	CS_INACTIVE,	// Not Capturing but active, returning the packets in the buffer to the user.
 }ppm_capture_state;
 
+enum syscall_used_flag
+{
+	UF_NONE = 0,
+	UF_NORMAL_MODE = (1 << 0),
+	UF_DROPPING_MODE = (1 << 1),
+};
+
 ///////////////////////////////////////////////////////////////////////
 // Global structs
 ///////////////////////////////////////////////////////////////////////
