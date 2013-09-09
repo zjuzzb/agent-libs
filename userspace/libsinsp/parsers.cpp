@@ -388,7 +388,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 			//
 			// Get the flags, and check if this is a thread or a new thread
 			//
-			parinfo = evt->get_param(7);
+			parinfo = evt->get_param(8);
 			ASSERT(parinfo->m_len == sizeof(int32_t));
 			uint32_t flags = *(int32_t *)parinfo->m_val;
 
@@ -480,7 +480,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	tinfo.m_pid = *(int64_t *)parinfo->m_val;
 
 	// Get the flags, and check if this is a thread or a new thread
-	parinfo = evt->get_param(7);
+	parinfo = evt->get_param(8);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 	tinfo.m_flags = *(int32_t *)parinfo->m_val;
 

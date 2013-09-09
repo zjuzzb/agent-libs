@@ -740,6 +740,14 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 		return res;
 	}
 
+	//
+	// fdlimit
+	//
+	res = val_to_ring(args, (int64_t)rlimit(RLIMIT_NOFILE), 0, false);
+	if(res != PPM_SUCCESS)
+	{
+		return res;
+	}
 
 	//
 	// Flags, but only for clone
