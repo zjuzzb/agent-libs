@@ -554,10 +554,11 @@ TEST_F(sys_call_test, process_rlimit)
 	EXPECT_EQ(8, callnum);
 }
 
-#if 0
+#ifdef SYS_prlimit64
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
+	struct rlimit tmprl;
 	struct rlimit orirl;
 
 	//
@@ -576,11 +577,11 @@ TEST_F(sys_call_test, process_prlimit)
 		struct rlimit newrl;
 		struct rlimit oldrl;
 
-		prlimit(getpid(), RLIMIT_NOFILE, NULL, &orirl);
+		syscall(SYS_prlimit64, getpid(), RLIMIT_NOFILE, NULL, &orirl);
 		newrl.rlim_cur = 500;
 		newrl.rlim_max = 1000;
-		prlimit(getpid(), RLIMIT_NOFILE, &newrl, &oldrl);		
-		prlimit(getpid(), RLIMIT_NOFILE, NULL, &oldrl);		
+		syscall(SYS_prlimit64, getpid(), RLIMIT_NOFILE, &newrl, &oldrl);
+		syscall(SYS_prlimit64, getpid(), RLIMIT_NOFILE, NULL, &oldrl);
 	};
 
 	//
@@ -626,6 +627,11 @@ TEST_F(sys_call_test, process_prlimit)
 			callnum++;
 		}
 	};
+
+	if(syscall(SYS_prlimit64, getpid(), RLIMIT_NOFILE, NULL, &tmprl) != 0)
+	{
+		return;
+	} 
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
