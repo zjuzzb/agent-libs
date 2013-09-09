@@ -15,7 +15,7 @@
 #include "metrics.h"
 #include "analyzer.h"
 
-#include "drfilterParser.h"
+//#include "drfilterParser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp implementation
