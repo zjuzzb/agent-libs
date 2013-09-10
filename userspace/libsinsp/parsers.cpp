@@ -57,6 +57,9 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_CREAT_E:
 	case PPME_SYSCALL_OPENAT_E:
 	case PPME_SOCKET_SHUTDOWN_E:
+	case PPME_SYSCALL_GETRLIMIT_E:
+	case PPME_SYSCALL_SETRLIMIT_E:
+	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
 		break;
 	case PPME_CLONE_X:
@@ -142,6 +145,13 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_SYSCALL_INOTIFY_INIT_X:
 		parse_inotify_init_exit(evt);
+		break;
+	case PPME_SYSCALL_GETRLIMIT_X:
+	case PPME_SYSCALL_SETRLIMIT_X:
+		parse_getrlimit_setrlimit_exit(evt);
+		break;
+	case PPME_SYSCALL_PRLIMIT_X:
+		parse_prlimit_exit(evt);
 		break;
 	default:
 		break;
@@ -525,6 +535,11 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	parinfo = evt->get_param(6);
 	tinfo.set_cwd(parinfo->m_val, parinfo->m_len);
 
+	// Copy the fdlimit
+	parinfo = evt->get_param(7);
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+	tinfo.m_fdlimit = *(int64_t *)parinfo->m_val;
+
 	//
 	// Add the new thread info to the table
 	//
@@ -589,6 +604,11 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	// Get the working directory
 	parinfo = evt->get_param(6);
 	evt->m_tinfo->set_cwd(parinfo->m_val, parinfo->m_len);
+
+	// Get the fdlimit
+	parinfo = evt->get_param(7);
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+	evt->m_tinfo->m_fdlimit = *(int64_t *)parinfo->m_val;
 
 	//
 	// execve starts with a clean fd list, so we get rid of the fd list that clone
@@ -2480,5 +2500,141 @@ void sinsp_parser::parse_inotify_init_exit(sinsp_evt *evt)
 		// Add the fd to the table.
 		//
 		evt->m_tinfo->add_fd(retval, &fdi);
+	}
+}
+
+void sinsp_parser::parse_getrlimit_setrlimit_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+	sinsp_evt *enter_evt = &m_tmp_evt;
+	uint8_t resource;
+	int64_t curval;
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		//
+		// Load the enter event so we can access its arguments
+		//
+		if(!retrieve_enter_event(enter_evt, evt))
+		{
+			return;
+		}
+
+		//
+		// Extract the resource number
+		//
+		parinfo = enter_evt->get_param(0);
+		resource = *(uint8_t *)parinfo->m_val;
+		ASSERT(parinfo->m_len == sizeof(uint8_t));
+
+		if(resource == PPM_RLIMIT_NOFILE)
+		{
+			//
+			// Extract the current value for the resource
+			//
+			parinfo = evt->get_param(1);
+			curval = *(uint64_t *)parinfo->m_val;
+			ASSERT(parinfo->m_len == sizeof(uint64_t));
+
+#ifdef _DEBUG
+			if(evt->get_type() == PPME_SYSCALL_GETRLIMIT_X)
+			{
+				if(evt->m_tinfo->m_fdlimit != -1)
+				{
+					ASSERT(curval == evt->m_tinfo->m_fdlimit);
+				}
+			}
+#endif
+
+			if(curval != -1)
+			{
+				evt->m_tinfo->m_fdlimit = curval;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+	}
+}
+
+void sinsp_parser::parse_prlimit_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+	sinsp_evt *enter_evt = &m_tmp_evt;
+	uint8_t resource;
+	int64_t newcur;
+	int64_t tid;
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		//
+		// Load the enter event so we can access its arguments
+		//
+		if(!retrieve_enter_event(enter_evt, evt))
+		{
+			return;
+		}
+
+		//
+		// Extract the resource number
+		//
+		parinfo = enter_evt->get_param(1);
+		resource = *(uint8_t *)parinfo->m_val;
+		ASSERT(parinfo->m_len == sizeof(uint8_t));
+
+		if(resource == PPM_RLIMIT_NOFILE)
+		{
+			//
+			// Extract the current value for the resource
+			//
+			parinfo = evt->get_param(1);
+			newcur = *(uint64_t *)parinfo->m_val;
+			ASSERT(parinfo->m_len == sizeof(uint64_t));
+
+			if(newcur != -1)
+			{
+				//
+				// Extract the tid and look for its process info
+				//
+				parinfo = enter_evt->get_param(0);
+				tid = *(int64_t *)parinfo->m_val;
+				ASSERT(parinfo->m_len == sizeof(int64_t));
+
+				sinsp_threadinfo* ptinfo = m_inspector->get_thread(tid, true);
+				if(ptinfo == NULL)
+				{
+					ASSERT(false);
+					return;
+				}
+
+				//
+				// update the process fdlimit
+				//
+				ptinfo->m_fdlimit = newcur;
+			}
+		}
 	}
 }

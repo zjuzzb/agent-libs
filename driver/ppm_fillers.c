@@ -132,7 +132,7 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SYSCALL_LSTAT64_X] = {PPM_AUTOFILL, 2, APT_REG, {{AF_ID_RETVAL}, {0}}},
 	[PPME_SYSCALL_FSTAT64_E] = {f_sys_single},
 	[PPME_SYSCALL_FSTAT64_X] = {f_sys_single_x},
-	[PPME_SYSCALL_EPOLLWAIT_E] = {f_sys_empty},
+	[PPME_SYSCALL_EPOLLWAIT_E] = {PPM_AUTOFILL, 1, APT_REG, {{2}}},
 	[PPME_SYSCALL_EPOLLWAIT_X] = {f_sys_single_x},
 	[PPME_SYSCALL_POLL_E] = {f_sys_poll_e},
 	[PPME_SYSCALL_POLL_X] = {f_sys_poll_x},
@@ -2623,8 +2623,8 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	int32_t res;
 	int64_t retval;
 	struct rlimit rl;
-	uint64_t cur;
-	uint64_t max;
+	int64_t cur;
+	int64_t max;
 
 	//
 	// res
@@ -2653,8 +2653,8 @@ static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args)
 	}
 	else
 	{
-		cur = 0;
-		max = 0;
+		cur = -1;
+		max = -1;
 	}
 
 	//
@@ -2717,10 +2717,10 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	int32_t res;
 	int64_t retval;
 	struct rlimit rl;
-	uint64_t newcur;
-	uint64_t newmax;
-	uint64_t oldcur;
-	uint64_t oldmax;
+	int64_t newcur;
+	int64_t newmax;
+	int64_t oldcur;
+	int64_t oldmax;
 
 	//
 	// res
@@ -2741,8 +2741,8 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 
 		if(unlikely(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit))))
 		{
-			newcur = 0;
-			newmax = 0;
+			newcur = -1;
+			newmax = -1;
 		}
 		else
 		{
@@ -2752,16 +2752,16 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 	}
 	else
 	{
-		newcur = 0;
-		newmax = 0;		
+		newcur = -1;
+		newmax = -1;
 	}
 
 	syscall_get_arguments(current, args->regs, 3, 1, &val);
 
 	if(unlikely(ppm_copy_from_user(&rl, (const void*)val, sizeof(struct rlimit))))
 	{
-		oldcur = 0;
-		oldmax = 0;
+		oldcur = -1;
+		oldmax = -1;
 	}
 	else
 	{

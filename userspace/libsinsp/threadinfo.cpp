@@ -44,6 +44,7 @@ void sinsp_threadinfo::init()
 	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
 	m_n_active_transactions = 0;
+	m_fdlimit = -1;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -68,6 +69,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	set_cwd(pi->cwd, strlen(pi->cwd));
 	m_flags = pi->flags;
 	m_fdtable.clear();
+	m_fdlimit = pi->fdlimit;
 
 	HASH_ITER(hh, pi->fdlist, fdi, tfdi)
 	{
