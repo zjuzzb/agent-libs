@@ -260,6 +260,18 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		return 0;
 	}
+	case PPM_IOCTL_DISABLE_DROPPING_MODE:
+	{
+		g_dropping_mode = 0;
+		printk(KERN_INFO "PPM: PPM_IOCTL_DISABLE_DROPPING_MODE\n");
+		return 0;
+	}
+	case PPM_IOCTL_ENABLE_DROPPING_MODE:
+	{
+		g_dropping_mode = 1;
+		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_DROPPING_MODE\n");
+		return 0;
+	}
 	default:
 		return -ENOTTY;
 	}
@@ -1181,7 +1193,8 @@ int init_module(void)
 	// All ok. Final initalizations.
 	//
 	atomic_set(&g_open_count, 0);
-
+	g_dropping_mode = 0;
+	
 	return 0;
 
 init_module_err:
