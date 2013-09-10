@@ -183,6 +183,7 @@ typedef struct scap_threadinfo
 	char args[SCAP_MAX_PATH_SIZE];		// Command line arguments (e.g. "-d1")
 	uint16_t args_len;					// Command line arguments length
 	char cwd[SCAP_MAX_PATH_SIZE];		// The current working directory
+	int64_t file_limit;					// The maximum number of files this thread is allowed to open
 	uint32_t flags;						// the process flags.
 	scap_fdinfo* fdlist;				// The fd table for this process
 	UT_hash_handle hh; 					// makes this structure hashable

@@ -86,6 +86,31 @@ int32_t scap_proc_fill_cwd(char* procdirname, struct scap_threadinfo* tinfo)
 }
 
 //
+// use prlimit to extract the RLIMIT_NOFILE for the tid. On systems where prlimit
+// is not supported, just return -1
+//
+int32_t scap_proc_fill_flimit(uint64_t tid, struct scap_threadinfo* tinfo)
+#ifdef SYS_prlimit64
+{
+	struct rlimit rl;
+
+	if(syscall(SYS_prlimit64, tid, RLIMIT_NOFILE, NULL, &rl) != 0)
+	{
+		tinfo->file_limit = rl.rlim_cur;
+		return SCAP_SUCCESS;
+	}
+
+	tinfo->file_limit = -1;
+	return SCAP_SUCCESS;
+}
+#else
+{
+	tinfo->file_limit = -1;
+	return SCAP_SUCCESS;
+}
+#endif
+
+//
 // Add a process to the list by parsing its entry under /proc
 //
 int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int tid_to_scan, char* procdirname, scap_fdinfo* sockets, scap_threadinfo** procinfo, char *error)
@@ -219,6 +244,16 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	if(SCAP_FAILURE == scap_proc_fill_cwd(dir_name, tinfo))
 	{
 		snprintf(error, SCAP_LASTERR_SIZE, "can't fill cwd for %s", dir_name);
+		free(tinfo);
+		return SCAP_FAILURE;
+	}
+
+	//
+	// Set the file limit
+	//
+	if(SCAP_FAILURE == scap_proc_fill_flimit(tinfo->tid, tinfo))
+	{
+		snprintf(error, SCAP_LASTERR_SIZE, "can't fill flimit for %s", dir_name);
 		free(tinfo);
 		return SCAP_FAILURE;
 	}
@@ -540,7 +575,7 @@ void scap_proc_free(scap_t* handle, struct scap_threadinfo* proc)
 //
 void scap_proc_print_info(scap_threadinfo* tinfo)
 {
-	fprintf(stderr, "TID:%"PRIu64" PID:%"PRIu64" FLAGS:%"PRIu32" COMM:%s EXE:%s ARGS:%s CWD:%s\n", tinfo->tid, tinfo->pid, tinfo->flags,tinfo->comm, tinfo->exe, tinfo->args, tinfo->cwd);
+	fprintf(stderr, "TID:%"PRIu64" PID:%"PRIu64" FLAGS:%"PRIu32" COMM:%s EXE:%s ARGS:%s CWD:%s FLIMIT:%" PRId64 "\n", tinfo->tid, tinfo->pid, tinfo->flags,tinfo->comm, tinfo->exe, tinfo->args, tinfo->cwd, tinfo->file_limit);
 	scap_fd_print_table(tinfo);
 }
 
