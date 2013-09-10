@@ -535,7 +535,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 		//
 		// As a simple filter, we drop 
 		//
-		if(fd > 0 && (fd % 8))
+		if(fd > 0 && (fd % 4))
 		{
 			return 1;
 		}
