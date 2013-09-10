@@ -82,7 +82,7 @@ public:
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
 	uint32_t m_flags; // The thread flags.
 	uint64_t m_refcount; // When this is 0 the process can be deleted (i.e. no children)
-//	uint64_t m_n_active_transactions;
+	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
 
 	//
 	// State for multi-event processing
