@@ -275,6 +275,28 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				erase_fd(&eparams);
 			}
 		}
+		else if(eflags & EF_CREATES_FD)
+		{
+			sinsp_evt_param *parinfo;
+			int64_t fd;
+			uint32_t parnum = (etype == PPME_SYSCALL_PIPE_X)? 1 : 0;
+
+			parinfo = evt->get_param(parnum);
+			ASSERT(parinfo->m_len == sizeof(int64_t));
+			ASSERT(evt->get_param_info(parnum)->type == PT_FD);
+			fd = *(int64_t *)parinfo->m_val;
+
+			if(evt->m_tinfo->m_fdlimit != -1)
+			{
+				int64_t m_fd_usage_ratio = fd * 100 / evt->m_tinfo->m_fdlimit;
+				ASSERT(m_fd_usage_ratio <= 100);
+
+				if(m_fd_usage_ratio > evt->m_tinfo->m_fd_usage_ratio)
+				{
+					evt->m_tinfo->m_fd_usage_ratio = (uint32_t)m_fd_usage_ratio;
+				}
+			}
+		}
 	}
 
 	return true;
@@ -1123,7 +1145,7 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 	if(fd < 0)
 	{
 		//
-		// This was a failed connect.
+		// Accept failure.
 		// Do nothing.
 		//
 		return;
@@ -1221,6 +1243,19 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 	// Add the entry to the table
 	//
 	evt->m_tinfo->add_fd(fd, &fdi);
+
+	//
+	// Check the request queue length and 
+	//
+	parinfo = evt->get_param(2);
+	ASSERT(parinfo->m_len == sizeof(uint8_t));
+	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
+	ASSERT(queueratio <= 100);
+
+	if(queueratio > evt->m_tinfo->m_connection_queue_usage_ratio)
+	{
+		evt->m_tinfo->m_connection_queue_usage_ratio = queueratio;
+	}
 }
 
 void sinsp_parser::parse_close_enter(sinsp_evt *evt)

@@ -45,6 +45,8 @@ void sinsp_threadinfo::init()
 	m_transaction_processing_delay_ns = 0;
 	m_n_active_transactions = 0;
 	m_fdlimit = -1;
+	m_fd_usage_ratio = 0;
+	m_connection_queue_usage_ratio = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -369,12 +371,22 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
-		m_procinfo->m_proc_transaction_processing_delay_ns = 0;
+		m_procinfo->clear();
 	}
 
 	m_procinfo->m_proc_metrics.add(&other->m_metrics);
 	m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
 	m_procinfo->m_proc_transaction_processing_delay_ns += other->m_transaction_processing_delay_ns;
+
+	if(other->m_fd_usage_ratio > m_procinfo->m_fd_usage_ratio)
+	{
+		m_procinfo->m_fd_usage_ratio = other->m_fd_usage_ratio;
+	}
+
+	if(other->m_connection_queue_usage_ratio > m_procinfo->m_connection_queue_usage_ratio)
+	{
+		m_procinfo->m_connection_queue_usage_ratio = other->m_connection_queue_usage_ratio;
+	}
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -382,14 +394,43 @@ void sinsp_threadinfo::clear_all_metrics()
 	if(m_procinfo != NULL)
 	{
 		ASSERT(is_main_thread());
-		m_procinfo->m_proc_metrics.clear();
-		m_procinfo->m_proc_transaction_metrics.clear();
-		m_procinfo->m_proc_transaction_processing_delay_ns = 0;
+		m_procinfo->clear();
 	}
 
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
+	m_fd_usage_ratio = 0;
+	m_connection_queue_usage_ratio = 0;
+}
+
+uint32_t sinsp_threadinfo::get_process_health_score()
+{
+	uint32_t res = 100;
+
+	if(!is_main_thread())
+	{
+		ASSERT(false);
+		return 100;
+	}
+
+	if(m_procinfo == NULL)
+	{
+		ASSERT(false);
+		return 100;
+	}
+
+	if(m_connection_queue_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - m_connection_queue_usage_ratio);
+	}
+
+	if(m_fd_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - m_fd_usage_ratio);
+	}
+
+	return res;
 }
 
 /*

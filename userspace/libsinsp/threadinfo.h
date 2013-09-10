@@ -20,6 +20,15 @@ typedef struct erase_fd_params
 class sinsp_procinfo
 {
 public:
+	void clear()
+	{
+		m_proc_metrics.clear();
+		m_proc_transaction_metrics.clear();
+		m_proc_transaction_processing_delay_ns = 0;
+		m_connection_queue_usage_ratio = 0;
+		m_fd_usage_ratio = 0;
+	}
+
 	// Aggreaged metrics for the process.
 	// This field is allocated only for process main threads.
 	sinsp_counters m_proc_metrics; 
@@ -30,6 +39,11 @@ public:
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
 	uint64_t m_proc_transaction_processing_delay_ns;
+	// The ratio between the number of connections waiting to be served and 
+	// the total connection queue length for this process.
+	uint32_t m_connection_queue_usage_ratio;
+	// The ratio between open FDs and maximum available FDs fir this thread
+	uint32_t m_fd_usage_ratio;
 };
 
 //
@@ -120,6 +134,11 @@ public:
 	sinsp_procinfo* m_procinfo;
 	// The number of transactions that this thread is currently serving
 	uint32_t m_n_active_transactions;
+	// The ratio between the number of connections waiting to be served and 
+	// the total connection queue length for this process.
+	uint32_t m_connection_queue_usage_ratio;
+	// The ratio between open FDs and maximum available FDs fir this thread
+	uint32_t m_fd_usage_ratio;
 
 	//
 	// Global state
@@ -135,6 +154,11 @@ VISIBILITY_PRIVATE
 	sinsp_threadinfo* get_cwd_root();
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
+	//
+	// If this is a process main thread, return the health score based on the
+	// process metrics
+	//
+	uint32_t get_process_health_score();
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations

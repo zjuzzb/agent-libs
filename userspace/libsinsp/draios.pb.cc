@@ -1721,6 +1721,9 @@ const int process::kArgsFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kLocalTransactionDelayFieldNumber;
+const int process::kHealthScoreFieldNumber;
+const int process::kConnectionQueueUsagePctFieldNumber;
+const int process::kFdUsagePctFieldNumber;
 #endif  // !_MSC_VER
 
 process::process()
@@ -1757,6 +1760,9 @@ void process::SharedCtor() {
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   local_transaction_delay_ = GOOGLE_ULONGLONG(0);
+  health_score_ = 0u;
+  connection_queue_usage_pct_ = 0u;
+  fd_usage_pct_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1821,6 +1827,11 @@ void process::Clear() {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::transaction_categories::Clear();
     }
     local_transaction_delay_ = GOOGLE_ULONGLONG(0);
+    health_score_ = 0u;
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    connection_queue_usage_pct_ = 0u;
+    fd_usage_pct_ = 0u;
   }
   args_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -1930,6 +1941,54 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(64)) goto parse_health_score;
+        break;
+      }
+
+      // optional uint32 health_score = 8;
+      case 8: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_health_score:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &health_score_)));
+          set_has_health_score();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(72)) goto parse_connection_queue_usage_pct;
+        break;
+      }
+
+      // optional uint32 connection_queue_usage_pct = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_connection_queue_usage_pct:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &connection_queue_usage_pct_)));
+          set_has_connection_queue_usage_pct();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(80)) goto parse_fd_usage_pct;
+        break;
+      }
+
+      // optional uint32 fd_usage_pct = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_fd_usage_pct:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &fd_usage_pct_)));
+          set_has_fd_usage_pct();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1991,6 +2050,21 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(7, this->local_transaction_delay(), output);
   }
 
+  // optional uint32 health_score = 8;
+  if (has_health_score()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(8, this->health_score(), output);
+  }
+
+  // optional uint32 connection_queue_usage_pct = 9;
+  if (has_connection_queue_usage_pct()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(9, this->connection_queue_usage_pct(), output);
+  }
+
+  // optional uint32 fd_usage_pct = 10;
+  if (has_fd_usage_pct()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(10, this->fd_usage_pct(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -2039,6 +2113,29 @@ int process::ByteSize() const {
           this->local_transaction_delay());
     }
 
+    // optional uint32 health_score = 8;
+    if (has_health_score()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->health_score());
+    }
+
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional uint32 connection_queue_usage_pct = 9;
+    if (has_connection_queue_usage_pct()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->connection_queue_usage_pct());
+    }
+
+    // optional uint32 fd_usage_pct = 10;
+    if (has_fd_usage_pct()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->fd_usage_pct());
+    }
+
   }
   // repeated string args = 4;
   total_size += 1 * this->args_size();
@@ -2080,6 +2177,17 @@ void process::MergeFrom(const process& from) {
     if (from.has_local_transaction_delay()) {
       set_local_transaction_delay(from.local_transaction_delay());
     }
+    if (from.has_health_score()) {
+      set_health_score(from.health_score());
+    }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_connection_queue_usage_pct()) {
+      set_connection_queue_usage_pct(from.connection_queue_usage_pct());
+    }
+    if (from.has_fd_usage_pct()) {
+      set_fd_usage_pct(from.fd_usage_pct());
+    }
   }
 }
 
@@ -2104,6 +2212,9 @@ void process::Swap(process* other) {
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(local_transaction_delay_, other->local_transaction_delay_);
+    std::swap(health_score_, other->health_score_);
+    std::swap(connection_queue_usage_pct_, other->connection_queue_usage_pct_);
+    std::swap(fd_usage_pct_, other->fd_usage_pct_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
