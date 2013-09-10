@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/param.h>
 #include <dirent.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
 #endif
 
 #include "scap.h"
@@ -94,18 +96,18 @@ int32_t scap_proc_fill_flimit(uint64_t tid, struct scap_threadinfo* tinfo)
 {
 	struct rlimit rl;
 
-	if(syscall(SYS_prlimit64, tid, RLIMIT_NOFILE, NULL, &rl) != 0)
+	if(syscall(SYS_prlimit64, tid, RLIMIT_NOFILE, NULL, &rl) == 0)
 	{
-		tinfo->file_limit = rl.rlim_cur;
+		tinfo->fdlimit = rl.rlim_cur;
 		return SCAP_SUCCESS;
 	}
 
-	tinfo->file_limit = -1;
+	tinfo->fdlimit = -1;
 	return SCAP_SUCCESS;
 }
 #else
 {
-	tinfo->file_limit = -1;
+	tinfo->fdlimit = -1;
 	return SCAP_SUCCESS;
 }
 #endif
@@ -575,7 +577,7 @@ void scap_proc_free(scap_t* handle, struct scap_threadinfo* proc)
 //
 void scap_proc_print_info(scap_threadinfo* tinfo)
 {
-	fprintf(stderr, "TID:%"PRIu64" PID:%"PRIu64" FLAGS:%"PRIu32" COMM:%s EXE:%s ARGS:%s CWD:%s FLIMIT:%" PRId64 "\n", tinfo->tid, tinfo->pid, tinfo->flags,tinfo->comm, tinfo->exe, tinfo->args, tinfo->cwd, tinfo->file_limit);
+	fprintf(stderr, "TID:%"PRIu64" PID:%"PRIu64" FLAGS:%"PRIu32" COMM:%s EXE:%s ARGS:%s CWD:%s FLIMIT:%" PRId64 "\n", tinfo->tid, tinfo->pid, tinfo->flags,tinfo->comm, tinfo->exe, tinfo->args, tinfo->cwd, tinfo->fdlimit);
 	scap_fd_print_table(tinfo);
 }
 

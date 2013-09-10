@@ -148,7 +148,7 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 		    2 + strnlen(tinfo->exe, SCAP_MAX_PATH_SIZE) +
 		    2 + tinfo->args_len +
 		    2 + strnlen(tinfo->cwd, SCAP_MAX_PATH_SIZE) +
-		    sizeof(uint64_t) +	// file_limit
+		    sizeof(uint64_t) +	// fdlimit
 		    sizeof(uint32_t);
 	}
 
@@ -184,7 +184,7 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 		        fwrite(tinfo->args, 1, argslen, f) != argslen ||
 		        fwrite(&cwdlen,  sizeof(uint16_t), 1, f) != 1 ||
 		        fwrite(tinfo->cwd, 1, cwdlen, f) != cwdlen ||
-		        fwrite(&(tinfo->file_limit), sizeof(uint64_t), 1, f) != 1 ||
+		        fwrite(&(tinfo->fdlimit), sizeof(uint64_t), 1, f) != 1 ||
 		        fwrite(&(tinfo->flags), sizeof(uint32_t), 1, f) != 1)
 		{
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (2)");
@@ -564,9 +564,9 @@ int32_t scap_read_proclist(scap_t *handle, FILE *f, uint32_t block_length)
 		totreadsize += readsize;
 
 		//
-		// file_limit
+		// fdlimit
 		//
-		readsize = fread(&(tinfo.file_limit), 1, sizeof(uint64_t), f);
+		readsize = fread(&(tinfo.fdlimit), 1, sizeof(uint64_t), f);
 		CHECK_READ_SIZE(readsize, sizeof(uint64_t));
 
 		totreadsize += readsize;
