@@ -277,9 +277,16 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		}
 		else if(eflags & EF_CREATES_FD)
 		{
+			//
+			// Calculate (and if necessary update) the fd usage ratio
+			//
 			sinsp_evt_param *parinfo;
 			int64_t fd;
-			uint32_t parnum = (etype == PPME_SYSCALL_PIPE_X)? 1 : 0;
+
+			//
+			// In case of pipe or socketpair, just the first FD is good enough
+			//
+			uint32_t parnum = (etype == PPME_SYSCALL_PIPE_X || etype == PPME_SOCKET_SOCKETPAIR_X)? 1 : 0;
 
 			parinfo = evt->get_param(parnum);
 			ASSERT(parinfo->m_len == sizeof(int64_t));
