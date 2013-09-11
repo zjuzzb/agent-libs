@@ -2315,38 +2315,52 @@ void sinsp_parser::parse_fchdir_exit(sinsp_evt *evt)
 void sinsp_parser::parse_getcwd_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
+	int64_t retval;
 
-	if(!evt->m_tinfo)
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
 	{
-		//
-		// No thread in the table. We won't store this event, which mean that
-		// we won't be able to parse the correspoding exit event and we'll have
-		// to drop the information it carries.
-		//
-		ASSERT(false);
-		return;
-	}
-
-	parinfo = evt->get_param(1);
-
-#ifdef _DEBUG
-	string chkstr = string(parinfo->m_val);
-
-	if(chkstr != "/")
-	{
-		if(chkstr + "/"  != evt->m_tinfo->get_cwd())
+		if(!evt->m_tinfo)
 		{
 			//
-			// This shouldn't happen, because we should be able to stay in synch by
-			// following chdir(). If it does, it's almost sure there was an event drop.
-			// In that case, we use this value to update the thread cwd.
+			// No thread in the table. We won't store this event, which mean that
+			// we won't be able to parse the correspoding exit event and we'll have
+			// to drop the information it carries.
 			//
 			ASSERT(false);
+			return;
 		}
-	}
+
+		parinfo = evt->get_param(1);
+
+#ifdef _DEBUG
+		string chkstr = string(parinfo->m_val);
+
+		if(chkstr != "/")
+		{
+			if(chkstr + "/"  != evt->m_tinfo->get_cwd())
+			{
+				//
+				// This shouldn't happen, because we should be able to stay in synch by
+				// following chdir(). If it does, it's almost sure there was an event drop.
+				// In that case, we use this value to update the thread cwd.
+				//
+				ASSERT(false);
+			}
+		}
 #endif
 
-	evt->m_tinfo->set_cwd(parinfo->m_val, parinfo->m_len);
+		evt->m_tinfo->set_cwd(parinfo->m_val, parinfo->m_len);
+	}
 }
 
 void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
