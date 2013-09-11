@@ -62,28 +62,52 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
 		break;
-	case PPME_CLONE_X:
-		parse_clone_exit(evt); // does memory allocation
-		break;
-	case PPME_SYSCALL_EXECVE_X:
-		parse_execve_exit(evt); // does memory allocation
-		break;
-	case PPME_PROCEXIT_E:
-		parse_thread_exit(evt);
+	case PPME_SYSCALL_READ_X:
+	case PPME_SYSCALL_WRITE_X:
+	case PPME_SOCKET_RECV_X:
+	case PPME_SOCKET_SEND_X:
+	case PPME_SOCKET_RECVFROM_X:
+	case PPME_SOCKET_SENDTO_X:
+	case PPME_SYSCALL_READV_X:
+	case PPME_SYSCALL_WRITEV_X:
+	case PPME_SYSCALL_PREAD_X:
+	case PPME_SYSCALL_PWRITE_X:
+	case PPME_SYSCALL_PREADV_X:
+	case PPME_SYSCALL_PWRITEV_X:
+		parse_rw_exit(evt);
 		break;
 	case PPME_SYSCALL_OPEN_X:
 	case PPME_SYSCALL_CREAT_X:
 	case PPME_SYSCALL_OPENAT_X:
-		parse_open_openat_creat_exit(evt);  // does memory allocation
+		parse_open_openat_creat_exit(evt); 
+		break;
+	case PPME_SYSCALL_SELECT_E:
+	case PPME_SYSCALL_POLL_E:
+	case PPME_SYSCALL_EPOLLWAIT_E:
+		parse_select_poll_epollwait_enter(evt); 
+		break;
+	case PPME_SYSCALL_SELECT_X:
+	case PPME_SYSCALL_POLL_X:
+	case PPME_SYSCALL_EPOLLWAIT_X:
+		parse_select_poll_epollwait_exit(evt); 
+		break;
+	case PPME_CLONE_X:
+		parse_clone_exit(evt);
+		break;
+	case PPME_SYSCALL_EXECVE_X:
+		parse_execve_exit(evt);
+		break;
+	case PPME_PROCEXIT_E:
+		parse_thread_exit(evt);
 		break;
 	case PPME_SYSCALL_PIPE_X:
-		parse_pipe_exit(evt);    // does memory allocation
+		parse_pipe_exit(evt); 
 		break;
 	case PPME_SOCKET_SOCKETPAIR_X:
 		parse_socketpair_exit(evt);
 		break;
 	case PPME_SOCKET_SOCKET_X:
-		parse_socket_exit(evt); // does memory allocation
+		parse_socket_exit(evt);
 		break;
 	case PPME_SOCKET_BIND_X:
 		parse_bind_exit(evt);
@@ -100,20 +124,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_SYSCALL_CLOSE_X:
 		parse_close_exit(evt);
-		break;
-	case PPME_SYSCALL_READ_X:
-	case PPME_SYSCALL_WRITE_X:
-	case PPME_SOCKET_RECV_X:
-	case PPME_SOCKET_SEND_X:
-	case PPME_SOCKET_RECVFROM_X:
-	case PPME_SOCKET_SENDTO_X:
-	case PPME_SYSCALL_READV_X:
-	case PPME_SYSCALL_WRITEV_X:
-	case PPME_SYSCALL_PREAD_X:
-	case PPME_SYSCALL_PWRITE_X:
-	case PPME_SYSCALL_PREADV_X:
-	case PPME_SYSCALL_PWRITEV_X:
-		parse_rw_exit(evt);
 		break;
 	case PPME_SYSCALL_FSTAT_X:
 	case PPME_SYSCALL_FSTAT64_X:
@@ -198,7 +208,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	evt->m_tinfo = evt->get_thread_info(query_os);
 	if(!evt->m_tinfo)
 	{
-		if(evt->get_type() == PPME_CLONE_X)
+		if(etype == PPME_CLONE_X)
 		{
 #ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_thread_manager->m_failed_lookups->decrement();
@@ -229,6 +239,16 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(0)->type == PT_FD);
 
 			evt->m_tinfo->m_lastevent_fd = *(int64_t *)parinfo->m_val;
+
+			//
+			// This is part of the rest time measurement logic:
+			// rest time is fdwait time in case the wait return only one fd and 
+			// that fd is then used for an accept.
+			//
+			if(etype != PPME_SOCKET_ACCEPT_X && etype != PPME_SOCKET_ACCEPT4_X)
+			{
+				evt->m_tinfo->m_lastfdwait_duration_ns = 0;
+			}
 		}
 	}
 	else
@@ -1166,7 +1186,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 		// This happens for socket types that we don't support, so we have the assertion
 		// to make sure that this is not a type of socket that we support.
 		//
-		ASSERT(!(evt->m_fdinfo->is_unix_socket() || evt->m_fdinfo->is_ipv4_socket()));
 		return;
 	}
 
@@ -2691,6 +2710,50 @@ void sinsp_parser::parse_prlimit_exit(sinsp_evt *evt)
 				//
 				ptinfo->m_fdlimit = newcur;
 			}
+		}
+	}
+}
+
+void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
+{
+	if(evt->m_tinfo == NULL)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
+}
+
+void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+		if(tinfo == NULL)
+		{
+			ASSERT(false);
+			return;
+		}
+
+		if(tinfo->is_lastevent_data_valid())
+		{
+			tinfo->m_lastfdwait_duration_ns = evt->get_ts() - *(uint64_t*)evt->m_tinfo->m_lastevent_data;
+			tinfo->m_lastfdwait_nfds = retval;
 		}
 	}
 }
