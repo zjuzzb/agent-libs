@@ -1,6 +1,8 @@
 var MAX_VIDEO_REQUESTS = 1000;
 
 var http = require('http');
+var sleep = require('sleep');
+
 var j = 0;
 var cnt = 0;
 
@@ -8,7 +10,7 @@ var options = {
   host: '127.0.0.1',
   path: '/search.php',
   port: 80,
-  agent:false
+//  agent:false
 };
 
 callback = function(response) {
@@ -26,23 +28,24 @@ callback = function(response) {
   });
 
   cnt++;
-  if(cnt % 100 == 0)
-  {
+//  if(cnt % 100 == 0)
+//  {
     console.log(cnt.toString());  
-  }
+//  }
 }
 
 function req_loop()
 {
   j++;
-  options.path = '/' + j.toString();
+//  options.path = '/' + j.toString();
+  sleep.usleep(100000);
   http.request(options, callback).end();
+
   if(j < MAX_VIDEO_REQUESTS)
   {
     setTimeout(req_loop, 0);
   }
 }
 
-http.globalAgent.maxSockets = 400;
+http.globalAgent.maxSockets = 20;
 req_loop()
-
