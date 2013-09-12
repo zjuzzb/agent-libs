@@ -2,4 +2,4 @@
 name=Draios
 baseurl=http://download.draios.com/_REPOSITORY_/rpm/$basearch
 enabled=1
-gpgcheck=0
+gpgcheck=1

@@ -30,6 +30,7 @@ function smoke_tests {
 }
 
 function install_rpm {
+	rpm --import http://download.draios.com/DRAIOS-GPG-KEY.public
 	yum -y erase draios-agent draios-tests draios-debug-agent draios-debug-tests
 
 	if ! yum info dkms; then
@@ -43,11 +44,11 @@ function install_rpm {
 
 function install_deb {
 	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
-	
+	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
 	curl -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
 	apt-get update
 	apt-get -y install linux-headers-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-	apt-get -y --force-yes install draios-agent draios-tests
+	apt-get -y install draios-agent draios-tests
 }
 
 function install_debug_rpm {
@@ -57,7 +58,7 @@ function install_debug_rpm {
 
 function install_debug_deb {
 	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
-	apt-get -y --force-yes install draios-debug-agent draios-debug-tests
+	apt-get -y install draios-debug-agent draios-debug-tests
 }
 
 if [ -f /etc/debian_version ]; then
