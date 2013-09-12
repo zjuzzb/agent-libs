@@ -2178,7 +2178,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			{
 				if(evt->m_fdinfo->has_role_server())
 				{
-//					evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+					evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
 				}
 			}
 		}
