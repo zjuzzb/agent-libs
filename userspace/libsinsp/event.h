@@ -103,6 +103,9 @@ private:
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
 	uint32_t m_iosize;
+#ifdef _DEBUG
+	bool m_filtered_out;
+#endif
 
 	friend class sinsp;
 	friend class sinsp_parser;

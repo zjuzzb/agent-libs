@@ -139,10 +139,11 @@ public:
 	uint32_t m_connection_queue_usage_ratio;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_ratio;
+	// Rest time state
 	// Information about the last select/poll/epoll done by this thread:
 	// duration and number of FDs that were signaled 
-	uint64_t m_lastfdwait_duration_ns;
-	uint64_t m_lastfdwait_nfds;
+	uint64_t m_last_rest_duration_ns;
+	uint64_t m_rest_time_ns;
 
 	//
 	// Global state

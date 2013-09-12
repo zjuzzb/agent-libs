@@ -36,7 +36,43 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Cleanup the event-related state
 	//
+
 	reset(evt);
+
+	//
+	// Filtering
+	//
+#ifdef _DEBUG
+	if(m_inspector->m_capture_filter)
+	{
+		if(m_inspector->m_capture_filter->m_tid != -1)
+		{
+			if(evt->get_tid() != m_inspector->m_capture_filter->m_tid)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+		else if(m_inspector->m_capture_filter->m_executable != "")
+		{
+			if(evt->m_tinfo)
+			{
+				if(evt->m_tinfo->get_comm() != m_inspector->m_capture_filter->m_executable)
+				{
+					evt->m_filtered_out = true;
+					return;
+				}
+			}
+			else
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+	}
+
+	evt->m_filtered_out = false;
+#endif
 
 	//
 	// Route the event to the proper function
@@ -115,9 +151,13 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SOCKET_CONNECT_X:
 		parse_connect_exit(evt);
 		break;
+	case PPME_SOCKET_ACCEPT_E:
+	case PPME_SOCKET_ACCEPT4_E:
+		parse_accept_enter(evt);
+		break;
 	case PPME_SOCKET_ACCEPT_X:
 	case PPME_SOCKET_ACCEPT4_X:
-		parse_accept_exit(evt, true);
+		parse_accept_exit(evt);
 		break;
 	case PPME_SYSCALL_CLOSE_E:
 		parse_close_enter(evt);
@@ -241,13 +281,15 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			evt->m_tinfo->m_lastevent_fd = *(int64_t *)parinfo->m_val;
 
 			//
-			// This is part of the rest time measurement logic:
-			// rest time is fdwait time in case the wait return only one fd and 
-			// that fd is then used for an accept.
+			// This is part of the "rest time" logic:
+			// rest time is fdwait time in case the wait returns only one fd and 
+			// that fd is then used for an accept or an fdwait.
+			// If this , account for the previous wait time and rest time and reset 
+			// the counter.
 			//
-			if(etype != PPME_SOCKET_ACCEPT_X && etype != PPME_SOCKET_ACCEPT4_X)
+			if(evt->m_tinfo->m_last_rest_duration_ns != 0)
 			{
-				evt->m_tinfo->m_lastfdwait_duration_ns = 0;
+				evt->m_tinfo->m_last_rest_duration_ns = 0;
 			}
 		}
 	}
@@ -1142,7 +1184,18 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	//  m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
 }
 
-void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
+void sinsp_parser::parse_accept_enter(sinsp_evt *evt)
+{
+	ASSERT(evt->m_tinfo);
+
+	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+	{
+		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+		evt->m_tinfo->m_last_rest_duration_ns = 0;
+	}
+}
+
+void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t tid = evt->get_tid();
@@ -2723,6 +2776,20 @@ void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
 	}
 
 	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
+
+	//
+	// This is part of the "rest time" logic:
+	// rest time is fdwait time in case the wait returns only one fd and 
+	// that fd is then used for an accept or an fdwait.
+	// If this fdwait is just following another one, account for the previous wait time
+	// as rest time and reset the counter.
+	//
+	ASSERT(evt->m_tinfo);
+	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+	{
+		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+		evt->m_tinfo->m_last_rest_duration_ns = 0;
+	}
 }
 
 void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
@@ -2752,8 +2819,18 @@ void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 
 		if(tinfo->is_lastevent_data_valid())
 		{
-			tinfo->m_lastfdwait_duration_ns = evt->get_ts() - *(uint64_t*)evt->m_tinfo->m_lastevent_data;
-			tinfo->m_lastfdwait_nfds = retval;
+			//
+			// It's a rest only if the number of FDs that were waited for is 0 or 1
+			//
+			if(retval <= 1)
+			{
+				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
+				uint64_t ts = evt->get_ts();
+
+				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
+
+				tinfo->m_last_rest_duration_ns = ts - start_time_ns;
+			}
 		}
 	}
 }

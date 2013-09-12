@@ -357,25 +357,9 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	m_parser->process_event(&m_evt);
 
 #ifdef _DEBUG
-	if(m_capture_filter)
+	if(m_evt.m_filtered_out)
 	{
-		if(m_capture_filter->m_tid != -1)
-		{
-			if(m_evt.get_tid() != m_capture_filter->m_tid)
-			{
-				return SCAP_TIMEOUT;
-			}
-		}
-		else if(m_capture_filter->m_executable != "")
-		{
-			if(m_evt.get_thread_info())
-			{
-				if(m_evt.get_thread_info()->get_comm() != m_capture_filter->m_executable)
-				{
-					return SCAP_TIMEOUT;
-				}
-			}
-		}
+		return SCAP_TIMEOUT;
 	}
 #endif
 

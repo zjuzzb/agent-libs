@@ -34,7 +34,8 @@ private:
 	void parse_socketpair_exit(sinsp_evt* evt);
 	void parse_socket_exit(sinsp_evt* evt);	
 	void parse_connect_exit(sinsp_evt* evt);
-	void parse_accept_exit(sinsp_evt* evt, bool is_accept4);
+	void parse_accept_enter(sinsp_evt* evt);
+	void parse_accept_exit(sinsp_evt* evt);
 	void parse_close_enter(sinsp_evt* evt);
 	void parse_close_exit(sinsp_evt* evt);
 	void parse_thread_exit(sinsp_evt* evt);

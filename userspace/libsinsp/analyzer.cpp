@@ -217,7 +217,6 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 
-
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
 		uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
@@ -290,6 +289,17 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					if(PPME_IS_ENTER(it->second.m_lastevent_type))
 					{
 						cat = &it->second.m_lastevent_category;
+
+						//
+						// If this is a wait, IPC or sleep event, attribute it to the rest time.
+						// This is a simplification, but should be pretty benign and greatly simplifies
+						// the rest time logic.
+						//
+						if(cat->m_category == EC_WAIT || cat->m_category == EC_IPC ||
+							cat->m_category == EC_SLEEP)
+						{
+							it->second.m_rest_time_ns += delta;
+						}
 					}
 					else
 					{
@@ -309,6 +319,8 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 					//
 					it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
 				}
+
+				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 
 				//
 				// Add this thread's counters to the process ones
@@ -414,7 +426,7 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 							it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"\t%s %s (%" PRIu64 ") (%" PRIu64 ") health:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32,
+								"\t%s %s (%" PRIu64 ") (%" PRIu64 ") health:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " %%rest:%" PRIu32,
 								it->second.m_comm.c_str(),
 								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
@@ -426,7 +438,8 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
 								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / 1000000000,
 								it->second.m_fd_usage_ratio,
-								it->second.m_connection_queue_usage_ratio);
+								it->second.m_connection_queue_usage_ratio,
+								it->second.m_rest_time_ns * 100 / sample_duration);
 						}
 #endif // _DEBUG
 					}
@@ -752,6 +765,14 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		evt->m_tinfo->m_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
 
 		delta = ts - m_prev_flush_time_ns;
+
+		//
+		// if this is an IPC or sleep event, assume it's part of the rest time
+		//
+		if(cat.m_category == EC_IPC || cat.m_category == EC_SLEEP)
+		{
+			evt->m_tinfo->m_rest_time_ns += delta;
+		}
 	}
 	else
 	{
@@ -870,7 +891,6 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 					metrics->m_io_other.add(cnt_delta, delta, bytes);
 					break;
 				case sinsp_evt::SC_NONE:
-					ASSERT(false);
 					metrics->m_io_other.add(cnt_delta, delta, bytes);
 					break;
 				default:

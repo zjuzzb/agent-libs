@@ -47,6 +47,8 @@ void sinsp_threadinfo::init()
 	m_fdlimit = -1;
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;
+	m_last_rest_duration_ns = 0;
+	m_rest_time_ns = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -402,6 +404,7 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_transaction_processing_delay_ns = 0;
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;
+	m_rest_time_ns = 0;
 }
 
 uint32_t sinsp_threadinfo::get_process_health_score()
