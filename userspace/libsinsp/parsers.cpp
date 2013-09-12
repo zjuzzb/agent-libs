@@ -36,7 +36,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Cleanup the event-related state
 	//
-
 	reset(evt);
 
 	//

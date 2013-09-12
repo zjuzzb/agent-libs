@@ -210,7 +210,7 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 	}
 }
 
-void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
+void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 {
 	uint32_t j;
 	uint64_t delta;
@@ -453,9 +453,18 @@ void sinsp_analyzer::flush(uint64_t ts, bool is_eof)
 				if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
 				{
 					//
-					// Yes, remove the thread from the table
+					// Yes, remove the thread from the table, but NOT if the event currently under processing is
+					// an exit for this process. In that case we wait until next sample.
 					//
-					m_inspector->m_thread_manager->remove_thread(it++);
+					if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
+					{
+						it->second.clear_all_metrics();
+						++it;
+					}
+					else
+					{
+						m_inspector->m_thread_manager->remove_thread(it++);
+					}
 				}
 				else
 				{
@@ -723,7 +732,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	else
 	{
 		ts = m_next_flush_time_ns;
-		flush(ts, true);
+		flush(evt, ts, true);
 		return;
 	}
 
@@ -732,7 +741,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	if(ts >= m_next_flush_time_ns)
 	{
-		flush(ts, false);
+		flush(evt, ts, false);
 	}
 
 	//

@@ -29,7 +29,7 @@ private:
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
-	void flush(uint64_t ts, bool is_eof);
+	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
 
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
