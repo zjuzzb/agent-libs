@@ -768,6 +768,27 @@ class process : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 local_transaction_delay() const;
   inline void set_local_transaction_delay(::google::protobuf::uint64 value);
 
+  // optional uint32 health_score = 8;
+  inline bool has_health_score() const;
+  inline void clear_health_score();
+  static const int kHealthScoreFieldNumber = 8;
+  inline ::google::protobuf::uint32 health_score() const;
+  inline void set_health_score(::google::protobuf::uint32 value);
+
+  // optional uint32 connection_queue_usage_pct = 9;
+  inline bool has_connection_queue_usage_pct() const;
+  inline void clear_connection_queue_usage_pct();
+  static const int kConnectionQueueUsagePctFieldNumber = 9;
+  inline ::google::protobuf::uint32 connection_queue_usage_pct() const;
+  inline void set_connection_queue_usage_pct(::google::protobuf::uint32 value);
+
+  // optional uint32 fd_usage_pct = 10;
+  inline bool has_fd_usage_pct() const;
+  inline void clear_fd_usage_pct();
+  static const int kFdUsagePctFieldNumber = 10;
+  inline ::google::protobuf::uint32 fd_usage_pct() const;
+  inline void set_fd_usage_pct(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -782,6 +803,12 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_transaction_counters();
   inline void set_has_local_transaction_delay();
   inline void clear_has_local_transaction_delay();
+  inline void set_has_health_score();
+  inline void clear_has_health_score();
+  inline void set_has_connection_queue_usage_pct();
+  inline void clear_has_connection_queue_usage_pct();
+  inline void set_has_fd_usage_pct();
+  inline void clear_has_fd_usage_pct();
 
   ::google::protobuf::uint64 pid_;
   ::std::string* comm_;
@@ -790,9 +817,12 @@ class process : public ::google::protobuf::MessageLite {
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::transaction_categories* transaction_counters_;
   ::google::protobuf::uint64 local_transaction_delay_;
+  ::google::protobuf::uint32 health_score_;
+  ::google::protobuf::uint32 connection_queue_usage_pct_;
+  ::google::protobuf::uint32 fd_usage_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -2857,6 +2887,72 @@ inline ::google::protobuf::uint64 process::local_transaction_delay() const {
 inline void process::set_local_transaction_delay(::google::protobuf::uint64 value) {
   set_has_local_transaction_delay();
   local_transaction_delay_ = value;
+}
+
+// optional uint32 health_score = 8;
+inline bool process::has_health_score() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void process::set_has_health_score() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void process::clear_has_health_score() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void process::clear_health_score() {
+  health_score_ = 0u;
+  clear_has_health_score();
+}
+inline ::google::protobuf::uint32 process::health_score() const {
+  return health_score_;
+}
+inline void process::set_health_score(::google::protobuf::uint32 value) {
+  set_has_health_score();
+  health_score_ = value;
+}
+
+// optional uint32 connection_queue_usage_pct = 9;
+inline bool process::has_connection_queue_usage_pct() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void process::set_has_connection_queue_usage_pct() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void process::clear_has_connection_queue_usage_pct() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void process::clear_connection_queue_usage_pct() {
+  connection_queue_usage_pct_ = 0u;
+  clear_has_connection_queue_usage_pct();
+}
+inline ::google::protobuf::uint32 process::connection_queue_usage_pct() const {
+  return connection_queue_usage_pct_;
+}
+inline void process::set_connection_queue_usage_pct(::google::protobuf::uint32 value) {
+  set_has_connection_queue_usage_pct();
+  connection_queue_usage_pct_ = value;
+}
+
+// optional uint32 fd_usage_pct = 10;
+inline bool process::has_fd_usage_pct() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void process::set_has_fd_usage_pct() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void process::clear_has_fd_usage_pct() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void process::clear_fd_usage_pct() {
+  fd_usage_pct_ = 0u;
+  clear_has_fd_usage_pct();
+}
+inline ::google::protobuf::uint32 process::fd_usage_pct() const {
+  return fd_usage_pct_;
+}
+inline void process::set_fd_usage_pct(::google::protobuf::uint32 value) {
+  set_has_fd_usage_pct();
+  fd_usage_pct_ = value;
 }
 
 // -------------------------------------------------------------------

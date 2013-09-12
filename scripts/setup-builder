@@ -11,21 +11,15 @@ set -exu
 yum -y update
 
 #
-# Download a GCC with C++11 support
+# Setup repos 
 #
 curl -o /etc/yum.repos.d/devtools-1.1.repo http://people.centos.org/tru/devtools-1.1/devtools-1.1.repo
-yum -y install devtoolset-1.1
-
-#
-# Install dpkg
-#
 rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
-yum -y install dpkg dpkg-devel
 
 #
 # Install various crap
 #
-yum -y install java-1.7.0-openjdk rpm-build unzip git createrepo s3cmd wget
+yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git java-1.7.0-openjdk rpm-build s3cmd unzip wget 
 
 #
 # Prepare Jenkins working directory
@@ -38,3 +32,15 @@ mkdir -p /work/jenkins
 #
 s3cmd --configure
 git clone git@github.com:ldegio/draios.git
+
+#
+# Needed by rpmsign
+#
+echo "%_gpg_name Draios Inc. <support@draios.com>" > ~/.rpmmacros
+
+s3cmd get s3://draios-backup/keys/DRAIOS-GPG-KEY.public
+gpg --import DRAIOS-GPG-KEY.public
+rm -f DRAIOS-GPG-KEY.public
+s3cmd get s3://draios-backup/keys/DRAIOS-GPG-KEY.private
+gpg --import DRAIOS-GPG-KEY.private
+rm -f DRAIOS-GPG-KEY.private

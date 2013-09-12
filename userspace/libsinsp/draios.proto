@@ -59,6 +59,9 @@ message process {
   optional transaction_categories transaction_counters = 6; // The transaction counters for this process
   optional uint64 local_transaction_delay = 7;	// the delay introduced by this process when processing transactions. 
                                                 // It's calculated by subtracting outgoing connection time from incoming connection time. 
+  optional uint32 health_score = 8; // the health score for this process. 0 means very crappy, 100 means very healthy.
+  optional uint32 connection_queue_usage_pct = 9; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
+  optional uint32 fd_usage_pct = 10; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
 }
 
 //

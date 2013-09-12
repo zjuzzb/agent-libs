@@ -36,7 +36,43 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Cleanup the event-related state
 	//
+
 	reset(evt);
+
+	//
+	// Filtering
+	//
+#ifdef _DEBUG
+	if(m_inspector->m_capture_filter)
+	{
+		if(m_inspector->m_capture_filter->m_tid != -1)
+		{
+			if(evt->get_tid() != m_inspector->m_capture_filter->m_tid)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+		else if(m_inspector->m_capture_filter->m_executable != "")
+		{
+			if(evt->m_tinfo)
+			{
+				if(evt->m_tinfo->get_comm() != m_inspector->m_capture_filter->m_executable)
+				{
+					evt->m_filtered_out = true;
+					return;
+				}
+			}
+			else
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+	}
+
+	evt->m_filtered_out = false;
+#endif
 
 	//
 	// Route the event to the proper function
@@ -62,45 +98,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
 		break;
-	case PPME_CLONE_X:
-		parse_clone_exit(evt); // does memory allocation
-		break;
-	case PPME_SYSCALL_EXECVE_X:
-		parse_execve_exit(evt); // does memory allocation
-		break;
-	case PPME_PROCEXIT_E:
-		parse_thread_exit(evt);
-		break;
-	case PPME_SYSCALL_OPEN_X:
-	case PPME_SYSCALL_CREAT_X:
-	case PPME_SYSCALL_OPENAT_X:
-		parse_open_openat_creat_exit(evt);  // does memory allocation
-		break;
-	case PPME_SYSCALL_PIPE_X:
-		parse_pipe_exit(evt);    // does memory allocation
-		break;
-	case PPME_SOCKET_SOCKETPAIR_X:
-		parse_socketpair_exit(evt);
-		break;
-	case PPME_SOCKET_SOCKET_X:
-		parse_socket_exit(evt); // does memory allocation
-		break;
-	case PPME_SOCKET_BIND_X:
-		parse_bind_exit(evt);
-		break;
-	case PPME_SOCKET_CONNECT_X:
-		parse_connect_exit(evt);
-		break;
-	case PPME_SOCKET_ACCEPT_X:
-	case PPME_SOCKET_ACCEPT4_X:
-		parse_accept_exit(evt, true);
-		break;
-	case PPME_SYSCALL_CLOSE_E:
-		parse_close_enter(evt);
-		break;
-	case PPME_SYSCALL_CLOSE_X:
-		parse_close_exit(evt);
-		break;
 	case PPME_SYSCALL_READ_X:
 	case PPME_SYSCALL_WRITE_X:
 	case PPME_SOCKET_RECV_X:
@@ -114,6 +111,59 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_PREADV_X:
 	case PPME_SYSCALL_PWRITEV_X:
 		parse_rw_exit(evt);
+		break;
+	case PPME_SYSCALL_OPEN_X:
+	case PPME_SYSCALL_CREAT_X:
+	case PPME_SYSCALL_OPENAT_X:
+		parse_open_openat_creat_exit(evt); 
+		break;
+	case PPME_SYSCALL_SELECT_E:
+	case PPME_SYSCALL_POLL_E:
+	case PPME_SYSCALL_EPOLLWAIT_E:
+		parse_select_poll_epollwait_enter(evt); 
+		break;
+	case PPME_SYSCALL_SELECT_X:
+	case PPME_SYSCALL_POLL_X:
+	case PPME_SYSCALL_EPOLLWAIT_X:
+		parse_select_poll_epollwait_exit(evt); 
+		break;
+	case PPME_CLONE_X:
+		parse_clone_exit(evt);
+		break;
+	case PPME_SYSCALL_EXECVE_X:
+		parse_execve_exit(evt);
+		break;
+	case PPME_PROCEXIT_E:
+		parse_thread_exit(evt);
+		break;
+	case PPME_SYSCALL_PIPE_X:
+		parse_pipe_exit(evt); 
+		break;
+	case PPME_SOCKET_SOCKETPAIR_X:
+		parse_socketpair_exit(evt);
+		break;
+	case PPME_SOCKET_SOCKET_X:
+		parse_socket_exit(evt);
+		break;
+	case PPME_SOCKET_BIND_X:
+		parse_bind_exit(evt);
+		break;
+	case PPME_SOCKET_CONNECT_X:
+		parse_connect_exit(evt);
+		break;
+	case PPME_SOCKET_ACCEPT_E:
+	case PPME_SOCKET_ACCEPT4_E:
+		parse_accept_enter(evt);
+		break;
+	case PPME_SOCKET_ACCEPT_X:
+	case PPME_SOCKET_ACCEPT4_X:
+		parse_accept_exit(evt);
+		break;
+	case PPME_SYSCALL_CLOSE_E:
+		parse_close_enter(evt);
+		break;
+	case PPME_SYSCALL_CLOSE_X:
+		parse_close_exit(evt);
 		break;
 	case PPME_SYSCALL_FSTAT_X:
 	case PPME_SYSCALL_FSTAT64_X:
@@ -198,7 +248,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	evt->m_tinfo = evt->get_thread_info(query_os);
 	if(!evt->m_tinfo)
 	{
-		if(evt->get_type() == PPME_CLONE_X)
+		if(etype == PPME_CLONE_X)
 		{
 #ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_thread_manager->m_failed_lookups->decrement();
@@ -229,6 +279,18 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(0)->type == PT_FD);
 
 			evt->m_tinfo->m_lastevent_fd = *(int64_t *)parinfo->m_val;
+
+			//
+			// This is part of the "rest time" logic:
+			// rest time is fdwait time in case the wait returns only one fd and 
+			// that fd is then used for an accept or an fdwait.
+			// If this , account for the previous wait time and rest time and reset 
+			// the counter.
+			//
+			if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+			{
+				evt->m_tinfo->m_last_rest_duration_ns = 0;
+			}
 		}
 	}
 	else
@@ -273,6 +335,35 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				eparams.m_ts = evt->get_ts();
 
 				erase_fd(&eparams);
+			}
+		}
+		else if(eflags & EF_CREATES_FD)
+		{
+			//
+			// Calculate (and if necessary update) the fd usage ratio
+			//
+			sinsp_evt_param *parinfo;
+			int64_t fd;
+
+			//
+			// In case of pipe or socketpair, just the first FD is good enough
+			//
+			uint32_t parnum = (etype == PPME_SYSCALL_PIPE_X || etype == PPME_SOCKET_SOCKETPAIR_X)? 1 : 0;
+
+			parinfo = evt->get_param(parnum);
+			ASSERT(parinfo->m_len == sizeof(int64_t));
+			ASSERT(evt->get_param_info(parnum)->type == PT_FD);
+			fd = *(int64_t *)parinfo->m_val;
+
+			if(evt->m_tinfo->m_fdlimit != -1)
+			{
+				int64_t m_fd_usage_ratio = fd * 100 / evt->m_tinfo->m_fdlimit;
+				ASSERT(m_fd_usage_ratio <= 100);
+
+				if(m_fd_usage_ratio > evt->m_tinfo->m_fd_usage_ratio)
+				{
+					evt->m_tinfo->m_fd_usage_ratio = (uint32_t)m_fd_usage_ratio;
+				}
 			}
 		}
 	}
@@ -1093,7 +1184,18 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	//  m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
 }
 
-void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
+void sinsp_parser::parse_accept_enter(sinsp_evt *evt)
+{
+	ASSERT(evt->m_tinfo);
+
+	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+	{
+		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+		evt->m_tinfo->m_last_rest_duration_ns = 0;
+	}
+}
+
+void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t tid = evt->get_tid();
@@ -1123,7 +1225,7 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 	if(fd < 0)
 	{
 		//
-		// This was a failed connect.
+		// Accept failure.
 		// Do nothing.
 		//
 		return;
@@ -1137,7 +1239,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 		// This happens for socket types that we don't support, so we have the assertion
 		// to make sure that this is not a type of socket that we support.
 		//
-		ASSERT(!(evt->m_fdinfo->is_unix_socket() || evt->m_fdinfo->is_ipv4_socket()));
 		return;
 	}
 
@@ -1221,6 +1322,19 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt, bool is_accept4)
 	// Add the entry to the table
 	//
 	evt->m_tinfo->add_fd(fd, &fdi);
+
+	//
+	// Check the request queue length and 
+	//
+	parinfo = evt->get_param(2);
+	ASSERT(parinfo->m_len == sizeof(uint8_t));
+	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
+	ASSERT(queueratio <= 100);
+
+	if(queueratio > evt->m_tinfo->m_connection_queue_usage_ratio)
+	{
+		evt->m_tinfo->m_connection_queue_usage_ratio = queueratio;
+	}
 }
 
 void sinsp_parser::parse_close_enter(sinsp_evt *evt)
@@ -2273,38 +2387,52 @@ void sinsp_parser::parse_fchdir_exit(sinsp_evt *evt)
 void sinsp_parser::parse_getcwd_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
+	int64_t retval;
 
-	if(!evt->m_tinfo)
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
 	{
-		//
-		// No thread in the table. We won't store this event, which mean that
-		// we won't be able to parse the correspoding exit event and we'll have
-		// to drop the information it carries.
-		//
-		ASSERT(false);
-		return;
-	}
-
-	parinfo = evt->get_param(1);
-
-#ifdef _DEBUG
-	string chkstr = string(parinfo->m_val);
-
-	if(chkstr != "/")
-	{
-		if(chkstr + "/"  != evt->m_tinfo->get_cwd())
+		if(!evt->m_tinfo)
 		{
 			//
-			// This shouldn't happen, because we should be able to stay in synch by
-			// following chdir(). If it does, it's almost sure there was an event drop.
-			// In that case, we use this value to update the thread cwd.
+			// No thread in the table. We won't store this event, which mean that
+			// we won't be able to parse the correspoding exit event and we'll have
+			// to drop the information it carries.
 			//
 			ASSERT(false);
+			return;
 		}
-	}
+
+		parinfo = evt->get_param(1);
+
+#ifdef _DEBUG
+		string chkstr = string(parinfo->m_val);
+
+		if(chkstr != "/")
+		{
+			if(chkstr + "/"  != evt->m_tinfo->get_cwd())
+			{
+				//
+				// This shouldn't happen, because we should be able to stay in synch by
+				// following chdir(). If it does, it's almost sure there was an event drop.
+				// In that case, we use this value to update the thread cwd.
+				//
+				ASSERT(false);
+			}
+		}
 #endif
 
-	evt->m_tinfo->set_cwd(parinfo->m_val, parinfo->m_len);
+		evt->m_tinfo->set_cwd(parinfo->m_val, parinfo->m_len);
+	}
 }
 
 void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
@@ -2634,6 +2762,74 @@ void sinsp_parser::parse_prlimit_exit(sinsp_evt *evt)
 				// update the process fdlimit
 				//
 				ptinfo->m_fdlimit = newcur;
+			}
+		}
+	}
+}
+
+void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
+{
+	if(evt->m_tinfo == NULL)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
+
+	//
+	// This is part of the "rest time" logic:
+	// rest time is fdwait time in case the wait returns only one fd and 
+	// that fd is then used for an accept or an fdwait.
+	// If this fdwait is just following another one, account for the previous wait time
+	// as rest time and reset the counter.
+	//
+	ASSERT(evt->m_tinfo);
+	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+	{
+		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+		evt->m_tinfo->m_last_rest_duration_ns = 0;
+	}
+}
+
+void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+		if(tinfo == NULL)
+		{
+			ASSERT(false);
+			return;
+		}
+
+		if(tinfo->is_lastevent_data_valid())
+		{
+			//
+			// It's a rest only if the number of FDs that were waited for is 0 or 1
+			//
+			if(retval <= 1)
+			{
+				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
+				uint64_t ts = evt->get_ts();
+
+				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
+
+				tinfo->m_last_rest_duration_ns = ts - start_time_ns;
 			}
 		}
 	}

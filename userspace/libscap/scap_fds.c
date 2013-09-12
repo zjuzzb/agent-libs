@@ -735,6 +735,7 @@ int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4
 	uint64_t lport;
 	uint64_t radr;
 	uint64_t rport;
+	uint64_t state;
 	char *ep;
 	int32_t uth_status = SCAP_SUCCESS;
 
@@ -752,7 +753,7 @@ int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4
 			first_line = true;
 			continue;
 		}
-		scap_fdinfo *fdinfo = malloc(sizeof(scap_fdinfo));
+
 		//
 		// parse the fields
 		//
@@ -768,6 +769,17 @@ int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4
 		rport = strtoul(ep + 1, NULL, 16);
 		// 4. st
 		token = strtok(NULL, delimiters);
+		state = strtoul(token, &ep, 16);
+		
+		if(state == TCP_TIME_WAIT)
+		{
+			//
+			// Not interested in TIME_WAIT and can fill
+			// the table pretty quickly
+			//
+			continue;
+		}
+
 		// 5. tx_queue:rx_queue
 		token = strtok(NULL, delimiters);
 		// 7. tr:tm->when
@@ -782,6 +794,7 @@ int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4
 		token = strtok(NULL, delimiters);
 		sscanf(token, "%"PRIu64, &ino);
 
+		scap_fdinfo *fdinfo = malloc(sizeof(scap_fdinfo));
 		fdinfo->ino = ino;
 
 		if(0 == radr)

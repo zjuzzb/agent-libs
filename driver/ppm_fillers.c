@@ -1080,6 +1080,9 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 		return res;
 	}
 
+	//
+	// queuepct
+	//
 #ifdef __x86_64__
 	syscall_get_arguments(current, args->regs, 0, 1, &srvskfd);
 #else
@@ -1107,8 +1110,6 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args)
 	{
 		return res;
 	}	
-
-//	printk(KERN_INFO "***%lu", rlimit(RLIMIT_NOFILE));
 
 	return add_sentinel(args);
 }

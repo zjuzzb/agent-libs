@@ -347,7 +347,7 @@ int main(int argc, char **argv)
 				cnt = atoi(optarg);
 				if(cnt <= 0)
 				{
-					fprintf(stderr, "invalid packet count %s", optarg);
+					fprintf(stderr, "invalid packet count %s\n", optarg);
 					return -1;
 				}
 				break;
@@ -361,7 +361,7 @@ int main(int argc, char **argv)
 #ifdef _DEBUG
 				inspector.set_filter(optarg);
 #else
-				fprintf(stderr, "filtering not supported in release mode.", optarg);
+				fprintf(stderr, "filtering not supported in release mode.\n");
 				return -1;				
 #endif
 				break;

@@ -28,6 +28,9 @@ sinsp_evt::sinsp_evt()
 {
 	m_params_loaded = false;
 	m_tinfo = NULL;
+#ifdef _DEBUG
+	m_filtered_out = false;
+#endif
 }
 
 sinsp_evt::~sinsp_evt()
@@ -40,6 +43,9 @@ sinsp_evt::sinsp_evt(sinsp *inspector)
 	m_inspector = inspector;
 	m_params_loaded = false;
 	m_tinfo = NULL;
+#ifdef _DEBUG
+	m_filtered_out = false;
+#endif
 }
 
 void sinsp_evt::init()
@@ -832,13 +838,17 @@ void sinsp_evt::load_params()
 void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 {
 	if(get_type() == PPME_GENERIC_E || 
-		get_type() == PPME_GENERIC_E)
+		get_type() == PPME_GENERIC_X)
 	{
 		//
 		// This event is a syscall that doesn't have a filler yet.
 		// The category can be found in g_syscall_info_table.
 		//
-		cat->m_category = g_infotables.m_syscall_info_table[0].category;
+		sinsp_evt_param *parinfo = get_param(0);
+		ASSERT(parinfo->m_len == sizeof(uint16_t));
+		uint16_t id = *(uint16_t *)parinfo->m_val;
+
+		cat->m_category = g_infotables.m_syscall_info_table[id].category;
 		cat->m_subcategory = sinsp_evt::SC_NONE;
 	}
 	else

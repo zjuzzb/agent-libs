@@ -34,7 +34,8 @@ private:
 	void parse_socketpair_exit(sinsp_evt* evt);
 	void parse_socket_exit(sinsp_evt* evt);	
 	void parse_connect_exit(sinsp_evt* evt);
-	void parse_accept_exit(sinsp_evt* evt, bool is_accept4);
+	void parse_accept_enter(sinsp_evt* evt);
+	void parse_accept_exit(sinsp_evt* evt);
 	void parse_close_enter(sinsp_evt* evt);
 	void parse_close_exit(sinsp_evt* evt);
 	void parse_thread_exit(sinsp_evt* evt);
@@ -52,6 +53,8 @@ private:
 	void parse_inotify_init_exit(sinsp_evt* evt);
 	void parse_getrlimit_setrlimit_exit(sinsp_evt* evt);
 	void parse_prlimit_exit(sinsp_evt* evt);
+	void parse_select_poll_epollwait_enter(sinsp_evt* evt);
+	void parse_select_poll_epollwait_exit(sinsp_evt* evt);
 
 	inline void add_socket(sinsp_evt* evt, int64_t fd, uint32_t domain, uint32_t type, uint32_t protocol);
 	inline void add_pipe(sinsp_evt *evt, int64_t tid, int64_t fd, uint64_t ino);

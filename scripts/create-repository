@@ -5,29 +5,67 @@ SCRIPT=$(readlink -f "$0")
 SCRIPTS_DIR=$(dirname "$SCRIPT")
 PACKAGES_DIR="$1"
 REPOSITORY_NAME="$2"
+REPOSITORY_DIR="/tmp/repo"
 
 RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
 
-rm -rf /tmp/repo
+rm -rf $REPOSITORY_DIR
 
-mkdir -p /tmp/repo/rpm/$RPM_BASEARCH
-cp $PACKAGES_DIR/*rpm /tmp/repo/rpm/$RPM_BASEARCH
-createrepo /tmp/repo/rpm/$RPM_BASEARCH
-cp $SCRIPTS_DIR/draios.repo /tmp/repo/rpm
-sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g /tmp/repo/rpm/draios.repo
+#
+# RPM
+#
+mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
+sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 
+#
+# DEB
+#
 DEB_BASEARCH=$(dpkg --print-architecture)
 
-mkdir -p /tmp/repo/deb/stable-$DEB_BASEARCH
-cp $PACKAGES_DIR/*deb /tmp/repo/deb/stable-$DEB_BASEARCH
-dpkg-scanpackages /tmp/repo/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// | gzip -9c > /tmp/repo/deb/stable-$DEB_BASEARCH/Packages.gz
-cp $SCRIPTS_DIR/draios.list /tmp/repo/deb
-sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g /tmp/repo/deb/draios.list
+mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+#$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+bzip2 -kf $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+echo "Date:" $(date) >> Release
+echo "Suite: stable-$DEB_BASEARCH" >> Release
+echo "MD5Sum:" >> Release
+echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release
+echo " "$(du -b Packages) >> Release
+echo -n " "$(md5sum Packages.bz2 | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.bz2) >> Release
+echo "SHA1:" >> Release
+echo -n " "$(sha1sum Packages | cut -d" " -f1) >> Release
+echo " "$(du -b Packages) >> Release
+echo -n " "$(sha1sum Packages.bz2 | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.bz2) >> Release
+echo "SHA256:" >> Release
+echo -n " "$(sha256sum Packages | cut -d" " -f1) >> Release
+echo " "$(du -b Packages) >> Release
+echo -n " "$(sha256sum Packages.bz2 | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.bz2) >> Release
+echo "SHA512:" >> Release
+echo -n " "$(sha512sum Packages | cut -d" " -f1) >> Release
+echo " "$(du -b Packages) >> Release
+echo -n " "$(sha512sum Packages.bz2 | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.bz2) >> Release
+gpg --yes -abs -o Release.gpg Release
+cd -
+cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
+sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
-s3cmd --acl-public put /tmp/repo/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/
-s3cmd --delete-removed --acl-public sync /tmp/repo/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/
-s3cmd --acl-public put /tmp/repo/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
-s3cmd --delete-removed --acl-public sync /tmp/repo/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
+#
+# S3 upload
+#
+s3cmd --acl-public put $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/
+s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/
+s3cmd --acl-public put $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
+s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
 
-s3cmd --acl-public sync scripts/deploy s3://download.draios.com/
-s3cmd --acl-public sync scripts/performance-tests s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/deploy s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/performance-tests s3://download.draios.com/

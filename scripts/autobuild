@@ -1,11 +1,6 @@
 #!/bin/bash
 set -exu
 
-rm -rf build/debug/*rpm
-rm -rf build/debug/*deb
-rm -rf build/release/*rpm
-rm -rf build/release/*deb
-
 ./setup-dependencies
 make -C build/debug package
 make -C build/release package

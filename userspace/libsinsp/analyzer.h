@@ -20,18 +20,24 @@ public:
 		uint32_t bytes, 
 		bool inc_count);
 
+	uint64_t get_last_sample_time_ns()
+	{
+		return m_next_flush_time_ns;
+	}
+
 private:
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
 	void flush(uint64_t ts, bool is_eof);
 
-	//
-	// Pointers to inspector context
-	//
-	sinsp* m_inspector;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
+
+	//
+	// Pointer to inspector context
+	//
+	sinsp* m_inspector;
 
 	//
 	// This is the protobuf class that we use to pack things
