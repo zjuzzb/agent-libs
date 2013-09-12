@@ -689,9 +689,13 @@ protected:
 				m_inspector.open("");
 			}
 
-			//
-			//
-			//
+			bool dropping_mode = config().getBool("droppingmode.enabled", false);
+			if(dropping_mode)
+			{
+				g_log->information("Enabling dropping mode");
+				m_inspector.start_dropping_mode();
+			}
+
 			if(m_writefile != "")
 			{
 				m_inspector.start_dump(m_writefile);

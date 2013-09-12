@@ -535,6 +535,22 @@ void sinsp::start_capture()
 	}
 }
 
+void sinsp::stop_dropping_mode()
+{
+	if(scap_stop_dropping_mode(m_h) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
+void sinsp::start_dropping_mode()
+{
+	if(scap_start_dropping_mode(m_h) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
 #ifdef _DEBUG
 void sinsp::set_filter(string filter)
 {

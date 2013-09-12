@@ -185,6 +185,9 @@ public:
 	//
 	void start_capture();
 
+	void stop_dropping_mode();
+	void start_dropping_mode();
+	
 #ifdef _DEBUG
 	//
 	// Set the capture filter. Only in debug mode for the moment.

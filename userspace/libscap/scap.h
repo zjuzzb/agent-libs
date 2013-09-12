@@ -354,6 +354,10 @@ int32_t scap_stop_capture(scap_t* handle);
 // Start capture the events, if it was stopped with scap_stop_capture
 int32_t scap_start_capture(scap_t* handle);
 
+int32_t scap_stop_dropping_mode(scap_t* handle);
+
+int32_t scap_start_dropping_mode(scap_t* handle);
+
 // Return the list of device addresses
 scap_addrlist* scap_get_ifaddr_list(scap_t* handle);
 
