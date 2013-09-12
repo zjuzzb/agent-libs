@@ -27,7 +27,7 @@ sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 DEB_BASEARCH=$(dpkg --print-architecture)
 
 mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-#$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
 bzip2 -kf $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
