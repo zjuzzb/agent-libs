@@ -329,6 +329,7 @@ int main(int argc, char **argv)
 	double duration = 1;
 	captureinfo cinfo;
 	uint64_t emit_stats_every_x_sec = 0;
+	string dumpfile;
 
 	{
 		sinsp inspector;
@@ -336,7 +337,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:t:")) != -1)
+		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:t:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -415,6 +416,9 @@ int main(int argc, char **argv)
 					emit_stats_every_x_sec = 360000;
 				}
 				break;
+			case 'w':
+				dumpfile = optarg;
+				break;
 			default:
 				usage(argv[0]);
 				return 0;
@@ -442,6 +446,11 @@ int main(int argc, char **argv)
 			else
 			{
 				inspector.open("");
+			}
+
+			if(dumpfile != "")
+			{
+				inspector.start_dump(dumpfile);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
