@@ -67,5 +67,6 @@ s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3:/
 s3cmd --acl-public put $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
 s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
 
-s3cmd --acl-public sync $SCRIPTS_DIR/deploy s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/install-agent s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/smoke-tests s3://download.draios.com/
 s3cmd --acl-public sync $SCRIPTS_DIR/performance-tests s3://download.draios.com/
