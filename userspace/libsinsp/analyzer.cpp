@@ -329,7 +329,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 
-				if(ttot.m_count > 0)
+				if(ttot.m_count > 0 && it->second.m_transaction_metrics.m_incoming.m_count != 0)
 				{
 					ASSERT(it->second.m_rest_time_ns > 0);
 				}
