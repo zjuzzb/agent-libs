@@ -320,16 +320,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
 				}
 
-				ASSERT(it->second.m_rest_time_ns <= sample_duration);
-
 				//
-				// Add this thread's counters to the process ones
+				// Some assertions to validate that everything looks like expected
 				//
 #ifdef _DEBUG
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+
+				if(ttot.m_count > 0)
+				{
+					ASSERT(it->second.m_rest_time_ns > 0);
+				}
+				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
+				//
+				// Add this thread's counters to the process ones
+				//
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 				it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
 				mtinfo->add_all_metrics(&it->second);
