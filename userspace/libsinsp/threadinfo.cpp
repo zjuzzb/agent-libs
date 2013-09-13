@@ -64,10 +64,24 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	scap_fdinfo *fdi;
 	scap_fdinfo *tfdi;
 	sinsp_fdinfo newfdi;
+	string tcomm(pi->comm);
 
 	m_tid = pi->tid;
 	m_pid = pi->pid;
+
 	m_comm = pi->comm;
+	if(tcomm == "" || tcomm[tcomm.length() - 1] == '/')
+	{
+		string ts(pi->exe);
+
+		size_t commbegin = ts.rfind('/');
+
+		if(commbegin != -1)
+		{
+			m_comm = ts.substr(commbegin + 1);
+		}
+	}
+
 	m_exe = pi->exe;
 	set_args(pi->args, pi->args_len);
 	set_cwd(pi->cwd, strlen(pi->cwd));
