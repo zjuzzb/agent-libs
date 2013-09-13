@@ -27,7 +27,7 @@ sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 DEB_BASEARCH=$(dpkg --print-architecture)
 
 mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-#$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
 bzip2 -kf $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
@@ -67,5 +67,6 @@ s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3:/
 s3cmd --acl-public put $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
 s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
 
-s3cmd --acl-public sync $SCRIPTS_DIR/deploy s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/install-agent s3://download.draios.com/
+s3cmd --acl-public sync $SCRIPTS_DIR/smoke-tests s3://download.draios.com/
 s3cmd --acl-public sync $SCRIPTS_DIR/performance-tests s3://download.draios.com/

@@ -1,13 +1,23 @@
 #!/bin/bash
 set -exu
 
+RELEASE_TYPE=$1
+
 ./setup-dependencies
 make -C build/debug package
 make -C build/release package
 
 rm -rf /tmp/packages
 mkdir /tmp/packages
-cp build/debug/*rpm /tmp/packages
-cp build/release/*rpm /tmp/packages
-cp build/debug/*deb /tmp/packages
-cp build/release/*deb /tmp/packages
+
+case "$RELEASE_TYPE" in
+	internal)
+		cp build/{debug,release}/*{deb,rpm} /tmp/packages
+		;;
+	public)
+		cp build/release/*agent*{deb,rpm} /tmp/packages
+		;;
+	*) 
+		false
+		;;
+esac

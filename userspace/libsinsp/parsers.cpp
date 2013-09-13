@@ -36,7 +36,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Cleanup the event-related state
 	//
-
 	reset(evt);
 
 	//
@@ -287,7 +286,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			// If this , account for the previous wait time and rest time and reset 
 			// the counter.
 			//
-			if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+			if(evt->m_tinfo->m_last_rest_duration_ns != 0 && !(eflags & EF_READS_FROM_FD))
 			{
 				evt->m_tinfo->m_last_rest_duration_ns = 0;
 			}
@@ -2153,6 +2152,12 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 	int64_t retval;
 	int64_t tid = evt->get_tid();
 	sinsp_evt *enter_evt = &m_tmp_evt;
+	ppm_event_flags eflags = evt->get_flags();
+
+	if(!evt->m_fdinfo)
+	{
+		return;
+	}
 
 	//
 	// Extract the return value
@@ -2162,23 +2167,37 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 	retval = *(int64_t *)parinfo->m_val;
 
 	//
+	// Rest time logic.
+	// 
+	//
+	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
+	{
+		if(eflags & EF_READS_FROM_FD)
+		{
+			if(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK || evt->m_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			{
+				if(evt->m_fdinfo->has_role_server())
+				{
+					evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
+				}
+			}
+		}
+		else
+		{
+			ASSERT(false)
+		}
+
+		evt->m_tinfo->m_last_rest_duration_ns = 0;
+	}
+
+	//
 	// If the operation was successful, validate that the fd exists
 	//
 	if(retval >= 0)
 	{
-		if(!evt->m_fdinfo)
-		{
-			return;
-		}
-
 		uint16_t etype = evt->get_type();
 
-		if(etype == PPME_SYSCALL_READ_X ||
-		        etype == PPME_SOCKET_RECV_X ||
-		        etype == PPME_SOCKET_RECVFROM_X ||
-		        etype == PPME_SYSCALL_PREAD_X ||
-		        etype == PPME_SYSCALL_READV_X ||
-		        etype == PPME_SYSCALL_PREADV_X)
+		if(eflags & EF_READS_FROM_FD)
 		{
 			char *data;
 			uint32_t datalen;

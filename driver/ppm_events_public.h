@@ -636,6 +636,7 @@ typedef enum ppm_event_flags
 	EF_CREATES_FD = (1 << 0),
 	EF_DESTROYS_FD = (1 << 1),
 	EF_USES_FD = (1 << 2),
+	EF_READS_FROM_FD = (1 << 3),
 }ppm_event_flags;
 
 typedef enum ppm_param_type

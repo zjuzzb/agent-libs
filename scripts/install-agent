@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# Installer for Draios agent
+# www.draios.com
+#
+# (c) 2013 Draios Inc.
+#
+
+set -e
+
+function install_rpm {
+	if ! hash curl > /dev/null 2>&1; then
+		yum -y install curl
+	fi
+
+	if ! yum list dkms > /dev/null 2>&1; then
+		rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
+	fi
+
+	rpm --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
+	yum -y install kernel-devel-$(uname -r)
+	yum -y install draios-agent
+}
+
+function install_deb {
+	if ! hash curl > /dev/null 2>&1; then
+		apt-get -y install curl
+	fi
+
+	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
+	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
+	apt-get update
+	apt-get -y install linux-headers-$(uname -r)
+	apt-get -y install draios-agent
+}
+
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Usage: $0 REPOSITORY_NAME ACCESS_KEY"
+    exit 1
+fi
+
+REPOSITORY_NAME="$1"
+ACCESS_KEY="$2"
+
+if [ $(id -u) != 0 ]; then
+    echo "Installer must be run as root (or with sudo)."
+    exit 1
+fi
+
+if [ -f /etc/debian_version ]; then
+    install_deb
+elif [ -f /etc/redhat-release ]; then
+    install_rpm
+elif [ -f /etc/system-release-cpe ]; then
+    install_rpm
+else
+    echo "Unable to detect operating system."
+    exit 1
+fi
+
+service dragent start
