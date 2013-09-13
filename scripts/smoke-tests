@@ -32,7 +32,7 @@ function install_rpm {
 }
 
 function install_deb {
-	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
+	apt-get -y purge draios-tests draios-debug-agent draios-debug-tests || true
 	apt-get -y install draios-tests
 }
 
