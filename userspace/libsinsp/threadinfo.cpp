@@ -403,6 +403,22 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	{
 		m_procinfo->m_connection_queue_usage_ratio = other->m_connection_queue_usage_ratio;
 	}
+
+	if(other->m_rest_time_ns != 0)
+	{
+		m_procinfo->m_n_rest_time_entries++;
+		m_procinfo->m_tot_rest_time_ns += other->m_rest_time_ns;
+
+		if(other->m_rest_time_ns > m_procinfo->m_max_rest_time_ns)
+		{
+			m_procinfo->m_max_rest_time_ns = other->m_rest_time_ns;
+		}
+
+		if(other->m_rest_time_ns < m_procinfo->m_min_rest_time_ns)
+		{
+			m_procinfo->m_min_rest_time_ns = other->m_rest_time_ns;
+		}
+	}
 }
 
 void sinsp_threadinfo::clear_all_metrics()

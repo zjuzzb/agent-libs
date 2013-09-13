@@ -27,6 +27,10 @@ public:
 		m_proc_transaction_processing_delay_ns = 0;
 		m_connection_queue_usage_ratio = 0;
 		m_fd_usage_ratio = 0;
+		m_n_rest_time_entries = 0;
+		m_tot_rest_time_ns = 0;
+		m_min_rest_time_ns = -1LL;
+		m_max_rest_time_ns = 0;
 	}
 
 	// Aggreaged metrics for the process.
@@ -44,6 +48,11 @@ public:
 	uint32_t m_connection_queue_usage_ratio;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_ratio;
+	// Process rest time
+	uint32_t m_n_rest_time_entries;
+	uint64_t m_tot_rest_time_ns;
+	uint64_t m_min_rest_time_ns;
+	uint64_t m_max_rest_time_ns;
 };
 
 //
