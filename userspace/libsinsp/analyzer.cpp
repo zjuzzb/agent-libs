@@ -328,12 +328,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-/*
+
 				if(ttot.m_count > 0)
 				{
 					ASSERT(it->second.m_rest_time_ns > 0);
 				}
-*/
+
 				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
 				//
@@ -430,11 +430,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						proc->set_health_score(it->second.get_process_health_score());
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
-
-#ifdef _DEBUG
+#if 1
 						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
 						{
-							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != -1LL);
+							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);
 							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0);
 							ASSERT(it->second.m_procinfo->m_max_rest_time_ns != 0);
 						}

@@ -76,7 +76,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 
 		size_t commbegin = ts.rfind('/');
 
-		if(commbegin != -1)
+		if(commbegin != string::npos)
 		{
 			m_comm = ts.substr(commbegin + 1);
 		}
