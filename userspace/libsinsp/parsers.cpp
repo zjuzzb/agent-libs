@@ -1672,8 +1672,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1740,8 +1740,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1934,8 +1934,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -2002,8 +2002,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established

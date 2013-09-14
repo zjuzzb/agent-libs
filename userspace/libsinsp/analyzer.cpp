@@ -331,7 +331,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 				if(ttot.m_count > 0 && it->second.m_transaction_metrics.m_incoming.m_count != 0)
 				{
-					ASSERT(it->second.m_rest_time_ns > 0);
+//					ASSERT(it->second.m_rest_time_ns > 0);
 				}
 
 				ASSERT(it->second.m_rest_time_ns <= sample_duration);
