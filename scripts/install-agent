@@ -35,6 +35,11 @@ function install_deb {
 	apt-get -y install draios-agent
 }
 
+function unsupported {
+    echo "Unsupported operating system. Please consider contacting support@draios.com or trying the manual installation."
+    exit 1	
+}
+
 if [ -z "$1" ] || [ -z "$2" ]; then
     echo "Usage: $0 REPOSITORY_NAME ACCESS_KEY"
     exit 1
@@ -48,15 +53,61 @@ if [ $(id -u) != 0 ]; then
     exit 1
 fi
 
+ARCH=$(uname -m)
+if [[ ! $ARCH = *86 ]] && [ ! $ARCH = "x86_64" ]; then
+	unsupported
+fi
+
 if [ -f /etc/debian_version ]; then
-    install_deb
-elif [ -f /etc/redhat-release ]; then
-    install_rpm
+	if [ -f /etc/lsb-release ]; then
+		. /etc/lsb-release
+		DISTRO=$DISTRIB_ID
+		VERSION=$DISTRIB_RELEASE
+	else
+		DISTRO="Debian"
+		VERSION=$(cat /etc/debian_version | cut -d'.' -f1)
+	fi
+
+	if [ $DISTRO = "Ubuntu" ]; then
+		VERSION=$(echo $VERSION | cut -d'.' -f1)
+		if [ $VERSION -ge 10 ]; then
+		    install_deb
+		else
+			unsupported
+		fi
+	elif [ $DISTRO = "Debian" ]; then
+		if [ $VERSION -ge 6 ]; then
+		    install_deb
+		else
+			unsupported
+		fi
+	else
+		unsupported
+	fi
+
 elif [ -f /etc/system-release-cpe ]; then
-    install_rpm
+	DISTRO=$(cat /etc/system-release-cpe | cut -d':' -f3)
+	VERSION=$(cat /etc/system-release-cpe | cut -d':' -f5)
+
+	if [ $DISTRO = "centos" ] || [ $DISTRO = "redhat" ]; then
+		if echo $VERSION | grep -q ^6; then
+			install_rpm
+		else
+			unsupported
+		fi
+	elif [ $DISTRO = "amazon" ]; then
+	    install_rpm
+	elif [ $DISTRO = "fedoraproject" ]; then
+		if [ $VERSION -ge 18 ]; then
+		    install_rpm
+		else
+			unsupported
+		fi
+	else
+		unsupported
+	fi
 else
-    echo "Unable to detect operating system."
-    exit 1
+	unsupported
 fi
 
 service dragent start
