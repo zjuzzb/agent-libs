@@ -30,30 +30,30 @@ mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 $SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
-bzip2 -kf $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
 cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 echo "Date:" $(date) >> Release
 echo "Suite: stable-$DEB_BASEARCH" >> Release
 echo "MD5Sum:" >> Release
 echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release
 echo " "$(du -b Packages) >> Release
-echo -n " "$(md5sum Packages.bz2 | cut -d" " -f1) >> Release
-echo " "$(du -b Packages.bz2) >> Release
+echo -n " "$(md5sum Packages.gz | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.gz) >> Release
 echo "SHA1:" >> Release
 echo -n " "$(sha1sum Packages | cut -d" " -f1) >> Release
 echo " "$(du -b Packages) >> Release
-echo -n " "$(sha1sum Packages.bz2 | cut -d" " -f1) >> Release
-echo " "$(du -b Packages.bz2) >> Release
+echo -n " "$(sha1sum Packages.gz | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.gz) >> Release
 echo "SHA256:" >> Release
 echo -n " "$(sha256sum Packages | cut -d" " -f1) >> Release
 echo " "$(du -b Packages) >> Release
-echo -n " "$(sha256sum Packages.bz2 | cut -d" " -f1) >> Release
-echo " "$(du -b Packages.bz2) >> Release
+echo -n " "$(sha256sum Packages.gz | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.gz) >> Release
 echo "SHA512:" >> Release
 echo -n " "$(sha512sum Packages | cut -d" " -f1) >> Release
 echo " "$(du -b Packages) >> Release
-echo -n " "$(sha512sum Packages.bz2 | cut -d" " -f1) >> Release
-echo " "$(du -b Packages.bz2) >> Release
+echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
+echo " "$(du -b Packages.gz) >> Release
 gpg --yes -abs -o Release.gpg Release
 cd -
 cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
