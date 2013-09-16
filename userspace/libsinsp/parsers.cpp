@@ -51,9 +51,9 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 			return;
 		}
 	}
-#endif
 
 	evt->m_filtered_out = false;
+#endif
 
 	//
 	// Route the event to the proper function
