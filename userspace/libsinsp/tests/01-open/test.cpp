@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 #ifdef _DEBUG
 			string filter;
 
-			for(uint32_t j = optind; j < argc; j++)
+			for(int32_t j = optind; j < argc; j++)
 			{
 				filter += argv[j];
 				if(j < argc)

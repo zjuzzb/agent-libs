@@ -456,7 +456,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / 1000000000,
 								it->second.m_fd_usage_ratio,
 								it->second.m_connection_queue_usage_ratio,
-								(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration,
+								(it->second.m_procinfo->m_n_rest_time_entries)?(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration:0,
 								it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration,
 								it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration,
 								it->second.m_procinfo->m_n_rest_time_entries);
