@@ -45,16 +45,12 @@ extern char *optarg;
    Otherwise, `optind' communicates from one call to the next
    how much of ARGV has been scanned so far.  */
 
-#ifndef WIN32
 extern int optind;
-#endif
 
 /* Callers store zero here to inhibit the error message `getopt' prints
    for unrecognized options.  */
 
-#ifndef WIN32
 extern int opterr;
-#endif
 
 /* Set to an option character which was unrecognized.  */
 

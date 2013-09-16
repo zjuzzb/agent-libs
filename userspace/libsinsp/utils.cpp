@@ -552,3 +552,22 @@ vector<string> sinsp_split(const string &s, char delim)
 
 	return res;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// sins_numparser implementation
+///////////////////////////////////////////////////////////////////////////////
+uint32_t sins_numparser::parse(string str)
+{
+	uint32_t res;
+
+	stringstream ss(str); 
+	ss >> res;
+
+	char c; 
+	if(!(ss >> c))
+	{
+		return res;
+	}
+
+	throw sinsp_exception(str + " is not a number");
+}

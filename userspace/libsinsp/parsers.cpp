@@ -17,6 +17,7 @@
 #include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
+#include "filter.h"
 
 sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
@@ -41,32 +42,14 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Filtering
 	//
-#ifdef _DEBUG
-	if(m_inspector->m_capture_filter)
+//#ifdef _DEBUG
+#if 0
+	if(m_inspector->m_filter)
 	{
-		if(m_inspector->m_capture_filter->m_tid != -1)
+		if(m_inspector->m_filter->run(evt) == false)
 		{
-			if(evt->get_tid() != m_inspector->m_capture_filter->m_tid)
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
-		}
-		else if(m_inspector->m_capture_filter->m_executable != "")
-		{
-			if(evt->m_tinfo)
-			{
-				if(evt->m_tinfo->get_comm() != m_inspector->m_capture_filter->m_executable)
-				{
-					evt->m_filtered_out = true;
-					return;
-				}
-			}
-			else
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
+			evt->m_filtered_out = true;
+			return;
 		}
 	}
 
