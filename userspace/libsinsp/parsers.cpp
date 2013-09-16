@@ -42,8 +42,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Filtering
 	//
-//#ifdef _DEBUG
-#if 0
 	if(m_inspector->m_filter)
 	{
 		if(m_inspector->m_filter->run(evt) == false)
@@ -54,7 +52,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	}
 
 	evt->m_filtered_out = false;
-#endif
 
 	//
 	// Route the event to the proper function

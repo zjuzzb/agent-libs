@@ -10,6 +10,18 @@ enum boolop
 	BO_ANDNOT = 5,
 };
 
+enum cmpop
+{
+	CO_NONE = 0,
+	CO_EQ = 1,
+	CO_NE = 2,
+	CO_LT = 3,
+	CO_LE = 4,
+	CO_GT = 5,
+	CO_GE = 6,
+	CO_CONTAINS = 7,
+};
+
 //
 // The filter check interface
 //
@@ -92,8 +104,12 @@ private:
 	};
 
 	bool isblank(char c);
+	bool is_special_char(char c);
 	char next();
-	string next_word();
+	bool compare_no_consume(string str);
+
+	string next_operand();
+	cmpop next_comparison_operator();
 	void parse_check(sinsp_filter_expression* parent_expr, boolop op);
 	void push_expression(boolop op);
 	void pop_expression();

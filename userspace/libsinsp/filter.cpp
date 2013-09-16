@@ -180,7 +180,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(comm ruby and tid 8976)";
-//fltstr = "(comm ruby) and (tid 8976)";
+fltstr = "comm=ruby or comm=rsyslogd";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -194,6 +194,18 @@ sinsp_filter::sinsp_filter(string fltstr)
 bool sinsp_filter::isblank(char c)
 {
 	if(c == ' ' || c == '\t' || c == '\n' || c == '\r')
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool sinsp_filter::is_special_char(char c)
+{
+	if(c == '(' || c == ')' || c == '!' || c == '=' || c == '<' || c == '>')
 	{
 		return true;
 	}
@@ -219,7 +231,7 @@ char sinsp_filter::next()
 	}
 }
 
-string sinsp_filter::next_word()
+string sinsp_filter::next_operand()
 {
 	int32_t start;
 
@@ -240,9 +252,7 @@ string sinsp_filter::next_word()
 	{
 		char curchar = m_fltstr[m_scanpos];
 
-		if(isblank(curchar) ||
-			curchar == '(' ||
-			curchar == ')')
+		if(isblank(curchar) || is_special_char(curchar))
 		{
 			//
 			// End of word
@@ -250,7 +260,7 @@ string sinsp_filter::next_word()
 			ASSERT(m_scanpos > start);
 			string res = m_fltstr.substr(start, m_scanpos - start);
 
-			if(!isblank(curchar))
+			if(curchar == '(' || curchar == ')')
 			{
 				m_scanpos--;
 			}
@@ -265,10 +275,62 @@ string sinsp_filter::next_word()
 	return m_fltstr.substr(start, m_scansize - 1);
 }
 
+bool sinsp_filter::compare_no_consume(string str)
+{
+	if(m_scanpos + (int32_t)str.size() >= m_scansize)
+	{
+		throw sinsp_exception("filter error: truncated filter");
+	}
+
+	string tstr = m_fltstr.substr(m_scanpos, str.size());
+
+	if(tstr == str)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+cmpop sinsp_filter::next_comparison_operator()
+{
+	int32_t start;
+
+	//
+	// Skip spaces
+	//
+	if(isblank(m_fltstr[m_scanpos]))
+	{
+		next();
+	}
+
+	//
+	// Mark the beginning of the word
+	//
+	start = m_scanpos;
+
+	if(compare_no_consume("="))
+	{
+		m_scanpos += 1;
+		return CO_EQ;
+	}
+	if(compare_no_consume("!="))
+	{
+		m_scanpos += 2;
+		return CO_NE;
+	}
+	else
+	{
+		throw sinsp_exception("filter error: unrecognized compare operator at pos " + to_string(start));
+	}
+}
+
 void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
-	string operand1 = next_word();
+	string operand1 = next_operand();
 	sinsp_filter_check* chk;
 
 	if(sinsp_filter_check_comm::recognize_operand(operand1))
@@ -286,8 +348,10 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		throw sinsp_exception("filter error: unrecognized operand " + operand1 + " at pos " + to_string(startpos));
 	}
 
+	cmpop co = next_comparison_operator();
+
 	chk->parse_operand1(operand1);
-	string operand2 = next_word();
+	string operand2 = next_operand();
 	chk->parse_operand2(operand2);
 	chk->m_boolop = op;
 	parent_expr->add_check(chk);
