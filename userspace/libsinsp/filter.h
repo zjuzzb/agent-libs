@@ -10,18 +10,6 @@ enum boolop
 	BO_ANDNOT = 5,
 };
 
-enum cmpop
-{
-	CO_NONE = 0,
-	CO_EQ = 1,
-	CO_NE = 2,
-	CO_LT = 3,
-	CO_LE = 4,
-	CO_GT = 5,
-	CO_GE = 6,
-	CO_CONTAINS = 7,
-};
-
 //
 // The filter check interface
 //
@@ -39,7 +27,10 @@ public:
 	}
 	virtual bool run(sinsp_evt *evt) = 0;
 
+	bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
+
 	boolop m_boolop;
+	ppm_cmp_operator m_cmpop;
 };
 
 //
@@ -109,7 +100,7 @@ private:
 	bool compare_no_consume(string str);
 
 	string next_operand();
-	cmpop next_comparison_operator();
+	ppm_cmp_operator next_comparison_operator();
 	void parse_check(sinsp_filter_expression* parent_expr, boolop op);
 	void push_expression(boolop op);
 	void pop_expression();

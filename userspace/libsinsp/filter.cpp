@@ -18,6 +18,7 @@
 sinsp_filter_check::sinsp_filter_check()
 {
 	m_boolop = BO_NONE;
+	m_cmpop = CO_NONE;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -46,7 +47,10 @@ bool sinsp_filter_check_comm::run(sinsp_evt *evt)
 
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
-	if(tinfo != NULL && tinfo->get_comm() == m_comm)
+	if(tinfo != NULL && sinsp_evt::compare(m_cmpop, 
+		PT_CHARBUF, 
+		(void*)tinfo->get_comm().c_str(), 
+		(void*)m_comm.c_str()) == true)
 	{
 		return true;
 	}
@@ -82,7 +86,7 @@ bool sinsp_filter_check_tid::run(sinsp_evt *evt)
 
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
-	if(tinfo != NULL && tinfo->m_tid == m_tid)
+	if(tinfo != NULL && sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_tid, &m_tid) == true)
 	{
 		return true;
 	}
@@ -180,7 +184,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(comm ruby and tid 8976)";
-fltstr = "comm=ruby or comm=rsyslogd";
+//fltstr = "comm!=ruby";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -294,7 +298,7 @@ bool sinsp_filter::compare_no_consume(string str)
 	}
 }
 
-cmpop sinsp_filter::next_comparison_operator()
+ppm_cmp_operator sinsp_filter::next_comparison_operator()
 {
 	int32_t start;
 
@@ -348,12 +352,14 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		throw sinsp_exception("filter error: unrecognized operand " + operand1 + " at pos " + to_string(startpos));
 	}
 
-	cmpop co = next_comparison_operator();
+	ppm_cmp_operator co = next_comparison_operator();
+	string operand2 = next_operand();
 
 	chk->parse_operand1(operand1);
-	string operand2 = next_operand();
 	chk->parse_operand2(operand2);
 	chk->m_boolop = op;
+	chk->m_cmpop = co;
+
 	parent_expr->add_check(chk);
 }
 

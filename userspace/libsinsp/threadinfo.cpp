@@ -406,7 +406,7 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 
 	if(other->m_rest_time_ns != 0)
 	{
-		if(other->m_transaction_metrics.m_incoming.m_count + other->m_transaction_metrics.m_outgoing.m_count != 0)
+		if(other->m_transaction_metrics.m_incoming.m_count != 0)
 		{
 			m_procinfo->m_n_rest_time_entries++;
 			m_procinfo->m_tot_rest_time_ns += other->m_rest_time_ns;

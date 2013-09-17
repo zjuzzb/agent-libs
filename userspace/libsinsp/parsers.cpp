@@ -62,10 +62,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 
 	switch(etype)
 	{
-	case PPME_SOCKET_SENDTO_E:
-	case PPME_SYSCALL_WRITEV_E:
-	case PPME_SYSCALL_PWRITE_E:
-	case PPME_SYSCALL_PWRITEV_E:
 	case PPME_SYSCALL_OPEN_E:
 	case PPME_SOCKET_SOCKET_E:
 	case PPME_SYSCALL_EVENTFD_E:
@@ -78,6 +74,20 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_SETRLIMIT_E:
 	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
+		break;
+	case PPME_SYSCALL_READ_E:
+	case PPME_SYSCALL_WRITE_E:
+	case PPME_SOCKET_RECV_E:
+	case PPME_SOCKET_SEND_E:
+	case PPME_SOCKET_RECVFROM_E:
+	case PPME_SOCKET_SENDTO_E:
+	case PPME_SYSCALL_READV_E:
+	case PPME_SYSCALL_WRITEV_E:
+	case PPME_SYSCALL_PREAD_E:
+	case PPME_SYSCALL_PWRITE_E:
+	case PPME_SYSCALL_PREADV_E:
+	case PPME_SYSCALL_PWRITEV_E:
+		parse_rw_enter(evt);
 		break;
 	case PPME_SYSCALL_READ_X:
 	case PPME_SYSCALL_WRITE_X:
@@ -1616,6 +1626,74 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();
 #endif
+	}
+}
+
+//
+// The only thing we do here checking if this fd is associated with a transaction and, 
+// if yes, update the transaction. We do this because we want to catch the direction 
+// change (which is the trigger for the end of the transaction) as soon as possible
+//
+void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
+{
+	ASSERT(evt->m_tinfo);
+
+	if(evt->m_tinfo == NULL)
+	{
+		return;
+	}
+
+	sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
+	if(fdinfo == NULL || !fdinfo->is_transaction())
+	{
+		return;
+	}
+
+	//
+	// This is a legit transaction FD, find the connection
+	//
+	sinsp_connection *connection;
+	uint64_t ts = evt->get_ts();
+
+	if(fdinfo->is_ipv4_socket())
+	{
+		connection = m_inspector->get_connection(fdinfo->m_info.m_ipv4info, 
+			ts);
+	}
+	else if(fdinfo->is_unix_socket())
+	{
+		connection = m_inspector->get_connection(fdinfo->m_info.m_unixinfo, 
+			ts);
+	}
+	else
+	{
+		ASSERT(false);
+		return;
+	}
+
+	//
+	// If we have a connection, update the transaction with 0 bytes
+	// The actual data size will come in the exit event.
+	//
+	if(connection != NULL)
+	{
+		sinsp_partial_transaction *trinfo = &(fdinfo->m_transaction);
+
+		sinsp_partial_transaction::direction dir = 
+			(evt->get_flags() & EF_READS_FROM_FD)? 
+			sinsp_partial_transaction::DIR_IN : sinsp_partial_transaction::DIR_OUT;
+
+		trinfo->update(m_inspector,
+			evt->m_tinfo,
+			connection,
+			0, 
+			0, 
+			dir, 
+			0);
+	}
+	else
+	{
+		ASSERT(false);
 	}
 }
 

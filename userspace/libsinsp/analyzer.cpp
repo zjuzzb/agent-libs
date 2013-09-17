@@ -201,7 +201,7 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 
 		if(res <= 0)
 		{
-			ASSERT(false);
+//			ASSERT(false);
 			return 0;
 		}
 		else
@@ -456,8 +456,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								it->second.m_fd_usage_ratio,
 								it->second.m_connection_queue_usage_ratio,
 								(it->second.m_procinfo->m_n_rest_time_entries)?(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration:0,
-								it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration,
-								it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration,
+								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration:0,
+								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration:0,
 								it->second.m_procinfo->m_n_rest_time_entries);
 						}
 #endif // _DEBUG
@@ -821,7 +821,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		//
 		if(cat.m_category == EC_IPC || cat.m_category == EC_SLEEP)
 		{
-			evt->m_tinfo->m_rest_time_ns += delta;
+//			evt->m_tinfo->m_rest_time_ns += delta;
+			evt->m_tinfo->m_rest_time_ns += 0;
 		}
 	}
 	else
