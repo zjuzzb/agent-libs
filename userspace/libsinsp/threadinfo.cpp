@@ -470,6 +470,12 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 			time_by_concurrency.push_back(0);
 		}
 
+vector<uint64_t>v;
+for(k = 0; k < trsize; k++)
+{
+	v.push_back(m_transactions[k].second - m_transactions[k].first);
+}
+
 		std::sort(m_transactions.begin(), m_transactions.end());
 
 		for(j = starttime; j < endtime; j+= CONCURRENCY_OBSERVATION_INTERVAL_NS)

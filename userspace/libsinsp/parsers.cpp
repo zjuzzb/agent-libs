@@ -86,11 +86,11 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_PWRITE_E:
 	case PPME_SYSCALL_PREADV_E:
 	case PPME_SYSCALL_PWRITEV_E:
-		parse_rw_enter(evt);
+//		parse_rw_enter(evt);
 		break;
 	case PPME_SOCKET_SENDTO_E:
 		store_event(evt);
-		parse_rw_enter(evt);
+//		parse_rw_enter(evt);
 		break;
 	case PPME_SYSCALL_READ_X:
 	case PPME_SYSCALL_WRITE_X:
