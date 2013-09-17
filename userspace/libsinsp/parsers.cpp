@@ -1694,12 +1694,10 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 			dir, 
 			0);
 	}
-/*
 	else
 	{
 		ASSERT(false);
 	}
-*/
 }
 
 void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
@@ -1935,9 +1933,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
 			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			evt->m_fdinfo->set_is_transaction();
 		}
-
-		evt->m_fdinfo->set_is_transaction();
 
 		//
 		// Update the transaction state.
@@ -2152,9 +2149,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
 			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			evt->m_fdinfo->set_is_transaction();
 		}
-
-		evt->m_fdinfo->set_is_transaction();
 
 		//
 		// Update the transaction state.
@@ -2281,8 +2277,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				{
 					evt->m_fdinfo->m_name = evt->get_param_as_str(2, &parstr, sinsp_evt::PF_SIMPLE);
 				}
-
-				evt->m_fdinfo->set_is_transaction();
 			}
 
 			//
