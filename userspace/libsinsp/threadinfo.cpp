@@ -451,11 +451,12 @@ void sinsp_threadinfo::clear_all_metrics()
 
 int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64_t sample_duration)
 {
-	if(m_transactions.size())
+	uint32_t trsize = m_transactions.size();
+
+	if(trsize != 0)
 	{
 		uint64_t j;
 		uint32_t k;
-		uint32_t trsize = m_transactions.size();
 		uint64_t initime = (current_time - sample_duration) / sample_duration * sample_duration; 
 		uint32_t concurrency;
 		vector<uint64_t> time_by_concurrency;
@@ -506,6 +507,16 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 		time_by_concurrency[0] = rest_time;
 
 		ASSERT(rest_time > 0);
+
+		if(m_transactions[0].first < initime)
+		{
+			rest_time -= (initime - m_transactions[0].first);
+
+			if(rest_time < 0)
+			{
+				rest_time = 0;
+			}
+		}
 
 		return (int32_t)(rest_time * 100 / sample_duration);
 	}
