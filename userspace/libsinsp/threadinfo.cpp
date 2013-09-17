@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #endif
+#include <algorithm>
 #include "sinsp.h"
 #include "sinsp_int.h"
 
