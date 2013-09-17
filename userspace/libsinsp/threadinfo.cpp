@@ -448,6 +448,7 @@ void sinsp_threadinfo::clear_all_metrics()
 }
 
 #define MAX_HEALTH_CONCURRENCY 16
+#define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
 
 int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64_t sample_duration)
 {
@@ -457,7 +458,9 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 	{
 		uint64_t j;
 		uint32_t k;
-		uint64_t initime = (current_time - sample_duration) / sample_duration * sample_duration; 
+		uint64_t starttime = (current_time - sample_duration) / sample_duration * sample_duration; 
+		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
+		uint64_t actual_sample_duration = endtime - starttime;
 		uint32_t concurrency;
 		vector<uint64_t> time_by_concurrency;
 		int64_t rest_time;
@@ -469,7 +472,7 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 
 		std::sort(m_transactions.begin(), m_transactions.end());
 
-		for(j = initime; j < initime + sample_duration; j+= 1000000)
+		for(j = starttime; j < endtime; j+= CONCURRENCY_OBSERVATION_INTERVAL_NS)
 		{
 			concurrency = 0;
 
@@ -490,7 +493,7 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 
 			if(concurrency < MAX_HEALTH_CONCURRENCY)
 			{
-				time_by_concurrency[concurrency] += 1000000;
+				time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;
 			}
 			else
 			{
@@ -498,7 +501,7 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 			}
 		}
 
-		rest_time = sample_duration;
+		rest_time = actual_sample_duration;
 		for(k = 1; k < MAX_HEALTH_CONCURRENCY; k++)
 		{
 			rest_time -= time_by_concurrency[k];
@@ -506,19 +509,19 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 
 		time_by_concurrency[0] = rest_time;
 
-		ASSERT(rest_time > 0);
-
-		if(m_transactions[0].first < initime)
+		ASSERT(rest_time >= 0);
+/*
+		if(m_transactions[0].first < starttime)
 		{
-			rest_time -= (initime - m_transactions[0].first);
+			rest_time -= (starttime - m_transactions[0].first);
 
 			if(rest_time < 0)
 			{
 				rest_time = 0;
 			}
 		}
-
-		return (int32_t)(rest_time * 100 / sample_duration);
+*/
+		return (int32_t)(rest_time * 100 / actual_sample_duration);
 	}
 
 	return -1;
