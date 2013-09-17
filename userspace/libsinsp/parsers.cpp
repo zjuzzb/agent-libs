@@ -1662,11 +1662,15 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 	{
 		connection = m_inspector->get_connection(fdinfo->m_info.m_ipv4info, 
 			ts);
+
+		ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
 	}
 	else if(fdinfo->is_unix_socket())
 	{
 		connection = m_inspector->get_connection(fdinfo->m_info.m_unixinfo, 
 			ts);
+
+		ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
 	}
 	else
 	{
@@ -1693,10 +1697,6 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 			0, 
 			dir, 
 			0);
-	}
-	else
-	{
-		ASSERT(false);
 	}
 }
 

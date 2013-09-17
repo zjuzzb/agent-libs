@@ -593,6 +593,7 @@ sinsp_connection* sinsp::get_connection(const ipv4tuple& tuple, uint64_t timesta
 			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
 		}
 	}
+
 	return connection;
 }
 

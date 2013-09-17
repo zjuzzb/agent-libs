@@ -417,6 +417,8 @@ int main(int argc, char **argv)
 			}
 		}
 
+inspector.get_configuration()->set_max_connection_table_size(3);
+
 		//
 		// the filter is specified at the end of the command line
 		//
