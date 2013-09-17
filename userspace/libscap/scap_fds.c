@@ -721,8 +721,6 @@ int32_t scap_fd_read_unix_sockets_from_proc_fs(scap_t *handle, scap_fdinfo **soc
 	return uth_status;
 }
 
-#define MIRROR_IP_ADDR(x) (((x & 0xFF) << 24) | (x >> 24) | ((x & 0xFF0000) >> 8) | ((x & 0xFF00) << 8))
-
 int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4proto, scap_fdinfo **sockets)
 {
 	FILE *f;
@@ -801,15 +799,15 @@ int32_t scap_fd_read_ipv4_sockets_from_proc_fs(scap_t *handle, char *dir, int l4
 		{
 			fdinfo->type = SCAP_FD_IPV4_SERVSOCK;
 			fdinfo->info.ipv4serverinfo.l4proto = l4proto;
-			fdinfo->info.ipv4serverinfo.ip = MIRROR_IP_ADDR(ladr);
+			fdinfo->info.ipv4serverinfo.ip = ladr;
 			fdinfo->info.ipv4serverinfo.port = lport;
 		}
 		else
 		{
 			fdinfo->type = SCAP_FD_IPV4_SOCK;
 			fdinfo->info.ipv4info.l4proto = l4proto;
-			fdinfo->info.ipv4info.sip = MIRROR_IP_ADDR(ladr);
-			fdinfo->info.ipv4info.dip = MIRROR_IP_ADDR(radr);
+			fdinfo->info.ipv4info.sip = ladr;
+			fdinfo->info.ipv4info.dip = radr;
 			fdinfo->info.ipv4info.sport = lport;
 			fdinfo->info.ipv4info.dport = rport;
 		}
