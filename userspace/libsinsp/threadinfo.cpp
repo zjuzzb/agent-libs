@@ -189,6 +189,11 @@ void sinsp_threadinfo::set_args(const char* args, size_t len)
 	}
 }
 
+bool sinsp_threadinfo::is_main_thread()
+{
+	return m_tid == m_pid;
+}
+
 sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 {
 	//
@@ -438,10 +443,75 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;
 	m_rest_time_ns = 0;
+	m_transactions.clear();
 }
 
-uint32_t sinsp_threadinfo::get_process_health_score()
+#define MAX_HEALTH_CONCURRENCY 16
+
+int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64_t sample_duration)
 {
+	if(m_transactions.size())
+	{
+		uint64_t j;
+		uint32_t k;
+		uint32_t trsize = m_transactions.size();
+		uint64_t initime = (current_time - sample_duration) / sample_duration * sample_duration; 
+		uint32_t concurrency;
+		vector<uint64_t> time_by_concurrency;
+		int64_t rest_time;
+
+		for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			time_by_concurrency.push_back(0);
+		}
+
+		std::sort(m_transactions.begin(), m_transactions.end());
+
+		for(j = initime; j < initime + sample_duration; j+= 1000000)
+		{
+			concurrency = 0;
+
+			for(k = 0; k < trsize; k++)
+			{
+				if(m_transactions[k].first <= j)
+				{
+					if(m_transactions[k].second >= j)
+					{
+						concurrency++;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(concurrency < MAX_HEALTH_CONCURRENCY)
+			{
+				time_by_concurrency[concurrency] += 1000000;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+
+		rest_time = sample_duration;
+		for(k = 1; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			rest_time -= time_by_concurrency[k];
+		}
+
+		time_by_concurrency[0] = rest_time;
+
+		ASSERT(rest_time > 0);
+
+		return (int32_t)(rest_time * 100 / sample_duration);
+	}
+
+	return -1;
+
+/*
 	uint32_t res = 100;
 
 	if(!is_main_thread())
@@ -467,19 +537,8 @@ uint32_t sinsp_threadinfo::get_process_health_score()
 	}
 
 	return res;
-}
-
-/*
-void sinsp_threadinfo::push_fdop(sinsp_fdop* op)
-{
-    if(m_last_fdop.size() >= 10)
-    {
-        m_last_fdop.pop_front();
-    }
-
-    m_last_fdop.push_back(*op);
-}
 */
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_thread_manager implementation

@@ -85,10 +85,8 @@ public:
 	void store_event(sinsp_evt *evt);
 	bool is_lastevent_data_valid();
 	void set_lastevent_data_validity(bool isvalid);
-	bool is_main_thread()
-	{
-		return m_tid == m_pid;
-	}
+	bool is_main_thread();
+	sinsp_threadinfo* get_main_thread();
 	sinsp_fdinfo *get_fd(int64_t fd);
 
 	void print_on(FILE *f);
@@ -153,6 +151,8 @@ public:
 	// duration and number of FDs that were signaled 
 	uint64_t m_last_rest_duration_ns;
 	uint64_t m_rest_time_ns;
+	// start time and end time for every transaction
+	vector<pair<uint64_t,uint64_t>> m_transactions;
 
 	//
 	// Global state
@@ -163,7 +163,6 @@ VISIBILITY_PRIVATE
 	void add_fd(int64_t fd, sinsp_fdinfo *fdinfo);
 	void remove_fd(int64_t fd);
 	sinsp_fdtable* get_fd_table();
-	sinsp_threadinfo* get_main_thread();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
 	void add_all_metrics(sinsp_threadinfo* other);
@@ -172,7 +171,7 @@ VISIBILITY_PRIVATE
 	// If this is a process main thread, return the health score based on the
 	// process metrics
 	//
-	uint32_t get_process_health_score();
+	int32_t get_process_health_score(uint64_t current_time, uint64_t sample_duration);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
