@@ -1694,10 +1694,12 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 			dir, 
 			0);
 	}
+/*
 	else
 	{
 		ASSERT(false);
 	}
+*/
 }
 
 void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
