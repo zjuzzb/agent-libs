@@ -17,6 +17,10 @@ class sinsp_filter_check
 {
 public:
 	sinsp_filter_check();
+	virtual ~sinsp_filter_check()
+	{
+	}
+
 	virtual void parse_operand1(string val)
 	{
 		return;
