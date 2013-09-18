@@ -123,4 +123,7 @@ else
 	unsupported
 fi
 
+echo "* Installing access key"
+echo "customerid = $ACCESS_KEY" >> /opt/draios/dragent.properties
+
 service dragent start

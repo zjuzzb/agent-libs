@@ -241,7 +241,7 @@ protected:
 				.argument("count"));
 
 		options.addOption(
-			Option("idcustomer", "i", "force the cusomer id.")
+			Option("customerid", "i", "force the customer id.")
 				.required(false)
 				.repeatable(false)
 				.argument("id"));
@@ -674,6 +674,15 @@ protected:
 			//
 			// The customer id is currently specified by the user
 			//
+			if(config().hasOption("customerid"))
+			{
+				m_customerid = config().getString("customerid");
+			}
+			else
+			{
+				g_log->error("customerid not specified.");
+			}
+
 			m_inspector.get_configuration()->set_customer_id(m_customerid);
 
 			//
