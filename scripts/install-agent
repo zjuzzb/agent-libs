@@ -15,18 +15,23 @@ function install_rpm {
 	fi
 
 	if ! yum -q list dkms > /dev/null 2>&1; then
+		echo "* Installing EPEL repository (for DKMS)"
 		rpm --quiet -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
 	fi
 
+	echo "* Installing Draios public key"
 	rpm --quiet --import http://download.draios.com/DRAIOS-GPG-KEY.public
 	echo "* Installing Draios repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
+	echo "* Installing kernel development files"
 	yum -q -y install kernel-devel-$(uname -r)
+	echo "* Installing Draios agent"
 	yum -q -y install draios-agent
 }
 
 function install_deb {
 	if ! hash curl > /dev/null 2>&1; then
+		echo "* Installing curl"
 		apt-get -qq -y install curl
 	fi
 
@@ -35,7 +40,9 @@ function install_deb {
 	echo "* Installing Draios repository"
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
 	apt-get -qq update
+	echo "* Installing kernel development files"
 	apt-get -qq -y install linux-headers-$(uname -r)
+	echo "* Installing Draios agent"
 	apt-get -qq -y install draios-agent
 }
 
