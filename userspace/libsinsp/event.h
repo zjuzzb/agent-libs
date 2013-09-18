@@ -86,6 +86,8 @@ public:
 	string get_param_value_str(string& name, bool resolved = true);
 	void get_category(OUT sinsp_evt::category* cat);
 
+	static bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
+
 //	int32_t to_str(IN evt_param_info* param, OUT char* str, uint32_t strlen);
 private:
 	void load_params();

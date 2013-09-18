@@ -17,6 +17,7 @@
 #include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
+#include "filter.h"
 
 sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
@@ -42,31 +43,12 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	// Filtering
 	//
 #ifdef _DEBUG
-	if(m_inspector->m_capture_filter)
+	if(m_inspector->m_filter)
 	{
-		if(m_inspector->m_capture_filter->m_tid != -1)
+		if(m_inspector->m_filter->run(evt) == false)
 		{
-			if(evt->get_tid() != m_inspector->m_capture_filter->m_tid)
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
-		}
-		else if(m_inspector->m_capture_filter->m_executable != "")
-		{
-			if(evt->m_tinfo)
-			{
-				if(evt->m_tinfo->get_comm() != m_inspector->m_capture_filter->m_executable)
-				{
-					evt->m_filtered_out = true;
-					return;
-				}
-			}
-			else
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
+			evt->m_filtered_out = true;
+			return;
 		}
 	}
 
@@ -80,10 +62,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 
 	switch(etype)
 	{
-	case PPME_SOCKET_SENDTO_E:
-	case PPME_SYSCALL_WRITEV_E:
-	case PPME_SYSCALL_PWRITE_E:
-	case PPME_SYSCALL_PWRITEV_E:
 	case PPME_SYSCALL_OPEN_E:
 	case PPME_SOCKET_SOCKET_E:
 	case PPME_SYSCALL_EVENTFD_E:
@@ -96,6 +74,23 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_SETRLIMIT_E:
 	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
+		break;
+	case PPME_SYSCALL_READ_E:
+	case PPME_SYSCALL_WRITE_E:
+	case PPME_SOCKET_RECV_E:
+	case PPME_SOCKET_SEND_E:
+	case PPME_SOCKET_RECVFROM_E:
+	case PPME_SYSCALL_READV_E:
+	case PPME_SYSCALL_WRITEV_E:
+	case PPME_SYSCALL_PREAD_E:
+	case PPME_SYSCALL_PWRITE_E:
+	case PPME_SYSCALL_PREADV_E:
+	case PPME_SYSCALL_PWRITEV_E:
+//		parse_rw_enter(evt);
+		break;
+	case PPME_SOCKET_SENDTO_E:
+		store_event(evt);
+//		parse_rw_enter(evt);
 		break;
 	case PPME_SYSCALL_READ_X:
 	case PPME_SYSCALL_WRITE_X:
@@ -1637,6 +1632,74 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	}
 }
 
+//
+// The only thing we do here checking if this fd is associated with a transaction and, 
+// if yes, update the transaction. We do this because we want to catch the direction 
+// change (which is the trigger for the end of the transaction) as soon as possible
+//
+void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
+{
+	ASSERT(evt->m_tinfo);
+
+	if(evt->m_tinfo == NULL)
+	{
+		return;
+	}
+
+	sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
+	if(fdinfo == NULL || !fdinfo->is_transaction())
+	{
+		return;
+	}
+
+	//
+	// This is a legit transaction FD, find the connection
+	//
+	sinsp_connection *connection;
+	uint64_t ts = evt->get_ts();
+
+	if(fdinfo->is_ipv4_socket())
+	{
+		connection = m_inspector->get_connection(fdinfo->m_info.m_ipv4info, 
+			ts);
+
+		ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
+	}
+	else if(fdinfo->is_unix_socket())
+	{
+		connection = m_inspector->get_connection(fdinfo->m_info.m_unixinfo, 
+			ts);
+
+		ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
+	}
+	else
+	{
+		ASSERT(false);
+		return;
+	}
+
+	//
+	// If we have a connection, update the transaction with 0 bytes
+	// The actual data size will come in the exit event.
+	//
+	if(connection != NULL)
+	{
+		sinsp_partial_transaction *trinfo = &(fdinfo->m_transaction);
+
+		sinsp_partial_transaction::direction dir = 
+			(evt->get_flags() & EF_READS_FROM_FD)? 
+			sinsp_partial_transaction::DIR_IN : sinsp_partial_transaction::DIR_OUT;
+
+		trinfo->update(m_inspector,
+			evt->m_tinfo,
+			connection,
+			0, 
+			0, 
+			dir, 
+			0);
+	}
+}
+
 void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
@@ -1672,8 +1735,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1740,8 +1803,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1870,9 +1933,8 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
 			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			evt->m_fdinfo->set_is_transaction();
 		}
-
-		evt->m_fdinfo->set_is_transaction();
 
 		//
 		// Update the transaction state.
@@ -1934,8 +1996,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -2002,8 +2064,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_fdinfo->has_role_client(),
 				        evt->get_ts());
 			}
-			else if(!(tid == connection->m_stid && fd == connection->m_sfd) &&
-				!(tid == connection->m_dtid && fd == connection->m_dfd))
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -2087,9 +2149,8 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
 			//
 			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			evt->m_fdinfo->set_is_transaction();
 		}
-
-		evt->m_fdinfo->set_is_transaction();
 
 		//
 		// Update the transaction state.
@@ -2216,8 +2277,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				{
 					evt->m_fdinfo->m_name = evt->get_param_as_str(2, &parstr, sinsp_evt::PF_SIMPLE);
 				}
-
-				evt->m_fdinfo->set_is_transaction();
 			}
 
 			//

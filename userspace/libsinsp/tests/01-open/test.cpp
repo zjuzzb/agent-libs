@@ -358,14 +358,6 @@ int main(int argc, char **argv)
 			case 'e':
 				inspector.get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
 				break;
-			case 'f':
-#ifdef _DEBUG
-				inspector.set_filter(optarg);
-#else
-				fprintf(stderr, "filtering not supported in release mode.\n");
-				return -1;				
-#endif
-				break;
 			case 'j':
 				emitjson = true;
 				break;
@@ -423,6 +415,30 @@ int main(int argc, char **argv)
 				usage(argv[0]);
 				return 0;
 			}
+		}
+
+		//
+		// the filter is specified at the end of the command line
+		//
+		if(optind < argc)
+		{
+#ifdef _DEBUG
+			string filter;
+
+			for(int32_t j = optind; j < argc; j++)
+			{
+				filter += argv[j];
+				if(j < argc)
+				{
+					filter += " ";
+				}
+			}
+
+			inspector.set_filter(filter);
+#else
+			fprintf(stderr, "filtering not supported in release mode.\n");
+			return -1;				
+#endif
 		}
 
 		//

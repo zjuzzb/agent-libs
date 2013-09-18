@@ -10,6 +10,7 @@ add_library(sinsp STATIC
 	draios.pb.cc
 	event.cpp
 	fdinfo.cpp
+	filter.cpp
 	ifinfo.cpp
 	internal_metrics.cpp
 	logger.cpp

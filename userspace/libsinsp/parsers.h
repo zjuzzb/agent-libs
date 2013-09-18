@@ -39,6 +39,7 @@ private:
 	void parse_close_enter(sinsp_evt* evt);
 	void parse_close_exit(sinsp_evt* evt);
 	void parse_thread_exit(sinsp_evt* evt);
+	void parse_rw_enter(sinsp_evt* evt);
 	void parse_rw_exit(sinsp_evt* evt);
 	void parse_fstat_exit(sinsp_evt* evt);
 	void parse_eventfd_exit(sinsp_evt* evt);

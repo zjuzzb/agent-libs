@@ -48,8 +48,6 @@ function install_debug_deb {
 
 if [ -f /etc/debian_version ]; then
     install_deb
-elif [ -f /etc/redhat-release ]; then
-    install_rpm
 elif [ -f /etc/system-release-cpe ]; then
     install_rpm
 else
@@ -61,8 +59,6 @@ smoke_tests
 
 if [ -f /etc/debian_version ]; then
     install_debug_deb
-elif [ -f /etc/redhat-release ]; then
-    install_debug_rpm
 elif [ -f /etc/system-release-cpe ]; then
     install_debug_rpm
 else

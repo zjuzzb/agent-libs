@@ -34,6 +34,8 @@ private:
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 
+	uint64_t m_prev_sample_evtnum;
+
 	//
 	// Pointer to inspector context
 	//

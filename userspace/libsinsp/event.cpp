@@ -912,3 +912,106 @@ void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 		}
 	}
 }
+
+//
+// type-based comparison
+//
+bool compare_uint64(ppm_cmp_operator op, uint64_t operand1, uint64_t operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (operand1 == operand2);
+	case CO_NE:
+		return (operand1 != operand2);
+	case CO_LT:
+		return (operand1 < operand2);
+	case CO_LE:
+		return (operand1 <= operand2);
+	case CO_GT:
+		return (operand1 > operand2);
+	case CO_GE:
+		return (operand1 >= operand2);
+	default:
+		ASSERT(false);
+		return false;
+	}
+}
+
+bool compare_int64(ppm_cmp_operator op, int64_t operand1, int64_t operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (operand1 == operand2);
+	case CO_NE:
+		return (operand1 != operand2);
+	case CO_LT:
+		return (operand1 < operand2);
+	case CO_LE:
+		return (operand1 <= operand2);
+	case CO_GT:
+		return (operand1 > operand2);
+	case CO_GE:
+		return (operand1 >= operand2);
+	default:
+		ASSERT(false);
+		return false;
+	}
+}
+
+bool compare_string(ppm_cmp_operator op, char* operand1, char* operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (strcmp(operand1, operand2) == 0);
+	case CO_NE:
+		return (strcmp(operand1, operand2) != 0);
+	case CO_CONTAINS:
+		return (strstr(operand1, operand2) != NULL);
+	default:
+		ASSERT(false);
+		return false;
+	}
+}
+
+bool sinsp_evt::compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2)
+{
+	switch(type)
+	{
+	case PT_INT8:
+		return compare_int64(op, (int64_t)*(int8_t*)operand1, (int64_t)*(int8_t*)operand2);
+	case PT_INT16:
+		return compare_int64(op, (int64_t)*(int16_t*)operand1, (int64_t)*(int16_t*)operand2);
+	case PT_INT32:
+		return compare_int64(op, (int64_t)*(int32_t*)operand1, (int64_t)*(int32_t*)operand2);
+	case PT_INT64:
+	case PT_FD:
+	case PT_PID:
+		return compare_int64(op, *(int64_t*)operand1, *(int64_t*)operand2);
+	case PT_UINT8:
+	case PT_SIGTYPE:
+		return compare_uint64(op, (uint64_t)*(int8_t*)operand1, (uint64_t)*(int8_t*)operand2);
+	case PT_UINT16:
+	case PT_SYSCALLID:
+		return compare_uint64(op, (uint64_t)*(int16_t*)operand1, (uint64_t)*(int16_t*)operand2);
+	case PT_UINT32:
+		return compare_uint64(op, (uint64_t)*(int32_t*)operand1, (uint64_t)*(int32_t*)operand2);
+	case PT_UINT64:
+	case PT_RELTIME:
+	case PT_ABSTIME:
+		return compare_uint64(op, *(uint64_t*)operand1, *(uint64_t*)operand2);
+	case PT_CHARBUF:
+		return compare_string(op, (char*)operand1, (char*)operand2);
+	case PT_BYTEBUF:
+	case PT_ERRNO:
+	case PT_SOCKADDR:
+	case PT_SOCKTUPLE:
+	case PT_FDLIST:
+	case PT_FSPATH:
+	default:
+		ASSERT(false);
+		return false;
+	}
+}

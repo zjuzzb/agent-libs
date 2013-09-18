@@ -85,7 +85,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		//
 		ASSERT(ptinfo != NULL);
 
-		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_time;
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
@@ -93,6 +93,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
 			ptinfo->m_total_server_transaction_counter.add(1, delta);
 			pconn->m_transaction_metrics.m_incoming.add(1, delta);
+
+			sinsp_threadinfo* parent_tinfo = ptinfo->get_main_thread();
+
+			parent_tinfo->m_transactions.push_back(
+				pair<uint64_t,uint64_t>(tr->m_prev_prev_start_time, tr->m_prev_end_time));
 /*
 			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
 			{
@@ -373,6 +378,14 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(m_direction == DIR_UNKNOWN)
 			{
+				if(m_start_time == 0)
+				{
+					m_prev_prev_start_time = m_prev_start_time;
+					m_prev_prev_end_time = m_prev_end_time;
+					m_prev_start_time = enter_ts;
+					m_prev_end_time = exit_ts;
+				}
+
 				res = STATE_ONGOING;
 			}
 			else
@@ -412,6 +425,14 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(m_direction == DIR_UNKNOWN)
 			{
+				if(m_start_time == 0)
+				{
+					m_prev_prev_start_time = m_prev_start_time;
+					m_prev_prev_end_time = m_prev_end_time;
+					m_prev_start_time = enter_ts;
+					m_prev_end_time = exit_ts;
+				}
+
 				res = STATE_ONGOING;
 			}
 			else

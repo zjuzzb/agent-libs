@@ -14,6 +14,7 @@
 #include "connectinfo.h"
 #include "metrics.h"
 #include "analyzer.h"
+#include "filter.h"
 
 //#include "drfilterParser.h"
 
@@ -37,7 +38,7 @@ sinsp::sinsp() :
 #endif
 	m_thread_manager = NULL;
 	m_analyzer_callback = NULL;
-	m_capture_filter = NULL;
+	m_filter = NULL;
 
 	m_fds_to_remove = new vector<int64_t>;
 }
@@ -152,9 +153,9 @@ void sinsp::close()
 		m_thread_manager = NULL;
 	}
 
-	if(m_capture_filter != NULL)
+	if(m_filter != NULL)
 	{
-		delete m_capture_filter;
+		delete m_filter;
 	}
 }
 
@@ -223,12 +224,6 @@ void sinsp::import_ifaddr_list()
 
 void sinsp::init()
 {
-/*
-char* filter = "a = 33";
-char err[1024];
-char* retval = compile_filter(filter, sizeof(filter), err, sizeof(err));
-*/
-
 	//
 	// Allocations
 	//
@@ -538,22 +533,13 @@ void sinsp::start_dropping_mode()
 #ifdef _DEBUG
 void sinsp::set_filter(string filter)
 {
-	ASSERT(m_capture_filter == NULL);
-
-	m_capture_filter = new sinsp_capture_filter();
-	m_capture_filter->m_executable = "";
-	m_capture_filter->m_tid = -1;
-
-	vector<string> components = sinsp_split(filter, ' ');
-	
-	if(components[0] == "tid")
+	if(m_filter != NULL)
 	{
-		m_capture_filter->m_tid = atoi(components[1].c_str());
+		ASSERT(false);
+		throw sinsp_exception("filter can only be set once");
 	}
-	else if(components[0] == "comm")
-	{
-		m_capture_filter->m_executable = components[1];
-	}
+
+	m_filter = new sinsp_filter(filter);
 }
 #endif
 
@@ -623,6 +609,7 @@ sinsp_connection* sinsp::get_connection(const ipv4tuple& tuple, uint64_t timesta
 			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
 		}
 	}
+
 	return connection;
 }
 

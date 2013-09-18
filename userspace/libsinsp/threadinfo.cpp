@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #endif
+#include <algorithm>
 #include "sinsp.h"
 #include "sinsp_int.h"
 
@@ -76,7 +77,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 
 		size_t commbegin = ts.rfind('/');
 
-		if(commbegin != -1)
+		if(commbegin != string::npos)
 		{
 			m_comm = ts.substr(commbegin + 1);
 		}
@@ -187,6 +188,11 @@ void sinsp_threadinfo::set_args(const char* args, size_t len)
 		m_args.push_back(args + offset);
 		offset += m_args.back().length() + 1;
 	}
+}
+
+bool sinsp_threadinfo::is_main_thread()
+{
+	return m_tid == m_pid;
 }
 
 sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
@@ -403,6 +409,25 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	{
 		m_procinfo->m_connection_queue_usage_ratio = other->m_connection_queue_usage_ratio;
 	}
+
+	if(other->m_rest_time_ns != 0)
+	{
+		if(other->m_transaction_metrics.m_incoming.m_count != 0)
+		{
+			m_procinfo->m_n_rest_time_entries++;
+			m_procinfo->m_tot_rest_time_ns += other->m_rest_time_ns;
+
+			if(other->m_rest_time_ns > m_procinfo->m_max_rest_time_ns)
+			{
+				m_procinfo->m_max_rest_time_ns = other->m_rest_time_ns;
+			}
+
+			if(other->m_rest_time_ns < m_procinfo->m_min_rest_time_ns)
+			{
+				m_procinfo->m_min_rest_time_ns = other->m_rest_time_ns;
+			}
+		}
+	}
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -419,10 +444,120 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;
 	m_rest_time_ns = 0;
+	m_transactions.clear();
 }
 
-uint32_t sinsp_threadinfo::get_process_health_score()
+#define MAX_HEALTH_CONCURRENCY 16
+#define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
+
+int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64_t sample_duration)
 {
+	uint32_t trsize = m_transactions.size();
+
+	//
+	// How the algorithm works at high level: 
+	//   measure for transaction "gaps", i.e. time intervals in which no transaction
+	//   is served. Sum the gaps and divide the sum by the sample time. The number
+	//   is our health score, and measures the capacity that this process still has
+	//   to serve transactions.
+	// In practice, we use a couple of tricks:
+	//   - we don't apply the algorithm to the full sample, but to the interval between the 
+	//     sample start time and the end of the last transaction. After that we normalize the
+	//     result as if it were a full sample. The reason is: we catch the transactions only
+	//     after the next direction switch so, especially when the number of requests is very low,
+	//     the last part of the sample might not contain transactions just because they are
+	//     still in progress. We don't want that to skew the results.
+	//   - we subdivide the sample time into intervals of CONCURRENCY_OBSERVATION_INTERVAL_NS nanoseconds,
+	//     and we count the number of concurrent transactions for each interval. In other
+	//     words, we "digitalize" the interval intersections, so that we never have more than
+	//     (sample time / CONCURRENCY_OBSERVATION_INTERVAL_NS) of them.
+	//
+	if(trsize != 0)
+	{
+		uint64_t j;
+		uint32_t k;
+		uint64_t starttime = (current_time - sample_duration) / sample_duration * sample_duration; 
+		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
+		uint64_t actual_sample_duration = endtime - starttime;
+		uint32_t concurrency;
+		vector<uint64_t> time_by_concurrency;
+		int64_t rest_time;
+
+		//
+		// Create the concurrency intervals vector
+		//
+		for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			time_by_concurrency.push_back(0);
+		}
+
+//vector<uint64_t>v;
+//uint64_t tot = 0;
+//for(k = 0; k < trsize; k++)
+//{
+//	uint64_t delta = m_transactions[k].second - m_transactions[k].first;
+//	v.push_back(delta);
+//	tot += delta;
+//}
+
+		//
+		// Make sure the transactions are ordered by start time
+		//
+		std::sort(m_transactions.begin(), m_transactions.end());
+
+		//
+		// Count the number of concurrent transactions for each inerval of size
+		// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+		//
+		for(j = starttime; j < endtime; j+= CONCURRENCY_OBSERVATION_INTERVAL_NS)
+		{
+			concurrency = 0;
+
+			for(k = 0; k < trsize; k++)
+			{
+				if(m_transactions[k].first <= j)
+				{
+					if(m_transactions[k].second >= j)
+					{
+						concurrency++;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(concurrency < MAX_HEALTH_CONCURRENCY)
+			{
+				time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+
+		//
+		// Infer the rest time by subtracting the amouny of time spent at each concurrency
+		// level from the sample time.
+		//
+		rest_time = actual_sample_duration;
+		for(k = 1; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			rest_time -= time_by_concurrency[k];
+		}
+
+		ASSERT(rest_time >= 0);
+
+		time_by_concurrency[0] = rest_time;
+
+		return (int32_t)(rest_time * 100 / actual_sample_duration);
+	}
+
+	return -1;
+
+/*
 	uint32_t res = 100;
 
 	if(!is_main_thread())
@@ -448,19 +583,8 @@ uint32_t sinsp_threadinfo::get_process_health_score()
 	}
 
 	return res;
-}
-
-/*
-void sinsp_threadinfo::push_fdop(sinsp_fdop* op)
-{
-    if(m_last_fdop.size() >= 10)
-    {
-        m_last_fdop.pop_front();
-    }
-
-    m_last_fdop.push_back(*op);
-}
 */
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_thread_manager implementation

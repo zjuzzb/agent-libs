@@ -1,4 +1,4 @@
-var MAX_VIDEO_REQUESTS = 1000;
+var MAX_VIDEO_REQUESTS = 3000;
 
 var http = require('http');
 var sleep = require('sleep');
@@ -8,7 +8,8 @@ var cnt = 0;
 
 var options = {
   host: '127.0.0.1',
-  path: '/search.php',
+//  path: '/search.php',
+  path: '/lo.scap',
   port: 80,
 //  agent:false
 };
@@ -19,7 +20,7 @@ callback = function(response) {
 
   //another chunk of data has been recieved, so append it to `str`
   response.on('data', function (chunk) {
-    str += chunk;
+//    str += chunk;
   });
 
   //the whole response has been recieved, so we just print it out here
@@ -28,17 +29,17 @@ callback = function(response) {
   });
 
   cnt++;
-//  if(cnt % 100 == 0)
-//  {
+  if(cnt % 100 == 0)
+  {
     console.log(cnt.toString());  
-//  }
+  }
 }
 
 function req_loop()
 {
   j++;
 //  options.path = '/' + j.toString();
-  sleep.usleep(100000);
+//  sleep.usleep(100000);
   http.request(options, callback).end();
 
   if(j < MAX_VIDEO_REQUESTS)
@@ -47,5 +48,5 @@ function req_loop()
   }
 }
 
-http.globalAgent.maxSockets = 20;
+http.globalAgent.maxSockets = 400;
 req_loop()

@@ -46,6 +46,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	}
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
+	m_prev_sample_evtnum = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -124,7 +125,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen);
 	g_logger.format(sinsp_logger::SEV_INFO,
-		"dumping metrics, ts=%" PRIu64 ", len=%" PRIu32,
+		"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
 		ts / 1000000000,
 		buflen);
 
@@ -200,7 +201,7 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 
 		if(res <= 0)
 		{
-			ASSERT(false);
+//			ASSERT(false);
 			return 0;
 		}
 		else
@@ -327,12 +328,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-/*
-				if(ttot.m_count > 0)
+
+				if(ttot.m_count > 0 && it->second.m_transaction_metrics.m_incoming.m_count != 0)
 				{
-					ASSERT(it->second.m_rest_time_ns > 0);
+//					ASSERT(it->second.m_rest_time_ns > 0);
 				}
-*/
+
 				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
 				//
@@ -426,34 +427,62 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
-						proc->set_health_score(it->second.get_process_health_score());
+						proc->set_health_score(it->second.get_process_health_score(ts, sample_duration));
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
-#ifdef _DEBUG
-						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count +
-							it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count != 0)
+
+#if 1
+						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
+						{
+							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);
+							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0);
+							ASSERT(it->second.m_procinfo->m_max_rest_time_ns != 0);
+						}
+
+						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"\t%s %s (%" PRIu64 ") (%" PRIu64 ") health:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " %%rest:%" PRIu32,
+								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32 " %%rest:%" PRIu64 "-%" PRIu64 "-%" PRIu64 "(%" PRIu32 ")",
 								it->second.m_comm.c_str(),
-								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+//								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_refcount + 1,
-								it->second.get_process_health_score(),
+								it->second.get_process_health_score(ts, sample_duration),
 								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
-								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
-								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
-								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / 1000000000,
+								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
+								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
+								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
 								it->second.m_fd_usage_ratio,
 								it->second.m_connection_queue_usage_ratio,
-								it->second.m_rest_time_ns * 100 / sample_duration);
+								(it->second.m_procinfo->m_n_rest_time_entries)?(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration:0,
+								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration:0,
+								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration:0,
+								it->second.m_procinfo->m_n_rest_time_entries);
 						}
 #endif // _DEBUG
 					}
 #endif // ANALYZER_EMITS_PROCESSES
 				}
-
+/*
+				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"*\t%s %s (%" PRIu64 ") (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " rest:%" PRIu64,
+						it->second.m_comm.c_str(),
+						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+						it->second.m_tid,
+						it->second.m_refcount + 1,
+						it->second.m_transaction_metrics.m_incoming.m_count,
+						it->second.m_transaction_metrics.m_outgoing.m_count,
+						((double)it->second.m_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
+						((double)it->second.m_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
+						((double)it->second.m_transaction_processing_delay_ns) / 1000000000,
+						it->second.m_fd_usage_ratio,
+						it->second.m_connection_queue_usage_ratio,
+						it->second.m_rest_time_ns);
+				}
+*/
 #ifndef ANALYZER_EMITS_PROGRAMS
 				//
 				// Has this thread been closed druring this sample?
@@ -720,7 +749,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	m_inspector->remove_expired_connections(ts);
 	m_inspector->m_thread_manager->remove_inactive_threads();
 
-	g_logger.log("-----------------------", sinsp_logger::SEV_DEBUG);
+	if(evt)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
+		m_prev_sample_evtnum = evt->get_num();
+	}
 }
 
 void sinsp_analyzer::process_event(sinsp_evt* evt)
@@ -788,7 +821,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		//
 		if(cat.m_category == EC_IPC || cat.m_category == EC_SLEEP)
 		{
-			evt->m_tinfo->m_rest_time_ns += delta;
+//			evt->m_tinfo->m_rest_time_ns += delta;
+			evt->m_tinfo->m_rest_time_ns += 0;
 		}
 	}
 	else

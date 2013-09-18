@@ -10,29 +10,45 @@ set -e
 
 function install_rpm {
 	if ! hash curl > /dev/null 2>&1; then
-		yum -y install curl
+		echo "* Installing curl"
+		yum -q -y install curl
 	fi
 
-	if ! yum list dkms > /dev/null 2>&1; then
-		rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
+	if ! yum -q list dkms > /dev/null 2>&1; then
+		echo "* Installing EPEL repository (for DKMS)"
+		rpm --quiet -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
 	fi
 
-	rpm --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	echo "* Installing Draios public key"
+	rpm --quiet --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	echo "* Installing Draios repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
-	yum -y install kernel-devel-$(uname -r)
-	yum -y install draios-agent
+	echo "* Installing kernel development files"
+	yum -q -y install kernel-devel-$(uname -r)
+	echo "* Installing Draios agent"
+	yum -q -y install draios-agent
 }
 
 function install_deb {
 	if ! hash curl > /dev/null 2>&1; then
-		apt-get -y install curl
+		echo "* Installing curl"
+		apt-get -qq -y install curl
 	fi
 
+	echo "* Installing Draios public key"
 	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
+	echo "* Installing Draios repository"
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
-	apt-get update
-	apt-get -y install linux-headers-$(uname -r)
-	apt-get -y install draios-agent
+	apt-get -qq update
+	echo "* Installing kernel development files"
+	apt-get -qq -y install linux-headers-$(uname -r)
+	echo "* Installing Draios agent"
+	apt-get -qq -y install draios-agent
+}
+
+function unsupported {
+    echo "Unsupported operating system. Please consider contacting support@draios.com or trying the manual installation."
+    exit 1	
 }
 
 if [ -z "$1" ] || [ -z "$2" ]; then
@@ -48,15 +64,66 @@ if [ $(id -u) != 0 ]; then
     exit 1
 fi
 
-if [ -f /etc/debian_version ]; then
-    install_deb
-elif [ -f /etc/redhat-release ]; then
-    install_rpm
-elif [ -f /etc/system-release-cpe ]; then
-    install_rpm
-else
-    echo "Unable to detect operating system."
-    exit 1
+echo "* Detecting operating system"
+
+ARCH=$(uname -m)
+if [[ ! $ARCH = *86 ]] && [ ! $ARCH = "x86_64" ]; then
+	unsupported
 fi
+
+if [ -f /etc/debian_version ]; then
+	if [ -f /etc/lsb-release ]; then
+		. /etc/lsb-release
+		DISTRO=$DISTRIB_ID
+		VERSION=$DISTRIB_RELEASE
+	else
+		DISTRO="Debian"
+		VERSION=$(cat /etc/debian_version | cut -d'.' -f1)
+	fi
+
+	if [ $DISTRO = "Ubuntu" ]; then
+		VERSION=$(echo $VERSION | cut -d'.' -f1)
+		if [ $VERSION -ge 10 ]; then
+		    install_deb
+		else
+			unsupported
+		fi
+	elif [ $DISTRO = "Debian" ]; then
+		if [ $VERSION -ge 6 ]; then
+		    install_deb
+		else
+			unsupported
+		fi
+	else
+		unsupported
+	fi
+
+elif [ -f /etc/system-release-cpe ]; then
+	DISTRO=$(cat /etc/system-release-cpe | cut -d':' -f3)
+	VERSION=$(cat /etc/system-release-cpe | cut -d':' -f5)
+
+	if [ $DISTRO = "centos" ] || [ $DISTRO = "redhat" ]; then
+		if echo $VERSION | grep -q ^6; then
+			install_rpm
+		else
+			unsupported
+		fi
+	elif [ $DISTRO = "amazon" ]; then
+	    install_rpm
+	elif [ $DISTRO = "fedoraproject" ]; then
+		if [ $VERSION -ge 18 ]; then
+		    install_rpm
+		else
+			unsupported
+		fi
+	else
+		unsupported
+	fi
+else
+	unsupported
+fi
+
+echo "* Installing access key"
+echo "customerid = $ACCESS_KEY" >> /opt/draios/dragent.properties
 
 service dragent start
