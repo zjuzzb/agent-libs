@@ -328,14 +328,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-
-				if(ttot.m_count > 0 && it->second.m_transaction_metrics.m_incoming.m_count != 0)
-				{
-//					ASSERT(it->second.m_rest_time_ns > 0);
-				}
-
 				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
+				//
+				// Go through the FD list to flush the transactions that haven't been active for a while
+				//
+				it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+
 				//
 				// Add this thread's counters to the process ones
 				//
@@ -427,7 +426,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
-						proc->set_health_score(it->second.get_process_health_score(ts, sample_duration));
+						int32_t hscore = it->second.get_process_health_score(m_prev_flush_time_ns, sample_duration);
+						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
@@ -447,7 +447,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_refcount + 1,
-								it->second.get_process_health_score(ts, sample_duration),
+								hscore,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,

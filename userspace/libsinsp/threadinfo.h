@@ -70,7 +70,7 @@ public:
 	    AF_INVALID = (1 << 0),
 	    AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
 	    AF_CLOSED = (1 << 2), // thread has been closed. It will have to be removed from the thread table.
-	    AF_IS_TRANSACTION_SERVER = (1 << 3), // set if this thread serves transactions.
+//	    AF_IS_TRANSACTION_SERVER = (1 << 3), // set if this thread serves transactions.
 	};
 
 	sinsp_threadinfo();
@@ -160,6 +160,7 @@ public:
 	sinsp *m_inspector;
 
 VISIBILITY_PRIVATE
+	void fix_sockets_coming_from_proc();
 	void add_fd(int64_t fd, sinsp_fdinfo *fdinfo);
 	void remove_fd(int64_t fd);
 	sinsp_fdtable* get_fd_table();
@@ -167,11 +168,13 @@ VISIBILITY_PRIVATE
 	sinsp_threadinfo* get_cwd_root();
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
+	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
+
 	//
 	// If this is a process main thread, return the health score based on the
 	// process metrics
 	//
-	int32_t get_process_health_score(uint64_t current_time, uint64_t sample_duration);
+	int32_t get_process_health_score(uint64_t sample_end_time, uint64_t sample_duration);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations

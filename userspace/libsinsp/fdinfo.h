@@ -18,13 +18,14 @@ public:
 	enum flags
 	{
 		FLAGS_NONE = 0,
-		FLAGS_TRANSACTION = (1 << 0),
-		FLAGS_ROLE_CLIENT = (1 << 1),
-		FLAGS_ROLE_SERVER = (1 << 2),
-		FLAGS_CLOSE_IN_PROGRESS = (1 << 3),
-		FLAGS_CLOSE_CANCELED = (1 << 4),
+		FLAGS_FROM_PROC = (1 << 0),		// Set if this FD is arriving from proc
+		FLAGS_TRANSACTION = (1 << 1),
+		FLAGS_ROLE_CLIENT = (1 << 2),
+		FLAGS_ROLE_SERVER = (1 << 3),
+		FLAGS_CLOSE_IN_PROGRESS = (1 << 4),
+		FLAGS_CLOSE_CANCELED = (1 << 5),
 		// Pipe-specific flags
-		FLAGS_IS_SOCKET_PIPE = (1 << 5),
+		FLAGS_IS_SOCKET_PIPE = (1 << 6),
 	};
 
 	sinsp_fdinfo();
@@ -81,24 +82,24 @@ public:
 		return m_type == SCAP_FD_FIFO;
 	}
 
-	bool has_role_server()
+	bool is_role_server()
 	{
 		return (m_flags & FLAGS_ROLE_SERVER) == FLAGS_ROLE_SERVER;
 	}
 
-	bool has_role_client()
+	bool is_role_client()
 	{
 		return (m_flags & FLAGS_ROLE_CLIENT) == FLAGS_ROLE_CLIENT;
-	}
-
-	bool is_transaction()
-	{
-		return (m_flags & FLAGS_TRANSACTION) == FLAGS_TRANSACTION; 
 	}
 
 	bool is_role_none()
 	{
 		return m_flags == FLAGS_NONE;
+	}
+
+	bool is_transaction()
+	{
+		return (m_flags & FLAGS_TRANSACTION) == FLAGS_TRANSACTION; 
 	}
 
 	void set_is_transaction()
@@ -117,7 +118,9 @@ public:
 		m_flags |= sinsp_fdinfo::FLAGS_ROLE_CLIENT;
 		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
 	}
-        
+
+	void set_role_by_guessing(sinsp_partial_transaction::direction dir);
+
 	void reset_flags()
 	{
 		m_flags = FLAGS_NONE;
@@ -140,7 +143,7 @@ public:
 
 	bool has_no_role()
 	{
-		return !has_role_client() && !has_role_server();
+		return !is_role_client() && !is_role_server();
 	}
 
 	void print_on(FILE* f);
@@ -152,6 +155,7 @@ private:
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
+	friend class sinsp_threadinfo;
 };
 
 //
@@ -194,7 +198,6 @@ public:
 
 	void print_on(FILE* f);
 
-private:
 	sinsp* m_inspector;
 	unordered_map<int64_t, sinsp_fdinfo> m_fdtable;
 
@@ -203,7 +206,4 @@ private:
 	//
 	int64_t m_last_accessed_fd;
 	sinsp_fdinfo *m_last_accessed_fdinfo;
-
-	friend class sinsp_parser;
-	friend class sinsp_thread_manager;
 };

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "connectinfo.h"
 
 static void copy_ipv6_address(uint32_t* src, uint32_t* dest)
 {
@@ -60,6 +61,61 @@ sinsp_threadinfo::~sinsp_threadinfo()
 	}
 }
 
+void sinsp_threadinfo::fix_sockets_coming_from_proc()
+{
+	sinsp_fdtable* fdtable = get_fd_table();
+
+	if(fdtable == &m_fdtable)
+	{
+		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+		vector<uint16_t> serverports;
+
+		//
+		// First pass: extract the ports on which this thread is listening
+		//
+		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
+		{
+			if(it->second.m_type == SCAP_FD_IPV4_SERVSOCK)
+			{
+				serverports.push_back(it->second.m_info.m_ipv4serverinfo.m_port);
+			}
+		}
+
+		//
+		// Second pass: fix the sockets so that they are ordered by client->server
+		//
+		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
+		{
+			if(it->second.m_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(find(serverports.begin(), 
+					serverports.end(), 
+					it->second.m_info.m_ipv4info.m_fields.m_sport) != serverports.end())
+				{
+					uint32_t tip;
+					uint16_t tport;
+
+					tip = it->second.m_info.m_ipv4info.m_fields.m_sip;
+					tport = it->second.m_info.m_ipv4info.m_fields.m_sport;
+
+					it->second.m_info.m_ipv4info.m_fields.m_sip = it->second.m_info.m_ipv4info.m_fields.m_dip;
+					it->second.m_info.m_ipv4info.m_fields.m_dip = tip;
+					it->second.m_info.m_ipv4info.m_fields.m_sport = it->second.m_info.m_ipv4info.m_fields.m_dport;
+					it->second.m_info.m_ipv4info.m_fields.m_dport = tport;
+
+					it->second.m_name = ipv4tuple_to_string(&it->second.m_info.m_ipv4info);
+
+					it->second.set_role_server();
+				}
+				else
+				{
+					it->second.set_role_client();
+				}
+			}
+		}
+	}
+}
+
 void sinsp_threadinfo::init(const scap_threadinfo* pi)
 {
 	scap_fdinfo *fdi;
@@ -97,8 +153,9 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 		newfdi.m_type = fdi->type;
 		newfdi.m_openflags = fdi->flags;
 		newfdi.m_type = fdi->type;
-		newfdi.reset_flags();
+		newfdi.m_flags = sinsp_fdinfo::FLAGS_FROM_PROC;
 		newfdi.m_ino = fdi->ino;
+
 		switch(newfdi.m_type)
 		{
 		case SCAP_FD_IPV4_SOCK:
@@ -164,6 +221,8 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 			m_fdtable.add(fdi->fd, &newfdi);
 		}
 	}
+
+	fix_sockets_coming_from_proc();
 }
 
 string sinsp_threadinfo::get_comm()
@@ -447,10 +506,70 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_transactions.clear();
 }
 
-#define MAX_HEALTH_CONCURRENCY 16
-#define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
+//
+// Emit all the transactions that are in 
+//
+void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration)
+{
+	sinsp_fdtable* fdtable = get_fd_table();
 
-int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64_t sample_duration)
+	if(fdtable == &m_fdtable)
+	{
+		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+
+		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
+		{
+			uint64_t endtime = sample_end_time;
+
+			if((it->second.is_transaction()) && 
+				(it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN))
+			{
+				ASSERT(it->second.m_transaction.m_end_time <= endtime);
+
+				if(endtime - it->second.m_transaction.m_end_time > TRANSACTION_TIMEOUT_NS)
+				{
+					sinsp_connection *connection;
+
+					if(it->second.is_ipv4_socket())
+					{
+						connection = m_inspector->get_connection(it->second.m_info.m_ipv4info, 
+							endtime);
+
+						ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
+					}
+					else if(it->second.is_unix_socket())
+					{
+						connection = m_inspector->get_connection(it->second.m_info.m_unixinfo, 
+							endtime);
+
+						ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
+					}
+					else
+					{
+						ASSERT(false);
+						return;
+					}
+
+					if(connection != NULL)
+					{
+						sinsp_partial_transaction *trinfo = &(it->second.m_transaction);
+
+						trinfo->update(m_inspector,
+							this,
+							connection,
+							0, 
+							0, 
+							sinsp_partial_transaction::DIR_CLOSE, 
+							0);
+					}
+				}
+			}
+		}
+	}
+}
+
+int32_t sinsp_threadinfo::get_process_health_score(uint64_t sample_end_time, uint64_t sample_duration)
 {
 	uint32_t trsize = m_transactions.size();
 
@@ -476,8 +595,9 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 	{
 		uint64_t j;
 		uint32_t k;
-		uint64_t starttime = (current_time - sample_duration) / sample_duration * sample_duration; 
-		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
+		uint64_t starttime = sample_end_time - sample_duration;
+		uint64_t endtime = sample_end_time;
+//		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
 		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
 		uint32_t concurrency;
 		vector<uint64_t> time_by_concurrency;
@@ -491,14 +611,14 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 			time_by_concurrency.push_back(0);
 		}
 
-//vector<uint64_t>v;
-//uint64_t tot = 0;
-//for(k = 0; k < trsize; k++)
-//{
-//	uint64_t delta = m_transactions[k].second - m_transactions[k].first;
-//	v.push_back(delta);
-//	tot += delta;
-//}
+vector<uint64_t>v;
+uint64_t tot = 0;
+for(k = 0; k < trsize; k++)
+{
+	uint64_t delta = m_transactions[k].second - m_transactions[k].first;
+	v.push_back(delta);
+	tot += delta;
+}
 
 		//
 		// Make sure the transactions are ordered by start time

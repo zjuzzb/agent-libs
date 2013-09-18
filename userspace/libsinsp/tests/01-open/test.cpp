@@ -211,6 +211,11 @@ captureinfo do_inspect(sinsp* inspector,
 */
 		n_printed_evts++;
 
+if(ev->get_num() == 998)
+{
+	int a = 0;
+}
+
 		if(emitjson)
 		{
 			uint32_t npars = ev->get_num_params();

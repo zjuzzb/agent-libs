@@ -97,6 +97,49 @@ bool sinsp_filter_check_tid::run(sinsp_evt *evt)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_fd implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_fd::recognize_operand(string operand)
+{
+	if(operand == "fd")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_fd::parse_operand2(string val)
+{
+	m_fd = sins_numparser::parse(val);
+}
+
+bool sinsp_filter_check_fd::run(sinsp_evt *evt)
+{
+	ASSERT(evt);
+
+	ppm_event_flags eflags = evt->get_flags();
+
+	if(eflags & (EF_CREATES_FD | EF_USES_FD | EF_DESTROYS_FD))
+	{
+		sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+		if(tinfo != NULL && sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_lastevent_fd, &m_fd) == true)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter_expression::sinsp_filter_expression()
@@ -346,6 +389,11 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	{
 		sinsp_filter_check_tid* chk_tid = new sinsp_filter_check_tid();
 		chk = (sinsp_filter_check*)chk_tid;
+	}
+	else if(sinsp_filter_check_fd::recognize_operand(operand1))
+	{
+		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
+		chk = (sinsp_filter_check*)chk_fd;
 	}
 	else
 	{
