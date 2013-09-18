@@ -522,8 +522,8 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 			uint64_t endtime = sample_end_time;
 
 			if((it->second.is_transaction()) && 
-				(it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
-				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN))
+				((it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN)))
 			{
 				ASSERT(it->second.m_transaction.m_end_time <= endtime);
 
