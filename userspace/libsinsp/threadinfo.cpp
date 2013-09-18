@@ -478,7 +478,7 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 		uint32_t k;
 		uint64_t starttime = (current_time - sample_duration) / sample_duration * sample_duration; 
 		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
-		uint64_t actual_sample_duration = endtime - starttime;
+		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
 		uint32_t concurrency;
 		vector<uint64_t> time_by_concurrency;
 		int64_t rest_time;
@@ -552,7 +552,14 @@ int32_t sinsp_threadinfo::get_process_health_score(uint64_t current_time, uint64
 
 		time_by_concurrency[0] = rest_time;
 
-		return (int32_t)(rest_time * 100 / actual_sample_duration);
+		if(actual_sample_duration != 0)
+		{
+			return (int32_t)(rest_time * 100 / actual_sample_duration);
+		}
+		else
+		{
+			return 0;
+		}
 	}
 
 	return -1;

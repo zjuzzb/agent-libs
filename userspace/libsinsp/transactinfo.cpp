@@ -378,13 +378,13 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(m_direction == DIR_UNKNOWN)
 			{
-				if(m_start_time == 0)
-				{
-					m_prev_prev_start_time = m_prev_start_time;
-					m_prev_prev_end_time = m_prev_end_time;
-					m_prev_start_time = enter_ts;
-					m_prev_end_time = exit_ts;
-				}
+				//if(m_start_time == 0)
+				//{
+				//	m_prev_prev_start_time = m_prev_start_time;
+				//	m_prev_prev_end_time = m_prev_end_time;
+				//	m_prev_start_time = enter_ts;
+				//	m_prev_end_time = exit_ts;
+				//}
 
 				res = STATE_ONGOING;
 			}
@@ -425,13 +425,13 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(m_direction == DIR_UNKNOWN)
 			{
-				if(m_start_time == 0)
-				{
-					m_prev_prev_start_time = m_prev_start_time;
-					m_prev_prev_end_time = m_prev_end_time;
-					m_prev_start_time = enter_ts;
-					m_prev_end_time = exit_ts;
-				}
+				//if(m_start_time == 0)
+				//{
+				//	m_prev_prev_start_time = m_prev_start_time;
+				//	m_prev_prev_end_time = m_prev_end_time;
+				//	m_prev_start_time = enter_ts;
+				//	m_prev_end_time = exit_ts;
+				//}
 
 				res = STATE_ONGOING;
 			}
