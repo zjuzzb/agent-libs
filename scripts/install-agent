@@ -10,29 +10,33 @@ set -e
 
 function install_rpm {
 	if ! hash curl > /dev/null 2>&1; then
-		yum -y install curl
+		echo "* Installing curl"
+		yum -q -y install curl
 	fi
 
-	if ! yum list dkms > /dev/null 2>&1; then
-		rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
+	if ! yum -q list dkms > /dev/null 2>&1; then
+		rpm --quiet -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
 	fi
 
-	rpm --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	rpm --quiet --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	echo "* Installing Draios repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
-	yum -y install kernel-devel-$(uname -r)
-	yum -y install draios-agent
+	yum -q -y install kernel-devel-$(uname -r)
+	yum -q -y install draios-agent
 }
 
 function install_deb {
 	if ! hash curl > /dev/null 2>&1; then
-		apt-get -y install curl
+		apt-get -qq -y install curl
 	fi
 
+	echo "* Installing Draios public key"
 	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
+	echo "* Installing Draios repository"
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
-	apt-get update
-	apt-get -y install linux-headers-$(uname -r)
-	apt-get -y install draios-agent
+	apt-get -qq update
+	apt-get -qq -y install linux-headers-$(uname -r)
+	apt-get -qq -y install draios-agent
 }
 
 function unsupported {
@@ -52,6 +56,8 @@ if [ $(id -u) != 0 ]; then
     echo "Installer must be run as root (or with sudo)."
     exit 1
 fi
+
+echo "* Detecting operating system"
 
 ARCH=$(uname -m)
 if [[ ! $ARCH = *86 ]] && [ ! $ARCH = "x86_64" ]; then
