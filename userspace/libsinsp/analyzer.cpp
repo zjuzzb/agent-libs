@@ -250,6 +250,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 			m_metrics->set_hostname(sinsp_gethostname());
 
+			// start time and end time for every transaction
+			if(m_inspector->m_transactions.size() != 0)
+			{
+				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions, 
+					m_prev_flush_time_ns, sample_duration);
+				m_inspector->m_transactions.clear();
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"!!%" PRId32,
+					syshscore);
+			}
+
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
@@ -426,12 +438,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
-						int32_t hscore = it->second.get_process_health_score(m_prev_flush_time_ns, sample_duration);
+						int32_t hscore = 33;
+//						int32_t hscore = sinsp_threadinfo::get_process_health_score(&it->second.m_transactions, 
+//							m_prev_flush_time_ns, sample_duration);
 						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
-#if 1
+#if 0
 						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
 						{
 							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);

@@ -525,7 +525,14 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 				((it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
 				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN)))
 			{
-				ASSERT(it->second.m_transaction.m_end_time <= endtime);
+				if(it->second.m_transaction.m_end_time >= endtime)
+				{
+					//
+					// This happens when the sample-generating event is a read or write on a transaction FD.
+					// No big deal, we're sure that this transaction doesn't need to ble flushed yet
+					//
+					return;
+				}
 
 				if(endtime - it->second.m_transaction.m_end_time > TRANSACTION_TIMEOUT_NS)
 				{
@@ -569,9 +576,10 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 	}
 }
 
-int32_t sinsp_threadinfo::get_process_health_score(uint64_t sample_end_time, uint64_t sample_duration)
+int32_t sinsp_threadinfo::get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+	uint64_t sample_end_time, uint64_t sample_duration)
 {
-	uint32_t trsize = m_transactions.size();
+	uint32_t trsize = transactions->size();
 
 	//
 	// How the algorithm works at high level: 
@@ -615,7 +623,7 @@ vector<uint64_t>v;
 uint64_t tot = 0;
 for(k = 0; k < trsize; k++)
 {
-	uint64_t delta = m_transactions[k].second - m_transactions[k].first;
+	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
 	v.push_back(delta);
 	tot += delta;
 }
@@ -623,7 +631,7 @@ for(k = 0; k < trsize; k++)
 		//
 		// Make sure the transactions are ordered by start time
 		//
-		std::sort(m_transactions.begin(), m_transactions.end());
+		std::sort(transactions->begin(), transactions->end());
 
 		//
 		// Count the number of concurrent transactions for each inerval of size
@@ -635,9 +643,9 @@ for(k = 0; k < trsize; k++)
 
 			for(k = 0; k < trsize; k++)
 			{
-				if(m_transactions[k].first <= j)
+				if((*transactions)[k].first <= j)
 				{
-					if(m_transactions[k].second >= j)
+					if((*transactions)[k].second >= j)
 					{
 						concurrency++;
 					}
@@ -654,7 +662,8 @@ for(k = 0; k < trsize; k++)
 			}
 			else
 			{
-				ASSERT(false);
+//				ASSERT(false);
+				break;
 			}
 		}
 
@@ -662,15 +671,7 @@ for(k = 0; k < trsize; k++)
 		// Infer the rest time by subtracting the amouny of time spent at each concurrency
 		// level from the sample time.
 		//
-		rest_time = actual_sample_duration;
-		for(k = 1; k < MAX_HEALTH_CONCURRENCY; k++)
-		{
-			rest_time -= time_by_concurrency[k];
-		}
-
-		ASSERT(rest_time >= 0);
-
-		time_by_concurrency[0] = rest_time;
+		rest_time = time_by_concurrency[0];
 
 		if(actual_sample_duration != 0)
 		{
