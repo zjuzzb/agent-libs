@@ -13,6 +13,11 @@
 //
 static bool g_terminate = false;
 
+static void monitor_signal_callback(int signal)
+{
+	exit(EXIT_SUCCESS);
+}
+
 static void signal_callback(int signal)
 {
 	g_terminate = true;
@@ -21,6 +26,9 @@ static void signal_callback(int signal)
 #ifndef _WIN32
 static void run_monitor(const string& pidfile)
 {
+	signal(SIGINT, monitor_signal_callback);
+	signal(SIGTERM, monitor_signal_callback);
+
 	//
 	// Start the monitor process
 	// 
@@ -40,24 +48,24 @@ static void run_monitor(const string& pidfile)
 		{
 			int status = 0;
 
-			//
-			// Since both child and father are run with --daemon option,
-			// Poco can get confused and can delete the pidfile even if
-			// the monitor doesn't die.
-			//
-			if(!pidfile.empty())
-			{
-				std::ofstream ostr(pidfile);
-				if(ostr.good())
-				{
-					ostr << Poco::Process::id() << std::endl;
-				}
-			}
-
 			wait(&status);
 
 			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
 			{
+				//
+				// Since both child and father are run with --daemon option,
+				// Poco can get confused and can delete the pidfile even if
+				// the monitor doesn't die.
+				//
+				if(!pidfile.empty())
+				{
+					std::ofstream ostr(pidfile);
+					if(ostr.good())
+					{
+						ostr << Poco::Process::id() << std::endl;
+					}
+				}
+
 				//
 				// Sleep for a bit and run another dragent
 				//
