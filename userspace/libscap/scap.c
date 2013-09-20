@@ -244,7 +244,7 @@ scap_t* scap_open_offline(char* fname, char *error)
 	handle->m_evtcnt = 0;
 	handle->m_file = NULL;
 	handle->m_addrlist = NULL;
-	handle->m_machine_info.num_procs = (uint32_t)-1;
+	handle->m_machine_info.num_cpus = (uint32_t)-1;
 
 	handle->m_file_evt_buf = (char*)malloc(FILE_READ_BUF_SIZE);
 	if(!handle->m_file_evt_buf)
@@ -792,7 +792,7 @@ scap_addrlist* scap_get_ifaddr_list(scap_t* handle)
 //
 const scap_machine_info* scap_get_machine_info(scap_t* handle)
 {
-	if(handle->m_machine_info.num_procs != (uint32_t)-1)
+	if(handle->m_machine_info.num_cpus != (uint32_t)-1)
 	{
 		return (const scap_machine_info*)&handle->m_machine_info;
 	}

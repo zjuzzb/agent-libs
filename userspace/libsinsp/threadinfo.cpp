@@ -566,7 +566,8 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 							this,
 							connection,
 							0, 
-							0, 
+							0,
+							-1,
 							sinsp_partial_transaction::DIR_CLOSE, 
 							0);
 					}

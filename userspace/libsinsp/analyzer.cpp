@@ -169,9 +169,9 @@ int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>
 		
 		if(m_inspector->m_machine_info)
 		{
-			if(n_server_threads > m_inspector->m_machine_info->num_procs)
+			if(n_server_threads > m_inspector->m_machine_info->num_cpus)
 			{
-				n_server_threads = m_inspector->m_machine_info->num_procs;
+				n_server_threads = m_inspector->m_machine_info->num_cpus;
 			}
 		}
 
@@ -219,6 +219,125 @@ int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>
 
 	return res;
 */
+}
+
+int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+	uint32_t n_server_threads,
+	uint64_t sample_end_time, uint64_t sample_duration)
+{
+	uint32_t trsize = transactions->size();
+	int32_t num_cpus = m_inspector->m_num_cpus;
+	int32_t cpuid;
+
+	if(trsize != 0 && num_cpus != 0)
+	{
+		vector<uint64_t> time_by_concurrency;
+		uint32_t k;
+		vector<int64_t> cpu_rest_times;
+		uint64_t starttime = sample_end_time - sample_duration;
+		uint64_t endtime = sample_end_time;
+//		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
+		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
+
+		//
+		// Create the concurrency intervals vector
+		//
+		for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			time_by_concurrency.push_back(0);
+		}
+
+		//
+		// Make sure the transactions are ordered by start time
+		//
+		std::sort(transactions->begin(), transactions->end());
+
+		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		{
+			uint64_t j;
+			uint32_t concurrency;
+
+//vector<uint64_t>v;
+//uint64_t tot = 0;
+//for(k = 0; k < trsize; k++)
+//{
+//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+//	v.push_back(delta);
+//	tot += delta;
+//}
+
+			//
+			// Count the number of concurrent transactions for each inerval of size
+			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+			//
+			for(j = starttime; j < endtime; j+= CONCURRENCY_OBSERVATION_INTERVAL_NS)
+			{
+				concurrency = 0;
+
+				for(k = 0; k < trsize; k++)
+				{
+					if((*transactions)[k].first <= j)
+					{
+						if((*transactions)[k].second.second == cpuid)
+						{
+							if((*transactions)[k].second.first >= j)
+							{
+								concurrency++;
+							}
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				if(concurrency < MAX_HEALTH_CONCURRENCY)
+				{
+					time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;
+				}
+				else
+				{
+//					ASSERT(false);
+					break;
+				}
+			}
+
+			//
+			// Infer the rest time by subtracting the amouny of time spent at each concurrency
+			// level from the sample time.
+			//
+			cpu_rest_times.push_back(time_by_concurrency[0]);
+
+			//
+			// Clean the concurrency intervals vector
+			//
+			for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+			{
+				time_by_concurrency[k] = 0;
+			}
+		}
+
+		if(actual_sample_duration != 0)
+		{
+			int64_t avgresttime = 0;
+
+			for(cpuid = 0; cpuid < num_cpus; cpuid++)
+			{
+				avgresttime += cpu_rest_times[cpuid];
+			}
+
+			avgresttime /= num_cpus;
+
+			return (int32_t)(avgresttime * 100 / actual_sample_duration);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	return -1;
 }
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
@@ -765,6 +884,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"!!%" PRId32,
+					syshscore);
+
+				syshscore = get_process_health_score_cpu(&m_inspector->m_transactions_with_cpu,
+					n_server_threads,
+					m_prev_flush_time_ns, sample_duration);
+				m_inspector->m_transactions_with_cpu.clear();
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					">>%" PRId32,
 					syshscore);
 			}
 

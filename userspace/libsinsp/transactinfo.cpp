@@ -37,7 +37,7 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 
 void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 								   sinsp_connection *pconn,
-								   sinsp_partial_transaction *tr, 
+								   sinsp_partial_transaction *tr,
 								   uint32_t len)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
@@ -102,6 +102,10 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 
 			m_inspector->m_transactions.push_back(
 				pair<uint64_t,uint64_t>(tr->m_prev_prev_start_time, tr->m_prev_end_time));
+
+			m_inspector->m_transactions_with_cpu.push_back(
+				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_time, 
+				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 
 /*
 			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
@@ -337,6 +341,7 @@ sinsp_partial_transaction::sinsp_partial_transaction()
 	m_prev_end_time = 0;
 	m_prev_prev_start_time = 0;
 	m_prev_prev_end_time = 0;
+	m_cpuid = -1;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
@@ -488,6 +493,7 @@ void sinsp_partial_transaction::update(sinsp* inspector,
 	sinsp_connection *pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 
+	int32_t cpuid,
 	direction dir, 
 	uint32_t datalen)
 {
@@ -496,6 +502,11 @@ void sinsp_partial_transaction::update(sinsp* inspector,
 		ASSERT(false);
 		mark_inactive();
 		return;
+	}
+
+	if(cpuid != -1)
+	{
+		m_cpuid = cpuid;
 	}
 
 	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, dir, datalen);

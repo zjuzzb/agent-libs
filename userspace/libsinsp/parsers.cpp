@@ -1412,7 +1412,8 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 				connection,
 				params->m_ts, 
 				params->m_ts, 
-				sinsp_partial_transaction::DIR_CLOSE, 
+				-1,
+				sinsp_partial_transaction::DIR_CLOSE,
 				0);
 		}
 
@@ -1694,7 +1695,8 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 			evt->m_tinfo,
 			connection,
 			0, 
-			0, 
+			0,
+			evt->get_cpuid(),
 			dir, 
 			0);
 	}
@@ -1944,6 +1946,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
+			evt->get_cpuid(),
 			sinsp_partial_transaction::DIR_IN, 
 			len);
 	}
@@ -2161,6 +2164,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
+			evt->get_cpuid(),
 			sinsp_partial_transaction::DIR_OUT, 
 			len);
 	}
@@ -2557,6 +2561,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 				connection,
 				evt->get_ts(), 
 				evt->get_ts(), 
+				evt->get_cpuid(),
 				sinsp_partial_transaction::DIR_CLOSE, 
 				0);
 

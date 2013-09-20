@@ -200,7 +200,7 @@ typedef struct scap_threadinfo
 #endif
 typedef struct _scap_machine_info
 {
-	uint32_t num_procs;	// Number of processors
+	uint32_t num_cpus;	// Number of processors
 	uint64_t memory_size_bytes; // Physical memory size
 	uint64_t max_pid; // Highest PID number on this machine
 	char hostname[128];

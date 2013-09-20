@@ -264,11 +264,13 @@ VISIBILITY_PRIVATE
 	sinsp_pipe_connection_manager* m_pipe_connections;
 	scap_dumper_t* m_dumper;
 	const scap_machine_info* m_machine_info;
+	uint32_t m_num_cpus;
 
 	sinsp_network_interfaces* m_network_interfaces;
 
 	// Used by the analyzer
 	vector<pair<uint64_t,uint64_t>> m_transactions;
+	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
 
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;

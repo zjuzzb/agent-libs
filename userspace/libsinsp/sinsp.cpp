@@ -247,6 +247,15 @@ void sinsp::init()
 	m_lastevent_ts = 0;
 
 	m_machine_info = scap_get_machine_info(m_h);
+	if(m_machine_info != NULL)
+	{
+		m_num_cpus = m_machine_info->num_cpus;
+	}
+	else
+	{
+		m_num_cpus = 0;
+	}
+
 	import_ifaddr_list();
 	import_proc_table();
 }
