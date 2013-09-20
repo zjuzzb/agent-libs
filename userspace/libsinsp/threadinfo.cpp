@@ -577,6 +577,7 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 }
 
 int32_t sinsp_threadinfo::get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	uint32_t trsize = transactions->size();
@@ -619,14 +620,14 @@ int32_t sinsp_threadinfo::get_process_health_score(vector<pair<uint64_t,uint64_t
 			time_by_concurrency.push_back(0);
 		}
 
-vector<uint64_t>v;
-uint64_t tot = 0;
-for(k = 0; k < trsize; k++)
-{
-	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
-	v.push_back(delta);
-	tot += delta;
-}
+//vector<uint64_t>v;
+//uint64_t tot = 0;
+//for(k = 0; k < trsize; k++)
+//{
+//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+//	v.push_back(delta);
+//	tot += delta;
+//}
 
 		//
 		// Make sure the transactions are ordered by start time
@@ -671,7 +672,17 @@ for(k = 0; k < trsize; k++)
 		// Infer the rest time by subtracting the amouny of time spent at each concurrency
 		// level from the sample time.
 		//
-		rest_time = time_by_concurrency[0];
+		rest_time = 0;
+		
+		if(n_server_threads > 4)
+		{
+			n_server_threads = 4;
+		}
+
+		for(j = 0; j < n_server_threads; j++)
+		{
+			rest_time += time_by_concurrency[j];
+		}
 
 		if(actual_sample_duration != 0)
 		{

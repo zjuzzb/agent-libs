@@ -232,6 +232,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		}
 		else
 		{
+			uint32_t n_server_threads = 0;
+
 			//
 			// Update the times
 			//
@@ -249,18 +251,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 			m_metrics->set_hostname(sinsp_gethostname());
-
-			// start time and end time for every transaction
-			if(m_inspector->m_transactions.size() != 0)
-			{
-				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions, 
-					m_prev_flush_time_ns, sample_duration);
-				m_inspector->m_transactions.clear();
-
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"!!%" PRId32,
-					syshscore);
-			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
@@ -346,6 +336,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				// Go through the FD list to flush the transactions that haven't been active for a while
 				//
 				it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+
+				//
+				// If this thread served requests, increase the server thread counter
+				//
+				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
+				{
+					n_server_threads++;
+				}
 
 				//
 				// Add this thread's counters to the process ones
@@ -602,6 +600,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				}
 			}
 #endif // ANALYZER_EMITS_PROGRAMS
+
+			////////////////////////////////////////////////////////////////////////////
+			// CALCULATE THE HEALTH SCORE FOR THE MACHINE
+			////////////////////////////////////////////////////////////////////////////
+			if(m_inspector->m_transactions.size() != 0)
+			{
+				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions,
+					n_server_threads,
+					m_prev_flush_time_ns, sample_duration);
+				m_inspector->m_transactions.clear();
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"!!%" PRId32,
+					syshscore);
+			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS

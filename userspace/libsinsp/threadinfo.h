@@ -175,6 +175,7 @@ VISIBILITY_PRIVATE
 	// process metrics
 	//
 	static int32_t get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
 	//  void push_fdop(sinsp_fdop* op);
