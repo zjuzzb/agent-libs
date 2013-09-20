@@ -331,8 +331,6 @@ int main(int argc, char **argv)
 	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
 
-printf("@@@@@%ld\n", sysconf(_SC_NPROCESSORS_ONLN));
-
 	{
 		sinsp inspector;
 
