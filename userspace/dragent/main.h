@@ -20,9 +20,13 @@
 
 #include <assert.h>
 
+#include "Poco/Net/Context.h"
+#include "Poco/Net/PrivateKeyPassphraseHandler.h"
 #include "Poco/Net/SocketReactor.h"
 #include "Poco/Net/SocketAcceptor.h"
 #include "Poco/Net/SocketNotification.h"
+#include "Poco/Net/SecureStreamSocket.h"
+#include "Poco/Net/SSLManager.h"
 #include "Poco/Net/StreamSocket.h"
 #include "Poco/Net/ServerSocket.h"
 #include "Poco/NObserver.h"

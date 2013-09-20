@@ -36,3 +36,7 @@ install(TARGETS dragent
 install(FILES dragent.properties 
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
+
+install(FILES root.cert 
+	DESTINATION ${DRAIOS_BIN_PREFIX}
+	COMPONENT agent)

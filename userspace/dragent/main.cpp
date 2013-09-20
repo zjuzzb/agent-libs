@@ -163,17 +163,32 @@ public:
 		m_socket = NULL;
 		m_sa = NULL;
 		m_customerid = "<invalid>";
+		m_serverport = 0;
+		m_ssl_enabled = false;
+
+		Poco::Net::initializeSSL();
 	}
 	
 	~dragent_app()
 	{
+		if(m_sa)
+		{
+			delete m_sa;
+			m_sa = NULL;
+		}
+
+		if(m_socket)
+		{
+			delete m_socket;
+			m_socket = NULL;
+		}
+
+		Poco::Net::uninitializeSSL();
 	}
 
 protected:
 	void initialize(Application& self)
 	{
-		m_serverport = 0;
-
 		//
 		// load the configuration file.
 		// First try the local dir
@@ -444,7 +459,15 @@ protected:
 			{
 				ASSERT(m_socket == NULL);
 
-				m_socket = new Poco::Net::StreamSocket(*m_sa);
+				if(m_ssl_enabled)
+				{
+					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
+					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
+				}
+				else
+				{
+					m_socket = new Poco::Net::StreamSocket(*m_sa);
+				}
 
 				g_log->error(string("server connection recovered. Sending ") +
 					NumberFormatter::format(store_size) + " buffered samples");
@@ -631,11 +654,39 @@ protected:
 				m_serverport = config().getInt("server.port", 0);
 			}
 
+			m_ssl_enabled = config().getBool("ssl.enabled", false);
+			m_ssl_ca_certificate = config().getString("ssl.ca_certificate", "");
+
 			if(m_serveraddr != "" && m_serverport != 0)
 			{
 				m_sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
-				m_socket = new Poco::Net::StreamSocket(*m_sa);
-				
+
+				if(m_ssl_enabled)
+				{
+					g_log->information("SSL enabled, initializing context");
+
+					Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
+						Poco::Net::Context::CLIENT_USE, 
+						"", 
+						"", 
+						m_ssl_ca_certificate, 
+						Poco::Net::Context::VERIFY_RELAXED, 
+						9, 
+						false, 
+						"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+					Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
+
+					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
+					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
+
+					g_log->information("SSL identity verified");
+				}
+				else
+				{
+					m_socket = new Poco::Net::StreamSocket(*m_sa);
+				}
+
 				//
 				// Set the send buffer size for the socket
 				//
@@ -743,6 +794,8 @@ private:
 	string m_writefile;
 	string m_serveraddr;
 	uint16_t m_serverport;
+	bool m_ssl_enabled;
+	string m_ssl_ca_certificate;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
 	vector<sample_store*> m_unsent_samples;
