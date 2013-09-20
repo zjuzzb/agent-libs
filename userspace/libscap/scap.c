@@ -11,8 +11,8 @@
 
 #include "../../driver/ppm_ringbuffer.h"
 #include "scap.h"
-#include "scap-int.h"
 #include "scap_savefile.h"
+#include "scap-int.h"
 
 //#define NDEBUG
 #include <assert.h>
@@ -92,6 +92,17 @@ scap_t* scap_open_live(char *error)
 	}
 
 	handle->m_ndevs = ndevs;
+
+	//
+	// Extract machine information
+	//
+	handle->m_machine_info.num_procs = sysconf(_SC_NPROCESSORS_ONLN);
+	handle->m_machine_info.memory_size_bytes = (uint64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
+	gethostname(handle->m_machine_info.hostname, sizeof(handle->m_machine_info.hostname) / sizeof(handle->m_machine_info.hostname[0]));
+	handle->m_machine_info.reserved1 = 0;
+	handle->m_machine_info.reserved2 = 0;
+	handle->m_machine_info.reserved3 = 0;
+	handle->m_machine_info.reserved4 = 0;
 
 	//
 	// Create the interface list
@@ -254,7 +265,7 @@ scap_t* scap_open_offline(char* fname, char *error)
 	}
 
 	//
-	// Validate the file and load the tables
+	// Validate the file and load the non-event blocks
 	//
 	if(scap_read_init(handle, handle->m_file) != SCAP_SUCCESS)
 	{

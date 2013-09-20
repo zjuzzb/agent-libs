@@ -190,6 +190,28 @@ typedef struct scap_threadinfo
 }scap_threadinfo;
 
 //
+// Machine info. Byte aligned because we save it to disk.
+//
+#if defined _MSC_VER
+#pragma pack(push)
+#pragma pack(1)
+#else
+#pragma pack(push, 1)
+#endif
+typedef struct _scap_machine_info
+{
+	uint32_t num_procs;	// Number of processors
+	uint64_t memory_size_bytes; // Physical memory size
+	uint64_t max_pid; // Highest PID number on this machine
+	char hostname[128];
+	uint64_t reserved1; // reserved for fututre use
+	uint64_t reserved2; // reserved for fututre use
+	uint64_t reserved3; // reserved for fututre use
+	uint64_t reserved4; // reserved for fututre use
+}scap_machine_info;
+#pragma pack(pop)
+
+//
 // Interface address information
 //
 #define SCAP_IPV6_ADDR_LEN 16

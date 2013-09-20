@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -215,13 +219,49 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 }
 
 //
+// Write the machine info block
+//
+#ifdef _WIN32
+int32_t scap_write_machine_info(scap_t *handle, FILE *f)
+{
+	ASSERT(false);
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_machine_info not implemented under Windows");
+	return SCAP_FAILURE;
+}
+#else
+int32_t scap_write_machine_info(scap_t *handle, FILE *f)
+{
+	block_header bh;
+	uint32_t bt;
+
+	//
+	// Write the section header
+	//
+	bh.block_type = MI_BLOCK_TYPE;
+	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + sizeof(scap_machine_info) + 4);
+
+	bt = bh.block_total_length;
+
+	if(fwrite(&bh, sizeof(bh), 1, f) != 1 ||
+	        fwrite(&handle->m_machine_info, sizeof(handle->m_machine_info), 1, f) != 1 ||
+	        fwrite(&bt, sizeof(bt), 1, f) != 1)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (MI1)");
+		return SCAP_FAILURE;
+	}
+
+	return SCAP_SUCCESS;
+}
+#endif // _WIN32
+
+//
 // Write the interface list block
 //
 #ifdef _WIN32
 int32_t scap_write_iflist(scap_t *handle, FILE *f)
 {
 	ASSERT(false);
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_iflist not implemented under windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_iflist not implemented under Windows");
 	return SCAP_FAILURE;
 }
 #else
@@ -340,6 +380,14 @@ static scap_dumper_t *scap_setup_dump(scap_t *handle, FILE *f, const char *fname
 	}
 
 	//
+	// Write the machine info
+	//
+	if(scap_write_machine_info(handle, f) != SCAP_SUCCESS)
+	{
+		return NULL;
+	}
+
+	//
 	// Write the interface list
 	//
 	if(scap_write_iflist(handle, f) != SCAP_SUCCESS)
@@ -438,6 +486,34 @@ int32_t scap_dump(scap_t *handle, scap_dumper_t *d, scap_evt *event, uint16_t cp
 // READ FUNCTIONS
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+//
+// Load the machine info block
+//
+int32_t scap_read_machine_info(scap_t *handle, FILE *f, uint32_t block_length)
+{
+	block_header bh;
+	uint32_t bt;
+
+	//
+	// Read the section header block
+	//
+	if(fread(&bh, sizeof(bh), 1, f) != 1 ||
+	        fread(&handle->m_machine_info, sizeof(handle->m_machine_info), 1, f) != 1 ||
+	        fread(&bt, sizeof(bt), 1, f) != 1)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error reading from file (1)");
+		return SCAP_FAILURE;
+	}
+
+	if(bh.block_type != SHB_BLOCK_TYPE)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid block type");
+		return SCAP_FAILURE;
+	}
+
+	return SCAP_SUCCESS;
+}
 
 //
 // Parse a process list block
