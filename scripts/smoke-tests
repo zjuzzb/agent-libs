@@ -35,6 +35,40 @@ function smoke_tests {
 	pidof -o $MONITOR_PID dragent
 	service dragent stop
 
+	# Run the backend server. The first connection should fail
+	# since we are not using the right backend
+	rm -rf /opt/draios/logs/*
+	cp /opt/draios/dragent.properties /opt/draios/dragent.properties.bak
+	echo "server.address = 127.0.0.1" >> /opt/draios/dragent.properties
+	echo "server.port = 8080" >> /opt/draios/dragent.properties
+	echo "ssl.enabled = true" >> /opt/draios/dragent.properties
+	echo "ssl.ca_certificate = /opt/draios/root.cert" >> /opt/draios/dragent.properties
+	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
+	service dragent start
+	sleep 5
+	cat /opt/draios/logs/* | grep "certificate verify failed"
+	service dragent stop
+	pkill -f fake_backend || true
+
+	# Now put the right certificate and check the connection is
+	# fine
+	rm -rf /opt/draios/logs/*
+	rm -rf /opt/draios/dragent.properties
+	cp /opt/draios/dragent.properties.bak /opt/draios/dragent.properties
+	echo "server.address = 127.0.0.1" >> /opt/draios/dragent.properties
+	echo "server.port = 8080" >> /opt/draios/dragent.properties
+	echo "ssl.enabled = true" >> /opt/draios/dragent.properties
+	echo "ssl.ca_certificate = /opt/draios/test/resources/fake_backend.cert" >> /opt/draios/dragent.properties
+	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
+	service dragent start
+	sleep 5
+	cat /opt/draios/logs/* | grep "SSL identity verified"
+	service dragent stop
+	pkill -f fake_backend
+
+	rm -rf /opt/draios/dragent.properties
+	mv /opt/draios/dragent.properties.bak /opt/draios/dragent.properties
+	
 	modprobe ppm
 	sh -c "cd /opt/draios/test; ./test"
 	rmmod ppm
