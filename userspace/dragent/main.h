@@ -49,6 +49,7 @@
 #include "Poco/NumberFormatter.h"
 #include "Poco/Path.h"
 #include "Poco/Environment.h"
+#include "Poco/Process.h"
 
 #include <sinsp.h>
 

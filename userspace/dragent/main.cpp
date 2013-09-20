@@ -19,7 +19,7 @@ static void signal_callback(int signal)
 }
 
 #ifndef _WIN32
-static void run_monitor()
+static void run_monitor(const string& pidfile)
 {
 	//
 	// Start the monitor process
@@ -39,6 +39,21 @@ static void run_monitor()
 		while(true)
 		{
 			int status = 0;
+
+			//
+			// Since both child and father are run with --daemon option,
+			// Poco can get confused and can delete the pidfile even if
+			// the monitor doesn't die.
+			//
+			if(!pidfile.empty())
+			{
+				std::ofstream ostr(pidfile);
+				if(ostr.good())
+				{
+					ostr << Poco::Process::id() << std::endl;
+				}
+			}
+
 			wait(&status);
 
 			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
@@ -360,6 +375,10 @@ protected:
 		{
 			m_serverport = (uint16_t)NumberParser::parse(value);
 		}
+		else if(name == "pidfile")
+		{
+			m_pidfile = value;
+		}
 	}
 
 	void displayHelp()
@@ -545,7 +564,7 @@ protected:
 #ifndef _WIN32
 		if(config().getBool("application.runAsDaemon", false))
 		{
-			run_monitor();
+			run_monitor(m_pidfile);
 		}
 #endif
 
@@ -796,6 +815,7 @@ private:
 	uint16_t m_serverport;
 	bool m_ssl_enabled;
 	string m_ssl_ca_certificate;
+	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
 	vector<sample_store*> m_unsent_samples;
