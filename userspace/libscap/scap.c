@@ -96,7 +96,7 @@ scap_t* scap_open_live(char *error)
 	//
 	// Extract machine information
 	//
-	handle->m_machine_info.num_procs = sysconf(_SC_NPROCESSORS_ONLN);
+	handle->m_machine_info.num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 	handle->m_machine_info.memory_size_bytes = (uint64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
 	gethostname(handle->m_machine_info.hostname, sizeof(handle->m_machine_info.hostname) / sizeof(handle->m_machine_info.hostname[0]));
 	handle->m_machine_info.reserved1 = 0;
