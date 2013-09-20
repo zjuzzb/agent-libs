@@ -2,7 +2,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
 
 add_executable(dragent 
 	main.cpp)
@@ -10,10 +11,14 @@ add_executable(dragent
 target_link_libraries(dragent
 	pthread
 	sinsp
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoXML.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoFoundation.a)
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoXML.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/lib/libcrypto.a)
 
 #file(COPY dragent.properties 
 #	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

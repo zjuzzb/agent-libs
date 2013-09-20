@@ -1,6 +1,6 @@
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-1.6.0/fused-src/gtest)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
@@ -25,10 +25,10 @@ add_executable(test
 target_link_libraries(test
 	pthread
 	sinsp 
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoXML.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoXML.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.6.0/libgtest.a) 
 
 add_executable(resources/forking_main_thread_exit
