@@ -320,14 +320,34 @@ int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<u
 
 		if(actual_sample_duration != 0)
 		{
+			int64_t minresttime = 1000000000;
+			int64_t maxresttime = 0;
 			int64_t avgresttime = 0;
 
 			for(cpuid = 0; cpuid < num_cpus; cpuid++)
 			{
-				avgresttime += cpu_rest_times[cpuid];
+				int64_t val = cpu_rest_times[cpuid];
+
+				avgresttime += val;
+
+				if(val < minresttime)
+				{
+					minresttime = val;
+				}
+
+				if(val > maxresttime)
+				{
+					maxresttime = val;
+				}
 			}
 
 			avgresttime /= num_cpus;
+
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				">>%" PRId32"-%" PRId32"-%" PRId32,
+				(int32_t)(minresttime * 100 / actual_sample_duration),
+				(int32_t)(maxresttime * 100 / actual_sample_duration),
+				(int32_t)(avgresttime * 100 / actual_sample_duration));
 
 			return (int32_t)(avgresttime * 100 / actual_sample_duration);
 		}
@@ -890,10 +910,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					n_server_threads,
 					m_prev_flush_time_ns, sample_duration);
 				m_inspector->m_transactions_with_cpu.clear();
-
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					">>%" PRId32,
-					syshscore);
 			}
 
 			////////////////////////////////////////////////////////////////////////////
