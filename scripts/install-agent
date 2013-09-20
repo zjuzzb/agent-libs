@@ -30,6 +30,8 @@ function install_rpm {
 }
 
 function install_deb {
+	export DEBIAN_FRONTEND=noninteractive
+
 	if ! hash curl > /dev/null 2>&1; then
 		echo "* Installing curl"
 		apt-get -qq -y install curl
@@ -126,4 +128,4 @@ fi
 echo "* Installing access key"
 echo "customerid = $ACCESS_KEY" >> /opt/draios/dragent.properties
 
-service dragent start
+service dragent restart

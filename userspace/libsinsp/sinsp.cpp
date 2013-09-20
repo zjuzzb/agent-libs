@@ -237,7 +237,7 @@ void sinsp::init()
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(this);
 	m_unix_connections = new sinsp_unix_connection_manager(this);
 	m_pipe_connections = new sinsp_pipe_connection_manager(this);
-	m_trans_table = new sinsp_transaction_table;
+	m_trans_table = new sinsp_transaction_table(this);
 	m_thread_manager = new sinsp_thread_manager(this);
 
 	//

@@ -1732,7 +1732,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				        evt->m_tinfo,
 				        tid,
 				        fd,
-				        evt->m_fdinfo->has_role_client(),
+				        evt->m_fdinfo->is_role_client(),
 				        evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -1780,7 +1780,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						evt->m_tinfo,
 						tid,
 						fd,
-						evt->m_fdinfo->has_role_client(),
+						evt->m_fdinfo->is_role_client(),
 						evt->get_ts());
 			}
 		}
@@ -1792,15 +1792,15 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			{
 				//
 				// We dropped the accept() or connect()
-				// Create a connection entry here and make an assumption this is the server FD.
-				// (we assume that a server usually starts with a read).
+				// Create a connection entry here and try to detect if this is the client or the server by lookig
+				// at the ports.
 				//
-				evt->m_fdinfo->set_role_server();
+				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
-				        evt->m_fdinfo->has_role_client(),
+				        evt->m_fdinfo->is_role_client(),
 				        evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -1818,7 +1818,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_server();
+					evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
 				}
 				else
 				{
@@ -1838,7 +1838,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_server();
+						evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
 					}
 				}
 
@@ -1846,7 +1846,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						evt->m_tinfo,
 						tid,
 						fd,
-						evt->m_fdinfo->has_role_client(),
+						evt->m_fdinfo->is_role_client(),
 						evt->get_ts());
 			}
 		}
@@ -1862,11 +1862,11 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			return;
 		}
 
-		if(evt->m_fdinfo->has_role_server())
+		if(evt->m_fdinfo->is_role_server())
 		{
 			connection->m_metrics.m_server_incoming.add(1, original_len);
 		}
-		else if (evt->m_fdinfo->has_role_client())
+		else if (evt->m_fdinfo->is_role_client())
 		{
 			connection->m_metrics.m_client_incoming.add(1, original_len);
 		}
@@ -1879,7 +1879,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
 /*
-		if(evt->m_fdinfo->has_role_server())
+		if(evt->m_fdinfo->is_role_server())
 		{
 			//
 			// See if there's already a transaction
@@ -1993,7 +1993,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				        evt->m_tinfo,
 				        tid,
 				        fd,
-				        evt->m_fdinfo->has_role_client(),
+				        evt->m_fdinfo->is_role_client(),
 				        evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -2041,7 +2041,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						evt->m_tinfo,
 						tid,
 						fd,
-						evt->m_fdinfo->has_role_client(),
+						evt->m_fdinfo->is_role_client(),
 						evt->get_ts());
 			}
 		}
@@ -2053,15 +2053,16 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			{
 				//
 				// We dropped the accept() or connect()
-				// Create a connection entry here and make an assumption this is the client FD
+				// Create a connection entry here and try to detect if this is the client or the server by lookig
+				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
-				evt->m_fdinfo->set_role_client();
+				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 				        evt->m_tinfo,
 				        tid,
 				        fd,
-				        evt->m_fdinfo->has_role_client(),
+				        evt->m_fdinfo->is_role_client(),
 				        evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -2079,7 +2080,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_client();
+					evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
 				}
 				else
 				{
@@ -2099,7 +2100,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_client();
+						evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
 					}
 				}
 
@@ -2107,7 +2108,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 						evt->m_tinfo,
 						tid,
 						fd,
-						evt->m_fdinfo->has_role_client(),
+						evt->m_fdinfo->is_role_client(),
 						evt->get_ts());
 			}
 		}
@@ -2123,11 +2124,11 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 			return;
 		}
 
-		if(evt->m_fdinfo->has_role_server())
+		if(evt->m_fdinfo->is_role_server())
 		{
 			connection->m_metrics.m_server_outgoing.add(1, original_len);
 		}
-		else if(evt->m_fdinfo->has_role_client())
+		else if(evt->m_fdinfo->is_role_client())
 		{
 			connection->m_metrics.m_client_outgoing.add(1, original_len);
 		}
@@ -2237,7 +2238,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 		{
 			if(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK || evt->m_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
-				if(evt->m_fdinfo->has_role_server())
+				if(evt->m_fdinfo->is_role_server())
 				{
 					evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
 				}

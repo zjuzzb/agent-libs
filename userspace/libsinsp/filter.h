@@ -51,7 +51,7 @@ public:
 };
 
 //
-// tid check
+// numeric tid check
 //
 class sinsp_filter_check_tid : public sinsp_filter_check
 {
@@ -62,6 +62,20 @@ public:
 
 	int64_t m_tid;
 };
+
+//
+// numeric fd check
+//
+class sinsp_filter_check_fd : public sinsp_filter_check
+{
+public:
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+	static bool recognize_operand(string operand);
+
+	int64_t m_fd;
+};
+
 
 //
 // A filter expression, e.g. "check or check", "check and check and check", "not check"

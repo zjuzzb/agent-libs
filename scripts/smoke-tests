@@ -3,23 +3,37 @@ set -exu
 
 function smoke_tests {
 	killall -9 test || true
-	
+
+	# The agent should be running after the installation script	
 	sleep 2
 	test -e /var/run/dragent.pid
 	service dragent status
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
+
+	# The agent should restart if it dies unexpectedly
 	kill -SIGKILL $AGENT_PID
 	sleep 2
 	pidof -o $MONITOR_PID dragent
+
+	# The restart should work
+	service dragent restart
+	sleep 2
+	MONITOR_PID=$(cat /var/run/dragent.pid)
+	pidof -o $MONITOR_PID dragent
+
+	# The stop should work and clean processes and pid files
+	service dragent stop
+	test ! -e /var/run/dragent.pid
+	service dragent status && false
+	pidof dragent && false
+
+	# The restart should work even when the agent is not running
 	service dragent restart
 	sleep 2
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	pidof -o $MONITOR_PID dragent
 	service dragent stop
-	test ! -e /var/run/dragent.pid
-	service dragent status && false
-	pidof dragent && false
 
 	modprobe ppm
 	sh -c "cd /opt/draios/test; ./test"

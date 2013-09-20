@@ -81,6 +81,32 @@ void sinsp_fdinfo::print_on(FILE* f)
 	}
 }
 
+void sinsp_fdinfo::set_role_by_guessing(sinsp_partial_transaction::direction dir)
+{
+	if(m_flags & FLAGS_ROLE_CLIENT)
+	{
+		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
+	}
+	else if(m_flags & FLAGS_ROLE_SERVER)
+	{
+		m_transaction.m_side = sinsp_partial_transaction::SIDE_SERVER;
+	}
+	else
+	{
+		//
+		// We just assume that a server usually starts witha read and a client with a write
+		//
+		if(dir == sinsp_partial_transaction::DIR_IN)
+		{
+			set_role_server();
+		}
+		else
+		{
+			set_role_client();
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_fdtable inomlementation
 ///////////////////////////////////////////////////////////////////////////////

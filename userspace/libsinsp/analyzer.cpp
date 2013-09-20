@@ -232,6 +232,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		}
 		else
 		{
+			uint32_t n_server_threads = 0;
+
 			//
 			// Update the times
 			//
@@ -328,14 +330,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-
-				if(ttot.m_count > 0 && it->second.m_transaction_metrics.m_incoming.m_count != 0)
-				{
-//					ASSERT(it->second.m_rest_time_ns > 0);
-				}
-
 				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
+				//
+				// Go through the FD list to flush the transactions that haven't been active for a while
+				//
+				it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+
+				//
+				// If this thread served requests, increase the server thread counter
+				//
+				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
+				{
+					n_server_threads++;
+				}
+
 				//
 				// Add this thread's counters to the process ones
 				//
@@ -427,11 +436,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
-						proc->set_health_score(it->second.get_process_health_score(ts, sample_duration));
+						int32_t hscore = 33;
+//						int32_t hscore = sinsp_threadinfo::get_process_health_score(&it->second.m_transactions, 
+//							m_prev_flush_time_ns, sample_duration);
+						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
-#if 1
+#if 0
 						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
 						{
 							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);
@@ -447,7 +459,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_refcount + 1,
-								it->second.get_process_health_score(ts, sample_duration),
+								hscore,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
@@ -588,6 +600,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				}
 			}
 #endif // ANALYZER_EMITS_PROGRAMS
+
+			////////////////////////////////////////////////////////////////////////////
+			// CALCULATE THE HEALTH SCORE FOR THE MACHINE
+			////////////////////////////////////////////////////////////////////////////
+			if(m_inspector->m_transactions.size() != 0)
+			{
+				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions,
+					n_server_threads,
+					m_prev_flush_time_ns, sample_duration);
+				m_inspector->m_transactions.clear();
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"!!%" PRId32,
+					syshscore);
+			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS

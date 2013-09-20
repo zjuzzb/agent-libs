@@ -269,6 +269,9 @@ VISIBILITY_PRIVATE
 
 	sinsp_network_interfaces* m_network_interfaces;
 
+	// Used by the analyzer
+	vector<pair<uint64_t,uint64_t>> m_transactions;
+
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
 #endif

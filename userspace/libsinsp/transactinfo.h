@@ -141,7 +141,7 @@ public:
 class SINSP_PUBLIC sinsp_transaction_table
 {
 public:
-	sinsp_transaction_table();
+	sinsp_transaction_table(sinsp* inspector);
 	~sinsp_transaction_table();
 	void save_json(string filename);
 	void print_on(FILE *stream);
@@ -164,6 +164,8 @@ public:
 
 private:
 	bool is_transaction_server(sinsp_threadinfo *ptinfo);
+
+	sinsp* m_inspector;
 
 	friend class sinsp_partial_transaction;
 };
