@@ -233,11 +233,43 @@ int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<u
 	{
 		vector<uint64_t> time_by_concurrency;
 		uint32_t k;
-		vector<int64_t> cpu_rest_times;
+		vector<int64_t> cpu_counters;
 		uint64_t starttime = sample_end_time - sample_duration;
 		uint64_t endtime = sample_end_time;
-//		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
 		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
+
+		//
+		// If the number of *processors* that served transactions is smaller than the number of
+		// *processes* that served transactions, it means that the processes were shuffled 
+		// among the CPUs. In that case, don't do the calculation (it would be meaningless)
+		// and just return -1. The analyzer will take care of using a fallback algorithm.
+		//
+		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		{
+			cpu_counters.push_back(0);
+		}
+
+		for(k = 0; k < trsize; k++)
+		{
+			ASSERT((*transactions)[k].second.second < num_cpus);
+
+			cpu_counters[(*transactions)[k].second.second]++;
+		}
+
+		for(cpuid = 0, k = 0; cpuid < num_cpus; cpuid++)
+		{
+			if(cpu_counters[cpuid] != 0)
+			{
+				k++;
+			}
+		}
+
+		if(n_server_threads < k)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				">>-1");
+			return -1;
+		}
 
 		//
 		// Create the concurrency intervals vector
@@ -252,19 +284,13 @@ int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<u
 		//
 		std::sort(transactions->begin(), transactions->end());
 
+		//
+		// Go through the CPUs and calculate the rest time for each of them
+		//
 		for(cpuid = 0; cpuid < num_cpus; cpuid++)
 		{
 			uint64_t j;
 			uint32_t concurrency;
-
-//vector<uint64_t>v;
-//uint64_t tot = 0;
-//for(k = 0; k < trsize; k++)
-//{
-//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
-//	v.push_back(delta);
-//	tot += delta;
-//}
 
 			//
 			// Count the number of concurrent transactions for each inerval of size
@@ -298,56 +324,67 @@ int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<u
 				}
 				else
 				{
-//					ASSERT(false);
 					break;
 				}
 			}
 
 			//
-			// Infer the rest time by subtracting the amouny of time spent at each concurrency
-			// level from the sample time.
+			// Save the rest time
 			//
-			cpu_rest_times.push_back(time_by_concurrency[0]);
+			cpu_counters[cpuid] = time_by_concurrency[0];
 
 			//
-			// Clean the concurrency intervals vector
+			// Clean the concurrency intervals vector so we're ready for the next CPU
 			//
-			for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+			if(cpuid < num_cpus)
 			{
-				time_by_concurrency[k] = 0;
+				for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+				{
+					time_by_concurrency[k] = 0;
+				}
 			}
 		}
 
+		//
+		// Done scanning the transactions, return the average of the CPU rest times
+		//
 		if(actual_sample_duration != 0)
 		{
 			int64_t minresttime = 1000000000;
 			int64_t maxresttime = 0;
 			int64_t avgresttime = 0;
+			int32_t n_active_cpus = 0;
 
 			for(cpuid = 0; cpuid < num_cpus; cpuid++)
 			{
-				int64_t val = cpu_rest_times[cpuid];
+				int64_t val = cpu_counters[cpuid];
 
-				avgresttime += val;
-
-				if(val < minresttime)
+				if(val != 1000000000)
 				{
-					minresttime = val;
-				}
+					n_active_cpus++;
 
-				if(val > maxresttime)
-				{
-					maxresttime = val;
+					avgresttime += val;
+
+					if(val < minresttime)
+					{
+						minresttime = val;
+					}
+
+					if(val > maxresttime)
+					{
+						maxresttime = val;
+					}
 				}
 			}
 
-			avgresttime /= num_cpus;
+			avgresttime /= n_active_cpus;
 
 			g_logger.format(sinsp_logger::SEV_DEBUG,
-				">>%" PRId32"-%" PRId32"-%" PRId32,
+				">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
 				(int32_t)(minresttime * 100 / actual_sample_duration),
 				(int32_t)(maxresttime * 100 / actual_sample_duration),
-				(int32_t)(avgresttime * 100 / actual_sample_duration));
+				(int32_t)(avgresttime * 100 / actual_sample_duration),
+				n_active_cpus);
 
 			return (int32_t)(avgresttime * 100 / actual_sample_duration);
 		}
