@@ -246,6 +246,7 @@ void sinsp::init()
 	m_tid_to_remove = -1;
 	m_lastevent_ts = 0;
 
+	m_machine_info = scap_get_machine_info(m_h);
 	import_ifaddr_list();
 	import_proc_table();
 }

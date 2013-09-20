@@ -263,6 +263,7 @@ VISIBILITY_PRIVATE
 	sinsp_unix_connection_manager* m_unix_connections;
 	sinsp_pipe_connection_manager* m_pipe_connections;
 	scap_dumper_t* m_dumper;
+	const scap_machine_info* m_machine_info;
 
 	sinsp_network_interfaces* m_network_interfaces;
 

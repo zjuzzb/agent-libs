@@ -388,6 +388,11 @@ const struct ppm_event_info* scap_get_event_info_table();
 // Get the syscall info table
 const struct ppm_syscall_desc* scap_get_syscall_info_table();
 
+// Get the machine information.
+// Returns NULL if machine information is not available (which can happen when reading
+// from files witthout that information)
+const scap_machine_info* scap_get_machine_info(scap_t* handle);
+
 #ifdef __cplusplus
 }
 #endif

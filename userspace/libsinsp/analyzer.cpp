@@ -69,6 +69,158 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	m_sample_callback = cb;
 }
 
+int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+	uint32_t n_server_threads,
+	uint64_t sample_end_time, uint64_t sample_duration)
+{
+	uint32_t trsize = transactions->size();
+
+	//
+	// How the algorithm works at high level: 
+	//   measure for transaction "gaps", i.e. time intervals in which no transaction
+	//   is served. Sum the gaps and divide the sum by the sample time. The number
+	//   is our health score, and measures the capacity that this process still has
+	//   to serve transactions.
+	// In practice, we use a couple of tricks:
+	//   - we don't apply the algorithm to the full sample, but to the interval between the 
+	//     sample start time and the end of the last transaction. After that we normalize the
+	//     result as if it were a full sample. The reason is: we catch the transactions only
+	//     after the next direction switch so, especially when the number of requests is very low,
+	//     the last part of the sample might not contain transactions just because they are
+	//     still in progress. We don't want that to skew the results.
+	//   - we subdivide the sample time into intervals of CONCURRENCY_OBSERVATION_INTERVAL_NS nanoseconds,
+	//     and we count the number of concurrent transactions for each interval. In other
+	//     words, we "digitalize" the interval intersections, so that we never have more than
+	//     (sample time / CONCURRENCY_OBSERVATION_INTERVAL_NS) of them.
+	//
+	if(trsize != 0)
+	{
+		uint64_t j;
+		uint32_t k;
+		uint64_t starttime = sample_end_time - sample_duration;
+		uint64_t endtime = sample_end_time;
+//		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
+		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
+		uint32_t concurrency;
+		vector<uint64_t> time_by_concurrency;
+		int64_t rest_time;
+
+		//
+		// Create the concurrency intervals vector
+		//
+		for(k = 0; k < MAX_HEALTH_CONCURRENCY; k++)
+		{
+			time_by_concurrency.push_back(0);
+		}
+
+//vector<uint64_t>v;
+//uint64_t tot = 0;
+//for(k = 0; k < trsize; k++)
+//{
+//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+//	v.push_back(delta);
+//	tot += delta;
+//}
+
+		//
+		// Make sure the transactions are ordered by start time
+		//
+		std::sort(transactions->begin(), transactions->end());
+
+		//
+		// Count the number of concurrent transactions for each inerval of size
+		// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+		//
+		for(j = starttime; j < endtime; j+= CONCURRENCY_OBSERVATION_INTERVAL_NS)
+		{
+			concurrency = 0;
+
+			for(k = 0; k < trsize; k++)
+			{
+				if((*transactions)[k].first <= j)
+				{
+					if((*transactions)[k].second >= j)
+					{
+						concurrency++;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(concurrency < MAX_HEALTH_CONCURRENCY)
+			{
+				time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;
+			}
+			else
+			{
+//				ASSERT(false);
+				break;
+			}
+		}
+
+		//
+		// Infer the rest time by subtracting the amouny of time spent at each concurrency
+		// level from the sample time.
+		//
+		rest_time = 0;
+		
+		if(m_inspector->m_machine_info)
+		{
+			if(n_server_threads > m_inspector->m_machine_info->num_procs)
+			{
+				n_server_threads = m_inspector->m_machine_info->num_procs;
+			}
+		}
+
+		for(k = 0; k < n_server_threads; k++)
+		{
+			rest_time += time_by_concurrency[k];
+		}
+
+		if(actual_sample_duration != 0)
+		{
+			return (int32_t)(rest_time * 100 / actual_sample_duration);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	return -1;
+
+/*
+	uint32_t res = 100;
+
+	if(!is_main_thread())
+	{
+		ASSERT(false);
+		return 100;
+	}
+
+	if(m_procinfo == NULL)
+	{
+		ASSERT(false);
+		return 100;
+	}
+
+	if(m_connection_queue_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - m_connection_queue_usage_ratio);
+	}
+
+	if(m_fd_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - m_fd_usage_ratio);
+	}
+
+	return res;
+*/
+}
+
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
 {
 	//
@@ -606,7 +758,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			if(m_inspector->m_transactions.size() != 0)
 			{
-				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions,
+				int32_t syshscore = get_process_health_score(&m_inspector->m_transactions,
 					n_server_threads,
 					m_prev_flush_time_ns, sample_duration);
 				m_inspector->m_transactions.clear();

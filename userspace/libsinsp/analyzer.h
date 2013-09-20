@@ -26,6 +26,13 @@ public:
 	}
 
 private:
+	//
+	// Return the health score for a process
+	//
+	int32_t get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+		uint32_t n_server_threads,
+		uint64_t sample_end_time, uint64_t sample_duration);
+
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);

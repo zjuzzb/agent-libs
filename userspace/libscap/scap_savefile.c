@@ -492,23 +492,12 @@ int32_t scap_dump(scap_t *handle, scap_dumper_t *d, scap_evt *event, uint16_t cp
 //
 int32_t scap_read_machine_info(scap_t *handle, FILE *f, uint32_t block_length)
 {
-	block_header bh;
-	uint32_t bt;
-
 	//
 	// Read the section header block
 	//
-	if(fread(&bh, sizeof(bh), 1, f) != 1 ||
-	        fread(&handle->m_machine_info, sizeof(handle->m_machine_info), 1, f) != 1 ||
-	        fread(&bt, sizeof(bt), 1, f) != 1)
+	if(fread(&handle->m_machine_info, sizeof(handle->m_machine_info), 1, f) != 1)
 	{
 		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error reading from file (1)");
-		return SCAP_FAILURE;
-	}
-
-	if(bh.block_type != SHB_BLOCK_TYPE)
-	{
-		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid block type");
 		return SCAP_FAILURE;
 	}
 
@@ -1064,6 +1053,12 @@ int32_t scap_read_init(scap_t *handle, FILE *f)
 
 		switch(bh.block_type)
 		{
+		case MI_BLOCK_TYPE:
+			if(scap_read_machine_info(handle, f, bh.block_total_length - sizeof(block_header) - 4) != SCAP_SUCCESS)
+			{
+				return SCAP_FAILURE;
+			}
+			break;
 		case PL_BLOCK_TYPE:
 			if(scap_read_proclist(handle, f, bh.block_total_length - sizeof(block_header) - 4) != SCAP_SUCCESS)
 			{

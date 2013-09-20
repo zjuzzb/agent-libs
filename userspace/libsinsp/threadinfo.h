@@ -170,14 +170,6 @@ VISIBILITY_PRIVATE
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
 
-	//
-	// If this is a process main thread, return the health score based on the
-	// process metrics
-	//
-	static int32_t get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration);
-
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
 	//  std::deque<sinsp_fdop> m_last_fdop;
