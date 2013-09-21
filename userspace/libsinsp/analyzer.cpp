@@ -113,14 +113,14 @@ int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>
 			time_by_concurrency.push_back(0);
 		}
 
-//vector<uint64_t>v;
-//uint64_t tot = 0;
-//for(k = 0; k < trsize; k++)
-//{
-//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
-//	v.push_back(delta);
-//	tot += delta;
-//}
+vector<uint64_t>v;
+uint64_t tot = 0;
+for(k = 0; k < trsize; k++)
+{
+	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+	v.push_back(delta);
+	tot += delta;
+}
 
 		//
 		// Make sure the transactions are ordered by start time
@@ -804,7 +804,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					}
 #endif // ANALYZER_EMITS_PROCESSES
 				}
-/*
+
 				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -822,7 +822,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_connection_queue_usage_ratio,
 						it->second.m_rest_time_ns);
 				}
-*/
+
 #ifndef ANALYZER_EMITS_PROGRAMS
 				//
 				// Has this thread been closed druring this sample?
@@ -934,6 +934,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			if(m_inspector->m_transactions.size() != 0)
 			{
+BRK(552793);
 				int32_t syshscore = get_process_health_score(&m_inspector->m_transactions,
 					n_server_threads,
 					m_prev_flush_time_ns, sample_duration);

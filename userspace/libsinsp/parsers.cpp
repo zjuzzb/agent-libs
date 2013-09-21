@@ -34,6 +34,8 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
+	uint16_t etype = evt->get_type();
+
 	//
 	// Cleanup the event-related state
 	//
@@ -45,10 +47,13 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 #ifdef _DEBUG
 	if(m_inspector->m_filter)
 	{
-		if(m_inspector->m_filter->run(evt) == false)
+		if(etype != PPME_CLONE_X && etype != PPME_SYSCALL_EXECVE_X)
 		{
-			evt->m_filtered_out = true;
-			return;
+			if(m_inspector->m_filter->run(evt) == false)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
 		}
 	}
 
@@ -58,8 +63,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Route the event to the proper function
 	//
-	uint16_t etype = evt->get_type();
-
 	switch(etype)
 	{
 	case PPME_SYSCALL_OPEN_E:
@@ -123,9 +126,36 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
+
+		//
+		// Clone changes the TID, so we apply the filter only after parsing it
+		//
+		if(m_inspector->m_filter)
+		{
+			if(m_inspector->m_filter->run(evt) == false)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+		evt->m_filtered_out = false;
+
 		break;
 	case PPME_SYSCALL_EXECVE_X:
 		parse_execve_exit(evt);
+
+		//
+		// Execve changes the TID, so we apply the filter only after parsing it
+		//
+		if(m_inspector->m_filter)
+		{
+			if(m_inspector->m_filter->run(evt) == false)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+		evt->m_filtered_out = false;
 		break;
 	case PPME_PROCEXIT_E:
 		parse_thread_exit(evt);

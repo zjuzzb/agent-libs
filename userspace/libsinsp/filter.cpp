@@ -226,7 +226,7 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
-//fltstr = "(comm ruby and tid 8976)";
+//fltstr = "tid=63458 and not (comm=bash)";
 //fltstr = "comm!=ruby";
 
 	m_scanpos = -1;
@@ -370,7 +370,7 @@ ppm_cmp_operator sinsp_filter::next_comparison_operator()
 	}
 	else
 	{
-		throw sinsp_exception("filter error: unrecognized compare operator at pos " + to_string(start));
+		throw sinsp_exception("filter error: unrecognized comparison operator after " + m_fltstr.substr(0, start));
 	}
 }
 
@@ -475,6 +475,17 @@ void sinsp_filter::parse(string fltstr)
 			if(next() == 'n' && next() == 'd')
 			{
 				m_last_boolop = BO_AND;
+			}
+			else
+			{
+				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
+			}
+
+			break;
+		case 'n':
+			if(next() == 'o' && next() == 't')
+			{
+				m_last_boolop = (boolop)((uint32_t)m_last_boolop | BO_NOT);
 			}
 			else
 			{
