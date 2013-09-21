@@ -117,7 +117,7 @@ struct sinsp_exception : std::exception
 	string m_error_str;
 };
 
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //

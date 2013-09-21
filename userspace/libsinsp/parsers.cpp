@@ -44,7 +44,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Filtering
 	//
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 	if(m_inspector->m_filter)
 	{
 		if(etype != PPME_CLONE_X && etype != PPME_SYSCALL_EXECVE_X)
@@ -127,6 +127,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
 
+#ifdef HAS_FILTERING
 		//
 		// Clone changes the TID, so we apply the filter only after parsing it
 		//
@@ -139,11 +140,13 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 			}
 		}
 		evt->m_filtered_out = false;
+#endif
 
 		break;
 	case PPME_SYSCALL_EXECVE_X:
 		parse_execve_exit(evt);
 
+#ifdef HAS_FILTERING
 		//
 		// Execve changes the TID, so we apply the filter only after parsing it
 		//
@@ -156,6 +159,8 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 			}
 		}
 		evt->m_filtered_out = false;
+#endif
+
 		break;
 	case PPME_PROCEXIT_E:
 		parse_thread_exit(evt);
@@ -1456,7 +1461,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_ipv4_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 		params->m_inspector->m_ipv4_connections->remove_connection(params->m_fdinfo->m_info.m_ipv4info, false);
 #else
 		params->m_inspector->m_ipv4_connections->remove_connection(params->m_fdinfo->m_info.m_ipv4info);
@@ -1465,7 +1470,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	else if(params->m_fdinfo->is_unix_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 		params->m_inspector->m_unix_connections->remove_connection(params->m_fdinfo->m_info.m_unixinfo, false);
 #else
 		params->m_inspector->m_unix_connections->remove_connection(params->m_fdinfo->m_info.m_unixinfo);
@@ -1655,7 +1660,7 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	//
 	if(evt->m_tinfo)
 	{
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 		evt->m_tinfo->m_analysis_flags |= sinsp_threadinfo::AF_CLOSED;
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();

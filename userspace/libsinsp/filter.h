@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef HAS_FILTERING
 enum boolop
 {
 	BO_NONE = 0,
@@ -106,10 +107,8 @@ public:
 private:
 	enum state
 	{
-		ST_READY_FOR_EXPRESSION,
-		ST_INBRACKETS,
-		ST_PARSING_CHECK,
-		ST_PARSING_EXPRESSION,
+		ST_EXPRESSION_DONE,
+		ST_NEED_EXPRESSION,
 	};
 
 	bool isblank(char c);
@@ -130,6 +129,9 @@ private:
 	state m_state;
 	sinsp_filter_expression* m_curexpr;
 	boolop m_last_boolop;
+	int32_t m_nest_level;
 
 	sinsp_filter_expression m_filter;
 };
+
+#endif // HAS_FILTERING

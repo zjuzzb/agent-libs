@@ -10,6 +10,8 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_FILTERING
 #include "filter.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -226,14 +228,15 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
-//fltstr = "tid=63458 and not (comm=bash)";
+fltstr = "(tid=63458)";
 //fltstr = "comm!=ruby";
 
 	m_scanpos = -1;
 	m_scansize = 0;
-	m_state = ST_READY_FOR_EXPRESSION;
+	m_state = ST_NEED_EXPRESSION;
 	m_curexpr = &m_filter;
 	m_last_boolop = BO_NONE;
+	m_nest_level = 0;
 
 	parse(fltstr);
 }
@@ -420,6 +423,7 @@ void sinsp_filter::push_expression(boolop op)
 
 	m_curexpr->m_checks.push_back((sinsp_filter_check*)newexpr);
 	m_curexpr = newexpr;
+	m_nest_level++;
 }
 
 void sinsp_filter::pop_expression()
@@ -427,6 +431,7 @@ void sinsp_filter::pop_expression()
 	ASSERT(m_curexpr->m_parent != NULL);
 
 	m_curexpr = m_curexpr->m_parent;
+	m_nest_level--;
 }
 
 void sinsp_filter::parse(string fltstr)
@@ -444,18 +449,30 @@ void sinsp_filter::parse(string fltstr)
 			//
 			// Finished parsing the filter string
 			//
-			if(m_state == ST_READY_FOR_EXPRESSION)
+			if(m_nest_level != 0)
 			{
-				return;
+				throw sinsp_exception("filter error: unexpected end of filter");
 			}
-			else
+
+			if(m_state != ST_EXPRESSION_DONE)
 			{
 				throw sinsp_exception("filter error: unexpected end of filter at position " + to_string(m_scanpos));
 			}
 
+			//
+			// Good filter
+			//
+			return;
+
 			break;
 		case '(':
+			if(m_state != ST_NEED_EXPRESSION)
+			{
+				throw sinsp_exception("unexpected '(' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
 			push_expression(m_last_boolop);
+
 			break;
 		case ')':
 			pop_expression();
@@ -470,6 +487,13 @@ void sinsp_filter::parse(string fltstr)
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
 
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'or' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
+
 			break;
 		case 'a':
 			if(next() == 'n' && next() == 'd')
@@ -480,6 +504,13 @@ void sinsp_filter::parse(string fltstr)
 			{
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
+
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'and' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
 
 			break;
 		case 'n':
@@ -492,9 +523,19 @@ void sinsp_filter::parse(string fltstr)
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
 
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'not' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
+
 			break;
 		default:
 			parse_check(m_curexpr, m_last_boolop);
+
+			m_state = ST_EXPRESSION_DONE;
+
 			break;
 		}
 	}
@@ -506,3 +547,5 @@ bool sinsp_filter::run(sinsp_evt *evt)
 {
 	return m_filter.run(evt);
 }
+
+#endif // HAS_FILTERING

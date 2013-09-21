@@ -282,7 +282,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		}
 		else if(res == SCAP_EOF)
 		{
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 			m_analyzer->process_event(NULL);
 #endif
 		}
@@ -312,7 +312,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		}
 	}
 
-#ifndef USE_ANALYZER
+#ifndef HAS_ANALYZER
 	//
 	// Deleayed removal of threads from the thread table, so that
 	// things like exit() or close() can be parsed.
@@ -368,7 +368,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	}
 #endif
 
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 	//
 	// Run the analysis engine
 	//
