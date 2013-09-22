@@ -138,7 +138,6 @@ sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
 
 	if(fdit == m_fdtable.end())
 	{
-//printf("****");
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_failed_fd_lookups++;
 #endif

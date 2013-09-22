@@ -99,6 +99,48 @@ bool sinsp_filter_check_tid::run(sinsp_evt *evt)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_fdname implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_fdname::recognize_operand(string operand)
+{
+	if(operand == "fdname")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_fdname::parse_operand2(string val)
+{
+	m_fdname = val;
+}
+
+bool sinsp_filter_check_fdname::run(sinsp_evt *evt)
+{
+	ASSERT(evt);
+
+	ppm_event_flags eflags = evt->get_flags();
+
+	if(eflags & (EF_CREATES_FD | EF_USES_FD | EF_DESTROYS_FD))
+	{
+		sinsp_threadinfo* tinfo = evt->get_thread_info();
+		sinsp_fdinfo* fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
+
+		if(fdinfo != NULL && sinsp_evt::compare(m_cmpop, 
+			PT_CHARBUF, 
+			(void*)fdinfo->m_name.c_str(), (void*)m_fdname.c_str()) == true)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_fd implementation
 ///////////////////////////////////////////////////////////////////////////////
 bool sinsp_filter_check_fd::recognize_operand(string operand)
@@ -131,10 +173,6 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 		if(tinfo != NULL && sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_lastevent_fd, &m_fd) == true)
 		{
 			return true;
-		}
-		else
-		{
-			return false;
 		}
 	}
 
@@ -228,8 +266,9 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
-fltstr = "(tid=63458)";
-//fltstr = "comm!=ruby";
+//fltstr = "(tid=63458)";
+//fltstr = "(tid!=0)";
+fltstr = "fdname = /root/agent/build/release/userspace/libsinsp/tests/01-open/lo.scap";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -383,6 +422,9 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	string operand1 = next_operand();
 	sinsp_filter_check* chk;
 
+	//////////////////////////////////////////////////////////////////////////////
+	// ADD NEW FILTER CHECK CLASSES HERE
+	//////////////////////////////////////////////////////////////////////////////
 	if(sinsp_filter_check_comm::recognize_operand(operand1))
 	{
 		sinsp_filter_check_comm* chk_comm = new sinsp_filter_check_comm();
@@ -398,10 +440,17 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
 		chk = (sinsp_filter_check*)chk_fd;
 	}
+	else if(sinsp_filter_check_fdname::recognize_operand(operand1))
+	{
+		sinsp_filter_check_fdname* chk_fd = new sinsp_filter_check_fdname();
+		chk = (sinsp_filter_check*)chk_fd;
+	}
 	else
 	{
 		throw sinsp_exception("filter error: unrecognized operand " + operand1 + " at pos " + to_string(startpos));
 	}
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
 
 	ppm_cmp_operator co = next_comparison_operator();
 	string operand2 = next_operand();

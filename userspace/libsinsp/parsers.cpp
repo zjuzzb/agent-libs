@@ -45,9 +45,18 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	// Filtering
 	//
 #ifdef HAS_FILTERING
+	bool do_filter_later = false;
+
 	if(m_inspector->m_filter)
 	{
-		if(etype != PPME_CLONE_X && etype != PPME_SYSCALL_EXECVE_X)
+		ppm_event_flags eflags = evt->get_flags();
+
+		if((eflags & EF_CREATES_FD) || 
+			etype == PPME_CLONE_X || etype == PPME_SYSCALL_EXECVE_X)
+		{
+			do_filter_later = true;
+		}
+		else
 		{
 			if(m_inspector->m_filter->run(evt) == false)
 			{
@@ -126,41 +135,9 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
-
-#ifdef HAS_FILTERING
-		//
-		// Clone changes the TID, so we apply the filter only after parsing it
-		//
-		if(m_inspector->m_filter)
-		{
-			if(m_inspector->m_filter->run(evt) == false)
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
-		}
-		evt->m_filtered_out = false;
-#endif
-
 		break;
 	case PPME_SYSCALL_EXECVE_X:
 		parse_execve_exit(evt);
-
-#ifdef HAS_FILTERING
-		//
-		// Execve changes the TID, so we apply the filter only after parsing it
-		//
-		if(m_inspector->m_filter)
-		{
-			if(m_inspector->m_filter->run(evt) == false)
-			{
-				evt->m_filtered_out = true;
-				return;
-			}
-		}
-		evt->m_filtered_out = false;
-#endif
-
 		break;
 	case PPME_PROCEXIT_E:
 		parse_thread_exit(evt);
@@ -235,6 +212,25 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	default:
 		break;
 	}
+
+	//
+	// With some state-changing events like clone, execve and open, we do the 
+	// filtering after having updated the state
+	//
+#ifdef HAS_FILTERING
+	if(do_filter_later)
+	{
+		if(m_inspector->m_filter)
+		{
+			if(m_inspector->m_filter->run(evt) == false)
+			{
+				evt->m_filtered_out = true;
+				return;
+			}
+		}
+		evt->m_filtered_out = false;
+	}
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -768,6 +764,8 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 	string sdir;
 	string tdirstr;
 
+	ASSERT(evt->m_tinfo);
+
 	//
 	// Load the enter event so we can access its arguments
 	//
@@ -895,9 +893,9 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 	evt->m_tinfo->add_fd(fd, &fdi);
 
 	//
-	// Add this operation to the recend fd operations fifo
+	// Update the last event fd. It's needed by the filtering engine
 	//
-	//  m_inspector->push_fdop(tid, &fdi, sinsp_fdop(fd, evt->get_type()));
+	evt->m_tinfo->m_lastevent_fd = fd;
 }
 
 //
