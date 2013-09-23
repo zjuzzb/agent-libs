@@ -280,7 +280,7 @@ VISIBILITY_PRIVATE
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
 #ifdef HAS_FILTERING
-	sinsp_filter m_filter;
+	sinsp_filter* m_filter;
 #endif
 
 	friend class sinsp_parser;
