@@ -38,7 +38,9 @@ sinsp::sinsp() :
 #endif
 	m_thread_manager = NULL;
 	m_analyzer_callback = NULL;
+#ifdef HAS_FILTERING
 	m_filter = NULL;
+#endif
 
 	m_fds_to_remove = new vector<int64_t>;
 }
@@ -153,10 +155,12 @@ void sinsp::close()
 		m_thread_manager = NULL;
 	}
 
+#ifdef HAS_FILTERING
 	if(m_filter != NULL)
 	{
-		delete (sinsp_filter*)m_filter;
+		delete m_filter;
 	}
+#endif
 }
 
 void sinsp::start_dump(string dump_filename)
@@ -533,7 +537,7 @@ void sinsp::set_filter(string filter)
 		throw sinsp_exception("filter can only be set once");
 	}
 
-	m_filter = (sinsp_filter*)new sinsp_filter(filter);
+	m_filter = new sinsp_filter(filter);
 }
 #endif
 
