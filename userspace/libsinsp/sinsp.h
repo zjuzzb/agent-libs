@@ -89,7 +89,6 @@ class sinsp_partial_transaction;
 class sinsp_fdinfo;
 class sinsp_parser;
 class sinsp_analyzer;
-class sinsp_filter;
 
 //
 // Exception class
@@ -279,7 +278,7 @@ VISIBILITY_PRIVATE
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
-	sinsp_filter* m_filter;
+	void* m_filter;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

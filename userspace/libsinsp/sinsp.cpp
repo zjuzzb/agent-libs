@@ -155,7 +155,7 @@ void sinsp::close()
 
 	if(m_filter != NULL)
 	{
-		delete m_filter;
+		delete (sinsp_filter*)m_filter;
 	}
 }
 
@@ -533,7 +533,7 @@ void sinsp::set_filter(string filter)
 		throw sinsp_exception("filter can only be set once");
 	}
 
-	m_filter = new sinsp_filter(filter);
+	m_filter = (sinsp_filter*)new sinsp_filter(filter);
 }
 #endif
 

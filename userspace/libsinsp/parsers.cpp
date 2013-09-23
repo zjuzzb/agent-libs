@@ -58,7 +58,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		}
 		else
 		{
-			if(m_inspector->m_filter->run(evt) == false)
+			if(((sinsp_filter*)m_inspector->m_filter)->run(evt) == false)
 			{
 				evt->m_filtered_out = true;
 				return;
@@ -222,7 +222,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	{
 		if(m_inspector->m_filter)
 		{
-			if(m_inspector->m_filter->run(evt) == false)
+			if(((sinsp_filter*)m_inspector->m_filter)->run(evt) == false)
 			{
 				evt->m_filtered_out = true;
 				return;

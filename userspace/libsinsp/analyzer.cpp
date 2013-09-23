@@ -69,7 +69,7 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	m_sample_callback = cb;
 }
 
-int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>* transactions, 
+int32_t sinsp_analyzer::get_health_score_global(vector<pair<uint64_t,uint64_t>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -113,14 +113,14 @@ int32_t sinsp_analyzer::get_process_health_score(vector<pair<uint64_t,uint64_t>>
 			time_by_concurrency.push_back(0);
 		}
 
-vector<uint64_t>v;
-uint64_t tot = 0;
-for(k = 0; k < trsize; k++)
-{
-	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
-	v.push_back(delta);
-	tot += delta;
-}
+//vector<uint64_t>v;
+//uint64_t tot = 0;
+//for(k = 0; k < trsize; k++)
+//{
+//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+//	v.push_back(delta);
+//	tot += delta;
+//}
 
 		//
 		// Make sure the transactions are ordered by start time
@@ -156,7 +156,6 @@ for(k = 0; k < trsize; k++)
 			}
 			else
 			{
-//				ASSERT(false);
 				break;
 			}
 		}
@@ -221,7 +220,7 @@ for(k = 0; k < trsize; k++)
 */
 }
 
-int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+int32_t sinsp_analyzer::get_health_score_bycpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -266,8 +265,6 @@ int32_t sinsp_analyzer::get_process_health_score_cpu(vector<pair<uint64_t,pair<u
 
 		if(n_server_threads < k)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				">>-1");
 			return -1;
 		}
 
@@ -934,19 +931,29 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			if(m_inspector->m_transactions.size() != 0)
 			{
-				int32_t syshscore = get_process_health_score(&m_inspector->m_transactions,
+				int32_t syshscore;
+
+				syshscore = get_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
 					n_server_threads,
 					m_prev_flush_time_ns, sample_duration);
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"1!!%" PRId32,
+					syshscore);
+
+//				if(syshscore == -1)
+//				{
+					syshscore = get_health_score_global(&m_inspector->m_transactions,
+						n_server_threads,
+						m_prev_flush_time_ns, sample_duration);
+//				}
+
+				m_inspector->m_transactions_with_cpu.clear();
 				m_inspector->m_transactions.clear();
 
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"!!%" PRId32,
+					"2!!%" PRId32,
 					syshscore);
-
-				syshscore = get_process_health_score_cpu(&m_inspector->m_transactions_with_cpu,
-					n_server_threads,
-					m_prev_flush_time_ns, sample_duration);
-				m_inspector->m_transactions_with_cpu.clear();
 			}
 
 			////////////////////////////////////////////////////////////////////////////
