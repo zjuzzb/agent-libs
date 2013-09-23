@@ -52,7 +52,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		ppm_event_flags eflags = evt->get_flags();
 
 		if((eflags & EF_CREATES_FD) || 
-			etype == PPME_CLONE_X || etype == PPME_SYSCALL_EXECVE_X)
+			etype == PPME_SOCKET_CONNECT_X || etype == PPME_CLONE_X || etype == PPME_SYSCALL_EXECVE_X)
 		{
 			do_filter_later = true;
 		}
@@ -1258,6 +1258,14 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		return;
 	}
 
+	//
+	// Update the last event fd. It's needed by the filtering engine
+	//
+	evt->m_tinfo->m_lastevent_fd = fd;
+
+	//
+	// Extract the address
+	//
 	parinfo = evt->get_param(1);
 	if(parinfo->m_len == 0)
 	{

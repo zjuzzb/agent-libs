@@ -268,7 +268,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(tid!=0)";
-fltstr = "fdname = /root/agent/build/release/userspace/libsinsp/tests/01-open/lo.scap";
+fltstr = "fdname contains :48687";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -409,6 +409,11 @@ ppm_cmp_operator sinsp_filter::next_comparison_operator()
 	{
 		m_scanpos += 2;
 		return CO_NE;
+	}
+	if(compare_no_consume("contains"))
+	{
+		m_scanpos += 8;
+		return CO_CONTAINS;
 	}
 	else
 	{
