@@ -123,16 +123,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_OPENAT_X:
 		parse_open_openat_creat_exit(evt); 
 		break;
-	case PPME_SYSCALL_SELECT_E:
-	case PPME_SYSCALL_POLL_E:
-	case PPME_SYSCALL_EPOLLWAIT_E:
-		parse_select_poll_epollwait_enter(evt); 
-		break;
-	case PPME_SYSCALL_SELECT_X:
-	case PPME_SYSCALL_POLL_X:
-	case PPME_SYSCALL_EPOLLWAIT_X:
-		parse_select_poll_epollwait_exit(evt); 
-		break;
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
 		break;
@@ -156,10 +146,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_SOCKET_CONNECT_X:
 		parse_connect_exit(evt);
-		break;
-	case PPME_SOCKET_ACCEPT_E:
-	case PPME_SOCKET_ACCEPT4_E:
-		parse_accept_enter(evt);
 		break;
 	case PPME_SOCKET_ACCEPT_X:
 	case PPME_SOCKET_ACCEPT4_X:
@@ -304,18 +290,6 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(0)->type == PT_FD);
 
 			evt->m_tinfo->m_lastevent_fd = *(int64_t *)parinfo->m_val;
-
-			//
-			// This is part of the "rest time" logic:
-			// rest time is fdwait time in case the wait returns only one fd and 
-			// that fd is then used for an accept or an fdwait.
-			// If this , account for the previous wait time and rest time and reset 
-			// the counter.
-			//
-			if(evt->m_tinfo->m_last_rest_duration_ns != 0 && !(eflags & EF_READS_FROM_FD))
-			{
-				evt->m_tinfo->m_last_rest_duration_ns = 0;
-			}
 		}
 	}
 	else
@@ -1209,17 +1183,6 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	// Add this operation to the recend fd operations fifo
 	//
 	//  m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
-}
-
-void sinsp_parser::parse_accept_enter(sinsp_evt *evt)
-{
-	ASSERT(evt->m_tinfo);
-
-	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
-	{
-		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
-		evt->m_tinfo->m_last_rest_duration_ns = 0;
-	}
 }
 
 void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
@@ -2274,30 +2237,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 	retval = *(int64_t *)parinfo->m_val;
 
 	//
-	// Rest time logic.
-	// 
-	//
-	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
-	{
-		if(eflags & EF_READS_FROM_FD)
-		{
-			if(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK || evt->m_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
-			{
-				if(evt->m_fdinfo->is_role_server())
-				{
-					evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
-				}
-			}
-		}
-		else
-		{
-			ASSERT(false)
-		}
-
-		evt->m_tinfo->m_last_rest_duration_ns = 0;
-	}
-
-	//
 	// If the operation was successful, validate that the fd exists
 	//
 	if(retval >= 0)
@@ -2887,74 +2826,6 @@ void sinsp_parser::parse_prlimit_exit(sinsp_evt *evt)
 				// update the process fdlimit
 				//
 				ptinfo->m_fdlimit = newcur;
-			}
-		}
-	}
-}
-
-void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
-{
-	if(evt->m_tinfo == NULL)
-	{
-		ASSERT(false);
-		return;
-	}
-
-	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
-
-	//
-	// This is part of the "rest time" logic:
-	// rest time is fdwait time in case the wait returns only one fd and 
-	// that fd is then used for an accept or an fdwait.
-	// If this fdwait is just following another one, account for the previous wait time
-	// as rest time and reset the counter.
-	//
-	ASSERT(evt->m_tinfo);
-	if(evt->m_tinfo->m_last_rest_duration_ns != 0)
-	{
-		evt->m_tinfo->m_rest_time_ns += evt->m_tinfo->m_last_rest_duration_ns;
-		evt->m_tinfo->m_last_rest_duration_ns = 0;
-	}
-}
-
-void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
-{
-	sinsp_evt_param *parinfo;
-	int64_t retval;
-
-	//
-	// Extract the return value
-	//
-	parinfo = evt->get_param(0);
-	retval = *(int64_t *)parinfo->m_val;
-	ASSERT(parinfo->m_len == sizeof(int64_t));
-
-	//
-	// Check if the syscall was successful
-	//
-	if(retval >= 0)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-
-		if(tinfo == NULL)
-		{
-			ASSERT(false);
-			return;
-		}
-
-		if(tinfo->is_lastevent_data_valid())
-		{
-			//
-			// It's a rest only if the number of FDs that were waited for is 0 or 1
-			//
-			if(retval <= 1)
-			{
-				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
-				uint64_t ts = evt->get_ts();
-
-				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
-
-				tinfo->m_last_rest_duration_ns = ts - start_time_ns;
 			}
 		}
 	}

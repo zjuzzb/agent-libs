@@ -373,7 +373,7 @@ int32_t sinsp_analyzer::get_health_score_bycpu(vector<pair<uint64_t,pair<uint64_
 					}
 				}
 			}
-
+			
 			avgresttime /= n_active_cpus;
 
 			g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -617,17 +617,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					if(PPME_IS_ENTER(it->second.m_lastevent_type))
 					{
 						cat = &it->second.m_lastevent_category;
-
-						//
-						// If this is a wait, IPC or sleep event, attribute it to the rest time.
-						// This is a simplification, but should be pretty benign and greatly simplifies
-						// the rest time logic.
-						//
-						if(cat->m_category == EC_WAIT || cat->m_category == EC_IPC ||
-							cat->m_category == EC_SLEEP)
-						{
-							it->second.m_rest_time_ns += delta;
-						}
 					}
 					else
 					{
@@ -655,7 +644,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
 				//
 				// Go through the FD list to flush the transactions that haven't been active for a while
@@ -1182,15 +1170,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		evt->m_tinfo->m_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
 
 		delta = ts - m_prev_flush_time_ns;
-
-		//
-		// if this is an IPC or sleep event, assume it's part of the rest time
-		//
-		if(cat.m_category == EC_IPC || cat.m_category == EC_SLEEP)
-		{
-//			evt->m_tinfo->m_rest_time_ns += delta;
-			evt->m_tinfo->m_rest_time_ns += 0;
-		}
 	}
 	else
 	{
