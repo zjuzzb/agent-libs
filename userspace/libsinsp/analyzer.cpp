@@ -801,7 +801,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					}
 #endif // ANALYZER_EMITS_PROCESSES
 				}
-
+/*
 				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -819,7 +819,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_connection_queue_usage_ratio,
 						it->second.m_rest_time_ns);
 				}
-
+*/
 #ifndef ANALYZER_EMITS_PROGRAMS
 				//
 				// Has this thread been closed druring this sample?
