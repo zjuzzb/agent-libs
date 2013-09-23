@@ -16,15 +16,6 @@ static Logger* g_log = NULL;
 //
 static bool g_terminate = false;
 
-static const int g_crash_signals[] = 
-{
-	SIGSEGV,
-	SIGABRT,
-	SIGFPE,
-	SIGILL,
-	SIGBUS
-};
-
 static void g_monitor_signal_callback(int sig)
 {
 	exit(EXIT_SUCCESS);
@@ -34,6 +25,16 @@ static void g_signal_callback(int sig)
 {
 	g_terminate = true;
 }
+
+#ifndef _WIN32
+static const int g_crash_signals[] = 
+{
+	SIGSEGV,
+	SIGABRT,
+	SIGFPE,
+	SIGILL,
+	SIGBUS
+};
 
 static void g_crash_handler(int sig)
 {
@@ -101,7 +102,6 @@ static bool initialize_crash_handler()
 	return true;
 }
 
-#ifndef _WIN32
 static void run_monitor(const string& pidfile)
 {
 	signal(SIGINT, g_monitor_signal_callback);
@@ -640,10 +640,12 @@ protected:
 			ASSERT(false);
 		}
 
+#ifndef _WIN32
 		if(initialize_crash_handler() == false)
 		{
 			ASSERT(false);
 		}
+#endif
 
 		//
 		// Create the logs directory if it doesn't exist
