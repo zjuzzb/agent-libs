@@ -7,7 +7,7 @@ var j = 1;
 http.globalAgent.maxSockets = 10;
 
 http.createServer(function (req, res) {
-	sleep.usleep(200000);
+	sleep.usleep(20000);
 //  setTimeout(function(){
     res.writeHead(400, {'Content-Type': 'text/plain'});
 	res.end(j.toString());

@@ -374,16 +374,23 @@ int32_t sinsp_analyzer::get_health_score_bycpu(vector<pair<uint64_t,pair<uint64_
 				}
 			}
 			
-			avgresttime /= n_active_cpus;
+			if(n_active_cpus)
+			{
+				avgresttime /= n_active_cpus;
 
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
-				(int32_t)(minresttime * 100 / actual_sample_duration),
-				(int32_t)(maxresttime * 100 / actual_sample_duration),
-				(int32_t)(avgresttime * 100 / actual_sample_duration),
-				n_active_cpus);
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+					(int32_t)(minresttime * 100 / actual_sample_duration),
+					(int32_t)(maxresttime * 100 / actual_sample_duration),
+					(int32_t)(avgresttime * 100 / actual_sample_duration),
+					n_active_cpus);
 
-			return (int32_t)(avgresttime * 100 / actual_sample_duration);
+				return (int32_t)(avgresttime * 100 / actual_sample_duration);				
+			}
+			else
+			{
+				return 0;
+			}
 		}
 		else
 		{
