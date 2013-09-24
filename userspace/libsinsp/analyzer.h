@@ -29,7 +29,7 @@ private:
 	//
 	// Return the health score for a process
 	//
-	int32_t get_health_score_global(vector<pair<uint64_t,uint64_t>>* transactions, 
+	int32_t get_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 

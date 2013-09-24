@@ -69,7 +69,7 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	m_sample_callback = cb;
 }
 
-int32_t sinsp_analyzer::get_health_score_global(vector<pair<uint64_t,uint64_t>>* transactions, 
+int32_t sinsp_analyzer::get_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -117,7 +117,7 @@ vector<uint64_t>v;
 uint64_t tot = 0;
 for(k = 0; k < trsize; k++)
 {
-	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+	uint64_t delta = (*transactions)[k].second.first - (*transactions)[k].first;
 	v.push_back(delta);
 	tot += delta;
 }
@@ -139,7 +139,7 @@ for(k = 0; k < trsize; k++)
 			{
 				if((*transactions)[k].first <= j)
 				{
-					if((*transactions)[k].second >= j)
+					if((*transactions)[k].second.first >= j)
 					{
 						concurrency++;
 					}
@@ -913,7 +913,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// CALCULATE THE HEALTH SCORE FOR THE MACHINE
 			////////////////////////////////////////////////////////////////////////////
-			if(m_inspector->m_transactions.size() != 0)
+			if(m_inspector->m_transactions_with_cpu.size() != 0)
 			{
 				int32_t syshscore;
 
@@ -927,13 +927,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 //				if(syshscore == -1)
 //				{
-					syshscore = get_health_score_global(&m_inspector->m_transactions,
+					syshscore = get_health_score_global(&m_inspector->m_transactions_with_cpu,
 						n_server_threads,
 						m_prev_flush_time_ns, sample_duration);
 //				}
 
 				m_inspector->m_transactions_with_cpu.clear();
-				m_inspector->m_transactions.clear();
 
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"2!!%" PRId32,

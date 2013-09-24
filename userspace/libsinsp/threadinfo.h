@@ -137,8 +137,6 @@ public:
 	uint32_t m_connection_queue_usage_ratio;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_ratio;
-	// start time and end time for every transaction
-	vector<pair<uint64_t,uint64_t>> m_transactions;
 
 	//
 	// Global state
