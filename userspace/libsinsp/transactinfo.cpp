@@ -86,7 +86,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		//
 		ASSERT(ptinfo != NULL);
 
-		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_time;
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
