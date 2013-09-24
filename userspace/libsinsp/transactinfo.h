@@ -64,8 +64,6 @@ public:
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
-	sinsp_partial_transaction(ipv4tuple *flow);
-	sinsp_partial_transaction(unix_tuple *flow);
 	void update(sinsp* inspector, 
 		sinsp_threadinfo *ptinfo,
 		sinsp_connection *pconn,
@@ -109,6 +107,7 @@ public:
 	uint64_t m_prev_start_of_transaction_time;
 	uint64_t m_prev_prev_start_time;
 	uint64_t m_prev_prev_end_time;
+	uint64_t m_prev_prev_start_of_transaction_time;
 	family m_family;
 	side m_side;
 	uint32_t m_incoming_bytes;

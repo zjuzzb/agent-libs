@@ -67,6 +67,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 	{
 		tr->m_prev_prev_start_time = tr->m_prev_start_time;
 		tr->m_prev_prev_end_time = tr->m_prev_end_time;
+		tr->m_prev_prev_start_of_transaction_time = tr->m_prev_start_of_transaction_time;
 	}
 	else if(tr->m_prev_direction == enddir ||
 	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE)
@@ -104,9 +105,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 
 			tr->m_incoming_bytes = 0;
 #else
-		ASSERT(tr->m_prev_end_time > tr->m_prev_start_of_transaction_time);
+		ASSERT(tr->m_prev_end_time > tr->m_prev_prev_start_of_transaction_time);
 
-		uint64_t delta = tr->m_prev_end_time - tr->m_prev_start_of_transaction_time;
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
@@ -116,7 +117,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			pconn->m_transaction_metrics.m_incoming.add(1, delta);
 
 			m_inspector->m_transactions_with_cpu.push_back(
-				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_start_of_transaction_time, 
+				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 #endif
 /*
@@ -355,38 +356,12 @@ sinsp_partial_transaction::sinsp_partial_transaction()
 	m_prev_prev_end_time = 0;
 	m_cpuid = -1;
 	m_start_of_transaction_time = 0;
+	m_prev_start_of_transaction_time = 0;
+	m_prev_prev_start_of_transaction_time = 0;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
-}
-
-sinsp_partial_transaction::sinsp_partial_transaction(ipv4tuple *flow)
-{
-	m_type = TYPE_IP;
-	m_direction = DIR_UNKNOWN;
-	m_start_time = 0;
-	m_end_time = 0;
-	m_prev_direction = DIR_UNKNOWN;
-	m_prev_start_time = 0;
-	m_prev_end_time = 0;
-	m_ipv4_flow = *flow;
-	m_family = family::IP;
-}
-
-sinsp_partial_transaction::sinsp_partial_transaction(unix_tuple *flow)
-{
-	m_type = TYPE_IP;
-	m_direction = DIR_UNKNOWN;
-	m_start_time = 0;
-	m_end_time = 0;
-	m_prev_direction = DIR_UNKNOWN;
-	m_prev_start_time = 0;
-	m_prev_end_time = 0;
-	m_prev_prev_start_time = 0;
-	m_prev_prev_end_time = 0;
-	m_unix_flow = *flow;
-	m_family = family::UNIX;
 }
 
 sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len)
