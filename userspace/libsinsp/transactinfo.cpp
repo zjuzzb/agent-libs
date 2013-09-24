@@ -104,7 +104,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 
 			tr->m_incoming_bytes = 0;
 #else
-		uint64_t delta = tr->m_prev_end_time - tr->m_start_of_transaction_time;
+		ASSERT(tr->m_prev_end_time > tr->m_prev_start_of_transaction_time);
+
+		uint64_t delta = tr->m_prev_end_time - tr->m_prev_start_of_transaction_time;
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
@@ -114,7 +116,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			pconn->m_transaction_metrics.m_incoming.add(1, delta);
 
 			m_inspector->m_transactions_with_cpu.push_back(
-				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_start_of_transaction_time, 
+				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 #endif
 /*
@@ -407,6 +409,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
 				m_incoming_bytes = len;
+				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
 			}
 
@@ -451,6 +454,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
+				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
 			}
 
@@ -483,6 +487,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 		m_prev_direction = m_direction;
 		m_prev_start_time = m_start_time;
 		m_prev_end_time = m_end_time;
+		m_prev_start_of_transaction_time = m_start_of_transaction_time;
 
 		m_direction = DIR_UNKNOWN;
 		return STATE_SWITCHED;
