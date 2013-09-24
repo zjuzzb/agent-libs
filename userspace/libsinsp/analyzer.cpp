@@ -173,6 +173,11 @@ for(k = 0; k < trsize; k++)
 				n_server_threads = m_inspector->m_machine_info->num_cpus;
 			}
 		}
+		else
+		{
+			ASSERT(false);
+			return -1;
+		}
 
 		for(k = 0; k < n_server_threads; k++)
 		{

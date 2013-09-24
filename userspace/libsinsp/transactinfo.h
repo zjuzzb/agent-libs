@@ -101,6 +101,7 @@ public:
 
 	uint64_t m_start_time;
 	uint64_t m_end_time;
+	uint64_t m_start_of_transaction_time;
 
 	direction m_prev_direction;
 	uint64_t m_prev_start_time;

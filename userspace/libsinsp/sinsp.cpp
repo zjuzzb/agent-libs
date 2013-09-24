@@ -257,6 +257,7 @@ void sinsp::init()
 	}
 	else
 	{
+		ASSERT(false);
 		m_num_cpus = 0;
 	}
 
