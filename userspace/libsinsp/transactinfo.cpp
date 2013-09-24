@@ -101,10 +101,10 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 				pair<uint64_t,uint64_t>(tr->m_prev_prev_start_time, tr->m_prev_end_time));
 
 			m_inspector->m_transactions.push_back(
-				pair<uint64_t,uint64_t>(tr->m_prev_prev_start_time, tr->m_prev_end_time));
+				pair<uint64_t,uint64_t>(tr->m_prev_prev_end_time, tr->m_prev_end_time));
 
 			m_inspector->m_transactions_with_cpu.push_back(
-				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_time, 
+				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_end_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 
 /*

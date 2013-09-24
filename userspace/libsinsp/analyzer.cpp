@@ -113,14 +113,14 @@ int32_t sinsp_analyzer::get_health_score_global(vector<pair<uint64_t,uint64_t>>*
 			time_by_concurrency.push_back(0);
 		}
 
-//vector<uint64_t>v;
-//uint64_t tot = 0;
-//for(k = 0; k < trsize; k++)
-//{
-//	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
-//	v.push_back(delta);
-//	tot += delta;
-//}
+vector<uint64_t>v;
+uint64_t tot = 0;
+for(k = 0; k < trsize; k++)
+{
+	uint64_t delta = (*transactions)[k].second - (*transactions)[k].first;
+	v.push_back(delta);
+	tot += delta;
+}
 
 		//
 		// Make sure the transactions are ordered by start time
@@ -303,7 +303,7 @@ int32_t sinsp_analyzer::get_health_score_bycpu(vector<pair<uint64_t,pair<uint64_
 					{
 						if((*transactions)[k].second.second == cpuid)
 						{
-							if((*transactions)[k].second.first >= j)
+							if((*transactions)[k].second.first >= (j - CONCURRENCY_OBSERVATION_INTERVAL_NS))
 							{
 								concurrency++;
 							}
@@ -756,18 +756,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
-#if 0
-						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
-						{
-							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);
-							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0);
-							ASSERT(it->second.m_procinfo->m_max_rest_time_ns != 0);
-						}
-
+#if 1
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32 " %%rest:%" PRIu64 "-%" PRIu64 "-%" PRIu64 "(%" PRIu32 ")",
+								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 								it->second.m_comm.c_str(),
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
@@ -779,11 +772,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
 								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
 								it->second.m_fd_usage_ratio,
-								it->second.m_connection_queue_usage_ratio,
-								(it->second.m_procinfo->m_n_rest_time_entries)?(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration:0,
-								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration:0,
-								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration:0,
-								it->second.m_procinfo->m_n_rest_time_entries);
+								it->second.m_connection_queue_usage_ratio);
 						}
 #endif // _DEBUG
 					}
