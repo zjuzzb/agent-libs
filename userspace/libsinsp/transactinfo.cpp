@@ -113,13 +113,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			ptinfo->m_total_server_transaction_counter.add(1, delta);
 			pconn->m_transaction_metrics.m_incoming.add(1, delta);
 
-			sinsp_threadinfo* parent_tinfo = ptinfo->get_main_thread();
-
 			m_inspector->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
-
-			tr->m_incoming_bytes = 0;
 #endif
 /*
 			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
@@ -410,6 +406,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
+				m_incoming_bytes = len;
 				res = STATE_SWITCHED;
 			}
 

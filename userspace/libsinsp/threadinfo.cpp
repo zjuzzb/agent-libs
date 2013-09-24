@@ -547,6 +547,9 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 							-1,
 							sinsp_partial_transaction::DIR_CLOSE, 
 							0);
+
+						trinfo->m_incoming_bytes = 0;
+						trinfo->m_outgoing_bytes = 0;
 					}
 				}
 			}
