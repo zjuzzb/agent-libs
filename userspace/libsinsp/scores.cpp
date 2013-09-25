@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -6,12 +8,6 @@
 sinsp_scores::sinsp_scores(sinsp* inspector)
 {
 	m_inspector = inspector;
-	m_machine_info = inspector->get_machine_info();
-	if(!m_machine_info)
-	{
-		ASSERT(false);
-		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
-	}
 }
 
 int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
@@ -19,6 +15,12 @@ int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<u
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	uint32_t trsize = transactions->size();
+	const scap_machine_info* machine_info = m_inspector->get_machine_info();
+	if(machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
+	}
 
 	//
 	// How the algorithm works at high level: 
@@ -111,11 +113,11 @@ for(k = 0; k < trsize; k++)
 		//
 		rest_time = 0;
 		
-		if(m_machine_info)
+		if(machine_info)
 		{
-			if(n_server_threads > m_machine_info->num_cpus)
+			if(n_server_threads > machine_info->num_cpus)
 			{
-				n_server_threads = m_machine_info->num_cpus;
+				n_server_threads = machine_info->num_cpus;
 			}
 		}
 		else
@@ -175,8 +177,14 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	uint32_t trsize = transactions->size();
-	int32_t num_cpus = m_machine_info->num_cpus;
 	int32_t cpuid;
+	const scap_machine_info* machine_info = m_inspector->get_machine_info();
+	if(machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
+	}
+	int32_t num_cpus = machine_info->num_cpus;
 
 	if(trsize != 0 && num_cpus != 0)
 	{

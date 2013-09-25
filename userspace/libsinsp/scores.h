@@ -21,5 +21,4 @@ public:
 
 private:
 	sinsp* m_inspector;
-	const scap_machine_info* m_machine_info;
 };
