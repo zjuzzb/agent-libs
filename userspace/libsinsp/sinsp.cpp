@@ -638,3 +638,8 @@ void sinsp::set_analyzer_callback(analyzer_callback_interface* cb)
 		m_analyzer->set_sample_callback(cb);
 	}
 }
+
+const scap_machine_info* sinsp::get_machine_info()
+{
+	return m_machine_info;
+}

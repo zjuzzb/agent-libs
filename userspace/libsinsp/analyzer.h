@@ -1,5 +1,7 @@
 #pragma once
 
+class sinsp_scores;
+
 //
 // The main analyzer class
 //
@@ -26,17 +28,6 @@ public:
 	}
 
 private:
-	//
-	// Return the health score for a process
-	//
-	int32_t get_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration);
-
-	int32_t get_health_score_bycpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration);
-
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
@@ -51,6 +42,11 @@ private:
 	// Pointer to inspector context
 	//
 	sinsp* m_inspector;
+
+	//
+	// The score calculation class
+	//
+	sinsp_scores* m_score_calculator;
 
 	//
 	// This is the protobuf class that we use to pack things

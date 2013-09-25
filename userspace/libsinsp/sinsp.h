@@ -227,6 +227,8 @@ public:
 
 	bool has_metrics();
 
+	const scap_machine_info* get_machine_info();
+
 VISIBILITY_PRIVATE
 
 	void init();

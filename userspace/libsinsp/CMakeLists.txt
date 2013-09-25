@@ -18,6 +18,7 @@ add_library(sinsp STATIC
 	parser_http.cpp
 	parsers.cpp
 	threadinfo.cpp
+	scores.cpp
 	sinsp.cpp
 	stats.cpp
 	transactinfo.cpp
