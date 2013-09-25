@@ -97,8 +97,6 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			ptinfo->m_total_server_transaction_counter.add(1, delta);
 			pconn->m_transaction_metrics.m_incoming.add(1, delta);
 
-			sinsp_threadinfo* parent_tinfo = ptinfo->get_main_thread();
-
 			m_inspector->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_end_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
