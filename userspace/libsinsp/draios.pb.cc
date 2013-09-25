@@ -19,6 +19,7 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete time_categories::default_instance_;
   delete transaction_categories::default_instance_;
   delete connection_categories::default_instance_;
+  delete host::default_instance_;
   delete process::default_instance_;
   delete thread::default_instance_;
   delete ipv4tuple::default_instance_;
@@ -43,6 +44,7 @@ void protobuf_AddDesc_draios_2eproto() {
   time_categories::default_instance_ = new time_categories();
   transaction_categories::default_instance_ = new transaction_categories();
   connection_categories::default_instance_ = new connection_categories();
+  host::default_instance_ = new host();
   process::default_instance_ = new process();
   thread::default_instance_ = new thread();
   ipv4tuple::default_instance_ = new ipv4tuple();
@@ -53,6 +55,7 @@ void protobuf_AddDesc_draios_2eproto() {
   time_categories::default_instance_->InitAsDefaultInstance();
   transaction_categories::default_instance_->InitAsDefaultInstance();
   connection_categories::default_instance_->InitAsDefaultInstance();
+  host::default_instance_->InitAsDefaultInstance();
   process::default_instance_->InitAsDefaultInstance();
   thread::default_instance_->InitAsDefaultInstance();
   ipv4tuple::default_instance_->InitAsDefaultInstance();
@@ -1708,6 +1711,291 @@ void connection_categories::Swap(connection_categories* other) {
 
 ::std::string connection_categories::GetTypeName() const {
   return "draiosproto.connection_categories";
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int host::kHostnameFieldNumber;
+const int host::kNumCpusFieldNumber;
+const int host::kCpuLoadsFieldNumber;
+const int host::kPhysicalMemorySizeBytesFieldNumber;
+#endif  // !_MSC_VER
+
+host::host()
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+}
+
+void host::InitAsDefaultInstance() {
+}
+
+host::host(const host& from)
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void host::SharedCtor() {
+  _cached_size_ = 0;
+  hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  num_cpus_ = 0u;
+  physical_memory_size_bytes_ = GOOGLE_ULONGLONG(0);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+host::~host() {
+  SharedDtor();
+}
+
+void host::SharedDtor() {
+  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
+    delete hostname_;
+  }
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  if (this != &default_instance()) {
+  #else
+  if (this != default_instance_) {
+  #endif
+  }
+}
+
+void host::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const host& host::default_instance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  protobuf_AddDesc_draios_2eproto();
+#else
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+#endif
+  return *default_instance_;
+}
+
+host* host::default_instance_ = NULL;
+
+host* host::New() const {
+  return new host;
+}
+
+void host::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_hostname()) {
+      if (hostname_ != &::google::protobuf::internal::kEmptyString) {
+        hostname_->clear();
+      }
+    }
+    num_cpus_ = 0u;
+    physical_memory_size_bytes_ = GOOGLE_ULONGLONG(0);
+  }
+  cpu_loads_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+bool host::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional string hostname = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_hostname()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(16)) goto parse_num_cpus;
+        break;
+      }
+
+      // optional uint32 num_cpus = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_num_cpus:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &num_cpus_)));
+          set_has_num_cpus();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(24)) goto parse_cpu_loads;
+        break;
+      }
+
+      // repeated uint32 cpu_loads = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_loads:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 1, 24, input, this->mutable_cpu_loads())));
+        } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
+                   == ::google::protobuf::internal::WireFormatLite::
+                      WIRETYPE_LENGTH_DELIMITED) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, this->mutable_cpu_loads())));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(24)) goto parse_cpu_loads;
+        if (input->ExpectTag(32)) goto parse_physical_memory_size_bytes;
+        break;
+      }
+
+      // optional uint64 physical_memory_size_bytes = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_physical_memory_size_bytes:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &physical_memory_size_bytes_)));
+          set_has_physical_memory_size_bytes();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void host::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional string hostname = 1;
+  if (has_hostname()) {
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      1, this->hostname(), output);
+  }
+
+  // optional uint32 num_cpus = 2;
+  if (has_num_cpus()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->num_cpus(), output);
+  }
+
+  // repeated uint32 cpu_loads = 3;
+  for (int i = 0; i < this->cpu_loads_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(
+      3, this->cpu_loads(i), output);
+  }
+
+  // optional uint64 physical_memory_size_bytes = 4;
+  if (has_physical_memory_size_bytes()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->physical_memory_size_bytes(), output);
+  }
+
+}
+
+int host::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional string hostname = 1;
+    if (has_hostname()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->hostname());
+    }
+
+    // optional uint32 num_cpus = 2;
+    if (has_num_cpus()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->num_cpus());
+    }
+
+    // optional uint64 physical_memory_size_bytes = 4;
+    if (has_physical_memory_size_bytes()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->physical_memory_size_bytes());
+    }
+
+  }
+  // repeated uint32 cpu_loads = 3;
+  {
+    int data_size = 0;
+    for (int i = 0; i < this->cpu_loads_size(); i++) {
+      data_size += ::google::protobuf::internal::WireFormatLite::
+        UInt32Size(this->cpu_loads(i));
+    }
+    total_size += 1 * this->cpu_loads_size() + data_size;
+  }
+
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void host::CheckTypeAndMergeFrom(
+    const ::google::protobuf::MessageLite& from) {
+  MergeFrom(*::google::protobuf::down_cast<const host*>(&from));
+}
+
+void host::MergeFrom(const host& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  cpu_loads_.MergeFrom(from.cpu_loads_);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_hostname()) {
+      set_hostname(from.hostname());
+    }
+    if (from.has_num_cpus()) {
+      set_num_cpus(from.num_cpus());
+    }
+    if (from.has_physical_memory_size_bytes()) {
+      set_physical_memory_size_bytes(from.physical_memory_size_bytes());
+    }
+  }
+}
+
+void host::CopyFrom(const host& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool host::IsInitialized() const {
+
+  return true;
+}
+
+void host::Swap(host* other) {
+  if (other != this) {
+    std::swap(hostname_, other->hostname_);
+    std::swap(num_cpus_, other->num_cpus_);
+    cpu_loads_.Swap(&other->cpu_loads_);
+    std::swap(physical_memory_size_bytes_, other->physical_memory_size_bytes_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::std::string host::GetTypeName() const {
+  return "draiosproto.host";
 }
 
 
@@ -3510,9 +3798,9 @@ void ipv4_network_interface::Swap(ipv4_network_interface* other) {
 
 #ifndef _MSC_VER
 const int metrics::kTimestampNsFieldNumber;
-const int metrics::kHostnameFieldNumber;
 const int metrics::kMachineIdFieldNumber;
 const int metrics::kCustomerIdFieldNumber;
+const int metrics::kHostinfoFieldNumber;
 const int metrics::kProcessesFieldNumber;
 const int metrics::kThreadsFieldNumber;
 const int metrics::kIpv4ConnectionsFieldNumber;
@@ -3525,6 +3813,12 @@ metrics::metrics()
 }
 
 void metrics::InitAsDefaultInstance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  hostinfo_ = const_cast< ::draiosproto::host*>(
+      ::draiosproto::host::internal_default_instance());
+#else
+  hostinfo_ = const_cast< ::draiosproto::host*>(&::draiosproto::host::default_instance());
+#endif
 }
 
 metrics::metrics(const metrics& from)
@@ -3536,9 +3830,9 @@ metrics::metrics(const metrics& from)
 void metrics::SharedCtor() {
   _cached_size_ = 0;
   timestamp_ns_ = GOOGLE_ULONGLONG(0);
-  hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  hostinfo_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3547,9 +3841,6 @@ metrics::~metrics() {
 }
 
 void metrics::SharedDtor() {
-  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-    delete hostname_;
-  }
   if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
     delete machine_id_;
   }
@@ -3561,6 +3852,7 @@ void metrics::SharedDtor() {
   #else
   if (this != default_instance_) {
   #endif
+    delete hostinfo_;
   }
 }
 
@@ -3587,11 +3879,6 @@ metrics* metrics::New() const {
 void metrics::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     timestamp_ns_ = GOOGLE_ULONGLONG(0);
-    if (has_hostname()) {
-      if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-        hostname_->clear();
-      }
-    }
     if (has_machine_id()) {
       if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
         machine_id_->clear();
@@ -3601,6 +3888,9 @@ void metrics::Clear() {
       if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
         customer_id_->clear();
       }
+    }
+    if (has_hostinfo()) {
+      if (hostinfo_ != NULL) hostinfo_->::draiosproto::host::Clear();
     }
   }
   processes_.Clear();
@@ -3624,20 +3914,6 @@ bool metrics::MergePartialFromCodedStream(
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
                  input, &timestamp_ns_)));
           set_has_timestamp_ns();
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(18)) goto parse_hostname;
-        break;
-      }
-
-      // optional string hostname = 2;
-      case 2: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_hostname:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_hostname()));
         } else {
           goto handle_uninterpreted;
         }
@@ -3669,12 +3945,26 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_processes;
+        if (input->ExpectTag(42)) goto parse_hostinfo;
         break;
       }
 
-      // repeated .draiosproto.process processes = 5;
+      // required .draiosproto.host hostinfo = 5;
       case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_hostinfo:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_hostinfo()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_processes;
+        break;
+      }
+
+      // repeated .draiosproto.process processes = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_processes:
@@ -3683,13 +3973,13 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_processes;
-        if (input->ExpectTag(50)) goto parse_threads;
+        if (input->ExpectTag(50)) goto parse_processes;
+        if (input->ExpectTag(58)) goto parse_threads;
         break;
       }
 
-      // repeated .draiosproto.thread threads = 6;
-      case 6: {
+      // repeated .draiosproto.thread threads = 7;
+      case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_threads:
@@ -3698,13 +3988,13 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(50)) goto parse_threads;
-        if (input->ExpectTag(58)) goto parse_ipv4_connections;
+        if (input->ExpectTag(58)) goto parse_threads;
+        if (input->ExpectTag(66)) goto parse_ipv4_connections;
         break;
       }
 
-      // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
-      case 7: {
+      // repeated .draiosproto.ipv4_connection ipv4_connections = 8;
+      case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_ipv4_connections:
@@ -3713,13 +4003,13 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(58)) goto parse_ipv4_connections;
-        if (input->ExpectTag(66)) goto parse_ipv4_network_interfaces;
+        if (input->ExpectTag(66)) goto parse_ipv4_connections;
+        if (input->ExpectTag(74)) goto parse_ipv4_network_interfaces;
         break;
       }
 
-      // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 8;
-      case 8: {
+      // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 9;
+      case 9: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_ipv4_network_interfaces:
@@ -3728,7 +4018,7 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(66)) goto parse_ipv4_network_interfaces;
+        if (input->ExpectTag(74)) goto parse_ipv4_network_interfaces;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3755,12 +4045,6 @@ void metrics::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->timestamp_ns(), output);
   }
 
-  // optional string hostname = 2;
-  if (has_hostname()) {
-    ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->hostname(), output);
-  }
-
   // required string machine_id = 3;
   if (has_machine_id()) {
     ::google::protobuf::internal::WireFormatLite::WriteString(
@@ -3773,28 +4057,34 @@ void metrics::SerializeWithCachedSizes(
       4, this->customer_id(), output);
   }
 
-  // repeated .draiosproto.process processes = 5;
+  // required .draiosproto.host hostinfo = 5;
+  if (has_hostinfo()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      5, this->hostinfo(), output);
+  }
+
+  // repeated .draiosproto.process processes = 6;
   for (int i = 0; i < this->processes_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      5, this->processes(i), output);
+      6, this->processes(i), output);
   }
 
-  // repeated .draiosproto.thread threads = 6;
+  // repeated .draiosproto.thread threads = 7;
   for (int i = 0; i < this->threads_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      6, this->threads(i), output);
+      7, this->threads(i), output);
   }
 
-  // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
+  // repeated .draiosproto.ipv4_connection ipv4_connections = 8;
   for (int i = 0; i < this->ipv4_connections_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      7, this->ipv4_connections(i), output);
+      8, this->ipv4_connections(i), output);
   }
 
-  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 8;
+  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 9;
   for (int i = 0; i < this->ipv4_network_interfaces_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      8, this->ipv4_network_interfaces(i), output);
+      9, this->ipv4_network_interfaces(i), output);
   }
 
 }
@@ -3808,13 +4098,6 @@ int metrics::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->timestamp_ns());
-    }
-
-    // optional string hostname = 2;
-    if (has_hostname()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->hostname());
     }
 
     // required string machine_id = 3;
@@ -3831,8 +4114,15 @@ int metrics::ByteSize() const {
           this->customer_id());
     }
 
+    // required .draiosproto.host hostinfo = 5;
+    if (has_hostinfo()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->hostinfo());
+    }
+
   }
-  // repeated .draiosproto.process processes = 5;
+  // repeated .draiosproto.process processes = 6;
   total_size += 1 * this->processes_size();
   for (int i = 0; i < this->processes_size(); i++) {
     total_size +=
@@ -3840,7 +4130,7 @@ int metrics::ByteSize() const {
         this->processes(i));
   }
 
-  // repeated .draiosproto.thread threads = 6;
+  // repeated .draiosproto.thread threads = 7;
   total_size += 1 * this->threads_size();
   for (int i = 0; i < this->threads_size(); i++) {
     total_size +=
@@ -3848,7 +4138,7 @@ int metrics::ByteSize() const {
         this->threads(i));
   }
 
-  // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
+  // repeated .draiosproto.ipv4_connection ipv4_connections = 8;
   total_size += 1 * this->ipv4_connections_size();
   for (int i = 0; i < this->ipv4_connections_size(); i++) {
     total_size +=
@@ -3856,7 +4146,7 @@ int metrics::ByteSize() const {
         this->ipv4_connections(i));
   }
 
-  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 8;
+  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 9;
   total_size += 1 * this->ipv4_network_interfaces_size();
   for (int i = 0; i < this->ipv4_network_interfaces_size(); i++) {
     total_size +=
@@ -3885,14 +4175,14 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_timestamp_ns()) {
       set_timestamp_ns(from.timestamp_ns());
     }
-    if (from.has_hostname()) {
-      set_hostname(from.hostname());
-    }
     if (from.has_machine_id()) {
       set_machine_id(from.machine_id());
     }
     if (from.has_customer_id()) {
       set_customer_id(from.customer_id());
+    }
+    if (from.has_hostinfo()) {
+      mutable_hostinfo()->::draiosproto::host::MergeFrom(from.hostinfo());
     }
   }
 }
@@ -3904,7 +4194,7 @@ void metrics::CopyFrom(const metrics& from) {
 }
 
 bool metrics::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000d) != 0x0000000d) return false;
+  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
 
   for (int i = 0; i < processes_size(); i++) {
     if (!this->processes(i).IsInitialized()) return false;
@@ -3924,9 +4214,9 @@ bool metrics::IsInitialized() const {
 void metrics::Swap(metrics* other) {
   if (other != this) {
     std::swap(timestamp_ns_, other->timestamp_ns_);
-    std::swap(hostname_, other->hostname_);
     std::swap(machine_id_, other->machine_id_);
     std::swap(customer_id_, other->customer_id_);
+    std::swap(hostinfo_, other->hostinfo_);
     processes_.Swap(&other->processes_);
     threads_.Swap(&other->threads_);
     ipv4_connections_.Swap(&other->ipv4_connections_);

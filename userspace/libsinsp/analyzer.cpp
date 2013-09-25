@@ -587,7 +587,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
 			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
-			m_metrics->set_hostname(sinsp_gethostname());
+
+			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
+			if(m_inspector->m_machine_info)
+			{
+				m_metrics->mutable_hostinfo()->set_num_cpus(m_inspector->m_machine_info->num_cpus);
+				m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
+			}
+			else
+			{
+				ASSERT(false);
+			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
