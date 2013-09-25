@@ -73,4 +73,8 @@ sudo service dragent stop
 
 ./phoronix-test-suite merge-results $(ls ~/.phoronix-test-suite/test-results)
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
-mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/merge
+
+cd ..
+rm -rf merge
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR merge
+cp -r ~/.phoronix-test-suite/test-results/pts-results-viewer merge/
