@@ -24,6 +24,7 @@ using namespace google::protobuf::io;
 #include "metrics.h"
 #include "analyzer.h"
 #include "draios.pb.h"
+#include "scores.h"
 
 #define DUMP_TO_DISK
 
@@ -47,6 +48,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
+	m_score_calculator = new sinsp_scores(inspector);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -59,6 +61,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_serialization_buffer)
 	{
 		free(m_serialization_buffer);
+	}
+
+	if(m_score_calculator)
+	{
+		delete m_score_calculator;
 	}
 }
 
@@ -233,6 +240,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		else
 		{
 			uint32_t n_server_threads = 0;
+			int32_t syshscore;
 
 			//
 			// Update the times
@@ -250,7 +258,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
 			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
-			m_metrics->set_hostname(sinsp_gethostname());
+
+			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
+			if(m_inspector->m_machine_info)
+			{
+				m_metrics->mutable_hostinfo()->set_num_cpus(m_inspector->m_machine_info->num_cpus);
+				m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
+			}
+			else
+			{
+				ASSERT(false);
+			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
@@ -292,17 +310,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					if(PPME_IS_ENTER(it->second.m_lastevent_type))
 					{
 						cat = &it->second.m_lastevent_category;
-
-						//
-						// If this is a wait, IPC or sleep event, attribute it to the rest time.
-						// This is a simplification, but should be pretty benign and greatly simplifies
-						// the rest time logic.
-						//
-						if(cat->m_category == EC_WAIT || cat->m_category == EC_IPC ||
-							cat->m_category == EC_SLEEP)
-						{
-							it->second.m_rest_time_ns += delta;
-						}
 					}
 					else
 					{
@@ -330,7 +337,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_counter_time ttot;
 				it->second.m_metrics.get_total(&ttot);
 				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-				ASSERT(it->second.m_rest_time_ns <= sample_duration);
 #endif
 				//
 				// Go through the FD list to flush the transactions that haven't been active for a while
@@ -371,6 +377,38 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
 				}
 #endif
+			}
+
+			//
+			// Between the first and the second pass of the thread list, calculate the 
+			// health score for the machine
+			//
+			if(m_inspector->m_transactions_with_cpu.size() != 0)
+			{
+				int32_t syshscore_g;
+
+				syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
+					n_server_threads,
+					m_prev_flush_time_ns, sample_duration);
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"1!!%" PRId32,
+					syshscore);
+
+				syshscore_g = m_score_calculator->get_system_health_score_global(&m_inspector->m_transactions_with_cpu,
+					n_server_threads,
+					m_prev_flush_time_ns, sample_duration);
+
+				if(syshscore == -1)
+				{
+					syshscore = syshscore_g;
+				}
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"2!!%" PRId32,
+					syshscore_g);
+
+				m_inspector->m_transactions_with_cpu.clear();
 			}
 
 			//
@@ -436,25 +474,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
-						int32_t hscore = 33;
 //						int32_t hscore = sinsp_threadinfo::get_process_health_score(&it->second.m_transactions, 
 //							m_prev_flush_time_ns, sample_duration);
-						proc->set_health_score(hscore);
+						proc->set_health_score(syshscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
 #if 0
-						if(it->second.m_procinfo->m_n_rest_time_entries != 0)
-						{
-							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0xFFFFFFFFFFFFFFFF);
-							ASSERT(it->second.m_procinfo->m_min_rest_time_ns != 0);
-							ASSERT(it->second.m_procinfo->m_max_rest_time_ns != 0);
-						}
-
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32 " %%rest:%" PRIu64 "-%" PRIu64 "-%" PRIu64 "(%" PRIu32 ")",
+								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 								it->second.m_comm.c_str(),
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
@@ -466,13 +496,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
 								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
 								it->second.m_fd_usage_ratio,
-								it->second.m_connection_queue_usage_ratio,
-								(it->second.m_procinfo->m_n_rest_time_entries)?(it->second.m_procinfo->m_tot_rest_time_ns / it->second.m_procinfo->m_n_rest_time_entries) * 100 / sample_duration:0,
-								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_min_rest_time_ns * 100 / sample_duration:0,
-								(it->second.m_procinfo->m_n_rest_time_entries)?it->second.m_procinfo->m_max_rest_time_ns * 100 / sample_duration:0,
-								it->second.m_procinfo->m_n_rest_time_entries);
+								it->second.m_connection_queue_usage_ratio);
 						}
-#endif // _DEBUG
+#endif
 					}
 #endif // ANALYZER_EMITS_PROCESSES
 				}
@@ -600,21 +626,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				}
 			}
 #endif // ANALYZER_EMITS_PROGRAMS
-
-			////////////////////////////////////////////////////////////////////////////
-			// CALCULATE THE HEALTH SCORE FOR THE MACHINE
-			////////////////////////////////////////////////////////////////////////////
-			if(m_inspector->m_transactions.size() != 0)
-			{
-				int32_t syshscore = sinsp_threadinfo::get_process_health_score(&m_inspector->m_transactions,
-					n_server_threads,
-					m_prev_flush_time_ns, sample_duration);
-				m_inspector->m_transactions.clear();
-
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"!!%" PRId32,
-					syshscore);
-			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
@@ -842,15 +853,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		evt->m_tinfo->m_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
 
 		delta = ts - m_prev_flush_time_ns;
-
-		//
-		// if this is an IPC or sleep event, assume it's part of the rest time
-		//
-		if(cat.m_category == EC_IPC || cat.m_category == EC_SLEEP)
-		{
-//			evt->m_tinfo->m_rest_time_ns += delta;
-			evt->m_tinfo->m_rest_time_ns += 0;
-		}
 	}
 	else
 	{

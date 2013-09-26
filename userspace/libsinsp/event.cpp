@@ -129,6 +129,11 @@ sinsp_threadinfo* sinsp_evt::get_thread_info(bool query_os_if_not_found)
 	return m_inspector->get_thread(m_pevt->tid, query_os_if_not_found);
 }
 
+sinsp_fdinfo* sinsp_evt::get_fd_info()
+{
+	return m_fdinfo;
+}
+
 uint32_t sinsp_evt::get_num_params()
 {
 	if(!m_params_loaded)

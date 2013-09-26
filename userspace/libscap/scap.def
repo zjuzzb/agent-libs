@@ -30,4 +30,5 @@ EXPORTS
 		scap_proc_get
 		scap_proc_free
 		scap_start_capture
+		scap_get_machine_info
 

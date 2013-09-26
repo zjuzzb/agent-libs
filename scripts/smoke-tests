@@ -24,6 +24,7 @@ function smoke_tests {
 
 	# The stop should work and clean processes and pid files
 	service dragent stop
+	sleep 2
 	test ! -e /var/run/dragent.pid
 	service dragent status && false
 	pidof dragent && false

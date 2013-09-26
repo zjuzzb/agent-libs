@@ -1,5 +1,7 @@
 #pragma once
 
+class sinsp_scores;
+
 //
 // The main analyzer class
 //
@@ -40,6 +42,11 @@ private:
 	// Pointer to inspector context
 	//
 	sinsp* m_inspector;
+
+	//
+	// The score calculation class
+	//
+	sinsp_scores* m_score_calculator;
 
 	//
 	// This is the protobuf class that we use to pack things

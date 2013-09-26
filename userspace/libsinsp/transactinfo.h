@@ -64,14 +64,13 @@ public:
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
-	sinsp_partial_transaction(ipv4tuple *flow);
-	sinsp_partial_transaction(unix_tuple *flow);
 	void update(sinsp* inspector, 
 		sinsp_threadinfo *ptinfo,
 		sinsp_connection *pconn,
 		uint64_t enter_ts, 
 		uint64_t exit_ts, 
-		direction dir, 
+		int32_t cpuid,
+		direction dir,
 		uint32_t datalen);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
@@ -100,17 +99,20 @@ public:
 
 	uint64_t m_start_time;
 	uint64_t m_end_time;
+	uint64_t m_start_of_transaction_time;
 
 	direction m_prev_direction;
 	uint64_t m_prev_start_time;
 	uint64_t m_prev_end_time;
+	uint64_t m_prev_start_of_transaction_time;
 	uint64_t m_prev_prev_start_time;
 	uint64_t m_prev_prev_end_time;
+	uint64_t m_prev_prev_start_of_transaction_time;
 	family m_family;
 	side m_side;
 	uint32_t m_incoming_bytes;
 	uint32_t m_outgoing_bytes;
-	//  unordered_map<int64_t, sinsp_transactfd> m_fdmap;
+	int32_t m_cpuid;
 
 private:
 	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len);
@@ -151,7 +153,7 @@ public:
 	//private:
 	void emit(sinsp_threadinfo *ptinfo, 
 		sinsp_connection *pconn,
-		sinsp_partial_transaction *tr, 
+		sinsp_partial_transaction *tr,
 		uint32_t len);
 
 	//

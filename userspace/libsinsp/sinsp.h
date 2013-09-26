@@ -117,7 +117,7 @@ struct sinsp_exception : std::exception
 	string m_error_str;
 };
 
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -230,6 +230,8 @@ public:
 
 	bool has_metrics();
 
+	const scap_machine_info* get_machine_info();
+
 VISIBILITY_PRIVATE
 
 	void init();
@@ -266,11 +268,13 @@ VISIBILITY_PRIVATE
 	sinsp_unix_connection_manager* m_unix_connections;
 	sinsp_pipe_connection_manager* m_pipe_connections;
 	scap_dumper_t* m_dumper;
+	const scap_machine_info* m_machine_info;
+	uint32_t m_num_cpus;
 
 	sinsp_network_interfaces* m_network_interfaces;
 
 	// Used by the analyzer
-	vector<pair<uint64_t,uint64_t>> m_transactions;
+	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
 
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
@@ -279,7 +283,9 @@ VISIBILITY_PRIVATE
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
+#ifdef HAS_FILTERING
 	sinsp_filter* m_filter;
+#endif
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

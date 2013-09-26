@@ -1,5 +1,6 @@
 #include "main.h"
 #ifndef _WIN32
+#include <execinfo.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -8,19 +9,104 @@
 
 #define AGENT_PRIORITY 19
 
+static Logger* g_log = NULL;
+
 //
 // Signal management
 //
 static bool g_terminate = false;
 
-static void signal_callback(int signal)
+static void g_monitor_signal_callback(int sig)
+{
+	exit(EXIT_SUCCESS);
+}
+
+static void g_signal_callback(int sig)
 {
 	g_terminate = true;
 }
 
 #ifndef _WIN32
+static const int g_crash_signals[] = 
+{
+	SIGSEGV,
+	SIGABRT,
+	SIGFPE,
+	SIGILL,
+	SIGBUS
+};
+
+static void g_crash_handler(int sig)
+{
+	static int NUM_FRAMES = 10;
+
+	if(g_log)
+	{
+		g_log->error("Received signal " + NumberFormatter::format(sig));
+
+		void *array[NUM_FRAMES];
+
+		int frames = backtrace(array, NUM_FRAMES);
+		
+		char **strings = backtrace_symbols(array, frames);
+		
+		if(strings != NULL)
+		{
+			for(int32_t j = 0; j < frames; ++j)
+			{
+				g_log->error(strings[j]);
+			}
+
+			free(strings);
+		}
+	}
+
+	signal(sig, SIG_DFL);
+	raise(sig);
+}
+
+static bool initialize_crash_handler()
+{
+	stack_t stack;
+
+	memset(&stack, 0, sizeof(stack));
+	stack.ss_sp = malloc(SIGSTKSZ);
+	stack.ss_size = SIGSTKSZ;
+
+	if(sigaltstack(&stack, NULL) == -1)
+	{
+		free(stack.ss_sp);
+		return false;
+	}
+
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+
+	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
+	{
+		sigaddset(&sa.sa_mask, g_crash_signals[j]);
+	}
+
+	sa.sa_handler = g_crash_handler;
+	sa.sa_flags = SA_ONSTACK;
+
+	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
+	{
+		if(sigaction(g_crash_signals[j], &sa, NULL) != 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static void run_monitor(const string& pidfile)
 {
+	signal(SIGINT, g_monitor_signal_callback);
+	signal(SIGTERM, g_monitor_signal_callback);
+
 	//
 	// Start the monitor process
 	// 
@@ -40,24 +126,24 @@ static void run_monitor(const string& pidfile)
 		{
 			int status = 0;
 
-			//
-			// Since both child and father are run with --daemon option,
-			// Poco can get confused and can delete the pidfile even if
-			// the monitor doesn't die.
-			//
-			if(!pidfile.empty())
-			{
-				std::ofstream ostr(pidfile);
-				if(ostr.good())
-				{
-					ostr << Poco::Process::id() << std::endl;
-				}
-			}
-
 			wait(&status);
 
 			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
 			{
+				//
+				// Since both child and father are run with --daemon option,
+				// Poco can get confused and can delete the pidfile even if
+				// the monitor doesn't die.
+				//
+				if(!pidfile.empty())
+				{
+					std::ofstream ostr(pidfile);
+					if(ostr.good())
+					{
+						ostr << Poco::Process::id() << std::endl;
+					}
+				}
+
 				//
 				// Sleep for a bit and run another dragent
 				//
@@ -91,7 +177,6 @@ static void run_monitor(const string& pidfile)
 ///////////////////////////////////////////////////////////////////////////////
 // Log management
 ///////////////////////////////////////////////////////////////////////////////
-Logger* g_log = NULL;
 
 void g_logger_callback(char* str, uint32_t sev)
 {
@@ -545,17 +630,22 @@ protected:
 		}
 #endif
 
-		if(signal(SIGINT, signal_callback) == SIG_ERR)
+		if(signal(SIGINT, g_signal_callback) == SIG_ERR)
 		{
 			ASSERT(false);
-			return EXIT_FAILURE;
 		}
 
-		if(signal(SIGTERM, signal_callback) == SIG_ERR)
+		if(signal(SIGTERM, g_signal_callback) == SIG_ERR)
 		{
 			ASSERT(false);
-			return EXIT_FAILURE;
 		}
+
+#ifndef _WIN32
+		if(initialize_crash_handler() == false)
+		{
+			ASSERT(false);
+		}
+#endif
 
 		//
 		// Create the logs directory if it doesn't exist

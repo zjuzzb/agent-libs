@@ -190,6 +190,28 @@ typedef struct scap_threadinfo
 }scap_threadinfo;
 
 //
+// Machine info. Byte aligned because we save it to disk.
+//
+#if defined _MSC_VER
+#pragma pack(push)
+#pragma pack(1)
+#else
+#pragma pack(push, 1)
+#endif
+typedef struct _scap_machine_info
+{
+	uint32_t num_cpus;	// Number of processors
+	uint64_t memory_size_bytes; // Physical memory size
+	uint64_t max_pid; // Highest PID number on this machine
+	char hostname[128];
+	uint64_t reserved1; // reserved for fututre use
+	uint64_t reserved2; // reserved for fututre use
+	uint64_t reserved3; // reserved for fututre use
+	uint64_t reserved4; // reserved for fututre use
+}scap_machine_info;
+#pragma pack(pop)
+
+//
 // Interface address information
 //
 #define SCAP_IPV6_ADDR_LEN 16
@@ -369,6 +391,11 @@ const struct ppm_event_info* scap_get_event_info_table();
 
 // Get the syscall info table
 const struct ppm_syscall_desc* scap_get_syscall_info_table();
+
+// Get the machine information.
+// Returns NULL if machine information is not available (which can happen when reading
+// from files witthout that information)
+const scap_machine_info* scap_get_machine_info(scap_t* handle);
 
 #ifdef __cplusplus
 }

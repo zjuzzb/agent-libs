@@ -56,6 +56,7 @@ struct scap
 	uint64_t m_evtcnt;
 	uint32_t m_emptybuf_timeout_ms;
 	scap_addrlist* m_addrlist;
+	scap_machine_info m_machine_info;
 };
 
 //

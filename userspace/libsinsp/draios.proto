@@ -41,10 +41,20 @@ message connection_categories {
 	optional counter client_incoming = 3;
 	optional counter client_outgoing = 4;
 }
+//
+// HOST
+// global host info.
+//
+message host {
+  optional string hostname = 1; // The name of the host sending the data
+  optional uint32 num_cpus = 2;	// Number of CPUs in the system
+  repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
+  optional uint64 physical_memory_size_bytes = 4;	// Physical RAM size
+}
 
 //
 // PROCESS
-// This descriptive info for a process, i.e. a collection of threads.
+// info for a process, i.e. a collection of threads.
 // NOTE: this is process info only, the main thread of a process will have a 
 // separate thread message with tid=process pid.
 //
@@ -124,11 +134,11 @@ message ipv4_network_interface {
 //
 message metrics {
   required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-  optional string hostname = 2; // The name of the host sending the data
   required string machine_id = 3; // The unique ID of the machine that is sending this data
   required string customer_id = 4; // The unique ID of the customer that this machine belongs to
-  repeated process processes = 5; // The list of processes
-  repeated thread threads = 6; // The list of threads
-  repeated ipv4_connection ipv4_connections = 7; // The list of threads
-  repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
+  required host hostinfo = 5; // The list of processes
+  repeated process processes = 6; // The list of processes
+  repeated thread threads = 7; // The list of threads
+  repeated ipv4_connection ipv4_connections = 8; // The list of threads
+  repeated ipv4_network_interface ipv4_network_interfaces = 9; // The list of the machine network interfaces
 }

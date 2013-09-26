@@ -6,33 +6,21 @@ REPOSITORY_NAME="$1"
 # Long interesting tests: pts/sqlite pts/fs-mark pts/iozone pts/dbench pts/pgbench
 TESTS="pts/apache pts/nginx pts/postmark pts/phpbench pts/blogbench"
 
-function install_rpm {
-	sudo yum -y erase draios-agent draios-tests draios-debug-agent draios-debug-tests
+if [ -f /etc/debian_version ]; then
+	sudo apt-get -y purge draios-tests draios-debug-agent draios-debug-tests || true
+elif [ -f /etc/system-release-cpe ]; then
+	sudo yum -y erase draios-tests draios-debug-agent draios-debug-tests
+else
+    echo "Unable to detect operating system."
+    exit 1
+fi
 
-	if ! yum info dkms; then
-		sudo rpm -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm # needed for dkms
-	fi
-
-	sudo curl -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
-	sudo yum -y install kernel-devel-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-	sudo yum -y install draios-agent draios-tests
-}
-
-function install_deb {
-	sudo apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
-	sudo curl -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
-	sudo apt-get update
-	sudo apt-get -y install linux-headers-$(uname -r) # this is needed if the customer doesn't have the most updated kernel version
-	sudo apt-get -y --force-yes install draios-agent draios-tests
-}
+curl -s http://download.draios.com/install-agent | sudo bash -s $REPOSITORY_NAME access_key
 
 if [ -f /etc/debian_version ]; then
-    install_deb
-    sudo apt-get install php5-cli php5-json php5-gd
-elif [ -f /etc/redhat-release ]; then
-    install_rpm
+	sudo apt-get -y install draios-tests
 elif [ -f /etc/system-release-cpe ]; then
-    install_rpm
+	sudo yum -y install draios-tests
 else
     echo "Unable to detect operating system."
     exit 1
@@ -85,4 +73,8 @@ sudo service dragent stop
 
 ./phoronix-test-suite merge-results $(ls ~/.phoronix-test-suite/test-results)
 TEST_DIR=$(ls -t ~/.phoronix-test-suite/test-results | head -1)
-mv ~/.phoronix-test-suite/test-results/$TEST_DIR ~/.phoronix-test-suite/test-results/merge
+
+cd ..
+rm -rf merge
+mv ~/.phoronix-test-suite/test-results/$TEST_DIR merge
+cp -r ~/.phoronix-test-suite/test-results/pts-results-viewer merge/

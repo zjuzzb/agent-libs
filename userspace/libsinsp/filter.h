@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef HAS_FILTERING
 enum boolop
 {
 	BO_NONE = 0,
@@ -10,8 +11,14 @@ enum boolop
 	BO_ANDNOT = 5,
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// Filter check classes
+///////////////////////////////////////////////////////////////////////////////
+
 //
 // The filter check interface
+// NOTE: in order to add a new type of filter check, you need to add a class for
+//       it and then add it to sinsp_filter::parse_check.
 //
 class sinsp_filter_check
 {
@@ -64,6 +71,19 @@ public:
 };
 
 //
+// fd name check
+//
+class sinsp_filter_check_fdname : public sinsp_filter_check
+{
+public:
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+	static bool recognize_operand(string operand);
+
+	string m_fdname;
+};
+
+//
 // numeric fd check
 //
 class sinsp_filter_check_fd : public sinsp_filter_check
@@ -76,10 +96,11 @@ public:
 	int64_t m_fd;
 };
 
-
-//
-// A filter expression, e.g. "check or check", "check and check and check", "not check"
-//
+///////////////////////////////////////////////////////////////////////////////
+// Filter expression class
+// A filter expression contains multiple filters connected by boolean expressions,
+// e.g. "check or check", "check and check and check", "not check"
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_filter_expression : public sinsp_filter_check
 {
 public:
@@ -94,9 +115,10 @@ public:
 	vector<sinsp_filter_check*> m_checks;
 };
 
-//
+///////////////////////////////////////////////////////////////////////////////
 // The filter class
-//
+// This is the main class that compiles and runs filters
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_filter
 {
 public:
@@ -106,10 +128,8 @@ public:
 private:
 	enum state
 	{
-		ST_READY_FOR_EXPRESSION,
-		ST_INBRACKETS,
-		ST_PARSING_CHECK,
-		ST_PARSING_EXPRESSION,
+		ST_EXPRESSION_DONE,
+		ST_NEED_EXPRESSION,
 	};
 
 	bool isblank(char c);
@@ -130,6 +150,9 @@ private:
 	state m_state;
 	sinsp_filter_expression* m_curexpr;
 	boolop m_last_boolop;
+	int32_t m_nest_level;
 
 	sinsp_filter_expression m_filter;
 };
+
+#endif // HAS_FILTERING
