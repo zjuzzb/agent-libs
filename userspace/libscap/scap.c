@@ -813,12 +813,22 @@ static int32_t scap_set_dropping_mode(scap_t* handle, int request)
 
 int32_t scap_stop_dropping_mode(scap_t* handle)
 {
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
 	return scap_set_dropping_mode(handle, PPM_IOCTL_DISABLE_DROPPING_MODE);
+#endif
 }
 
 int32_t scap_start_dropping_mode(scap_t* handle)
 {
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
 	return scap_set_dropping_mode(handle, PPM_IOCTL_ENABLE_DROPPING_MODE);
+#endif
 }
 
 //

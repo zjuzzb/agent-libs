@@ -142,34 +142,6 @@ for(k = 0; k < trsize; k++)
 	}
 
 	return -1;
-
-/*
-	uint32_t res = 100;
-
-	if(!is_main_thread())
-	{
-		ASSERT(false);
-		return 100;
-	}
-
-	if(m_procinfo == NULL)
-	{
-		ASSERT(false);
-		return 100;
-	}
-
-	if(m_connection_queue_usage_ratio > 30)
-	{
-		res = MIN(res, 100 - m_connection_queue_usage_ratio);
-	}
-
-	if(m_fd_usage_ratio > 30)
-	{
-		res = MIN(res, 100 - m_fd_usage_ratio);
-	}
-
-	return res;
-*/
 }
 
 int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
@@ -357,4 +329,47 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 	}
 
 	return -1;
+}
+
+int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sinsp_threadinfo* mainthread_info)
+{
+	uint32_t res = -1;
+
+	if(system_health_score == -1)
+	{
+		ASSERT(false);
+		return res;
+	}
+
+	//
+	// Make sure this is the main process thread
+	//
+	if(!mainthread_info->is_main_thread() ||
+		mainthread_info->m_procinfo == NULL)
+	{
+		ASSERT(false);
+		return res;
+	}
+
+	//
+	// Health score is currently calculated only for server processes only 
+	//
+	if(mainthread_info->m_transaction_metrics.m_incoming.m_count == 0)
+	{
+		return res;
+	}
+
+	res = system_health_score;
+
+	if(mainthread_info->m_connection_queue_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_ratio);
+	}
+
+	if(mainthread_info->m_fd_usage_ratio > 30)
+	{
+		res = MIN(res, 100 - mainthread_info->m_fd_usage_ratio);
+	}
+
+	return res;
 }
