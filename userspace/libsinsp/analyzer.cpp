@@ -240,7 +240,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		else
 		{
 			uint32_t n_server_threads = 0;
-			int32_t syshscore;
+			int32_t syshscore = -1;
 
 			//
 			// Update the times
@@ -475,7 +475,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
 						int32_t hscore = m_score_calculator->get_process_health_score(syshscore, &it->second);
-						proc->set_health_score(syshscore);
+						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 

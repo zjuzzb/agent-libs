@@ -337,7 +337,6 @@ int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sins
 
 	if(system_health_score == -1)
 	{
-		ASSERT(false);
 		return res;
 	}
 
