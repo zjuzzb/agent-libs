@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 #define VISIBILITY_PRIVATE
 
@@ -28,6 +29,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/inotify.h>
+
+#include <sinsp.h>
+#include <procparser.h>
 
 using namespace std;
 
@@ -638,3 +642,23 @@ TEST_F(sys_call_test, process_prlimit)
 	EXPECT_EQ(6, callnum);
 }
 #endif
+/*
+TEST_F(sys_call_test, procfs)
+{
+	OUT vector<uint32_t> loads;
+	sinsp_procparser pparser;
+	uint32_t j;
+
+	pparser.get_cpus_load(&loads);
+	sleep(1);
+	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
+
+
+	for(j = 0; j < 3; j++)
+	{
+		pparser.get_cpus_load(&loads);
+		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
+		sleep(1);
+	}
+}
+*/
