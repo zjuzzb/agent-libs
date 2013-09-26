@@ -11,8 +11,8 @@
 
 #include "../../driver/ppm_ringbuffer.h"
 #include "scap.h"
-#include "scap-int.h"
 #include "scap_savefile.h"
+#include "scap-int.h"
 
 //#define NDEBUG
 #include <assert.h>
@@ -92,6 +92,17 @@ scap_t* scap_open_live(char *error)
 	}
 
 	handle->m_ndevs = ndevs;
+
+	//
+	// Extract machine information
+	//
+	handle->m_machine_info.num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+	handle->m_machine_info.memory_size_bytes = (uint64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
+	gethostname(handle->m_machine_info.hostname, sizeof(handle->m_machine_info.hostname) / sizeof(handle->m_machine_info.hostname[0]));
+	handle->m_machine_info.reserved1 = 0;
+	handle->m_machine_info.reserved2 = 0;
+	handle->m_machine_info.reserved3 = 0;
+	handle->m_machine_info.reserved4 = 0;
 
 	//
 	// Create the interface list
@@ -203,6 +214,7 @@ scap_t* scap_open_live(char *error)
 		//
 		handle->m_devs[j].m_lastreadsize = 0;
 		handle->m_devs[j].m_sn_len = 0;
+		scap_stop_dropping_mode(handle);
 	}
 
 	return handle;
@@ -233,6 +245,7 @@ scap_t* scap_open_offline(char* fname, char *error)
 	handle->m_evtcnt = 0;
 	handle->m_file = NULL;
 	handle->m_addrlist = NULL;
+	handle->m_machine_info.num_cpus = (uint32_t)-1;
 
 	handle->m_file_evt_buf = (char*)malloc(FILE_READ_BUF_SIZE);
 	if(!handle->m_file_evt_buf)
@@ -254,7 +267,7 @@ scap_t* scap_open_offline(char* fname, char *error)
 	}
 
 	//
-	// Validate the file and load the tables
+	// Validate the file and load the non-event blocks
 	//
 	if(scap_read_init(handle, handle->m_file) != SCAP_SUCCESS)
 	{
@@ -767,10 +780,79 @@ int32_t scap_start_capture(scap_t* handle)
 #endif // _WIN32
 }
 
+static int32_t scap_set_dropping_mode(scap_t* handle, int request)
+{
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
+
+	//
+	// Not supported for files
+	//
+	if(handle->m_file)
+	{
+		snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "dropping mode not supported on offline captures");
+		ASSERT(false);
+		return SCAP_FAILURE;
+	}
+
+	if(handle->m_ndevs)
+	{
+		if(ioctl(handle->m_devs[0].m_fd, request))
+		{
+			snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "%s failed", __FUNCTION__);
+			ASSERT(false);
+			return SCAP_FAILURE;
+		}		
+	}
+
+	return SCAP_SUCCESS;
+#endif // _WIN32	
+}
+
+int32_t scap_stop_dropping_mode(scap_t* handle)
+{
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
+	return scap_set_dropping_mode(handle, PPM_IOCTL_DISABLE_DROPPING_MODE);
+#endif
+}
+
+int32_t scap_start_dropping_mode(scap_t* handle)
+{
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
+	return scap_set_dropping_mode(handle, PPM_IOCTL_ENABLE_DROPPING_MODE);
+#endif
+}
+
 //
 // Return the list of device addresses
 //
 scap_addrlist* scap_get_ifaddr_list(scap_t* handle)
 {
 	return handle->m_addrlist;
+}
+
+//
+// Get the machine information
+//
+const scap_machine_info* scap_get_machine_info(scap_t* handle)
+{
+	if(handle->m_machine_info.num_cpus != (uint32_t)-1)
+	{
+		return (const scap_machine_info*)&handle->m_machine_info;
+	}
+	else
+	{
+		//
+		// Reading from a file with no process info block
+		//
+		return NULL;
+	}
 }

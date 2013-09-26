@@ -10,6 +10,8 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_FILTERING
 #include "filter.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -97,6 +99,48 @@ bool sinsp_filter_check_tid::run(sinsp_evt *evt)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_fdname implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_fdname::recognize_operand(string operand)
+{
+	if(operand == "fdname")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_fdname::parse_operand2(string val)
+{
+	m_fdname = val;
+}
+
+bool sinsp_filter_check_fdname::run(sinsp_evt *evt)
+{
+	ASSERT(evt);
+
+	ppm_event_flags eflags = evt->get_flags();
+
+	if(eflags & (EF_CREATES_FD | EF_USES_FD | EF_DESTROYS_FD))
+	{
+		sinsp_threadinfo* tinfo = evt->get_thread_info();
+		sinsp_fdinfo* fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
+
+		if(fdinfo != NULL && sinsp_evt::compare(m_cmpop, 
+			PT_CHARBUF, 
+			(void*)fdinfo->m_name.c_str(), (void*)m_fdname.c_str()) == true)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_fd implementation
 ///////////////////////////////////////////////////////////////////////////////
 bool sinsp_filter_check_fd::recognize_operand(string operand)
@@ -129,10 +173,6 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 		if(tinfo != NULL && sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_lastevent_fd, &m_fd) == true)
 		{
 			return true;
-		}
-		else
-		{
-			return false;
 		}
 	}
 
@@ -226,14 +266,16 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
-//fltstr = "(comm ruby and tid 8976)";
-//fltstr = "comm!=ruby";
+//fltstr = "(tid=63458)";
+//fltstr = "(tid!=0)";
+//fltstr = "fdname contains :48687";
 
 	m_scanpos = -1;
 	m_scansize = 0;
-	m_state = ST_READY_FOR_EXPRESSION;
+	m_state = ST_NEED_EXPRESSION;
 	m_curexpr = &m_filter;
 	m_last_boolop = BO_NONE;
+	m_nest_level = 0;
 
 	parse(fltstr);
 }
@@ -368,9 +410,14 @@ ppm_cmp_operator sinsp_filter::next_comparison_operator()
 		m_scanpos += 2;
 		return CO_NE;
 	}
+	if(compare_no_consume("contains"))
+	{
+		m_scanpos += 8;
+		return CO_CONTAINS;
+	}
 	else
 	{
-		throw sinsp_exception("filter error: unrecognized compare operator at pos " + to_string(start));
+		throw sinsp_exception("filter error: unrecognized comparison operator after " + m_fltstr.substr(0, start));
 	}
 }
 
@@ -380,6 +427,9 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	string operand1 = next_operand();
 	sinsp_filter_check* chk;
 
+	//////////////////////////////////////////////////////////////////////////////
+	// ADD NEW FILTER CHECK CLASSES HERE
+	//////////////////////////////////////////////////////////////////////////////
 	if(sinsp_filter_check_comm::recognize_operand(operand1))
 	{
 		sinsp_filter_check_comm* chk_comm = new sinsp_filter_check_comm();
@@ -395,10 +445,17 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
 		chk = (sinsp_filter_check*)chk_fd;
 	}
+	else if(sinsp_filter_check_fdname::recognize_operand(operand1))
+	{
+		sinsp_filter_check_fdname* chk_fd = new sinsp_filter_check_fdname();
+		chk = (sinsp_filter_check*)chk_fd;
+	}
 	else
 	{
 		throw sinsp_exception("filter error: unrecognized operand " + operand1 + " at pos " + to_string(startpos));
 	}
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
 
 	ppm_cmp_operator co = next_comparison_operator();
 	string operand2 = next_operand();
@@ -420,6 +477,7 @@ void sinsp_filter::push_expression(boolop op)
 
 	m_curexpr->m_checks.push_back((sinsp_filter_check*)newexpr);
 	m_curexpr = newexpr;
+	m_nest_level++;
 }
 
 void sinsp_filter::pop_expression()
@@ -427,6 +485,7 @@ void sinsp_filter::pop_expression()
 	ASSERT(m_curexpr->m_parent != NULL);
 
 	m_curexpr = m_curexpr->m_parent;
+	m_nest_level--;
 }
 
 void sinsp_filter::parse(string fltstr)
@@ -444,18 +503,30 @@ void sinsp_filter::parse(string fltstr)
 			//
 			// Finished parsing the filter string
 			//
-			if(m_state == ST_READY_FOR_EXPRESSION)
+			if(m_nest_level != 0)
 			{
-				return;
+				throw sinsp_exception("filter error: unexpected end of filter");
 			}
-			else
+
+			if(m_state != ST_EXPRESSION_DONE)
 			{
 				throw sinsp_exception("filter error: unexpected end of filter at position " + to_string(m_scanpos));
 			}
 
+			//
+			// Good filter
+			//
+			return;
+
 			break;
 		case '(':
+			if(m_state != ST_NEED_EXPRESSION)
+			{
+				throw sinsp_exception("unexpected '(' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
 			push_expression(m_last_boolop);
+
 			break;
 		case ')':
 			pop_expression();
@@ -470,6 +541,13 @@ void sinsp_filter::parse(string fltstr)
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
 
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'or' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
+
 			break;
 		case 'a':
 			if(next() == 'n' && next() == 'd')
@@ -481,9 +559,37 @@ void sinsp_filter::parse(string fltstr)
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
 
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'and' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
+
+			break;
+		case 'n':
+			if(next() == 'o' && next() == 't')
+			{
+				m_last_boolop = (boolop)((uint32_t)m_last_boolop | BO_NOT);
+			}
+			else
+			{
+				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
+			}
+
+			if(m_state != ST_EXPRESSION_DONE)
+			{
+				throw sinsp_exception("unexpected 'not' after " + m_fltstr.substr(0, m_scanpos));
+			}
+
+			m_state = ST_NEED_EXPRESSION;
+
 			break;
 		default:
 			parse_check(m_curexpr, m_last_boolop);
+
+			m_state = ST_EXPRESSION_DONE;
+
 			break;
 		}
 	}
@@ -495,3 +601,5 @@ bool sinsp_filter::run(sinsp_evt *evt)
 {
 	return m_filter.run(evt);
 }
+
+#endif // HAS_FILTERING

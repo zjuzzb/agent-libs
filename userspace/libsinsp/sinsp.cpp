@@ -38,7 +38,9 @@ sinsp::sinsp() :
 #endif
 	m_thread_manager = NULL;
 	m_analyzer_callback = NULL;
+#ifdef HAS_FILTERING
 	m_filter = NULL;
+#endif
 
 	m_fds_to_remove = new vector<int64_t>;
 }
@@ -153,10 +155,12 @@ void sinsp::close()
 		m_thread_manager = NULL;
 	}
 
+#ifdef HAS_FILTERING
 	if(m_filter != NULL)
 	{
 		delete m_filter;
 	}
+#endif
 }
 
 void sinsp::start_dump(string dump_filename)
@@ -246,6 +250,17 @@ void sinsp::init()
 	m_tid_to_remove = -1;
 	m_lastevent_ts = 0;
 
+	m_machine_info = scap_get_machine_info(m_h);
+	if(m_machine_info != NULL)
+	{
+		m_num_cpus = m_machine_info->num_cpus;
+	}
+	else
+	{
+		ASSERT(false);
+		m_num_cpus = 0;
+	}
+
 	import_ifaddr_list();
 	import_proc_table();
 }
@@ -272,7 +287,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		}
 		else if(res == SCAP_EOF)
 		{
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 			m_analyzer->process_event(NULL);
 #endif
 		}
@@ -302,7 +317,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		}
 	}
 
-#ifndef USE_ANALYZER
+#ifndef HAS_ANALYZER
 	//
 	// Deleayed removal of threads from the thread table, so that
 	// things like exit() or close() can be parsed.
@@ -358,7 +373,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	}
 #endif
 
-#ifdef USE_ANALYZER
+#ifdef HAS_ANALYZER
 	//
 	// Run the analysis engine
 	//
@@ -514,6 +529,22 @@ void sinsp::start_capture()
 	}
 }
 
+void sinsp::stop_dropping_mode()
+{
+	if(scap_stop_dropping_mode(m_h) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
+void sinsp::start_dropping_mode()
+{
+	if(scap_start_dropping_mode(m_h) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
 #ifdef _DEBUG
 void sinsp::set_filter(string filter)
 {
@@ -622,4 +653,9 @@ void sinsp::set_analyzer_callback(analyzer_callback_interface* cb)
 	{
 		m_analyzer->set_sample_callback(cb);
 	}
+}
+
+const scap_machine_info* sinsp::get_machine_info()
+{
+	return m_machine_info;
 }

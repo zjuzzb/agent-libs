@@ -36,6 +36,7 @@ class counter;
 class time_categories;
 class transaction_categories;
 class connection_categories;
+class host;
 class process;
 class thread;
 class ipv4tuple;
@@ -640,6 +641,127 @@ class connection_categories : public ::google::protobuf::MessageLite {
 
   void InitAsDefaultInstance();
   static connection_categories* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class host : public ::google::protobuf::MessageLite {
+ public:
+  host();
+  virtual ~host();
+
+  host(const host& from);
+
+  inline host& operator=(const host& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  static const host& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const host* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(host* other);
+
+  // implements Message ----------------------------------------------
+
+  host* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const host& from);
+  void MergeFrom(const host& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string hostname = 1;
+  inline bool has_hostname() const;
+  inline void clear_hostname();
+  static const int kHostnameFieldNumber = 1;
+  inline const ::std::string& hostname() const;
+  inline void set_hostname(const ::std::string& value);
+  inline void set_hostname(const char* value);
+  inline void set_hostname(const char* value, size_t size);
+  inline ::std::string* mutable_hostname();
+  inline ::std::string* release_hostname();
+  inline void set_allocated_hostname(::std::string* hostname);
+
+  // optional uint32 num_cpus = 2;
+  inline bool has_num_cpus() const;
+  inline void clear_num_cpus();
+  static const int kNumCpusFieldNumber = 2;
+  inline ::google::protobuf::uint32 num_cpus() const;
+  inline void set_num_cpus(::google::protobuf::uint32 value);
+
+  // repeated uint32 cpu_loads = 3;
+  inline int cpu_loads_size() const;
+  inline void clear_cpu_loads();
+  static const int kCpuLoadsFieldNumber = 3;
+  inline ::google::protobuf::uint32 cpu_loads(int index) const;
+  inline void set_cpu_loads(int index, ::google::protobuf::uint32 value);
+  inline void add_cpu_loads(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      cpu_loads() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_cpu_loads();
+
+  // optional uint64 physical_memory_size_bytes = 4;
+  inline bool has_physical_memory_size_bytes() const;
+  inline void clear_physical_memory_size_bytes();
+  static const int kPhysicalMemorySizeBytesFieldNumber = 4;
+  inline ::google::protobuf::uint64 physical_memory_size_bytes() const;
+  inline void set_physical_memory_size_bytes(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.host)
+ private:
+  inline void set_has_hostname();
+  inline void clear_has_hostname();
+  inline void set_has_num_cpus();
+  inline void clear_has_num_cpus();
+  inline void set_has_physical_memory_size_bytes();
+  inline void clear_has_physical_memory_size_bytes();
+
+  ::std::string* hostname_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_loads_;
+  ::google::protobuf::uint64 physical_memory_size_bytes_;
+  ::google::protobuf::uint32 num_cpus_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_draios_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_draios_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static host* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -1404,18 +1526,6 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 timestamp_ns() const;
   inline void set_timestamp_ns(::google::protobuf::uint64 value);
 
-  // optional string hostname = 2;
-  inline bool has_hostname() const;
-  inline void clear_hostname();
-  static const int kHostnameFieldNumber = 2;
-  inline const ::std::string& hostname() const;
-  inline void set_hostname(const ::std::string& value);
-  inline void set_hostname(const char* value);
-  inline void set_hostname(const char* value, size_t size);
-  inline ::std::string* mutable_hostname();
-  inline ::std::string* release_hostname();
-  inline void set_allocated_hostname(::std::string* hostname);
-
   // required string machine_id = 3;
   inline bool has_machine_id() const;
   inline void clear_machine_id();
@@ -1440,10 +1550,19 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::std::string* release_customer_id();
   inline void set_allocated_customer_id(::std::string* customer_id);
 
-  // repeated .draiosproto.process processes = 5;
+  // required .draiosproto.host hostinfo = 5;
+  inline bool has_hostinfo() const;
+  inline void clear_hostinfo();
+  static const int kHostinfoFieldNumber = 5;
+  inline const ::draiosproto::host& hostinfo() const;
+  inline ::draiosproto::host* mutable_hostinfo();
+  inline ::draiosproto::host* release_hostinfo();
+  inline void set_allocated_hostinfo(::draiosproto::host* hostinfo);
+
+  // repeated .draiosproto.process processes = 6;
   inline int processes_size() const;
   inline void clear_processes();
-  static const int kProcessesFieldNumber = 5;
+  static const int kProcessesFieldNumber = 6;
   inline const ::draiosproto::process& processes(int index) const;
   inline ::draiosproto::process* mutable_processes(int index);
   inline ::draiosproto::process* add_processes();
@@ -1452,10 +1571,10 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::process >*
       mutable_processes();
 
-  // repeated .draiosproto.thread threads = 6;
+  // repeated .draiosproto.thread threads = 7;
   inline int threads_size() const;
   inline void clear_threads();
-  static const int kThreadsFieldNumber = 6;
+  static const int kThreadsFieldNumber = 7;
   inline const ::draiosproto::thread& threads(int index) const;
   inline ::draiosproto::thread* mutable_threads(int index);
   inline ::draiosproto::thread* add_threads();
@@ -1464,10 +1583,10 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::thread >*
       mutable_threads();
 
-  // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
+  // repeated .draiosproto.ipv4_connection ipv4_connections = 8;
   inline int ipv4_connections_size() const;
   inline void clear_ipv4_connections();
-  static const int kIpv4ConnectionsFieldNumber = 7;
+  static const int kIpv4ConnectionsFieldNumber = 8;
   inline const ::draiosproto::ipv4_connection& ipv4_connections(int index) const;
   inline ::draiosproto::ipv4_connection* mutable_ipv4_connections(int index);
   inline ::draiosproto::ipv4_connection* add_ipv4_connections();
@@ -1476,10 +1595,10 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection >*
       mutable_ipv4_connections();
 
-  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 8;
+  // repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 9;
   inline int ipv4_network_interfaces_size() const;
   inline void clear_ipv4_network_interfaces();
-  static const int kIpv4NetworkInterfacesFieldNumber = 8;
+  static const int kIpv4NetworkInterfacesFieldNumber = 9;
   inline const ::draiosproto::ipv4_network_interface& ipv4_network_interfaces(int index) const;
   inline ::draiosproto::ipv4_network_interface* mutable_ipv4_network_interfaces(int index);
   inline ::draiosproto::ipv4_network_interface* add_ipv4_network_interfaces();
@@ -1492,17 +1611,17 @@ class metrics : public ::google::protobuf::MessageLite {
  private:
   inline void set_has_timestamp_ns();
   inline void clear_has_timestamp_ns();
-  inline void set_has_hostname();
-  inline void clear_has_hostname();
   inline void set_has_machine_id();
   inline void clear_has_machine_id();
   inline void set_has_customer_id();
   inline void clear_has_customer_id();
+  inline void set_has_hostinfo();
+  inline void clear_has_hostinfo();
 
   ::google::protobuf::uint64 timestamp_ns_;
-  ::std::string* hostname_;
   ::std::string* machine_id_;
   ::std::string* customer_id_;
+  ::draiosproto::host* hostinfo_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::process > processes_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::thread > threads_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
@@ -2575,6 +2694,149 @@ inline void connection_categories::set_allocated_client_outgoing(::draiosproto::
 
 // -------------------------------------------------------------------
 
+// host
+
+// optional string hostname = 1;
+inline bool host::has_hostname() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void host::set_has_hostname() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void host::clear_has_hostname() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void host::clear_hostname() {
+  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
+    hostname_->clear();
+  }
+  clear_has_hostname();
+}
+inline const ::std::string& host::hostname() const {
+  return *hostname_;
+}
+inline void host::set_hostname(const ::std::string& value) {
+  set_has_hostname();
+  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
+    hostname_ = new ::std::string;
+  }
+  hostname_->assign(value);
+}
+inline void host::set_hostname(const char* value) {
+  set_has_hostname();
+  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
+    hostname_ = new ::std::string;
+  }
+  hostname_->assign(value);
+}
+inline void host::set_hostname(const char* value, size_t size) {
+  set_has_hostname();
+  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
+    hostname_ = new ::std::string;
+  }
+  hostname_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* host::mutable_hostname() {
+  set_has_hostname();
+  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
+    hostname_ = new ::std::string;
+  }
+  return hostname_;
+}
+inline ::std::string* host::release_hostname() {
+  clear_has_hostname();
+  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = hostname_;
+    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void host::set_allocated_hostname(::std::string* hostname) {
+  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
+    delete hostname_;
+  }
+  if (hostname) {
+    set_has_hostname();
+    hostname_ = hostname;
+  } else {
+    clear_has_hostname();
+    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 num_cpus = 2;
+inline bool host::has_num_cpus() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void host::set_has_num_cpus() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void host::clear_has_num_cpus() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void host::clear_num_cpus() {
+  num_cpus_ = 0u;
+  clear_has_num_cpus();
+}
+inline ::google::protobuf::uint32 host::num_cpus() const {
+  return num_cpus_;
+}
+inline void host::set_num_cpus(::google::protobuf::uint32 value) {
+  set_has_num_cpus();
+  num_cpus_ = value;
+}
+
+// repeated uint32 cpu_loads = 3;
+inline int host::cpu_loads_size() const {
+  return cpu_loads_.size();
+}
+inline void host::clear_cpu_loads() {
+  cpu_loads_.Clear();
+}
+inline ::google::protobuf::uint32 host::cpu_loads(int index) const {
+  return cpu_loads_.Get(index);
+}
+inline void host::set_cpu_loads(int index, ::google::protobuf::uint32 value) {
+  cpu_loads_.Set(index, value);
+}
+inline void host::add_cpu_loads(::google::protobuf::uint32 value) {
+  cpu_loads_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::cpu_loads() const {
+  return cpu_loads_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_cpu_loads() {
+  return &cpu_loads_;
+}
+
+// optional uint64 physical_memory_size_bytes = 4;
+inline bool host::has_physical_memory_size_bytes() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void host::set_has_physical_memory_size_bytes() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void host::clear_has_physical_memory_size_bytes() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void host::clear_physical_memory_size_bytes() {
+  physical_memory_size_bytes_ = GOOGLE_ULONGLONG(0);
+  clear_has_physical_memory_size_bytes();
+}
+inline ::google::protobuf::uint64 host::physical_memory_size_bytes() const {
+  return physical_memory_size_bytes_;
+}
+inline void host::set_physical_memory_size_bytes(::google::protobuf::uint64 value) {
+  set_has_physical_memory_size_bytes();
+  physical_memory_size_bytes_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // process
 
 // required uint64 pid = 1;
@@ -3585,85 +3847,15 @@ inline void metrics::set_timestamp_ns(::google::protobuf::uint64 value) {
   timestamp_ns_ = value;
 }
 
-// optional string hostname = 2;
-inline bool metrics::has_hostname() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void metrics::set_has_hostname() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void metrics::clear_has_hostname() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void metrics::clear_hostname() {
-  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-    hostname_->clear();
-  }
-  clear_has_hostname();
-}
-inline const ::std::string& metrics::hostname() const {
-  return *hostname_;
-}
-inline void metrics::set_hostname(const ::std::string& value) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(value);
-}
-inline void metrics::set_hostname(const char* value) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(value);
-}
-inline void metrics::set_hostname(const char* value, size_t size) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* metrics::mutable_hostname() {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  return hostname_;
-}
-inline ::std::string* metrics::release_hostname() {
-  clear_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = hostname_;
-    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void metrics::set_allocated_hostname(::std::string* hostname) {
-  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-    delete hostname_;
-  }
-  if (hostname) {
-    set_has_hostname();
-    hostname_ = hostname;
-  } else {
-    clear_has_hostname();
-    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
 // required string machine_id = 3;
 inline bool metrics::has_machine_id() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000002u) != 0;
 }
 inline void metrics::set_has_machine_id() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000002u;
 }
 inline void metrics::clear_has_machine_id() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void metrics::clear_machine_id() {
   if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -3727,13 +3919,13 @@ inline void metrics::set_allocated_machine_id(::std::string* machine_id) {
 
 // required string customer_id = 4;
 inline bool metrics::has_customer_id() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void metrics::set_has_customer_id() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void metrics::clear_has_customer_id() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void metrics::clear_customer_id() {
   if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -3795,7 +3987,49 @@ inline void metrics::set_allocated_customer_id(::std::string* customer_id) {
   }
 }
 
-// repeated .draiosproto.process processes = 5;
+// required .draiosproto.host hostinfo = 5;
+inline bool metrics::has_hostinfo() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void metrics::set_has_hostinfo() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void metrics::clear_has_hostinfo() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void metrics::clear_hostinfo() {
+  if (hostinfo_ != NULL) hostinfo_->::draiosproto::host::Clear();
+  clear_has_hostinfo();
+}
+inline const ::draiosproto::host& metrics::hostinfo() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return hostinfo_ != NULL ? *hostinfo_ : *default_instance().hostinfo_;
+#else
+  return hostinfo_ != NULL ? *hostinfo_ : *default_instance_->hostinfo_;
+#endif
+}
+inline ::draiosproto::host* metrics::mutable_hostinfo() {
+  set_has_hostinfo();
+  if (hostinfo_ == NULL) hostinfo_ = new ::draiosproto::host;
+  return hostinfo_;
+}
+inline ::draiosproto::host* metrics::release_hostinfo() {
+  clear_has_hostinfo();
+  ::draiosproto::host* temp = hostinfo_;
+  hostinfo_ = NULL;
+  return temp;
+}
+inline void metrics::set_allocated_hostinfo(::draiosproto::host* hostinfo) {
+  delete hostinfo_;
+  hostinfo_ = hostinfo;
+  if (hostinfo) {
+    set_has_hostinfo();
+  } else {
+    clear_has_hostinfo();
+  }
+}
+
+// repeated .draiosproto.process processes = 6;
 inline int metrics::processes_size() const {
   return processes_.size();
 }
@@ -3820,7 +4054,7 @@ metrics::mutable_processes() {
   return &processes_;
 }
 
-// repeated .draiosproto.thread threads = 6;
+// repeated .draiosproto.thread threads = 7;
 inline int metrics::threads_size() const {
   return threads_.size();
 }
@@ -3845,7 +4079,7 @@ metrics::mutable_threads() {
   return &threads_;
 }
 
-// repeated .draiosproto.ipv4_connection ipv4_connections = 7;
+// repeated .draiosproto.ipv4_connection ipv4_connections = 8;
 inline int metrics::ipv4_connections_size() const {
   return ipv4_connections_.size();
 }
@@ -3870,7 +4104,7 @@ metrics::mutable_ipv4_connections() {
   return &ipv4_connections_;
 }
 
-// repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 8;
+// repeated .draiosproto.ipv4_network_interface ipv4_network_interfaces = 9;
 inline int metrics::ipv4_network_interfaces_size() const {
   return ipv4_network_interfaces_.size();
 }

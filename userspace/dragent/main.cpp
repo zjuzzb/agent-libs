@@ -1,26 +1,114 @@
 #include "main.h"
 #ifndef _WIN32
+#include <execinfo.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
 #include <fstream>
 
+#include "configuration.h"
+
 #define AGENT_PRIORITY 19
+
+Logger* g_log = NULL;
 
 //
 // Signal management
 //
 static bool g_terminate = false;
 
-static void signal_callback(int signal)
+static void g_monitor_signal_callback(int sig)
+{
+	exit(EXIT_SUCCESS);
+}
+
+static void g_signal_callback(int sig)
 {
 	g_terminate = true;
 }
 
 #ifndef _WIN32
+static const int g_crash_signals[] = 
+{
+	SIGSEGV,
+	SIGABRT,
+	SIGFPE,
+	SIGILL,
+	SIGBUS
+};
+
+static void g_crash_handler(int sig)
+{
+	static int NUM_FRAMES = 10;
+
+	if(g_log)
+	{
+		g_log->error("Received signal " + NumberFormatter::format(sig));
+
+		void *array[NUM_FRAMES];
+
+		int frames = backtrace(array, NUM_FRAMES);
+		
+		char **strings = backtrace_symbols(array, frames);
+		
+		if(strings != NULL)
+		{
+			for(int32_t j = 0; j < frames; ++j)
+			{
+				g_log->error(strings[j]);
+			}
+
+			free(strings);
+		}
+	}
+
+	signal(sig, SIG_DFL);
+	raise(sig);
+}
+
+static bool initialize_crash_handler()
+{
+	stack_t stack;
+
+	memset(&stack, 0, sizeof(stack));
+	stack.ss_sp = malloc(SIGSTKSZ);
+	stack.ss_size = SIGSTKSZ;
+
+	if(sigaltstack(&stack, NULL) == -1)
+	{
+		free(stack.ss_sp);
+		return false;
+	}
+
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+
+	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
+	{
+		sigaddset(&sa.sa_mask, g_crash_signals[j]);
+	}
+
+	sa.sa_handler = g_crash_handler;
+	sa.sa_flags = SA_ONSTACK;
+
+	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
+	{
+		if(sigaction(g_crash_signals[j], &sa, NULL) != 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static void run_monitor(const string& pidfile)
 {
+	signal(SIGINT, g_monitor_signal_callback);
+	signal(SIGTERM, g_monitor_signal_callback);
+
 	//
 	// Start the monitor process
 	// 
@@ -40,24 +128,24 @@ static void run_monitor(const string& pidfile)
 		{
 			int status = 0;
 
-			//
-			// Since both child and father are run with --daemon option,
-			// Poco can get confused and can delete the pidfile even if
-			// the monitor doesn't die.
-			//
-			if(!pidfile.empty())
-			{
-				std::ofstream ostr(pidfile);
-				if(ostr.good())
-				{
-					ostr << Poco::Process::id() << std::endl;
-				}
-			}
-
 			wait(&status);
 
 			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
 			{
+				//
+				// Since both child and father are run with --daemon option,
+				// Poco can get confused and can delete the pidfile even if
+				// the monitor doesn't die.
+				//
+				if(!pidfile.empty())
+				{
+					std::ofstream ostr(pidfile);
+					if(ostr.good())
+					{
+						ostr << Poco::Process::id() << std::endl;
+					}
+				}
+
 				//
 				// Sleep for a bit and run another dragent
 				//
@@ -91,7 +179,6 @@ static void run_monitor(const string& pidfile)
 ///////////////////////////////////////////////////////////////////////////////
 // Log management
 ///////////////////////////////////////////////////////////////////////////////
-Logger* g_log = NULL;
 
 void g_logger_callback(char* str, uint32_t sev)
 {
@@ -177,7 +264,6 @@ public:
 		m_evtcnt = 0;
 		m_socket = NULL;
 		m_sa = NULL;
-		m_customerid = "<invalid>";
 		m_serverport = 0;
 		m_ssl_enabled = false;
 
@@ -204,30 +290,7 @@ public:
 protected:
 	void initialize(Application& self)
 	{
-		//
-		// load the configuration file.
-		// First try the local dir
-		//
-		try
-		{
-			loadConfiguration("dragent.properties"); 
-		}
-		catch(...)
-		{
-			//
-			// Then try /opt/draios
-			//
-			try
-			{
-				Path p;
-				p.parseDirectory("/opt/draios");
-				p.setFileName("dragent.properties");
-				loadConfiguration(p.toString()); 
-			}
-			catch(...)
-			{
-			}
-		}
+		m_configuration.init(this);
 
 		ServerApplication::initialize(self);
 	}
@@ -361,7 +424,7 @@ protected:
 		}
 		else if(name == "customerid")
 		{
-			m_customerid = value;
+			m_configuration.m_customer_id = value;
 		}
 		else if(name == "writefile")
 		{
@@ -369,11 +432,11 @@ protected:
 		}
 		else if(name == "srvaddr")
 		{
-			m_serveraddr = value;
+			m_configuration.m_server_addr = value;
 		}
 		else if(name == "srvport")
 		{
-			m_serverport = (uint16_t)NumberParser::parse(value);
+			m_configuration.m_server_port = (uint16_t)NumberParser::parse(value);
 		}
 		else if(name == "pidfile")
 		{
@@ -562,32 +625,36 @@ protected:
 		}
 
 #ifndef _WIN32
-		if(config().getBool("application.runAsDaemon", false))
+		if(m_configuration.m_daemon)
 		{
 			run_monitor(m_pidfile);
 		}
 #endif
 
-		if(signal(SIGINT, signal_callback) == SIG_ERR)
+		if(signal(SIGINT, g_signal_callback) == SIG_ERR)
 		{
 			ASSERT(false);
-			return EXIT_FAILURE;
 		}
 
-		if(signal(SIGTERM, signal_callback) == SIG_ERR)
+		if(signal(SIGTERM, g_signal_callback) == SIG_ERR)
 		{
 			ASSERT(false);
-			return EXIT_FAILURE;
 		}
+
+#ifndef _WIN32
+		if(initialize_crash_handler() == false)
+		{
+			ASSERT(false);
+		}
+#endif
 
 		//
 		// Create the logs directory if it doesn't exist
 		//
-		string logdir = config().getString("logfile.location", "logs");
-		File d(logdir);
+		File d(m_configuration.m_log_dir);
 		d.createDirectories();
 		Path p;
-		p.parseDirectory(logdir);
+		p.parseDirectory(m_configuration.m_log_dir);
 		p.setFileName("draios.log");
 		string logsdir = p.toString();
 
@@ -615,7 +682,9 @@ protected:
 
 		g_log->information("Agent starting");
 
-		if(config().getBool("application.runAsDaemon", false))
+		m_configuration.print_configuration();
+
+		if(m_configuration.m_daemon)
 		{
 #ifndef _WIN32
 			if(nice(AGENT_PRIORITY) == -1)
@@ -651,8 +720,7 @@ protected:
 		//
 		// Create the metrics directory if it doesn't exist
 		//
-		string metricsdir = config().getString("metricsfile.location", "metrics");
-		File md(metricsdir);
+		File md(m_configuration.m_metrics_dir);
 		md.createDirectories();
 
 		//
@@ -663,16 +731,6 @@ protected:
 			//
 			// Connect to the server
 			//
-			if(m_serveraddr == "")
-			{
-				m_serveraddr = config().getString("server.address", "");
-			}
-
-			if(m_serverport == 0)
-			{
-				m_serverport = config().getInt("server.port", 0);
-			}
-
 			m_ssl_enabled = config().getBool("ssl.enabled", false);
 			m_ssl_ca_certificate = config().getString("ssl.ca_certificate", "");
 
@@ -709,7 +767,7 @@ protected:
 				//
 				// Set the send buffer size for the socket
 				//
-				m_socket->setSendBufferSize(config().getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE));
+				m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
 
 				//
 				// Put the socket in nonblocking mode
@@ -726,10 +784,10 @@ protected:
 			// Plug the sinsp logger into our one
 			//
 			m_inspector.set_log_callback(g_logger_callback);
-			if(config().hasOption("metricsfile.location"))
+			if(!m_configuration.m_metrics_dir.empty())
 			{
 				m_inspector.get_configuration()->set_emit_metrics_to_file(true);
-				m_inspector.get_configuration()->set_metrics_directory(metricsdir);
+				m_inspector.get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
 			}
 			else
 			{
@@ -744,16 +802,12 @@ protected:
 			//
 			// The customer id is currently specified by the user
 			//
-			if(config().hasOption("customerid"))
-			{
-				m_customerid = config().getString("customerid");
-			}
-			else
+			if(m_configuration.m_customer_id.empty())
 			{
 				g_log->error("customerid not specified.");
 			}
 
-			m_inspector.get_configuration()->set_customer_id(m_customerid);
+			m_inspector.get_configuration()->set_customer_id(m_configuration.m_customer_id);
 
 			//
 			// Start the capture with sinsp
@@ -768,9 +822,12 @@ protected:
 				m_inspector.open("");
 			}
 
-			//
-			//
-			//
+			if(m_configuration.m_dropping_mode)
+			{
+				g_log->information("Enabling dropping mode");
+				m_inspector.start_dropping_mode();
+			}
+
 			if(m_writefile != "")
 			{
 				m_inspector.start_dump(m_writefile);
@@ -809,16 +866,14 @@ private:
 	sinsp m_inspector;
 	string m_filename;
 	uint64_t m_evtcnt;
-	string m_customerid;
 	string m_writefile;
-	string m_serveraddr;
-	uint16_t m_serverport;
 	bool m_ssl_enabled;
 	string m_ssl_ca_certificate;
 	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
 	vector<sample_store*> m_unsent_samples;
+	dragent_configuration m_configuration;
 };
 
 

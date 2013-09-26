@@ -26,6 +26,11 @@ MODULE_AUTHOR("Draios");
 
 #define PPM_DEVICE_NAME "ppm"
 
+//
+// Make sure to use a power of two constant
+//
+#define FD_SAMPLING_RATIO 4
+
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,35))
     #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2)
     #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2)
@@ -71,7 +76,8 @@ static struct file_operations g_ppm_fops =
 ///////////////////////////////////////////////////////////////////////
 
 DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
-atomic_t g_open_count;
+static atomic_t g_open_count;
+static int g_dropping_mode = 0;
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -257,6 +263,18 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_CAPTURE for ring %d\n", ring_no);
 
+		return 0;
+	}
+	case PPM_IOCTL_DISABLE_DROPPING_MODE:
+	{
+		g_dropping_mode = 0;
+		printk(KERN_INFO "PPM: PPM_IOCTL_DISABLE_DROPPING_MODE\n");
+		return 0;
+	}
+	case PPM_IOCTL_ENABLE_DROPPING_MODE:
+	{
+		g_dropping_mode = 1;
+		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_DROPPING_MODE\n");
 		return 0;
 	}
 	default:
@@ -501,6 +519,50 @@ static enum ppm_event_type parse_socketcall(struct event_filler_arguments* fille
 }
 #endif // __x86_64__
 
+static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *regs)
+{
+	//
+	// Before even entering, check whether or not we are in dropping mode, and
+	// if yes sample the system calls that use FDs
+	//
+	if(g_dropping_mode)
+	{
+		long fd = 0;
+
+		if(g_event_info[event_type].flags & (EF_DESTROYS_FD | EF_USES_FD))
+		{
+			//
+			// The FD is always the first parameter
+			//
+			syscall_get_arguments(current, regs, 0,	1, &fd);
+		}
+		else if(g_event_info[event_type].flags & (EF_CREATES_FD))
+		{
+			//
+			// The FD is always the return value, except for socketpair()
+			// and pipe(), but we're confident they won't flood the system
+			//
+			fd = syscall_get_return_value(current, regs);
+		}
+		else
+		{
+			return 0;
+		}
+
+		//
+		// As a simple filter, we sample the events based on the
+		// fds, hoping we will generate a better pattern instead
+		// of just a random sampling
+		//
+		if(fd > 0 && (fd % FD_SAMPLING_RATIO))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, long id)
 {
 	size_t event_size;
@@ -518,6 +580,11 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 
 	trace_enter();
 
+	if(drop_event(event_type, regs))
+	{
+		return;
+	}
+	
 	getnstimeofday(&ts);
 
 	ring = get_cpu_var(g_ring_buffers);
@@ -785,23 +852,34 @@ TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id)
 {
 	trace_enter();
 
+	//
+	// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
+	// kernel flag), we skip its events.
+	// XXX Decide what to do about this.
+	//
+	if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
+	{
+		return;		
+	}
+
 	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
-		//
-		// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
-		// kernel flag), we skip its events.
-		// XXX Decide what to do about this.
-		//
-		if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
+		int used;
+
+		if(g_dropping_mode)
 		{
-			return;		
+			used = g_syscall_table[id].used & UF_DROPPING_MODE;
+		}
+		else
+		{
+			used = g_syscall_table[id].used & UF_NORMAL_MODE;
 		}
 
-		if(g_syscall_table[id].used)
+		if(used)
 		{
 			record_event(g_syscall_table[id].enter_event_type, regs, id);
 		}
-		else
+		else if(!g_dropping_mode)
 		{
 			record_event(PPME_GENERIC_E, regs, id);
 		}
@@ -814,25 +892,36 @@ TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret)
 
 	trace_enter();
 
+	//
+	// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
+	// kernel flag), we skip its events.
+	// XXX Decide what to do about this.
+	//
+	if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
+	{
+		return;		
+	}
+
 	id = syscall_get_nr(current, regs);
 
 	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
-		//
-		// If this is a 32bit process running on a 64bit kernel (see the CONFIG_IA32_EMULATION
-		// kernel flag), we skip its events.
-		// XXX Decide what to do about this.
-		//
-		if(unlikely(test_tsk_thread_flag(current, TIF_IA32)))
+		int used;
+				
+		if(g_dropping_mode)
 		{
-			return;		
+			used = g_syscall_table[id].used & UF_DROPPING_MODE;
 		}
-		
-		if(g_syscall_table[id].used)
+		else
+		{
+			used = g_syscall_table[id].used & UF_NORMAL_MODE;
+		}
+
+		if(used)
 		{
 			record_event(g_syscall_table[id].exit_event_type, regs, id);
 		}
-		else
+		else if(!g_dropping_mode)
 		{
 			record_event(PPME_GENERIC_X, regs, id);
 		}
@@ -1111,7 +1200,8 @@ int init_module(void)
 	// All ok. Final initalizations.
 	//
 	atomic_set(&g_open_count, 0);
-
+	g_dropping_mode = 0;
+	
 	return 0;
 
 init_module_err:

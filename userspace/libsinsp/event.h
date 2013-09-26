@@ -77,6 +77,7 @@ public:
 	void set_iosize(uint32_t size);
 	uint32_t get_iosize();
 	sinsp_threadinfo* get_thread_info(bool query_os_if_not_found = false);
+	sinsp_fdinfo* get_fd_info();
 	uint32_t get_num_params();
 	sinsp_evt_param* get_param(uint32_t id);
 	const char* get_param_name(uint32_t id);

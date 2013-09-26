@@ -11,9 +11,16 @@
 #define SP_EVT_BUF_SIZE 4096
 
 //
-// Use this to turn the analyzer on and off
+// If defined, the analyzer is compiled
 //
-#define USE_ANALYZER
+#define HAS_ANALYZER
+
+//
+// If defined, the filtering system is compiled
+//
+#ifdef _DEBUG
+#define HAS_FILTERING
+#endif
 
 //
 // The analyzer emit interval

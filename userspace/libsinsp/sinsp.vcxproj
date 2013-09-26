@@ -99,6 +99,8 @@
     <ClCompile Include="ifinfo.cpp" />
     <ClCompile Include="internal_metrics.cpp" />
     <ClCompile Include="logger.cpp" />
+    <ClCompile Include="procparser.cpp" />
+    <ClCompile Include="scores.cpp" />
     <ClCompile Include="sinsp.cpp" />
     <ClCompile Include="parsers.cpp" />
     <ClCompile Include="parser_http.cpp" />
@@ -124,6 +126,8 @@
     <ClInclude Include="internal_metrics.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="parser_http.h" />
+    <ClInclude Include="procparser.h" />
+    <ClInclude Include="scores.h" />
     <ClInclude Include="sinsp_signal.h" />
     <ClInclude Include="stats.h" />
     <ClInclude Include="threadinfo.h" />
