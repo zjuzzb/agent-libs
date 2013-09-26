@@ -19,7 +19,7 @@ rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
 #
 # Install various crap
 #
-yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git java-1.7.0-openjdk rpm-build s3cmd unzip wget 
+yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git glibc-static java-1.7.0-openjdk rpm-build s3cmd unzip wget 
 
 #
 # Prepare Jenkins working directory
