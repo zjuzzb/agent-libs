@@ -58,6 +58,9 @@
     <ClCompile Include="scores.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="procparser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="analyzer.h">
@@ -136,6 +139,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="scores.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="procparser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
