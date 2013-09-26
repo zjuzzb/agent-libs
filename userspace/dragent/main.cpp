@@ -7,9 +7,11 @@
 #endif
 #include <fstream>
 
+#include "configuration.h"
+
 #define AGENT_PRIORITY 19
 
-static Logger* g_log = NULL;
+Logger* g_log = NULL;
 
 //
 // Signal management
@@ -262,7 +264,6 @@ public:
 		m_evtcnt = 0;
 		m_socket = NULL;
 		m_sa = NULL;
-		m_customerid = "<invalid>";
 	}
 	
 	~dragent_app()
@@ -272,32 +273,7 @@ public:
 protected:
 	void initialize(Application& self)
 	{
-		m_serverport = 0;
-
-		//
-		// load the configuration file.
-		// First try the local dir
-		//
-		try
-		{
-			loadConfiguration("dragent.properties"); 
-		}
-		catch(...)
-		{
-			//
-			// Then try /opt/draios
-			//
-			try
-			{
-				Path p;
-				p.parseDirectory("/opt/draios");
-				p.setFileName("dragent.properties");
-				loadConfiguration(p.toString()); 
-			}
-			catch(...)
-			{
-			}
-		}
+		m_configuration.init(this);
 
 		ServerApplication::initialize(self);
 	}
@@ -431,7 +407,7 @@ protected:
 		}
 		else if(name == "customerid")
 		{
-			m_customerid = value;
+			m_configuration.m_customer_id = value;
 		}
 		else if(name == "writefile")
 		{
@@ -439,11 +415,11 @@ protected:
 		}
 		else if(name == "srvaddr")
 		{
-			m_serveraddr = value;
+			m_configuration.m_server_addr = value;
 		}
 		else if(name == "srvport")
 		{
-			m_serverport = (uint16_t)NumberParser::parse(value);
+			m_configuration.m_server_port = (uint16_t)NumberParser::parse(value);
 		}
 		else if(name == "pidfile")
 		{
@@ -624,7 +600,7 @@ protected:
 		}
 
 #ifndef _WIN32
-		if(config().getBool("application.runAsDaemon", false))
+		if(m_configuration.m_daemon)
 		{
 			run_monitor(m_pidfile);
 		}
@@ -650,11 +626,10 @@ protected:
 		//
 		// Create the logs directory if it doesn't exist
 		//
-		string logdir = config().getString("logfile.location", "logs");
-		File d(logdir);
+		File d(m_configuration.m_log_dir);
 		d.createDirectories();
 		Path p;
-		p.parseDirectory(logdir);
+		p.parseDirectory(m_configuration.m_log_dir);
 		p.setFileName("draios.log");
 		string logsdir = p.toString();
 
@@ -682,7 +657,9 @@ protected:
 
 		g_log->information("Agent starting");
 
-		if(config().getBool("application.runAsDaemon", false))
+		m_configuration.print_configuration();
+
+		if(m_configuration.m_daemon)
 		{
 #ifndef _WIN32
 			if(nice(AGENT_PRIORITY) == -1)
@@ -718,8 +695,7 @@ protected:
 		//
 		// Create the metrics directory if it doesn't exist
 		//
-		string metricsdir = config().getString("metricsfile.location", "metrics");
-		File md(metricsdir);
+		File md(m_configuration.m_metrics_dir);
 		md.createDirectories();
 
 		//
@@ -730,25 +706,15 @@ protected:
 			//
 			// Connect to the server
 			//
-			if(m_serveraddr == "")
+			if(m_configuration.m_server_addr != "" && m_configuration.m_server_port != 0)
 			{
-				m_serveraddr = config().getString("server.address", "");
-			}
-
-			if(m_serverport == 0)
-			{
-				m_serverport = config().getInt("server.port", 0);
-			}
-
-			if(m_serveraddr != "" && m_serverport != 0)
-			{
-				m_sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
+				m_sa = new Poco::Net::SocketAddress(m_configuration.m_server_addr, m_configuration.m_server_port);
 				m_socket = new Poco::Net::StreamSocket(*m_sa);
 				
 				//
 				// Set the send buffer size for the socket
 				//
-				m_socket->setSendBufferSize(config().getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE));
+				m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
 
 				//
 				// Put the socket in nonblocking mode
@@ -765,10 +731,10 @@ protected:
 			// Plug the sinsp logger into our one
 			//
 			m_inspector.set_log_callback(g_logger_callback);
-			if(config().hasOption("metricsfile.location"))
+			if(!m_configuration.m_metrics_dir.empty())
 			{
 				m_inspector.get_configuration()->set_emit_metrics_to_file(true);
-				m_inspector.get_configuration()->set_metrics_directory(metricsdir);
+				m_inspector.get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
 			}
 			else
 			{
@@ -783,16 +749,12 @@ protected:
 			//
 			// The customer id is currently specified by the user
 			//
-			if(config().hasOption("customerid"))
-			{
-				m_customerid = config().getString("customerid");
-			}
-			else
+			if(m_configuration.m_customer_id.empty())
 			{
 				g_log->error("customerid not specified.");
 			}
 
-			m_inspector.get_configuration()->set_customer_id(m_customerid);
+			m_inspector.get_configuration()->set_customer_id(m_configuration.m_customer_id);
 
 			//
 			// Start the capture with sinsp
@@ -807,8 +769,7 @@ protected:
 				m_inspector.open("");
 			}
 
-			bool dropping_mode = config().getBool("droppingmode.enabled", false);
-			if(dropping_mode)
+			if(m_configuration.m_dropping_mode)
 			{
 				g_log->information("Enabling dropping mode");
 				m_inspector.start_dropping_mode();
@@ -852,14 +813,12 @@ private:
 	sinsp m_inspector;
 	string m_filename;
 	uint64_t m_evtcnt;
-	string m_customerid;
 	string m_writefile;
-	string m_serveraddr;
-	uint16_t m_serverport;
 	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
 	vector<sample_store*> m_unsent_samples;
+	dragent_configuration m_configuration;
 };
 
 

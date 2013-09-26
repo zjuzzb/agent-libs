@@ -60,6 +60,7 @@ using Poco::AutoPtr;
 using Poco::Thread;
 using Poco::Util::ServerApplication;
 using Poco::Util::Application;
+using Poco::Util::LayeredConfiguration;
 using Poco::Util::Option;
 using Poco::Util::OptionSet;
 using Poco::Util::HelpFormatter;
@@ -93,17 +94,4 @@ using Poco::Environment;
 #define ASSERT(X)
 #endif // _DEBUG
 
-///////////////////////////////////////////////////////////////////////////////
-// Configuration defaults
-///////////////////////////////////////////////////////////////////////////////
-//
-// The size of the write buffer for the socket that we use to send the data to
-// the backend. If this buffer fills up, we will drop upcoming samples.
-//
-#define DEFAULT_DATA_SOCKET_BUF_SIZE (256 * 1024)
-
-//
-// The number of analyzer samples that we store in memory when we lose connection
-// to the backend. After MAX_SAMPLE_STORE_SIZE samples, we will start dropping.
-//
-#define MAX_SAMPLE_STORE_SIZE	30
+extern Logger* g_log;

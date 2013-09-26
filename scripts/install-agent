@@ -126,6 +126,6 @@ else
 fi
 
 echo "* Installing access key"
-echo "customerid = $ACCESS_KEY" >> /opt/draios/dragent.properties
+echo "customerid = $ACCESS_KEY" >> /opt/draios/bin/dragent.properties
 
 service dragent restart

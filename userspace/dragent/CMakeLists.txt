@@ -4,7 +4,8 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/include)
 
-add_executable(dragent 
+add_executable(dragent
+	configuration.cpp 
 	main.cpp)
 
 target_link_libraries(dragent
@@ -15,9 +16,6 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p1/target/lib/libPocoFoundation.a)
 
-#file(COPY dragent.properties 
-#	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
 
@@ -26,8 +24,4 @@ file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
 
 install(TARGETS dragent 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
-	COMPONENT agent)
-
-install(FILES dragent.properties 
-	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
