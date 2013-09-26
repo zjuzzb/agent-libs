@@ -26,6 +26,11 @@ MODULE_AUTHOR("Draios");
 
 #define PPM_DEVICE_NAME "ppm"
 
+//
+// Make sure to use a power of two constant
+//
+#define FD_SAMPLING_RATIO 4
+
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,35))
     #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2)
     #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2)
@@ -545,9 +550,11 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 		}
 
 		//
-		// As a simple filter, we drop 
+		// As a simple filter, we sample the events based on the
+		// fds, hoping we will generate a better pattern instead
+		// of just a random sampling
 		//
-		if(fd > 0 && (fd % 4))
+		if(fd > 0 && (fd % FD_SAMPLING_RATIO))
 		{
 			return 1;
 		}
