@@ -264,8 +264,6 @@ public:
 		m_evtcnt = 0;
 		m_socket = NULL;
 		m_sa = NULL;
-		m_serverport = 0;
-		m_ssl_enabled = false;
 
 		Poco::Net::initializeSSL();
 	}
@@ -541,7 +539,7 @@ protected:
 			{
 				ASSERT(m_socket == NULL);
 
-				if(m_ssl_enabled)
+				if(m_configuration.m_ssl_enabled)
 				{
 					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
 					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
@@ -731,14 +729,11 @@ protected:
 			//
 			// Connect to the server
 			//
-			m_ssl_enabled = config().getBool("ssl.enabled", false);
-			m_ssl_ca_certificate = config().getString("ssl.ca_certificate", "");
-
-			if(m_serveraddr != "" && m_serverport != 0)
+			if(m_configuration.m_server_addr != "" && m_configuration.m_server_port != 0)
 			{
-				m_sa = new Poco::Net::SocketAddress(m_serveraddr, m_serverport);
+				m_sa = new Poco::Net::SocketAddress(m_configuration.m_server_addr, m_configuration.m_server_port);
 
-				if(m_ssl_enabled)
+				if(m_configuration.m_ssl_enabled)
 				{
 					g_log->information("SSL enabled, initializing context");
 
@@ -746,7 +741,7 @@ protected:
 						Poco::Net::Context::CLIENT_USE, 
 						"", 
 						"", 
-						m_ssl_ca_certificate, 
+						m_configuration.m_ssl_ca_certificate, 
 						Poco::Net::Context::VERIFY_RELAXED, 
 						9, 
 						false, 
@@ -867,8 +862,6 @@ private:
 	string m_filename;
 	uint64_t m_evtcnt;
 	string m_writefile;
-	bool m_ssl_enabled;
-	string m_ssl_ca_certificate;
 	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;

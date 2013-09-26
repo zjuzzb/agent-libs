@@ -37,7 +37,7 @@ fi
 OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1e
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget http://www.openssl.org/source/openssl-1.0.1e.tar.gz
+	wget https://s3.amazonaws.com/draios-dependencies/openssl-1.0.1e.tar.gz
 	tar -xzf openssl-1.0.1e.tar.gz
 	cd $OPENSSL_DIR
 	./config --prefix=$OPENSSL_DIR/target no-shared no-dso
@@ -48,7 +48,7 @@ fi
 POCO_DIR=$DEPENDENCIES/poco-1.4.6p2-all
 if [ ! -d "$POCO_DIR" ]; then
 	cd $DEPENDENCIES
-	wget http://pocoproject.org/releases/poco-1.4.6/poco-1.4.6p2-all.tar.gz
+	wget https://s3.amazonaws.com/draios-dependencies/poco-1.4.6p2-all.tar.gz
 	tar -xzf poco-1.4.6p2-all.tar.gz
 	cd $POCO_DIR
 	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC --include-path=$OPENSSL_DIR/target/include

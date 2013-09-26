@@ -35,4 +35,6 @@ public:
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
 	bool m_dropping_mode;
+	bool m_ssl_enabled;
+	string m_ssl_ca_certificate;
 };
