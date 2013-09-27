@@ -642,23 +642,113 @@ TEST_F(sys_call_test, process_prlimit)
 	EXPECT_EQ(6, callnum);
 }
 #endif
-/*
-TEST_F(sys_call_test, procfs)
+
+TEST_F(sys_call_test, procfs_cpuload)
 {
 	OUT vector<uint32_t> loads;
-	sinsp_procparser pparser;
-	uint32_t j;
+	uint32_t j, k;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	sinsp_procparser pparser(nprocs);
 
 	pparser.get_cpus_load(&loads);
 	sleep(1);
 	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
 
+	for(j = 0; j < 5; j++)
+	{
+		pparser.get_cpus_load(&loads);
+		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
+
+		for(k = 0; k < loads.size(); k++)
+		{
+			EXPECT_LE((uint32_t)0, loads[k]);
+			EXPECT_GT((uint32_t)100, loads[k]);
+		}
+
+		sleep(1);
+	}
+}
+
+TEST_F(sys_call_test, procfs_cpuload_longinterval)
+{
+	OUT vector<uint32_t> loads;
+	uint32_t j, k;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	sinsp_procparser pparser(nprocs);
+
+	pparser.get_cpus_load(&loads);
+	sleep(1);
+	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
 
 	for(j = 0; j < 3; j++)
 	{
 		pparser.get_cpus_load(&loads);
 		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
+
+		for(k = 0; k < loads.size(); k++)
+		{
+			EXPECT_LE((uint32_t)0, loads[k]);
+			EXPECT_GE((uint32_t)100, loads[k]);
+		}
+
+		sleep(3);
+	}
+}
+
+TEST_F(sys_call_test, procfs_globalcpuload)
+{
+	uint32_t load;
+	uint32_t j;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	sinsp_procparser pparser(nprocs);
+
+	load = pparser.get_global_cpu_load();
+	sleep(1);
+	EXPECT_EQ((int32_t)-1, (int32_t)load);
+
+	for(j = 0; j < 5; j++)
+	{
+		load = pparser.get_global_cpu_load();
+		EXPECT_NE((int32_t)-1, (int32_t)load);
+		EXPECT_LE((uint32_t)0, load);
+		EXPECT_GE((uint32_t)100, load);
 		sleep(1);
 	}
 }
-*/
+
+TEST_F(sys_call_test, procfs_processcpuload)
+{
+	uint32_t load;
+	uint32_t j, k;
+	uint32_t t = 1;
+	int pid = getpid();
+	uint64_t old_global_total_jiffies;
+	uint64_t cur_global_total_jiffies;
+	uint64_t old_proc_jiffies = (uint64_t)-1LL;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	sinsp_procparser pparser(nprocs);
+
+	pparser.get_global_cpu_load(&old_global_total_jiffies);
+	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
+	
+	sleep(1);
+
+	EXPECT_EQ((int32_t)-1, (int32_t)load);
+
+	for(j = 20; j > 10; j--)
+	{
+		for(k = 0; k < 5000000 * j; k++)
+		{
+			t += k;
+			t = t % 35689;
+		}
+
+		pparser.get_global_cpu_load(&cur_global_total_jiffies);
+		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
+
+		EXPECT_NE((int32_t)-1, (int32_t)load);
+		EXPECT_LE((uint32_t)0, load);
+		EXPECT_GE((uint32_t)100, load);
+		old_global_total_jiffies = cur_global_total_jiffies;
+	}
+}

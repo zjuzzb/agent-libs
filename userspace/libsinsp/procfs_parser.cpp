@@ -4,7 +4,7 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "procfs_parser.h"
+#include "procparser.h"
 
 sinsp_procparser::sinsp_procparser(uint32_t ncpus)
 {
