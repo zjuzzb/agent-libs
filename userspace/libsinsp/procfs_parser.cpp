@@ -215,7 +215,6 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 	FILE* f = fopen(path.c_str(), "r");
 	if(f == NULL)
 	{
-		ASSERT(false);
 		return -1;
 	}
 
