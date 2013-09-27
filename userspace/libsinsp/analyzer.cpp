@@ -25,11 +25,9 @@ using namespace google::protobuf::io;
 #include "analyzer.h"
 #include "draios.pb.h"
 #include "scores.h"
+#include "procfs_parser.h"
 
 #define DUMP_TO_DISK
-
-//#undef ANALYZER_SAMPLE_DURATION_NS
-//#define ANALYZER_SAMPLE_DURATION_NS 5000000000
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -49,6 +47,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
 	m_score_calculator = new sinsp_scores(inspector);
+
+	//
+	// Initialize the CPU calculation counters
+	//
+	m_machine_info = m_inspector->get_machine_info();
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus);
+	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -66,6 +71,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_score_calculator)
 	{
 		delete m_score_calculator;
+	}
+
+	if(m_procfs_parser)
+	{
+		delete m_procfs_parser;
 	}
 }
 
@@ -421,6 +431,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_program_table.clear();
 #endif
 
+			uint64_t cur_global_total_jiffies;
+			if(m_inspector->m_islive)
+			{
+				m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+			}
+
 			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 				it != m_inspector->m_thread_manager->m_threadtable.end(); 
 #ifdef ANALYZER_EMITS_PROGRAMS
@@ -460,8 +476,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 					if(tot.m_count != 0)
 					{
+						int64_t pid = it->second.m_pid;
+
+						//
+						// Basic values
+						//
 						draiosproto::process* proc = m_metrics->add_processes();
-						proc->set_pid(it->second.m_pid);
+						proc->set_pid(pid);
 						proc->set_comm(it->second.m_comm);
 						proc->set_exe(it->second.m_exe);
 						for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
@@ -470,24 +491,44 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 							proc->add_args(*arg_it);
 						}
 
+						//
+						// CPU load for this process
+						//
+						int32_t cpuload = -1;
+						if(m_inspector->m_islive)
+						{
+							cpuload = m_procfs_parser->get_process_cpu_load(pid, 
+								&it->second.m_old_proc_jiffies, 
+								cur_global_total_jiffies - m_old_global_total_jiffies);
+							
+							proc->set_cpu_pct(cpuload);
+						}
+
+						//
+						// Transaction-related metrics
+						//
 						it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
 						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
+						//
+						// Health-related metrics
+						//
 						int32_t hscore = m_score_calculator->get_process_health_score(syshscore, &it->second);
 						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
-#if 0
+#if 1
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+								" %s (%" PRIu64 ")%" PRIu64 " cpu:% " PRId32 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 								it->second.m_comm.c_str(),
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_refcount + 1,
+								cpuload,
 								hscore,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
@@ -550,6 +591,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				}
 #endif
 			}
+
+			m_old_global_total_jiffies = cur_global_total_jiffies;
 
 			//
 			// Third pass of the list of threads: emit the programs

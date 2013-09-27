@@ -137,6 +137,8 @@ public:
 	uint32_t m_connection_queue_usage_ratio;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_ratio;
+	// This is used for CPU load calculation
+	uint64_t m_old_proc_jiffies;
 
 	//
 	// Global state

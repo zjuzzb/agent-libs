@@ -6,18 +6,23 @@
 #include "sinsp_int.h"
 #include "procfs_parser.h"
 
-sinsp_procparser::sinsp_procparser(uint32_t ncpus)
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus)
 {
 	m_ncpus = ncpus;
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
 }
 
-uint32_t sinsp_procparser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
+uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
 {
 	uint32_t res = -1;
 	char line[512];
 	char tmps[32];
+
+#ifdef _WIN32
+	return -1;
+#endif
+
 	FILE* f = fopen("/proc/stat", "r");
 	if(f == NULL)
 	{
@@ -101,7 +106,7 @@ uint32_t sinsp_procparser::get_global_cpu_load(OUT uint64_t* global_total_jiffie
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
-void sinsp_procparser::get_cpus_load(OUT vector<uint32_t>* loads)
+void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads)
 {
 	char line[512];
 	char tmps[32];
@@ -195,13 +200,17 @@ void sinsp_procparser::get_cpus_load(OUT vector<uint32_t>* loads)
 	fclose(f);
 }
 
-uint32_t sinsp_procparser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies)
+uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies)
 {
 	char line[512];
 	char tmps[32];
 	uint32_t res = -1;
 	string path = string("/proc/") + to_string(pid) + "/stat";
 	uint64_t tval, val1, val2;
+
+#ifdef _WIN32
+	return -1;
+#endif
 
 	FILE* f = fopen(path.c_str(), "r");
 	if(f == NULL)

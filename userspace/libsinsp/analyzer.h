@@ -1,6 +1,7 @@
 #pragma once
 
 class sinsp_scores;
+class sinsp_procfs_parser;
 
 //
 // The main analyzer class
@@ -39,9 +40,10 @@ private:
 	uint64_t m_prev_sample_evtnum;
 
 	//
-	// Pointer to inspector context
+	// Pointer to context that we use frequently
 	//
 	sinsp* m_inspector;
+	const scap_machine_info* m_machine_info;
 
 	//
 	// The score calculation class
@@ -59,6 +61,12 @@ private:
 	// The callback we invoke when a sample is ready
 	//
 	analyzer_callback_interface* m_sample_callback;
+
+	//
+	// State required for CPU load calculation
+	//
+	uint64_t m_old_global_total_jiffies;
+	sinsp_procfs_parser* m_procfs_parser;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

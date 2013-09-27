@@ -1,9 +1,9 @@
 #pragma once
 
-class sinsp_procparser
+class sinsp_procfs_parser
 {
 public:
-	sinsp_procparser(uint32_t ncpus);
+	sinsp_procfs_parser(uint32_t ncpus);
 
 	uint32_t get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
 

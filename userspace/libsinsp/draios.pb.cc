@@ -2012,6 +2012,7 @@ const int process::kLocalTransactionDelayFieldNumber;
 const int process::kHealthScoreFieldNumber;
 const int process::kConnectionQueueUsagePctFieldNumber;
 const int process::kFdUsagePctFieldNumber;
+const int process::kCpuPctFieldNumber;
 #endif  // !_MSC_VER
 
 process::process()
@@ -2051,6 +2052,7 @@ void process::SharedCtor() {
   health_score_ = 0u;
   connection_queue_usage_pct_ = 0u;
   fd_usage_pct_ = 0u;
+  cpu_pct_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2120,6 +2122,7 @@ void process::Clear() {
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     connection_queue_usage_pct_ = 0u;
     fd_usage_pct_ = 0u;
+    cpu_pct_ = 0u;
   }
   args_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -2277,6 +2280,22 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(88)) goto parse_cpu_pct;
+        break;
+      }
+
+      // optional uint32 cpu_pct = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_pct:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &cpu_pct_)));
+          set_has_cpu_pct();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2353,6 +2372,11 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(10, this->fd_usage_pct(), output);
   }
 
+  // optional uint32 cpu_pct = 11;
+  if (has_cpu_pct()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(11, this->cpu_pct(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -2424,6 +2448,13 @@ int process::ByteSize() const {
           this->fd_usage_pct());
     }
 
+    // optional uint32 cpu_pct = 11;
+    if (has_cpu_pct()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->cpu_pct());
+    }
+
   }
   // repeated string args = 4;
   total_size += 1 * this->args_size();
@@ -2476,6 +2507,9 @@ void process::MergeFrom(const process& from) {
     if (from.has_fd_usage_pct()) {
       set_fd_usage_pct(from.fd_usage_pct());
     }
+    if (from.has_cpu_pct()) {
+      set_cpu_pct(from.cpu_pct());
+    }
   }
 }
 
@@ -2503,6 +2537,7 @@ void process::Swap(process* other) {
     std::swap(health_score_, other->health_score_);
     std::swap(connection_queue_usage_pct_, other->connection_queue_usage_pct_);
     std::swap(fd_usage_pct_, other->fd_usage_pct_);
+    std::swap(cpu_pct_, other->cpu_pct_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

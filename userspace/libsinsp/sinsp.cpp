@@ -61,6 +61,7 @@ void sinsp::open(uint32_t timeout_ms)
 
 	g_logger.log("starting live capture");
 
+	m_islive = true;
 	m_h = scap_open_live(error);
 
 	if(m_h == NULL)
@@ -74,6 +75,8 @@ void sinsp::open(uint32_t timeout_ms)
 void sinsp::open(string filename)
 {
 	char error[SCAP_LASTERR_SIZE];
+
+	m_islive = false;
 
 	if(filename == "")
 	{
@@ -229,6 +232,20 @@ void sinsp::import_ifaddr_list()
 void sinsp::init()
 {
 	//
+	// Retrieve machine information
+	//
+	m_machine_info = scap_get_machine_info(m_h);
+	if(m_machine_info != NULL)
+	{
+		m_num_cpus = m_machine_info->num_cpus;
+	}
+	else
+	{
+		ASSERT(false);
+		m_num_cpus = 0;
+	}
+
+	//
 	// Allocations
 	//
 	m_parser = new sinsp_parser(this);
@@ -249,17 +266,6 @@ void sinsp::init()
 	//
 	m_tid_to_remove = -1;
 	m_lastevent_ts = 0;
-
-	m_machine_info = scap_get_machine_info(m_h);
-	if(m_machine_info != NULL)
-	{
-		m_num_cpus = m_machine_info->num_cpus;
-	}
-	else
-	{
-		ASSERT(false);
-		m_num_cpus = 0;
-	}
 
 	import_ifaddr_list();
 	import_proc_table();

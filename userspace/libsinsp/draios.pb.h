@@ -911,6 +911,13 @@ class process : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint32 fd_usage_pct() const;
   inline void set_fd_usage_pct(::google::protobuf::uint32 value);
 
+  // optional uint32 cpu_pct = 11;
+  inline bool has_cpu_pct() const;
+  inline void clear_cpu_pct();
+  static const int kCpuPctFieldNumber = 11;
+  inline ::google::protobuf::uint32 cpu_pct() const;
+  inline void set_cpu_pct(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -931,6 +938,8 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_connection_queue_usage_pct();
   inline void set_has_fd_usage_pct();
   inline void clear_has_fd_usage_pct();
+  inline void set_has_cpu_pct();
+  inline void clear_has_cpu_pct();
 
   ::google::protobuf::uint64 pid_;
   ::std::string* comm_;
@@ -942,9 +951,10 @@ class process : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 health_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
+  ::google::protobuf::uint32 cpu_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -3215,6 +3225,28 @@ inline ::google::protobuf::uint32 process::fd_usage_pct() const {
 inline void process::set_fd_usage_pct(::google::protobuf::uint32 value) {
   set_has_fd_usage_pct();
   fd_usage_pct_ = value;
+}
+
+// optional uint32 cpu_pct = 11;
+inline bool process::has_cpu_pct() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void process::set_has_cpu_pct() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void process::clear_has_cpu_pct() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void process::clear_cpu_pct() {
+  cpu_pct_ = 0u;
+  clear_has_cpu_pct();
+}
+inline ::google::protobuf::uint32 process::cpu_pct() const {
+  return cpu_pct_;
+}
+inline void process::set_cpu_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_pct();
+  cpu_pct_ = value;
 }
 
 // -------------------------------------------------------------------

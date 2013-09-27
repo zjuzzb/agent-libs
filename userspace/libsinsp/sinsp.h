@@ -253,6 +253,7 @@ VISIBILITY_PRIVATE
 	void remove_expired_connections(uint64_t ts);
 
 	scap_t* m_h;
+	bool m_islive;
 	sinsp_evt m_evt;
 	string m_lasterr;
 	int64_t m_tid_to_remove;
