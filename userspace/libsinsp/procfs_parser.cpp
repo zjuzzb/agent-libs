@@ -253,7 +253,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 	{
 		uint64_t delta_proc_jiffies = proc_jiffies - *old_proc_jiffies;
 
-		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus);
+		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies));
 	}
 
 	*old_proc_jiffies = proc_jiffies;
