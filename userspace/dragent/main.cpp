@@ -265,7 +265,9 @@ public:
 		m_socket = NULL;
 		m_sa = NULL;
 
+#ifndef _WIN32
 		Poco::Net::initializeSSL();
+#endif
 	}
 	
 	~dragent_app()
@@ -282,7 +284,9 @@ public:
 			m_socket = NULL;
 		}
 
+#ifndef _WIN32
 		Poco::Net::uninitializeSSL();
+#endif
 	}
 
 protected:
@@ -539,12 +543,14 @@ protected:
 			{
 				ASSERT(m_socket == NULL);
 
+#ifndef _WIN32
 				if(m_configuration.m_ssl_enabled)
 				{
 					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
 					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
 				}
 				else
+#endif
 				{
 					m_socket = new Poco::Net::StreamSocket(*m_sa);
 				}
@@ -733,6 +739,7 @@ protected:
 			{
 				m_sa = new Poco::Net::SocketAddress(m_configuration.m_server_addr, m_configuration.m_server_port);
 
+#ifndef _WIN32
 				if(m_configuration.m_ssl_enabled)
 				{
 					g_log->information("SSL enabled, initializing context");
@@ -755,6 +762,7 @@ protected:
 					g_log->information("SSL identity verified");
 				}
 				else
+#endif
 				{
 					m_socket = new Poco::Net::StreamSocket(*m_sa);
 				}
