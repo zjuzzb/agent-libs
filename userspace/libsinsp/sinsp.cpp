@@ -43,6 +43,7 @@ sinsp::sinsp() :
 #endif
 
 	m_fds_to_remove = new vector<int64_t>;
+	m_machine_info = NULL;
 }
 
 sinsp::~sinsp()

@@ -62,14 +62,6 @@ uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jif
 		return -1;
 	}
 
-	ASSERT(val1 != 0);
-	ASSERT(val2 != 0);
-	ASSERT(val3 != 0);
-	ASSERT(val4 != 0);
-	ASSERT(val5 != 0);
-	ASSERT(val6 != 0);
-	ASSERT(val7 != 0);
-
 	//
 	// Calculate the value
 	//

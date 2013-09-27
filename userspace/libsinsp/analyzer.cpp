@@ -52,6 +52,12 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	// Initialize the CPU calculation counters
 	//
 	m_machine_info = m_inspector->get_machine_info();
+	if(m_machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("machine infor missing, analyzer can't start");
+	}
+
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus);
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 }
@@ -265,19 +271,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Reset the protobuffer
 			//
 			m_metrics->Clear();
+
+			//
+			// Add global information
+			//
 			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
 			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
-			if(m_inspector->m_machine_info)
+			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
+			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
+
+			m_procfs_parser->get_cpus_load(&m_cpu_loads);
+			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
+			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
-				m_metrics->mutable_hostinfo()->set_num_cpus(m_inspector->m_machine_info->num_cpus);
-				m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
-			}
-			else
-			{
-				ASSERT(false);
+				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
 			}
 
 			////////////////////////////////////////////////////////////////////////////
@@ -519,17 +529,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
-#if 1
+#if 0
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " cpu:% " PRId32 " h:% " PRIu32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 								it->second.m_comm.c_str(),
 //								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 								it->second.m_tid,
 								it->second.m_refcount + 1,
-								cpuload,
 								hscore,
+								cpuload,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
 								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
 								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,

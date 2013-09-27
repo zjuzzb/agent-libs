@@ -67,6 +67,7 @@ private:
 	//
 	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
+	vector<uint32_t> m_cpu_loads;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//
