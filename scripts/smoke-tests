@@ -43,7 +43,7 @@ function smoke_tests {
 	echo "server.address = 127.0.0.1" >> /opt/draios/bin/dragent.properties
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
 	echo "ssl.enabled = true" >> /opt/draios/bin/dragent.properties
-	echo "ssl.ca_certificate = /opt/draios/root.cert" >> /opt/draios/bin/dragent.properties
+	echo "ssl.ca_certificate = root.cert" >> /opt/draios/bin/dragent.properties
 	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
 	service dragent start
 	sleep 5
@@ -59,7 +59,7 @@ function smoke_tests {
 	echo "server.address = 127.0.0.1" >> /opt/draios/bin/dragent.properties
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
 	echo "ssl.enabled = true" >> /opt/draios/bin/dragent.properties
-	echo "ssl.ca_certificate = /opt/draios/test/resources/fake_backend.cert" >> /opt/draios/bin/dragent.properties
+	echo "ssl.ca_certificate = test/resources/fake_backend.cert" >> /opt/draios/bin/dragent.properties
 	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
 	service dragent start
 	sleep 5
