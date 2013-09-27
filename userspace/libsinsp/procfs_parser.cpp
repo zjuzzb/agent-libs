@@ -160,14 +160,6 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads)
 			break;
 		}
 
-		ASSERT(val1 != 0);
-		ASSERT(val2 != 0);
-		ASSERT(val3 != 0);
-		ASSERT(val4 != 0);
-		ASSERT(val5 != 0);
-		ASSERT(val6 != 0);
-		ASSERT(val7 != 0);
-
 		total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7;
 		work_jiffies = val1 + val2 + val3;
 
