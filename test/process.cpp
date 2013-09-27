@@ -645,7 +645,7 @@ TEST_F(sys_call_test, process_prlimit)
 
 TEST_F(sys_call_test, procfs_cpuload)
 {
-	OUT vector<uint32_t> loads;
+	vector<uint32_t> loads;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	sinsp_procfs_parser pparser(nprocs);
@@ -662,7 +662,7 @@ TEST_F(sys_call_test, procfs_cpuload)
 		for(k = 0; k < loads.size(); k++)
 		{
 			EXPECT_LE((uint32_t)0, loads[k]);
-			EXPECT_GT((uint32_t)100, loads[k]);
+			EXPECT_GT((uint32_t)105, loads[k]);
 		}
 
 		sleep(1);
