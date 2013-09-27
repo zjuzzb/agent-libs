@@ -4,11 +4,10 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "procparser.h"
+#include "procfs_parser.h"
 
 sinsp_procparser::sinsp_procparser(uint32_t ncpus)
 {
-//	m_last_read_time = 0;
 	m_ncpus = ncpus;
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
