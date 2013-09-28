@@ -290,6 +290,8 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(0)->type == PT_FD);
 
 			evt->m_tinfo->m_lastevent_fd = *(int64_t *)parinfo->m_val;
+
+			evt->m_fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
 		}
 	}
 	else
@@ -307,9 +309,9 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		if(eflags & EF_USES_FD)
 		{
 			evt->m_fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
+
 			if(evt->m_fdinfo == NULL)
 			{
-//              ASSERT(false);
 				return false;
 			}
 			else if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)

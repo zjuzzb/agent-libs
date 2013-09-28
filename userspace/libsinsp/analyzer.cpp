@@ -376,7 +376,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 				it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
 				mtinfo->add_all_metrics(&it->second);
-				
+
 				//
 				// Dump the thread info into the protobuf
 				//
@@ -444,6 +444,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_inspector->m_islive)
 			{
 				m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+			}
+			else
+			{
+				cur_global_total_jiffies = 0;
 			}
 
 			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
@@ -912,7 +916,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		//
 		delta = ts - evt->m_tinfo->m_lastevent_ts;
 	}
-	
+
 	//
 	// Add this event time to the right category in the metrics array
 	//

@@ -183,14 +183,13 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 {
 	m_count_in += other->m_count_in;
 	m_count_out += other->m_count_out;
-	m_count_other += other->m_count_out;
+	m_count_other += other->m_count_other;
 	m_time_ns_in += other->m_time_ns_in;
-	m_count_out += other->m_count_out;
-	m_count_out += other->m_count_out;
-	m_count_other += other->m_count_out;
+	m_time_ns_out += other->m_time_ns_out;
+	m_time_ns_other += other->m_time_ns_other;
 	m_bytes_in += other->m_bytes_in;
 	m_bytes_out += other->m_bytes_out;
-	m_bytes_other += other->m_bytes_out;
+	m_bytes_other += other->m_bytes_other;
 }
 
 
@@ -210,14 +209,14 @@ void sinsp_counter_time_bytes::clear()
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg)
 {
 	protobuf_msg->set_time_ns_in(m_time_ns_in);
-	protobuf_msg->set_time_ns_in(m_time_ns_out);
-	protobuf_msg->set_time_ns_in(m_time_ns_other);
+	protobuf_msg->set_time_ns_out(m_time_ns_out);
+	protobuf_msg->set_time_ns_other(m_time_ns_other);
 	protobuf_msg->set_count_in(m_count_in);
-	protobuf_msg->set_count_in(m_count_out);
-	protobuf_msg->set_count_in(m_count_other);
+	protobuf_msg->set_count_out(m_count_out);
+	protobuf_msg->set_count_other(m_count_other);
 	protobuf_msg->set_bytes_in(m_bytes_in);
-	protobuf_msg->set_bytes_in(m_bytes_out);
-	protobuf_msg->set_bytes_in(m_bytes_other);
+	protobuf_msg->set_bytes_out(m_bytes_out);
+	protobuf_msg->set_bytes_other(m_bytes_other);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -259,7 +258,6 @@ void sinsp_counters::get_total(sinsp_counter_time* tot)
 	tot->add(&m_signal);
 	tot->add(&m_user);
 	tot->add(&m_time);
-//	tot->add(&m_io);
 	tot->add(&m_io_file);
 	tot->add(&m_io_net);
 	tot->add(&m_io_other);
@@ -281,7 +279,6 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_signal.add(&other->m_signal);
 	m_user.add(&other->m_user);
 	m_time.add(&other->m_time);
-//	m_io.add(&other->m_io);
 	m_io_file.add(&other->m_io_file);
 	m_io_net.add(&other->m_io_net);
 	m_io_other.add(&other->m_io_other);
