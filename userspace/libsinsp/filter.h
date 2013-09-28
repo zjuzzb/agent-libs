@@ -71,29 +71,45 @@ public:
 };
 
 //
-// fd name check
-//
-class sinsp_filter_check_fdname : public sinsp_filter_check
-{
-public:
-	void parse_operand2(string val);
-	bool run(sinsp_evt *evt);
-	static bool recognize_operand(string operand);
-
-	string m_fdname;
-};
-
-//
 // numeric fd check
 //
 class sinsp_filter_check_fd : public sinsp_filter_check
 {
 public:
+	enum check_type
+	{
+		TYPE_NONE,
+		TYPE_FDNUM,
+		TYPE_FDTYPE,
+		TYPE_FDNAME,
+	};
+
+	enum fd_type
+	{
+		FDT_NONE,
+		FDT_FILE,
+		FDT_SOCK,
+		FDT_IPV4_SOCK,
+		FDT_IPV6_SOCK,
+		FDT_UNIX_SOCK,
+		FDT_PIPE,
+		FDT_EVENT,
+		FDT_SIGNALFD,
+		FDT_EVENTPOLL,
+		FDT_INOTIFY,
+		FDT_TIMERFD
+	};
+
+	static bool recognize_operand(string operand);
+	void parse_operand1(string val);
 	void parse_operand2(string val);
 	bool run(sinsp_evt *evt);
-	static bool recognize_operand(string operand);
+	bool check_fdtype(sinsp_fdinfo* fdinfo);
 
+	check_type m_type;
 	int64_t m_fd;
+	string m_fdname;
+	fd_type m_fd_type;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
