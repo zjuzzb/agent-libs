@@ -671,11 +671,11 @@ void runtest(iotype iot,
 				{
 					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out));
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out + ti->m_metrics.m_io_net.m_count_other));
 
 					ti = param.m_inspector->get_thread(ctid, false);
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out));
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out + ti->m_metrics.m_io_net.m_count_other));
 					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_count);
 					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_bytes);
 				}

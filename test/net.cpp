@@ -176,7 +176,7 @@ TEST_F(sys_call_test, net_web_requests)
 				sinsp_threadinfo* ti = evt->get_thread_info();
 				ASSERT_EQ(0, (int)ti->m_transaction_metrics.m_counter.m_count_in);
 				// Note: +1 is because of the DNS lookup
-				ASSERT_EQ(N_CONNECTIONS + 1, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+				ASSERT_EQ(N_CONNECTIONS + 1, (int)ti->m_transaction_metrics.m_counter.m_count_out);
 			}
 		}
 	};
