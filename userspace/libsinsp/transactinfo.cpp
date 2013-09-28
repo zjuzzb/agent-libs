@@ -24,8 +24,8 @@ sinsp_transaction_table::~sinsp_transaction_table()
 
 bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 {
-	if(ptinfo->m_total_server_transaction_counter.m_count >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
-		ptinfo->m_total_server_transaction_counter.m_time_ns / ptinfo->m_total_server_transaction_counter.m_count < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
+	if(ptinfo->m_transaction_metrics.m_counter.m_count_in >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
+		ptinfo->m_transaction_metrics.m_counter.m_time_ns_in / ptinfo->m_transaction_metrics.m_counter.m_count_in < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
 	{
 		return true;
 	}
@@ -110,9 +110,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
 			m_n_server_transactions++;
-			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
-			ptinfo->m_total_server_transaction_counter.add(1, delta);
-			pconn->m_transaction_metrics.m_incoming.add(1, delta);
+			ptinfo->m_transaction_metrics.m_counter.add_in(1, delta);
+			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
 
 			m_inspector->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
@@ -135,8 +134,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		else
 		{
 			m_n_client_transactions++;
-			ptinfo->m_transaction_metrics.m_outgoing.add(1, delta);
-			pconn->m_transaction_metrics.m_outgoing.add(1, delta);
+			ptinfo->m_transaction_metrics.m_counter.add_out(1, delta);
+			pconn->m_transaction_metrics.m_counter.add_out(1, delta);
 		}
 
 //

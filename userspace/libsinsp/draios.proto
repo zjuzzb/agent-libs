@@ -4,43 +4,62 @@ option optimize_for = LITE_RUNTIME;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
-message counter {
-  optional uint64 time_ns = 1;
-  optional uint32 count = 2;
-  optional uint32 bytes = 3;
+message counter_time {
+  required uint32 count = 1;
+  required uint64 time_ns = 2;
+}
+
+message counter_time_bidirectional {
+  required uint32 count_in = 1;
+  required uint32 count_out = 2;
+  required uint64 time_ns_in = 3;
+  required uint64 time_ns_out = 4;
+}
+
+message counter_bytes {
+  required uint32 count_in = 1;
+  required uint32 count_out = 2;
+  required uint32 bytes_in = 3;
+  required uint32 bytes_out = 4;
+}
+
+message counter_time_bytes {
+  required uint64 time_ns_in = 1;
+  required uint64 time_ns_out = 2;
+  required uint64 time_ns_other = 3;
+  required uint32 count_in = 4;
+  required uint32 count_out = 5;
+  required uint32 count_other = 6;
+  required uint32 bytes_in = 7;
+  required uint32 bytes_out = 8;
+  required uint32 bytes_other = 9;
 }
 
 message time_categories {
-	optional counter unknown = 1;
-	optional counter other = 2;
-	optional counter file = 3;
-	optional counter net = 4;
-	optional counter ipc = 5;
-	optional counter memory = 6;
-	optional counter process = 7;
-	optional counter sleep = 8;
-	optional counter system = 9;
-	optional counter signal = 10;
-	optional counter user = 11;
-	optional counter time = 12;
-	optional counter io_file = 13;
-	optional counter io_net = 14;
-	optional counter io_other = 15;
-	optional counter wait = 16;
-	optional counter processing = 17;
-}
-
-message transaction_categories {
-	optional counter incoming = 1;
-	optional counter outgoing = 2;
+	optional counter_time unknown = 1;
+	optional counter_time other = 2;
+	optional counter_time file = 3;
+	optional counter_time net = 4;
+	optional counter_time ipc = 5;
+	optional counter_time memory = 6;
+	optional counter_time process = 7;
+	optional counter_time sleep = 8;
+	optional counter_time system = 9;
+	optional counter_time signal = 10;
+	optional counter_time user = 11;
+	optional counter_time time = 12;
+	optional counter_time_bytes io_file = 13;
+	optional counter_time_bytes io_net = 14;
+	optional counter_time_bytes io_other = 15;
+	optional counter_time wait = 16;
+	optional counter_time processing = 17;
 }
 
 message connection_categories {
-	optional counter server_incoming = 1;
-	optional counter server_outgoing = 2;
-	optional counter client_incoming = 3;
-	optional counter client_outgoing = 4;
+	optional counter_bytes server = 1;
+	optional counter_bytes client = 2;
 }
+
 //
 // HOST
 // global host info.
@@ -66,7 +85,7 @@ message process {
   repeated string args = 4; // Command line arguments (e.g. "-d1")
 
   optional time_categories tcounters = 5; // The time counters for this thread
-  optional transaction_categories transaction_counters = 6; // The transaction counters for this process
+  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
   optional uint64 local_transaction_delay = 7;	// the delay introduced by this process when processing transactions. 
                                                 // It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional uint32 health_score = 8; // the health score for this process. 0 means very crappy, 100 means very healthy.
@@ -89,7 +108,7 @@ message thread {
                              // own working directory, which happens for main threads and threads 
 							 // started with the CLONE_FS flag
 
-  optional transaction_categories transaction_counters = 5; // The transaction counters for this thread
+  optional counter_time_bidirectional transaction_counters = 5; // The transaction counters for this thread
 }
 
 //
@@ -117,7 +136,7 @@ message ipv4_connection {
   //optional uint64 dfd = 7; // The fd number of the server
 
   optional connection_categories counters = 8; // The counters for this connection
-  optional transaction_categories transaction_counters = 9; // The transaction counters for this connection
+  optional counter_time_bidirectional transaction_counters = 9; // The transaction counters for this connection
 }
 
 //

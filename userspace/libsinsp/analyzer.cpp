@@ -209,7 +209,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 //
 uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_counters* trcounters)
 {
-	if(trcounters->m_incoming.m_count == 0)
+	if(trcounters->m_counter.m_count_in == 0)
 	{
 		//
 		// This is a client
@@ -218,13 +218,12 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 	}
 	else
 	{
-		ASSERT(trcounters->m_incoming.m_time_ns != 0);
+		ASSERT(trcounters->m_counter.m_time_ns_in != 0);
 
-		int64_t res = trcounters->m_incoming.m_time_ns - trcounters->m_outgoing.m_time_ns;
+		int64_t res = trcounters->m_counter.m_time_ns_in - trcounters->m_counter.m_time_ns_out;
 
 		if(res <= 0)
 		{
-//			ASSERT(false);
 			return 0;
 		}
 		else
@@ -366,7 +365,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				//
 				// If this thread served requests, increase the server thread counter
 				//
-				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
+				if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
 				{
 					n_server_threads++;
 				}
@@ -1005,29 +1004,85 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 		case EC_PROCESSING:
 			metrics->m_processing.add(cnt_delta, delta);
 			break;
-		case EC_IO:
+		case EC_IO_READ:
 			{
 				switch(cat->m_subcategory)
 				{
 				case sinsp_evt::SC_FILE:
-					metrics->m_io_file.add(cnt_delta, delta, bytes);
+					metrics->m_io_file.add_in(cnt_delta, delta, bytes);
 					break;
 				case sinsp_evt::SC_NET:
-					metrics->m_io_net.add(cnt_delta, delta, bytes);
+					metrics->m_io_net.add_in(cnt_delta, delta, bytes);
 					break;
 				case sinsp_evt::SC_IPC:
 					metrics->m_ipc.add(cnt_delta, delta);
 					break;
 				case sinsp_evt::SC_UNKNOWN:
 				case sinsp_evt::SC_OTHER:
-					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
 					break;
 				case sinsp_evt::SC_NONE:
-					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
 					break;
 				default:
 					ASSERT(false);
-					metrics->m_io_other.add(cnt_delta, delta, bytes);
+					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
+					break;
+				}
+
+			}
+			break;
+		case EC_IO_WRITE:
+			{
+				switch(cat->m_subcategory)
+				{
+				case sinsp_evt::SC_FILE:
+					metrics->m_io_file.add_out(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NET:
+					metrics->m_io_net.add_out(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_IPC:
+					metrics->m_ipc.add(cnt_delta, delta);
+					break;
+				case sinsp_evt::SC_UNKNOWN:
+				case sinsp_evt::SC_OTHER:
+					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NONE:
+					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+					break;
+				default:
+					ASSERT(false);
+					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+					break;
+				}
+
+			}
+			break;
+		case EC_IO_OTHER:
+			{
+				switch(cat->m_subcategory)
+				{
+				case sinsp_evt::SC_FILE:
+					metrics->m_io_file.add_other(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NET:
+					metrics->m_io_net.add_other(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_IPC:
+					metrics->m_ipc.add(cnt_delta, delta);
+					break;
+				case sinsp_evt::SC_UNKNOWN:
+				case sinsp_evt::SC_OTHER:
+					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
+					break;
+				case sinsp_evt::SC_NONE:
+					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
+					break;
+				default:
+					ASSERT(false);
+					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
 					break;
 				}
 

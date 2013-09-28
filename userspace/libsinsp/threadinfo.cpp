@@ -41,11 +41,9 @@ void sinsp_threadinfo::init()
 	m_lastevent_category.m_category = EC_UNKNOWN;
 	m_analysis_flags = AF_PARTIAL_METRIC;
 	m_flags = 0;
-	m_n_threads = 0;
 	m_refcount = 0;
 	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
-	m_n_active_transactions = 0;
 	m_fdlimit = -1;
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;

@@ -32,8 +32,8 @@ void sinsp_counter_time::add(sinsp_counter_time* other)
 
 void sinsp_counter_time::add(sinsp_counter_time_bytes* other)
 {
-	m_count += other->m_count;
-	m_time_ns += other->m_time_ns;
+	m_count += (other->m_count_in + other->m_count_out + other->m_count_other);
+	m_time_ns += (other->m_time_ns_in + other->m_time_ns_out + other->m_time_ns_other);
 }
 
 void sinsp_counter_time::clear()
@@ -42,10 +42,58 @@ void sinsp_counter_time::clear()
 	m_time_ns = 0;
 }
 
-void sinsp_counter_time::to_protobuf(draiosproto::counter* protobuf_msg)
+void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg)
 {
 	protobuf_msg->set_time_ns(m_time_ns);
 	protobuf_msg->set_count(m_count);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_counter_time_bidirectional implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional()
+{
+	clear();
+}
+
+void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count_in += cnt_delta;
+	m_time_ns_in += time_delta;
+}
+
+void sinsp_counter_time_bidirectional::add_out(uint32_t cnt_delta, uint64_t time_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count_out += cnt_delta;
+	m_time_ns_out += time_delta;
+}
+
+void sinsp_counter_time_bidirectional::add(sinsp_counter_time_bidirectional* other)
+{
+	m_count_in += other->m_count_in;
+	m_count_out += other->m_count_out;
+	m_time_ns_in += other->m_time_ns_in;
+	m_time_ns_out += other->m_time_ns_out;
+}
+
+void sinsp_counter_time_bidirectional::clear()
+{
+	m_count_in = 0;
+	m_count_out = 0;
+	m_time_ns_in = 0;
+	m_time_ns_out = 0;
+}
+
+void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg)
+{
+	protobuf_msg->set_time_ns_in(m_time_ns_in);
+	protobuf_msg->set_time_ns_out(m_time_ns_out);
+	protobuf_msg->set_count_in(m_count_in);
+	protobuf_msg->set_count_out(m_count_out);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -56,30 +104,44 @@ sinsp_counter_bytes::sinsp_counter_bytes()
 	clear();
 }
 
-void sinsp_counter_bytes::add(uint32_t cnt_delta, uint32_t bytes_delta)
+void sinsp_counter_bytes::add_in(uint32_t cnt_delta, uint32_t bytes_delta)
 {
 	ASSERT(cnt_delta <= 1);
 
-	m_count += cnt_delta;
-	m_bytes += bytes_delta;
+	m_count_in += cnt_delta;
+	m_bytes_in += bytes_delta;
+}
+
+void sinsp_counter_bytes::add_out(uint32_t cnt_delta, uint32_t bytes_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count_out += cnt_delta;
+	m_bytes_out += bytes_delta;
 }
 
 void sinsp_counter_bytes::add(sinsp_counter_bytes* other)
 {
-	m_count += other->m_count;
-	m_bytes += other->m_bytes;
+	m_count_in += other->m_count_in;
+	m_count_out += other->m_count_out;
+	m_bytes_in += other->m_bytes_in;
+	m_bytes_out += other->m_bytes_out;
 }
 
 void sinsp_counter_bytes::clear()
 {
-	m_count = 0;
-	m_bytes = 0;
+	m_count_in = 0;
+	m_count_out = 0;
+	m_bytes_in = 0;
+	m_bytes_out = 0;
 }
 
-void sinsp_counter_bytes::to_protobuf(draiosproto::counter* protobuf_msg)
+void sinsp_counter_bytes::to_protobuf(draiosproto::counter_bytes* protobuf_msg)
 {
-	protobuf_msg->set_bytes(m_bytes);
-	protobuf_msg->set_count(m_count);
+	protobuf_msg->set_bytes_in(m_bytes_in);
+	protobuf_msg->set_bytes_out(m_bytes_out);
+	protobuf_msg->set_count_in(m_count_in);
+	protobuf_msg->set_count_out(m_count_out);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -90,34 +152,72 @@ sinsp_counter_time_bytes::sinsp_counter_time_bytes()
 	clear();
 }
 
-void sinsp_counter_time_bytes::add(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
+void sinsp_counter_time_bytes::add_in(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
 {
 	ASSERT(cnt_delta <= 1);
 
-	m_count += cnt_delta;
-	m_time_ns += time_delta;
-	m_bytes += bytes_delta;
+	m_count_in += cnt_delta;
+	m_time_ns_in += time_delta;
+	m_bytes_in += bytes_delta;
+}
+
+void sinsp_counter_time_bytes::add_out(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count_out += cnt_delta;
+	m_time_ns_out += time_delta;
+	m_bytes_out += bytes_delta;
+}
+
+void sinsp_counter_time_bytes::add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
+{
+	ASSERT(cnt_delta <= 1);
+
+	m_count_other += cnt_delta;
+	m_time_ns_other += time_delta;
+	m_bytes_other += bytes_delta;
 }
 
 void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 {
-	m_count += other->m_count;
-	m_time_ns += other->m_time_ns;
-	m_bytes += other->m_bytes;
+	m_count_in += other->m_count_in;
+	m_count_out += other->m_count_out;
+	m_count_other += other->m_count_out;
+	m_time_ns_in += other->m_time_ns_in;
+	m_count_out += other->m_count_out;
+	m_count_out += other->m_count_out;
+	m_count_other += other->m_count_out;
+	m_bytes_in += other->m_bytes_in;
+	m_bytes_out += other->m_bytes_out;
+	m_bytes_other += other->m_bytes_out;
 }
+
 
 void sinsp_counter_time_bytes::clear()
 {
-	m_count = 0;
-	m_time_ns = 0;
-	m_bytes = 0;
+	m_count_in = 0;
+	m_count_out = 0;
+	m_count_other = 0;
+	m_time_ns_in = 0;
+	m_time_ns_out = 0;
+	m_time_ns_other = 0;
+	m_bytes_in = 0;
+	m_bytes_out = 0;
+	m_bytes_other = 0;
 }
 
-void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter* protobuf_msg)
+void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg)
 {
-	protobuf_msg->set_time_ns(m_time_ns);
-	protobuf_msg->set_count(m_count);
-	protobuf_msg->set_bytes(m_bytes);
+	protobuf_msg->set_time_ns_in(m_time_ns_in);
+	protobuf_msg->set_time_ns_in(m_time_ns_out);
+	protobuf_msg->set_time_ns_in(m_time_ns_other);
+	protobuf_msg->set_count_in(m_count_in);
+	protobuf_msg->set_count_in(m_count_out);
+	protobuf_msg->set_count_in(m_count_other);
+	protobuf_msg->set_bytes_in(m_bytes_in);
+	protobuf_msg->set_bytes_in(m_bytes_out);
+	protobuf_msg->set_bytes_in(m_bytes_other);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -234,26 +334,25 @@ void sinsp_counters::print_on(FILE* f)
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_transaction_counters::clear()
 {
-	m_incoming.clear();
-	m_outgoing.clear();
+	m_counter.clear();
 }
 
+/*
 void sinsp_transaction_counters::get_total(sinsp_counter_time* tot)
 {
 	tot->add(&m_incoming);
 	tot->add(&m_outgoing);
 }
+*/
 
-void sinsp_transaction_counters::to_protobuf(draiosproto::transaction_categories* protobuf_msg)
+void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg)
 {
-	m_incoming.to_protobuf(protobuf_msg->mutable_incoming());
-	m_outgoing.to_protobuf(protobuf_msg->mutable_outgoing());
+	m_counter.to_protobuf(protobuf_msg);
 }
 
 void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
-	m_incoming.add(&other->m_incoming);
-	m_outgoing.add(&other->m_outgoing);
+	m_counter.add(&other->m_counter);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -261,16 +360,12 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_connection_counters::clear()
 {
-	m_server_incoming.clear();
-	m_server_outgoing.clear();
-	m_client_incoming.clear();
-	m_client_outgoing.clear();
+	m_server.clear();
+	m_client.clear();
 }
 
 void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* protobuf_msg)
 {
-	m_server_incoming.to_protobuf(protobuf_msg->mutable_server_incoming());
-	m_server_outgoing.to_protobuf(protobuf_msg->mutable_server_outgoing());
-	m_client_incoming.to_protobuf(protobuf_msg->mutable_client_incoming());
-	m_client_outgoing.to_protobuf(protobuf_msg->mutable_client_outgoing());
+	m_server.to_protobuf(protobuf_msg->mutable_server());
+	m_client.to_protobuf(protobuf_msg->mutable_client());
 }

@@ -1870,11 +1870,11 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 
 		if(evt->m_fdinfo->is_role_server())
 		{
-			connection->m_metrics.m_server_incoming.add(1, original_len);
+			connection->m_metrics.m_server.add_in(1, original_len);
 		}
 		else if (evt->m_fdinfo->is_role_client())
 		{
-			connection->m_metrics.m_client_incoming.add(1, original_len);
+			connection->m_metrics.m_client.add_in(1, original_len);
 		}
 		else
 		{
@@ -2133,11 +2133,11 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 
 		if(evt->m_fdinfo->is_role_server())
 		{
-			connection->m_metrics.m_server_outgoing.add(1, original_len);
+			connection->m_metrics.m_server.add_out(1, original_len);
 		}
 		else if(evt->m_fdinfo->is_role_client())
 		{
-			connection->m_metrics.m_client_outgoing.add(1, original_len);
+			connection->m_metrics.m_client.add_out(1, original_len);
 		}
 		else
 		{

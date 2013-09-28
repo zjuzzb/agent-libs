@@ -626,8 +626,11 @@ typedef enum ppm_event_category
 	EC_USER = 10,	// User-related operations (e.g. getuid)
 	EC_TIME = 11,	// Time-related syscalls (e.g. gettimeofday)
 	EC_PROCESSING = 12,	// User level processing. Never used for system calls
-	EC_IO = 32,		// General I/O (can be file, socket, IPC...)
-	EC_WAIT = 33,	// General wait (can be file, socket, IPC...)
+	EC_IO_BASE = 32,// used for masking
+	EC_IO_READ = 32,// General I/O read (can be file, socket, IPC...)
+	EC_IO_WRITE = 33,// General I/O write (can be file, socket, IPC...)
+	EC_IO_OTHER = 34,// General I/O that is neither read not write (can be file, socket, IPC...)
+	EC_WAIT = 64,	// General wait (can be file, socket, IPC...)
 }ppm_event_category;
 
 typedef enum ppm_event_flags

@@ -353,7 +353,7 @@ int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sins
 	//
 	// Health score is currently calculated only for server processes only 
 	//
-	if(mainthread_info->m_transaction_metrics.m_incoming.m_count == 0)
+	if(mainthread_info->m_transaction_metrics.m_counter.m_count_in == 0)
 	{
 		return res;
 	}

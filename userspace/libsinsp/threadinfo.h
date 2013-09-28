@@ -112,26 +112,16 @@ public:
 	//
 	// Flags word used by the analysis engine.
 	uint8_t m_analysis_flags;
-	// If this is a process' main thread, the Number of threads that the process contains. 
-	// Otherwise zero.
-	uint32_t m_n_threads; 
-	// If this is a process' main thread, the Number of threads that were active for 
-	// this process during the last sample. Otherwise zero.
-	uint32_t m_n_concurrent_transactions;
 	// The analyzer metrics
 	sinsp_counters m_metrics; 
 	// The analyzer transaction metrics
 	sinsp_transaction_counters m_transaction_metrics; 
-	// The total transaction count if this is a server
-	sinsp_counter_time m_total_server_transaction_counter; 
 	// The delay that this thread introduced in transaction processing.
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
 	uint64_t m_transaction_processing_delay_ns;
 	// Process-specific information
 	sinsp_procinfo* m_procinfo;
-	// The number of transactions that this thread is currently serving
-	uint32_t m_n_active_transactions;
 	// The ratio between the number of connections waiting to be served and 
 	// the total connection queue length for this process.
 	uint32_t m_connection_queue_usage_ratio;
