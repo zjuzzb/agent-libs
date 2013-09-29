@@ -143,9 +143,29 @@ void sinsp_filter_check_fd::parse_operand1(string val)
 				m_type = TYPE_IP;
 				return;
 			}
+			else if(components[1] == "clientip")
+			{
+				m_type = TYPE_CLIENTIP;
+				return;
+			}
+			else if(components[1] == "serverip")
+			{
+				m_type = TYPE_SERVERIP;
+				return;
+			}
 			else if(components[1] == "port")
 			{
 				m_type = TYPE_PORT;
+				return;
+			}
+			else if(components[1] == "clientport")
+			{
+				m_type = TYPE_CLIENTPORT;
+				return;
+			}
+			else if(components[1] == "serverport")
+			{
+				m_type = TYPE_SERVERPORT;
 				return;
 			}
 		}
@@ -170,22 +190,22 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 			m_fd_type = FDT_FILE;
 			return;
 		}
-		else if(val == "sock")
+		else if(val == "socket")
 		{
 			m_fd_type = FDT_SOCK;
 			return;
 		}
-		else if(val == "ipv4sock")
+		else if(val == "ipv4socket")
 		{
 			m_fd_type = FDT_IPV4_SOCK;
 			return;
 		}
-		else if(val == "ipv6sock")
+		else if(val == "ipv6socket")
 		{
 			m_fd_type = FDT_IPV6_SOCK;
 			return;
 		}
-		else if(val == "unixsock")
+		else if(val == "unixsocket")
 		{
 			m_fd_type = FDT_UNIX_SOCK;
 			return;
@@ -226,6 +246,8 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 		}
 		break;
 	case TYPE_IP:
+	case TYPE_CLIENTIP:
+	case TYPE_SERVERIP:
 		{
 			if(inet_pton(AF_INET, val.c_str(), &m_ip) != 1)
 			{
@@ -234,6 +256,8 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 		}
 		break;
 	case TYPE_PORT:
+	case TYPE_CLIENTPORT:
+	case TYPE_SERVERPORT:
 		m_port = sins_numparser::parse(val);
 		break;
 	default:
@@ -397,6 +421,43 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 		}
 
 		break;
+	case TYPE_CLIENTIP:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_sip == m_ip)
+				{
+					return true;
+				}
+			}
+		}
+
+		break;
+	case TYPE_SERVERIP:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_dip == m_ip)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv4serverinfo.m_ip == m_ip)
+				{
+					return true;
+				}
+			}
+		}
+
+		break;
 	case TYPE_PORT:
 		if(fdinfo != NULL)
 		{
@@ -421,6 +482,60 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 			{
 				if(fdinfo->m_info.m_ipv6info.m_fields.m_sport == m_port ||
 					fdinfo->m_info.m_ipv6info.m_fields.m_dport == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV6_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv6serverinfo.m_port == m_port)
+				{
+					return true;
+				}
+			}
+		}
+	case TYPE_CLIENTPORT:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_sport)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV6_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv6info.m_fields.m_sport == m_port)
+				{
+					return true;
+				}
+			}
+		}
+	case TYPE_SERVERPORT:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_dport == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv4serverinfo.m_port == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV6_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv6info.m_fields.m_dport == m_port)
 				{
 					return true;
 				}
@@ -531,8 +646,8 @@ sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
-//fltstr = "(tid!=0)";
-//fltstr = "fd.ip = 192.168.171.196 and fd.port = 53";
+fltstr = "(tid!=0)";
+//fltstr = "fd.clientip = 192.168.171.196";
 
 	m_scanpos = -1;
 	m_scansize = 0;
