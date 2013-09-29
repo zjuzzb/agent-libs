@@ -1,11 +1,11 @@
 //
 // Why isn't this parser written using antlr or some other parser generator?
-// Essentially, after dealing with the pain that stuff in the past, and fighting for a day
+// Essentially, after dealing with that stuff multiple times in the past, and fighting for a day
 // to configure everything with crappy documentation and code that doesn't compile,
 // I decided that I agree with this http://mortoray.com/2012/07/20/why-i-dont-use-a-parser-generator/
-// and thocreate with a manually written parser. The grammar is simple enough that it's not
+// and that I'm going with a manually written parser. The grammar is simple enough that it's not
 // going to take more time. On the other hand I will avoid a crappy dependency that breaks my 
-//code at every new release, and I will have a cleaner and easier to understand code base.
+// code at every new release, and I will have a cleaner and easier to understand code base.
 //
 
 #include "sinsp.h"
@@ -227,13 +227,10 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 		break;
 	case TYPE_IP:
 		{
-			struct in_addr addr;
-			if(inet_pton(AF_INET, val.c_str(), &addr) != 1)
+			if(inet_pton(AF_INET, val.c_str(), &m_ip) != 1)
 			{
 				throw sinsp_exception("malformed IP address " + val);
 			}
-
-			m_ip = addr.S_un.S_addr;
 		}
 		break;
 	case TYPE_PORT:
