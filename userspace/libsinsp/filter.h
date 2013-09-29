@@ -82,6 +82,8 @@ public:
 		TYPE_FDNUM,
 		TYPE_FDTYPE,
 		TYPE_FDNAME,
+		TYPE_IP,
+		TYPE_PORT,
 	};
 
 	enum fd_type
@@ -110,6 +112,8 @@ public:
 	int64_t m_fd;
 	string m_fdname;
 	fd_type m_fd_type;
+	uint32_t m_ip;
+	uint16_t m_port;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

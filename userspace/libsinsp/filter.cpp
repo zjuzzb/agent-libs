@@ -138,6 +138,16 @@ void sinsp_filter_check_fd::parse_operand1(string val)
 				m_type = TYPE_FDTYPE;
 				return;
 			}
+			else if(components[1] == "ip")
+			{
+				m_type = TYPE_IP;
+				return;
+			}
+			else if(components[1] == "port")
+			{
+				m_type = TYPE_PORT;
+				return;
+			}
 		}
 	}
 
@@ -210,6 +220,24 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 			m_fd_type = FDT_TIMERFD;
 			return;
 		}
+		else
+		{
+			throw sinsp_exception("unsupported fd type " + val);
+		}
+		break;
+	case TYPE_IP:
+		{
+			struct in_addr addr;
+			if(inet_pton(AF_INET, val.c_str(), &addr) != 1)
+			{
+				throw sinsp_exception("malformed IP address " + val);
+			}
+
+			m_ip = addr.S_un.S_addr;
+		}
+		break;
+	case TYPE_PORT:
+		m_port = sins_numparser::parse(val);
 		break;
 	default:
 		ASSERT(false);
@@ -349,6 +377,68 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 		}
 
 		break;
+	case TYPE_IP:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_sip == m_ip ||
+					fdinfo->m_info.m_ipv4info.m_fields.m_dip == m_ip)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv4serverinfo.m_ip == m_ip)
+				{
+					return true;
+				}
+			}
+		}
+
+		break;
+	case TYPE_PORT:
+		if(fdinfo != NULL)
+		{
+			scap_fd_type evt_type = fdinfo->m_type;
+
+			if(evt_type == SCAP_FD_IPV4_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv4info.m_fields.m_sport == m_port ||
+					fdinfo->m_info.m_ipv4info.m_fields.m_dport == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv4serverinfo.m_port == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV6_SOCK)
+			{
+				if(fdinfo->m_info.m_ipv6info.m_fields.m_sport == m_port ||
+					fdinfo->m_info.m_ipv6info.m_fields.m_dport == m_port)
+				{
+					return true;
+				}
+			}
+			else if(evt_type == SCAP_FD_IPV6_SERVSOCK)
+			{
+				if(fdinfo->m_info.m_ipv6serverinfo.m_port == m_port)
+				{
+					return true;
+				}
+			}
+		}
+
+		break;
+
 	default:
 		ASSERT(false);
 	}
@@ -445,7 +535,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(tid!=0)";
-fltstr = "fd.type = unixsock";
+//fltstr = "fd.ip = 192.168.171.196 and fd.port = 53";
 
 	m_scanpos = -1;
 	m_scansize = 0;
