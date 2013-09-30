@@ -125,7 +125,6 @@ public:
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
 	void to_protobuf(draiosproto::time_categories* protobuf_msg);
-	void print_on(FILE* f);
 };
 
 //
@@ -150,7 +149,6 @@ public:
 	sinsp_counter_time_bidirectional m_counter;
 
 	void clear();
-//	void get_total(sinsp_counter_time* tot);
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg);
 	void add(sinsp_transaction_counters* other);
 };

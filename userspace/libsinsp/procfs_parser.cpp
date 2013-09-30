@@ -1,3 +1,9 @@
+//
+// links:
+//   http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
+//   http://stackoverflow.com/questions/1420426/calculating-cpu-usage-of-a-process-in-linux
+// 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>

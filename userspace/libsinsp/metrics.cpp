@@ -236,7 +236,6 @@ void sinsp_counters::clear()
 	m_signal.clear();
 	m_user.clear();
 	m_time.clear();
-//	m_io.clear();
 	m_io_file.clear();
 	m_io_net.clear();
 	m_io_other.clear();
@@ -300,30 +299,11 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 	m_signal.to_protobuf(protobuf_msg->mutable_signal());
 	m_user.to_protobuf(protobuf_msg->mutable_user());
 	m_time.to_protobuf(protobuf_msg->mutable_time());
-//	m_io.to_protobuf(protobuf_msg->mutable_io());
 	m_io_file.to_protobuf(protobuf_msg->mutable_io_file());
 	m_io_net.to_protobuf(protobuf_msg->mutable_io_net());
 	m_io_other.to_protobuf(protobuf_msg->mutable_io_other());
 	m_wait.to_protobuf(protobuf_msg->mutable_wait());
 	m_processing.to_protobuf(protobuf_msg->mutable_processing());
-}
-
-void sinsp_counters::print_on(FILE* f)
-{
-	sinsp_counter_time tot;
-
-	get_total(&tot);
-
-	//
-	// tot counts the WHOLE time spent by this process in the last interval,
-	// and therefore it should always be a perfect multiple of the delta time.
-	// This assertion validates it.
-	//
-/*
-	fprintf(f, "count:%" PRIu32 ", time:%.9lf\n",
-		tot.m_count,
-		(double)tot.m_time_ns / 1000000000);
-*/		
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -333,14 +313,6 @@ void sinsp_transaction_counters::clear()
 {
 	m_counter.clear();
 }
-
-/*
-void sinsp_transaction_counters::get_total(sinsp_counter_time* tot)
-{
-	tot->add(&m_incoming);
-	tot->add(&m_outgoing);
-}
-*/
 
 void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg)
 {
