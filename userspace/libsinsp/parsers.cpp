@@ -17,6 +17,7 @@
 #include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
+#include "filterchecks.h"
 #include "filter.h"
 
 sinsp_parser::sinsp_parser(sinsp *inspector) :

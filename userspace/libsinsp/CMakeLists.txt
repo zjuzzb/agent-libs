@@ -11,13 +11,14 @@ add_library(sinsp STATIC
 	event.cpp
 	fdinfo.cpp
 	filter.cpp
+	filterchecks.cpp
 	ifinfo.cpp
 	internal_metrics.cpp
 	logger.cpp
 	metrics.cpp
 	parser_http.cpp
 	parsers.cpp
-	procfs_parser.cpp
+	procparser.cpp
 	threadinfo.cpp
 	scores.cpp
 	sinsp.cpp

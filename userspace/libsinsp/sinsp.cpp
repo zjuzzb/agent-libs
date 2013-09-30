@@ -14,6 +14,7 @@
 #include "connectinfo.h"
 #include "metrics.h"
 #include "analyzer.h"
+#include "filterchecks.h"
 #include "filter.h"
 
 //#include "drfilterParser.h"

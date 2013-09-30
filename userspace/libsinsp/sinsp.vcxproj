@@ -96,6 +96,7 @@
     <ClCompile Include="event.cpp" />
     <ClCompile Include="fdinfo.cpp" />
     <ClCompile Include="filter.cpp" />
+    <ClCompile Include="filterchecks.cpp" />
     <ClCompile Include="ifinfo.cpp" />
     <ClCompile Include="internal_metrics.cpp" />
     <ClCompile Include="logger.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="event.h" />
     <ClInclude Include="fdinfo.h" />
     <ClInclude Include="filter.h" />
+    <ClInclude Include="filterchecks.h" />
     <ClInclude Include="metrics.h" />
     <ClInclude Include="ifinfo.h" />
     <ClInclude Include="internal_metrics.h" />
