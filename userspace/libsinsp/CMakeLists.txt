@@ -18,7 +18,7 @@ add_library(sinsp STATIC
 	metrics.cpp
 	parser_http.cpp
 	parsers.cpp
-	procparser.cpp
+	procfs_parser.cpp
 	threadinfo.cpp
 	scores.cpp
 	sinsp.cpp
