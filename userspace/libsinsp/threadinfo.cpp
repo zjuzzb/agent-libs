@@ -226,12 +226,18 @@ string sinsp_threadinfo::get_comm()
 {
 	if(m_comm == "python")
 	{
-		return m_args[0];
+		if(m_args.size() > 0)
+		{
+			return m_args[0];
+		}
 	}
-	else
-	{
-		return m_comm;
-	}
+
+	return m_comm;
+}
+
+string sinsp_threadinfo::get_exe()
+{
+	return m_exe;
 }
 
 void sinsp_threadinfo::set_args(const char* args, size_t len)

@@ -71,6 +71,7 @@ public:
 	~sinsp_threadinfo();
 	void init(const scap_threadinfo* pi);
 	string get_comm();
+	string get_exe();
 	string get_cwd();
 	void set_args(const char* args, size_t len);
 	void store_event(sinsp_evt *evt);

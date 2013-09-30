@@ -367,7 +367,12 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 			return false;
 		}
 
-		fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
+		fdinfo = evt->get_fd_info();
+
+		if(fdinfo == NULL)
+		{
+			fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
+		}
 	}
 	else
 	{
@@ -554,6 +559,172 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 
 	default:
 		ASSERT(false);
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_thread implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_thread::recognize_operand(string operand)
+{
+	if(operand.substr(0, string("thread").length()) == "thread")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_thread::parse_operand1(string val)
+{
+	m_type = TYPE_NONE;
+
+	vector<string> components = sinsp_split(val, '.');
+
+	if(components.size() == 2)
+	{
+		if(components[1] == "tid")
+		{
+			m_type = TYPE_TID;
+			return;
+		}
+		else if(components[1] == "pid")
+		{
+			m_type = TYPE_PID;
+			return;
+		}
+		else if(components[1] == "comm")
+		{
+			m_type = TYPE_COMM;
+			return;
+		}
+		else if(components[1] == "exe")
+		{
+			m_type = TYPE_EXE;
+			return;
+		}
+		else if(components[1].substr(0, sizeof("arg") - 1) == "arg")
+		{
+			m_type = TYPE_ARGS;
+			return;
+		}
+		else if(components[1] == "cwd")
+		{
+			m_type = TYPE_CWD;
+			return;
+		}
+		else if(components[1] == "nchilds")
+		{
+			m_type = TYPE_NCHILDS;
+			return;
+		}
+		else if(components[1] == "ismainthread")
+		{
+			m_type = TYPE_ISMAINTHREAD;
+			return;
+		}
+	}
+
+	throw sinsp_exception("filter error: unrecognized field " + val);
+}
+
+void sinsp_filter_check_thread::parse_operand2(string val)
+{
+	switch(m_type)
+	{
+	case TYPE_TID:
+	case TYPE_PID:
+		m_xid = sins_numparser::parse(val);
+		break;
+	case TYPE_COMM:
+	case TYPE_EXE:
+	case TYPE_CWD:
+		m_str = val;
+		break;
+	case TYPE_NCHILDS:
+		m_nchilds = sins_numparser::parse(val);
+		break;
+	case TYPE_ISMAINTHREAD:
+		if(val == "true")
+		{
+			m_ismainthread = true;
+		}
+		else if(val == "false")
+		{
+			m_ismainthread = false;
+		}
+		else
+		{
+			throw sinsp_exception("unrecognized ismainthread value " + val);
+		}
+
+		break;
+	default:
+		ASSERT(false);
+	}
+}
+
+bool sinsp_filter_check_thread::run(sinsp_evt *evt)
+{
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	if(tinfo == NULL)
+	{
+		return false;
+	}
+
+	switch(m_type)
+	{
+	case TYPE_TID:
+		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_tid, &m_xid) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_PID:
+		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_pid, &m_xid) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_COMM:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+			(void*)tinfo->get_comm().c_str(), (void*)m_str.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_EXE:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+			(void*)tinfo->get_exe().c_str(), (void*)m_str.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_ARGS:
+		ASSERT(false);
+		throw sinsp_exception("thread.args filter not implemented yet");
+		return false;
+	case TYPE_CWD:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+			(void*)tinfo->get_cwd().c_str(), (void*)m_str.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_ISMAINTHREAD:
+		if(tinfo->is_main_thread() == m_ismainthread)
+		{
+			return true;
+		}
+		break;
+	default:
+		ASSERT(false);
+		break;
 	}
 
 	return false;

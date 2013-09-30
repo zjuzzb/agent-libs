@@ -104,7 +104,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(tid!=0)";
-//fltstr = "fd.clientip = 192.168.171.196";
+fltstr = "thread.comm = test and not thread.ismainthread = false";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -281,9 +281,19 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
 		chk = (sinsp_filter_check*)chk_fd;
 	}
+	else if(sinsp_filter_check_thread::recognize_operand(operand1))
+	{
+		sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
+		chk = (sinsp_filter_check*)chk_thread;
+	}
 	else
 	{
-		throw sinsp_exception("filter error: unrecognized operand " + operand1 + " at pos " + to_string(startpos));
+		//
+		// If you are implementing a new filter check and this point is reached,
+		// it's very likely that you've forgotten to add your filter to the list above
+		//
+		throw sinsp_exception("filter error: unrecognized operand " + 
+			operand1 + " at pos " + to_string(startpos));
 	}
 	//////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////
@@ -408,7 +418,7 @@ void sinsp_filter::parse(string fltstr)
 				throw sinsp_exception("syntax error in filter at position " + to_string(m_scanpos));
 			}
 
-			if(m_state != ST_EXPRESSION_DONE)
+			if(m_state != ST_EXPRESSION_DONE && m_state != ST_NEED_EXPRESSION)
 			{
 				throw sinsp_exception("unexpected 'not' after " + m_fltstr.substr(0, m_scanpos));
 			}

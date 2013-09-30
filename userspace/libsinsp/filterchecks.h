@@ -72,7 +72,7 @@ public:
 };
 
 //
-// numeric fd check
+// fd checks
 //
 class sinsp_filter_check_fd : public sinsp_filter_check
 {
@@ -121,5 +121,36 @@ public:
 	uint16_t m_port;
 };
 
+//
+// thread checks
+//
+class sinsp_filter_check_thread : public sinsp_filter_check
+{
+public:
+	enum check_type
+	{
+		TYPE_NONE,
+		TYPE_TID,
+		TYPE_PID,
+		TYPE_COMM,
+		TYPE_EXE,
+		TYPE_ARGS,
+		TYPE_CWD,
+		TYPE_NCHILDS,
+		TYPE_ISMAINTHREAD,
+	};
+
+	static bool recognize_operand(string operand);
+	void parse_operand1(string val);
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+
+	check_type m_type;
+	int64_t m_xid;
+	string m_str;
+	uint64_t m_argtocheck; 
+	uint64_t m_nchilds; 
+	bool m_ismainthread;
+};
 
 #endif // HAS_FILTERING
