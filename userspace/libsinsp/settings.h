@@ -55,6 +55,12 @@
 #define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
 
 //
+// If not defined, the analyzer will include simpler counters for each process:
+// other, wait, io_file, io_net and processing instead of the full set
+//
+#undef ANALYZER_EMITS_FULL_PROCESS_COUNTERS
+
+//
 // Controls if assertions break execution or if they are just printed to the
 // log
 //

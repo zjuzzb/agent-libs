@@ -285,7 +285,7 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_processing.add(&other->m_processing);
 }
 
-void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
+void sinsp_counters::to_protobuf_full(draiosproto::time_categories* protobuf_msg)
 {
 	m_unknown.to_protobuf(protobuf_msg->mutable_unknown());
 	m_other.to_protobuf(protobuf_msg->mutable_other());
@@ -304,6 +304,52 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 	m_io_other.to_protobuf(protobuf_msg->mutable_io_other());
 	m_wait.to_protobuf(protobuf_msg->mutable_wait());
 	m_processing.to_protobuf(protobuf_msg->mutable_processing());
+}
+
+void sinsp_counters::to_protobuf_simple(draiosproto::time_categories* protobuf_msg)
+{
+	sinsp_counter_time other;
+	other.add(&m_unknown);
+	other.add(&m_other);
+	other.add(&m_file);
+	other.add(&m_net);
+	other.add(&m_ipc);
+	other.add(&m_memory);
+	other.add(&m_process);
+	other.add(&m_system);
+	other.add(&m_signal);
+	other.add(&m_user);
+	other.add(&m_time);
+	other.add(&m_io_other);
+	other.to_protobuf(protobuf_msg->mutable_other());
+
+	sinsp_counter_time wait;
+	wait.add(&m_wait);
+	wait.add(&m_sleep);
+	wait.to_protobuf(protobuf_msg->mutable_wait());
+
+	m_io_file.to_protobuf(protobuf_msg->mutable_io_file());
+	m_io_net.to_protobuf(protobuf_msg->mutable_io_net());
+	m_processing.to_protobuf(protobuf_msg->mutable_processing());
+
+#ifdef _DEBUG
+	sinsp_counter_time ttot;
+	ttot.add(&other);
+	ttot.add(&wait);
+	ttot.add(&m_io_file);
+	ttot.add(&m_io_net);
+	ttot.add(&m_processing);
+	ASSERT(ttot.m_time_ns % 1000000000 == 0);
+#endif
+}
+
+void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
+{
+#if ANALYZER_EMITS_FULL_PROCESS_COUNTERS
+	to_protobuf_full(protobuf_msg);
+#else
+	to_protobuf_simple(protobuf_msg);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

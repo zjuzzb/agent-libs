@@ -125,6 +125,10 @@ public:
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
 	void to_protobuf(draiosproto::time_categories* protobuf_msg);
+
+private:
+	void to_protobuf_full(draiosproto::time_categories* protobuf_msg);
+	void to_protobuf_simple(draiosproto::time_categories* protobuf_msg);
 };
 
 //
