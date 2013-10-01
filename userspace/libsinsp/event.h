@@ -115,4 +115,5 @@ private:
 	friend class sinsp_parser;
 	friend class sinsp_threadinfo;
 	friend class sinsp_analyzer;
+	friend class sinsp_filter_check_event;
 };

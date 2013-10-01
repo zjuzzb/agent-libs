@@ -104,7 +104,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(tid!=0)";
-//fltstr = "thread.comm = test and not thread.ismainthread = false";
+fltstr = "evt.name = open";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -204,7 +204,7 @@ bool sinsp_filter::compare_no_consume(string str)
 {
 	if(m_scanpos + (int32_t)str.size() >= m_scansize)
 	{
-		throw sinsp_exception("filter error: truncated filter");
+		return false;
 	}
 
 	string tstr = m_fltstr.substr(m_scanpos, str.size());
@@ -241,12 +241,32 @@ ppm_cmp_operator sinsp_filter::next_comparison_operator()
 		m_scanpos += 1;
 		return CO_EQ;
 	}
-	if(compare_no_consume("!="))
+	else if(compare_no_consume("!="))
 	{
 		m_scanpos += 2;
 		return CO_NE;
 	}
-	if(compare_no_consume("contains"))
+	else if(compare_no_consume("<="))
+	{
+		m_scanpos += 2;
+		return CO_LE;
+	}
+	else if(compare_no_consume("<"))
+	{
+		m_scanpos += 1;
+		return CO_LT;
+	}
+	else if(compare_no_consume(">="))
+	{
+		m_scanpos += 2;
+		return CO_GE;
+	}
+	else if(compare_no_consume(">"))
+	{
+		m_scanpos += 1;
+		return CO_GT;
+	}
+	else if(compare_no_consume("contains"))
 	{
 		m_scanpos += 8;
 		return CO_CONTAINS;
@@ -266,17 +286,7 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	//////////////////////////////////////////////////////////////////////////////
 	// ADD NEW FILTER CHECK CLASSES HERE
 	//////////////////////////////////////////////////////////////////////////////
-	if(sinsp_filter_check_comm::recognize_operand(operand1))
-	{
-		sinsp_filter_check_comm* chk_comm = new sinsp_filter_check_comm();
-		chk = (sinsp_filter_check*)chk_comm;
-	}
-	else if(sinsp_filter_check_tid::recognize_operand(operand1))
-	{
-		sinsp_filter_check_tid* chk_tid = new sinsp_filter_check_tid();
-		chk = (sinsp_filter_check*)chk_tid;
-	}
-	else if(sinsp_filter_check_fd::recognize_operand(operand1))
+	if(sinsp_filter_check_fd::recognize_operand(operand1))
 	{
 		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
 		chk = (sinsp_filter_check*)chk_fd;
@@ -285,6 +295,11 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	{
 		sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
 		chk = (sinsp_filter_check*)chk_thread;
+	}
+	else if(sinsp_filter_check_event::recognize_operand(operand1))
+	{
+		sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
+		chk = (sinsp_filter_check*)chk_event;
 	}
 	else
 	{

@@ -46,32 +46,6 @@ public:
 };
 
 //
-// comm check
-//
-class sinsp_filter_check_comm : public sinsp_filter_check
-{
-public:
-	void parse_operand2(string val);
-	bool run(sinsp_evt *evt);
-	static bool recognize_operand(string operand);
-
-	string m_comm;
-};
-
-//
-// numeric tid check
-//
-class sinsp_filter_check_tid : public sinsp_filter_check
-{
-public:
-	void parse_operand2(string val);
-	bool run(sinsp_evt *evt);
-	static bool recognize_operand(string operand);
-
-	int64_t m_tid;
-};
-
-//
 // fd checks
 //
 class sinsp_filter_check_fd : public sinsp_filter_check
@@ -151,6 +125,33 @@ public:
 	uint64_t m_argtocheck; 
 	uint64_t m_nchilds; 
 	bool m_ismainthread;
+};
+
+//
+// event checks
+//
+class sinsp_filter_check_event : public sinsp_filter_check
+{
+public:
+	enum check_type
+	{
+		TYPE_NONE,
+		TYPE_TS,
+		TYPE_NAME,
+		TYPE_NUMBER,
+		TYPE_CPU,
+		TYPE_ARGS
+	};
+
+	static bool recognize_operand(string operand);
+	void parse_operand1(string val);
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+
+	check_type m_type;
+	uint64_t m_u64val;
+	uint16_t m_evttype;
+	int16_t m_cpuid;
 };
 
 #endif // HAS_FILTERING

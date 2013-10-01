@@ -559,15 +559,12 @@ vector<string> sinsp_split(const string &s, char delim)
 uint32_t sins_numparser::parse(string str)
 {
 	uint32_t res;
+	char temp;
 
-	stringstream ss(str); 
-	ss >> res;
-
-	char c; 
-	if(!(ss >> c))
+	if(std::sscanf(str.c_str(), "%" PRIu32 "%c", &res, &temp) != 1)
 	{
-		return res;
+		throw sinsp_exception(str + " is not a number");
 	}
 
-	throw sinsp_exception(str + " is not a number");
+	return res;
 }

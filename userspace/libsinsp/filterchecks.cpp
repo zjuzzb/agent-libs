@@ -15,6 +15,8 @@
 #include "filterchecks.h"
 #include "filter.h"
 
+extern sinsp_evttables g_infotables;
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -22,81 +24,6 @@ sinsp_filter_check::sinsp_filter_check()
 {
 	m_boolop = BO_NONE;
 	m_cmpop = CO_NONE;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_filter_check_comm implementation
-///////////////////////////////////////////////////////////////////////////////
-bool sinsp_filter_check_comm::recognize_operand(string operand)
-{
-	if(operand == "comm")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void sinsp_filter_check_comm::parse_operand2(string val)
-{
-	m_comm = val;
-}
-
-bool sinsp_filter_check_comm::run(sinsp_evt *evt)
-{
-	ASSERT(evt);
-
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
-
-	if(tinfo != NULL && sinsp_evt::compare(m_cmpop, 
-		PT_CHARBUF, 
-		(void*)tinfo->get_comm().c_str(), 
-		(void*)m_comm.c_str()) == true)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_filter_check_tid implementation
-///////////////////////////////////////////////////////////////////////////////
-bool sinsp_filter_check_tid::recognize_operand(string operand)
-{
-	if(operand == "tid")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void sinsp_filter_check_tid::parse_operand2(string val)
-{
-	m_tid = sins_numparser::parse(val);
-}
-
-bool sinsp_filter_check_tid::run(sinsp_evt *evt)
-{
-	ASSERT(evt);
-
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
-
-	if(tinfo != NULL && sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_tid, &m_tid) == true)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -720,6 +647,147 @@ bool sinsp_filter_check_thread::run(sinsp_evt *evt)
 		if(tinfo->is_main_thread() == m_ismainthread)
 		{
 			return true;
+		}
+		break;
+	default:
+		ASSERT(false);
+		break;
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_event implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_event::recognize_operand(string operand)
+{
+	if(operand.substr(0, string("evt").length()) == "evt")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_event::parse_operand1(string val)
+{
+	m_type = TYPE_NONE;
+
+	vector<string> components = sinsp_split(val, '.');
+
+	if(components.size() == 2)
+	{
+		if(components[1] == "ts")
+		{
+			m_type = TYPE_TS;
+			return;
+		}
+		else if(components[1] == "name")
+		{
+			m_type = TYPE_NAME;
+			return;
+		}
+		else if(components[1] == "num")
+		{
+			m_type = TYPE_NUMBER;
+			return;
+		}
+		else if(components[1] == "cpu")
+		{
+			m_type = TYPE_CPU;
+			return;
+		}
+		else if(components[1] == "args")
+		{
+			m_type = TYPE_ARGS;
+			return;
+		}
+	}
+
+	throw sinsp_exception("filter error: unrecognized field " + val);
+}
+
+void sinsp_filter_check_event::parse_operand2(string val)
+{
+	switch(m_type)
+	{
+	case TYPE_TS:
+	case TYPE_NUMBER:
+		m_u64val = sins_numparser::parse(val);
+		break;
+	case TYPE_CPU:
+		m_cpuid = (uint16_t)sins_numparser::parse(val);
+		break;
+	case TYPE_NAME:
+		try
+		{
+			m_type = (check_type)sins_numparser::parse(val);
+		}
+		catch(...)
+		{
+			for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
+			{
+				if(val == g_infotables.m_event_info[j].name)
+				{
+					m_evttype = PPME_MAKE_ENTER(j);
+					return;
+				}
+			}
+
+			throw sinsp_exception("unrecognized event type " + val);
+		}
+
+		break;
+	default:
+		ASSERT(false);
+	}
+}
+
+bool sinsp_filter_check_event::run(sinsp_evt *evt)
+{
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	if(tinfo == NULL)
+	{
+		return false;
+	}
+
+	switch(m_type)
+	{
+	case TYPE_TS:
+		if(sinsp_evt::compare(m_cmpop, PT_UINT64, &evt->m_pevt->ts, &m_u64val) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_NAME:
+		{
+			uint16_t enter_type = PPME_MAKE_ENTER(evt->m_pevt->type);
+
+			if(sinsp_evt::compare(m_cmpop, PT_UINT16, 
+				&enter_type, &m_evttype) == true)
+			{
+				return true;
+			}
+		}
+		break;
+	case TYPE_NUMBER:
+		if(sinsp_evt::compare(m_cmpop, PT_UINT64, &evt->m_evtnum, &m_u64val) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_CPU:
+		{
+			int16_t cpuid = evt->get_cpuid();
+
+			if(sinsp_evt::compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
+			{
+				return true;
+			}
 		}
 		break;
 	default:

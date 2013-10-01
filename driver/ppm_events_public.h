@@ -152,6 +152,7 @@
 #define PPME_DIRECTION_FLAG 1
 #define PPME_IS_ENTER(x) ((x & PPME_DIRECTION_FLAG) == 0)
 #define PPME_IS_EXIT(x) (x & PPME_DIRECTION_FLAG)
+#define PPME_MAKE_ENTER(x) (x & (~1))
 
 enum ppm_event_type
 {

@@ -933,7 +933,7 @@ bool compare_uint64(ppm_cmp_operator op, uint64_t operand1, uint64_t operand2)
 	case CO_GE:
 		return (operand1 >= operand2);
 	default:
-		ASSERT(false);
+		throw sinsp_exception("'contains' not supported for numeric filters");
 		return false;
 	}
 }
@@ -955,7 +955,7 @@ bool compare_int64(ppm_cmp_operator op, int64_t operand1, int64_t operand2)
 	case CO_GE:
 		return (operand1 >= operand2);
 	default:
-		ASSERT(false);
+		throw sinsp_exception("'contains' not supported for numeric filters");
 		return false;
 	}
 }
@@ -970,8 +970,17 @@ bool compare_string(ppm_cmp_operator op, char* operand1, char* operand2)
 		return (strcmp(operand1, operand2) != 0);
 	case CO_CONTAINS:
 		return (strstr(operand1, operand2) != NULL);
+	case CO_LT:
+		throw sinsp_exception("'<' not supported for numeric filters");
+	case CO_LE:
+		throw sinsp_exception("'<=' not supported for numeric filters");
+	case CO_GT:
+		throw sinsp_exception("'>' not supported for numeric filters");
+	case CO_GE:
+		throw sinsp_exception("'>=' not supported for numeric filters");
 	default:
 		ASSERT(false);
+		throw sinsp_exception("invalid filter oprator " + std::to_string(op));
 		return false;
 	}
 }
