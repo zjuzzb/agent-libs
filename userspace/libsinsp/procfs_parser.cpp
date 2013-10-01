@@ -262,3 +262,45 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 
 	return res;	
 }
+
+int64_t sinsp_procfs_parser::get_process_resident_memory_kb(uint64_t pid)
+{
+	uint32_t j;
+	char line[512];
+	int64_t res = 0;
+	string path = string("/proc/") + to_string(pid) + "/smaps";
+
+#ifdef _WIN32
+	return -1;
+#endif
+
+	FILE* f = fopen(path.c_str(), "r");
+	if(f == NULL)
+	{
+		return -1;
+	}
+
+	//
+	// Consume the Rss lines
+	//
+	for(j = 0; fgets(line, sizeof(line), f) != NULL; j++)
+	{
+		uint64_t val;
+
+		if(strstr(line, "Rss") == line)
+		{
+			if(sscanf(line, "Rss: %" PRId64, &val) == 1)
+			{
+				res += val;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+	}
+
+	fclose(f);
+
+	return res;
+}

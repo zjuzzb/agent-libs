@@ -14,6 +14,8 @@ public:
 	//
 	uint32_t get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies);
 
+	int64_t get_process_resident_memory_kb(uint64_t pid);
+
 private:
 //	uint64_t m_last_read_time;
 	vector<uint64_t> m_old_total_jiffies;
