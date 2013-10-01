@@ -986,10 +986,17 @@ class process_resource_categories : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint32 cpu_pct() const;
   inline void set_cpu_pct(::google::protobuf::uint32 value);
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 5;
+  // optional int64 resident_memory_kb = 5;
+  inline bool has_resident_memory_kb() const;
+  inline void clear_resident_memory_kb();
+  static const int kResidentMemoryKbFieldNumber = 5;
+  inline ::google::protobuf::int64 resident_memory_kb() const;
+  inline void set_resident_memory_kb(::google::protobuf::int64 value);
+
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
   inline bool has_syscall_errors() const;
   inline void clear_syscall_errors();
-  static const int kSyscallErrorsFieldNumber = 5;
+  static const int kSyscallErrorsFieldNumber = 6;
   inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
   inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
@@ -1005,6 +1012,8 @@ class process_resource_categories : public ::google::protobuf::MessageLite {
   inline void clear_has_fd_usage_pct();
   inline void set_has_cpu_pct();
   inline void clear_has_cpu_pct();
+  inline void set_has_resident_memory_kb();
+  inline void clear_has_resident_memory_kb();
   inline void set_has_syscall_errors();
   inline void clear_has_syscall_errors();
 
@@ -1012,10 +1021,11 @@ class process_resource_categories : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
   ::google::protobuf::uint32 cpu_pct_;
+  ::google::protobuf::int64 resident_memory_kb_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -3416,15 +3426,37 @@ inline void process_resource_categories::set_cpu_pct(::google::protobuf::uint32 
   cpu_pct_ = value;
 }
 
-// optional .draiosproto.counter_syscall_errors syscall_errors = 5;
-inline bool process_resource_categories::has_syscall_errors() const {
+// optional int64 resident_memory_kb = 5;
+inline bool process_resource_categories::has_resident_memory_kb() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void process_resource_categories::set_has_syscall_errors() {
+inline void process_resource_categories::set_has_resident_memory_kb() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void process_resource_categories::clear_has_syscall_errors() {
+inline void process_resource_categories::clear_has_resident_memory_kb() {
   _has_bits_[0] &= ~0x00000010u;
+}
+inline void process_resource_categories::clear_resident_memory_kb() {
+  resident_memory_kb_ = GOOGLE_LONGLONG(0);
+  clear_has_resident_memory_kb();
+}
+inline ::google::protobuf::int64 process_resource_categories::resident_memory_kb() const {
+  return resident_memory_kb_;
+}
+inline void process_resource_categories::set_resident_memory_kb(::google::protobuf::int64 value) {
+  set_has_resident_memory_kb();
+  resident_memory_kb_ = value;
+}
+
+// optional .draiosproto.counter_syscall_errors syscall_errors = 6;
+inline bool process_resource_categories::has_syscall_errors() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void process_resource_categories::set_has_syscall_errors() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void process_resource_categories::clear_has_syscall_errors() {
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void process_resource_categories::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();

@@ -2438,6 +2438,7 @@ const int process_resource_categories::kHealthScoreFieldNumber;
 const int process_resource_categories::kConnectionQueueUsagePctFieldNumber;
 const int process_resource_categories::kFdUsagePctFieldNumber;
 const int process_resource_categories::kCpuPctFieldNumber;
+const int process_resource_categories::kResidentMemoryKbFieldNumber;
 const int process_resource_categories::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
 
@@ -2467,6 +2468,7 @@ void process_resource_categories::SharedCtor() {
   connection_queue_usage_pct_ = 0u;
   fd_usage_pct_ = 0u;
   cpu_pct_ = 0u;
+  resident_memory_kb_ = GOOGLE_LONGLONG(0);
   syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -2511,6 +2513,7 @@ void process_resource_categories::Clear() {
     connection_queue_usage_pct_ = 0u;
     fd_usage_pct_ = 0u;
     cpu_pct_ = 0u;
+    resident_memory_kb_ = GOOGLE_LONGLONG(0);
     if (has_syscall_errors()) {
       if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
@@ -2583,12 +2586,28 @@ bool process_resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_syscall_errors;
+        if (input->ExpectTag(40)) goto parse_resident_memory_kb;
         break;
       }
 
-      // optional .draiosproto.counter_syscall_errors syscall_errors = 5;
+      // optional int64 resident_memory_kb = 5;
       case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_resident_memory_kb:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &resident_memory_kb_)));
+          set_has_resident_memory_kb();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_syscall_errors;
+        break;
+      }
+
+      // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_syscall_errors:
@@ -2638,10 +2657,15 @@ void process_resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->cpu_pct(), output);
   }
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 5;
+  // optional int64 resident_memory_kb = 5;
+  if (has_resident_memory_kb()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(5, this->resident_memory_kb(), output);
+  }
+
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
   if (has_syscall_errors()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      5, this->syscall_errors(), output);
+      6, this->syscall_errors(), output);
   }
 
 }
@@ -2678,7 +2702,14 @@ int process_resource_categories::ByteSize() const {
           this->cpu_pct());
     }
 
-    // optional .draiosproto.counter_syscall_errors syscall_errors = 5;
+    // optional int64 resident_memory_kb = 5;
+    if (has_resident_memory_kb()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->resident_memory_kb());
+    }
+
+    // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
     if (has_syscall_errors()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -2712,6 +2743,9 @@ void process_resource_categories::MergeFrom(const process_resource_categories& f
     if (from.has_cpu_pct()) {
       set_cpu_pct(from.cpu_pct());
     }
+    if (from.has_resident_memory_kb()) {
+      set_resident_memory_kb(from.resident_memory_kb());
+    }
     if (from.has_syscall_errors()) {
       mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
     }
@@ -2738,6 +2772,7 @@ void process_resource_categories::Swap(process_resource_categories* other) {
     std::swap(connection_queue_usage_pct_, other->connection_queue_usage_pct_);
     std::swap(fd_usage_pct_, other->fd_usage_pct_);
     std::swap(cpu_pct_, other->cpu_pct_);
+    std::swap(resident_memory_kb_, other->resident_memory_kb_);
     std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);

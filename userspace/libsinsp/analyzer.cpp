@@ -59,7 +59,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 		throw sinsp_exception("machine infor missing, analyzer can't start");
 	}
 
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus);
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info);
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 }
 
@@ -508,7 +508,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						}
 
 						//
-						// CPU load for this process
+						// Basic resource counters
 						//
 						int32_t cpuload = -1;
 						if(m_inspector->m_islive)
@@ -518,6 +518,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								cur_global_total_jiffies - m_old_global_total_jiffies);
 							
 							proc->mutable_resource_counters()->set_cpu_pct(cpuload);
+						}
+
+						int64_t memsize = m_procfs_parser->get_process_resident_memory_kb(pid);
+
+						if(memsize != -1)
+						{
+							proc->mutable_resource_counters()->set_resident_memory_kb(memsize);
 						}
 
 						//

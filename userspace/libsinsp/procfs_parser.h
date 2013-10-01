@@ -3,7 +3,7 @@
 class sinsp_procfs_parser
 {
 public:
-	sinsp_procfs_parser(uint32_t ncpus);
+	sinsp_procfs_parser(const scap_machine_info* machine_info);
 
 	uint32_t get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
 
@@ -18,9 +18,9 @@ public:
 
 private:
 //	uint64_t m_last_read_time;
+	const scap_machine_info* m_machine_info;
 	vector<uint64_t> m_old_total_jiffies;
 	vector<uint64_t> m_old_work_jiffies;
 	uint64_t m_old_global_total_jiffies;
 	uint64_t m_old_global_work_jiffies;
-	uint32_t m_ncpus;
 };

@@ -65,7 +65,8 @@ message process_resource_categories {
   optional uint32 connection_queue_usage_pct = 2; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
   optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
   optional uint32 cpu_pct = 4; // CPU load of this process (including all the childs)
-  optional counter_syscall_errors syscall_errors = 5; // Syscall error counter for this process
+  optional int64 resident_memory_kb = 5; // Memory size in kb
+  optional counter_syscall_errors syscall_errors = 6; // Syscall error counter for this process
 }
 
 message connection_categories {
