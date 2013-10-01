@@ -981,7 +981,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	{
 		if((evt->m_errorcode != SE_EINPROGRESS) && 
 			(evt->m_errorcode != SE_EAGAIN) && 
-			(evt->m_errorcode != SE_ENOENT)  && 
 			(evt->m_errorcode != SE_ETIMEDOUT))
 		{
 			m_host_syscall_errors.m_table[evt->m_errorcode].m_count++;
