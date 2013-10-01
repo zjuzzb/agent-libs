@@ -648,7 +648,9 @@ TEST_F(sys_call_test, procfs_cpuload)
 	vector<uint32_t> loads;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	sinsp_procfs_parser pparser(nprocs);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser pparser(nprocs, memkb);
 
 	pparser.get_cpus_load(&loads);
 	sleep(1);
@@ -674,7 +676,9 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 	OUT vector<uint32_t> loads;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	sinsp_procfs_parser pparser(nprocs);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser pparser(nprocs, memkb);
 
 	pparser.get_cpus_load(&loads);
 	sleep(1);
@@ -700,7 +704,9 @@ TEST_F(sys_call_test, procfs_globalcpuload)
 	uint32_t load;
 	uint32_t j;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	sinsp_procfs_parser pparser(nprocs);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser pparser(nprocs, memkb);
 
 	load = pparser.get_global_cpu_load();
 	sleep(1);
@@ -726,7 +732,9 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	uint64_t cur_global_total_jiffies;
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	sinsp_procfs_parser pparser(nprocs);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser pparser(nprocs, memkb);
 
 	pparser.get_global_cpu_load(&old_global_total_jiffies);
 	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
