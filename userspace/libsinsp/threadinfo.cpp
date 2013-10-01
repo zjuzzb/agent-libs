@@ -262,7 +262,7 @@ bool sinsp_threadinfo::is_main_thread()
 
 sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 {
-//	if(m_main_thread == NULL)
+	if(m_main_thread == NULL)
 	{
 		//
 		// Is this a child thread?
@@ -273,7 +273,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 			// No, this is either a single thread process or the root thread of a
 			// multithread process,
 			//
-			m_main_thread = this;
+			return this;
 		}
 		else
 		{
