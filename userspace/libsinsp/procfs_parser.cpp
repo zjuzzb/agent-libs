@@ -12,9 +12,10 @@
 #include "sinsp_int.h"
 #include "procfs_parser.h"
 
-sinsp_procfs_parser::sinsp_procfs_parser(const scap_machine_info* machine_info)
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb)
 {
-	m_machine_info = machine_info;
+	m_ncpus = ncpus;
+	m_physical_memory_kb = physical_memory_kb;
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
 }
@@ -251,7 +252,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 	{
 		uint64_t delta_proc_jiffies = proc_jiffies - *old_proc_jiffies;
 
-		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_machine_info->num_cpus);
+		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus);
 
 		res = MIN(res, 100);
 	}
@@ -302,7 +303,7 @@ int64_t sinsp_procfs_parser::get_process_resident_memory_kb(uint64_t pid)
 
 	fclose(f);
 
-	ASSERT(res <= (m_machine_info->memory_size_bytes / 1024));
+	ASSERT(res <= m_physical_memory_kb);
 
 	return res;
 }
