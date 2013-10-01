@@ -28,7 +28,7 @@ public:
 		return m_next_flush_time_ns;
 	}
 
-private:
+VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);

@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
 
 add_executable(test 
+	analyzer.cpp
 	capture_to_file_test.cpp
 	event_capture.cpp
 	forking.cpp
