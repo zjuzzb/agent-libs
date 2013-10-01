@@ -239,6 +239,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	uint16_t etype = evt->get_type();
 
 	evt->m_fdinfo = NULL;
+	evt->m_errorcode = 0;
 
 	//
 	// Extract the process
@@ -364,6 +365,25 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				{
 					evt->m_tinfo->m_fd_usage_ratio = (uint32_t)m_fd_usage_ratio;
 				}
+			}
+		}
+
+		//
+		// Error detection logic
+		//
+		if(evt->m_info->nparams != 0 && 
+			((evt->m_info->params[0].name[0] == 'r' && evt->m_info->params[0].name[1] == 'e' && evt->m_info->params[0].name[2] == 's') ||
+			(evt->m_info->params[0].name[0] == 'f' && evt->m_info->params[0].name[1] == 'd')))
+		{
+			sinsp_evt_param *parinfo;
+
+			parinfo = evt->get_param(0);
+			ASSERT(parinfo->m_len == sizeof(int64_t));
+			int64_t res = *(int64_t *)parinfo->m_val;
+
+			if(res < 0)
+			{
+				evt->m_errorcode = -(int32_t)res;
 			}
 		}
 	}

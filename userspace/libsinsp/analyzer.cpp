@@ -26,6 +26,7 @@ using namespace google::protobuf::io;
 #include "draios.pb.h"
 #include "scores.h"
 #include "procfs_parser.h"
+#include "sinsp_errno.h"
 
 #define DUMP_TO_DISK
 
@@ -282,6 +283,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
 
+			m_host_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
+
 			m_procfs_parser->get_cpus_load(&m_cpu_loads);
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			for(j = 0; j < m_cpu_loads.size(); j++)
@@ -531,6 +534,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						proc->set_health_score(hscore);
 						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
 						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
+
+						//
+						// Error-related metrics
+						//
+						it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 0
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
@@ -837,6 +845,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	m_inspector->get_transactions()->m_n_server_transactions = 0;
 
 	//
+	// Clear the syscall error table
+	//
+	m_host_syscall_errors.clear();
+
+	//
 	// Run the periodic connection and thread table cleanup
 	//
 	m_inspector->remove_expired_connections(ts);
@@ -950,6 +963,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		evt->m_tinfo->m_lastevent_category.m_category = EC_PROCESSING;
 	}
 
+	//
+	// Increase the counter
+	//
 	bool do_inc_counter = (cat.m_category != EC_PROCESSING);
 
 	add_syscall_time(&evt->m_tinfo->m_metrics, 
@@ -957,6 +973,32 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		delta, 
 		evt->get_iosize(),
 		do_inc_counter);
+
+	//
+	// If this is an error syscall,
+	//
+	if(evt->m_errorcode != 0)
+	{
+		if((evt->m_errorcode != SE_EINPROGRESS) && 
+			(evt->m_errorcode != SE_EAGAIN) && 
+			(evt->m_errorcode != SE_ENOENT)  && 
+			(evt->m_errorcode != SE_ETIMEDOUT))
+		{
+			m_host_syscall_errors.m_table[evt->m_errorcode].m_count++;
+			
+			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
+
+			if(parentinfo != NULL)
+			{
+				parentinfo->allocate_procinfo_if_not_present();
+				parentinfo->m_procinfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+	}
 }
 
 void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics, 

@@ -106,6 +106,7 @@ private:
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
 	uint32_t m_iosize;
+	int32_t m_errorcode;
 #ifdef _DEBUG
 	bool m_filtered_out;
 #endif

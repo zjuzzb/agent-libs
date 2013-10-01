@@ -104,7 +104,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(tid!=0)";
-fltstr = "thread.comm = test and not thread.ismainthread = false";
+//fltstr = "thread.comm = test and not thread.ismainthread = false";
 
 	m_scanpos = -1;
 	m_scansize = 0;

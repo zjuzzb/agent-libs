@@ -114,3 +114,9 @@
 //
 #define MAX_HEALTH_CONCURRENCY 16
 #define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
+
+//
+// When returning the top error codes for a host or a process,
+// this is the max number of entries in the list.
+//
+#define MAX_N_ERROR_CODES_IN_PROTO 5

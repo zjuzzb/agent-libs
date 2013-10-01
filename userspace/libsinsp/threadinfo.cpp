@@ -48,6 +48,7 @@ void sinsp_threadinfo::init()
 	m_fd_usage_ratio = 0;
 	m_connection_queue_usage_ratio = 0;
 	m_old_proc_jiffies = 0;
+	m_main_thread = NULL;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -119,6 +120,8 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	scap_fdinfo *tfdi;
 	sinsp_fdinfo newfdi;
 	string tcomm(pi->comm);
+
+	init();
 
 	m_tid = pi->tid;
 	m_pid = pi->pid;
@@ -259,31 +262,36 @@ bool sinsp_threadinfo::is_main_thread()
 
 sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 {
-	//
-	// Is this a child thread?
-	//
-	if(m_pid == m_tid)
+	if(m_main_thread == NULL)
 	{
 		//
-		// No, this is either a single thread process or the root thread of a
-		// multithread process,
+		// Is this a child thread?
 		//
-		return this;
-	}
-	else
-	{
-		//
-		// Yes, this is a child thread. Find the process root thread.
-		//
-		sinsp_threadinfo *ptinfo = m_inspector->get_thread(m_pid, true);
-		if(NULL == ptinfo)
+		if(m_pid == m_tid)
 		{
-			ASSERT(false);
-			return NULL;
+			//
+			// No, this is either a single thread process or the root thread of a
+			// multithread process,
+			//
+			m_main_thread = this;
 		}
+		else
+		{
+			//
+			// Yes, this is a child thread. Find the process root thread.
+			//
+			sinsp_threadinfo *ptinfo = m_inspector->get_thread(m_pid, true);
+			if(NULL == ptinfo)
+			{
+				ASSERT(false);
+				return NULL;
+			}
 
-		return ptinfo;
+			m_main_thread = ptinfo;
+		}
 	}
+
+	return m_main_thread;
 }
 
 sinsp_fdtable* sinsp_threadinfo::get_fd_table()
@@ -450,13 +458,18 @@ const sinsp_counters* sinsp_threadinfo::get_metrics()
 	return (const sinsp_counters*)&m_metrics;
 }
 
-void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
+void sinsp_threadinfo::allocate_procinfo_if_not_present()
 {
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
 		m_procinfo->clear();
 	}
+}
+
+void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
+{
+	allocate_procinfo_if_not_present();
 
 	m_procinfo->m_proc_metrics.add(&other->m_metrics);
 	m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);

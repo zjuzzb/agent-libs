@@ -69,6 +69,11 @@ private:
 	sinsp_procfs_parser* m_procfs_parser;
 	vector<uint32_t> m_cpu_loads;
 
+	//
+	// Syscall error table
+	//
+	sinsp_error_counters m_host_syscall_errors;
+
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//
 	// The temporary table that we build while scanning the process list.

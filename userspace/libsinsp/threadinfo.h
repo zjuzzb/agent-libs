@@ -27,6 +27,7 @@ public:
 		m_proc_transaction_processing_delay_ns = 0;
 		m_connection_queue_usage_ratio = 0;
 		m_fd_usage_ratio = 0;
+		m_syscall_errors.clear();
 	}
 
 	// Aggreaged metrics for the process.
@@ -44,6 +45,8 @@ public:
 	uint32_t m_connection_queue_usage_ratio;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_ratio;
+	// Syscall error table
+	sinsp_error_counters m_syscall_errors;
 };
 
 //
@@ -131,6 +134,7 @@ public:
 	// This is used for CPU load calculation
 	uint64_t m_old_proc_jiffies;
 
+
 	//
 	// Global state
 	//
@@ -143,6 +147,7 @@ VISIBILITY_PRIVATE
 	sinsp_fdtable* get_fd_table();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
+	void allocate_procinfo_if_not_present();
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
@@ -157,6 +162,7 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_fdtable m_fdtable; // The fd table of this thread
 	string m_cwd; // current working directory
+	sinsp_threadinfo* m_main_thread;
 
 	friend class sinsp;
 	friend class sinsp_parser;

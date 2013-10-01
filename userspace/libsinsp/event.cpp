@@ -277,12 +277,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 {
 	uint32_t j;
 	ASSERT(id < m_info->nparams);
-/*
-	if(m_evtnum == 6055)
-	{
-		int a = 0;
-	}
-*/
+
 	//
 	// Make sure the params are actually loaded
 	//

@@ -384,3 +384,28 @@ void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* 
 	m_server.to_protobuf(protobuf_msg->mutable_server());
 	m_client.to_protobuf(protobuf_msg->mutable_client());
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_error_counters implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_error_counters::clear()
+{
+	m_table.clear();
+}
+
+void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg)
+{
+	protobuf_msg->set_cnt(m_table.size());
+
+	map<int32_t, sinsp_counter_cnt>::iterator it;
+
+	uint32_t j;
+
+	for(it = m_table.begin(), j = 0; it != m_table.end(); ++it, j++)
+	{
+		if(j >= MAX_N_ERROR_CODES_IN_PROTO)
+		{
+			break;
+		}
+	}
+}

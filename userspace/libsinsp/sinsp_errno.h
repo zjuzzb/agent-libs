@@ -55,9 +55,7 @@
 #define SE_ENOANO          55      /* No anode */
 #define SE_EBADRQC         56      /* Invalid request code */
 #define SE_EBADSLT         57      /* Invalid slot */
-
 #define SE_EDEADLOCK       EDEADLK
-
 #define SE_EBFONT          59      /* Bad font file format */
 #define SE_ENOSTR          60      /* Device not a stream */
 #define SE_ENODATA         61      /* No data available */
@@ -122,24 +120,21 @@
 #define SE_EISNAM          120     /* Is a named type file */
 #define SE_EREMOTEIO       121     /* Remote I/O error */
 #define SE_EDQUOT          122     /* Quota exceeded */
-
 #define SE_ENOMEDIUM       123     /* No medium found */
 #define SE_EMEDIUMTYPE     124     /* Wrong medium type */
-
-#define SE_ERESTARTSYS     512        /* Interrupted system call */
+#define SE_ERESTARTSYS     512     /* Interrupted system call */
 #define SE_ERESTARTNOINTR  513
-#define SE_ERESTARTNOHAND  514        /* restart if no handler.. */
-#define SE_ENOIOCTLCMD     515        /* No ioctl command */
+#define SE_ERESTARTNOHAND  514     /* restart if no handler.. */
+#define SE_ENOIOCTLCMD     515     /* No ioctl command */
 #define SE_ERESTART_RESTARTBLOCK 516  /* restart by calling sys_restart_syscall */
-
 /* Defined for the NFSv3 protocol */
-#define SE_EBADHANDLE      521        /* Illegal NFS file handle */
-#define SE_ENOTSYNC        522        /* Update synchronization mismatch */
-#define SE_EBADCOOKIE      523        /* Cookie is stale */
-#define SE_ENOTSUPP        524        /* Operation is not supported */
-#define SE_ETOOSMALL       525        /* Buffer or request is too small */
-#define SE_ESERVERFAULT    526        /* An untranslatable error occurred */
-#define SE_EBADTYPE        527        /* Type not supported by server */
-#define SE_EJUKEBOX        528        /* Request initiated, but will not complete before timeout */
-#define SE_EIOCBQUEUED     529        /* iocb queued, will get completion event */
-#define SE_EIOCBRETRY      530        /* iocb queued, will trigger a retry */
+#define SE_EBADHANDLE      521     /* Illegal NFS file handle */
+#define SE_ENOTSYNC        522     /* Update synchronization mismatch */
+#define SE_EBADCOOKIE      523     /* Cookie is stale */
+#define SE_ENOTSUPP        524     /* Operation is not supported */
+#define SE_ETOOSMALL       525     /* Buffer or request is too small */
+#define SE_ESERVERFAULT    526     /* An untranslatable error occurred */
+#define SE_EBADTYPE        527     /* Type not supported by server */
+#define SE_EJUKEBOX        528     /* Request initiated, but will not complete before timeout */
+#define SE_EIOCBQUEUED     529     /* iocb queued, will get completion event */
+#define SE_EIOCBRETRY      530     /* iocb queued, will trigger a retry */

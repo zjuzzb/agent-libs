@@ -60,6 +60,11 @@ message connection_categories {
 	optional counter_bytes client = 2;
 }
 
+message counter_syscall_errors {
+  required uint32 cnt = 1;	// Syscall errors count
+  repeated uint32 top_5_error_codes = 2; // Error codes that were generated the most
+}
+
 //
 // HOST
 // global host info.
@@ -69,6 +74,7 @@ message host {
   optional uint32 num_cpus = 2;	// Number of CPUs in the system
   repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
   optional uint64 physical_memory_size_bytes = 4;	// Physical RAM size
+  optional counter_syscall_errors syscall_errors = 12; // Syscall error counter for the whole host
 }
 
 //
@@ -92,6 +98,7 @@ message process {
   optional uint32 connection_queue_usage_pct = 9; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
   optional uint32 fd_usage_pct = 10; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
   optional uint32 cpu_pct = 11; // CPU load of this process (including all the childs)
+  optional counter_syscall_errors syscall_errors = 12; // Syscall error counter for this process
 }
 
 //

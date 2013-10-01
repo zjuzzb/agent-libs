@@ -15,6 +15,21 @@ namespace draiosproto
 	class counter_time_bytes;
 	class transaction_categories;
 	class connection_categories;
+	class counter_syscall_errors;
+};
+
+//
+// A super-basic counter: just 32 bit count
+//
+class sinsp_counter_cnt
+{
+public:
+	sinsp_counter_cnt()
+	{
+		m_count = 0;
+	}
+
+	uint32_t m_count;
 };
 
 //
@@ -155,4 +170,16 @@ public:
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg);
 	void add(sinsp_transaction_counters* other);
+};
+
+//
+// Error counters (for host, processes, etc)
+//
+class sinsp_error_counters
+{
+public:
+	map<int32_t, sinsp_counter_cnt> m_table;
+
+	void clear();
+	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg);
 };
