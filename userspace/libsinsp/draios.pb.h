@@ -965,24 +965,24 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint32 cnt() const;
   inline void set_cnt(::google::protobuf::uint32 value);
 
-  // repeated uint32 top_5_error_codes = 2;
-  inline int top_5_error_codes_size() const;
-  inline void clear_top_5_error_codes();
-  static const int kTop5ErrorCodesFieldNumber = 2;
-  inline ::google::protobuf::uint32 top_5_error_codes(int index) const;
-  inline void set_top_5_error_codes(int index, ::google::protobuf::uint32 value);
-  inline void add_top_5_error_codes(::google::protobuf::uint32 value);
+  // repeated uint32 top_error_codes = 2;
+  inline int top_error_codes_size() const;
+  inline void clear_top_error_codes();
+  static const int kTopErrorCodesFieldNumber = 2;
+  inline ::google::protobuf::uint32 top_error_codes(int index) const;
+  inline void set_top_error_codes(int index, ::google::protobuf::uint32 value);
+  inline void add_top_error_codes(::google::protobuf::uint32 value);
   inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-      top_5_error_codes() const;
+      top_error_codes() const;
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-      mutable_top_5_error_codes();
+      mutable_top_error_codes();
 
   // @@protoc_insertion_point(class_scope:draiosproto.counter_syscall_errors)
  private:
   inline void set_has_cnt();
   inline void clear_has_cnt();
 
-  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > top_5_error_codes_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > top_error_codes_;
   ::google::protobuf::uint32 cnt_;
 
   mutable int _cached_size_;
@@ -3301,29 +3301,29 @@ inline void counter_syscall_errors::set_cnt(::google::protobuf::uint32 value) {
   cnt_ = value;
 }
 
-// repeated uint32 top_5_error_codes = 2;
-inline int counter_syscall_errors::top_5_error_codes_size() const {
-  return top_5_error_codes_.size();
+// repeated uint32 top_error_codes = 2;
+inline int counter_syscall_errors::top_error_codes_size() const {
+  return top_error_codes_.size();
 }
-inline void counter_syscall_errors::clear_top_5_error_codes() {
-  top_5_error_codes_.Clear();
+inline void counter_syscall_errors::clear_top_error_codes() {
+  top_error_codes_.Clear();
 }
-inline ::google::protobuf::uint32 counter_syscall_errors::top_5_error_codes(int index) const {
-  return top_5_error_codes_.Get(index);
+inline ::google::protobuf::uint32 counter_syscall_errors::top_error_codes(int index) const {
+  return top_error_codes_.Get(index);
 }
-inline void counter_syscall_errors::set_top_5_error_codes(int index, ::google::protobuf::uint32 value) {
-  top_5_error_codes_.Set(index, value);
+inline void counter_syscall_errors::set_top_error_codes(int index, ::google::protobuf::uint32 value) {
+  top_error_codes_.Set(index, value);
 }
-inline void counter_syscall_errors::add_top_5_error_codes(::google::protobuf::uint32 value) {
-  top_5_error_codes_.Add(value);
+inline void counter_syscall_errors::add_top_error_codes(::google::protobuf::uint32 value) {
+  top_error_codes_.Add(value);
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-counter_syscall_errors::top_5_error_codes() const {
-  return top_5_error_codes_;
+counter_syscall_errors::top_error_codes() const {
+  return top_error_codes_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-counter_syscall_errors::mutable_top_5_error_codes() {
-  return &top_5_error_codes_;
+counter_syscall_errors::mutable_top_error_codes() {
+  return &top_error_codes_;
 }
 
 // -------------------------------------------------------------------

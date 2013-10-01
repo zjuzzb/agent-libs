@@ -2446,7 +2446,7 @@ void connection_categories::Swap(connection_categories* other) {
 
 #ifndef _MSC_VER
 const int counter_syscall_errors::kCntFieldNumber;
-const int counter_syscall_errors::kTop5ErrorCodesFieldNumber;
+const int counter_syscall_errors::kTopErrorCodesFieldNumber;
 #endif  // !_MSC_VER
 
 counter_syscall_errors::counter_syscall_errors()
@@ -2506,7 +2506,7 @@ void counter_syscall_errors::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     cnt_ = 0u;
   }
-  top_5_error_codes_.Clear();
+  top_error_codes_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2527,28 +2527,28 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(16)) goto parse_top_5_error_codes;
+        if (input->ExpectTag(16)) goto parse_top_error_codes;
         break;
       }
 
-      // repeated uint32 top_5_error_codes = 2;
+      // repeated uint32 top_error_codes = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_top_5_error_codes:
+         parse_top_error_codes:
           DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 1, 16, input, this->mutable_top_5_error_codes())));
+                 1, 16, input, this->mutable_top_error_codes())));
         } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
                    == ::google::protobuf::internal::WireFormatLite::
                       WIRETYPE_LENGTH_DELIMITED) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, this->mutable_top_5_error_codes())));
+                 input, this->mutable_top_error_codes())));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(16)) goto parse_top_5_error_codes;
+        if (input->ExpectTag(16)) goto parse_top_error_codes;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2575,10 +2575,10 @@ void counter_syscall_errors::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->cnt(), output);
   }
 
-  // repeated uint32 top_5_error_codes = 2;
-  for (int i = 0; i < this->top_5_error_codes_size(); i++) {
+  // repeated uint32 top_error_codes = 2;
+  for (int i = 0; i < this->top_error_codes_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(
-      2, this->top_5_error_codes(i), output);
+      2, this->top_error_codes(i), output);
   }
 
 }
@@ -2595,14 +2595,14 @@ int counter_syscall_errors::ByteSize() const {
     }
 
   }
-  // repeated uint32 top_5_error_codes = 2;
+  // repeated uint32 top_error_codes = 2;
   {
     int data_size = 0;
-    for (int i = 0; i < this->top_5_error_codes_size(); i++) {
+    for (int i = 0; i < this->top_error_codes_size(); i++) {
       data_size += ::google::protobuf::internal::WireFormatLite::
-        UInt32Size(this->top_5_error_codes(i));
+        UInt32Size(this->top_error_codes(i));
     }
-    total_size += 1 * this->top_5_error_codes_size() + data_size;
+    total_size += 1 * this->top_error_codes_size() + data_size;
   }
 
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
@@ -2618,7 +2618,7 @@ void counter_syscall_errors::CheckTypeAndMergeFrom(
 
 void counter_syscall_errors::MergeFrom(const counter_syscall_errors& from) {
   GOOGLE_CHECK_NE(&from, this);
-  top_5_error_codes_.MergeFrom(from.top_5_error_codes_);
+  top_error_codes_.MergeFrom(from.top_error_codes_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_cnt()) {
       set_cnt(from.cnt());
@@ -2641,7 +2641,7 @@ bool counter_syscall_errors::IsInitialized() const {
 void counter_syscall_errors::Swap(counter_syscall_errors* other) {
   if (other != this) {
     std::swap(cnt_, other->cnt_);
-    top_5_error_codes_.Swap(&other->top_5_error_codes_);
+    top_error_codes_.Swap(&other->top_error_codes_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

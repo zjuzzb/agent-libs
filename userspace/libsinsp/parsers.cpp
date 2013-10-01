@@ -218,6 +218,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		evt->m_filtered_out = false;
 	}
 #endif
+BRK(1180);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
