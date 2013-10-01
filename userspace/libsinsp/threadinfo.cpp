@@ -262,7 +262,7 @@ bool sinsp_threadinfo::is_main_thread()
 
 sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 {
-	if(m_main_thread == NULL)
+//	if(m_main_thread == NULL)
 	{
 		//
 		// Is this a child thread?
