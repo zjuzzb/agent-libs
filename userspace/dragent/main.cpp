@@ -688,6 +688,7 @@ protected:
 
 		m_configuration.print_configuration();
 
+#if 0
 		if(m_configuration.m_daemon)
 		{
 #ifndef _WIN32
@@ -720,7 +721,8 @@ protected:
 			}
 #endif
 		}
-
+#endif
+		
 		//
 		// Create the metrics directory if it doesn't exist
 		//

@@ -517,7 +517,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								&it->second.m_old_proc_jiffies, 
 								cur_global_total_jiffies - m_old_global_total_jiffies);
 							
-							proc->set_cpu_pct(cpuload);
+							proc->mutable_resource_counters()->set_cpu_pct(cpuload);
 						}
 
 						//
@@ -531,14 +531,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						// Health-related metrics
 						//
 						int32_t hscore = m_score_calculator->get_process_health_score(syshscore, &it->second);
-						proc->set_health_score(hscore);
-						proc->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
-						proc->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
+						proc->mutable_resource_counters()->set_health_score(hscore);
+						proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
+						proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
 
 						//
 						// Error-related metrics
 						//
-						it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
+						it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
 
 #if 0
 						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
@@ -726,7 +726,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				conn->set_dtid(cit->second.m_dtid);
 
 				cit->second.m_metrics.to_protobuf(conn->mutable_counters());
-				cit->second.m_transaction_metrics.to_protobuf(conn->mutable_transaction_counters());
+				cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
 
 				//
 				// Has this connection been closed druring this sample?

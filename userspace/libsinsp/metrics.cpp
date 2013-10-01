@@ -405,7 +405,9 @@ void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* prot
 	{
 		if(j >= MAX_N_ERROR_CODES_IN_PROTO)
 		{
-			break;
+			return;
 		}
+
+		protobuf_msg->add_top_error_codes(it->first);
 	}
 }

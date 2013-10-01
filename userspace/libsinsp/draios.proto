@@ -55,14 +55,23 @@ message time_categories {
 	optional counter_time processing = 17;
 }
 
-message connection_categories {
-	optional counter_bytes server = 1;
-	optional counter_bytes client = 2;
-}
-
 message counter_syscall_errors {
   required uint32 cnt = 1;	// Syscall errors count
-  repeated uint32 top_5_error_codes = 2; // Error codes that were generated the most
+  repeated uint32 top_error_codes = 2; // Error codes that were generated the most
+}
+
+message process_resource_categories {
+  optional uint32 health_score = 1; // the health score for this process. 0 means very crappy, 100 means very healthy.
+  optional uint32 connection_queue_usage_pct = 2; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
+  optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
+  optional uint32 cpu_pct = 4; // CPU load of this process (including all the childs)
+  optional counter_syscall_errors syscall_errors = 5; // Syscall error counter for this process
+}
+
+message connection_categories {
+  optional counter_bytes server = 1; // client-side metrics
+  optional counter_bytes client = 2; // server-side metrics
+  optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
 }
 
 //
@@ -94,11 +103,7 @@ message process {
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
   optional uint64 local_transaction_delay = 7;	// the delay introduced by this process when processing transactions. 
                                                 // It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional uint32 health_score = 8; // the health score for this process. 0 means very crappy, 100 means very healthy.
-  optional uint32 connection_queue_usage_pct = 9; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
-  optional uint32 fd_usage_pct = 10; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
-  optional uint32 cpu_pct = 11; // CPU load of this process (including all the childs)
-  optional counter_syscall_errors syscall_errors = 12; // Syscall error counter for this process
+  required process_resource_categories resource_counters = 8; // The resource counters for this process
 }
 
 //
@@ -142,8 +147,7 @@ message ipv4_connection {
   // XXX is this required?
   //optional uint64 dfd = 7; // The fd number of the server
 
-  optional connection_categories counters = 8; // The counters for this connection
-  optional counter_time_bidirectional transaction_counters = 9; // The transaction counters for this connection
+  required connection_categories counters = 8; // the metrics for this connection
 }
 
 //
