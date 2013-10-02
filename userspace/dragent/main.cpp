@@ -815,6 +815,11 @@ protected:
 			m_inspector.get_configuration()->set_customer_id(m_configuration.m_customer_id);
 
 			//
+			// Configure compression in the protocol
+			//
+			m_inspector.get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
+
+			//
 			// Start the capture with sinsp
 			//
 			g_log->information("Opening the capture source");

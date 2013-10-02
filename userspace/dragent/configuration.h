@@ -37,4 +37,5 @@ public:
 	bool m_dropping_mode;
 	bool m_ssl_enabled;
 	string m_ssl_ca_certificate;
+	bool m_compression_enabled;
 };

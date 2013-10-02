@@ -133,6 +133,11 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	//
 	if(compressed)
 	{
+#ifdef _WIN32
+		ASSERT(false);
+		throw sinsp_exception("compression in agent protocol not implemented under windows");
+		return NULL;
+#else
 		ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
 		GzipOutputStream* gzip_output = new GzipOutputStream(array_output);
 
@@ -145,6 +150,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		*len = *(uint32_t*) m_serialization_buffer;
 		delete array_output;
 		return m_serialization_buffer + sizeof(uint32_t);
+#endif
 	}
 	else
 	{

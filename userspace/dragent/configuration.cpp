@@ -47,6 +47,7 @@ void dragent_configuration::init(Application* app)
 	m_dropping_mode = config.getBool("droppingmode.enabled", false);
 	m_ssl_enabled = config.getBool("ssl.enabled", false);
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "")).toString();
+	m_compression_enabled = config.getBool("compression.enabled", false);
 }
 
 void dragent_configuration::print_configuration()
@@ -61,4 +62,5 @@ void dragent_configuration::print_configuration()
 	g_log->information("droppingmode.enabled: " + (m_dropping_mode ? string("true") : string("false")));	
 	g_log->information("ssl.enabled: " + (m_ssl_enabled ? string("true") : string("false")));	
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
+	g_log->information("compression.enabled: " + m_compression_enabled);
 }
