@@ -730,22 +730,38 @@ void sinsp_filter_check_event::parse_operand2(string val)
 		m_cpuid = (uint16_t)sinsp_numparser::parseu32(val);
 		break;
 	case TYPE_NAME:
-		try
+		if(m_cmpop == CO_CONTAINS)
 		{
-			m_type = (check_type)sinsp_numparser::parseu32(val);
+			m_strval = val;
+			m_evttype = PPM_EVENT_MAX;
 		}
-		catch(...)
+		else
 		{
-			for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
+			try
 			{
-				if(val == g_infotables.m_event_info[j].name)
-				{
-					m_evttype = PPME_MAKE_ENTER(j);
-					return;
-				}
+				m_type = (check_type)sinsp_numparser::parseu32(val);
 			}
+			catch(...)
+			{
+				//
+				// Search for the event in the table of decoded events
+				//
+				for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
+				{
+					if(val == g_infotables.m_event_info[j].name)
+					{
+						m_evttype = PPME_MAKE_ENTER(j);
+						return;
+					}
+				}
 
-			throw sinsp_exception("filter error: unrecognized event type " + val);
+				//
+				// Event not found in the table. It might be an event that we don't support
+				// yet, so save it as string and give it a try
+				//
+				m_strval = val;
+				m_evttype = PPM_EVENT_MAX;
+			}
 		}
 
 		break;
@@ -798,12 +814,39 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 		break;
 	case TYPE_NAME:
 		{
-			uint16_t enter_type = PPME_MAKE_ENTER(evt->m_pevt->type);
+			uint16_t enter_type;
+			char* evname;
 
-			if(sinsp_evt::compare(m_cmpop, PT_UINT16, 
-				&enter_type, &m_evttype) == true)
+			if(evt->m_pevt->type == PPME_GENERIC_E || evt->m_pevt->type == PPME_GENERIC_X)
 			{
-				return true;
+				sinsp_evt_param *parinfo = evt->get_param(0);
+				ASSERT(parinfo->m_len == sizeof(uint16_t));
+				uint16_t evid = *(uint16_t *)parinfo->m_val;
+
+				evname = g_infotables.m_syscall_info_table[evid].name;
+				enter_type = PPM_EVENT_MAX;
+			}
+			else
+			{
+				evname = (char*)evt->get_name();
+				enter_type = PPME_MAKE_ENTER(evt->m_pevt->type);
+			}
+
+			if(m_evttype == PPM_EVENT_MAX)
+			{
+				if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+					evname, (char*)m_strval.c_str()) == true)
+				{
+					return true;
+				}
+			}
+			else
+			{
+				if(sinsp_evt::compare(m_cmpop, PT_UINT16, 
+					&enter_type, &m_evttype) == true)
+				{
+					return true;
+				}
 			}
 		}
 		break;

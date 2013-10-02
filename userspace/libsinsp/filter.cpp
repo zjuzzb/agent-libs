@@ -103,8 +103,8 @@ sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
-//fltstr = "(thread.tid!=0)";
-//fltstr = "evt.args.res < -2";
+fltstr = "(thread.tid!=0)";
+//fltstr = "evt.name contains _ctl";
 
 	m_scanpos = -1;
 	m_scansize = 0;
@@ -316,10 +316,10 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	ppm_cmp_operator co = next_comparison_operator();
 	string operand2 = next_operand();
 
-	chk->parse_operand1(operand1);
-	chk->parse_operand2(operand2);
 	chk->m_boolop = op;
 	chk->m_cmpop = co;
+	chk->parse_operand1(operand1);
+	chk->parse_operand2(operand2);
 
 	parent_expr->add_check(chk);
 }
