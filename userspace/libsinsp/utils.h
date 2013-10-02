@@ -214,8 +214,16 @@ vector<string> sinsp_split(const string &s, char delim);
 ///////////////////////////////////////////////////////////////////////////////
 // number parser
 ///////////////////////////////////////////////////////////////////////////////
-class sins_numparser
+class sinsp_numparser
 {
 public:
-	static uint32_t parse(string str);
+	static uint32_t parseu32(const string& str);
+	static int32_t parsed32(const string& str);
+	static uint64_t parseu64(const string& str);
+	static int64_t parsed64(const string& str);
+
+	static bool tryparseu32(const string& str, uint32_t* res);
+	static bool tryparsed32(const string& str, int32_t* res);
+	static bool tryparseu64(const string& str, uint64_t* res);
+	static bool tryparsed64(const string& str, int64_t* res);
 };

@@ -107,7 +107,7 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 	switch(m_type)
 	{
 	case TYPE_FDNUM:
-		m_fd = sins_numparser::parse(val);
+		m_fd = sinsp_numparser::parsed64(val);
 		break;
 	case TYPE_FDNAME:
 		m_fdname = val;
@@ -170,7 +170,7 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 		}
 		else
 		{
-			throw sinsp_exception("unsupported fd type " + val);
+			throw sinsp_exception("filter error: unsupported fd type " + val);
 		}
 		break;
 	case TYPE_IP:
@@ -179,14 +179,14 @@ void sinsp_filter_check_fd::parse_operand2(string val)
 		{
 			if(inet_pton(AF_INET, val.c_str(), &m_ip) != 1)
 			{
-				throw sinsp_exception("malformed IP address " + val);
+				throw sinsp_exception("filter error: malformed IP address " + val);
 			}
 		}
 		break;
 	case TYPE_PORT:
 	case TYPE_CLIENTPORT:
 	case TYPE_SERVERPORT:
-		m_port = sins_numparser::parse(val);
+		m_port = sinsp_numparser::parseu32(val);
 		break;
 	default:
 		ASSERT(false);
@@ -565,7 +565,7 @@ void sinsp_filter_check_thread::parse_operand2(string val)
 	{
 	case TYPE_TID:
 	case TYPE_PID:
-		m_xid = sins_numparser::parse(val);
+		m_xid = sinsp_numparser::parsed64(val);
 		break;
 	case TYPE_COMM:
 	case TYPE_EXE:
@@ -573,7 +573,7 @@ void sinsp_filter_check_thread::parse_operand2(string val)
 		m_str = val;
 		break;
 	case TYPE_NCHILDS:
-		m_nchilds = sins_numparser::parse(val);
+		m_nchilds = sinsp_numparser::parseu64(val);
 		break;
 	case TYPE_ISMAINTHREAD:
 		if(val == "true")
@@ -586,7 +586,7 @@ void sinsp_filter_check_thread::parse_operand2(string val)
 		}
 		else
 		{
-			throw sinsp_exception("unrecognized ismainthread value " + val);
+			throw sinsp_exception("filter error: unrecognized ismainthread value " + val);
 		}
 
 		break;
@@ -634,7 +634,7 @@ bool sinsp_filter_check_thread::run(sinsp_evt *evt)
 		break;
 	case TYPE_ARGS:
 		ASSERT(false);
-		throw sinsp_exception("thread.args filter not implemented yet");
+		throw sinsp_exception("filter error: thread.args filter not implemented yet");
 		return false;
 	case TYPE_CWD:
 		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
@@ -678,7 +678,7 @@ void sinsp_filter_check_event::parse_operand1(string val)
 
 	vector<string> components = sinsp_split(val, '.');
 
-	if(components.size() == 2)
+	if(components.size() >= 2)
 	{
 		if(components[1] == "ts")
 		{
@@ -702,7 +702,15 @@ void sinsp_filter_check_event::parse_operand1(string val)
 		}
 		else if(components[1] == "args")
 		{
+			if(components.size() != 3)
+			{
+				throw sinsp_exception("filter error: unrecognized argument field " + val);
+			}
+
 			m_type = TYPE_ARGS;
+
+			m_argname = components[2];
+
 			return;
 		}
 	}
@@ -716,15 +724,15 @@ void sinsp_filter_check_event::parse_operand2(string val)
 	{
 	case TYPE_TS:
 	case TYPE_NUMBER:
-		m_u64val = sins_numparser::parse(val);
+		m_u64val = sinsp_numparser::parseu64(val);
 		break;
 	case TYPE_CPU:
-		m_cpuid = (uint16_t)sins_numparser::parse(val);
+		m_cpuid = (uint16_t)sinsp_numparser::parseu32(val);
 		break;
 	case TYPE_NAME:
 		try
 		{
-			m_type = (check_type)sins_numparser::parse(val);
+			m_type = (check_type)sinsp_numparser::parseu32(val);
 		}
 		catch(...)
 		{
@@ -737,9 +745,34 @@ void sinsp_filter_check_event::parse_operand2(string val)
 				}
 			}
 
-			throw sinsp_exception("unrecognized event type " + val);
+			throw sinsp_exception("filter error: unrecognized event type " + val);
 		}
 
+		break;
+	case TYPE_ARGS:
+		{
+			try
+			{
+				if(val[0] == '-')
+				{
+					m_d64val = sinsp_numparser::parsed64(val);
+					m_arg_type = PT_INT64;
+					return;
+				}
+				else
+				{
+					m_u64val = sinsp_numparser::parseu64(val);
+					m_arg_type = PT_UINT64;
+					return;
+				}
+			}
+			catch(...)
+			{
+			}
+
+			m_strval = val;
+			m_arg_type = PT_CHARBUF;
+		}
 		break;
 	default:
 		ASSERT(false);
@@ -787,6 +820,61 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 			if(sinsp_evt::compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
 			{
 				return true;
+			}
+		}
+		break;
+	case TYPE_ARGS:
+		{
+			const char* resolved_argstr;
+			const char* argstr = evt->get_param_value_str(m_argname.c_str(), 
+				&resolved_argstr);
+
+			switch(m_arg_type)
+			{
+			case PT_CHARBUF:
+				if(argstr && sinsp_evt::compare(m_cmpop, PT_CHARBUF, (void*)argstr, (void*)m_strval.c_str()) == true)
+				{
+					return true;
+				}
+
+				break;
+			case PT_UINT64:
+				{
+					uint64_t dval;
+					if(resolved_argstr && !sinsp_numparser::tryparseu64(resolved_argstr, &dval))
+					{
+						if(argstr && !sinsp_numparser::tryparseu64(argstr, &dval))
+						{
+							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
+						}
+					}
+
+					if(sinsp_evt::compare(m_cmpop, PT_INT64, &dval, &m_u64val) == true)
+					{
+						return true;
+					}
+				}
+				break;
+			case PT_INT64:
+				{
+					int64_t dval;
+					if(resolved_argstr && !sinsp_numparser::tryparsed64(resolved_argstr, &dval))
+					{
+						if(argstr && !sinsp_numparser::tryparsed64(argstr, &dval))
+						{
+							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
+						}
+					}
+
+					if(sinsp_evt::compare(m_cmpop, PT_INT64, &dval, &m_d64val) == true)
+					{
+						return true;
+					}
+				}
+				break;
+			default:
+				ASSERT(false);
+				break;
 			}
 		}
 		break;

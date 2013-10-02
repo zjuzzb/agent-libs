@@ -790,6 +790,7 @@ string sinsp_evt::get_param_value_str(string &name, bool resolved)
 			return get_param_value_str(i, resolved);
 		}
 	}
+
 	return string("");
 }
 
@@ -814,6 +815,20 @@ string sinsp_evt::get_param_value_str(uint32_t i, bool resolved)
 	{
 		return string(val_str);
 	}
+}
+
+const char* sinsp_evt::get_param_value_str(const char* name, OUT const char** resolved_str)
+{
+	for(uint32_t i = 0; i < get_num_params(); i++)
+	{
+		if(strcmp(name, get_param_name(i)) == 0)
+		{
+			return get_param_as_str(i, resolved_str);
+		}
+	}
+
+	*resolved_str = NULL;
+	return NULL;
 }
 
 void sinsp_evt::load_params()

@@ -85,6 +85,7 @@ public:
 	const char* get_param_as_str(uint32_t id, OUT const char** resolved_str, param_fmt fmt = PF_NORMAL);
 	string get_param_value_str(const char* name, bool resolved = true);
 	string get_param_value_str(string& name, bool resolved = true);
+	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
 	void get_category(OUT sinsp_evt::category* cat);
 
 	static bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);

@@ -554,17 +554,104 @@ vector<string> sinsp_split(const string &s, char delim)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// sins_numparser implementation
+// sinsp_numparser implementation
 ///////////////////////////////////////////////////////////////////////////////
-uint32_t sins_numparser::parse(string str)
+uint32_t sinsp_numparser::parseu32(const string& str)
 {
 	uint32_t res;
 	char temp;
 
 	if(std::sscanf(str.c_str(), "%" PRIu32 "%c", &res, &temp) != 1)
 	{
-		throw sinsp_exception(str + " is not a number");
+		throw sinsp_exception(str + " is not a valid number");
 	}
 
 	return res;
+}
+
+int32_t sinsp_numparser::parsed32(const string& str)
+{
+	int32_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId32 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+uint64_t sinsp_numparser::parseu64(const string& str)
+{
+	uint64_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRIu64 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+int64_t sinsp_numparser::parsed64(const string& str)
+{
+	int64_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId64 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+bool sinsp_numparser::tryparseu32(const string& str, uint32_t* res)
+{
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRIu32 "%c", res, &temp) != 1)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool sinsp_numparser::tryparsed32(const string& str, int32_t* res)
+{
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId32 "%c", res, &temp) != 1)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool sinsp_numparser::tryparseu64(const string& str, uint64_t* res)
+{
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRIu64 "%c", res, &temp) != 1)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool sinsp_numparser::tryparsed64(const string& str, int64_t* res)
+{
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId64 "%c", res, &temp) != 1)
+	{
+		return false;
+	}
+
+	return true;
 }

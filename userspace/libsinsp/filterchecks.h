@@ -149,9 +149,13 @@ public:
 	bool run(sinsp_evt *evt);
 
 	check_type m_type;
+	ppm_param_type m_arg_type;
 	uint64_t m_u64val;
+	int64_t m_d64val;
+	string m_strval;
 	uint16_t m_evttype;
 	int16_t m_cpuid;
+	string m_argname;
 };
 
 #endif // HAS_FILTERING
