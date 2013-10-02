@@ -28,8 +28,8 @@ add_library(sinsp STATIC
 
 target_link_libraries(sinsp 
 	scap 
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a) 
-
+    ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
+    ${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a) 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)
 	

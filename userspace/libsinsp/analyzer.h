@@ -29,7 +29,7 @@ public:
 	}
 
 VISIBILITY_PRIVATE
-	char* serialize_to_bytebuf(OUT uint32_t *len);
+	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);

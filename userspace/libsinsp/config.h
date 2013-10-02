@@ -10,6 +10,8 @@ public:
 	void set_connection_timeout_in_sec(uint64_t timeout_sec);
 	bool get_emit_metrics_to_file() const;
 	void set_emit_metrics_to_file(bool emit);
+	bool get_compress_metrics() const;
+	void set_compress_metrics(bool compress);
 	const string& get_metrics_directory() const;
 	void set_metrics_directory(string metrics_directory);
 	uint64_t get_thread_timeout_ns() const;
@@ -32,6 +34,7 @@ public:
 private:
 	uint64_t m_connection_timeout_ns;
 	bool m_emit_metrics_to_file;
+	bool m_compress_metrics;
 	uint64_t m_thread_timeout_ns;
 	uint64_t m_inactive_thread_scan_time_ns;
 	string m_machine_id;

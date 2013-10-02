@@ -93,7 +93,7 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	m_sample_callback = cb;
 }
 
-char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
+char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 {
 	//
 	// Find out how many bytes we need for the serialization
@@ -131,12 +131,31 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len)
 	//
 	// Do the serialization
 	//
-	ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
-   	m_metrics->SerializeToZeroCopyStream(array_output);
+	if(compressed)
+	{
+		ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
+		GzipOutputStream* gzip_output = new GzipOutputStream(array_output);
 
-	*(uint32_t*) m_serialization_buffer = tlen;
-	*len = *(uint32_t*) m_serialization_buffer;
-	return m_serialization_buffer + sizeof(uint32_t);
+		m_metrics->SerializeToZeroCopyStream(gzip_output);
+		gzip_output->Close();
+
+		uint32_t compressed_size = (uint32_t)array_output->ByteCount();
+
+		*(uint32_t*) m_serialization_buffer = compressed_size;
+		*len = *(uint32_t*) m_serialization_buffer;
+		delete array_output;
+		return m_serialization_buffer + sizeof(uint32_t);
+	}
+	else
+	{
+		ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
+		m_metrics->SerializeToZeroCopyStream(array_output);
+
+		*(uint32_t*) m_serialization_buffer = tlen;
+		*len = *(uint32_t*) m_serialization_buffer;
+		delete array_output;
+		return m_serialization_buffer + sizeof(uint32_t);
+	}
 }
 
 void sinsp_analyzer::serialize(uint64_t ts)
@@ -147,7 +166,8 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	// Serialize to a memory buffer
 	//
-	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen);
+	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
+		m_inspector->m_configuration.get_compress_metrics());
 	g_logger.format(sinsp_logger::SEV_INFO,
 		"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
 		ts / 1000000000,
@@ -178,7 +198,6 @@ void sinsp_analyzer::serialize(uint64_t ts)
 
 		if(!fp)
 		{
-			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
 			throw sinsp_exception(estr);
 		}
