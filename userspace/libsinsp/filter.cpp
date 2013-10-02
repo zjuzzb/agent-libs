@@ -103,7 +103,7 @@ sinsp_filter::sinsp_filter(string fltstr)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
-fltstr = "(thread.tid!=0)";
+//fltstr = "(thread.tid!=0)";
 //fltstr = "evt.name contains _ctl";
 
 	m_scanpos = -1;
