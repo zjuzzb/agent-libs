@@ -183,6 +183,7 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 
 		if(fwrite(&(tinfo->tid), sizeof(uint64_t), 1, f) != 1 ||
 		        fwrite(&(tinfo->pid), sizeof(uint64_t), 1, f) != 1 ||
+		        fwrite(&(tinfo->ppid), sizeof(uint64_t), 1, f) != 1 ||
 		        fwrite(&commlen,  sizeof(uint16_t), 1, f) != 1 ||
 		        fwrite(tinfo->comm, 1,  commlen, f) != commlen ||
 		        fwrite(&exelen,  sizeof(uint16_t), 1, f) != 1 ||
@@ -540,6 +541,14 @@ int32_t scap_read_proclist(scap_t *handle, FILE *f, uint32_t block_length)
 		// pid
 		//
 		readsize = fread(&(tinfo.pid), 1, sizeof(uint64_t), f);
+		CHECK_READ_SIZE(readsize, sizeof(uint64_t));
+
+		totreadsize += readsize;
+
+		//
+		// ppid
+		//
+		readsize = fread(&(tinfo.ppid), 1, sizeof(uint64_t), f);
 		CHECK_READ_SIZE(readsize, sizeof(uint64_t));
 
 		totreadsize += readsize;
