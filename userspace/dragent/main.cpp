@@ -264,6 +264,8 @@ public:
 		m_evtcnt = 0;
 		m_socket = NULL;
 		m_sa = NULL;
+		m_socketbuffer = NULL;
+		m_socketbuflen = 0;
 
 #ifndef _WIN32
 		Poco::Net::initializeSSL();
@@ -514,6 +516,39 @@ protected:
 		return retval;
 	}
 
+	void transmit_buffer(char* buffer, uint32_t buflen)
+	{
+		m_socketbuffer = buffer;
+		m_socketbuflen = buflen;
+
+		while(true)
+		{
+			int32_t res = m_socket->sendBytes(m_socketbuffer, m_socketbuflen);
+			if(res == m_socketbuflen)
+			{
+				//
+				// Transmission finished
+				//
+				m_socketbuflen = 0;
+				break;
+			}
+			else if(res <= 0)
+			{
+				//
+				// There's no way we can easily recover from this, at least when we're
+				// in the middle of a multi-segment send. We just die so the backend
+				// resets its state and doesn't expect the rest of the buffer.
+				//
+				throw sinsp_exception("socket transmission error");
+			}
+			else
+			{
+				m_socketbuffer += res;
+				m_socketbuflen -= res;
+			}
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////
 	// This function is called every time the sinsp analyzer has a new sample ready
 	///////////////////////////////////////////////////////////////////////////
@@ -532,6 +567,15 @@ protected:
 
 		try
 		{
+			//
+			// First of all, check if there's a partially sent buffer and try
+			// to send it
+			//
+			if(m_socketbuflen != 0)
+			{
+				transmit_buffer(m_socketbuffer, m_socketbuflen);
+			}
+
 			//
 			// If the connection was lost, try to reconnect and send the unsent samples
 			//
@@ -560,7 +604,7 @@ protected:
 
 				for(j = 0; j < store_size; j++)
 				{
-					m_socket->sendBytes(m_unsent_samples[j]->m_buf, m_unsent_samples[j]->m_buflen);
+					transmit_buffer(m_unsent_samples[j]->m_buf, m_unsent_samples[j]->m_buflen);
 					delete m_unsent_samples[j];
 				}
 			}
@@ -570,7 +614,7 @@ protected:
 			//
 			// Send the current sample
 			//
-			m_socket->sendBytes(buffer, size);
+			transmit_buffer(buffer, size);
 		}
 		catch(Poco::IOException& e)
 		{
@@ -582,8 +626,11 @@ protected:
 				// more important than dropping the sample, therefore we don't block
 				// and keep going.
 				//
-				g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
-					", cause:socket buffer full, len:" + NumberFormatter::format(size));
+				if(m_socketbuflen == 0)
+				{
+					g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
+						", cause:socket buffer full, len:" + NumberFormatter::format(size));
+				}
 				return;
 			}
 			else
@@ -880,6 +927,8 @@ private:
 	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
+	char* m_socketbuffer;
+	uint32_t m_socketbuflen;
 	vector<sample_store*> m_unsent_samples;
 	dragent_configuration m_configuration;
 };
