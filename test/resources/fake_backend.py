@@ -54,8 +54,12 @@ while True:
       req = sock.recv(4)
       msglen = socket.ntohl(unpack('I', req)[0])
       print msglen
-      req = sock.recv(msglen)
-      print len(req) 
+      to_read = msglen
+      while to_read > 0:
+        req = sock.recv(to_read)
+        # print len(req)
+        to_read -= len(req)
+         
       #sock.close()
       #s.close()
       #sys.exit(0)
