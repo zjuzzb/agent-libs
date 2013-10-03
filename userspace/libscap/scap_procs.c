@@ -83,7 +83,83 @@ int32_t scap_proc_fill_cwd(char* procdirname, struct scap_threadinfo* tinfo)
 	{
 		return SCAP_FAILURE;
 	}
+
 	tinfo->cwd[target_res] = '\0';
+	return SCAP_SUCCESS;
+}
+
+int32_t scap_proc_fill_info_from_stats(char* procdirname, struct scap_threadinfo* tinfo)
+{
+	char filename[SCAP_MAX_PATH_SIZE];
+	uint32_t nfound = 0;
+	uint32_t tmp;
+	uint32_t uid;
+	uint64_t ppid;
+	char line[128];
+
+	tinfo->uid = (uint32_t)-1;
+	tinfo->ppid = (uint32_t)-1LL;
+
+	snprintf(filename, sizeof(filename), "%sstatus", procdirname);
+
+	FILE* f = fopen(filename, "r");
+	if(f == NULL)
+	{
+		ASSERT(false);
+		return SCAP_FAILURE;
+	}
+
+	while(fgets(line, sizeof(line), f) != NULL)
+	{
+		if(strstr(line, "Uid") == line)
+		{
+			nfound++;
+
+			if(sscanf(line, "Uid: %" PRIu32 " %" PRIu32, &tmp, &uid) == 2)
+			{
+				tinfo->uid = uid;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+		else if(strstr(line, "Gid") == line)
+		{
+			nfound++;
+
+			if(sscanf(line, "Gid: %" PRIu32 " %" PRIu32, &tmp, &uid) == 2)
+			{
+				tinfo->gid = uid;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+		else if(strstr(line, "PPid") == line)
+		{
+			nfound++;
+
+			if(sscanf(line, "PPid: %" PRIu64, &ppid) == 1)
+			{
+				tinfo->ppid = ppid;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+
+		if(nfound == 3)
+		{
+			break;
+		}
+	}
+
+	ASSERT(nfound == 3);
+
+	fclose(f);
 	return SCAP_SUCCESS;
 }
 
@@ -251,6 +327,16 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	}
 
 	//
+	// extract the user id and ppid from /proc/pid/status
+	//
+	if(SCAP_FAILURE == scap_proc_fill_info_from_stats(dir_name, tinfo))
+	{
+		snprintf(error, SCAP_LASTERR_SIZE, "can't fill cwd for %s", dir_name);
+		free(tinfo);
+		return SCAP_FAILURE;
+	}
+
+	//
 	// Set the file limit
 	//
 	if(SCAP_FAILURE == scap_proc_fill_flimit(tinfo->tid, tinfo))
@@ -282,7 +368,7 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	}
 	
 	//
-	// Only add fd's for processes, not tasks
+	// Only add fds for processes, not threads
 	//
 	if(-1 == parenttid)
 	{

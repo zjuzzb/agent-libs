@@ -178,6 +178,7 @@ typedef struct scap_threadinfo
 {
 	uint64_t tid;						// The thread/task id.
 	uint64_t pid;						// The id of the process containing this thread. In single thread processes, this is equal to tid.
+	uint64_t ppid;						// The id of the thread that created this thread.
 	char comm[SCAP_MAX_PATH_SIZE];		// Command name (e.g. "top")
 	char exe[SCAP_MAX_PATH_SIZE];		// Full command name (e.g. "/bin/top")
 	char args[SCAP_MAX_PATH_SIZE];		// Command line arguments (e.g. "-d1")
@@ -185,6 +186,8 @@ typedef struct scap_threadinfo
 	char cwd[SCAP_MAX_PATH_SIZE];		// The current working directory
 	int64_t fdlimit;					// The maximum number of files this thread is allowed to open
 	uint32_t flags;						// the process flags.
+	uint32_t uid;						// user id
+	uint32_t gid;						// group id
 	scap_fdinfo* fdlist;				// The fd table for this process
 	UT_hash_handle hh; 					// makes this structure hashable
 }scap_threadinfo;

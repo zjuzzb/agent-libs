@@ -7,7 +7,7 @@ sinsp_configuration::sinsp_configuration()
 	set_thread_timeout_ns(DEFAULT_THREAD_TIMEOUT_SEC * ONE_SECOND_IN_NS);
 	set_inactive_thread_scan_time_ns(DEFAULT_INACTIVE_THREAD_SCAN_TIME * ONE_SECOND_IN_NS);
 	set_emit_metrics_to_file(false);
-	set_compress_metrics(false);
+	set_compress_metrics(true);
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_length_ns = ANALYZER_SAMPLE_LENGTH_NS;
