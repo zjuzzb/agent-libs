@@ -291,6 +291,7 @@ public:
 		if(m_socketbuffer_storage)
 		{
 			delete [] m_socketbuffer_storage;
+			m_socketbuffer_storage = NULL;
 		}
 
 #ifndef _WIN32
@@ -531,7 +532,7 @@ protected:
 		while(true)
 		{
 			int32_t res = m_socket->sendBytes(m_socketbufferptr, m_socketbuflen);
-			if(res == m_socketbuflen)
+			if(res == (int32_t) m_socketbuflen)
 			{
 				//
 				// Transmission finished
@@ -541,6 +542,7 @@ protected:
 			}
 			else if(res <= 0)
 			{
+				ASSERT(false); // sendBytes() throws exception, doesn't return < 0
 				//
 				// There's no way we can easily recover from this, at least when we're
 				// in the middle of a multi-segment send. We just die so the backend
@@ -595,6 +597,7 @@ protected:
 			if(store_size != 0)
 			{
 				ASSERT(m_socket == NULL);
+				ASSERT(m_socketbuflen == 0);
 
 #ifndef _WIN32
 				if(m_configuration.m_ssl_enabled)
@@ -634,38 +637,38 @@ protected:
 				// Keeping processing the data in libsinsp to minimize event drops is
 				// more important than dropping the sample, therefore we don't block
 				// and keep going.
-				//
-				if(m_socketbuflen == 0)
+				// 
+				
+				ASSERT(m_socketbuflen);
+
+				if(m_is_partial_buffer_stored == false)
 				{
-					g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
-						", cause:socket buffer full, len:" + NumberFormatter::format(size));
+					//
+					// a buffer coming from sinsp could only be partially sent. We need to
+					// copy it so we can finsh sending it later.
+					//
+					if(m_socketbuflen > SOCKETBUFFER_STORAGE_SIZE)
+					{
+						//
+						// There's no way we can easily recover from this, at least when we're
+						// in the middle of a multi-segment send. We just die so the backend
+						// resets its state and doesn't expect the rest of the buffer.
+						//
+						throw sinsp_exception("transmit storage exhausted");
+					}
+
+					memcpy(m_socketbuffer_storage, 
+						m_socketbufferptr,
+						m_socketbuflen);
+
+					m_socketbufferptr = m_socketbuffer_storage;
+
+					m_is_partial_buffer_stored = true;
 				}
 				else
 				{
-					if(m_is_partial_buffer_stored == false)
-					{
-						//
-						// a buffer coming from sinsp could only be partially sent. We need to
-						// copy it so we can finsh sending it later.
-						//
-						if(m_socketbuflen > SOCKETBUFFER_STORAGE_SIZE)
-						{
-							//
-							// There's no way we can easily recover from this, at least when we're
-							// in the middle of a multi-segment send. We just die so the backend
-							// resets its state and doesn't expect the rest of the buffer.
-							//
-							throw sinsp_exception("transmit storage exhausted");
-						}
-
-						memcpy(m_socketbuffer_storage, 
-							m_socketbufferptr,
-							m_socketbuflen);
-
-						m_socketbufferptr = m_socketbuffer_storage;
-
-						m_is_partial_buffer_stored = true;
-					}
+					g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
+						", cause:socket buffer full, len:" + NumberFormatter::format(size));						
 				}
 
 				return;
