@@ -54,6 +54,7 @@ scap_t* scap_open_live(char *error)
 	handle->m_file_evt_buf = NULL;
 	handle->m_evtcnt = 0;
 	handle->m_addrlist = NULL;
+	handle->m_userlist = NULL;
 	handle->m_emptybuf_timeout_ms = BUFFER_EMPTY_WAIT_TIME_MS;
 
 	//
@@ -108,6 +109,16 @@ scap_t* scap_open_live(char *error)
 	// Create the interface list
 	//
 	if(scap_create_iflist(handle) != SCAP_SUCCESS)
+	{
+		scap_close(handle);
+		snprintf(error, SCAP_LASTERR_SIZE, "error creating the interface list");
+		return NULL;
+	}
+
+	//
+	// Create the user list
+	//
+	if(scap_create_userlist(handle) != SCAP_SUCCESS)
 	{
 		scap_close(handle);
 		snprintf(error, SCAP_LASTERR_SIZE, "error creating the interface list");
@@ -245,6 +256,7 @@ scap_t* scap_open_offline(char* fname, char *error)
 	handle->m_evtcnt = 0;
 	handle->m_file = NULL;
 	handle->m_addrlist = NULL;
+	handle->m_userlist = NULL;
 	handle->m_machine_info.num_cpus = (uint32_t)-1;
 
 	handle->m_file_evt_buf = (char*)malloc(FILE_READ_BUF_SIZE);
@@ -353,6 +365,12 @@ void scap_close(scap_t* handle)
 	if(handle->m_addrlist)
 	{
 		scap_free_iflist(handle->m_addrlist);
+	}
+
+	// Free the user list
+	if(handle->m_userlist)
+	{
+		scap_free_userlist(handle->m_userlist);
 	}
 
 	//
@@ -837,6 +855,14 @@ int32_t scap_start_dropping_mode(scap_t* handle)
 scap_addrlist* scap_get_ifaddr_list(scap_t* handle)
 {
 	return handle->m_addrlist;
+}
+
+//
+// Return the list of machine users
+//
+scap_userlist* scap_get_user_list(scap_t* handle)
+{
+	return handle->m_userlist;
 }
 
 //

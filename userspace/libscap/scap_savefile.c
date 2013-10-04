@@ -356,6 +356,119 @@ int32_t scap_write_iflist(scap_t *handle, FILE *f)
 #endif // _WIN32
 
 //
+// Write the user list block
+//
+#ifdef _WIN32
+int32_t scap_write_userlist(scap_t *handle, FILE *f)
+{
+	ASSERT(false);
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_userlist not implemented under Windows");
+	return SCAP_FAILURE;
+}
+#else
+int32_t scap_write_userlist(scap_t *handle, FILE *f)
+{
+	block_header bh;
+	uint32_t bt;
+	uint32_t j;
+	uint16_t namelen;
+	uint16_t homedirlen;
+	uint16_t shelllen;
+	uint8_t type;
+
+	//
+	// Make sure we have a user list interface list
+	//
+	if(handle->m_userlist == NULL)
+	{
+		ASSERT(false);
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to trace file: user list missing");
+		return SCAP_FAILURE;
+	}
+
+	//
+	// Create the block
+	//
+	bh.block_type = UL_BLOCK_TYPE;
+	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + handle->m_userlist->totsavelen + 4);
+
+	if(fwrite(&bh, sizeof(bh), 1, f) != 1)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF1)");
+		return SCAP_FAILURE;
+	}
+
+	//
+	// Dump the users
+	//
+	type = USERBLOCK_TYPE_USER;
+	for(j = 0; j < handle->m_userlist->nusers; j++)
+	{
+		scap_userinfo* info = &handle->m_userlist->users[j];
+
+		namelen = strnlen(info->name, MAX_CREDENTIALS_STR_LEN);
+		homedirlen = strnlen(info->homedir, SCAP_MAX_PATH_SIZE);
+		shelllen = strnlen(info->shell, SCAP_MAX_PATH_SIZE);
+
+		if(fwrite(&(type), sizeof(type), 1, f) != 1 ||
+			fwrite(&(info->uid), sizeof(info->uid), 1, f) != 1 ||
+		    fwrite(&(info->gid), sizeof(info->gid), 1, f) != 1 ||
+		    fwrite(&namelen,  sizeof(uint16_t), 1, f) != 1 ||
+		    fwrite(info->name, 1,  namelen, f) != namelen ||
+		    fwrite(&homedirlen,  sizeof(uint16_t), 1, f) != 1 ||
+		    fwrite(info->homedir, 1,  homedirlen, f) != homedirlen ||
+		    fwrite(&shelllen,  sizeof(uint16_t), 1, f) != 1 ||
+		    fwrite(info->shell, 1,  shelllen, f) != shelllen)
+		{
+			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (U1)");
+			return SCAP_FAILURE;
+		}
+	}
+
+	//
+	// Dump the groups
+	//
+	type = USERBLOCK_TYPE_GROUP;
+	for(j = 0; j < handle->m_userlist->ngroups; j++)
+	{
+		scap_groupinfo* info = &handle->m_userlist->groups[j];
+
+		namelen = strnlen(info->name, MAX_CREDENTIALS_STR_LEN);
+
+		if(fwrite(&(type), sizeof(type), 1, f) != 1 ||
+			fwrite(&(info->gid), sizeof(info->gid), 1, f) != 1 ||
+		    fwrite(&namelen,  sizeof(uint16_t), 1, f) != 1 ||
+		    fwrite(info->name, 1,  namelen, f) != namelen)
+		{
+			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (U2)");
+			return SCAP_FAILURE;
+		}
+	}
+
+	//
+	// Blocks need to be 4-byte padded
+	//
+	if(scap_write_padding(f, handle->m_userlist->totsavelen) != SCAP_SUCCESS)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF3)");
+		return SCAP_FAILURE;
+	}
+
+	//
+	// Create the trailer
+	//
+	bt = bh.block_total_length;
+	if(fwrite(&bt, sizeof(bt), 1, f) != 1)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF4)");
+		return SCAP_FAILURE;
+	}
+
+	return SCAP_SUCCESS;
+}
+#endif // _WIN32
+
+//
 // Create the dump file headers and add the tables
 //
 static scap_dumper_t *scap_setup_dump(scap_t *handle, FILE *f, const char *fname)
@@ -397,6 +510,14 @@ static scap_dumper_t *scap_setup_dump(scap_t *handle, FILE *f, const char *fname
 	// Write the interface list
 	//
 	if(scap_write_iflist(handle, f) != SCAP_SUCCESS)
+	{
+		return NULL;
+	}
+
+	//
+	// Write the user list
+	//
+	if(scap_write_userlist(handle, f) != SCAP_SUCCESS)
 	{
 		return NULL;
 	}
@@ -960,6 +1081,207 @@ scap_read_iflist_error:
 }
 
 //
+// Parse a user list block
+//
+int32_t scap_read_userlist(scap_t *handle, FILE *f, uint32_t block_length)
+{
+	size_t readsize;
+	size_t totreadsize = 0;
+	uint32_t padding;
+	int32_t padding_len;
+	uint8_t type;
+	uint16_t stlen;
+
+	//
+	// If the list of users was already allocated for this handle (for example because this is
+	// not the first interface list block), free it
+	//
+	if(handle->m_userlist != NULL)
+	{
+		scap_free_userlist(handle->m_userlist);
+		handle->m_userlist = NULL;
+	}
+
+	//
+	// Allocate and initialize the handle info
+	//
+	handle->m_userlist = (scap_userlist*)malloc(sizeof(scap_userlist));
+	if(handle->m_userlist == NULL)
+	{
+		snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "userlist allocation failed(2)");
+		return SCAP_FAILURE;
+	}
+
+	handle->m_userlist->nusers = 0;
+	handle->m_userlist->ngroups = 0;
+	handle->m_userlist->totsavelen = 0;
+	handle->m_userlist->users = NULL;
+	handle->m_userlist->groups = NULL;
+
+	//
+	// Import the blocks
+	//
+	while(((int32_t)block_length - (int32_t)totreadsize) >= 4)
+	{
+		//
+		// type
+		//
+		readsize = fread(&(type), 1, sizeof(type), f);
+		CHECK_READ_SIZE(readsize, sizeof(type));
+
+		totreadsize += readsize;
+
+		if(type == USERBLOCK_TYPE_USER)
+		{
+			handle->m_userlist->nusers++;
+			handle->m_userlist->users = realloc(handle->m_userlist->users, handle->m_userlist->nusers * sizeof(scap_userinfo));
+			if(handle->m_userlist->users == NULL)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "memory allocation error in scap_read_userlist(1)");
+				return SCAP_FAILURE;
+			}
+
+			scap_userinfo* puser = &handle->m_userlist->users[handle->m_userlist->nusers -1];
+
+			//
+			// uid
+			//
+			readsize = fread(&(puser->uid), 1, sizeof(uint32_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint32_t));
+
+			totreadsize += readsize;
+
+			//
+			// gid
+			//
+			readsize = fread(&(puser->gid), 1, sizeof(uint32_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint32_t));
+
+			totreadsize += readsize;
+
+			//
+			// name
+			//
+			readsize = fread(&(stlen), 1, sizeof(uint16_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint16_t));
+
+			if(stlen >= MAX_CREDENTIALS_STR_LEN)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid user name len %d", stlen);
+				return SCAP_FAILURE;
+			}
+
+			totreadsize += readsize;
+
+			readsize = fread(puser->name, 1, stlen, f);
+			CHECK_READ_SIZE(readsize, stlen);
+
+			// the string is not null-terminated on file
+			puser->name[stlen] = 0;
+
+			totreadsize += readsize;
+
+			//
+			// homedir
+			//
+			readsize = fread(&(stlen), 1, sizeof(uint16_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint16_t));
+
+			if(stlen >= MAX_CREDENTIALS_STR_LEN)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid user homedir len %d", stlen);
+				return SCAP_FAILURE;
+			}
+
+			totreadsize += readsize;
+
+			readsize = fread(puser->homedir, 1, stlen, f);
+			CHECK_READ_SIZE(readsize, stlen);
+
+			// the string is not null-terminated on file
+			puser->homedir[stlen] = 0;
+
+			totreadsize += readsize;
+
+			//
+			// shell
+			//
+			readsize = fread(&(stlen), 1, sizeof(uint16_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint16_t));
+
+			if(stlen >= MAX_CREDENTIALS_STR_LEN)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid user shell len %d", stlen);
+				return SCAP_FAILURE;
+			}
+
+			totreadsize += readsize;
+
+			readsize = fread(puser->shell, 1, stlen, f);
+			CHECK_READ_SIZE(readsize, stlen);
+
+			// the string is not null-terminated on file
+			puser->shell[stlen] = 0;
+
+			totreadsize += readsize;
+		}
+		else
+		{
+			handle->m_userlist->ngroups++;
+			handle->m_userlist->groups = realloc(handle->m_userlist->groups, handle->m_userlist->ngroups * sizeof(scap_groupinfo));
+			if(handle->m_userlist->groups == NULL)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "memory allocation error in scap_read_userlist(2)");
+				return SCAP_FAILURE;
+			}
+
+			scap_groupinfo* pgroup = &handle->m_userlist->groups[handle->m_userlist->ngroups -1];
+
+			//
+			// gid
+			//
+			readsize = fread(&(pgroup->gid), 1, sizeof(uint32_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint32_t));
+
+			totreadsize += readsize;
+
+			//
+			// name
+			//
+			readsize = fread(&(stlen), 1, sizeof(uint16_t), f);
+			CHECK_READ_SIZE(readsize, sizeof(uint16_t));
+
+			if(stlen >= MAX_CREDENTIALS_STR_LEN)
+			{
+				snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "invalid group name len %d", stlen);
+				return SCAP_FAILURE;
+			}
+
+			totreadsize += readsize;
+
+			readsize = fread(pgroup->name, 1, stlen, f);
+			CHECK_READ_SIZE(readsize, stlen);
+
+			// the string is not null-terminated on file
+			pgroup->name[stlen] = 0;
+
+			totreadsize += readsize;
+		}
+	}
+
+	//
+	// Read the padding bytes so we properly align to the end of the data
+	//
+	padding_len = ((int32_t)block_length - (int32_t)totreadsize);
+	ASSERT(padding_len >= 0);
+
+	readsize = fread(&padding, 1, padding_len, f);
+	CHECK_READ_SIZE(readsize, padding_len);
+
+	return SCAP_SUCCESS;
+}
+
+//
 // Parse a process list block
 //
 int32_t scap_read_fdlist(scap_t *handle, FILE *f, uint32_t block_length)
@@ -1117,6 +1439,12 @@ int32_t scap_read_init(scap_t *handle, FILE *f)
 			}
 		case IL_BLOCK_TYPE:
 			if(scap_read_iflist(handle, f, bh.block_total_length - sizeof(block_header) - 4) != SCAP_SUCCESS)
+			{
+				return SCAP_FAILURE;
+			}
+			break;
+		case UL_BLOCK_TYPE:
+			if(scap_read_userlist(handle, f, bh.block_total_length - sizeof(block_header) - 4) != SCAP_SUCCESS)
 			{
 				return SCAP_FAILURE;
 			}

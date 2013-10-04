@@ -259,6 +259,37 @@ struct scap_addrlist
 };
 
 //
+// User and group info
+//
+#define MAX_CREDENTIALS_STR_LEN 256
+#define USERBLOCK_TYPE_USER 0
+#define USERBLOCK_TYPE_GROUP 1
+
+typedef struct scap_userinfo
+{
+	uint32_t uid;	// user ID
+	uint32_t gid;  // group ID
+	char name[MAX_CREDENTIALS_STR_LEN]; // username
+	char homedir[SCAP_MAX_PATH_SIZE]; // home directory
+	char shell[SCAP_MAX_PATH_SIZE]; // shell program
+}scap_userinfo;
+
+typedef struct scap_groupinfo
+{
+	uint32_t gid; // group ID
+	char name[MAX_CREDENTIALS_STR_LEN]; // group name
+}scap_groupinfo;
+
+typedef struct scap_userlist
+{
+	uint32_t nusers;
+	uint32_t ngroups;
+	uint32_t totsavelen;
+	scap_userinfo* users;
+	scap_groupinfo* groups;
+}scap_userlist;
+
+//
 // Misc definitions
 //
 #define IN
@@ -385,6 +416,9 @@ int32_t scap_start_dropping_mode(scap_t* handle);
 
 // Return the list of device addresses
 scap_addrlist* scap_get_ifaddr_list(scap_t* handle);
+
+// Return the list of machine users
+scap_userlist* scap_get_user_list(scap_t* handle);
 
 // set empty buffer timeout in milliseconds
 int32_t scap_set_empty_buffer_timeout_ms(scap_t* handle, uint32_t timeout_ms);
