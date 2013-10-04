@@ -1133,6 +1133,8 @@ int32_t scap_read_userlist(scap_t *handle, FILE *f, uint32_t block_length)
 
 		if(type == USERBLOCK_TYPE_USER)
 		{
+			scap_userinfo* puser;
+
 			handle->m_userlist->nusers++;
 			handle->m_userlist->users = realloc(handle->m_userlist->users, handle->m_userlist->nusers * sizeof(scap_userinfo));
 			if(handle->m_userlist->users == NULL)
@@ -1141,7 +1143,7 @@ int32_t scap_read_userlist(scap_t *handle, FILE *f, uint32_t block_length)
 				return SCAP_FAILURE;
 			}
 
-			scap_userinfo* puser = &handle->m_userlist->users[handle->m_userlist->nusers -1];
+			puser = &handle->m_userlist->users[handle->m_userlist->nusers -1];
 
 			//
 			// uid
@@ -1227,6 +1229,8 @@ int32_t scap_read_userlist(scap_t *handle, FILE *f, uint32_t block_length)
 		}
 		else
 		{
+			scap_groupinfo* pgroup;
+
 			handle->m_userlist->ngroups++;
 			handle->m_userlist->groups = realloc(handle->m_userlist->groups, handle->m_userlist->ngroups * sizeof(scap_groupinfo));
 			if(handle->m_userlist->groups == NULL)
@@ -1235,7 +1239,7 @@ int32_t scap_read_userlist(scap_t *handle, FILE *f, uint32_t block_length)
 				return SCAP_FAILURE;
 			}
 
-			scap_groupinfo* pgroup = &handle->m_userlist->groups[handle->m_userlist->ngroups -1];
+			pgroup = &handle->m_userlist->groups[handle->m_userlist->ngroups -1];
 
 			//
 			// gid

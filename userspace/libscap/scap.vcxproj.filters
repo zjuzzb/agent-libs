@@ -39,6 +39,9 @@
     <ClCompile Include="..\..\driver\syscall_info_table.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="scap_userlist.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scap-int.h">

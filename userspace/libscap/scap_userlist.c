@@ -1,10 +1,12 @@
 #include <stdio.h>
-#include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-
 #include "scap.h"
 #include "scap-int.h"
+
+#ifndef _WIN32
+#include <sys/types.h>
+
+#include <pwd.h>
+#include <grp.h>
 
 //
 // Allocate and return the list of interfaces on this system
@@ -111,6 +113,7 @@ int32_t scap_create_userlist(scap_t* handle)
 
 	return SCAP_SUCCESS;
 }
+#endif // _WIN32
 
 //
 // Free a previously allocated list of users

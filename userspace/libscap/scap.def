@@ -33,4 +33,5 @@ EXPORTS
 		scap_get_machine_info
 		scap_stop_dropping_mode
 		scap_start_dropping_mode
+		scap_free_userlist
 

@@ -97,6 +97,7 @@
     <ClCompile Include="scap_iflist.c" />
     <ClCompile Include="scap_procs.c" />
     <ClCompile Include="scap_savefile.c" />
+    <ClCompile Include="scap_userlist.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\driver\ppm_events_public.h" />
