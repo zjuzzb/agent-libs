@@ -17,7 +17,7 @@ const struct ppm_event_info g_event_info[PPM_EVENT_MAX] =
 	/* PPME_SYSCALL_EXECVE_E */{"execve", EC_PROCESS, EF_NONE, 0},
 	/* PPME_SYSCALL_EXECVE_X */{"execve", EC_PROCESS, EF_NONE, 8, {{"res", PT_ERRNO, PF_DEC}, {"exe", PT_CHARBUF, PF_NA}, {"args", PT_BYTEBUF, PF_NA}, {"tid", PT_PID, PF_DEC}, {"pid", PT_PID, PF_DEC}, {"ptid", PT_PID, PF_DEC}, {"cwd", PT_CHARBUF, PF_NA}, {"fdlimit", PT_UINT64, PF_DEC}}},
 	/* PPME_CLONE_E */{"clone", EC_PROCESS, EF_NONE, 0},
-	/* PPME_CLONE_X */{"clone", EC_PROCESS, EF_NONE, 9, {{"res", PT_PID, PF_DEC}, {"exe", PT_CHARBUF, PF_NA}, {"args", PT_BYTEBUF, PF_NA}, {"tid", PT_PID, PF_DEC}, {"pid", PT_PID, PF_DEC}, {"ptid", PT_PID, PF_DEC}, {"cwd", PT_CHARBUF, PF_NA}, {"fdlimit", PT_INT64, PF_DEC}, {"flags", PT_UINT32, PF_HEX}}},
+	/* PPME_CLONE_X */{"clone", EC_PROCESS, EF_NONE, 11, {{"res", PT_PID, PF_DEC}, {"exe", PT_CHARBUF, PF_NA}, {"args", PT_BYTEBUF, PF_NA}, {"tid", PT_PID, PF_DEC}, {"pid", PT_PID, PF_DEC}, {"ptid", PT_PID, PF_DEC}, {"cwd", PT_CHARBUF, PF_NA}, {"fdlimit", PT_INT64, PF_DEC}, {"flags", PT_UINT32, PF_HEX}, {"uid", PT_UINT32, PF_DEC}, {"gid", PT_UINT32, PF_DEC}}},
 	/* PPME_PROCEXIT_E */{"procexit", EC_PROCESS, EF_NONE, 0},
 	/* PPME_NA1 */{"NA1", EC_PROCESS, EF_NONE, 0},
 	/* PPME_SOCKET_SOCKET_E */{"socket", EC_NET, EF_CREATES_FD, 3, {{"domain", PT_UINT32, PF_DEC}, {"type", PT_UINT32, PF_DEC}, {"proto", PT_UINT32, PF_DEC}}},

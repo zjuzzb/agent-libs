@@ -558,7 +558,7 @@ TEST_F(sys_call_test, process_rlimit)
 	EXPECT_EQ(8, callnum);
 }
 
-#ifdef SYS_prlimit64
+#if 0
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
@@ -602,7 +602,7 @@ TEST_F(sys_call_test, process_prlimit)
 			EXPECT_EQ((int64_t)getpid(), NumberParser::parse64(e->get_param_value_str("pid", false)));
 			callnum++;
 		}
-		if(type == PPME_SYSCALL_PRLIMIT_X)
+		else if(type == PPME_SYSCALL_PRLIMIT_X)
 		{
 			EXPECT_GE((int64_t)0, NumberParser::parse64(e->get_param_value_str("res", false)));
 
@@ -635,7 +635,7 @@ TEST_F(sys_call_test, process_prlimit)
 	if(syscall(SYS_prlimit64, getpid(), RLIMIT_NOFILE, NULL, &tmprl) != 0)
 	{
 		return;
-	} 
+	}
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 

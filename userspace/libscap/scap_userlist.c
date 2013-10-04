@@ -122,8 +122,8 @@ void scap_free_userlist(scap_userlist* uhandle)
 {
 	if(uhandle)
 	{
-		free(uhandle);
 		free(uhandle->users);
 		free(uhandle->groups);
+		free(uhandle);
 	}
 }

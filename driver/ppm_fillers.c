@@ -750,12 +750,35 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 	}
 
 	//
-	// Flags, but only for clone
+	// clone-only parameters
 	//
 	if(args->event_type == PPME_CLONE_X)
 	{
+		//
+		// flags
+		//
 		syscall_get_arguments(current, args->regs, 0, 1, &val);
 		res = val_to_ring(args, (uint64_t)clone_flags_to_scap(val), 0, false);
+		if(unlikely(res != PPM_SUCCESS))
+		{
+			return res;
+		}
+
+		//
+		// uid
+		//
+		syscall_get_arguments(current, args->regs, 0, 1, &val);
+		res = val_to_ring(args, (uint64_t)current->cred->euid, 0, false);
+		if(unlikely(res != PPM_SUCCESS))
+		{
+			return res;
+		}
+
+		//
+		// gid
+		//
+		syscall_get_arguments(current, args->regs, 0, 1, &val);
+		res = val_to_ring(args, (uint64_t)current->cred->egid, 0, false);
 		if(unlikely(res != PPM_SUCCESS))
 		{
 			return res;
