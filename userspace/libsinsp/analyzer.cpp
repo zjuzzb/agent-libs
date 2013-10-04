@@ -572,9 +572,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						//
 						it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
 
-#if 0
-						if(it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count != 0)
+#if 1
+						if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 						{
+							uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+							uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+							uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
+							uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 								it->second.m_comm.c_str(),
@@ -583,11 +588,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 								it->second.m_refcount + 1,
 								hscore,
 								cpuload,
-								it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count,
-								it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_count,
-								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
-								((double)it->second.m_procinfo->m_proc_transaction_metrics.m_outgoing.m_time_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
-								((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / it->second.m_procinfo->m_proc_transaction_metrics.m_incoming.m_count / 1000000000,
+								it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
+								it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+								trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
+								trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
+								trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
 								it->second.m_fd_usage_ratio,
 								it->second.m_connection_queue_usage_ratio);
 						}
