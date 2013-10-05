@@ -98,6 +98,20 @@
 #define MAX_CONNECTION_TABLE_SIZE 65536
 
 //
+// Max number of connections that can go in a sample that is sent to the backend.
+// 0 means no limit.
+// This can be ovverridden through sinsp_configuration::set_max_connections_in_proto().
+//
+#define DEFAULT_MAX_CONNECTIONS_IN_PROTO 100
+
+//
+// If this is set, all the connections *coming* from the external world
+// are aggreagated into a single connection in the protocol samples.
+// This can be overridden by set_aggregate_external_world_connections_in_proto().
+//
+#define AGGREGATE_EXTERNAL_WORLD_CONNECTIONS_IN_PROTO
+
+//
 // Max size that the thread table can reach
 //
 #define MAX_THREAD_TABLE_SIZE 65536

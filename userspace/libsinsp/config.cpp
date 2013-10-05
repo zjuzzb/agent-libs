@@ -14,6 +14,7 @@ sinsp_configuration::sinsp_configuration()
 	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_thread_table_size = MAX_THREAD_TABLE_SIZE;
+	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -172,4 +173,24 @@ uint32_t sinsp_configuration::get_max_thread_table_size() const
 void sinsp_configuration::set_max_thread_table_size(uint32_t max_thread_table_size)
 {
 	m_max_thread_table_size = max_thread_table_size;
+}
+
+uint32_t sinsp_configuration::get_max_connections_in_proto() const
+{
+	return m_max_connections_in_proto;
+}
+
+void sinsp_configuration::set_max_connections_in_proto(uint32_t max_connections_in_proto)
+{
+	m_max_connections_in_proto = max_connections_in_proto;
+}
+
+bool sinsp_configuration::get_aggregate_external_world_connections_in_proto() const
+{
+	return m_aggregate_external_world_connections_in_proto;
+}
+
+void sinsp_configuration::set_aggregate_external_world_connections_in_proto(bool aggregate)
+{
+	m_aggregate_external_world_connections_in_proto = aggregate;
 }

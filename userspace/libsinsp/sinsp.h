@@ -232,11 +232,15 @@ public:
 
 	const scap_machine_info* get_machine_info();
 
+	const unordered_map<uint32_t, scap_userinfo*>* get_userlist();
+	const unordered_map<uint32_t, scap_groupinfo*>* get_grouplist();
+
 VISIBILITY_PRIVATE
 
 	void init();
 	void import_proc_table();
 	void import_ifaddr_list();
+	void import_user_list();
 
 	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
 	void add_thread(const sinsp_threadinfo& procinfo);
@@ -287,6 +291,9 @@ VISIBILITY_PRIVATE
 #ifdef HAS_FILTERING
 	sinsp_filter* m_filter;
 #endif
+
+	unordered_map<uint32_t, scap_userinfo*> m_userlist;
+	unordered_map<uint32_t, scap_groupinfo*> m_grouplist;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;

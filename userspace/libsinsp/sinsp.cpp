@@ -231,6 +231,22 @@ void sinsp::import_ifaddr_list()
 	m_network_interfaces->import_interfaces(scap_get_ifaddr_list(m_h));
 }
 
+void sinsp::import_user_list()
+{
+	uint32_t j;
+	scap_userlist* ul = scap_get_user_list(m_h);
+
+	for(j = 0; j < ul->nusers; j++)
+	{
+		m_userlist[ul->users[j].uid] = &(ul->users[j]); 
+	}
+
+	for(j = 0; j < ul->ngroups; j++)
+	{
+		m_grouplist[ul->groups[j].gid] = &(ul->groups[j]); 
+	}
+}
+
 void sinsp::init()
 {
 	//
@@ -271,6 +287,7 @@ void sinsp::init()
 
 	import_ifaddr_list();
 	import_proc_table();
+	import_user_list();
 }
 
 void sinsp::remove_expired_connections(uint64_t ts)
@@ -562,7 +579,7 @@ void sinsp::set_filter(string filter)
 		throw sinsp_exception("filter can only be set once");
 	}
 
-	m_filter = new sinsp_filter(filter);
+	m_filter = new sinsp_filter(filter, this);
 }
 #endif
 
@@ -667,3 +684,14 @@ const scap_machine_info* sinsp::get_machine_info()
 {
 	return m_machine_info;
 }
+
+const unordered_map<uint32_t, scap_userinfo*>* sinsp::get_userlist()
+{
+	return &m_userlist;
+}
+
+const unordered_map<uint32_t, scap_groupinfo*>* sinsp::get_grouplist()
+{
+	return &m_grouplist;
+}
+

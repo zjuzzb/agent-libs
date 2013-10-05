@@ -30,6 +30,10 @@ public:
 	void set_max_connection_table_size(uint32_t max_connection_table_size);
 	uint32_t get_max_thread_table_size() const;
 	void set_max_thread_table_size(uint32_t max_thread_table_size);
+	uint32_t get_max_connections_in_proto() const;
+	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
+	bool get_aggregate_external_world_connections_in_proto() const;
+	void set_aggregate_external_world_connections_in_proto(bool aggregate);
 
 private:
 	uint64_t m_connection_timeout_ns;
@@ -43,4 +47,6 @@ private:
 	string m_metrics_directory;
 	uint32_t m_max_connection_table_size;
 	uint32_t m_max_thread_table_size;
+	uint32_t m_max_connections_in_proto;
+	bool m_aggregate_external_world_connections_in_proto;
 };

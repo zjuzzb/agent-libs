@@ -148,7 +148,7 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 		totlen +=
 		    sizeof(uint64_t) +	// tid
 		    sizeof(uint64_t) +	// pid
-		    sizeof(uint64_t) +	// ppid
+		    sizeof(uint64_t) +	// ptid
 		    2 + strnlen(tinfo->comm, SCAP_MAX_PATH_SIZE) +
 		    2 + strnlen(tinfo->exe, SCAP_MAX_PATH_SIZE) +
 		    2 + tinfo->args_len +
@@ -183,7 +183,7 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 
 		if(fwrite(&(tinfo->tid), sizeof(uint64_t), 1, f) != 1 ||
 		        fwrite(&(tinfo->pid), sizeof(uint64_t), 1, f) != 1 ||
-		        fwrite(&(tinfo->ppid), sizeof(uint64_t), 1, f) != 1 ||
+		        fwrite(&(tinfo->ptid), sizeof(uint64_t), 1, f) != 1 ||
 		        fwrite(&commlen,  sizeof(uint16_t), 1, f) != 1 ||
 		        fwrite(tinfo->comm, 1,  commlen, f) != commlen ||
 		        fwrite(&exelen,  sizeof(uint16_t), 1, f) != 1 ||
@@ -667,9 +667,9 @@ int32_t scap_read_proclist(scap_t *handle, FILE *f, uint32_t block_length)
 		totreadsize += readsize;
 
 		//
-		// ppid
+		// ptid
 		//
-		readsize = fread(&(tinfo.ppid), 1, sizeof(uint64_t), f);
+		readsize = fread(&(tinfo.ptid), 1, sizeof(uint64_t), f);
 		CHECK_READ_SIZE(readsize, sizeof(uint64_t));
 
 		totreadsize += readsize;

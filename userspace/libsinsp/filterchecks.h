@@ -41,6 +41,9 @@ public:
 
 	bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
 
+	void set_inspector(sinsp* inspector);
+
+	sinsp* m_inspector;
 	boolop m_boolop;
 	ppm_cmp_operator m_cmpop;
 };
@@ -156,6 +159,54 @@ public:
 	uint16_t m_evttype;
 	int16_t m_cpuid;
 	string m_argname;
+};
+
+//
+// user checks
+//
+class sinsp_filter_check_user : public sinsp_filter_check
+{
+public:
+	enum check_type
+	{
+		TYPE_NONE,
+		TYPE_UID,
+		TYPE_NAME,
+		TYPE_HOMEDIR,
+		TYPE_SHELL,
+	};
+
+	static bool recognize_operand(string operand);
+	void parse_operand1(string val);
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+
+	check_type m_type;
+	uint32_t m_uid;
+	string m_strval;
+};
+
+//
+// group checks
+//
+class sinsp_filter_check_group : public sinsp_filter_check
+{
+public:
+	enum check_type
+	{
+		TYPE_NONE,
+		TYPE_GID,
+		TYPE_NAME,
+	};
+
+	static bool recognize_operand(string operand);
+	void parse_operand1(string val);
+	void parse_operand2(string val);
+	bool run(sinsp_evt *evt);
+
+	check_type m_type;
+	uint32_t m_gid;
+	string m_name;
 };
 
 #endif // HAS_FILTERING

@@ -93,12 +93,15 @@ public:
 	//
 	int64_t m_tid;  // The id of this thread
 	int64_t m_pid; // The id of the process containing this thread. In single thread threads, this is equal to tid.
+	int64_t m_ptid; // The id of the process that started this thread.
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // Full command name (e.g. "/bin/top")
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
 	uint32_t m_flags; // The thread flags.
 	uint64_t m_refcount; // When this is 0 the process can be deleted (i.e. no children)
 	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
+	uint32_t m_uid; // user id
+	uint32_t m_gid; // group id
 
 	//
 	// State for multi-event processing

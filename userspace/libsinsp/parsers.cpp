@@ -654,11 +654,21 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	ASSERT(parinfo->m_len == sizeof(int64_t));
 	tinfo.m_fdlimit = *(int64_t *)parinfo->m_val;
 
+	// Copy the uid
+	parinfo = evt->get_param(9);
+	ASSERT(parinfo->m_len == sizeof(int32_t));
+	tinfo.m_uid = *(int32_t *)parinfo->m_val;
+
+	// Copy the uid
+	parinfo = evt->get_param(10);
+	ASSERT(parinfo->m_len == sizeof(int32_t));
+	tinfo.m_gid = *(int32_t *)parinfo->m_val;
+
 	//
 	// Add the new thread info to the table
 	//
 	tinfo.m_tid = childtid;
-//	tinfo.m_ptid = ptinfo->m_pid;
+	tinfo.m_ptid = tid;
 	m_inspector->add_thread(tinfo);
 
 	return;

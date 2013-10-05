@@ -178,7 +178,7 @@ typedef struct scap_threadinfo
 {
 	uint64_t tid;						// The thread/task id.
 	uint64_t pid;						// The id of the process containing this thread. In single thread processes, this is equal to tid.
-	uint64_t ppid;						// The id of the thread that created this thread.
+	uint64_t ptid;						// The id of the thread that created this thread.
 	char comm[SCAP_MAX_PATH_SIZE];		// Command name (e.g. "top")
 	char exe[SCAP_MAX_PATH_SIZE];		// Full command name (e.g. "/bin/top")
 	char args[SCAP_MAX_PATH_SIZE];		// Command line arguments (e.g. "-d1")

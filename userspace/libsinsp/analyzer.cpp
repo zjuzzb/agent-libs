@@ -727,6 +727,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
 			////////////////////////////////////////////////////////////////////////////
+			unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+
+			//
+			// First pass: aggreagte external connections and 
+			//
+/*
+			if(m_inspector->m_ipv4_connections->m_connections.size() > 
+				m_inspector->m_configuration.get_max_connections_in_proto())
+			{
+				int a = 0;
+			}
+
+			for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
+				cit != m_inspector->m_ipv4_connections->m_connections.end();)
+			{
+			}
+*/
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
@@ -740,7 +757,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				m_inspector->m_ipv4_connections->clear_n_drops();
 			}
 
-			unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 			for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
 				cit != m_inspector->m_ipv4_connections->m_connections.end();)
 			{

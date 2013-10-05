@@ -24,6 +24,12 @@ sinsp_filter_check::sinsp_filter_check()
 {
 	m_boolop = BO_NONE;
 	m_cmpop = CO_NONE;
+	m_inspector = NULL;
+}
+
+void sinsp_filter_check::set_inspector(sinsp* inspector)
+{
+	m_inspector = inspector;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -918,6 +924,238 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 			default:
 				ASSERT(false);
 				break;
+			}
+		}
+		break;
+	default:
+		ASSERT(false);
+		break;
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_user implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_user::recognize_operand(string operand)
+{
+	if(operand.substr(0, string("user").length()) == "user")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_user::parse_operand1(string val)
+{
+	m_type = TYPE_NONE;
+
+	vector<string> components = sinsp_split(val, '.');
+
+	if(components.size() == 2)
+	{
+		if(components[1] == "uid")
+		{
+			m_type = TYPE_UID;
+			return;
+		}
+		else if(components[1] == "name")
+		{
+			m_type = TYPE_NAME;
+			return;
+		}
+		else if(components[1] == "homedir")
+		{
+			m_type = TYPE_HOMEDIR;
+			return;
+		}
+		else if(components[1] == "shell")
+		{
+			m_type = TYPE_SHELL;
+			return;
+		}
+	}
+
+	throw sinsp_exception("filter error: unrecognized field " + val);
+}
+
+void sinsp_filter_check_user::parse_operand2(string val)
+{
+	switch(m_type)
+	{
+	case TYPE_UID:
+		m_uid = sinsp_numparser::parsed32(val);
+		break;
+	case TYPE_NAME:
+	case TYPE_HOMEDIR:
+	case TYPE_SHELL:
+		m_strval = val;
+		break;
+	default:
+		ASSERT(false);
+	}
+}
+
+bool sinsp_filter_check_user::run(sinsp_evt *evt)
+{
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	scap_userinfo* uinfo;
+
+	if(tinfo == NULL)
+	{
+		return false;
+	}
+
+	if(m_type != TYPE_UID)
+	{
+		unordered_map<uint32_t, scap_userinfo*>::iterator it;
+
+		ASSERT(m_inspector != NULL);
+		unordered_map<uint32_t, scap_userinfo*>* userlist = 
+			(unordered_map<uint32_t, scap_userinfo*>*)m_inspector->get_userlist();
+		ASSERT(userlist->size() != 0);
+
+		it = userlist->find(tinfo->m_uid);
+		if(it == userlist->end())
+		{
+			ASSERT(false);
+			return false;
+		}
+
+		uinfo = it->second;
+		ASSERT(uinfo != NULL);
+	}
+
+	switch(m_type)
+	{
+	case TYPE_UID:
+		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_uid, &m_uid) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_NAME:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->name, (char*)m_strval.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_HOMEDIR:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->homedir, (char*)m_strval.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_SHELL:
+		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->shell, (char*)m_strval.c_str()) == true)
+		{
+			return true;
+		}
+		break;
+	default:
+		ASSERT(false);
+		break;
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_group implementation
+///////////////////////////////////////////////////////////////////////////////
+bool sinsp_filter_check_group::recognize_operand(string operand)
+{
+	if(operand.substr(0, string("group").length()) == "group")
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void sinsp_filter_check_group::parse_operand1(string val)
+{
+	m_type = TYPE_NONE;
+
+	vector<string> components = sinsp_split(val, '.');
+
+	if(components.size() == 2)
+	{
+		if(components[1] == "gid")
+		{
+			m_type = TYPE_GID;
+			return;
+		}
+		else if(components[1] == "name")
+		{
+			m_type = TYPE_NAME;
+			return;
+		}
+	}
+
+	throw sinsp_exception("filter error: unrecognized field " + val);
+}
+
+void sinsp_filter_check_group::parse_operand2(string val)
+{
+	switch(m_type)
+	{
+	case TYPE_GID:
+		m_gid = sinsp_numparser::parsed32(val);
+		break;
+	case TYPE_NAME:
+		m_name = val;
+		break;
+	default:
+		ASSERT(false);
+	}
+}
+
+bool sinsp_filter_check_group::run(sinsp_evt *evt)
+{
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	if(tinfo == NULL)
+	{
+		return false;
+	}
+
+	switch(m_type)
+	{
+	case TYPE_GID:
+		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_gid, &m_gid) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_NAME:
+		{
+			unordered_map<uint32_t, scap_groupinfo*>::iterator it;
+
+			ASSERT(m_inspector != NULL);
+			unordered_map<uint32_t, scap_groupinfo*>* grouplist = 
+				(unordered_map<uint32_t, scap_groupinfo*>*)m_inspector->get_grouplist();
+			ASSERT(grouplist->size() != 0);
+
+			it = grouplist->find(tinfo->m_gid);
+			if(it == grouplist->end())
+			{
+				ASSERT(false);
+				return false;
+			}
+
+			scap_groupinfo* ginfo = it->second;
+			ASSERT(ginfo != NULL);
+
+			if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, ginfo->name, (char*)m_name.c_str()) == true)
+			{
+				return true;
 			}
 		}
 		break;

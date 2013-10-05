@@ -11,14 +11,17 @@ public:
 	    AF_NONE = 0,
 		// Connection has been closed. It will have to be removed from the 
 		// connection table.
-	    AF_CLOSED = (1 << 1), 
+	    AF_CLOSED = (1 << 0), 
 		// Connection has been closed and reopened with the same key. 
 		// I've seen this happen with unix sockets. A successive unix socket pair 
 		// can be assigned the same addresses of a just closed one.
 		// When that happens, the old connection is removed and the new one is
 		// added with the AF_REUSED flag, so that the analyzer can detect that
 		// connection is different.
-		AF_REUSED = (1 << 2), 
+		AF_REUSED = (1 << 1), 
+		// If this flag is set, the connection will NOT be included by the analyzer 
+		// in the sample going to the backend. Otherwise the connection is not sent.
+		AF_SKIP_IN_SAMPLE = (1 << 2), 
 	};
 
 	sinsp_connection();

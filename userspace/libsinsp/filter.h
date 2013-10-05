@@ -28,7 +28,7 @@ public:
 class sinsp_filter
 {
 public:
-	sinsp_filter(string fltstr);
+	sinsp_filter(string fltstr, sinsp* inspector);
 	bool run(sinsp_evt *evt);
 
 private:
@@ -49,6 +49,8 @@ private:
 	void push_expression(boolop op);
 	void pop_expression();
 	void parse(string fltstr);
+
+	sinsp* m_inspector;
 
 	string m_fltstr;
 	int32_t m_scanpos;

@@ -125,6 +125,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 
 	m_tid = pi->tid;
 	m_pid = pi->pid;
+	m_ptid = pi->ptid;
 
 	m_comm = pi->comm;
 	if(tcomm == "" || tcomm[tcomm.length() - 1] == '/')
@@ -145,6 +146,8 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	m_flags = pi->flags;
 	m_fdtable.clear();
 	m_fdlimit = pi->fdlimit;
+	m_uid = pi->uid;
+	m_gid = pi->gid;
 
 	HASH_ITER(hh, pi->fdlist, fdi, tfdi)
 	{

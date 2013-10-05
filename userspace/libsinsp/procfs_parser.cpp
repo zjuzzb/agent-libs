@@ -7,7 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <sys/stat.h>
 
 #include "sinsp.h"
@@ -20,7 +22,9 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_physical_memory_kb = physical_memory_kb;
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
+#ifndef _WIN32
 	m_page_size = (uint32_t)sysconf(_SC_PAGESIZE);
+#endif
 }
 
 uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)

@@ -99,13 +99,14 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_filter::sinsp_filter(string fltstr)
+sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(thread.tid!=0)";
-//fltstr = "evt.name contains _ctl";
+//fltstr = "user.name = root";
 
+	m_inspector = inspector;
 	m_scanpos = -1;
 	m_scansize = 0;
 	m_state = ST_NEED_EXPRESSION;
@@ -301,6 +302,11 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 		sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
 		chk = (sinsp_filter_check*)chk_event;
 	}
+	else if(sinsp_filter_check_user::recognize_operand(operand1))
+	{
+		sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
+		chk = (sinsp_filter_check*)chk_user;
+	}
 	else
 	{
 		//
@@ -312,6 +318,8 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	}
 	//////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////
+
+	chk->set_inspector(m_inspector);
 
 	ppm_cmp_operator co = next_comparison_operator();
 	string operand2 = next_operand();
