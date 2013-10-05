@@ -733,11 +733,12 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+	int64_t mem;
 
 	sinsp_procfs_parser pparser(nprocs, memkb);
 
 	pparser.get_global_cpu_load(&old_global_total_jiffies);
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
+	load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, 0, &mem);
 	
 	sleep(1);
 
@@ -752,7 +753,7 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		}
 
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
+		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
 
 		EXPECT_NE((int32_t)-1, (int32_t)load);
 		EXPECT_LE((uint32_t)0, load);
