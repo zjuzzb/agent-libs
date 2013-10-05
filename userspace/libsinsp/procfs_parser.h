@@ -12,9 +12,7 @@ public:
 	//
 	// must call get_total_cpu_load to update the system time before calling this
 	//
-	uint32_t get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies);
-
-	int64_t get_process_resident_memory_kb(uint64_t pid);
+	uint32_t get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory);
 
 private:
 //	uint64_t m_last_read_time;
@@ -24,4 +22,5 @@ private:
 	vector<uint64_t> m_old_work_jiffies;
 	uint64_t m_old_global_total_jiffies;
 	uint64_t m_old_global_work_jiffies;
+	uint32_t m_page_size;
 };

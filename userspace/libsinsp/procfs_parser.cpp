@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -18,6 +20,7 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_physical_memory_kb = physical_memory_kb;
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
+	m_page_size = (uint32_t)sysconf(_SC_PAGESIZE);
 }
 
 uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
@@ -191,7 +194,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads)
 	fclose(f);
 }
 
-uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies)
+uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory)
 {
 	char line[512];
 	char tmps[32];
@@ -221,7 +224,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 	//
 	// Extract the line content
 	//
-	if(sscanf(line, "%" PRIu64 " %s %s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
+	if(sscanf(line, "%" PRIu64 " %s %s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRId64,
 		&tval,
 		tmps,
 		tmps,
@@ -236,8 +239,17 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 		&tval,
 		&tval,
 		&val1,
-		&val2
-		) != 15)
+		&val2,
+		&tval,
+		&tval,
+		&tval,
+		&tval,
+		&tval,
+		&tval,
+		&tval,
+		&tval,
+		resident_memory
+		) != 24)
 	{
 		ASSERT(false);
 		return -1;
@@ -261,49 +273,10 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_p
 
 	fclose(f);
 
+	//
+	// Before returning, convert the memory size from pages to bytes.
+	//
+	*resident_memory *= m_page_size;
+
 	return res;	
-}
-
-int64_t sinsp_procfs_parser::get_process_resident_memory_kb(uint64_t pid)
-{
-	uint32_t j;
-	char line[512];
-	int64_t res = 0;
-	string path = string("/proc/") + to_string(pid) + "/smaps";
-
-#ifdef _WIN32
-	return -1;
-#endif
-
-	FILE* f = fopen(path.c_str(), "r");
-	if(f == NULL)
-	{
-		return -1;
-	}
-
-	//
-	// Consume the Rss lines
-	//
-	for(j = 0; fgets(line, sizeof(line), f) != NULL; j++)
-	{
-		uint64_t val;
-
-		if(strstr(line, "Rss") == line)
-		{
-			if(sscanf(line, "Rss: %" PRId64, &val) == 1)
-			{
-				res += val;
-			}
-			else
-			{
-				ASSERT(false);
-			}
-		}
-	}
-
-	fclose(f);
-
-	ASSERT(res <= m_physical_memory_kb);
-
-	return res;
 }

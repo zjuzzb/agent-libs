@@ -536,19 +536,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 						// Basic resource counters
 						//
 						int32_t cpuload = -1;
+						int64_t memsize;
+
 						if(m_inspector->m_islive)
 						{
-							cpuload = m_procfs_parser->get_process_cpu_load(pid, 
+							cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
 								&it->second.m_old_proc_jiffies, 
-								cur_global_total_jiffies - m_old_global_total_jiffies);
+								cur_global_total_jiffies - m_old_global_total_jiffies,
+								&memsize);
 							
 							proc->mutable_resource_counters()->set_cpu_pct(cpuload);
-						}
-
-						int64_t memsize = m_procfs_parser->get_process_resident_memory_kb(pid);
-
-						if(memsize != -1)
-						{
 							proc->mutable_resource_counters()->set_resident_memory_kb(memsize);
 						}
 
