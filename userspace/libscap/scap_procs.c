@@ -98,7 +98,7 @@ int32_t scap_proc_fill_info_from_stats(char* procdirname, struct scap_threadinfo
 	char line[128];
 
 	tinfo->uid = (uint32_t)-1;
-	tinfo->ppid = (uint32_t)-1LL;
+	tinfo->ptid = (uint32_t)-1LL;
 
 	snprintf(filename, sizeof(filename), "%sstatus", procdirname);
 
@@ -143,7 +143,7 @@ int32_t scap_proc_fill_info_from_stats(char* procdirname, struct scap_threadinfo
 
 			if(sscanf(line, "PPid: %" PRIu64, &ppid) == 1)
 			{
-				tinfo->ppid = ppid;
+				tinfo->ptid = ppid;
 			}
 			else
 			{
