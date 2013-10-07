@@ -56,7 +56,6 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t firstts = 0;
 	uint64_t screents;
 	uint32_t j;
-	uint64_t last_stat_ts = 0;
 
 	//
 	// Loop through the events
@@ -90,7 +89,6 @@ captureinfo do_inspect(sinsp* inspector,
 		if(firstts == 0)
 		{
 			firstts = ts;
-			last_stat_ts = ts;
 		}
 		deltats = ts - firstts;
 
@@ -182,7 +180,6 @@ int main(int argc, char **argv)
 	char* transact_fname = NULL;
 	double duration = 1;
 	captureinfo cinfo;
-	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
 
 

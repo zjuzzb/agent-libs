@@ -23,6 +23,7 @@ set(DRAIOS_SRC_PREFIX "/usr/src/draios-${DRAIOS_VERSION}")
 
 add_subdirectory(driver)
 add_subdirectory(userspace/dragent)
+add_subdirectory(userspace/sdump)
 add_subdirectory(userspace/libscap)
 add_subdirectory(userspace/libsinsp)
 add_subdirectory(test)
