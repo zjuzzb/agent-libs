@@ -315,14 +315,14 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 	switch(m_type)
 	{
 	case TYPE_FDNUM:
-		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_lastevent_fd, &m_fd) == true)
+		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_lastevent_fd, &m_fd) == true)
 		{
 			return true;
 		}
 
 		break;
 	case TYPE_FDNAME:
-		if(fdinfo != NULL && sinsp_evt::compare(m_cmpop, 
+		if(fdinfo != NULL && flt_compare(m_cmpop, 
 			PT_CHARBUF, 
 			(void*)fdinfo->m_name.c_str(), (void*)m_fdname.c_str()) == true)
 		{
@@ -613,26 +613,26 @@ bool sinsp_filter_check_thread::run(sinsp_evt *evt)
 	switch(m_type)
 	{
 	case TYPE_TID:
-		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_tid, &m_xid) == true)
+		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_tid, &m_xid) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_PID:
-		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_pid, &m_xid) == true)
+		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_pid, &m_xid) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_COMM:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+		if(flt_compare(m_cmpop, PT_CHARBUF, 
 			(void*)tinfo->get_comm().c_str(), (void*)m_str.c_str()) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_EXE:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+		if(flt_compare(m_cmpop, PT_CHARBUF, 
 			(void*)tinfo->get_exe().c_str(), (void*)m_str.c_str()) == true)
 		{
 			return true;
@@ -643,7 +643,7 @@ bool sinsp_filter_check_thread::run(sinsp_evt *evt)
 		throw sinsp_exception("filter error: thread.args filter not implemented yet");
 		return false;
 	case TYPE_CWD:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+		if(flt_compare(m_cmpop, PT_CHARBUF, 
 			(void*)tinfo->get_cwd().c_str(), (void*)m_str.c_str()) == true)
 		{
 			return true;
@@ -813,7 +813,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 	switch(m_type)
 	{
 	case TYPE_TS:
-		if(sinsp_evt::compare(m_cmpop, PT_UINT64, &evt->m_pevt->ts, &m_u64val) == true)
+		if(flt_compare(m_cmpop, PT_UINT64, &evt->m_pevt->ts, &m_u64val) == true)
 		{
 			return true;
 		}
@@ -840,7 +840,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 
 			if(m_evttype == PPM_EVENT_MAX)
 			{
-				if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, 
+				if(flt_compare(m_cmpop, PT_CHARBUF, 
 					evname, (char*)m_strval.c_str()) == true)
 				{
 					return true;
@@ -848,7 +848,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 			}
 			else
 			{
-				if(sinsp_evt::compare(m_cmpop, PT_UINT16, 
+				if(flt_compare(m_cmpop, PT_UINT16, 
 					&enter_type, &m_evttype) == true)
 				{
 					return true;
@@ -857,7 +857,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 		}
 		break;
 	case TYPE_NUMBER:
-		if(sinsp_evt::compare(m_cmpop, PT_UINT64, &evt->m_evtnum, &m_u64val) == true)
+		if(flt_compare(m_cmpop, PT_UINT64, &evt->m_evtnum, &m_u64val) == true)
 		{
 			return true;
 		}
@@ -866,7 +866,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 		{
 			int16_t cpuid = evt->get_cpuid();
 
-			if(sinsp_evt::compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
+			if(flt_compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
 			{
 				return true;
 			}
@@ -881,7 +881,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 			switch(m_arg_type)
 			{
 			case PT_CHARBUF:
-				if(argstr && sinsp_evt::compare(m_cmpop, PT_CHARBUF, (void*)argstr, (void*)m_strval.c_str()) == true)
+				if(argstr && flt_compare(m_cmpop, PT_CHARBUF, (void*)argstr, (void*)m_strval.c_str()) == true)
 				{
 					return true;
 				}
@@ -898,7 +898,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 						}
 					}
 
-					if(sinsp_evt::compare(m_cmpop, PT_INT64, &dval, &m_u64val) == true)
+					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_u64val) == true)
 					{
 						return true;
 					}
@@ -915,7 +915,7 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 						}
 					}
 
-					if(sinsp_evt::compare(m_cmpop, PT_INT64, &dval, &m_d64val) == true)
+					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_d64val) == true)
 					{
 						return true;
 					}
@@ -1033,25 +1033,25 @@ bool sinsp_filter_check_user::run(sinsp_evt *evt)
 	switch(m_type)
 	{
 	case TYPE_UID:
-		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_uid, &m_uid) == true)
+		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_uid, &m_uid) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_NAME:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->name, (char*)m_strval.c_str()) == true)
+		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->name, (char*)m_strval.c_str()) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_HOMEDIR:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->homedir, (char*)m_strval.c_str()) == true)
+		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->homedir, (char*)m_strval.c_str()) == true)
 		{
 			return true;
 		}
 		break;
 	case TYPE_SHELL:
-		if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, uinfo->shell, (char*)m_strval.c_str()) == true)
+		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->shell, (char*)m_strval.c_str()) == true)
 		{
 			return true;
 		}
@@ -1129,7 +1129,7 @@ bool sinsp_filter_check_group::run(sinsp_evt *evt)
 	switch(m_type)
 	{
 	case TYPE_GID:
-		if(sinsp_evt::compare(m_cmpop, PT_PID, &tinfo->m_gid, &m_gid) == true)
+		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_gid, &m_gid) == true)
 		{
 			return true;
 		}
@@ -1153,7 +1153,7 @@ bool sinsp_filter_check_group::run(sinsp_evt *evt)
 			scap_groupinfo* ginfo = it->second;
 			ASSERT(ginfo != NULL);
 
-			if(sinsp_evt::compare(m_cmpop, PT_CHARBUF, ginfo->name, (char*)m_name.c_str()) == true)
+			if(flt_compare(m_cmpop, PT_CHARBUF, ginfo->name, (char*)m_name.c_str()) == true)
 			{
 				return true;
 			}

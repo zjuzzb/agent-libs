@@ -570,6 +570,11 @@ void sinsp::start_dropping_mode()
 	}
 }
 
+void sinsp::set_events_formatting(const string& fmt)
+{
+	m_evt.set_tostring_format(fmt);
+}
+
 #ifdef _DEBUG
 void sinsp::set_filter(string filter)
 {

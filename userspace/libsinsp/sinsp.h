@@ -184,10 +184,15 @@ public:
 	// Start event capture
 	//
 	void start_capture();
-
+	
+	//
+	// Drop mode control
+	//
 	void stop_dropping_mode();
 	void start_dropping_mode();
 	
+	void set_events_formatting(const string& fmt);
+
 #ifdef _DEBUG
 	//
 	// Set the capture filter. Only in debug mode for the moment.

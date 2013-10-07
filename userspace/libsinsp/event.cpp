@@ -12,6 +12,12 @@
 
 extern sinsp_evttables g_infotables;
 
+const tostring_category_descriptor g_tostring_category_table[] =
+{
+	{"evt.num", TSC_EVTNUM},
+	{"%", TSC_PCTCHAR},
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_evt_param implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -850,6 +856,72 @@ void sinsp_evt::load_params()
 	}
 }
 
+void sinsp_evt::set_tostring_format(const string& fmt)
+{
+	uint32_t j, k;
+	uint32_t last_nontoken_str_start = 0;
+	const char* cfmt = fmt.c_str();
+	uint32_t ncategories = sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]);
+
+	m_tostring_tokens.clear();
+
+	for(j = 0; j < fmt.length(); j++)
+	{
+		if(cfmt[j] == '%')
+		{
+			if(last_nontoken_str_start != j)
+			{
+				m_tostring_tokens.push_back(
+					pair<tostring_category, string>(TSC_RAWSTRING, 
+						fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
+			}
+
+			for(k = 0; k < ncategories; k++)
+			{
+				int32_t toklen = strlen(g_tostring_category_table[k].m_name);
+
+				if(strncmp(cfmt + j + 1, 
+					g_tostring_category_table[k].m_name,
+					toklen) == 0)
+				{
+					j += toklen;
+					ASSERT(j < fmt.length());
+					m_tostring_tokens.push_back(
+						pair<tostring_category, string>(g_tostring_category_table[k].m_category, ""));
+					break;
+				}
+			}
+
+			if(k == ncategories)
+			{
+				throw sinsp_exception("error in the event format string at position " + to_string(j));
+			}
+
+			last_nontoken_str_start = j + 1;
+		}
+	}
+
+/*
+	vector<string> tokens = sinsp_split(fmt, ' ');
+
+	for(j = 0; j < tokens.size(); j++)
+	{
+		string& tok = tokens[j];
+
+		if(tok[0] == '%')
+		{
+			int a = 0;
+		}
+	}
+*/
+}
+
+void sinsp_evt::tostring(OUT string* res)
+{
+	*res = "";
+}
+
+
 void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 {
 	if(get_type() == PPME_GENERIC_E || 
@@ -925,117 +997,5 @@ void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 				}
 			}
 		}
-	}
-}
-
-//
-// type-based comparison
-//
-bool compare_uint64(ppm_cmp_operator op, uint64_t operand1, uint64_t operand2)
-{
-	switch(op)
-	{
-	case CO_EQ:
-		return (operand1 == operand2);
-	case CO_NE:
-		return (operand1 != operand2);
-	case CO_LT:
-		return (operand1 < operand2);
-	case CO_LE:
-		return (operand1 <= operand2);
-	case CO_GT:
-		return (operand1 > operand2);
-	case CO_GE:
-		return (operand1 >= operand2);
-	default:
-		throw sinsp_exception("'contains' not supported for numeric filters");
-		return false;
-	}
-}
-
-bool compare_int64(ppm_cmp_operator op, int64_t operand1, int64_t operand2)
-{
-	switch(op)
-	{
-	case CO_EQ:
-		return (operand1 == operand2);
-	case CO_NE:
-		return (operand1 != operand2);
-	case CO_LT:
-		return (operand1 < operand2);
-	case CO_LE:
-		return (operand1 <= operand2);
-	case CO_GT:
-		return (operand1 > operand2);
-	case CO_GE:
-		return (operand1 >= operand2);
-	default:
-		throw sinsp_exception("'contains' not supported for numeric filters");
-		return false;
-	}
-}
-
-bool compare_string(ppm_cmp_operator op, char* operand1, char* operand2)
-{
-	switch(op)
-	{
-	case CO_EQ:
-		return (strcmp(operand1, operand2) == 0);
-	case CO_NE:
-		return (strcmp(operand1, operand2) != 0);
-	case CO_CONTAINS:
-		return (strstr(operand1, operand2) != NULL);
-	case CO_LT:
-		throw sinsp_exception("'<' not supported for numeric filters");
-	case CO_LE:
-		throw sinsp_exception("'<=' not supported for numeric filters");
-	case CO_GT:
-		throw sinsp_exception("'>' not supported for numeric filters");
-	case CO_GE:
-		throw sinsp_exception("'>=' not supported for numeric filters");
-	default:
-		ASSERT(false);
-		throw sinsp_exception("invalid filter oprator " + std::to_string(op));
-		return false;
-	}
-}
-
-bool sinsp_evt::compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2)
-{
-	switch(type)
-	{
-	case PT_INT8:
-		return compare_int64(op, (int64_t)*(int8_t*)operand1, (int64_t)*(int8_t*)operand2);
-	case PT_INT16:
-		return compare_int64(op, (int64_t)*(int16_t*)operand1, (int64_t)*(int16_t*)operand2);
-	case PT_INT32:
-		return compare_int64(op, (int64_t)*(int32_t*)operand1, (int64_t)*(int32_t*)operand2);
-	case PT_INT64:
-	case PT_FD:
-	case PT_PID:
-		return compare_int64(op, *(int64_t*)operand1, *(int64_t*)operand2);
-	case PT_UINT8:
-	case PT_SIGTYPE:
-		return compare_uint64(op, (uint64_t)*(int8_t*)operand1, (uint64_t)*(int8_t*)operand2);
-	case PT_UINT16:
-	case PT_SYSCALLID:
-		return compare_uint64(op, (uint64_t)*(int16_t*)operand1, (uint64_t)*(int16_t*)operand2);
-	case PT_UINT32:
-		return compare_uint64(op, (uint64_t)*(int32_t*)operand1, (uint64_t)*(int32_t*)operand2);
-	case PT_UINT64:
-	case PT_RELTIME:
-	case PT_ABSTIME:
-		return compare_uint64(op, *(uint64_t*)operand1, *(uint64_t*)operand2);
-	case PT_CHARBUF:
-		return compare_string(op, (char*)operand1, (char*)operand2);
-	case PT_BYTEBUF:
-	case PT_ERRNO:
-	case PT_SOCKADDR:
-	case PT_SOCKTUPLE:
-	case PT_FDLIST:
-	case PT_FSPATH:
-	default:
-		ASSERT(false);
-		return false;
 	}
 }

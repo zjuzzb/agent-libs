@@ -2,6 +2,8 @@
 
 #ifdef HAS_FILTERING
 
+bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
+
 ///////////////////////////////////////////////////////////////////////////////
 // Filter expression class
 // A filter expression contains multiple filters connected by boolean expressions,

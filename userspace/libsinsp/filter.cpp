@@ -16,6 +16,118 @@
 #include "filter.h"
 
 ///////////////////////////////////////////////////////////////////////////////
+// type-based comparison functions
+///////////////////////////////////////////////////////////////////////////////
+bool flt_compare_uint64(ppm_cmp_operator op, uint64_t operand1, uint64_t operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (operand1 == operand2);
+	case CO_NE:
+		return (operand1 != operand2);
+	case CO_LT:
+		return (operand1 < operand2);
+	case CO_LE:
+		return (operand1 <= operand2);
+	case CO_GT:
+		return (operand1 > operand2);
+	case CO_GE:
+		return (operand1 >= operand2);
+	default:
+		throw sinsp_exception("'contains' not supported for numeric filters");
+		return false;
+	}
+}
+
+bool flt_compare_int64(ppm_cmp_operator op, int64_t operand1, int64_t operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (operand1 == operand2);
+	case CO_NE:
+		return (operand1 != operand2);
+	case CO_LT:
+		return (operand1 < operand2);
+	case CO_LE:
+		return (operand1 <= operand2);
+	case CO_GT:
+		return (operand1 > operand2);
+	case CO_GE:
+		return (operand1 >= operand2);
+	default:
+		throw sinsp_exception("'contains' not supported for numeric filters");
+		return false;
+	}
+}
+
+bool flt_compare_string(ppm_cmp_operator op, char* operand1, char* operand2)
+{
+	switch(op)
+	{
+	case CO_EQ:
+		return (strcmp(operand1, operand2) == 0);
+	case CO_NE:
+		return (strcmp(operand1, operand2) != 0);
+	case CO_CONTAINS:
+		return (strstr(operand1, operand2) != NULL);
+	case CO_LT:
+		throw sinsp_exception("'<' not supported for numeric filters");
+	case CO_LE:
+		throw sinsp_exception("'<=' not supported for numeric filters");
+	case CO_GT:
+		throw sinsp_exception("'>' not supported for numeric filters");
+	case CO_GE:
+		throw sinsp_exception("'>=' not supported for numeric filters");
+	default:
+		ASSERT(false);
+		throw sinsp_exception("invalid filter oprator " + std::to_string(op));
+		return false;
+	}
+}
+
+bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2)
+{
+	switch(type)
+	{
+	case PT_INT8:
+		return flt_compare_int64(op, (int64_t)*(int8_t*)operand1, (int64_t)*(int8_t*)operand2);
+	case PT_INT16:
+		return flt_compare_int64(op, (int64_t)*(int16_t*)operand1, (int64_t)*(int16_t*)operand2);
+	case PT_INT32:
+		return flt_compare_int64(op, (int64_t)*(int32_t*)operand1, (int64_t)*(int32_t*)operand2);
+	case PT_INT64:
+	case PT_FD:
+	case PT_PID:
+		return flt_compare_int64(op, *(int64_t*)operand1, *(int64_t*)operand2);
+	case PT_UINT8:
+	case PT_SIGTYPE:
+		return flt_compare_uint64(op, (uint64_t)*(int8_t*)operand1, (uint64_t)*(int8_t*)operand2);
+	case PT_UINT16:
+	case PT_SYSCALLID:
+		return flt_compare_uint64(op, (uint64_t)*(int16_t*)operand1, (uint64_t)*(int16_t*)operand2);
+	case PT_UINT32:
+		return flt_compare_uint64(op, (uint64_t)*(int32_t*)operand1, (uint64_t)*(int32_t*)operand2);
+	case PT_UINT64:
+	case PT_RELTIME:
+	case PT_ABSTIME:
+		return flt_compare_uint64(op, *(uint64_t*)operand1, *(uint64_t*)operand2);
+	case PT_CHARBUF:
+		return flt_compare_string(op, (char*)operand1, (char*)operand2);
+	case PT_BYTEBUF:
+	case PT_ERRNO:
+	case PT_SOCKADDR:
+	case PT_SOCKTUPLE:
+	case PT_FDLIST:
+	case PT_FSPATH:
+	default:
+		ASSERT(false);
+		return false;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter_expression::sinsp_filter_expression()
@@ -104,7 +216,7 @@ sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(thread.tid!=0)";
-//fltstr = "user.name = root";
+fltstr = "user.name = loris";
 
 	m_inspector = inspector;
 	m_scanpos = -1;

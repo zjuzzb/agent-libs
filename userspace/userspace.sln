@@ -20,6 +20,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dragent", "dragent\dragent.
 		{A45C552E-F4BA-480A-A7D3-EB1E9DDFBE6C} = {A45C552E-F4BA-480A-A7D3-EB1E9DDFBE6C}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sdump", "sdump\sdump.vcxproj", "{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -42,6 +44,10 @@ Global
 		{B4A3F113-ACB2-4F94-AA40-6F28CFC92C14}.Debug|Win32.Build.0 = Debug|Win32
 		{B4A3F113-ACB2-4F94-AA40-6F28CFC92C14}.Release|Win32.ActiveCfg = Release|Win32
 		{B4A3F113-ACB2-4F94-AA40-6F28CFC92C14}.Release|Win32.Build.0 = Release|Win32
+		{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}.Debug|Win32.Build.0 = Debug|Win32
+		{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}.Release|Win32.ActiveCfg = Release|Win32
+		{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

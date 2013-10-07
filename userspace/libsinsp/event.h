@@ -7,6 +7,27 @@ typedef class sinsp_fdinfo sinsp_fdinfo;
 ///////////////////////////////////////////////////////////////////////////////
 // Wrapper that exports the libscap event tables
 ///////////////////////////////////////////////////////////////////////////////
+
+//
+// tostring() argument categories
+//
+typedef enum tostring_category
+{
+	TSC_NONE = 0,
+	TSC_RAWSTRING,
+	TSC_PCTCHAR,
+	TSC_EVTNUM,
+}tostring_category;
+
+typedef struct tostring_category_descriptor
+{
+	char* m_name;
+	tostring_category m_category;
+}tostring_category_descriptor;
+
+///////////////////////////////////////////////////////////////////////////////
+// Wrapper that exports the libscap event tables
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_evttables
 {
 public:
@@ -31,6 +52,9 @@ public:
 class SINSP_PUBLIC sinsp_evt
 {
 public:
+	//
+	// How to render an event parameter to string
+	//
 	enum param_fmt
 	{
 		PF_NORMAL,	// Normal screen output
@@ -88,9 +112,8 @@ public:
 	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
 	void get_category(OUT sinsp_evt::category* cat);
 
-	static bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
-
-//	int32_t to_str(IN evt_param_info* param, OUT char* str, uint32_t strlen);
+	void set_tostring_format(const string& fmt);
+	void tostring(OUT string* res);
 private:
 	void load_params();
 	string get_param_value_str(uint32_t id, bool resolved);
@@ -111,6 +134,7 @@ private:
 #ifdef _DEBUG
 	bool m_filtered_out;
 #endif
+	vector<pair<tostring_category, string>> m_tostring_tokens;
 
 	friend class sinsp;
 	friend class sinsp_parser;
