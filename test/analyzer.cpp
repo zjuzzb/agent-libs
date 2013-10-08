@@ -93,7 +93,7 @@ TEST_F(sys_call_test, analyzer_errors)
 		{
 			if(NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
-				sinsp_error_counters* ec = &param.m_inspector->m_analyzer->m_host_syscall_errors;
+				sinsp_error_counters* ec = &param.m_inspector->m_analyzer->m_host_metrics.m_syscall_errors;
 
 				EXPECT_NE((size_t)0, ec->m_table.size());
 
