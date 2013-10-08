@@ -1275,7 +1275,7 @@ class host : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
-  // optional .draiosproto.resource_categories resource_counters = 8;
+  // required .draiosproto.resource_categories resource_counters = 8;
   inline bool has_resource_counters() const;
   inline void clear_resource_counters();
   static const int kResourceCountersFieldNumber = 8;
@@ -3935,7 +3935,7 @@ inline void host::set_transaction_processing_delay(::google::protobuf::uint64 va
   transaction_processing_delay_ = value;
 }
 
-// optional .draiosproto.resource_categories resource_counters = 8;
+// required .draiosproto.resource_categories resource_counters = 8;
 inline bool host::has_resource_counters() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
