@@ -1182,8 +1182,9 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		//
 		// Add the tuple to the connection table
 		//
+		string scomm = evt->m_tinfo->get_comm();
 		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-			&evt->m_tinfo->get_comm(),
+			&scomm,
 			evt->m_tinfo->m_pid,
 		    tid,
 		    evt->m_tinfo->m_lastevent_fd,
@@ -1204,8 +1205,9 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 
 		set_unix_info(evt->m_fdinfo, packed_data);
 
+		string scomm = evt->m_tinfo->get_comm();
 		m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-			&evt->m_tinfo->get_comm(),
+			&scomm,
 			evt->m_tinfo->m_pid,
 		    tid,
 		    evt->m_tinfo->m_lastevent_fd,
@@ -1300,8 +1302,9 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		//
 		// Add the tuple to the connection table
 		//
+		string scomm = evt->m_tinfo->get_comm();
 		m_inspector->m_ipv4_connections->add_connection(fdi.m_info.m_ipv4info,
-			&evt->m_tinfo->get_comm(),
+			&scomm,
 			evt->m_tinfo->m_pid,
 		    tid,
 		    fd,
@@ -1312,8 +1315,9 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	{
 		fdi.set_type_unix_socket();
 		set_unix_info(&fdi, packed_data);
+		string scomm = evt->m_tinfo->get_comm();
 		m_inspector->m_unix_connections->add_connection(fdi.m_info.m_unixinfo,
-			&evt->m_tinfo->get_comm(),
+			&scomm,
 			evt->m_tinfo->m_pid,
 		    tid,
 		    fd,
@@ -1772,8 +1776,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// (we assume that a server usually starts with a read).
 				//
 				evt->m_fdinfo->set_role_server();
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
@@ -1821,8 +1826,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					}
 				}
 
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
@@ -1842,8 +1848,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// at the ports.
 				//
 				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 				    tid,
 				    fd,
@@ -1889,8 +1896,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					}
 				}
 
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
@@ -2001,8 +2009,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		sinsp_connection *connection = m_inspector->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
 		if(NULL == connection || connection->is_server_only())
 		{
+			string scomm = evt->m_tinfo->get_comm();
 			m_inspector->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
-				&evt->m_tinfo->get_comm(),
+				&scomm,
 				evt->m_tinfo->m_pid,
 			    tid,
 			    fd,
@@ -2039,8 +2048,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// (we assume that a client usually starts with a write)
 				//
 				evt->m_fdinfo->set_role_client();
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 				    tid,
 				    fd,
@@ -2088,8 +2098,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					}
 				}
 
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
@@ -2110,8 +2121,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				// (we assume that a client usually starts with a write)
 				//
 				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 				    tid,
 				    fd,
@@ -2157,8 +2169,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 					}
 				}
 
+				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-					&evt->m_tinfo->get_comm(),
+					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
@@ -2225,8 +2238,9 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 
 		if(NULL == connection || connection->is_client_only())
 		{
+			string scomm = evt->m_tinfo->get_comm();
 			m_inspector->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
-				&evt->m_tinfo->get_comm(),
+				&scomm,
 				evt->m_tinfo->m_pid,
 			    tid,
 			    fd,

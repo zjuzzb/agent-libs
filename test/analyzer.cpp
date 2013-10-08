@@ -33,6 +33,11 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <sinsp_errno.h>
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "parsers.h"
+#include "connectinfo.h"
+#include "metrics.h"
 #include <analyzer.h>
 
 using namespace std;

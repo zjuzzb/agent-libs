@@ -21,7 +21,7 @@ typedef enum tostring_category
 
 typedef struct tostring_category_descriptor
 {
-	char* m_name;
+	char m_name[64];
 	tostring_category m_category;
 }tostring_category_descriptor;
 
