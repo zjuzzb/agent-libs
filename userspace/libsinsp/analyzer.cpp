@@ -30,7 +30,8 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
+	m_aggregated_ipv4_table(inspector)
 {
 	m_inspector = inspector;
 	m_next_flush_time_ns = 0;
@@ -255,6 +256,358 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 		else
 		{
 			return res;
+		}
+	}
+}
+
+/*
+void sinsp_analyzer::reduce_interface_list()
+{
+	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+	uint32_t nconns = m_inspector->m_ipv4_connections->m_connections.size();
+	bool aggregate_external = m_inspector->m_configuration.get_aggregate_external_world_connections_in_proto();
+	bool aggregate_internal = m_inspector->m_configuration.get_aggregate_external_world_connections_in_proto();
+
+	if(!(aggregate_external || aggregate_internal))
+	{
+		//
+		// Nothing to do
+		//
+		return;
+	}
+
+	//
+	// First pass: aggreagte external world connections
+	//
+	m_reduced_ipv4_connections.clear();
+
+	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
+		cit != m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+	{
+		if(cit->second.is_server_only())
+		{
+			ipv4tuple tuple = cit->first;
+
+			tuple.m_fields.m_sport = 0;
+
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+			{
+				tuple.m_fields.m_sip = 0;
+			}
+
+			//
+			// Look for the entry in the remote connection table
+			//
+			sinsp_connection* conn = m_reduced_ipv4_connections.get_connection(
+				tuple,
+				cit->second.m_timestamp);
+
+			if(conn == NULL || conn->is_client_only())
+			{
+				bool add_full = (conn == NULL);
+
+				//
+				// Entry not found, create one
+				//
+				ASSERT(cit->second.m_dfd != 0);
+
+				conn = m_reduced_ipv4_connections.add_connection(tuple,
+					&cit->second.m_dcomm,
+					cit->second.m_dpid,
+					cit->second.m_dtid,
+					cit->second.m_dfd,
+					false,
+					cit->second.m_timestamp);
+
+				if(add_full)
+				{
+					conn->m_dcomm = cit->second.m_dcomm;
+					conn->m_dpid = cit->second.m_dpid;
+					conn->m_dtid = cit->second.m_dtid;
+					conn->m_dfd = cit->second.m_dfd;
+					conn->m_refcount = cit->second.m_refcount;
+				}
+			}
+
+			//
+			// Add this connection's metrics to the aggregated connection's ones
+			//
+			if(conn)
+			{
+				conn->m_metrics.add(&cit->second.m_metrics);
+				conn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			}
+		}
+		else
+		{
+			ipv4tuple tuple = cit->first;
+
+			tuple.m_fields.m_sport = 0;
+
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_dip))
+			{
+				tuple.m_fields.m_dip = 0;
+			}
+
+			//
+			// Look for the entry in the remote connection table
+			//
+			sinsp_connection* conn = m_reduced_ipv4_connections.get_connection(
+				tuple,
+				cit->second.m_timestamp);
+
+			if(conn == NULL || conn->is_server_only())
+			{
+				bool add_full = (conn == NULL);
+
+				//
+				// Entry not found, create one
+				//
+				ASSERT(cit->second.m_sfd != 0);
+
+				conn = m_reduced_ipv4_connections.add_connection(tuple,
+					&cit->second.m_scomm,
+					cit->second.m_spid,
+					cit->second.m_stid,
+					cit->second.m_sfd,
+					true,
+					cit->second.m_timestamp);
+
+				if(add_full)
+				{
+					conn->m_dcomm = cit->second.m_dcomm;
+					conn->m_dpid = cit->second.m_dpid;
+					conn->m_dtid = cit->second.m_dtid;
+					conn->m_dfd = cit->second.m_dfd;
+					conn->m_refcount = cit->second.m_refcount;
+				}
+			}
+
+			//
+			// Add this connection's metrics to the aggregated connection's ones
+			//
+			if(conn)
+			{
+				conn->m_metrics.add(&cit->second.m_metrics);
+				conn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			}
+		}
+	}
+
+	//
+	// Second pass: reduce the number of emitted connections
+	//
+	uint32_t maxconns = m_inspector->m_configuration.get_max_connections_in_proto();
+	uint32_t conn_sampling_ratio = 0;
+
+	//if(nconns > maxconns)
+	//{
+	//	conn_sampling_ratio = nconns / maxconns;
+
+	//	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
+	//		cit != m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+	//	{
+	//		if(cit->first.m_fields.m_sport != 0)
+	//		{
+	//			if(cit->first.m_fields.m_sport % conn_sampling_ratio == 0)
+	//			{
+	//				m_connections_to_emit.push_back(cit);
+	//			}
+	//		}
+	//		else if(cit->first.m_fields.m_dport != 0)
+	//		{
+	//			if(cit->first.m_fields.m_dport % conn_sampling_ratio == 0)
+	//			{
+	//				m_connections_to_emit.push_back(cit);
+	//			}
+	//		}
+	//		else
+	//		{
+	//			ASSERT(false);
+	//		}
+	//	}
+	//}
+}
+*/
+
+void sinsp_analyzer::emit_aggregate_connections()
+{
+	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+	uint32_t nconns = m_inspector->m_ipv4_connections->m_connections.size();
+	process_tuple tuple;
+
+	m_reduced_ipv4_connections.clear();
+	m_aggregated_ipv4_table.clear();
+
+	//
+	// Go through the list and perform the aggegation
+	//
+	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
+		cit != m_inspector->m_ipv4_connections->m_connections.end();)
+	{
+		tuple.m_fields.m_spid = cit->second.m_spid;
+		tuple.m_fields.m_dpid = cit->second.m_dpid;
+		tuple.m_fields.m_sip = cit->first.m_fields.m_sip;
+		tuple.m_fields.m_dip = cit->first.m_fields.m_dip;
+		tuple.m_fields.m_sport = 0;
+		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
+		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
+
+		if(cit->second.is_server_only())
+		{
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+			{
+				tuple.m_fields.m_sip = 0;
+			}
+
+			//
+			// Look for the entry in the remote connection table
+			//
+			sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
+
+			if(conn.m_timestamp == 0)
+			{
+				//
+				// New entry
+				//
+				ASSERT(cit->second.m_dfd != 0);
+				conn.m_timestamp = 1;
+
+				//
+				// Structure copy the connection info
+				//
+				conn = cit->second;
+			}
+
+			//
+			// Add this connection's metrics to the aggregated connection's ones
+			//
+			conn.m_metrics.add(&cit->second.m_metrics);
+			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+		}
+		else
+		{
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_dip))
+			{
+				tuple.m_fields.m_dip = 0;
+			}
+
+			//
+			// Look for the entry in the remote connection table
+			//
+			sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
+
+			if(conn.m_timestamp == 0)
+			{
+				//
+				// New entry
+				//
+				ASSERT(cit->second.m_sfd != 0);
+				conn.m_timestamp = 1;
+
+				//
+				// Structure copy the connection info
+				//
+				conn = cit->second;
+			}
+
+			//
+			// Add this connection's metrics to the aggregated connection's ones
+			//
+			conn.m_metrics.add(&cit->second.m_metrics);
+			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+		}
+
+		//
+		// Has this connection been closed druring this sample?
+		//
+		if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+		{
+			//
+			// Yes, remove the connection from the table
+			//
+			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+		}
+		else
+		{
+			//
+			// Clear the transaction metrics, so we're ready for the next sample
+			//
+			cit->second.m_transaction_metrics.clear();
+			++cit;
+		}
+	}
+
+	//
+	// Convert the 
+	//
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
+
+	for(acit = m_reduced_ipv4_connections.begin(); 
+		acit != m_reduced_ipv4_connections.end(); ++acit)
+	{
+		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+
+		tuple->set_sip(acit->first.m_fields.m_sip);
+		tuple->set_dip(acit->first.m_fields.m_dip);
+		tuple->set_sport(acit->first.m_fields.m_sport);
+		tuple->set_dport(acit->first.m_fields.m_dport);
+		tuple->set_sip(acit->first.m_fields.m_sip);
+		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
+
+		conn->set_spid(acit->second.m_spid);
+		conn->set_stid(acit->second.m_stid);
+		conn->set_dpid(acit->second.m_dpid);
+		conn->set_dtid(acit->second.m_dtid);
+
+		acit->second.m_metrics.to_protobuf(conn->mutable_counters());
+		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+	}
+}
+
+void sinsp_analyzer::emit_full_connections()
+{
+	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+
+	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
+		cit != m_inspector->m_ipv4_connections->m_connections.end();)
+	{
+		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+
+		tuple->set_sip(cit->first.m_fields.m_sip);
+		tuple->set_dip(cit->first.m_fields.m_dip);
+		tuple->set_sport(cit->first.m_fields.m_sport);
+		tuple->set_dport(cit->first.m_fields.m_dport);
+		tuple->set_sip(cit->first.m_fields.m_sip);
+		tuple->set_l4proto(cit->first.m_fields.m_l4proto);
+
+		conn->set_spid(cit->second.m_spid);
+		conn->set_stid(cit->second.m_stid);
+		conn->set_dpid(cit->second.m_dpid);
+		conn->set_dtid(cit->second.m_dtid);
+
+		cit->second.m_metrics.to_protobuf(conn->mutable_counters());
+		cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+
+		//
+		// Has this connection been closed druring this sample?
+		//
+		if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+		{
+			//
+			// Yes, remove the connection from the table
+			//
+			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+		}
+		else
+		{
+			//
+			// Clear the transaction metrics, so we're ready for the next sample
+			//
+			cit->second.m_transaction_metrics.clear();
+			++cit;
 		}
 	}
 }
@@ -727,23 +1080,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
 			////////////////////////////////////////////////////////////////////////////
-			unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 
-			//
-			// First pass: aggreagte external connections and 
-			//
-/*
-			if(m_inspector->m_ipv4_connections->m_connections.size() > 
-				m_inspector->m_configuration.get_max_connections_in_proto())
-			{
-				int a = 0;
-			}
-
-			for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-				cit != m_inspector->m_ipv4_connections->m_connections.end();)
-			{
-			}
-*/
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
@@ -751,51 +1088,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, 
-					"IPv4 table size:%d",
-					m_inspector->m_ipv4_connections->m_connections.size());
+					"IPv4 table drops:%d",
+					m_inspector->m_ipv4_connections->get_n_drops());
 
 				m_inspector->m_ipv4_connections->clear_n_drops();
 			}
 
-			for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-				cit != m_inspector->m_ipv4_connections->m_connections.end();)
+			//
+			// Aggregate external connections and limit the number of entries in the connection table
+			//
+			if(m_inspector->m_configuration.get_aggregate_connections_in_proto())
 			{
-				draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
-				draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
-
-				tuple->set_sip(cit->first.m_fields.m_sip);
-				tuple->set_dip(cit->first.m_fields.m_dip);
-				tuple->set_sport(cit->first.m_fields.m_sport);
-				tuple->set_dport(cit->first.m_fields.m_dport);
-				tuple->set_sip(cit->first.m_fields.m_sip);
-				tuple->set_l4proto(cit->first.m_fields.m_l4proto);
-
-				conn->set_spid(cit->second.m_spid);
-				conn->set_stid(cit->second.m_stid);
-				conn->set_dpid(cit->second.m_dpid);
-				conn->set_dtid(cit->second.m_dtid);
-
-				cit->second.m_metrics.to_protobuf(conn->mutable_counters());
-				cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
-
-				//
-				// Has this connection been closed druring this sample?
-				//
-				if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
-				{
-					//
-					// Yes, remove the connection from the table
-					//
-					m_inspector->m_ipv4_connections->m_connections.erase(cit++);
-				}
-				else
-				{
-					//
-					// Clear the transaction metrics, so we're ready for the next sample
-					//
-					cit->second.m_transaction_metrics.clear();
-					++cit;
-				}
+				emit_aggregate_connections();
+			}
+			else
+			{
+				emit_full_connections();
 			}
 
 			//

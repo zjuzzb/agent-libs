@@ -216,7 +216,7 @@ sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 //fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
 //fltstr = "(tid=63458)";
 //fltstr = "(thread.tid!=0)";
-fltstr = "user.name = loris";
+//fltstr = "user.name = loris";
 
 	m_inspector = inspector;
 	m_scanpos = -1;

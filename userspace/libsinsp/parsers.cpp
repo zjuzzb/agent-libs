@@ -1183,11 +1183,12 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		// Add the tuple to the connection table
 		//
 		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-		        evt->m_tinfo,
-		        tid,
-		        evt->m_tinfo->m_lastevent_fd,
-		        true,
-		        evt->get_ts());
+			&evt->m_tinfo->get_comm(),
+			evt->m_tinfo->m_pid,
+		    tid,
+		    evt->m_tinfo->m_lastevent_fd,
+		    true,
+		    evt->get_ts());
 	}
 	else
 	{
@@ -1204,11 +1205,12 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		set_unix_info(evt->m_fdinfo, packed_data);
 
 		m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-		        evt->m_tinfo,
-		        tid,
-		        evt->m_tinfo->m_lastevent_fd,
-		        true,
-		        evt->get_ts());
+			&evt->m_tinfo->get_comm(),
+			evt->m_tinfo->m_pid,
+		    tid,
+		    evt->m_tinfo->m_lastevent_fd,
+		    true,
+		    evt->get_ts());
 
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
 	}
@@ -1299,22 +1301,24 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		// Add the tuple to the connection table
 		//
 		m_inspector->m_ipv4_connections->add_connection(fdi.m_info.m_ipv4info,
-		        evt->m_tinfo,
-		        tid,
-		        fd,
-		        false,
-		        evt->get_ts());
+			&evt->m_tinfo->get_comm(),
+			evt->m_tinfo->m_pid,
+		    tid,
+		    fd,
+		    false,
+		    evt->get_ts());
 	}
 	else
 	{
 		fdi.set_type_unix_socket();
 		set_unix_info(&fdi, packed_data);
 		m_inspector->m_unix_connections->add_connection(fdi.m_info.m_unixinfo,
-		        evt->m_tinfo,
-		        tid,
-		        fd,
-		        false,
-		        evt->get_ts());
+			&evt->m_tinfo->get_comm(),
+			evt->m_tinfo->m_pid,
+		    tid,
+		    fd,
+		    false,
+		    evt->get_ts());
 	}
 
 	fdi.m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
@@ -1769,11 +1773,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				//
 				evt->m_fdinfo->set_role_server();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-				        evt->m_tinfo,
-				        tid,
-				        fd,
-				        evt->m_fdinfo->is_role_client(),
-				        evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -1813,15 +1818,16 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 						evt->m_fdinfo->set_role_server();
-				}
+					}
 				}
 
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-						evt->m_tinfo,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
@@ -1837,11 +1843,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				//
 				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-				        evt->m_tinfo,
-				        tid,
-				        fd,
-				        evt->m_fdinfo->is_role_client(),
-				        evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+				    tid,
+				    fd,
+				    evt->m_fdinfo->is_role_client(),
+				    evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -1883,11 +1890,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				}
 
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-						evt->m_tinfo,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 		}
 
@@ -1994,11 +2002,12 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		if(NULL == connection || connection->is_server_only())
 		{
 			m_inspector->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
-			        evt->m_tinfo,
-			        tid,
-			        fd,
-			        true,
-			        evt->get_ts());
+				&evt->m_tinfo->get_comm(),
+				evt->m_tinfo->m_pid,
+			    tid,
+			    fd,
+			    true,
+			    evt->get_ts());
 		}
 	}
 }
@@ -2031,11 +2040,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				//
 				evt->m_fdinfo->set_role_client();
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-				        evt->m_tinfo,
-				        tid,
-				        fd,
-				        evt->m_fdinfo->is_role_client(),
-				        evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+				    tid,
+				    fd,
+				    evt->m_fdinfo->is_role_client(),
+				    evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -2079,11 +2089,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				}
 
 				connection = m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-						evt->m_tinfo,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
@@ -2100,11 +2111,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				//
 				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-				        evt->m_tinfo,
-				        tid,
-				        fd,
-				        evt->m_fdinfo->is_role_client(),
-				        evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+				    tid,
+				    fd,
+				    evt->m_fdinfo->is_role_client(),
+				    evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -2146,11 +2158,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 				}
 
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-						evt->m_tinfo,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					&evt->m_tinfo->get_comm(),
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 		}
 
@@ -2213,11 +2226,12 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		if(NULL == connection || connection->is_client_only())
 		{
 			m_inspector->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
-			        evt->m_tinfo,
-			        tid,
-			        fd,
-			        false,
-			        evt->get_ts());
+				&evt->m_tinfo->get_comm(),
+				evt->m_tinfo->m_pid,
+			    tid,
+			    fd,
+			    false,
+			    evt->get_ts());
 		}
 	}
 }

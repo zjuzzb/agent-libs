@@ -63,4 +63,5 @@ void dragent_configuration::print_configuration()
 	g_log->information("ssl.enabled: " + (m_ssl_enabled ? string("true") : string("false")));	
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + m_compression_enabled);
+
 }

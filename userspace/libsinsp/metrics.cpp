@@ -385,6 +385,12 @@ void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* 
 	m_client.to_protobuf(protobuf_msg->mutable_client());
 }
 
+void sinsp_connection_counters::add(sinsp_connection_counters* other)
+{
+	m_server.add(&other->m_server);
+	m_client.add(&other->m_client);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_error_counters implementation
 ///////////////////////////////////////////////////////////////////////////////

@@ -107,9 +107,9 @@
 //
 // If this is set, all the connections *coming* from the external world
 // are aggreagated into a single connection in the protocol samples.
-// This can be overridden by set_aggregate_external_world_connections_in_proto().
+// This can be overridden by set_aggregate_connections_in_proto().
 //
-#define AGGREGATE_EXTERNAL_WORLD_CONNECTIONS_IN_PROTO
+#define AGGREGATE_CONNECTIONS_IN_PROTO false
 
 //
 // Max size that the thread table can reach

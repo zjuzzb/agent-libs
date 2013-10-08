@@ -157,6 +157,7 @@ public:
 
 	void clear();
 	void to_protobuf(draiosproto::connection_categories* protobuf_msg);
+	void add(sinsp_connection_counters* other);
 };
 
 //

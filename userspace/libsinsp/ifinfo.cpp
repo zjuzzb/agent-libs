@@ -92,6 +92,22 @@ void sinsp_network_interfaces::update_fd(sinsp_fdinfo *fd)
 	}
 }
 
+bool sinsp_network_interfaces::is_ipv4addr_local(uint32_t addr)
+{
+	vector<sinsp_ipv4_ifinfo>::iterator it;
+
+	// try to find an interface for the same subnet
+	for(it = m_ipv4_interfaces.begin(); it != m_ipv4_interfaces.end(); it++)
+	{
+		if((it->m_addr & it->m_netmask) == (addr & it->m_netmask))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
 void sinsp_network_interfaces::import_ipv4_ifaddr_list(uint32_t count, scap_ifinfo_ipv4* plist)
 {

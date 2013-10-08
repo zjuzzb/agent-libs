@@ -21,7 +21,7 @@ public:
 		AF_REUSED = (1 << 1), 
 		// If this flag is set, the connection will NOT be included by the analyzer 
 		// in the sample going to the backend. Otherwise the connection is not sent.
-		AF_SKIP_IN_SAMPLE = (1 << 2), 
+		//AF_SKIP_IN_SAMPLE = (1 << 2), 
 	};
 
 	sinsp_connection();
@@ -66,7 +66,7 @@ public:
 	{
 		m_n_drops = 0;
 	}
-	sinsp_connection* add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
+	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
 	void remove_connection(const TKey& key, bool now = true);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
@@ -76,6 +76,11 @@ public:
 		return m_connections.size();
 	}
 	
+	void clear()
+	{
+		m_connections.clear();
+	}
+
 	const sinsp_configuration& get_configuration()
 	{
 		return m_inspector->m_configuration;
@@ -98,7 +103,7 @@ public:
 };
 
 template<class TKey, class THash, class TCompare>
-sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& key, sinsp_threadinfo* ptinfo, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp)
+sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
@@ -128,8 +133,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 		{
 			conn.m_stid = tid;
 			conn.m_sfd = fd;
-			conn.m_spid = ptinfo->m_pid;
-			conn.m_scomm = ptinfo->get_comm();
+			conn.m_spid = pid;
+			conn.m_scomm = *comm;
 			conn.m_dtid = 0;
 			conn.m_dfd = 0;
 			conn.m_dpid = 0;
@@ -141,8 +146,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			conn.m_spid = 0;
 			conn.m_dtid = tid;
 			conn.m_dfd = fd;
-			conn.m_dpid = ptinfo->m_pid;
-			conn.m_dcomm = ptinfo->get_comm();
+			conn.m_dpid = pid;
+			conn.m_dcomm = *comm;
 		}
 	}
 	else
@@ -177,8 +182,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 			conn.m_stid = tid;
 			conn.m_sfd = fd;
-			conn.m_spid = ptinfo->m_pid;
-			conn.m_scomm = ptinfo->get_comm();
+			conn.m_spid = pid;
+			conn.m_scomm = *comm;
 		}
 		else
 		{
@@ -206,8 +211,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 			conn.m_dtid = tid;
 			conn.m_dfd = fd;
-			conn.m_dpid = ptinfo->m_pid;
-			conn.m_dcomm = ptinfo->get_comm();
+			conn.m_dpid = pid;
+			conn.m_dcomm = *comm;
 		}
 	}
 
