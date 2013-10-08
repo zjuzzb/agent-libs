@@ -3,6 +3,9 @@
 class sinsp_scores;
 class sinsp_procfs_parser;
 
+//
+// Aggregated connection table: entry and hashing infrastructure
+//
 typedef union _process_tuple
 {
 	struct 
@@ -60,6 +63,7 @@ public:
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt);
+
 	void add_syscall_time(sinsp_counters* metrics, 
 		sinsp_evt::category* cat, 
 		uint64_t delta, 
@@ -75,6 +79,7 @@ VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
+	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
 	void emit_aggregate_connections();
 	void emit_full_connections();
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
@@ -115,16 +120,15 @@ VISIBILITY_PRIVATE
 	vector<uint32_t> m_cpu_loads;
 
 	//
-	// Syscall error table
+	// The table of aggreagted connections
 	//
-	sinsp_error_counters m_host_syscall_errors;
-
-	//
-	// The aggregation metrics for outside-subnet connections
-	//
-//	vector<unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator> m_connections_to_emit;
 	sinsp_ipv4_connection_manager m_aggregated_ipv4_table;
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> m_reduced_ipv4_connections;
+
+	//
+	// The aggreagted host metrics
+	//
+	sinsp_host_metrics m_host_metrics;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

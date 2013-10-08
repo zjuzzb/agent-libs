@@ -260,6 +260,431 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 	}
 }
 
+void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof)
+{
+	uint64_t delta;
+	sinsp_evt::category* cat;
+	sinsp_evt::category tcat;
+	uint32_t n_server_threads = 0;
+	int32_t syshscore = -1;
+
+	g_logger.format(sinsp_logger::SEV_DEBUG, 
+		"thread table size:%d",
+		m_inspector->m_thread_manager->get_thread_count());
+
+	if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"IPv4 table size:%d",
+			m_inspector->m_ipv4_connections->m_connections.size());
+
+		m_inspector->m_ipv4_connections->clear_n_drops();
+	}
+
+	//
+	// First pass of the list of threads: emit the metrics (if defined)
+	// and aggregate them into processes
+	//
+	threadinfo_map_iterator_t it;
+	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
+	{
+		//
+		// Attribute the last pending event to this second
+		//
+		if(m_prev_flush_time_ns != 0)
+		{
+			delta = m_prev_flush_time_ns - it->second.m_lastevent_ts;
+			it->second.m_lastevent_ts = m_prev_flush_time_ns;
+
+			if(delta > sample_duration)
+			{
+				delta = sample_duration;
+			}
+
+			if(PPME_IS_ENTER(it->second.m_lastevent_type))
+			{
+				cat = &it->second.m_lastevent_category;
+			}
+			else
+			{
+				tcat.m_category = EC_PROCESSING;
+				tcat.m_subcategory = sinsp_evt::SC_NONE;
+				cat = &tcat;
+			}
+
+			add_syscall_time(&it->second.m_metrics, 
+				cat, 
+				delta,
+				0,
+				false);
+
+			//
+			// Flag the thread so we know that part of this event has already been attributed
+			//
+			it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
+		}
+
+		//
+		// Some assertions to validate that everything looks like expected
+		//
+#ifdef _DEBUG
+		sinsp_counter_time ttot;
+		it->second.m_metrics.get_total(&ttot);
+		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+#endif
+		//
+		// Go through the FD list to flush the transactions that haven't been active for a while
+		//
+		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+
+		//
+		// If this thread served requests, increase the server thread counter
+		//
+		if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
+		{
+			n_server_threads++;
+		}
+
+		//
+		// Add this thread's counters to the process ones
+		//
+		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+		it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
+		mtinfo->add_all_metrics(&it->second);
+
+		//
+		// Dump the thread info into the protobuf
+		//
+#ifdef ANALYZER_EMITS_THREADS
+		sinsp_counter_time tot;
+		it->second.m_metrics.get_total(&tot);
+		ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+
+		if(tot.m_count != 0)
+		{
+			draiosproto::thread* thread = m_metrics->add_threads();
+			thread->set_pid(it->second.m_pid);
+			thread->set_tid(it->second.m_tid);
+			// CWD is currently disabed in the protocol
+			//thread->set_cwd(it->second.m_cwd);
+			it->second.m_metrics.to_protobuf(thread->mutable_tcounters());
+			it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
+		}
+#endif
+	}
+
+	//
+	// Between the first and the second pass of the thread list, calculate the 
+	// health score for the machine
+	//
+	if(m_inspector->m_transactions_with_cpu.size() != 0)
+	{
+		int32_t syshscore_g;
+
+		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
+			n_server_threads,
+			m_prev_flush_time_ns, sample_duration);
+
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			"1!!%" PRId32,
+			syshscore);
+
+		syshscore_g = m_score_calculator->get_system_health_score_global(&m_inspector->m_transactions_with_cpu,
+			n_server_threads,
+			m_prev_flush_time_ns, sample_duration);
+
+		if(syshscore == -1)
+		{
+			syshscore = syshscore_g;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			"2!!%" PRId32,
+			syshscore_g);
+
+		m_inspector->m_transactions_with_cpu.clear();
+	}
+
+	//
+	// Second pass of the list of threads: aggreagate processes into programs.
+	// NOTE: this pass can be integrated in the previous one. We keep it seperate for.
+	// the moment so we have the option to emit single processes. This is useful until
+	// we clearly decide what to put in the UI.
+	//
+#ifdef ANALYZER_EMITS_PROGRAMS
+	m_program_table.clear();
+#endif
+
+	uint64_t cur_global_total_jiffies;
+	if(m_inspector->m_islive)
+	{
+		m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+	}
+	else
+	{
+		cur_global_total_jiffies = 0;
+	}
+
+	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+		it != m_inspector->m_thread_manager->m_threadtable.end(); 
+#ifdef ANALYZER_EMITS_PROGRAMS
+		++it
+#endif
+		)
+	{
+		//
+		// If this is the main thread of a process, add an entry into the processes
+		// section too
+		//
+		if(it->second.is_main_thread())
+		{
+#ifdef ANALYZER_EMITS_PROGRAMS
+
+			//
+			// Do the aggregation into programs
+			//
+			std::pair<unordered_map<string, sinsp_threadinfo*>::iterator, bool> &element = 
+				m_program_table.insert(unordered_map<string, sinsp_threadinfo*>::value_type(it->second.m_exe, &it->second));
+			if(element.second == false)
+			{
+				ASSERT(element.first->second != &it->second);
+				element.first->second->add_proc_metrics(&it->second);
+			}
+#endif
+
+			//
+			// If defined, emit the processes
+			//
+#ifdef ANALYZER_EMITS_PROCESSES
+			sinsp_counter_time tot;
+	
+			ASSERT(it->second.m_procinfo);
+			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
+			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+
+			if(tot.m_count != 0)
+			{
+				int64_t pid = it->second.m_pid;
+
+				//
+				// Basic values
+				//
+				draiosproto::process* proc = m_metrics->add_processes();
+				proc->set_pid(pid);
+				proc->set_comm(it->second.m_comm);
+				proc->set_exe(it->second.m_exe);
+				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+					arg_it != it->second.m_args.end(); ++arg_it)
+				{
+					proc->add_args(*arg_it);
+				}
+
+				//
+				// Basic resource counters
+				//
+				int32_t cpuload = -1;
+				int64_t memsize;
+
+				if(m_inspector->m_islive)
+				{
+					cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
+						&it->second.m_old_proc_jiffies, 
+						cur_global_total_jiffies - m_old_global_total_jiffies,
+						&memsize);
+							
+					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
+				}
+
+				//
+				// Transaction-related metrics
+				//
+				it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
+				it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
+				proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
+
+				//
+				// Health-related metrics
+				//
+				it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(syshscore, &it->second);
+				proc->mutable_resource_counters()->set_health_score(it->second.m_procinfo->m_health_score);
+				proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
+				proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
+
+				//
+				// Error-related metrics
+				//
+				it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
+
+#if 1
+				if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+				{
+					uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+					uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+					uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
+					uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+						it->second.m_comm.c_str(),
+//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+						it->second.m_tid,
+						it->second.m_refcount + 1,
+						it->second.m_procinfo->m_health_score,
+						cpuload,
+						it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
+						it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+						trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
+						trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
+						trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
+						it->second.m_fd_usage_pct,
+						it->second.m_connection_queue_usage_pct);
+				}
+#endif
+			}
+#endif // ANALYZER_EMITS_PROCESSES
+
+			//
+			// Update the host metrics with the info coming from this process
+			//
+			if(it->second.m_procinfo != NULL)
+			{
+				m_host_metrics.add(it->second.m_procinfo);
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+/*
+		if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"*\t%s %s (%" PRIu64 ") (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " rest:%" PRIu64,
+				it->second.m_comm.c_str(),
+				(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+				it->second.m_tid,
+				it->second.m_refcount + 1,
+				it->second.m_transaction_metrics.m_incoming.m_count,
+				it->second.m_transaction_metrics.m_outgoing.m_count,
+				((double)it->second.m_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
+				((double)it->second.m_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
+				((double)it->second.m_transaction_processing_delay_ns) / 1000000000,
+				it->second.m_fd_usage_pct,
+				it->second.m_connection_queue_usage_pct,
+				it->second.m_rest_time_ns);
+		}
+*/
+#ifndef ANALYZER_EMITS_PROGRAMS
+		//
+		// Has this thread been closed druring this sample?
+		//
+		if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
+		{
+			//
+			// Yes, remove the thread from the table, but NOT if the event currently under processing is
+			// an exit for this process. In that case we wait until next sample.
+			//
+			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
+			{
+				it->second.clear_all_metrics();
+				++it;
+			}
+			else
+			{
+				m_inspector->m_thread_manager->remove_thread(it++);
+			}
+		}
+		else
+		{
+			//
+			// Clear the thread metrics, so we're ready for the next sample
+			//
+			it->second.clear_all_metrics();
+			++it;
+		}
+#endif
+	}
+
+	m_old_global_total_jiffies = cur_global_total_jiffies;
+
+	//
+	// Third pass of the list of threads: emit the programs
+	//
+#ifdef ANALYZER_EMITS_PROGRAMS
+	unordered_map<string, sinsp_threadinfo*>::iterator prit;
+	for(prit = m_program_table.begin(); 
+		prit != m_program_table.end(); ++ prit)
+	{
+		//
+		// If defined, emti the processes
+		//
+		sinsp_counter_time tot;
+	
+		ASSERT(prit->second->m_proc_metrics);
+		prit->second->m_proc_metrics->get_total(&tot);
+		ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+
+		if(tot.m_count != 0)
+		{
+			draiosproto::process* proc = m_metrics->add_processes();
+			proc->set_pid(prit->second->m_pid);
+			proc->set_comm(prit->second->m_comm);
+			proc->set_exe(prit->second->m_exe);
+			for(vector<string>::const_iterator arg_it = prit->second->m_args.begin(); 
+				arg_it != prit->second->m_args.end(); ++arg_it)
+			{
+				proc->add_args(*arg_it);
+			}
+
+			prit->second->m_proc_metrics->to_protobuf(proc->mutable_tcounters());
+			prit->second->m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
+
+#ifdef _DEBUG
+			if(prit->second->m_proc_transaction_metrics->m_incoming.m_count +
+				prit->second->m_proc_transaction_metrics->m_outgoing.m_count != 0)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, 
+					"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
+					prit->second->m_comm.c_str(),
+					(prit->second->m_args.size() != 0)? prit->second->m_args[0].c_str() : "",
+					prit->second->m_tid,
+					prit->second->m_proc_transaction_metrics->m_incoming.m_count,
+					prit->second->m_proc_transaction_metrics->m_outgoing.m_count);
+			}
+#endif // _DEBUG
+		}
+	}
+
+	//
+	// fourth pass: thread table cleanup
+	//
+	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+		it != m_inspector->m_thread_manager->m_threadtable.end();)
+	{
+		//
+		// Has this thread been closed druring this sample?
+		//
+		if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
+		{
+			//
+			// Yes, remove the thread from the table
+			//
+			m_inspector->m_thread_manager->remove_thread(it++);
+		}
+		else
+		{
+			//
+			// Clear the thread metrics, so we're ready for the next sample
+			//
+			it->second.clear_all_metrics();
+			++it;
+		}
+	}
+#endif // ANALYZER_EMITS_PROGRAMS
+}
+
 void sinsp_analyzer::emit_aggregate_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
@@ -452,9 +877,6 @@ void sinsp_analyzer::emit_full_connections()
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 {
 	uint32_t j;
-	uint64_t delta;
-	sinsp_evt::category* cat;
-	sinsp_evt::category tcat;
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
@@ -470,9 +892,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		}
 		else
 		{
-			uint32_t n_server_threads = 0;
-			int32_t syshscore = -1;
-
 			//
 			// Update the times
 			//
@@ -488,436 +907,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->Clear();
 
 			//
-			// Add global information
+			// Reset the aggreagted host metrics
 			//
-			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
-			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
-			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
-
-			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
-			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
-			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
-
-			m_host_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
-
-			m_procfs_parser->get_cpus_load(&m_cpu_loads);
-			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
-			for(j = 0; j < m_cpu_loads.size(); j++)
-			{
-				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
-			}
+			m_host_metrics.clear();
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-			g_logger.format(sinsp_logger::SEV_DEBUG, 
-				"thread table size:%d",
-				m_inspector->m_thread_manager->get_thread_count());
-
-			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
-			{
-				g_logger.format(sinsp_logger::SEV_ERROR, 
-					"IPv4 table size:%d",
-					m_inspector->m_ipv4_connections->m_connections.size());
-
-				m_inspector->m_ipv4_connections->clear_n_drops();
-			}
-
-			//
-			// First pass of the list of threads: emit the metrics (if defined)
-			// and aggregate them into processes
-			//
-			threadinfo_map_iterator_t it;
-			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-				it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-			{
-				//
-				// Attribute the last pending event to this second
-				//
-				if(m_prev_flush_time_ns != 0)
-				{
-					delta = m_prev_flush_time_ns - it->second.m_lastevent_ts;
-					it->second.m_lastevent_ts = m_prev_flush_time_ns;
-
-					if(delta > sample_duration)
-					{
-						delta = sample_duration;
-					}
-
-					if(PPME_IS_ENTER(it->second.m_lastevent_type))
-					{
-						cat = &it->second.m_lastevent_category;
-					}
-					else
-					{
-						tcat.m_category = EC_PROCESSING;
-						tcat.m_subcategory = sinsp_evt::SC_NONE;
-						cat = &tcat;
-					}
-
-					add_syscall_time(&it->second.m_metrics, 
-						cat, 
-						delta,
-						0,
-						false);
-
-					//
-					// Flag the thread so we know that part of this event has already been attributed
-					//
-					it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
-				}
-
-				//
-				// Some assertions to validate that everything looks like expected
-				//
-#ifdef _DEBUG
-				sinsp_counter_time ttot;
-				it->second.m_metrics.get_total(&ttot);
-				ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-#endif
-				//
-				// Go through the FD list to flush the transactions that haven't been active for a while
-				//
-				it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
-
-				//
-				// If this thread served requests, increase the server thread counter
-				//
-				if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
-				{
-					n_server_threads++;
-				}
-
-				//
-				// Add this thread's counters to the process ones
-				//
-				sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-				it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
-				mtinfo->add_all_metrics(&it->second);
-
-				//
-				// Dump the thread info into the protobuf
-				//
-#ifdef ANALYZER_EMITS_THREADS
-				sinsp_counter_time tot;
-				it->second.m_metrics.get_total(&tot);
-				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-
-				if(tot.m_count != 0)
-				{
-					draiosproto::thread* thread = m_metrics->add_threads();
-					thread->set_pid(it->second.m_pid);
-					thread->set_tid(it->second.m_tid);
-					// CWD is currently disabed in the protocol
-					//thread->set_cwd(it->second.m_cwd);
-					it->second.m_metrics.to_protobuf(thread->mutable_tcounters());
-					it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
-				}
-#endif
-			}
-
-			//
-			// Between the first and the second pass of the thread list, calculate the 
-			// health score for the machine
-			//
-			if(m_inspector->m_transactions_with_cpu.size() != 0)
-			{
-				int32_t syshscore_g;
-
-				syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
-					n_server_threads,
-					m_prev_flush_time_ns, sample_duration);
-
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"1!!%" PRId32,
-					syshscore);
-
-				syshscore_g = m_score_calculator->get_system_health_score_global(&m_inspector->m_transactions_with_cpu,
-					n_server_threads,
-					m_prev_flush_time_ns, sample_duration);
-
-				if(syshscore == -1)
-				{
-					syshscore = syshscore_g;
-				}
-
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"2!!%" PRId32,
-					syshscore_g);
-
-				m_inspector->m_transactions_with_cpu.clear();
-			}
-
-			//
-			// Second pass of the list of threads: aggreagate processes into programs.
-			// NOTE: this pass can be integrated in the previous one. We keep it seperate for.
-			// the moment so we have the option to emit single processes. This is useful until
-			// we clearly decide what to put in the UI.
-			//
-#ifdef ANALYZER_EMITS_PROGRAMS
-			m_program_table.clear();
-#endif
-
-			uint64_t cur_global_total_jiffies;
-			if(m_inspector->m_islive)
-			{
-				m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
-			}
-			else
-			{
-				cur_global_total_jiffies = 0;
-			}
-
-			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-				it != m_inspector->m_thread_manager->m_threadtable.end(); 
-#ifdef ANALYZER_EMITS_PROGRAMS
-				++it
-#endif
-				)
-			{
-				//
-				// If this is the main thread of a process, add an entry into the processes
-				// section too
-				//
-				if(it->second.is_main_thread())
-				{
-#ifdef ANALYZER_EMITS_PROGRAMS
-
-					//
-					// Do the aggregation into programs
-					//
-					std::pair<unordered_map<string, sinsp_threadinfo*>::iterator, bool> &element = 
-						m_program_table.insert(unordered_map<string, sinsp_threadinfo*>::value_type(it->second.m_exe, &it->second));
-					if(element.second == false)
-					{
-						ASSERT(element.first->second != &it->second);
-						element.first->second->add_proc_metrics(&it->second);
-					}
-#endif
-
-					//
-					// If defined, emit the processes
-					//
-#ifdef ANALYZER_EMITS_PROCESSES
-					sinsp_counter_time tot;
-	
-					ASSERT(it->second.m_procinfo);
-					it->second.m_procinfo->m_proc_metrics.get_total(&tot);
-					ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-
-					if(tot.m_count != 0)
-					{
-						int64_t pid = it->second.m_pid;
-
-						//
-						// Basic values
-						//
-						draiosproto::process* proc = m_metrics->add_processes();
-						proc->set_pid(pid);
-						proc->set_comm(it->second.m_comm);
-						proc->set_exe(it->second.m_exe);
-						for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-							arg_it != it->second.m_args.end(); ++arg_it)
-						{
-							proc->add_args(*arg_it);
-						}
-
-						//
-						// Basic resource counters
-						//
-						int32_t cpuload = -1;
-						int64_t memsize;
-
-						if(m_inspector->m_islive)
-						{
-							cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
-								&it->second.m_old_proc_jiffies, 
-								cur_global_total_jiffies - m_old_global_total_jiffies,
-								&memsize);
-							
-							proc->mutable_resource_counters()->set_cpu_pct(cpuload);
-							proc->mutable_resource_counters()->set_resident_memory_kb(memsize);
-						}
-
-						//
-						// Transaction-related metrics
-						//
-						it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
-						it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
-						proc->set_local_transaction_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
-
-						//
-						// Health-related metrics
-						//
-						int32_t hscore = m_score_calculator->get_process_health_score(syshscore, &it->second);
-						proc->mutable_resource_counters()->set_health_score(hscore);
-						proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_ratio);
-						proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_ratio);
-
-						//
-						// Error-related metrics
-						//
-						it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
-
-#if 1
-						if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-						{
-							uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-							uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-							uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
-							uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
-
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
-								it->second.m_comm.c_str(),
-//								(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
-								it->second.m_tid,
-								it->second.m_refcount + 1,
-								hscore,
-								cpuload,
-								it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
-								it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-								trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
-								trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
-								trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
-								it->second.m_fd_usage_ratio,
-								it->second.m_connection_queue_usage_ratio);
-						}
-#endif
-					}
-#endif // ANALYZER_EMITS_PROCESSES
-				}
-/*
-				if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"*\t%s %s (%" PRIu64 ") (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " rest:%" PRIu64,
-						it->second.m_comm.c_str(),
-						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
-						it->second.m_tid,
-						it->second.m_refcount + 1,
-						it->second.m_transaction_metrics.m_incoming.m_count,
-						it->second.m_transaction_metrics.m_outgoing.m_count,
-						((double)it->second.m_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
-						((double)it->second.m_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
-						((double)it->second.m_transaction_processing_delay_ns) / 1000000000,
-						it->second.m_fd_usage_ratio,
-						it->second.m_connection_queue_usage_ratio,
-						it->second.m_rest_time_ns);
-				}
-*/
-#ifndef ANALYZER_EMITS_PROGRAMS
-				//
-				// Has this thread been closed druring this sample?
-				//
-				if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
-				{
-					//
-					// Yes, remove the thread from the table, but NOT if the event currently under processing is
-					// an exit for this process. In that case we wait until next sample.
-					//
-					if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
-					{
-						it->second.clear_all_metrics();
-						++it;
-					}
-					else
-					{
-						m_inspector->m_thread_manager->remove_thread(it++);
-					}
-				}
-				else
-				{
-					//
-					// Clear the thread metrics, so we're ready for the next sample
-					//
-					it->second.clear_all_metrics();
-					++it;
-				}
-#endif
-			}
-
-			m_old_global_total_jiffies = cur_global_total_jiffies;
-
-			//
-			// Third pass of the list of threads: emit the programs
-			//
-#ifdef ANALYZER_EMITS_PROGRAMS
-			unordered_map<string, sinsp_threadinfo*>::iterator prit;
-			for(prit = m_program_table.begin(); 
-				prit != m_program_table.end(); ++ prit)
-			{
-				//
-				// If defined, emti the processes
-				//
-				sinsp_counter_time tot;
-	
-				ASSERT(prit->second->m_proc_metrics);
-				prit->second->m_proc_metrics->get_total(&tot);
-				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-
-				if(tot.m_count != 0)
-				{
-					draiosproto::process* proc = m_metrics->add_processes();
-					proc->set_pid(prit->second->m_pid);
-					proc->set_comm(prit->second->m_comm);
-					proc->set_exe(prit->second->m_exe);
-					for(vector<string>::const_iterator arg_it = prit->second->m_args.begin(); 
-						arg_it != prit->second->m_args.end(); ++arg_it)
-					{
-						proc->add_args(*arg_it);
-					}
-
-					prit->second->m_proc_metrics->to_protobuf(proc->mutable_tcounters());
-					prit->second->m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
-
-#ifdef _DEBUG
-					if(prit->second->m_proc_transaction_metrics->m_incoming.m_count +
-						prit->second->m_proc_transaction_metrics->m_outgoing.m_count != 0)
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, 
-							"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
-							prit->second->m_comm.c_str(),
-							(prit->second->m_args.size() != 0)? prit->second->m_args[0].c_str() : "",
-							prit->second->m_tid,
-							prit->second->m_proc_transaction_metrics->m_incoming.m_count,
-							prit->second->m_proc_transaction_metrics->m_outgoing.m_count);
-					}
-#endif // _DEBUG
-				}
-			}
-
-			//
-			// fourth pass: thread table cleanup
-			//
-			for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-				it != m_inspector->m_thread_manager->m_threadtable.end();)
-			{
-				//
-				// Has this thread been closed druring this sample?
-				//
-				if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
-				{
-					//
-					// Yes, remove the thread from the table
-					//
-					m_inspector->m_thread_manager->remove_thread(it++);
-				}
-				else
-				{
-					//
-					// Clear the thread metrics, so we're ready for the next sample
-					//
-					it->second.clear_all_metrics();
-					++it;
-				}
-			}
-#endif // ANALYZER_EMITS_PROGRAMS
+			emit_processes(evt, sample_duration, is_eof);
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
 			////////////////////////////////////////////////////////////////////////////
-
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
 				m_inspector->m_ipv4_connections->m_connections.size());
@@ -1020,6 +1021,31 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			}
 
 			////////////////////////////////////////////////////////////////////////////
+			// emit host metrics
+			////////////////////////////////////////////////////////////////////////////
+			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
+			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
+			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
+
+			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
+			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
+			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
+
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
+			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_resource_counters()->mutable_syscall_errors());
+
+			m_procfs_parser->get_cpus_load(&m_cpu_loads);
+			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
+			for(j = 0; j < m_cpu_loads.size(); j++)
+			{
+				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
+			}
+
+			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
 			////////////////////////////////////////////////////////////////////////////
 			serialize(m_prev_flush_time_ns);
@@ -1038,11 +1064,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	m_inspector->get_transactions()->m_n_client_transactions = 0;
 	m_inspector->get_transactions()->m_n_server_transactions = 0;
-
-	//
-	// Clear the syscall error table
-	//
-	m_host_syscall_errors.clear();
 
 	//
 	// Run the periodic connection and thread table cleanup
@@ -1170,7 +1191,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		do_inc_counter);
 
 	//
-	// If this is an error syscall,
+	// If this is an error syscall, add the error to the process and host table
 	//
 	if(evt->m_errorcode != 0)
 	{
@@ -1178,7 +1199,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 			(evt->m_errorcode != SE_EAGAIN) && 
 			(evt->m_errorcode != SE_ETIMEDOUT))
 		{
-			m_host_syscall_errors.m_table[evt->m_errorcode].m_count++;
+			
+			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
 			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
 

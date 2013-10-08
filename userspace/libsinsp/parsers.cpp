@@ -380,12 +380,12 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 
 			if(evt->m_tinfo->m_fdlimit != -1)
 			{
-				int64_t m_fd_usage_ratio = fd * 100 / evt->m_tinfo->m_fdlimit;
-				ASSERT(m_fd_usage_ratio <= 100);
+				int64_t m_fd_usage_pct = fd * 100 / evt->m_tinfo->m_fdlimit;
+				ASSERT(m_fd_usage_pct <= 100);
 
-				if(m_fd_usage_ratio > evt->m_tinfo->m_fd_usage_ratio)
+				if(m_fd_usage_pct > evt->m_tinfo->m_fd_usage_pct)
 				{
-					evt->m_tinfo->m_fd_usage_ratio = (uint32_t)m_fd_usage_ratio;
+					evt->m_tinfo->m_fd_usage_pct = (uint32_t)m_fd_usage_pct;
 				}
 			}
 		}
@@ -1371,9 +1371,9 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
 	ASSERT(queueratio <= 100);
 
-	if(queueratio > evt->m_tinfo->m_connection_queue_usage_ratio)
+	if(queueratio > evt->m_tinfo->m_connection_queue_usage_pct)
 	{
-		evt->m_tinfo->m_connection_queue_usage_ratio = queueratio;
+		evt->m_tinfo->m_connection_queue_usage_pct = queueratio;
 	}
 }
 

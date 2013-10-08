@@ -360,14 +360,14 @@ int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sins
 
 	res = system_health_score;
 
-	if(mainthread_info->m_connection_queue_usage_ratio > 30)
+	if(mainthread_info->m_connection_queue_usage_pct > 30)
 	{
-		res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_ratio);
+		res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_pct);
 	}
 
-	if(mainthread_info->m_fd_usage_ratio > 30)
+	if(mainthread_info->m_fd_usage_pct > 30)
 	{
-		res = MIN(res, 100 - mainthread_info->m_fd_usage_ratio);
+		res = MIN(res, 100 - mainthread_info->m_fd_usage_pct);
 	}
 
 	return res;

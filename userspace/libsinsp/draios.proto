@@ -60,13 +60,13 @@ message counter_syscall_errors {
   repeated uint32 top_error_codes = 2; // Error codes that were generated the most
 }
 
-message process_resource_categories {
-  optional uint32 health_score = 1; // the health score for this process. 0 means very crappy, 100 means very healthy.
-  optional uint32 connection_queue_usage_pct = 2; // if this process is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS (0=empty, 100=full)
-  optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS. 0 means no FD in use, 100 means FD limit reached.
-  optional uint32 cpu_pct = 4; // CPU load of this process (including all the childs)
-  optional int64 resident_memory_kb = 5; // Memory size in kb
-  optional counter_syscall_errors syscall_errors = 6; // Syscall error counter for this process
+message resource_categories {
+  optional uint32 health_score = 1; // the health score for this process or host. 0 means very crappy, 100 means very healthy.
+  optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
+  optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
+  optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
+  optional uint64 resident_memory_usage_kb = 5; // Resident (Physical) Memory usage in kb
+  optional counter_syscall_errors syscall_errors = 6; // Syscall error counter
 }
 
 message connection_categories {
@@ -85,7 +85,12 @@ message host {
   optional uint32 num_cpus = 2;	// Number of CPUs in the system
   repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
   required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
-  optional counter_syscall_errors syscall_errors = 12; // Syscall error counter for the whole host
+
+  optional time_categories tcounters = 5; // The time counters for this thread
+  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
+  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
+													// It's calculated by subtracting outgoing connection time from incoming connection time. 
+  optional resource_categories resource_counters = 8; // The resource counters for this process
 }
 
 //
@@ -103,9 +108,9 @@ message process {
 
   optional time_categories tcounters = 5; // The time counters for this thread
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
-  optional uint64 local_transaction_delay = 7;	// the delay introduced by this process when processing transactions. 
-                                                // It's calculated by subtracting outgoing connection time from incoming connection time. 
-  required process_resource_categories resource_counters = 8; // The resource counters for this process
+  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
+													// It's calculated by subtracting outgoing connection time from incoming connection time. 
+  required resource_categories resource_counters = 8; // The resource counters for this process
 }
 
 //
@@ -167,11 +172,11 @@ message ipv4_network_interface {
 //
 message metrics {
   required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-  required string machine_id = 3; // The unique ID of the machine that is sending this data
-  required string customer_id = 4; // The unique ID of the customer that this machine belongs to
-  required host hostinfo = 5; // The list of processes
-  repeated process processes = 6; // The list of processes
-  repeated thread threads = 7; // The list of threads
-  repeated ipv4_connection ipv4_connections = 8; // The list of threads
-  repeated ipv4_network_interface ipv4_network_interfaces = 9; // The list of the machine network interfaces
+  required string machine_id = 2; // The unique ID of the machine that is sending this data
+  required string customer_id = 3; // The unique ID of the customer that this machine belongs to
+  required host hostinfo = 4; // The list of processes
+  repeated process processes = 5; // The list of processes
+  repeated thread threads = 6; // The list of threads
+  repeated ipv4_connection ipv4_connections = 7; // The list of threads
+  repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
 }

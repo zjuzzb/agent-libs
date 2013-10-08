@@ -198,7 +198,12 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads)
 	fclose(f);
 }
 
-uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory)
+int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
+{
+	return 0;
+}
+
+uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb)
 {
 	char line[512];
 	char tmps[32];
@@ -252,7 +257,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 		&tval,
 		&tval,
 		&tval,
-		resident_memory
+		resident_memory_kb
 		) != 24)
 	{
 		ASSERT(false);
@@ -280,7 +285,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 	//
 	// Before returning, convert the memory size from pages to bytes.
 	//
-	*resident_memory *= m_page_size;
+	*resident_memory_kb = (*resident_memory_kb) * (m_page_size / 1024);
 
 	return res;	
 }

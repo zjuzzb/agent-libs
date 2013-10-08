@@ -25,9 +25,11 @@ public:
 		m_proc_metrics.clear();
 		m_proc_transaction_metrics.clear();
 		m_proc_transaction_processing_delay_ns = 0;
-		m_connection_queue_usage_ratio = 0;
-		m_fd_usage_ratio = 0;
+		m_connection_queue_usage_pct = 0;
+		m_fd_usage_pct = 0;
 		m_syscall_errors.clear();
+		m_health_score = 0;
+		m_resident_memory_kb = 0;
 	}
 
 	// Aggreaged metrics for the process.
@@ -42,11 +44,15 @@ public:
 	uint64_t m_proc_transaction_processing_delay_ns;
 	// The ratio between the number of connections waiting to be served and 
 	// the total connection queue length for this process.
-	uint32_t m_connection_queue_usage_ratio;
+	uint32_t m_connection_queue_usage_pct;
 	// The ratio between open FDs and maximum available FDs fir this thread
-	uint32_t m_fd_usage_ratio;
+	uint32_t m_fd_usage_pct;
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
+	// the process health score calculated with our secret sauce algorithms
+	uint32_t m_health_score;
+	// the process resident memory
+	uint64_t m_resident_memory_kb;
 };
 
 //
@@ -131,9 +137,9 @@ public:
 	sinsp_procinfo* m_procinfo;
 	// The ratio between the number of connections waiting to be served and 
 	// the total connection queue length for this process.
-	uint32_t m_connection_queue_usage_ratio;
+	uint32_t m_connection_queue_usage_pct;
 	// The ratio between open FDs and maximum available FDs fir this thread
-	uint32_t m_fd_usage_ratio;
+	uint32_t m_fd_usage_pct;
 	// This is used for CPU load calculation
 	uint64_t m_old_proc_jiffies;
 

@@ -4,6 +4,7 @@
 // Forward declarations
 //
 class sinsp_counter_time_bytes;
+class sinsp_procinfo;
 
 namespace draiosproto
 {
@@ -183,4 +184,24 @@ public:
 
 	void clear();
 	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg);
+};
+
+//
+// Various metrics coming from processes, aggregated at the host level
+//
+class sinsp_host_metrics
+{
+public:
+	sinsp_host_metrics();
+	void clear();
+	void add(sinsp_procinfo* pinfo);
+
+	sinsp_counters m_metrics; 
+	sinsp_transaction_counters m_transaction_metrics;
+	uint64_t m_transaction_processing_delay_ns;
+	uint32_t m_health_score;
+	uint32_t m_n_health_score_entries;
+	uint32_t m_connection_queue_usage_pct;
+	uint32_t m_fd_usage_pct;
+	sinsp_error_counters m_syscall_errors;
 };
