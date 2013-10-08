@@ -19,9 +19,6 @@ public:
 		// added with the AF_REUSED flag, so that the analyzer can detect that
 		// connection is different.
 		AF_REUSED = (1 << 1), 
-		// If this flag is set, the connection will NOT be included by the analyzer 
-		// in the sample going to the backend. Otherwise the connection is not sent.
-		//AF_SKIP_IN_SAMPLE = (1 << 2), 
 	};
 
 	sinsp_connection();

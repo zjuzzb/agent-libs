@@ -260,176 +260,6 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 	}
 }
 
-/*
-void sinsp_analyzer::reduce_interface_list()
-{
-	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-	uint32_t nconns = m_inspector->m_ipv4_connections->m_connections.size();
-	bool aggregate_external = m_inspector->m_configuration.get_aggregate_external_world_connections_in_proto();
-	bool aggregate_internal = m_inspector->m_configuration.get_aggregate_external_world_connections_in_proto();
-
-	if(!(aggregate_external || aggregate_internal))
-	{
-		//
-		// Nothing to do
-		//
-		return;
-	}
-
-	//
-	// First pass: aggreagte external world connections
-	//
-	m_reduced_ipv4_connections.clear();
-
-	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-		cit != m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
-	{
-		if(cit->second.is_server_only())
-		{
-			ipv4tuple tuple = cit->first;
-
-			tuple.m_fields.m_sport = 0;
-
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
-			{
-				tuple.m_fields.m_sip = 0;
-			}
-
-			//
-			// Look for the entry in the remote connection table
-			//
-			sinsp_connection* conn = m_reduced_ipv4_connections.get_connection(
-				tuple,
-				cit->second.m_timestamp);
-
-			if(conn == NULL || conn->is_client_only())
-			{
-				bool add_full = (conn == NULL);
-
-				//
-				// Entry not found, create one
-				//
-				ASSERT(cit->second.m_dfd != 0);
-
-				conn = m_reduced_ipv4_connections.add_connection(tuple,
-					&cit->second.m_dcomm,
-					cit->second.m_dpid,
-					cit->second.m_dtid,
-					cit->second.m_dfd,
-					false,
-					cit->second.m_timestamp);
-
-				if(add_full)
-				{
-					conn->m_dcomm = cit->second.m_dcomm;
-					conn->m_dpid = cit->second.m_dpid;
-					conn->m_dtid = cit->second.m_dtid;
-					conn->m_dfd = cit->second.m_dfd;
-					conn->m_refcount = cit->second.m_refcount;
-				}
-			}
-
-			//
-			// Add this connection's metrics to the aggregated connection's ones
-			//
-			if(conn)
-			{
-				conn->m_metrics.add(&cit->second.m_metrics);
-				conn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			}
-		}
-		else
-		{
-			ipv4tuple tuple = cit->first;
-
-			tuple.m_fields.m_sport = 0;
-
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_dip))
-			{
-				tuple.m_fields.m_dip = 0;
-			}
-
-			//
-			// Look for the entry in the remote connection table
-			//
-			sinsp_connection* conn = m_reduced_ipv4_connections.get_connection(
-				tuple,
-				cit->second.m_timestamp);
-
-			if(conn == NULL || conn->is_server_only())
-			{
-				bool add_full = (conn == NULL);
-
-				//
-				// Entry not found, create one
-				//
-				ASSERT(cit->second.m_sfd != 0);
-
-				conn = m_reduced_ipv4_connections.add_connection(tuple,
-					&cit->second.m_scomm,
-					cit->second.m_spid,
-					cit->second.m_stid,
-					cit->second.m_sfd,
-					true,
-					cit->second.m_timestamp);
-
-				if(add_full)
-				{
-					conn->m_dcomm = cit->second.m_dcomm;
-					conn->m_dpid = cit->second.m_dpid;
-					conn->m_dtid = cit->second.m_dtid;
-					conn->m_dfd = cit->second.m_dfd;
-					conn->m_refcount = cit->second.m_refcount;
-				}
-			}
-
-			//
-			// Add this connection's metrics to the aggregated connection's ones
-			//
-			if(conn)
-			{
-				conn->m_metrics.add(&cit->second.m_metrics);
-				conn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			}
-		}
-	}
-
-	//
-	// Second pass: reduce the number of emitted connections
-	//
-	uint32_t maxconns = m_inspector->m_configuration.get_max_connections_in_proto();
-	uint32_t conn_sampling_ratio = 0;
-
-	//if(nconns > maxconns)
-	//{
-	//	conn_sampling_ratio = nconns / maxconns;
-
-	//	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-	//		cit != m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
-	//	{
-	//		if(cit->first.m_fields.m_sport != 0)
-	//		{
-	//			if(cit->first.m_fields.m_sport % conn_sampling_ratio == 0)
-	//			{
-	//				m_connections_to_emit.push_back(cit);
-	//			}
-	//		}
-	//		else if(cit->first.m_fields.m_dport != 0)
-	//		{
-	//			if(cit->first.m_fields.m_dport % conn_sampling_ratio == 0)
-	//			{
-	//				m_connections_to_emit.push_back(cit);
-	//			}
-	//		}
-	//		else
-	//		{
-	//			ASSERT(false);
-	//		}
-	//	}
-	//}
-}
-*/
-
 void sinsp_analyzer::emit_aggregate_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
@@ -471,7 +301,6 @@ void sinsp_analyzer::emit_aggregate_connections()
 				// New entry
 				//
 				ASSERT(cit->second.m_dfd != 0);
-				conn.m_timestamp = 1;
 
 				//
 				// Structure copy the connection info
@@ -484,6 +313,8 @@ void sinsp_analyzer::emit_aggregate_connections()
 			//
 			conn.m_metrics.add(&cit->second.m_metrics);
 			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			ASSERT(conn.m_timestamp > 0);
+			conn.m_timestamp++;
 		}
 		else
 		{
@@ -503,7 +334,6 @@ void sinsp_analyzer::emit_aggregate_connections()
 				// New entry
 				//
 				ASSERT(cit->second.m_sfd != 0);
-				conn.m_timestamp = 1;
 
 				//
 				// Structure copy the connection info
@@ -516,6 +346,8 @@ void sinsp_analyzer::emit_aggregate_connections()
 			//
 			conn.m_metrics.add(&cit->second.m_metrics);
 			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			ASSERT(conn.m_timestamp > 0);
+			conn.m_timestamp++;
 		}
 
 		//
@@ -539,7 +371,7 @@ void sinsp_analyzer::emit_aggregate_connections()
 	}
 
 	//
-	// Convert the 
+	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
 
@@ -563,6 +395,11 @@ void sinsp_analyzer::emit_aggregate_connections()
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters());
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+		
+		//
+		// The timestamp field is used to count the number of sub-connections
+		//
+		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
 	}
 }
 

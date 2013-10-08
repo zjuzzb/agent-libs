@@ -73,6 +73,7 @@ message connection_categories {
   optional counter_bytes server = 1; // client-side metrics
   optional counter_bytes client = 2; // server-side metrics
   optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
+  optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
 }
 
 //

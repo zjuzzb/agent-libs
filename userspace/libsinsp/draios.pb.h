@@ -1120,6 +1120,13 @@ class connection_categories : public ::google::protobuf::MessageLite {
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
+  // optional uint32 n_aggregated_connections = 4;
+  inline bool has_n_aggregated_connections() const;
+  inline void clear_n_aggregated_connections();
+  static const int kNAggregatedConnectionsFieldNumber = 4;
+  inline ::google::protobuf::uint32 n_aggregated_connections() const;
+  inline void set_n_aggregated_connections(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.connection_categories)
  private:
   inline void set_has_server();
@@ -1128,13 +1135,16 @@ class connection_categories : public ::google::protobuf::MessageLite {
   inline void clear_has_client();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
+  inline void set_has_n_aggregated_connections();
+  inline void clear_has_n_aggregated_connections();
 
   ::draiosproto::counter_bytes* server_;
   ::draiosproto::counter_bytes* client_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
+  ::google::protobuf::uint32 n_aggregated_connections_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1233,7 +1243,7 @@ class host : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_cpu_loads();
 
-  // optional uint64 physical_memory_size_bytes = 4;
+  // required uint64 physical_memory_size_bytes = 4;
   inline bool has_physical_memory_size_bytes() const;
   inline void clear_physical_memory_size_bytes();
   static const int kPhysicalMemorySizeBytesFieldNumber = 4;
@@ -3620,6 +3630,28 @@ inline void connection_categories::set_allocated_transaction_counters(::draiospr
   }
 }
 
+// optional uint32 n_aggregated_connections = 4;
+inline bool connection_categories::has_n_aggregated_connections() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void connection_categories::set_has_n_aggregated_connections() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void connection_categories::clear_has_n_aggregated_connections() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void connection_categories::clear_n_aggregated_connections() {
+  n_aggregated_connections_ = 0u;
+  clear_has_n_aggregated_connections();
+}
+inline ::google::protobuf::uint32 connection_categories::n_aggregated_connections() const {
+  return n_aggregated_connections_;
+}
+inline void connection_categories::set_n_aggregated_connections(::google::protobuf::uint32 value) {
+  set_has_n_aggregated_connections();
+  n_aggregated_connections_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // host
@@ -3741,7 +3773,7 @@ host::mutable_cpu_loads() {
   return &cpu_loads_;
 }
 
-// optional uint64 physical_memory_size_bytes = 4;
+// required uint64 physical_memory_size_bytes = 4;
 inline bool host::has_physical_memory_size_bytes() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }

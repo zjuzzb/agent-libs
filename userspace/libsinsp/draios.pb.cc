@@ -2790,6 +2790,7 @@ void process_resource_categories::Swap(process_resource_categories* other) {
 const int connection_categories::kServerFieldNumber;
 const int connection_categories::kClientFieldNumber;
 const int connection_categories::kTransactionCountersFieldNumber;
+const int connection_categories::kNAggregatedConnectionsFieldNumber;
 #endif  // !_MSC_VER
 
 connection_categories::connection_categories()
@@ -2829,6 +2830,7 @@ void connection_categories::SharedCtor() {
   server_ = NULL;
   client_ = NULL;
   transaction_counters_ = NULL;
+  n_aggregated_connections_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2879,6 +2881,7 @@ void connection_categories::Clear() {
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
+    n_aggregated_connections_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -2926,6 +2929,22 @@ bool connection_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(32)) goto parse_n_aggregated_connections;
+        break;
+      }
+
+      // optional uint32 n_aggregated_connections = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_n_aggregated_connections:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &n_aggregated_connections_)));
+          set_has_n_aggregated_connections();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2965,6 +2984,11 @@ void connection_categories::SerializeWithCachedSizes(
       3, this->transaction_counters(), output);
   }
 
+  // optional uint32 n_aggregated_connections = 4;
+  if (has_n_aggregated_connections()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->n_aggregated_connections(), output);
+  }
+
 }
 
 int connection_categories::ByteSize() const {
@@ -2992,6 +3016,13 @@ int connection_categories::ByteSize() const {
           this->transaction_counters());
     }
 
+    // optional uint32 n_aggregated_connections = 4;
+    if (has_n_aggregated_connections()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->n_aggregated_connections());
+    }
+
   }
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
@@ -3015,6 +3046,9 @@ void connection_categories::MergeFrom(const connection_categories& from) {
     }
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
+    }
+    if (from.has_n_aggregated_connections()) {
+      set_n_aggregated_connections(from.n_aggregated_connections());
     }
   }
 }
@@ -3044,6 +3078,7 @@ void connection_categories::Swap(connection_categories* other) {
     std::swap(server_, other->server_);
     std::swap(client_, other->client_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(n_aggregated_connections_, other->n_aggregated_connections_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -3204,7 +3239,7 @@ bool host::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 physical_memory_size_bytes = 4;
+      // required uint64 physical_memory_size_bytes = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
@@ -3268,7 +3303,7 @@ void host::SerializeWithCachedSizes(
       3, this->cpu_loads(i), output);
   }
 
-  // optional uint64 physical_memory_size_bytes = 4;
+  // required uint64 physical_memory_size_bytes = 4;
   if (has_physical_memory_size_bytes()) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->physical_memory_size_bytes(), output);
   }
@@ -3299,7 +3334,7 @@ int host::ByteSize() const {
           this->num_cpus());
     }
 
-    // optional uint64 physical_memory_size_bytes = 4;
+    // required uint64 physical_memory_size_bytes = 4;
     if (has_physical_memory_size_bytes()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
@@ -3361,6 +3396,7 @@ void host::CopyFrom(const host& from) {
 }
 
 bool host::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000008) != 0x00000008) return false;
 
   if (has_syscall_errors()) {
     if (!this->syscall_errors().IsInitialized()) return false;
