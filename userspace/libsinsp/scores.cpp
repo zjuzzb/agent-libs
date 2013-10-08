@@ -170,7 +170,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 		//
 		// If the number of *processors* that served transactions is smaller than the number of
 		// *processes* that served transactions, it means that the processes were shuffled 
-		// among the CPUs. In that case, don't do the calculation (it would be meaningless)
+		// around the CPUs. In that case, don't do the calculation (it would be meaningless)
 		// and just return -1. The analyzer will take care of using a fallback algorithm.
 		//
 		for(cpuid = 0; cpuid < num_cpus; cpuid++)
@@ -218,7 +218,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 		{
 			uint64_t j;
 			uint32_t concurrency;
-
+int aa = 0;
 			//
 			// Count the number of concurrent transactions for each inerval of size
 			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
@@ -227,9 +227,17 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 			{
 				concurrency = 0;
 
+if(j - starttime == 15 * CONCURRENCY_OBSERVATION_INTERVAL_NS)
+{
+	int a = 0;
+}
 				for(k = 0; k < trsize; k++)
 				{
-					if((*transactions)[k].first <= j)
+if(k == 28)
+{
+	int a = 0;
+}
+					if((*transactions)[k].first <= (j + CONCURRENCY_OBSERVATION_INTERVAL_NS))
 					{
 						if((*transactions)[k].second.second == cpuid)
 						{
@@ -244,6 +252,11 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 						break;
 					}
 				}
+
+if(concurrency == 0)
+{
+	aa++;
+}
 
 				if(concurrency < MAX_HEALTH_CONCURRENCY)
 				{

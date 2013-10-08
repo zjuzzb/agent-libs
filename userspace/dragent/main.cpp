@@ -912,6 +912,11 @@ protected:
 			m_inspector.get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
 
 			//
+			// Configure connection aggregation
+			//
+			m_inspector.get_configuration()->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
+
+			//
 			// Start the capture with sinsp
 			//
 			g_log->information("Opening the capture source");

@@ -517,7 +517,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
 
-#if 1
+#if 0
 				if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 				{
 					uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
@@ -688,7 +688,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 void sinsp_analyzer::emit_aggregate_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-	uint32_t nconns = m_inspector->m_ipv4_connections->m_connections.size();
 	process_tuple tuple;
 
 	m_reduced_ipv4_connections.clear();
