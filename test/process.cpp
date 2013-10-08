@@ -761,3 +761,22 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		old_global_total_jiffies = cur_global_total_jiffies;
 	}
 }
+
+TEST_F(sys_call_test, procfs_globalmemory)
+{
+	int64_t memusage;
+	uint32_t j;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser pparser(nprocs, memkb);
+
+	for(j = 0; j < 5; j++)
+	{
+		memusage = pparser.get_global_mem_usage_kb();
+		EXPECT_NE((int64_t)-1, memusage);
+		EXPECT_LE((int64_t)0, memusage);
+		EXPECT_GE((int64_t)memkb, memusage);	
+		sleep(1);
+	}
+}

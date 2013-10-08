@@ -200,7 +200,36 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads)
 
 int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
 {
-	return 0;
+	int64_t res = -1;
+	char line[512];
+	int64_t memfree;
+
+#ifdef _WIN32
+	return -1;
+#endif
+
+	FILE* f = fopen("/proc/meminfo", "r");
+	if(f == NULL)
+	{
+		ASSERT(false);
+		return -1;
+	}
+
+	while(fgets(line, sizeof(line), f) != NULL)
+	{
+		//
+		// Extract the line content
+		//
+		if(sscanf(line, "MemFree: %" PRId64, &memfree) == 1)
+		{
+			res = m_physical_memory_kb - memfree;
+			break;
+		}
+	}
+
+	fclose(f);
+
+	return res;
 }
 
 uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb)
