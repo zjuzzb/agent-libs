@@ -19,6 +19,8 @@ struct event_filler_arguments
 	uint32_t arg_data_size;
 	enum ppm_event_type event_type;	// the event type
 	struct pt_regs *regs; // the registers containing the call arguments
+	struct task_struct *sched_prev; // for context switch events, the task that is being schduled out
+	struct task_struct *sched_next; // for context switch events, the task that is being schduled in
 	char* str_storage; // String storage. Size is one page.
 #ifndef __x86_64__
 	unsigned long socketcall_args[6];

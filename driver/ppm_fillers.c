@@ -63,7 +63,9 @@ static int32_t f_sys_getrlimit_setrlimit_e(struct event_filler_arguments* args);
 static int32_t f_sys_getrlimit_setrlrimit_x(struct event_filler_arguments* args);
 static int32_t f_sys_prlimit_e(struct event_filler_arguments* args);
 static int32_t f_sys_prlimit_x(struct event_filler_arguments* args);
-
+#ifdef CAPTURE_CONTEXT_SWITCHES
+static int32_t f_sched_switch_e(struct event_filler_arguments* args);
+#endif
 
 //
 // Note, this is not part of g_event_info because we want to share g_event_info with userland.
@@ -209,7 +211,9 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SYSCALL_SETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
 	[PPME_SYSCALL_PRLIMIT_E] = {f_sys_prlimit_e},
 	[PPME_SYSCALL_PRLIMIT_X] = {f_sys_prlimit_x},
-	[PPME_SCHEDSWITCH_E] = {f_sys_empty},
+#ifdef CAPTURE_CONTEXT_SWITCHES
+	[PPME_SCHEDSWITCH_E] = {f_sched_switch_e},
+#endif	
 };
 
 //
@@ -2832,3 +2836,36 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 
 	return add_sentinel(args);
 }
+
+#ifdef CAPTURE_CONTEXT_SWITCHES
+static int32_t f_sched_switch_e(struct event_filler_arguments* args)
+{
+	int32_t res;
+
+	if(args->sched_prev == NULL || args->sched_next == NULL)
+	{
+		ASSERT(false);
+		return -1;
+	}
+
+	//
+	// prev
+	//
+	res = val_to_ring(args, args->sched_prev->pid, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// next
+	//
+	res = val_to_ring(args, args->sched_next->pid, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+#endif // CAPTURE_CONTEXT_SWITCHES

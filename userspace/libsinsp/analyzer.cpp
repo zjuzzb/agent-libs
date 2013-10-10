@@ -1034,10 +1034,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			m_procfs_parser->get_cpus_load(&m_cpu_loads);
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
+			string cpustr;
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
+				cpustr += to_string(m_cpu_loads[j]) + " ";
 				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
 			}
+			if(m_cpu_loads.size() != 0)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
+			}		
 
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);

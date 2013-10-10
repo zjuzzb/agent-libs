@@ -54,7 +54,9 @@ static int ppm_mmap(struct file *filp, struct vm_area_struct *vma);
 TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id);
 TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret);
 TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p);
+#ifdef CAPTURE_CONTEXT_SWITCHES
 TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next);
+#endif
 
 static struct ppm_device* g_ppm_devs;
 static struct class *g_ppm_class = NULL;
@@ -112,6 +114,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 	ring->info->n_drops_buffer = 0;
 	ring->info->n_drops_pf = 0;
 	ring->info->n_preemptions = 0;
+	ring->info->n_context_switches = 0;
 	atomic_set(&ring->preempt_count, 0);
 	getnstimeofday(&ring->last_print_time);
 
@@ -167,7 +170,8 @@ static int ppm_open(struct inode *inode, struct file *filp)
 
 			return ret;
 		}
-/*
+
+#ifdef CAPTURE_CONTEXT_SWITCHES
 		ret = TRACEPOINT_PROBE_REGISTER("sched_switch", (void *) sched_switch_probe);
 		if(ret)
 		{
@@ -182,7 +186,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 
 			return ret;
 		}	
-*/		
+#endif
 	}
 
 	return 0;
@@ -208,12 +212,13 @@ static int ppm_release(struct inode *inode, struct file *filp)
 		ring->state = CS_STOPPED;
 	}
 
-	printk(KERN_INFO "PPM: closing ring %d, evt:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu\n",
+	printk(KERN_INFO "PPM: closing ring %d, evt:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu, cs:%llu\n",
 	       ring_no,
 	       ring->info->n_evts,
 	       ring->info->n_drops_buffer,
 	       ring->info->n_drops_pf,
-	       ring->info->n_preemptions);
+	       ring->info->n_preemptions,
+	       ring->info->n_context_switches);
 
 	//
 	// The last closed device stops event collection
@@ -230,10 +235,10 @@ static int ppm_release(struct inode *inode, struct file *filp)
 
 		TRACEPOINT_PROBE_UNREGISTER("sched_process_exit",
 		                            (void *) syscall_procexit_probe);
-/*
+#ifdef CAPTURE_CONTEXT_SWITCHES
 		TRACEPOINT_PROBE_UNREGISTER("sched_switch",
 		                            (void *) sched_switch_probe);
-*/
+#endif
 	}
 
 	return 0;
@@ -565,7 +570,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 	return 0;
 }
 
-static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, long id)
+static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, long id, struct task_struct *sched_prev, struct task_struct *sched_next)
 {
 	size_t event_size;
 	int next;
@@ -582,7 +587,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 
 	trace_enter();
 
-	if(drop_event(event_type, regs))
+	if(regs && drop_event(event_type, regs))
 	{
 		return;
 	}
@@ -596,6 +601,12 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	// FROM THIS MOMENT ON, WE HAVE TO BE SUPER FAST
 	//
 	ring_info->n_evts++;
+	if(sched_prev != NULL)
+	{
+		ASSERT(sched_next != NULL);
+		ASSERT(regs == NULL);
+		ring_info->n_context_switches++;
+	}
 
 	//
 	// Preemption gate
@@ -650,7 +661,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	// second argument contains a pointer to the arguments of the original
 	// call. I guess this was done to reduce the number of syscalls...
 	//
-	if(id == __NR_socketcall)
+	if(regs && id == __NR_socketcall)
 	{
 		enum ppm_event_type tet;
 		tet = parse_socketcall(&args, regs);
@@ -702,6 +713,8 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		args.buffer_size = min(freespace, (uint32_t)(2 * PAGE_SIZE)) - sizeof(struct ppm_evt_hdr); // freespace is guaranteed to be bigger than sizeof(struct ppm_evt_hdr)
 		args.event_type = event_type;
 		args.regs = regs;
+		args.sched_prev = sched_prev;
+		args.sched_next = sched_next;
 		args.syscall_id = id;
 		args.curarg = 0;
 		args.arg_data_size = args.buffer_size - args.arg_data_offset;
@@ -832,13 +845,14 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 #ifdef _DEBUG
 	if(ts.tv_sec > ring->last_print_time.tv_sec + 1)
 	{
-		printk(KERN_INFO "PPM: CPU %d, util:%d%%, ev:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu\n",
+		printk(KERN_INFO "PPM: CPU%d, use:%d%%, ev:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu, cs:%llu\n",
 		       smp_processor_id(),
 		       (usedspace * 100) / RING_BUF_SIZE,
 		       ring_info->n_evts,
 		       ring_info->n_drops_buffer,
 		       ring_info->n_drops_pf,
-		       ring_info->n_preemptions);
+		       ring_info->n_preemptions,
+		       ring->info->n_context_switches);
 
 		ring->last_print_time = ts;
 	}
@@ -879,11 +893,11 @@ TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id)
 
 		if(used)
 		{
-			record_event(g_syscall_table[id].enter_event_type, regs, id);
+			record_event(g_syscall_table[id].enter_event_type, regs, id, NULL, NULL);
 		}
 		else if(!g_dropping_mode)
 		{
-			record_event(PPME_GENERIC_E, regs, id);
+			record_event(PPME_GENERIC_E, regs, id, NULL, NULL);
 		}
 	}
 }
@@ -921,11 +935,11 @@ TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret)
 
 		if(used)
 		{
-			record_event(g_syscall_table[id].exit_event_type, regs, id);
+			record_event(g_syscall_table[id].exit_event_type, regs, id, NULL, NULL);
 		}
 		else if(!g_dropping_mode)
 		{
-			record_event(PPME_GENERIC_X, regs, id);
+			record_event(PPME_GENERIC_X, regs, id, NULL, NULL);
 		}
 	}
 }
@@ -954,15 +968,16 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 		return;
 	}
 	
-	record_event(PPME_PROCEXIT_E, NULL, -1);
+	record_event(PPME_PROCEXIT_E, NULL, -1, NULL, NULL);
 }
 
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
+#ifdef CAPTURE_CONTEXT_SWITCHES
 TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next)
-{	
+{
 /*	
 	if(prev != NULL && next != NULL)
 	{
@@ -972,9 +987,14 @@ TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struc
 	{
 		printk(KERN_ERR "*!!\n");		
 	}
-*/
-//	record_event(PPME_PROCEXIT_E, NULL, -1);
+*/	
+	record_event(PPME_SCHEDSWITCH_E, 
+		NULL, 
+		-1,
+		prev,
+		next);
 }
+#endif
 
 static struct ppm_ring_buffer_context* alloc_ring_buffer(struct ppm_ring_buffer_context** ring)
 {
@@ -1050,6 +1070,7 @@ static struct ppm_ring_buffer_context* alloc_ring_buffer(struct ppm_ring_buffer_
 	(*ring)->info->n_drops_buffer = 0;
 	(*ring)->info->n_drops_pf = 0;
 	(*ring)->info->n_preemptions = 0;
+	(*ring)->info->n_context_switches = 0;
 	atomic_set(&(*ring)->preempt_count, 0);
 	getnstimeofday(&(*ring)->last_print_time);
 
