@@ -2849,15 +2849,6 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	}
 
 	//
-	// prev
-	//
-	res = val_to_ring(args, args->sched_prev->pid, 0, false);
-	if(unlikely(res != PPM_SUCCESS))
-	{
-		return res;
-	}
-
-	//
 	// next
 	//
 	res = val_to_ring(args, args->sched_next->pid, 0, false);

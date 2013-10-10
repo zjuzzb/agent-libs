@@ -259,7 +259,7 @@ captureinfo do_inspect(sinsp* inspector,
 		}
 		else
 		{
-			printf("%" PRIu64 ")%" PRIu64 ".%09" PRIu64 " % " PRIu32 " %s (%" PRId64 ") %s %s",
+			printf("%" PRIu64 ")%" PRIu64 ".%09" PRIu64 " %" PRIu32 " %s (%" PRId64 ") %s %s",
 			       inspector->get_num_events(),
 			       screents / 1000000000,
 			       screents % 1000000000,
