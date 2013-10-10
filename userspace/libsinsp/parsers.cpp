@@ -242,6 +242,14 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	evt->m_errorcode = 0;
 
 	//
+	// Ignore scheduler events
+	//
+	if(etype == PPME_SCHEDSWITCH_E)
+	{
+		return false;
+	}
+
+	//
 	// Extract the process
 	//
 

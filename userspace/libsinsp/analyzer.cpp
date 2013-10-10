@@ -1090,6 +1090,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	uint64_t ts;
 	uint64_t delta;
 	sinsp_evt::category cat;
+	uint16_t etype;
 
 	//
 	// If there is no event, assume that this is an EOF and use the 
@@ -1098,6 +1099,12 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	if(evt)
 	{
 		ts = evt->get_ts();
+
+		etype = evt->get_type();
+		if(etype == PPME_SCHEDSWITCH_E)
+		{
+			return;
+		}
 	}
 	else
 	{
@@ -1130,7 +1137,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	// Get the event category and type
 	//
 	evt->get_category(&cat);
-	uint16_t etype = evt->get_type();
 
 	//
 	// Check if this is an event that goes across sample boundaries
