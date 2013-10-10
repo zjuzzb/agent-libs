@@ -478,9 +478,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&memsize);
 			}
 
-			if(tot.m_count != 0 || cpuload > 0)
+			if(tot.m_count != 0)
 			{
-
 				//
 				// Basic values
 				//
@@ -497,8 +496,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if(cpuload != -1)
 				{
 					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
 				}
-				proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
 
 				//
 				// Transaction-related metrics
@@ -1033,19 +1032,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
 
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
-			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_resource_counters()->mutable_syscall_errors());
-
 			m_procfs_parser->get_cpus_load(&m_cpu_loads);
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
 				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
 			}
+
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
+			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_resource_counters()->mutable_syscall_errors());
 
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
