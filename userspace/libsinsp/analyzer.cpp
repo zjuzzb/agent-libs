@@ -476,8 +476,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&it->second.m_old_proc_jiffies, 
 					cur_global_total_jiffies - m_old_global_total_jiffies,
 					&memsize);
-printf("*%s:%d\n", it->second.m_comm.c_str(), cpuload);
-fflush(stdout);
 			}
 
 			if(tot.m_count != 0 || cpuload > 0)
