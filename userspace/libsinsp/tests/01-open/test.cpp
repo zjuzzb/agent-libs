@@ -259,11 +259,11 @@ captureinfo do_inspect(sinsp* inspector,
 		}
 		else
 		{
-			printf("%" PRIu64 ")%" PRIu64 ".%09" PRIu64 " % " PRIu16 " %s (%" PRId64 ") %s %s",
+			printf("%" PRIu64 ")%" PRIu64 ".%09" PRIu64 " % " PRIu32 " %s (%" PRId64 ") %s %s",
 			       inspector->get_num_events(),
 			       screents / 1000000000,
 			       screents % 1000000000,
-				   ev->get_cpuid(),
+				   (uint32_t)ev->get_cpuid(),
 			       (tinfo)?tinfo->get_comm().c_str():"<NA>",
 			       ev->get_tid(),
 			       (ev->get_direction() == SCAP_ED_IN)? ">" : "<",
