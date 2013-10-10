@@ -302,7 +302,9 @@ enum ppm_event_type
 	PPME_SYSCALL_SETRLIMIT_X = 143,
 	PPME_SYSCALL_PRLIMIT_E = 144,
 	PPME_SYSCALL_PRLIMIT_X = 145,
-	PPM_EVENT_MAX = 146,
+	PPME_SCHEDSWITCH_E = 146,
+	PPME_SCHEDSWITCH_X = 147,	// This should never be called
+	PPM_EVENT_MAX = 148,
 };
 
 //
@@ -632,6 +634,7 @@ typedef enum ppm_event_category
 	EC_IO_WRITE = 33,// General I/O write (can be file, socket, IPC...)
 	EC_IO_OTHER = 34,// General I/O that is neither read not write (can be file, socket, IPC...)
 	EC_WAIT = 64,	// General wait (can be file, socket, IPC...)
+	EC_SCHEDULER = 128,	// General wait (can be file, socket, IPC...)
 }ppm_event_category;
 
 typedef enum ppm_event_flags

@@ -47,7 +47,7 @@ void sinsp_threadinfo::init()
 	m_fdlimit = -1;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
-	m_old_proc_jiffies = 0;
+	m_old_proc_jiffies = -1;
 	m_main_thread = NULL;
 }
 

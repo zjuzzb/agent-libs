@@ -209,6 +209,7 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SYSCALL_SETRLIMIT_X] = {f_sys_getrlimit_setrlrimit_x},
 	[PPME_SYSCALL_PRLIMIT_E] = {f_sys_prlimit_e},
 	[PPME_SYSCALL_PRLIMIT_X] = {f_sys_prlimit_x},
+	[PPME_SCHEDSWITCH_E] = {f_sys_empty},
 };
 
 //

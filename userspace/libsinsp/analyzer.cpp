@@ -439,6 +439,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		if(it->second.is_main_thread())
 		{
+			int32_t cpuload = -1;
+			int64_t memsize;
+			int64_t pid = it->second.m_pid;
+
 #ifdef ANALYZER_EMITS_PROGRAMS
 
 			//
@@ -463,9 +467,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
-			if(tot.m_count != 0)
+			//
+			// Extract basic resource counters
+			//
+			if(m_inspector->m_islive)
 			{
-				int64_t pid = it->second.m_pid;
+				cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
+					&it->second.m_old_proc_jiffies, 
+					cur_global_total_jiffies - m_old_global_total_jiffies,
+					&memsize);
+printf("*%s:%d\n", it->second.m_comm.c_str(), cpuload);
+fflush(stdout);
+			}
+
+			if(tot.m_count != 0 || cpuload > 0)
+			{
 
 				//
 				// Basic values
@@ -480,22 +496,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					proc->add_args(*arg_it);
 				}
 
-				//
-				// Basic resource counters
-				//
-				int32_t cpuload = -1;
-				int64_t memsize;
-
-				if(m_inspector->m_islive)
+				if(cpuload != -1)
 				{
-					cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
-						&it->second.m_old_proc_jiffies, 
-						cur_global_total_jiffies - m_old_global_total_jiffies,
-						&memsize);
-							
 					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
 				}
+				proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
 
 				//
 				// Transaction-related metrics
@@ -1352,5 +1357,9 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 		case EC_WAIT:
 			metrics->m_wait.add(cnt_delta, delta);
 			break;
+		case EC_SCHEDULER:
+			break;
+		default:
+			ASSERT(false);
 	}
 }

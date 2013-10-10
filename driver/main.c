@@ -53,8 +53,8 @@ static int ppm_mmap(struct file *filp, struct vm_area_struct *vma);
 
 TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id);
 TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret);
-TRACEPOINT_PROBE(syscall_procexit_probe, struct pt_regs *regs, long ret);
-TRACEPOINT_PROBE(netif_rx_probe, struct sk_buff *skb);
+TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p);
+TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next);
 
 static struct ppm_device* g_ppm_devs;
 static struct class *g_ppm_class = NULL;
@@ -167,8 +167,8 @@ static int ppm_open(struct inode *inode, struct file *filp)
 
 			return ret;
 		}
-
-		ret = TRACEPOINT_PROBE_REGISTER("netif_rx", (void *) netif_rx_probe);
+/*
+		ret = TRACEPOINT_PROBE_REGISTER("sched_switch", (void *) sched_switch_probe);
 		if(ret)
 		{
 			TRACEPOINT_PROBE_UNREGISTER("sys_exit",
@@ -181,7 +181,8 @@ static int ppm_open(struct inode *inode, struct file *filp)
 			printk(KERN_ERR "PPM: can't create the netif_rx tracepoint\n");
 
 			return ret;
-		}
+		}	
+*/		
 	}
 
 	return 0;
@@ -229,9 +230,10 @@ static int ppm_release(struct inode *inode, struct file *filp)
 
 		TRACEPOINT_PROBE_UNREGISTER("sched_process_exit",
 		                            (void *) syscall_procexit_probe);
-
-		TRACEPOINT_PROBE_UNREGISTER("netif_rx",
-		                            (void *) netif_rx_probe);
+/*
+		TRACEPOINT_PROBE_UNREGISTER("sched_switch",
+		                            (void *) sched_switch_probe);
+*/
 	}
 
 	return 0;
@@ -940,7 +942,7 @@ static void syscall_proceenter_probe(void *__data, struct pt_regs *regs, long re
 }
 */
 
-TRACEPOINT_PROBE(syscall_procexit_probe, struct pt_regs *regs, long ret)
+TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 {
 	trace_enter();
 
@@ -952,33 +954,26 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct pt_regs *regs, long ret)
 		return;
 	}
 	
-	record_event(PPME_PROCEXIT_E, regs, -1);
+	record_event(PPME_PROCEXIT_E, NULL, -1);
 }
 
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
-TRACEPOINT_PROBE(netif_rx_probe, struct sk_buff *skb)
-{
-	/*
-		struct iphdr *ih;
-		struct udphdr *uh;
-		ih = ip_hdr(skb);
-		uh = udp_hdr(skb);
-
-		printk(KERN_INFO "A %p-%p=%d:%u:%d(%d)->%d(%d) -- %d",
-			uh,
-			ih,
-			(int)((void*)uh-(void*)ih),
-			skb->len,
-	//		(int)ih->version,
-			(int)uh->source,
-			(int)ntohs(uh->source),
-			(int)uh->dest,
-			(int)ntohs(uh->dest),
-			(int)skb->skb_iif);
-	*/
+TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next)
+{	
+/*	
+	if(prev != NULL && next != NULL)
+	{
+		printk(KERN_ERR "*%s->%s\n", prev->comm, next->comm);		
+	}
+	else
+	{
+		printk(KERN_ERR "*!!\n");		
+	}
+*/
+//	record_event(PPME_PROCEXIT_E, NULL, -1);
 }
 
 static struct ppm_ring_buffer_context* alloc_ring_buffer(struct ppm_ring_buffer_context** ring)
