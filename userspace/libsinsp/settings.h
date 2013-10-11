@@ -109,7 +109,7 @@
 // are aggreagated into a single connection in the protocol samples.
 // This can be overridden by set_aggregate_connections_in_proto().
 //
-#define AGGREGATE_CONNECTIONS_IN_PROTO false
+#define AGGREGATE_CONNECTIONS_IN_PROTO true
 
 //
 // Max size that the thread table can reach
