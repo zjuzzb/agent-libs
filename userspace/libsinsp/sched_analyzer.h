@@ -11,7 +11,7 @@ public:
 
 	vector<int64_t> m_time_segments;
 	uint64_t m_last_switch_time;
-	uint64_t m_last_switch_tid;
+	int64_t m_last_switch_tid;
 	uint32_t m_last_time_segment;
 	
 	//
