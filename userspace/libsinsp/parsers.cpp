@@ -2356,7 +2356,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			char *data;
 			uint32_t datalen;
 
-			if(etype == PPME_SOCKET_SENDTO_X && evt->m_fdinfo->m_name.length() == 0)
+			if(etype == PPME_SOCKET_SENDTO_X && (evt->m_fdinfo->m_name.length() == 0  || evt->m_fdinfo->is_udp_socket()))
 			{
 				//
 				// sendto contains tuple info in the enter event.
