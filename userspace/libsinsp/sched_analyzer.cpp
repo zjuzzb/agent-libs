@@ -188,8 +188,6 @@ void sinsp_sched_analyzer::process_event(sinsp_evt* evt)
 	ASSERT(parinfo->m_len == sizeof(int64_t));
 	int64_t newtid = *(int64_t *)parinfo->m_val;
 
-	ASSERT(m_cpu_states[cpu].m_last_switch_tid == 0 || m_cpu_states[cpu].m_last_switch_tid == evt->get_tid());
-
 	update(ts, cpu, newtid);
 }
 

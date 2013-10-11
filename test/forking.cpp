@@ -932,7 +932,15 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_thread_info()->m_pid == cpid;
+		sinsp_threadinfo* ti = evt->get_thread_info();
+		if(ti)
+		{
+			return ti->m_pid == cpid;
+		}
+		else
+		{
+			return false;
+		}
 	};
 
 	run_callback_t test = [&](sinsp* inspector)

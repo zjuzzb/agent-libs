@@ -251,6 +251,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 				// If this is a transaction-free interval, make sure it's not a time slot that has been
 				// stolen by another process that is loading the cpu.
 				//
+/*				
 				if(concurrency == 0)
 				{
 					uint32_t id = (uint32_t)(j - starttime) / CONCURRENCY_OBSERVATION_INTERVAL_NS;
@@ -259,7 +260,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 						concurrency++;
 					}
 				}
-
+*/
 				if(concurrency < MAX_HEALTH_CONCURRENCY)
 				{
 					time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;

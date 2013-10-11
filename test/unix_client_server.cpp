@@ -182,7 +182,14 @@ TEST_F(sys_call_test, unix_client_server)
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
 		sinsp_threadinfo *info = evt->get_thread_info(false);
-		return ends_with(info->get_comm(), "unix_server.py") || ends_with(info->get_comm(), "unix_client.py");
+		if(info)
+		{
+			return ends_with(info->get_comm(), "unix_server.py") || ends_with(info->get_comm(), "unix_client.py");
+		}
+		else
+		{
+			return false;
+		}
 	};
 
 	//
