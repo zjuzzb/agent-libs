@@ -116,6 +116,10 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			m_inspector->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
+
+			m_inspector->m_transactions_per_cpu[tr->m_cpuid].push_back(
+				pair<uint64_t, uint64_t>(tr->m_prev_prev_start_of_transaction_time, 
+				tr->m_prev_end_time));
 #endif
 /*
 			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)

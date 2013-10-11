@@ -9,6 +9,7 @@ public:
 	void add_to_last_interval(int64_t tid, uint64_t delta);
 	void complete_interval();
 
+	// Each value is the pid of the process that used the most CPU during the interval
 	vector<int64_t> m_time_segments;
 	uint64_t m_last_switch_time;
 	int64_t m_last_switch_tid;

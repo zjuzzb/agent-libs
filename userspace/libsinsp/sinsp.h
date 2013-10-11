@@ -285,6 +285,7 @@ VISIBILITY_PRIVATE
 
 	// Used by the analyzer
 	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
+	vector<vector<pair<uint64_t, uint64_t>>> m_transactions_per_cpu;
 
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
@@ -303,6 +304,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
 	friend class sinsp_sched_analyzer;
+	friend class sinsp_scores;
 	friend class sinsp_evt;
 	friend class sinsp_threadinfo;
 	friend class sinsp_transaction_manager;

@@ -397,7 +397,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		int32_t syshscore_g;
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
+		//syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_with_cpu,
+		//	n_server_threads,
+		//	m_prev_flush_time_ns, sample_duration);
+
+		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -419,6 +423,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			syshscore_g);
 
 		m_inspector->m_transactions_with_cpu.clear();
+		for(uint32_t k = 0; k < m_inspector->m_transactions_per_cpu.size(); k++)
+		{
+			m_inspector->m_transactions_per_cpu[k].clear();
+		}
 	}
 
 	//

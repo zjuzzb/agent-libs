@@ -146,7 +146,129 @@ for(k = 0; k < trsize; k++)
 	return -1;
 }
 
-int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+	uint32_t n_server_threads,
+	uint64_t sample_end_time, uint64_t sample_duration)
+{
+	int32_t cpuid;
+	const scap_machine_info* machine_info = m_inspector->get_machine_info();
+	if(machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
+	}
+	int32_t num_cpus = machine_info->num_cpus;
+
+	if(m_cpu_transaction_vectors.size() == 0)
+	{
+		m_cpu_transaction_vectors = vector<vector<uint8_t>>(num_cpus);
+		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		{
+			m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
+			m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+
+			m_cpu_transaction_vectors[cpuid].insert(m_cpu_transaction_vectors[cpuid].begin(), 
+				m_n_intervals_in_sample, 
+				0);
+		}
+	}
+
+	int32_t max_score = 0;
+	int32_t min_score = 200;
+	int32_t tot_score = 0;
+
+	if(num_cpus != 0)
+	{
+		vector<uint64_t> time_by_concurrency;
+		uint32_t k;
+		vector<int64_t> cpu_counters;
+		uint64_t starttime = sample_end_time - sample_duration;
+		uint64_t endtime = sample_end_time;
+
+		//
+		// Make sure the transactions are ordered by start time
+		//
+		std::sort(transactions->begin(), transactions->end());
+
+		//
+		// Go through the CPUs and calculate the rest time for each of them
+		//
+		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		{
+			uint32_t j;
+			uint32_t trsize = (*transactions)[cpuid].size();
+			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
+			uint32_t nused = 0;
+
+			//
+			// Count the number of concurrent transactions for each inerval of size
+			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+			//
+			for(j = 0; j < m_n_intervals_in_sample; j++)
+			{
+				uint64_t intervaltime = starttime + j * CONCURRENCY_OBSERVATION_INTERVAL_NS;
+
+				if((*cpu_vector)[j] != 0)
+				{
+					m_cpu_transaction_vectors[cpuid][j] = 1;
+					nused++;
+					continue;
+				}
+
+				m_cpu_transaction_vectors[cpuid][j] = 0;
+
+				for(k = 0; k < trsize; k++)
+				{
+					if((*transactions)[cpuid][k].first <= intervaltime)
+					{
+						if((*transactions)[cpuid][k].second >= (intervaltime - CONCURRENCY_OBSERVATION_INTERVAL_NS))
+						{
+							m_cpu_transaction_vectors[cpuid][j] = 1;
+							nused++;
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+
+			int32_t score = (int32_t)nused * 100 / m_n_intervals_in_sample;
+			ASSERT(score <= 100);
+			score = 100 - score;
+
+			tot_score += score;
+
+			if(score > max_score)
+			{
+				max_score = score;
+			}
+
+			if(score < min_score)
+			{
+				min_score = score;
+			}
+		}
+
+		//
+		// Done scanning the transactions, return the average of the CPU rest times
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+			min_score,
+			max_score,
+			tot_score / num_cpus,
+			num_cpus);
+
+		return (tot_score / num_cpus);
+	}
+
+	return -1;
+}
+
+/*
+int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -251,16 +373,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 				// If this is a transaction-free interval, make sure it's not a time slot that has been
 				// stolen by another process that is loading the cpu.
 				//
-/*				
-				if(concurrency == 0)
-				{
-					uint32_t id = (uint32_t)(j - starttime) / CONCURRENCY_OBSERVATION_INTERVAL_NS;
-					if(m_sched_analyzer->m_cpu_states[cpuid].m_time_segments[id] != 0)
-					{
-						concurrency++;
-					}
-				}
-*/
+
 				if(concurrency < MAX_HEALTH_CONCURRENCY)
 				{
 					time_by_concurrency[concurrency] += CONCURRENCY_OBSERVATION_INTERVAL_NS;
@@ -346,6 +459,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 
 	return -1;
 }
+*/
 
 int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sinsp_threadinfo* mainthread_info)
 {
