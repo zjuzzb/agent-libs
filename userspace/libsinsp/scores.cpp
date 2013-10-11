@@ -220,7 +220,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 		{
 			uint64_t j;
 			uint32_t concurrency;
-int aa = 0;
 
 			//
 			// Count the number of concurrent transactions for each inerval of size

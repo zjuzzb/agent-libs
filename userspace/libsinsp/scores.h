@@ -1,5 +1,7 @@
 #pragma once
 
+class sinsp_sched_analyzer;
+
 //
 // The main analyzer class
 //
