@@ -64,6 +64,9 @@
     <ClCompile Include="filterchecks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sched_analyzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="analyzer.h">
@@ -148,6 +151,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="filterchecks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sched_analyzer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

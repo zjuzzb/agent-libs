@@ -219,6 +219,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<pair<uint64_t,pair<ui
 			uint64_t j;
 			uint32_t concurrency;
 int aa = 0;
+
 			//
 			// Count the number of concurrent transactions for each inerval of size
 			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
@@ -227,16 +228,8 @@ int aa = 0;
 			{
 				concurrency = 0;
 
-if(j - starttime == 15 * CONCURRENCY_OBSERVATION_INTERVAL_NS)
-{
-	int a = 0;
-}
 				for(k = 0; k < trsize; k++)
 				{
-if(k == 28)
-{
-	int a = 0;
-}
 					if((*transactions)[k].first <= (j + CONCURRENCY_OBSERVATION_INTERVAL_NS))
 					{
 						if((*transactions)[k].second.second == cpuid)

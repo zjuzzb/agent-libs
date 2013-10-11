@@ -288,6 +288,11 @@ void sinsp::init()
 	import_ifaddr_list();
 	import_proc_table();
 	import_user_list();
+
+	//
+	// Notify the analyzer that we're starting
+	//
+	m_analyzer->on_capture_start();
 }
 
 void sinsp::remove_expired_connections(uint64_t ts)

@@ -2,6 +2,7 @@
 
 class sinsp_scores;
 class sinsp_procfs_parser;
+class sinsp_sched_analyzer;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -59,6 +60,14 @@ public:
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
+
+	//
+	// Called by the engine after opening the event source and before 
+	// receiving the first event. Can be used to make adjustments based on
+	// the user's changes to the configuration.
+	//
+	void on_capture_start();
+
 	//
 	// Processing entry point
 	//
@@ -129,6 +138,11 @@ VISIBILITY_PRIVATE
 	// The aggreagted host metrics
 	//
 	sinsp_host_metrics m_host_metrics;
+
+	//
+	// The scheduler analyzer
+	//
+	sinsp_sched_analyzer* m_sched_analyzer;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

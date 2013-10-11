@@ -20,6 +20,7 @@ add_library(sinsp STATIC
 	parsers.cpp
 	procfs_parser.cpp
 	threadinfo.cpp
+	sched_analyzer.cpp
 	scores.cpp
 	sinsp.cpp
 	stats.cpp
@@ -28,8 +29,8 @@ add_library(sinsp STATIC
 
 target_link_libraries(sinsp 
 	scap 
-    ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
-    ${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a) 
+	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a) 
+
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)
 	

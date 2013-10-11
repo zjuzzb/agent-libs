@@ -387,21 +387,23 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 	}
 	break;
 	case PT_PID:
-		ASSERT(param->m_len == sizeof(int64_t));
-
-		snprintf(m_paramstr_storage,
-		         sizeof(m_paramstr_storage),
-		         "%" PRId64, *(int64_t *)param->m_val);
-
-
-		if(get_thread_info() != NULL)
 		{
-			snprintf(m_resolved_paramstr_storage,
-			         sizeof(m_resolved_paramstr_storage),
-			         "%s",
-			         get_thread_info()->m_comm.c_str());
-		}
+			ASSERT(param->m_len == sizeof(int64_t));
 
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRId64, *(int64_t *)param->m_val);
+
+
+			sinsp_threadinfo* atinfo = m_inspector->get_thread(*(int64_t *)param->m_val, false);
+			if(atinfo != NULL)
+			{
+				snprintf(m_resolved_paramstr_storage,
+						 sizeof(m_resolved_paramstr_storage),
+						 "%s",
+						 atinfo->get_comm().c_str());
+			}
+		}
 		break;
 	case PT_UINT8:
 		ASSERT(param->m_len == sizeof(uint8_t));
