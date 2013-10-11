@@ -6,7 +6,7 @@
 class sinsp_scores
 {
 public:
-	sinsp_scores(sinsp* inspector);
+	sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyzer);
 
 	//
 	// Return the health score for a process
@@ -23,4 +23,5 @@ public:
 		sinsp_threadinfo* mainthread_info);
 private:
 	sinsp* m_inspector;
+	sinsp_sched_analyzer* m_sched_analyzer;
 };

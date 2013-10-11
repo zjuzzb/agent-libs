@@ -4,10 +4,12 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "scores.h"
+#include "sched_analyzer.h"
 
-sinsp_scores::sinsp_scores(sinsp* inspector)
+sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyzer)
 {
 	m_inspector = inspector;
+	m_sched_analyzer = sched_analyzer;
 }
 
 int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
@@ -246,10 +248,18 @@ int aa = 0;
 					}
 				}
 
-if(concurrency == 0)
-{
-	aa++;
-}
+				//
+				// If this is a transaction-free interval, make sure it's not a time slot that has been
+				// stolen by another process that is loading the cpu.
+				//
+				if(concurrency == 0)
+				{
+					uint32_t id = (uint32_t)(j - starttime) / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+					if(m_sched_analyzer->m_cpu_states[cpuid].m_time_segments[id] != 0)
+					{
+						concurrency++;
+					}
+				}
 
 				if(concurrency < MAX_HEALTH_CONCURRENCY)
 				{
