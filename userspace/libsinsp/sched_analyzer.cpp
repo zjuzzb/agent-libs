@@ -223,7 +223,7 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 		state.m_last_interval_threads.clear();
 		state.m_last_switch_time = flush_time;
 
-#ifdef _DEBUG
+#if 1
 		uint32_t nused = 0;
 
 		for(uint32_t k = 0; k < state.m_time_segments.size(); k++)

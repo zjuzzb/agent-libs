@@ -183,7 +183,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 		uint32_t k;
 		vector<int64_t> cpu_counters;
 		uint64_t starttime = sample_end_time - sample_duration;
-		uint64_t endtime = sample_end_time;
 
 		//
 		// Make sure the transactions are ordered by start time
