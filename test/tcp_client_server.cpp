@@ -688,7 +688,7 @@ void runtest(iotype iot,
 	// OUTPUT VALDATION
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+	configuration.set_analyzer_sample_length_ns(100 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE( { event_capture::run(test, callback, filter, configuration);});
 	

@@ -185,7 +185,7 @@ TEST_F(sys_call_test, net_web_requests)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+	configuration.set_analyzer_sample_length_ns(100 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
@@ -329,7 +329,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+	configuration.set_analyzer_sample_length_ns(100 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
@@ -418,7 +418,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	// Set a very long sample time, so we're sure no connection is removed
 	//
-	configuration.set_analyzer_sample_length_ns(1000000 * ONE_SECOND_IN_NS);
+	configuration.set_analyzer_sample_length_ns(100 * ONE_SECOND_IN_NS);
 
 	//
 	// Set a very low connection table size
