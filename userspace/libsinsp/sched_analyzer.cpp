@@ -102,7 +102,7 @@ void sinsp_sched_analyzer::on_capture_start()
 	}
 }
 
-void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newpid)
+void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newtid)
 {
 	uint32_t j;
 	cpustate& state = m_cpu_states[cpu];
@@ -118,6 +118,7 @@ void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newpid)
 	//
 	if(cursegment < state.m_last_time_segment)
 	{
+		state.m_last_switch_tid = newtid;
 		return;
 	}
 
@@ -127,7 +128,7 @@ void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newpid)
 	if(state.m_last_switch_time == 0)
 	{
 		state.m_last_switch_time = ts;
-		state.m_last_switch_tid = newpid;
+		state.m_last_switch_tid = newtid;
 		state.m_last_time_segment = cursegment;
 		return;
 	}
@@ -173,7 +174,7 @@ void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newpid)
 	state.add_to_last_interval(state.m_last_switch_tid, delta);
 
 	state.m_last_switch_time = ts;
-	state.m_last_switch_tid = newpid;
+	state.m_last_switch_tid = newtid;
 	state.m_last_time_segment = cursegment;
 }
 
@@ -185,11 +186,11 @@ void sinsp_sched_analyzer::process_event(sinsp_evt* evt)
 	// Validate the return value
 	sinsp_evt_param *parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int64_t));
-	int64_t newpid = *(int64_t *)parinfo->m_val;
+	int64_t newtid = *(int64_t *)parinfo->m_val;
 
 	ASSERT(m_cpu_states[cpu].m_last_switch_tid == 0 || m_cpu_states[cpu].m_last_switch_tid == evt->get_tid());
 
-	update(ts, cpu, newpid);
+	update(ts, cpu, newtid);
 }
 
 void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof)
@@ -200,12 +201,37 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 	{
 		cpustate& state = m_cpu_states[j];
 
+		//
+		// Complete the state for this CPU
+		//
 		ASSERT(flush_time > state.m_last_switch_time);
 		ASSERT(flush_time - state.m_last_switch_time <= m_inspector->m_configuration.get_analyzer_sample_length_ns());
 
 		update(flush_time - 1, j, state.m_last_switch_tid);
 		state.complete_interval();
 
-//		xxx reset state for this cpu
+		//
+		// Reset the state so we're ready for the next sample
+		//
+		state.m_last_time_segment = 0;
+		state.m_last_interval_threads.clear();
+		state.m_last_switch_time = flush_time;
+
+#ifdef _DEBUG
+		uint32_t nused = 0;
+
+		for(uint32_t k = 0; k < state.m_time_segments.size(); k++)
+		{
+			if(state.m_time_segments[k] != 0)
+			{
+				nused++;
+			}
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, 
+			"CPU %" PRIu32 " estimated usage:%.2f",
+			j,
+			(float)nused * 100 / state.m_time_segments.size());
+#endif
 	}
 }
