@@ -63,8 +63,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024);
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
-//	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
-	m_sched_analyzer = NULL;
+	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
 
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer);
 }
@@ -99,8 +98,8 @@ sinsp_analyzer::~sinsp_analyzer()
 
 void sinsp_analyzer::on_capture_start()
 {
-//	ASSERT(m_sched_analyzer != NULL);
-//	m_sched_analyzer->on_capture_start();
+	ASSERT(m_sched_analyzer != NULL);
+	m_sched_analyzer->on_capture_start();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -921,7 +920,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Flush the scheduler analyzer
 			//
-//			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
+			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
 
 			//
 			// Reset the protobuffer
@@ -1124,7 +1123,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		etype = evt->get_type();
 		if(etype == PPME_SCHEDSWITCH_E)
 		{
-//			m_sched_analyzer->process_event(evt);
+			m_sched_analyzer->process_event(evt);
 			return;
 		}
 	}
