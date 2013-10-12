@@ -169,6 +169,11 @@ TEST_F(sys_call_test, forking_while_scap_stopped)
 	{
 		sinsp_evt* e = param.m_evt;
 
+		if(e->get_type() == PPME_SCHEDSWITCH_E)
+		{
+			return;
+		}
+
 		//
 		// In both cases, the process should exist
 		//
