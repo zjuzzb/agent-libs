@@ -5,25 +5,71 @@ typedef class sinsp_threadinfo sinsp_threadinfo;
 typedef class sinsp_fdinfo sinsp_fdinfo;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Wrapper that exports the libscap event tables
+// Event arguments
 ///////////////////////////////////////////////////////////////////////////////
 
 //
 // tostring() argument categories
 //
-typedef enum tostring_category
+typedef enum event_property_category
 {
-	TSC_NONE = 0,
-	TSC_RAWSTRING,
-	TSC_PCTCHAR,
-	TSC_EVTNUM,
-}tostring_category;
+	ETSC_NONE = 0,
+	ETSC_RAWSTRING = 1,		// used when formatting events into strings
+	// Event fields
+	ETSC_NUMBER = 2,
+	ETSC_TS = 3,
+	ETSC_NAME = 4,
+	ETSC_CPU = 5,
+	ETSC_ARGS = 6,
+	ETSC_RES = 7,
+	// FD fields
+	ETSC_FD_NUM = 8,
+	ETSC_FD_TYPE = 9,
+	ETSC_FD_NAME = 10,
+	ETSC_FD_IP = 11,
+	ETSC_FD_CLIENTADDR = 12,
+	ETSC_FD_SERVERADDR = 13,
+	ETSC_FD_PORT = 14,
+	ETSC_FD_CLIENTPORT = 15,
+	ETSC_FD_SERVERPORT = 16,
+	ETSC_FD_L4PROTO = 17,
+	ETSC_FD_SOCKFAMILY = 18,
+	// thread fields
+	ETSC_TH_TID = 19,
+	ETSC_TH_PID = 20,
+	ETSC_TH_EXE = 21,
+	ETSC_TH_COMM = 22,
+	ETSC_TH_ARGS = 23,
+	ETSC_TH_CWD = 24,
+	ETSC_TH_NCHILDS = 25,
+	ETSC_TH_ISMAINTHREAD = 26,
+	// user fields
+	ETSC_U_UID = 27,
+	ETSC_U_USERNAME = 28,
+	ETSC_U_HOMEDIR = 29,
+	ETSC_U_SHELL = 30,
+	// group fields
+	ETSC_G_GID = 31,
+	ETSC_G_GROUPNAME = 32,
+}event_property_category;
 
-typedef struct tostring_category_descriptor
+typedef enum event_property_flags
 {
+	EPF_NONE = 0,
+	EPF_FILTER_ONLY, // this argument can only be used as a filter
+	EPF_PRINT_ONLY, // this argument can only be used in the tostring() call
+}event_property_flags;
+
+typedef struct event_property_info
+{
+	event_property_category m_category;
+	ppm_param_type m_type;
+	event_property_flags m_flags;
+	ppm_print_format m_print_format;
+	char m_prefix[16];
 	char m_name[64];
-	tostring_category m_category;
-}tostring_category_descriptor;
+	char m_description[1024];
+}event_property_info;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Wrapper that exports the libscap event tables
@@ -44,6 +90,22 @@ public:
 	void init(char* valptr, uint16_t len);
 	char* m_val;
 	uint16_t m_len;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// information about a tostring() piece 
+///////////////////////////////////////////////////////////////////////////////
+class tostring_entry
+{
+public:
+	tostring_entry(event_property_category cat, string data)
+	{
+		m_cat = cat;
+		m_data = data;
+	}
+
+	event_property_category m_cat;
+	string m_data;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -112,6 +174,8 @@ public:
 	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
 	void get_category(OUT sinsp_evt::category* cat);
 
+	uint8_t* get_property_raw(event_property_category prop);
+	void get_property_as_string(event_property_category prop, OUT char** val);
 	void set_tostring_format(const string& fmt);
 	void tostring(OUT string* res);
 private:
@@ -134,7 +198,7 @@ private:
 #ifdef _DEBUG
 	bool m_filtered_out;
 #endif
-	vector<pair<tostring_category, string>> m_tostring_tokens;
+	vector<tostring_entry> m_tostring_tokens;
 
 	friend class sinsp;
 	friend class sinsp_parser;

@@ -12,10 +12,41 @@
 
 extern sinsp_evttables g_infotables;
 
-const tostring_category_descriptor g_tostring_category_table[] =
+const event_property_info g_tostring_category_table[] =
 {
-	{"evt.num", TSC_EVTNUM},
-	{"%", TSC_PCTCHAR},
+	{ETSC_NONE, PT_NONE, EPF_NONE, PF_DEC, "", "", "internal."},
+	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_DEC, "", "", "internal."},
+	{ETSC_NUMBER, PT_UINT64, EPF_NONE, PF_DEC, "evt", "num", "event number."},
+	{ETSC_TS, PT_UINT64, EPF_NONE, PF_DEC, "evt", "ts", "event timestamp."},
+	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_DEC, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
+	{ETSC_CPU, PT_INT16, EPF_NONE, PF_DEC, "evt", "cpu", "number of the CPU where this event happened."},
+	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_DEC, "evt", "args", "all the event arguments."},
+	{ETSC_RES, PT_INT64, EPF_NONE, PF_DEC, "evt", "res", "event return value."},
+	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the uninque number identifying the file descriptor."},
+	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
+	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_DEC, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
+	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_DEC, "fd", "addr", "matches the ip address (client or server) of the fd."},
+	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_DEC, "fd", "caddr", "source IP address."},
+	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_DEC, "fd", "saddr", "destination IP address."},
+	{ETSC_FD_PORT, PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd", "port", "matches the port (client or server) of the fd."},
+	{ETSC_FD_CLIENTPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "cport", "source TCP/UDP port."},
+	{ETSC_FD_SERVERPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "sport", "destination TCP/UDP port."},
+	{ETSC_FD_L4PROTO, PT_UINT8, EPF_NONE, PF_DEC, "fd", "l4proto", "IP protocol number."},
+	{ETSC_FD_SOCKFAMILY, PT_SOCKFAMILY, EPF_NONE, PF_DEC, "fd", "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
+	{ETSC_TH_TID, PT_INT64, EPF_NONE, PF_DEC, "thread", "tid", "the id of the thread generating the event."},
+	{ETSC_TH_PID, PT_INT64, EPF_NONE, PF_DEC, "thread", "pid", "the id of the process generating the event."},
+	{ETSC_TH_EXE, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "exe", "the full name (including the path) of the executable generating the event."},
+	{ETSC_TH_COMM, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "comm", "the name (excluding thr path) of the executable generating the event."},
+	{ETSC_TH_ARGS, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "args", "the arguments passed on the command line when starting the process generating the event."},
+	{ETSC_TH_CWD, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "cwd", "the current working directory of the event."},
+	{ETSC_TH_NCHILDS, PT_UINT32, EPF_NONE, PF_DEC, "thread", "nchilds", "the number of childs of that the process generating the event currently has."},
+	{ETSC_TH_ISMAINTHREAD, PT_BOOL, EPF_NONE, PF_DEC, "thread", "ismainthread", "'true' if the thread generating the event is the main one in the process."},
+	{ETSC_U_UID, PT_UINT64, EPF_NONE, PF_DEC, "user", "uid", "user ID."},
+	{ETSC_U_USERNAME, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "name", "user name."},
+	{ETSC_U_HOMEDIR, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "homedir", "home directory of the user."},
+	{ETSC_U_SHELL, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "shell", "user's shell."},
+	{ETSC_G_GID, PT_UINT64, EPF_NONE, PF_DEC, "group", "gid", "group ID."},
+	{ETSC_G_GROUPNAME, PT_CHARBUF, EPF_NONE, PF_DEC, "group", "name", "group name."},
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -858,6 +889,332 @@ void sinsp_evt::load_params()
 	}
 }
 
+uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
+{
+	uint8_t* res;
+
+	switch(prop)
+	{
+	case ETSC_NUMBER:
+		res = (uint8_t*)&m_evtnum;
+		break;
+	case ETSC_TS:
+		res = (uint8_t*)&m_pevt->ts;
+		break;
+	case ETSC_NAME:
+		if(m_pevt->type == PPME_GENERIC_E || m_pevt->type == PPME_GENERIC_X)
+		{
+			sinsp_evt_param *parinfo = get_param(0);
+			ASSERT(parinfo->m_len == sizeof(uint16_t));
+			uint16_t evid = *(uint16_t *)parinfo->m_val;
+
+			res = (uint8_t*)g_infotables.m_syscall_info_table[evid].name;
+		}
+		else
+		{
+			res = (uint8_t*)get_name();
+		}
+		break;
+	case ETSC_CPU:
+		res = (uint8_t*)&m_cpuid;
+		break;
+	case ETSC_ARGS:
+		res = (uint8_t*)"ciao";
+		break;
+	case ETSC_FD_NUM:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		res = (uint8_t*)&m_tinfo->m_lastevent_fd;
+		break;
+	case ETSC_FD_TYPE:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_NAME:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		res = (uint8_t*)m_fdinfo->m_name.c_str();
+		break;
+	case ETSC_FD_IP:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_CLIENTADDR:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_SERVERADDR:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_PORT:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_CLIENTPORT:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_SERVERPORT:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_FD_L4PROTO:
+		if(m_fdinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_TID:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_PID:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_EXE:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_COMM:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_ARGS:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_CWD:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_NCHILDS:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_TH_ISMAINTHREAD:
+		if(m_tinfo == NULL)
+		{
+			res = NULL;
+			break;
+		}
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_U_UID:
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_U_USERNAME:
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_U_HOMEDIR:
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_U_SHELL:
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_G_GID:
+		ASSERT(false);
+		res = NULL;
+		break;
+	case ETSC_G_GROUPNAME:
+		ASSERT(false);
+		res = NULL;
+		break;
+	default:
+		ASSERT(false);
+		res = NULL;
+		break;
+	}
+
+	return res;
+}
+
+void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** val)
+{
+	if(prop > sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]))
+	{
+		ASSERT(false);
+		throw sinsp_exception("wrong event property " + to_string(prop));
+	}
+
+	const event_property_info propinfo = g_tostring_category_table[prop];
+
+	if(propinfo.m_category != prop)
+	{
+		//
+		// This happens only if g_tostring_category_table is corrupted
+		//
+		ASSERT(false);
+		*val = "<ERROR>";
+		return;
+	}
+
+	uint8_t* rawval = get_property_raw(prop);
+
+	switch(propinfo.m_type)
+	{
+		case PT_INT8:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRId8, *(int8_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_INT16:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRId8, *(int16_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_INT32:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRId8, *(int32_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_INT64:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRId8, *(int64_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_L4PROTO: // This can be resolved in the future
+		case PT_UINT8:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRIu8, *(uint8_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_PORT: // This can be resolved in the future
+		case PT_UINT16:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRIu8, *(uint16_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_UINT32:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRIu8, *(uint32_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_UINT64:
+			snprintf(m_paramstr_storage,
+					 sizeof(m_paramstr_storage),
+					 "%" PRIu8, *(uint64_t *)rawval);
+			*val = m_paramstr_storage;
+			break;
+		case PT_CHARBUF:
+			*val = (char*)rawval;
+			break;
+		case PT_SOCKADDR:
+			ASSERT(false);
+			break;
+		case PT_SOCKFAMILY:
+			ASSERT(false);
+			break;
+		case PT_BOOL:
+			if(*(uint32_t*)rawval == 0)
+			{
+				*val = "true";
+			}
+			else
+			{
+				*val = "false";
+			}
+			break;
+		default:
+			ASSERT(false);
+			throw sinsp_exception("wrong event type " + to_string(propinfo.m_type));
+	}
+
+	*val = m_paramstr_storage;
+}
+
 void sinsp_evt::set_tostring_format(const string& fmt)
 {
 	uint32_t j, k;
@@ -874,22 +1231,24 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			if(last_nontoken_str_start != j)
 			{
 				m_tostring_tokens.push_back(
-					pair<tostring_category, string>(TSC_RAWSTRING, 
+					tostring_entry(ETSC_RAWSTRING, 
 						fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
 			}
 
 			for(k = 0; k < ncategories; k++)
 			{
-				int32_t toklen = strlen(g_tostring_category_table[k].m_name);
+				string fullfield = string(g_tostring_category_table[k].m_prefix) + "." + g_tostring_category_table[k].m_name;
+
+				int32_t toklen = fullfield.length();
 
 				if(strncmp(cfmt + j + 1, 
-					g_tostring_category_table[k].m_name,
+					fullfield.c_str(),
 					toklen) == 0)
 				{
 					j += toklen;
 					ASSERT(j < fmt.length());
 					m_tostring_tokens.push_back(
-						pair<tostring_category, string>(g_tostring_category_table[k].m_category, ""));
+						tostring_entry(g_tostring_category_table[k].m_category, ""));
 					break;
 				}
 			}
@@ -902,25 +1261,26 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			last_nontoken_str_start = j + 1;
 		}
 	}
-
-/*
-	vector<string> tokens = sinsp_split(fmt, ' ');
-
-	for(j = 0; j < tokens.size(); j++)
-	{
-		string& tok = tokens[j];
-
-		if(tok[0] == '%')
-		{
-			int a = 0;
-		}
-	}
-*/
 }
 
 void sinsp_evt::tostring(OUT string* res)
 {
-	*res = "";
+	vector<tostring_entry>::iterator it;
+	res->clear();
+	char* valptr;
+
+	for(it = m_tostring_tokens.begin(); it != m_tostring_tokens.end(); ++it)
+	{
+		if(it->m_cat == ETSC_RAWSTRING)
+		{
+			(*res) += it->m_data; 
+		}
+		else
+		{
+			get_property_as_string(it->m_cat, &valptr);
+			(*res) += valptr; 
+		}
+	}
 }
 
 

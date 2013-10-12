@@ -55,7 +55,7 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t deltats = 0;
 	uint64_t firstts = 0;
 	uint64_t screents;
-	uint32_t j;
+	string line;
 
 	//
 	// Loop through the events
@@ -113,7 +113,12 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		// Output the line
 		//
+		ev->tostring(&line);
+
+		cout << line << endl;
+/*
 		sinsp_threadinfo* tinfo = ev->get_thread_info();
+		uint32_t j;
 
 		n_printed_evts++;
 
@@ -154,6 +159,7 @@ captureinfo do_inspect(sinsp* inspector,
 		}
 
 		printf("\n");
+*/
 	}
 
 	retval.m_time = deltats;
@@ -241,6 +247,7 @@ inspector.set_events_formatting("ciao  %evt.numaa%evt.num");
 				dumpfile = optarg;
 				break;
 			default:
+				break;
 				usage(argv[0]);
 				return 0;
 			}

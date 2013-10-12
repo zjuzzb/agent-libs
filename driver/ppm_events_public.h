@@ -689,6 +689,10 @@ typedef enum ppm_param_type
 	PT_SIGTYPE = 19, // An 8bit signal number
 	PT_RELTIME = 20, // A relative time. Seconds * 10^9  + nanoseconds. 64bit.
 	PT_ABSTIME = 21, // An absolute time interval. Seconds from epoch * 10^9  + nanoseconds. 64bit.
+	PT_PORT = 22, // A TCP/UDP prt. 2 bytes.
+	PT_L4PROTO = 23, // A 1 byte IP protocol type.
+	PT_SOCKFAMILY = 24, // A 1 byte socket family.
+	PT_BOOL = 25, // A boolean value.
 }ppm_param_type;
 
 typedef enum ppm_print_format
