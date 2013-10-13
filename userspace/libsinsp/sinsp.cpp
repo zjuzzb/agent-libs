@@ -584,10 +584,17 @@ void sinsp::start_dropping_mode()
 	}
 }
 
+#ifdef HAS_FILTERING
 void sinsp::set_events_formatting(const string& fmt)
 {
 	m_evt.set_tostring_format(fmt);
 }
+#else
+void sinsp::set_events_formatting(const string& fmt)
+{
+	throw sinsp_exception("sinsp::set_events_formatting not supported because the library has not been compiled with filtering support.");
+}
+#endif
 
 #ifdef _DEBUG
 void sinsp::set_filter(string filter)

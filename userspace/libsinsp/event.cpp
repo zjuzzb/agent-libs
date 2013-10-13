@@ -893,6 +893,7 @@ void sinsp_evt::load_params()
 	}
 }
 
+#ifdef HAS_FILTERING
 uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 {
 	uint8_t* res;
@@ -1429,7 +1430,12 @@ void sinsp_evt::tostring(OUT string* res)
 		}
 	}
 }
-
+#else
+void sinsp_evt::tostring(OUT string* res)
+{
+	throw sinsp_exception("sinsp_evt::tostring not supported because the library has not been compiled with filtering support.");
+}
+#endif
 
 void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 {

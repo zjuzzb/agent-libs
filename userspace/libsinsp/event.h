@@ -178,9 +178,11 @@ public:
 	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
 	void get_category(OUT sinsp_evt::category* cat);
 
+#ifdef HAS_FILTERING
 	uint8_t* get_property_raw(event_property_category prop);
 	void get_property_as_string(event_property_category prop, OUT char** val);
 	void set_tostring_format(const string& fmt);
+#endif
 	void tostring(OUT string* res);
 private:
 	void load_params();
