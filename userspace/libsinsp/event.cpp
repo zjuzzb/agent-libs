@@ -1130,7 +1130,7 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		// This happens only if g_tostring_category_table is corrupted
 		//
 		ASSERT(false);
-		*val = "<ERROR>";
+		*val = (char*)"<ERROR>";
 		return;
 	}
 
@@ -1147,19 +1147,19 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_INT16:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId8, *(int16_t *)rawval);
+					 "%" PRId16, *(int16_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_INT32:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId8, *(int32_t *)rawval);
+					 "%" PRId32, *(int32_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_INT64:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId8, *(int64_t *)rawval);
+					 "%" PRId64, *(int64_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_L4PROTO: // This can be resolved in the future
@@ -1173,19 +1173,19 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_UINT16:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu8, *(uint16_t *)rawval);
+					 "%" PRIu16, *(uint16_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_UINT32:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu8, *(uint32_t *)rawval);
+					 "%" PRIu32, *(uint32_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_UINT64:
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu8, *(uint64_t *)rawval);
+					 "%" PRIu64, *(uint64_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_CHARBUF:
@@ -1200,11 +1200,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_BOOL:
 			if(*(uint32_t*)rawval == 0)
 			{
-				*val = "true";
+				*val = (char*)"true";
 			}
 			else
 			{
-				*val = "false";
+				*val = (char*)"false";
 			}
 			break;
 		default:
