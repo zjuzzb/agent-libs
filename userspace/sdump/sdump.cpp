@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-inspector.set_events_formatting("ciao  %evt.numaa%evt.num");
+inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.name %evt.dir");
 
 		//
 		// Parse the args

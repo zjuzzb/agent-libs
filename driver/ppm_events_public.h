@@ -698,8 +698,9 @@ typedef enum ppm_param_type
 typedef enum ppm_print_format
 {
 	PF_NA = 0,
-	PF_DEC = 1,
-	PF_HEX = 2,
+	PF_DEC = 1,	// decimal
+	PF_HEX = 2,	// hexadecima
+	PF_10_PADDED_DEC = 3, // decimal padded to 10 digits, useful to print the fractional part of a ns timestamp 
 }ppm_print_format;
 
 struct ppm_param_info

@@ -14,20 +14,24 @@ extern sinsp_evttables g_infotables;
 
 const event_property_info g_tostring_category_table[] =
 {
-	{ETSC_NONE, PT_NONE, EPF_NONE, PF_DEC, "", "", "internal."},
-	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_DEC, "", "", "internal."},
+	{ETSC_NONE, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
+	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
 	{ETSC_NUMBER, PT_UINT64, EPF_NONE, PF_DEC, "evt", "num", "event number."},
-	{ETSC_TS, PT_UINT64, EPF_NONE, PF_DEC, "evt", "ts", "event timestamp."},
-	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_DEC, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
+	{ETSC_TS, PT_ABSTIME, EPF_NONE, PF_DEC, "evt", "time", "absolute event timestamp."},
+	{ETSC_RELTS, PT_RELTIME, EPF_NONE, PF_DEC, "evt", "reltime", "number of nanoseconds from the beginning of the capture."},
+	{ETSC_RELTS_S, PT_RELTIME, EPF_NONE, PF_DEC, "evt", "reltime.s", "number of seconds from the beginning of the capture."},
+	{ETSC_RELTS_NS, PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt", "reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
+	{ETSC_DIRECTION, PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt", "dir", "event direction can be either '>' for enter events or '<' for exit events."},
+	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{ETSC_CPU, PT_INT16, EPF_NONE, PF_DEC, "evt", "cpu", "number of the CPU where this event happened."},
-	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_DEC, "evt", "args", "all the event arguments."},
+	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "args", "all the event arguments."},
 	{ETSC_RES, PT_INT64, EPF_NONE, PF_DEC, "evt", "res", "event return value."},
-	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the uninque number identifying the file descriptor."},
+	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
 	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
-	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_DEC, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
-	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_DEC, "fd", "addr", "matches the ip address (client or server) of the fd."},
-	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_DEC, "fd", "caddr", "source IP address."},
-	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_DEC, "fd", "saddr", "destination IP address."},
+	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
+	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd", "addr", "matches the ip address (client or server) of the fd."},
+	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "caddr", "source IP address."},
+	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "saddr", "destination IP address."},
 	{ETSC_FD_PORT, PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd", "port", "matches the port (client or server) of the fd."},
 	{ETSC_FD_CLIENTPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "cport", "source TCP/UDP port."},
 	{ETSC_FD_SERVERPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "sport", "destination TCP/UDP port."},
@@ -35,18 +39,18 @@ const event_property_info g_tostring_category_table[] =
 	{ETSC_FD_SOCKFAMILY, PT_SOCKFAMILY, EPF_NONE, PF_DEC, "fd", "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
 	{ETSC_TH_TID, PT_INT64, EPF_NONE, PF_DEC, "thread", "tid", "the id of the thread generating the event."},
 	{ETSC_TH_PID, PT_INT64, EPF_NONE, PF_DEC, "thread", "pid", "the id of the process generating the event."},
-	{ETSC_TH_EXE, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "exe", "the full name (including the path) of the executable generating the event."},
-	{ETSC_TH_COMM, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "comm", "the name (excluding thr path) of the executable generating the event."},
-	{ETSC_TH_ARGS, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "args", "the arguments passed on the command line when starting the process generating the event."},
-	{ETSC_TH_CWD, PT_CHARBUF, EPF_NONE, PF_DEC, "thread", "cwd", "the current working directory of the event."},
+	{ETSC_TH_EXE, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "exe", "the full name (including the path) of the executable generating the event."},
+	{ETSC_TH_COMM, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "comm", "the name (excluding thr path) of the executable generating the event."},
+	{ETSC_TH_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "args", "the arguments passed on the command line when starting the process generating the event."},
+	{ETSC_TH_CWD, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "cwd", "the current working directory of the event."},
 	{ETSC_TH_NCHILDS, PT_UINT32, EPF_NONE, PF_DEC, "thread", "nchilds", "the number of childs of that the process generating the event currently has."},
-	{ETSC_TH_ISMAINTHREAD, PT_BOOL, EPF_NONE, PF_DEC, "thread", "ismainthread", "'true' if the thread generating the event is the main one in the process."},
+	{ETSC_TH_ISMAINTHREAD, PT_BOOL, EPF_NONE, PF_NA, "thread", "ismainthread", "'true' if the thread generating the event is the main one in the process."},
 	{ETSC_U_UID, PT_UINT64, EPF_NONE, PF_DEC, "user", "uid", "user ID."},
-	{ETSC_U_USERNAME, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "name", "user name."},
-	{ETSC_U_HOMEDIR, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "homedir", "home directory of the user."},
-	{ETSC_U_SHELL, PT_CHARBUF, EPF_NONE, PF_DEC, "user", "shell", "user's shell."},
+	{ETSC_U_USERNAME, PT_CHARBUF, EPF_NONE, PF_NA, "user", "name", "user name."},
+	{ETSC_U_HOMEDIR, PT_CHARBUF, EPF_NONE, PF_NA, "user", "homedir", "home directory of the user."},
+	{ETSC_U_SHELL, PT_CHARBUF, EPF_NONE, PF_NA, "user", "shell", "user's shell."},
 	{ETSC_G_GID, PT_UINT64, EPF_NONE, PF_DEC, "group", "gid", "group ID."},
-	{ETSC_G_GROUPNAME, PT_CHARBUF, EPF_NONE, PF_DEC, "group", "name", "group name."},
+	{ETSC_G_GROUPNAME, PT_CHARBUF, EPF_NONE, PF_NA, "group", "name", "group name."},
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -901,6 +905,23 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 	case ETSC_TS:
 		res = (uint8_t*)&m_pevt->ts;
 		break;
+	case ETSC_RELTS:
+		*(uint64_t*)m_paramstr_storage = m_pevt->ts - m_inspector->m_firstevent_ts;
+		res = (uint8_t*)m_paramstr_storage;
+		break;
+	case ETSC_RELTS_S:
+		*(uint64_t*)m_paramstr_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) / 1000000000;
+		res = (uint8_t*)m_paramstr_storage;
+		break;
+	case ETSC_RELTS_NS:
+		*(uint64_t*)m_paramstr_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) % 1000000000;
+		res = (uint8_t*)m_paramstr_storage;
+		break;
+	case ETSC_DIRECTION:
+		m_paramstr_storage[0] = (get_direction() == SCAP_ED_IN)? '>' : '<';
+		m_paramstr_storage[1] = 0;
+		res = (uint8_t*)m_paramstr_storage;
+		break;
 	case ETSC_NAME:
 		if(m_pevt->type == PPME_GENERIC_E || m_pevt->type == PPME_GENERIC_X)
 		{
@@ -1116,6 +1137,7 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 
 void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** val)
 {
+	char* prfmt;
 	if(prop > sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]))
 	{
 		ASSERT(false);
@@ -1134,58 +1156,175 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		return;
 	}
 
+	//
+	// Emit the value
+	//
 	uint8_t* rawval = get_property_raw(prop);
 
 	switch(propinfo.m_type)
 	{
 		case PT_INT8:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRId8;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIX8;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId8, *(int8_t *)rawval);
+					 prfmt, *(int8_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_INT16:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRId16;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIX16;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId16, *(int16_t *)rawval);
+					 prfmt, *(int16_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_INT32:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRId32;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIX32;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId32, *(int32_t *)rawval);
+					 prfmt, *(int32_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_INT64:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRId64;
+			}
+			else if(propinfo.m_print_format == PF_10_PADDED_DEC)
+			{
+				prfmt = "%09" PRId64;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIX64;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRId64, *(int64_t *)rawval);
+					 prfmt, *(int64_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_L4PROTO: // This can be resolved in the future
 		case PT_UINT8:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRIu8;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIu8;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu8, *(uint8_t *)rawval);
+					 prfmt, *(uint8_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_PORT: // This can be resolved in the future
 		case PT_UINT16:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRIu16;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIu16;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu16, *(uint16_t *)rawval);
+					 prfmt, *(uint16_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_UINT32:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRIu32;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIu32;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu32, *(uint32_t *)rawval);
+					 prfmt, *(uint32_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_UINT64:
+		case PT_RELTIME:
+		case PT_ABSTIME:
+			if(propinfo.m_print_format == PF_DEC)
+			{
+				prfmt = "%" PRIu64;
+			}
+			else if(propinfo.m_print_format == PF_10_PADDED_DEC)
+			{
+				prfmt = "%09" PRIu64;
+			}
+			else if(propinfo.m_print_format == PF_HEX)
+			{
+				prfmt = "%" PRIX64;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			snprintf(m_paramstr_storage,
 					 sizeof(m_paramstr_storage),
-					 "%" PRIu64, *(uint64_t *)rawval);
+					 prfmt, *(uint64_t *)rawval);
 			*val = m_paramstr_storage;
 			break;
 		case PT_CHARBUF:
@@ -1211,8 +1350,6 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 			ASSERT(false);
 			throw sinsp_exception("wrong event type " + to_string(propinfo.m_type));
 	}
-
-	*val = m_paramstr_storage;
 }
 
 void sinsp_evt::set_tostring_format(const string& fmt)
@@ -1228,6 +1365,9 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 	{
 		if(cfmt[j] == '%')
 		{
+			int32_t selected = -1;
+			int32_t selected_toklen = 0;
+
 			if(last_nontoken_str_start != j)
 			{
 				m_tostring_tokens.push_back(
@@ -1245,15 +1385,22 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 					fullfield.c_str(),
 					toklen) == 0)
 				{
-					j += toklen;
-					ASSERT(j < fmt.length());
-					m_tostring_tokens.push_back(
-						tostring_entry(g_tostring_category_table[k].m_category, ""));
-					break;
+					if(toklen > selected_toklen)
+					{
+						selected_toklen = toklen;
+						selected = k;
+					}
 				}
 			}
 
-			if(k == ncategories)
+			if(selected != -1)
+			{
+				j += selected_toklen;
+				ASSERT(j < fmt.length());
+				m_tostring_tokens.push_back(
+					tostring_entry(g_tostring_category_table[selected].m_category, ""));
+			}
+			else
 			{
 				throw sinsp_exception("error in the event format string at position " + to_string(j));
 			}

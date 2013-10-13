@@ -41,6 +41,7 @@ sinsp::sinsp() :
 	m_analyzer_callback = NULL;
 #ifdef HAS_FILTERING
 	m_filter = NULL;
+	m_firstevent_ts = 0;
 #endif
 
 	m_fds_to_remove = new vector<int64_t>;
@@ -336,6 +337,12 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_evt.m_evtnum = get_num_events();
 	m_lastevent_ts = m_evt.get_ts();
+#ifdef HAS_FILTERING
+	if(m_firstevent_ts == 0)
+	{
+		m_firstevent_ts = m_lastevent_ts;
+	}
+#endif
 
 	//
 	// If needed, dump the event to file

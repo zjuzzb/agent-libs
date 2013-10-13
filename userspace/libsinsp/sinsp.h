@@ -269,6 +269,9 @@ VISIBILITY_PRIVATE
 	vector<int64_t>* m_fds_to_remove;
 	int64_t m_tid_of_fd_to_remove;
 	uint64_t m_lastevent_ts;
+#ifdef HAS_FILTERING
+	uint64_t m_firstevent_ts;
+#endif
 	// the parsing engine
 	sinsp_parser* m_parser;
 	// the statistics analysis engine
