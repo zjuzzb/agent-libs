@@ -2344,7 +2344,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				// datagram one or because some event was lost),
 				// add it here.
 				//
-				update_fd(evt, evt->get_param(2));
+				update_fd(evt, evt->get_param(tupleparam));
 				const char *parstr;
 				if(evt->m_fdinfo->m_name.length() == 0)
 				{
@@ -2397,7 +2397,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				}
 
 				const char *parstr;
-				update_fd(evt, enter_evt->get_param(2));
+				update_fd(evt, enter_evt->get_param(tupleparam));
 				evt->m_fdinfo->m_name = enter_evt->get_param_as_str(2, &parstr, sinsp_evt::PF_SIMPLE);
 			}
 
