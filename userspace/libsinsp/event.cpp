@@ -25,6 +25,7 @@ const event_property_info g_tostring_category_table[] =
 	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{ETSC_CPU, PT_INT16, EPF_NONE, PF_DEC, "evt", "cpu", "number of the CPU where this event happened."},
 	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "args", "all the event arguments."},
+	{ETSC_ARG, PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt", "arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg.0'."},
 	{ETSC_RES, PT_INT64, EPF_NONE, PF_DEC, "evt", "res", "event return value."},
 	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
 	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
@@ -907,21 +908,21 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 		res = (uint8_t*)&m_pevt->ts;
 		break;
 	case ETSC_RELTS:
-		*(uint64_t*)m_paramstr_storage = m_pevt->ts - m_inspector->m_firstevent_ts;
-		res = (uint8_t*)m_paramstr_storage;
+		*(uint64_t*)m_getproperty_storage = m_pevt->ts - m_inspector->m_firstevent_ts;
+		res = (uint8_t*)m_getproperty_storage;
 		break;
 	case ETSC_RELTS_S:
-		*(uint64_t*)m_paramstr_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) / 1000000000;
-		res = (uint8_t*)m_paramstr_storage;
+		*(uint64_t*)m_getproperty_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) / 1000000000;
+		res = (uint8_t*)m_getproperty_storage;
 		break;
 	case ETSC_RELTS_NS:
-		*(uint64_t*)m_paramstr_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) % 1000000000;
-		res = (uint8_t*)m_paramstr_storage;
+		*(uint64_t*)m_getproperty_storage = (m_pevt->ts - m_inspector->m_firstevent_ts) % 1000000000;
+		res = (uint8_t*)m_getproperty_storage;
 		break;
 	case ETSC_DIRECTION:
-		m_paramstr_storage[0] = (get_direction() == SCAP_ED_IN)? '>' : '<';
-		m_paramstr_storage[1] = 0;
-		res = (uint8_t*)m_paramstr_storage;
+		m_getproperty_storage[0] = (get_direction() == SCAP_ED_IN)? '>' : '<';
+		m_getproperty_storage[1] = 0;
+		res = (uint8_t*)m_getproperty_storage;
 		break;
 	case ETSC_NAME:
 		if(m_pevt->type == PPME_GENERIC_E || m_pevt->type == PPME_GENERIC_X)
@@ -941,7 +942,42 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 		res = (uint8_t*)&m_cpuid;
 		break;
 	case ETSC_ARGS:
-		res = (uint8_t*)"ciao";
+		{
+			uint32_t pos = 0;
+			char* spc = "";
+
+			m_getproperty_storage[0] = 0;
+
+			for(uint32_t j = 0; j < get_num_params(); j++)
+			{
+				const char* paramstr;
+				const char* resolved_paramstr;
+
+				paramstr = get_param_as_str(j, &resolved_paramstr);
+
+				if(resolved_paramstr[0] == 0)
+				{
+					pos += snprintf(m_getproperty_storage + pos,
+						sizeof(m_getproperty_storage) - pos,
+						"%s%s=%s", spc, get_param_name(j), paramstr);
+				}
+				else
+				{
+					pos += snprintf(m_getproperty_storage + pos,
+						sizeof(m_getproperty_storage) - pos,
+						"%s%s=%s(%s)", spc, get_param_name(j), 
+						paramstr, 
+						resolved_paramstr);
+				}
+
+				spc = " ";
+			}
+
+			res = (uint8_t*)m_getproperty_storage;
+		}
+		break;
+	case ETSC_ARG:
+		ASSERT(false);
 		break;
 	case ETSC_FD_NUM:
 		if(m_tinfo == NULL)
@@ -1178,10 +1214,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(int8_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_INT16:
 			if(propinfo.m_print_format == PF_DEC)
@@ -1197,10 +1233,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(int16_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_INT32:
 			if(propinfo.m_print_format == PF_DEC)
@@ -1216,10 +1252,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(int32_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_INT64:
 			if(propinfo.m_print_format == PF_DEC)
@@ -1239,10 +1275,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(int64_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_L4PROTO: // This can be resolved in the future
 		case PT_UINT8:
@@ -1259,10 +1295,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(uint8_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_PORT: // This can be resolved in the future
 		case PT_UINT16:
@@ -1279,10 +1315,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(uint16_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_UINT32:
 			if(propinfo.m_print_format == PF_DEC)
@@ -1298,10 +1334,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(uint32_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_UINT64:
 		case PT_RELTIME:
@@ -1323,10 +1359,10 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 				ASSERT(false);
 			}
 
-			snprintf(m_paramstr_storage,
-					 sizeof(m_paramstr_storage),
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
 					 prfmt, *(uint64_t *)rawval);
-			*val = m_paramstr_storage;
+			*val = m_getpropertystr_storage;
 			break;
 		case PT_CHARBUF:
 			*val = (char*)rawval;
@@ -1398,8 +1434,15 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			{
 				j += selected_toklen;
 				ASSERT(j < fmt.length());
+				const event_property_info* einfo = &(g_tostring_category_table[selected]);
+
+				if(einfo->m_flags & EPF_REQUIRES_ARGUMENT)
+				{
+					int a = 0;
+				}
+
 				m_tostring_tokens.push_back(
-					tostring_entry(g_tostring_category_table[selected].m_category, ""));
+					tostring_entry(einfo->m_category, ""));
 			}
 			else
 			{

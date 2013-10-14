@@ -25,6 +25,7 @@ typedef enum event_property_category
 	ETSC_NAME,
 	ETSC_CPU,
 	ETSC_ARGS,
+	ETSC_ARG,
 	ETSC_RES,
 	// FD fields
 	ETSC_FD_NUM,
@@ -60,8 +61,9 @@ typedef enum event_property_category
 typedef enum event_property_flags
 {
 	EPF_NONE = 0,
-	EPF_FILTER_ONLY, // this argument can only be used as a filter
-	EPF_PRINT_ONLY, // this argument can only be used in the tostring() call
+	EPF_FILTER_ONLY, // this property can only be used as a filter
+	EPF_PRINT_ONLY, // this property can only be used in the tostring() call
+	EPF_REQUIRES_ARGUMENT, // this property includes an argument, under the form 'property.argument'
 }event_property_flags;
 
 typedef struct event_property_info
@@ -195,8 +197,16 @@ private:
 	bool m_params_loaded;
 	const struct ppm_event_info* m_info;
 	vector<sinsp_evt_param> m_params;
+
+	// Note: this is a lot of storage. We assume that it's not a bit deal since
+	//       currently there's no case in which more than one single event is 
+	//       needed by the library users. We'll optmize this when we'll have the 
+	//       need.
 	char m_paramstr_storage[1024];
 	char m_resolved_paramstr_storage[1024];
+	char m_getproperty_storage[1024];
+	char m_getpropertystr_storage[32]; // This should be used for number only
+
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
 	uint32_t m_iosize;
