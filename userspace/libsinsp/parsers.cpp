@@ -2322,8 +2322,18 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 		{
 			char *data;
 			uint32_t datalen;
+			int32_t tupleparam = -1;
 
-			if(etype == PPME_SOCKET_RECVFROM_X && (evt->m_fdinfo->m_name.length() == 0 || evt->m_fdinfo->is_udp_socket()))
+			if(etype == PPME_SOCKET_RECVFROM_X)
+			{
+				tupleparam = 2;
+			}
+			else if(etype == PPME_SOCKET_RECVMSG_X)
+			{
+				tupleparam = 3;
+			}
+
+			if(tupleparam != -1 && (evt->m_fdinfo->m_name.length() == 0 || evt->m_fdinfo->is_udp_socket()))
 			{
 				//
 				// recvfrom contains tuple info.
@@ -2360,8 +2370,18 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 		{
 			char *data;
 			uint32_t datalen;
+			int32_t tupleparam = -1;
 
-			if(etype == PPME_SOCKET_SENDTO_X && (evt->m_fdinfo->m_name.length() == 0  || evt->m_fdinfo->is_udp_socket()))
+			if(etype == PPME_SOCKET_SENDTO_X)
+			{
+				tupleparam = 2;
+			}
+			else if(etype == PPME_SOCKET_SENDMSG_X)
+			{
+				tupleparam = 3;
+			}
+
+			if(tupleparam != -1 && (evt->m_fdinfo->m_name.length() == 0  || evt->m_fdinfo->is_udp_socket()))
 			{
 				//
 				// sendto contains tuple info in the enter event.
