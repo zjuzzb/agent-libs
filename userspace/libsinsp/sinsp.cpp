@@ -458,8 +458,8 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 			//
 			newpi.m_tid = tid;
 			newpi.m_pid = tid;
-			newpi.m_comm = "Unknown";
-			newpi.m_exe = "Unknown";
+			newpi.m_comm = "<NA>";
+			newpi.m_exe = "<NA>";
 		}
 
 		m_thread_manager->add_thread(newpi);

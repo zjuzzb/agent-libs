@@ -89,7 +89,7 @@ VISIBILITY_PRIVATE
 	void serialize(uint64_t ts);
 	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
-	void emit_aggregate_connections();
+	void emit_aggregated_connections();
 	void emit_full_connections();
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
 

@@ -710,7 +710,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif // ANALYZER_EMITS_PROGRAMS
 }
 
-void sinsp_analyzer::emit_aggregate_connections()
+void sinsp_analyzer::emit_aggregated_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 	process_tuple tuple;
@@ -966,7 +966,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			if(m_inspector->m_configuration.get_aggregate_connections_in_proto())
 			{
-				emit_aggregate_connections();
+				emit_aggregated_connections();
 			}
 			else
 			{

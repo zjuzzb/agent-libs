@@ -1070,7 +1070,11 @@ void sinsp_parser::parse_bind_exit(sinsp_evt *evt)
 	//
 	// Mark this fd as a server
 	//
-	evt->m_fdinfo->set_role_server();
+//	evt->m_fdinfo->set_role_server();
+
+	//
+	// Upfate the name of this socket
+	//
 	evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
 }
 
@@ -2032,6 +2036,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
+
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
 	{
 		/////////////////////////////////////////////////////////////////////////////
