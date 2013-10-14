@@ -33,10 +33,14 @@ static int32_t f_sys_accept_x(struct event_filler_arguments* args);
 static int32_t f_sys_send_e(struct event_filler_arguments* args);
 static int32_t f_sys_send_x(struct event_filler_arguments* args);
 static int32_t f_sys_sendto_e(struct event_filler_arguments* args);
+static int32_t f_sys_sendmsg_e(struct event_filler_arguments* args);
+static int32_t f_sys_sendmsg_x(struct event_filler_arguments* args);
 static int32_t f_sys_recv_e(struct event_filler_arguments* args);
 static int32_t f_sys_recv_x(struct event_filler_arguments* args);
 static int32_t f_sys_recvfrom_e(struct event_filler_arguments* args);
 static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args);
+static int32_t f_sys_recvmsg_e(struct event_filler_arguments* args);
+static int32_t f_sys_recvmsg_x(struct event_filler_arguments* args);
 static int32_t f_sys_shutdown_e(struct event_filler_arguments* args);
 static int32_t f_sys_pipe_x(struct event_filler_arguments* args);
 static int32_t f_sys_eventfd_e(struct event_filler_arguments* args);
@@ -110,10 +114,14 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 	[PPME_SOCKET_SEND_X] = {f_sys_send_x},
 	[PPME_SOCKET_SENDTO_E] = {f_sys_sendto_e},
 	[PPME_SOCKET_SENDTO_X] = {f_sys_send_x},
+	[PPME_SOCKET_SENDMSG_E] = {f_sys_sendmsg_e},
+	[PPME_SOCKET_SENDMSG_X] = {f_sys_sendmsg_x},
 	[PPME_SOCKET_RECV_E] = {f_sys_recv_e},
 	[PPME_SOCKET_RECV_X] = {f_sys_recv_x},
 	[PPME_SOCKET_RECVFROM_E] = {f_sys_recvfrom_e},
 	[PPME_SOCKET_RECVFROM_X] = {f_sys_recvfrom_x},
+	[PPME_SOCKET_RECVMSG_E] = {f_sys_recvmsg_e},
+	[PPME_SOCKET_RECVMSG_X] = {f_sys_recvmsg_x},
 	[PPME_SOCKET_SHUTDOWN_E] = {f_sys_shutdown_e},
 	[PPME_SOCKET_SHUTDOWN_X] = {f_sys_single_x},
 	[PPME_SYSCALL_PIPE_E] = {f_sys_empty},
@@ -1556,6 +1564,281 @@ static int32_t f_sys_recvfrom_x(struct event_filler_arguments* args)
 	return add_sentinel(args);
 }
 
+static int32_t f_sys_sendmsg_e(struct event_filler_arguments* args)
+{
+	int32_t res;
+	unsigned long val;
+	struct msghdr mh;
+	char* targetbuf = args->str_storage;
+	const struct iovec* iov;
+	unsigned long iovcnt;
+	int fd;
+	uint16_t size = 0;
+	int addrlen;
+	int err = 0;
+	struct sockaddr __user* usrsockaddr;
+	struct sockaddr_storage address;
+
+	//
+	// fd
+	//
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 0, 1, &val);
+#else
+	val = args->socketcall_args[0];
+#endif
+	fd = val;
+	res = val_to_ring(args, val, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// Retrieve the message header
+	//
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+#else
+	val = args->socketcall_args[1];
+#endif
+
+	if(unlikely(ppm_copy_from_user(&mh, (const void*)val, sizeof(struct msghdr))))
+	{
+		return PPM_FAILURE_INVALID_USER_MEMORY;
+	}
+
+	//
+	// size
+	//
+	iov = mh.msg_iov;
+	iovcnt = mh.msg_iovlen;
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// tuple
+	//
+	usrsockaddr = (struct sockaddr __user*)mh.msg_name;
+	addrlen = mh.msg_namelen;
+
+	if(usrsockaddr != NULL && addrlen != 0)
+	{
+		//
+		// Copy the address
+		//
+		err = addr_to_kernel(usrsockaddr, addrlen, (struct sockaddr *)&address);
+		if(likely(err >= 0))
+		{
+			//
+			// Convert the fd into socket endpoint information
+			//
+			size = fd_to_socktuple(fd, 
+				(struct sockaddr *)&address,
+				addrlen,
+				true,
+				true, 
+				targetbuf, 
+				STR_STORAGE_SIZE);
+		}
+	}
+
+	// Copy the endpoint info into the ring
+	res = val_to_ring(args,
+	                    (uint64_t)(unsigned long)targetbuf,
+	                    size,
+	                    false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_sendmsg_x(struct event_filler_arguments* args)
+{
+	int32_t res;
+	unsigned long val;
+	int64_t retval;
+	const struct iovec* iov;
+	unsigned long iovcnt;
+	struct msghdr mh;
+
+	//
+	// res
+	//
+	retval = (int64_t)syscall_get_return_value(current, args->regs);
+	res = val_to_ring(args, retval, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// Retrieve the message header
+	//
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+#else
+	val = args->socketcall_args[1];
+#endif
+
+	if(unlikely(ppm_copy_from_user(&mh, (const void*)val, sizeof(struct msghdr))))
+	{
+		return PPM_FAILURE_INVALID_USER_MEMORY;
+	}
+
+	//
+	// data
+	//
+	iov = mh.msg_iov;
+	iovcnt = mh.msg_iovlen;
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_DATA);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_recvmsg_e(struct event_filler_arguments* args)
+{
+	int32_t res;
+	unsigned long val;
+
+	//
+	// fd
+	//
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 0, 1, &val);
+#else
+	val = args->socketcall_args[0];
+#endif
+	res = val_to_ring(args, val, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+static int32_t f_sys_recvmsg_x(struct event_filler_arguments* args)
+{
+	int32_t res;
+	unsigned long val;
+	int64_t retval;
+	const struct iovec* iov;
+	unsigned long iovcnt;
+	struct msghdr mh;
+	char* targetbuf = args->str_storage;
+	int fd;
+	struct sockaddr __user* usrsockaddr;
+	struct sockaddr_storage address;
+	uint16_t size = 0;
+	int addrlen;
+	int err = 0;
+
+	//
+	// res
+	//
+	retval = (int64_t)syscall_get_return_value(current, args->regs);
+	res = val_to_ring(args, retval, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// Retrieve the message header
+	//
+#ifdef __x86_64__
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+#else
+	val = args->socketcall_args[1];
+#endif
+
+	if(unlikely(ppm_copy_from_user(&mh, (const void*)val, sizeof(struct msghdr))))
+	{
+		return PPM_FAILURE_INVALID_USER_MEMORY;
+	}
+
+	//
+	// data and size
+	//
+	iov = mh.msg_iov;
+	iovcnt = mh.msg_iovlen;
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, retval, PRB_FLAG_PUSH_ALL);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// tuple
+	//
+	if(retval >= 0)
+	{
+		//
+		// Get the fd
+		//
+#ifdef __x86_64__
+		syscall_get_arguments(current, args->regs, 0, 1, &val);
+		fd = (int)val;
+#else
+		fd = (int)args->socketcall_args[0];
+#endif
+
+		//
+		// Get the address
+		//
+		usrsockaddr = (struct sockaddr __user*)mh.msg_name;
+		addrlen = mh.msg_namelen;
+
+		if(usrsockaddr != NULL && addrlen != 0)
+		{
+			//
+			// Copy the address
+			//
+			err = addr_to_kernel(usrsockaddr, addrlen, (struct sockaddr *)&address);
+			if(likely(err >= 0))
+			{
+				//
+				// Convert the fd into socket endpoint information
+				//
+				size = fd_to_socktuple(fd, 
+					(struct sockaddr *)&address,
+					addrlen,
+					true,
+					true, 
+					targetbuf, 
+					STR_STORAGE_SIZE);
+			}
+		}
+	}
+
+	// Copy the endpoint info into the ring
+	res = val_to_ring(args,
+	                    (uint64_t)(unsigned long)targetbuf,
+	                    size,
+	                    false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+
+
 static int32_t f_sys_pipe_x(struct event_filler_arguments* args)
 {
 	int32_t res;
@@ -2255,101 +2538,13 @@ static int32_t f_sys_pwrite64_e(struct event_filler_arguments* args)
 	return add_sentinel(args);
 }
 
-//
-// Parses the list of buffers of a xreadv or xwritev call, and pushes the size (and optionally 
-// the data) to the ring.
-//
-#define PRB_FLAG_PUSH_SIZE	1
-#define PRB_FLAG_PUSH_DATA	2
-#define PRB_FLAG_PUSH_ALL	(PRB_FLAG_PUSH_SIZE | PRB_FLAG_PUSH_DATA)
-
-static int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, int64_t retval, int flags)
+static int32_t f_sys_readv_x(struct event_filler_arguments* args)
 {
 	unsigned long val;
+	int64_t retval;
 	int32_t res;
 	const struct iovec* iov;
 	unsigned long iovcnt;
-	char* targetbuf = args->str_storage;
-	uint32_t copylen;
-	uint32_t j;
-	uint64_t size = 0;
-	unsigned long bufsize;
-
-	//
-	// Get the buffers and parse them
-	//
-	syscall_get_arguments(current, args->regs, 1, 1, &val);
-
-	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
-	copylen = iovcnt * sizeof(struct iovec);
-
-	if(unlikely(copylen >= STR_STORAGE_SIZE))
-	{
-		return PPM_FAILURE_BUFFER_FULL;
-	}
-
-	if(unlikely(ppm_copy_from_user(targetbuf, (const void*)val, copylen)))
-	{
-		return PPM_FAILURE_INVALID_USER_MEMORY;
-	}
-
-	iov = (const struct iovec*)targetbuf;
-	
-	//
-	// Size
-	//
-	if(flags & PRB_FLAG_PUSH_SIZE)
-	{
-		for(j = 0; j < iovcnt; j++)
-		{
-			size += iov[j].iov_len;
-		}
-
-		res = val_to_ring(args, size, 0, false);
-		if(unlikely(res != PPM_SUCCESS))
-		{
-			return res;
-		}		
-	}
-
-	//
-	// data
-	// NOTE: for the moment, we limit our data copy to the first buffer.
-	//       We assume that in the vast majority of the cases RW_SNAPLEN is much smaller 
-	//       than iov[0].iov_len, and therefore we don't bother complicvating the code.
-	//
-	if(flags & PRB_FLAG_PUSH_DATA)
-	{
-		if(retval > 0 && iovcnt > 0)
-		{
-			bufsize = min(retval, (int64_t)iov[0].iov_len);
-
-			res = val_to_ring(args, 
-				(unsigned long)iov[0].iov_base, 
-				min(bufsize, (unsigned long)RW_SNAPLEN),
-				true);
-			if(unlikely(res != PPM_SUCCESS))
-			{
-				return res;
-			}
-		}
-		else
-		{
-			res = val_to_ring(args, 0, 0, false);
-			if(unlikely(res != PPM_SUCCESS))
-			{
-				return res;
-			}		
-		}
-	}
-
-	return PPM_SUCCESS;
-}
-
-static int32_t f_sys_readv_x(struct event_filler_arguments* args)
-{
-	int64_t retval;
-	int32_t res;
 
 	//
 	// res
@@ -2364,7 +2559,11 @@ static int32_t f_sys_readv_x(struct event_filler_arguments* args)
 	//
 	// data and size
 	//
-	res = parse_readv_writev_bufs(args, retval, PRB_FLAG_PUSH_ALL);
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+	iov = (const struct iovec*)val;
+	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, retval, PRB_FLAG_PUSH_ALL);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2377,6 +2576,8 @@ static int32_t f_sys_writev_e(struct event_filler_arguments* args)
 {
 	unsigned long val;
 	int32_t res;
+	const struct iovec* iov;
+	unsigned long iovcnt;
 
 	//
 	// fd
@@ -2391,7 +2592,11 @@ static int32_t f_sys_writev_e(struct event_filler_arguments* args)
 	//
 	// size
 	//
-	res = parse_readv_writev_bufs(args, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+	iov = (const struct iovec*)val;
+	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2402,8 +2607,11 @@ static int32_t f_sys_writev_e(struct event_filler_arguments* args)
 
 static int32_t f_sys_writev_pwritev_x(struct event_filler_arguments* args)
 {
+	unsigned long val;
 	int32_t res;
 	int64_t retval;
+	const struct iovec* iov;
+	unsigned long iovcnt;
 
 	//
 	// res
@@ -2416,9 +2624,13 @@ static int32_t f_sys_writev_pwritev_x(struct event_filler_arguments* args)
 	}
 
 	//
-	// data
+	// data and size
 	//
-	res = parse_readv_writev_bufs(args, RW_SNAPLEN, PRB_FLAG_PUSH_DATA);
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+	iov = (const struct iovec*)val;
+	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_DATA);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2466,8 +2678,11 @@ static int32_t f_sys_preadv_e(struct event_filler_arguments* args)
 
 static int32_t f_sys_preadv_x(struct event_filler_arguments* args)
 {
+	unsigned long val;
 	int64_t retval;
 	int32_t res;
+	const struct iovec* iov;
+	unsigned long iovcnt;
 
 	//
 	// res
@@ -2482,7 +2697,11 @@ static int32_t f_sys_preadv_x(struct event_filler_arguments* args)
 	//
 	// data and size
 	//
-	res = parse_readv_writev_bufs(args, retval, PRB_FLAG_PUSH_ALL);
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+	iov = (const struct iovec*)val;
+	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, retval, PRB_FLAG_PUSH_ALL);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2500,6 +2719,8 @@ static int32_t f_sys_pwritev_e(struct event_filler_arguments* args)
 	unsigned long pos1;
 	uint64_t pos64;
 #endif
+	const struct iovec* iov;
+	unsigned long iovcnt;
 
 	//
 	// fd
@@ -2514,7 +2735,11 @@ static int32_t f_sys_pwritev_e(struct event_filler_arguments* args)
 	//
 	// size
 	//
-	res = parse_readv_writev_bufs(args, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	syscall_get_arguments(current, args->regs, 1, 1, &val);
+	iov = (const struct iovec*)val;
+	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
+
+	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;

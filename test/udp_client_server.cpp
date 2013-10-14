@@ -31,9 +31,10 @@ using Poco::StringTokenizer;
 class udp_server
 {
 public:
-	udp_server(bool use_unix)
+	udp_server(bool use_unix, bool use_sendmsg)
 	{
 		m_use_unix = use_unix;
+		m_use_sendmsg = use_sendmsg;
 	}
 
 	void run()
@@ -82,28 +83,61 @@ public:
 
 			for(j = 0; j < NTRANSACTIONS; j++)
 			{
-				//
-				// Receive the data
-				//
-				rc = recvfrom(sd, buffer, sizeof(buffer), 0,
-				              (struct sockaddr *) &clientaddr,
-				              &clientaddrlen);
-				if(rc < 0)
+				if(m_use_sendmsg)
 				{
-					perror("recvfrom() failed");
-					break;
+					struct msghdr msg;
+					struct iovec iov;
+
+					msg.msg_name = &clientaddr;
+					msg.msg_namelen = clientaddrlen;
+					msg.msg_iov = &iov;
+					msg.msg_iovlen = 1;
+					msg.msg_iov->iov_base = buffer;
+					msg.msg_iov->iov_len = sizeof(buffer);
+					msg.msg_control = 0;
+					msg.msg_controllen = 0;
+					msg.msg_flags = 0;
+
+					//
+					// Receive the data
+					//
+					recvmsg(sd, &msg, 0);
+
+					//
+					// Echo the data back to the client
+					//
+					if(sendmsg(sd, &msg, 0) == -1)
+					{
+						perror("sendmsg() failed");
+						break;
+					}
 				}
-				//
-				// Echo the data back to the client
-				//
-				rc = sendto(sd, buffer, sizeof(buffer), 0,
-				            (struct sockaddr *) &clientaddr,
-				            sizeof(clientaddr));
-				if(rc < 0)
+				else
 				{
-					FAIL();
-					perror("sendto() failed");
-					break;
+					//
+					// Receive the data
+					//
+					rc = recvfrom(sd, buffer, sizeof(buffer), 0,
+					              (struct sockaddr *) &clientaddr,
+					              &clientaddrlen);
+					if(rc < 0)
+					{
+						perror("recvfrom() failed");
+						break;
+					}
+
+					//
+					// Echo the data back to the client
+					//
+					rc = sendto(sd, buffer, sizeof(buffer), 0,
+					            (struct sockaddr *) &clientaddr,
+					            sizeof(clientaddr));
+					if(rc < 0)
+					{
+						FAIL();
+						perror("sendto() failed");
+						break;
+					}
 				}
 			}
 		}
@@ -127,6 +161,7 @@ private:
 	Poco::Event m_server_ready;
 	int64_t m_tid;
 	bool m_use_unix;
+	bool m_use_sendmsg;
 };
 
 class udp_client
@@ -184,7 +219,6 @@ public:
 
 		for(j = 0; j < NTRANSACTIONS; j++)
 		{
-
 			if(m_use_connect)
 			{
 				rc = sendto(sd, buffer, sizeof(buffer), 0, NULL, 0);
@@ -230,7 +264,7 @@ private:
 TEST_F(sys_call_test, udp_client_server)
 {
 	Poco::Thread server_thread;
-	udp_server server(false);
+	udp_server server(false, false);
 	int32_t state = 0;
 	int64_t fd_server_socket = 0;
 	uint32_t server_ip_address = get_server_address();
@@ -256,7 +290,7 @@ TEST_F(sys_call_test, udp_client_server)
 		server_thread.start(runnable);
 		server.wait_for_server_ready();
 
-		udp_client client(server_ip_address,false);
+		udp_client client(server_ip_address, false);
 		client.run();
 		server_thread.join();
 	};
@@ -400,7 +434,7 @@ TEST_F(sys_call_test, udp_client_server)
 TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 {
 	Poco::Thread server_thread;
-	udp_server server(false);
+	udp_server server(false, false);
 	uint32_t server_ip_address = get_server_address();
 	struct in_addr server_in_addr;
 	server_in_addr.s_addr = get_server_address();
@@ -425,7 +459,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 		server_thread.start(runnable);
 		server.wait_for_server_ready();
 
-		udp_client client(server_ip_address,true);
+		udp_client client(server_ip_address, true);
 		client.run();
 		server_thread.join();
 	};
@@ -467,4 +501,175 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 	ASSERT_EQ(1, callnum);
 	ASSERT_EQ((size_t)NTRANSACTIONS, transaction_count);
+}
+
+TEST_F(sys_call_test, udp_client_server_sendmsg)
+{
+	Poco::Thread server_thread;
+	udp_server server(false, true);
+	int32_t state = 0;
+	int64_t fd_server_socket = 0;
+	uint32_t server_ip_address = get_server_address();
+	struct in_addr server_in_addr;
+	server_in_addr.s_addr = get_server_address();
+	char *server_address = inet_ntoa(server_in_addr);
+
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_tid() == server.get_tid() || m_tid_filter(evt);
+	};
+
+	//
+	// INITIALIZATION
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		Poco::RunnableAdapter<udp_server> runnable(server, &udp_server::run);
+		server_thread.start(runnable);
+		server.wait_for_server_ready();
+
+		udp_client client(server_ip_address, false);
+		client.run();
+		server_thread.join();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+return;		
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
+		{
+			sinsp_threadinfo* ti = e->get_thread_info();
+			ASSERT_EQ(2, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+		}
+
+		if(type == PPME_SOCKET_RECVFROM_E)
+		{
+			fd_server_socket = *(int64_t *)e->get_param(0)->m_val;
+		}
+		switch(state)
+		{
+		case 0:
+			EXPECT_NE(PPME_SOCKET_SENDTO_X, type);
+			EXPECT_NE(PPME_SOCKET_RECVFROM_X, type);
+
+			if(type == PPME_SOCKET_SENDTO_E)
+			{
+				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+				EXPECT_EQ(2, (int)tst.count());
+
+				string srcstr = tst[0].substr(0, tst[0].size() - 1);
+				string dststr = tst[1];
+
+				StringTokenizer sst(srcstr, ":");
+				EXPECT_EQ(2, (int)sst.count());
+				EXPECT_EQ("40.0.0.0", sst[0]);
+
+				StringTokenizer dst(dststr, ":");
+				EXPECT_EQ(2, (int)dst.count());
+				EXPECT_EQ(server_address, dst[0]);
+				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+
+				state++;
+			}
+			break;
+		case 1:
+			if(type == PPME_SOCKET_RECVFROM_X)
+			{
+				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+				EXPECT_EQ(2, (int)tst.count());
+
+				string srcstr = tst[0].substr(0, tst[0].size() - 1);
+				string dststr = tst[1];
+
+				StringTokenizer sst(srcstr, ":");
+				EXPECT_EQ(2, (int)sst.count());
+				EXPECT_TRUE('4' == sst[0].c_str()[0]);
+				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+				EXPECT_NE("0", sst[1]);
+
+				StringTokenizer dst(dststr, ":");
+				EXPECT_EQ(2, (int)dst.count());
+				EXPECT_EQ("0.0.0.0", dst[0]);
+				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+
+				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+
+				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+
+				state++;
+			}
+			break;
+		case 2:
+			EXPECT_NE(PPME_SOCKET_SENDTO_X, type);
+			EXPECT_NE(PPME_SOCKET_RECVFROM_X, type);
+
+			if(type == PPME_SOCKET_SENDTO_E)
+			{
+				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+				EXPECT_EQ(2, (int)tst.count());
+
+				string srcstr = tst[0].substr(0, tst[0].size() - 1);
+				string dststr = tst[1];
+
+				StringTokenizer sst(srcstr, ":");
+				EXPECT_EQ(2, (int)sst.count());
+				EXPECT_EQ("40.0.0.0", sst[0]);
+				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
+
+				StringTokenizer dst(dststr, ":");
+				EXPECT_EQ(2, (int)dst.count());
+				EXPECT_EQ(server_address, dst[0]);
+				EXPECT_NE("0", dst[1]);
+
+//				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+
+				state++;
+			}
+			break;
+		case 3:
+			if(type == PPME_SOCKET_RECVFROM_X)
+			{
+				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+				EXPECT_EQ(2, (int)tst.count());
+
+				string srcstr = tst[0].substr(0, tst[0].size() - 1);
+				string dststr = tst[1];
+
+				StringTokenizer sst(srcstr, ":");
+				EXPECT_EQ(2, (int)sst.count());
+				EXPECT_TRUE('4' == sst[0].c_str()[0]);
+				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
+
+				StringTokenizer dst(dststr, ":");
+				EXPECT_EQ(2, (int)dst.count());
+				EXPECT_EQ("0.0.0.0", dst[0]);
+				EXPECT_NE("0", dst[1]);
+
+				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+
+				state = 4;
+			}
+			break;
+		case 4:
+			break;
+		default:
+			FAIL();
+			break;
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 }

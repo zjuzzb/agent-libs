@@ -761,6 +761,85 @@ int addr_to_kernel(void __user *uaddr, int ulen, struct sockaddr *kaddr)
 	return 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Parses the list of buffers of a xreadv or xwritev call, and pushes the size 
+// (and optionally the data) to the ring.
+///////////////////////////////////////////////////////////////////////////////
+int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, const struct iovec* iovsrc, unsigned long iovcnt, int64_t retval, int flags)
+{
+	int32_t res;
+	const struct iovec* iov;
+	uint32_t copylen;
+	uint32_t j;
+	uint64_t size = 0;
+	unsigned long bufsize;
+	char* targetbuf = args->str_storage;
+
+	copylen = iovcnt * sizeof(struct iovec);
+
+	if(unlikely(copylen >= STR_STORAGE_SIZE))
+	{
+		return PPM_FAILURE_BUFFER_FULL;
+	}
+
+	if(unlikely(ppm_copy_from_user(targetbuf, (const void*)iovsrc, copylen)))
+	{
+		return PPM_FAILURE_INVALID_USER_MEMORY;
+	}
+
+	iov = (const struct iovec*)targetbuf;
+	
+	//
+	// Size
+	//
+	if(flags & PRB_FLAG_PUSH_SIZE)
+	{
+		for(j = 0; j < iovcnt; j++)
+		{
+			size += iov[j].iov_len;
+		}
+
+		res = val_to_ring(args, size, 0, false);
+		if(unlikely(res != PPM_SUCCESS))
+		{
+			return res;
+		}		
+	}
+
+	//
+	// data
+	// NOTE: for the moment, we limit our data copy to the first buffer.
+	//       We assume that in the vast majority of the cases RW_SNAPLEN is much smaller 
+	//       than iov[0].iov_len, and therefore we don't bother complicvating the code.
+	//
+	if(flags & PRB_FLAG_PUSH_DATA)
+	{
+		if(retval > 0 && iovcnt > 0)
+		{
+			bufsize = min(retval, (int64_t)iov[0].iov_len);
+
+			res = val_to_ring(args, 
+				(unsigned long)iov[0].iov_base, 
+				min(bufsize, (unsigned long)RW_SNAPLEN),
+				true);
+			if(unlikely(res != PPM_SUCCESS))
+			{
+				return res;
+			}
+		}
+		else
+		{
+			res = val_to_ring(args, 0, 0, false);
+			if(unlikely(res != PPM_SUCCESS))
+			{
+				return res;
+			}		
+		}
+	}
+
+	return PPM_SUCCESS;
+}
+
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 // STANDARD FILLERS

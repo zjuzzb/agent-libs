@@ -978,16 +978,6 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 #ifdef CAPTURE_CONTEXT_SWITCHES
 TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next)
 {
-/*	
-	if(prev != NULL && next != NULL)
-	{
-		printk(KERN_ERR "*%s->%s\n", prev->comm, next->comm);		
-	}
-	else
-	{
-		printk(KERN_ERR "*!!\n");		
-	}
-*/	
 	record_event(PPME_SCHEDSWITCH_E, 
 		NULL, 
 		-1,

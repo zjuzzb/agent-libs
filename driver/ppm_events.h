@@ -68,6 +68,13 @@ struct ppm_event_entry
 extern const struct ppm_event_entry g_ppm_events[];
 
 //
+// parse_readv_writev_bufs flags
+//
+#define PRB_FLAG_PUSH_SIZE	1
+#define PRB_FLAG_PUSH_DATA	2
+#define PRB_FLAG_PUSH_ALL	(PRB_FLAG_PUSH_SIZE | PRB_FLAG_PUSH_DATA)
+
+//
 // Functions
 //
 int32_t f_sys_autofill(struct event_filler_arguments* args, const struct ppm_event_entry* evinfo);
@@ -77,5 +84,6 @@ char* npm_getcwd(char *buf, unsigned long bufsize);
 uint16_t pack_addr(struct sockaddr* usrsockaddr, int ulen, char* targetbuf, uint16_t targetbufsize);
 uint16_t fd_to_socktuple(int fd, struct sockaddr* usrsockaddr, int ulen, bool use_userdata, bool is_inbound, char* targetbuf, uint16_t targetbufsize);
 int addr_to_kernel(void __user *uaddr, int ulen, struct sockaddr *kaddr);
+int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, const struct iovec* iovsrc, unsigned long iovcnt, int64_t retval, int flags);
 
 #endif /* EVENTS_H_ */
