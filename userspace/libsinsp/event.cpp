@@ -944,7 +944,7 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 	case ETSC_ARGS:
 		{
 			uint32_t pos = 0;
-			char* spc = "";
+			char* spc = (char*)"";
 
 			m_getproperty_storage[0] = 0;
 
@@ -970,7 +970,7 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 						resolved_paramstr);
 				}
 
-				spc = " ";
+				spc = (char*)" ";
 			}
 
 			res = (uint8_t*)m_getproperty_storage;
@@ -1203,11 +1203,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_INT8:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRId8;
+				prfmt = (char*)"%" PRId8;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIX8;
+				prfmt = (char*)"%" PRIX8;
 			}
 			else
 			{
@@ -1222,11 +1222,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_INT16:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRId16;
+				prfmt = (char*)"%" PRId16;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIX16;
+				prfmt = (char*)"%" PRIX16;
 			}
 			else
 			{
@@ -1241,11 +1241,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_INT32:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRId32;
+				prfmt = (char*)"%" PRId32;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIX32;
+				prfmt = (char*)"%" PRIX32;
 			}
 			else
 			{
@@ -1260,15 +1260,15 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_INT64:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRId64;
+				prfmt = (char*)"%" PRId64;
 			}
 			else if(propinfo.m_print_format == PF_10_PADDED_DEC)
 			{
-				prfmt = "%09" PRId64;
+				prfmt = (char*)"%09" PRId64;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIX64;
+				prfmt = (char*)"%" PRIX64;
 			}
 			else
 			{
@@ -1284,11 +1284,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_UINT8:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRIu8;
+				prfmt = (char*)"%" PRIu8;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIu8;
+				prfmt = (char*)"%" PRIu8;
 			}
 			else
 			{
@@ -1304,11 +1304,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_UINT16:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRIu16;
+				prfmt = (char*)"%" PRIu16;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIu16;
+				prfmt = (char*)"%" PRIu16;
 			}
 			else
 			{
@@ -1323,11 +1323,11 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_UINT32:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRIu32;
+				prfmt = (char*)"%" PRIu32;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIu32;
+				prfmt = (char*)"%" PRIu32;
 			}
 			else
 			{
@@ -1344,15 +1344,15 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		case PT_ABSTIME:
 			if(propinfo.m_print_format == PF_DEC)
 			{
-				prfmt = "%" PRIu64;
+				prfmt = (char*)"%" PRIu64;
 			}
 			else if(propinfo.m_print_format == PF_10_PADDED_DEC)
 			{
-				prfmt = "%09" PRIu64;
+				prfmt = (char*)"%09" PRIu64;
 			}
 			else if(propinfo.m_print_format == PF_HEX)
 			{
-				prfmt = "%" PRIX64;
+				prfmt = (char*)"%" PRIX64;
 			}
 			else
 			{
@@ -1438,7 +1438,7 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 
 				if(einfo->m_flags & EPF_REQUIRES_ARGUMENT)
 				{
-					int a = 0;
+					ASSERT(false);
 				}
 
 				m_tostring_tokens.push_back(

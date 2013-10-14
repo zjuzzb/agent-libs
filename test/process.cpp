@@ -401,7 +401,7 @@ TEST(procinfo, process_not_existent)
 	EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
 	if(tinfo)
 	{
-		EXPECT_EQ("Unknown", tinfo->m_comm);
+		EXPECT_EQ("<NA>", tinfo->m_comm);
 	}
 
 	//
@@ -411,7 +411,7 @@ TEST(procinfo, process_not_existent)
 	EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
 	if(tinfo)
 	{
-		EXPECT_EQ("Unknown", tinfo->m_comm);
+		EXPECT_EQ("<NA>", tinfo->m_comm);
 	}
 
 	inspector.close();
