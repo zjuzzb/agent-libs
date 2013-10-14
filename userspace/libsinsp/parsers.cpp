@@ -93,6 +93,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SOCKET_RECV_E:
 	case PPME_SOCKET_SEND_E:
 	case PPME_SOCKET_RECVFROM_E:
+	case PPME_SOCKET_RECVMSG_E:
 	case PPME_SYSCALL_READV_E:
 	case PPME_SYSCALL_WRITEV_E:
 	case PPME_SYSCALL_PREAD_E:
@@ -102,6 +103,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 //		parse_rw_enter(evt);
 		break;
 	case PPME_SOCKET_SENDTO_E:
+	case PPME_SOCKET_SENDMSG_E:
 		store_event(evt);
 //		parse_rw_enter(evt);
 		break;
@@ -110,6 +112,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SOCKET_RECV_X:
 	case PPME_SOCKET_SEND_X:
 	case PPME_SOCKET_RECVFROM_X:
+	case PPME_SOCKET_RECVMSG_X:
 	case PPME_SOCKET_SENDTO_X:
 	case PPME_SYSCALL_READV_X:
 	case PPME_SYSCALL_WRITEV_X:
