@@ -602,7 +602,7 @@ protected:
 #ifndef _WIN32
 				if(m_configuration.m_ssl_enabled)
 				{
-					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
+					m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
 					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
 				}
 				else
@@ -843,14 +843,14 @@ protected:
 						"", 
 						"", 
 						m_configuration.m_ssl_ca_certificate, 
-						Poco::Net::Context::VERIFY_RELAXED, 
+						Poco::Net::Context::VERIFY_STRICT, 
 						9, 
 						false, 
 						"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
 					Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
 
-					m_socket = new Poco::Net::SecureStreamSocket(*m_sa);
+					m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
 					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
 
 					g_log->information("SSL identity verified");
