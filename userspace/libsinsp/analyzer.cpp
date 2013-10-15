@@ -480,9 +480,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 #endif
 
-			//
-			// If defined, emit the processes
-			//
 #ifdef ANALYZER_EMITS_PROCESSES
 			sinsp_counter_time tot;
 	
@@ -491,37 +488,34 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			//
-			// Extract basic resource counters
+			// Basic values
 			//
+			draiosproto::process* proc = m_metrics->add_processes();
+			proc->set_pid(pid);
+			proc->set_comm(it->second.m_comm);
+			proc->set_exe(it->second.m_exe);
+			for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+				arg_it != it->second.m_args.end(); ++arg_it)
+			{
+				proc->add_args(*arg_it);
+			}
+
 			if(m_inspector->m_islive)
 			{
 				cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
 					&it->second.m_old_proc_jiffies, 
 					cur_global_total_jiffies - m_old_global_total_jiffies,
 					&memsize);
-			}
-
-			if(tot.m_count != 0)
-			{
-				//
-				// Basic values
-				//
-				draiosproto::process* proc = m_metrics->add_processes();
-				proc->set_pid(pid);
-				proc->set_comm(it->second.m_comm);
-				proc->set_exe(it->second.m_exe);
-				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-					arg_it != it->second.m_args.end(); ++arg_it)
-				{
-					proc->add_args(*arg_it);
-				}
 
 				if(cpuload != -1)
 				{
 					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
 					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
 				}
+			}
 
+			if(tot.m_count != 0)
+			{
 				//
 				// Transaction-related metrics
 				//
