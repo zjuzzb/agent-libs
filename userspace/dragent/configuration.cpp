@@ -7,6 +7,8 @@ dragent_configuration::dragent_configuration()
 	m_transmitbuffer_size = 0;
 	m_dropping_mode = false;
 	m_ssl_enabled = false;
+	m_compression_enabled = false;
+	m_emit_full_connections = false;
 }
 
 void dragent_configuration::init(Application* app)
@@ -40,9 +42,22 @@ void dragent_configuration::init(Application* app)
 	m_root_dir = config.getString("rootdir", m_root_dir);
 	m_metrics_dir = Path(m_root_dir).append(config.getString("metricsfile.location", "metrics")).toString();
 	m_log_dir = Path(m_root_dir).append(config.getString("logfile.location", "logs")).toString();
-	m_customer_id = config.getString("customerid", "");
-	m_server_addr = config.getString("server.address", "collector.draios.com");
-	m_server_port = config.getInt("server.port", 6666);
+	
+	if(m_customer_id.empty())
+	{
+		m_customer_id = config.getString("customerid", "");
+	}
+
+	if(m_server_addr.empty())
+	{
+		m_server_addr = config.getString("server.address", "collector.draios.com");
+	}
+
+	if(m_server_port == 0)
+	{
+		m_server_port = config.getInt("server.port", 6666);
+	}
+
 	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_dropping_mode = config.getBool("droppingmode.enabled", false);
 	m_ssl_enabled = config.getBool("ssl.enabled", true);

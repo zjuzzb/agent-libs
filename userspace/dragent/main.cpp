@@ -302,8 +302,6 @@ public:
 protected:
 	void initialize(Application& self)
 	{
-		m_configuration.init(this);
-
 		ServerApplication::initialize(self);
 	}
 		
@@ -717,7 +715,7 @@ protected:
 		}
 
 #ifndef _WIN32
-		if(m_configuration.m_daemon)
+		if(config().getBool("application.runAsDaemon", false))
 		{
 			run_monitor(m_pidfile);
 		}
@@ -739,6 +737,8 @@ protected:
 			ASSERT(false);
 		}
 #endif
+
+		m_configuration.init(this);
 
 		//
 		// Create the logs directory if it doesn't exist
