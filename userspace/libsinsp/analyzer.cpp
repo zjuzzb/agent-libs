@@ -740,7 +740,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			//
-			// Look for the entry in the remote connection table
+			// Look for the entry in the reduced connection table
 			//
 			sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
 
@@ -755,6 +755,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				// Structure copy the connection info
 				//
 				conn = cit->second;
+				conn.m_timestamp = 0;
 			}
 
 			//
@@ -762,7 +763,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			//
 			conn.m_metrics.add(&cit->second.m_metrics);
 			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			ASSERT(conn.m_timestamp > 0);
 			conn.m_timestamp++;
 		}
 		else
@@ -788,6 +788,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				// Structure copy the connection info
 				//
 				conn = cit->second;
+				conn.m_timestamp = 0;
 			}
 
 			//
@@ -795,7 +796,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			//
 			conn.m_metrics.add(&cit->second.m_metrics);
 			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			ASSERT(conn.m_timestamp > 0);
 			conn.m_timestamp++;
 		}
 
