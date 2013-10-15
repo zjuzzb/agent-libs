@@ -114,6 +114,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SOCKET_RECVFROM_X:
 	case PPME_SOCKET_RECVMSG_X:
 	case PPME_SOCKET_SENDTO_X:
+	case PPME_SOCKET_SENDMSG_X:
 	case PPME_SYSCALL_READV_X:
 	case PPME_SYSCALL_WRITEV_X:
 	case PPME_SYSCALL_PREAD_X:
@@ -2355,7 +2356,7 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			//
 			// Extract the data buffer
 			//
-			if(etype == PPME_SYSCALL_READV_X || etype == PPME_SYSCALL_PREADV_X)
+			if(etype == PPME_SYSCALL_READV_X || etype == PPME_SYSCALL_PREADV_X || etype == PPME_SOCKET_RECVMSG_X)
 			{
 				parinfo = evt->get_param(2);
 			}
@@ -2375,13 +2376,9 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			uint32_t datalen;
 			int32_t tupleparam = -1;
 
-			if(etype == PPME_SOCKET_SENDTO_X)
+			if(etype == PPME_SOCKET_SENDTO_X || etype == PPME_SOCKET_SENDMSG_X)
 			{
 				tupleparam = 2;
-			}
-			else if(etype == PPME_SOCKET_SENDMSG_X)
-			{
-				tupleparam = 3;
 			}
 
 			if(tupleparam != -1 && (evt->m_fdinfo->m_name.length() == 0  || evt->m_fdinfo->is_udp_socket()))
