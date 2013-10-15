@@ -497,6 +497,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 			if(tot.m_count == 0 && cpuload == 0)
 			{
+				++it;
 				continue;
 			}
 
