@@ -732,11 +732,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-if(cit->second.m_scomm == "chromium-browser" && cit->second.m_dpid == 0)
-{
-	int a = 0;
-}
-
 		if(cit->second.is_server_only())
 		{
 			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
@@ -835,10 +830,6 @@ if(cit->second.m_scomm == "chromium-browser" && cit->second.m_dpid == 0)
 		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-if(acit->second.m_dpid == 0)
-{
-	int a = 0;
-}
 		tuple->set_sip(acit->first.m_fields.m_sip);
 		tuple->set_dip(acit->first.m_fields.m_dip);
 		tuple->set_sport(acit->first.m_fields.m_sport);

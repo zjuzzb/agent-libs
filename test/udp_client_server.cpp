@@ -13,19 +13,20 @@
 #include <Poco/StringTokenizer.h>
 #include <gtest.h>
 #include <sys/syscall.h>
+#include <Poco/NumberParser.h>
 
 
 //#define __STDC_FORMAT_MACROS
 //#include <inttypes.h>
 
 using Poco::StringTokenizer;
+using Poco::NumberParser;
 
 #define SERVER_PORT     3555
 #define SERVER_PORT_STR "3555"
 #define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
 #define BUFFER_LENGTH    (sizeof(PAYLOAD) - 1)
 #define FALSE           0
-#define SERVER_NAME     "192.168.22.167"
 #define NTRANSACTIONS   2
 
 class udp_server
@@ -507,8 +508,6 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 {
 	Poco::Thread server_thread;
 	udp_server server(false, true);
-	int32_t state = 0;
-	int64_t fd_server_socket = 0;
 	uint32_t server_ip_address = get_server_address();
 	struct in_addr server_in_addr;
 	server_in_addr.s_addr = get_server_address();
@@ -542,134 +541,63 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-return;		
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
+
 		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
 		{
 			sinsp_threadinfo* ti = e->get_thread_info();
 			ASSERT_EQ(2, (int)ti->m_transaction_metrics.m_counter.m_count_in);
 		}
 
-		if(type == PPME_SOCKET_RECVFROM_E)
+		if(type == PPME_SOCKET_RECVMSG_X)
 		{
-			fd_server_socket = *(int64_t *)e->get_param(0)->m_val;
+			StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+			EXPECT_EQ(2, (int)tst.count());
+
+			string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			string dststr = tst[1];
+
+			StringTokenizer sst(srcstr, ":");
+			EXPECT_EQ(2, (int)sst.count());
+			EXPECT_TRUE('4' == sst[0].c_str()[0]);
+			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_NE("0", sst[1]);
+
+			StringTokenizer dst(dststr, ":");
+			EXPECT_EQ(2, (int)dst.count());
+			EXPECT_EQ("0.0.0.0", dst[0]);
+			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+
+			EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+
+			EXPECT_EQ(server_ip_address, e->m_fdinfo->m_info.m_ipv4info.m_fields.m_sip);
 		}
-		switch(state)
+		else if(type == PPME_SOCKET_SENDMSG_E)
 		{
-		case 0:
-			EXPECT_NE(PPME_SOCKET_SENDTO_X, type);
-			EXPECT_NE(PPME_SOCKET_RECVFROM_X, type);
+			StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+			EXPECT_EQ(2, (int)tst.count());
 
-			if(type == PPME_SOCKET_SENDTO_E)
-			{
-				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
-				EXPECT_EQ(2, (int)tst.count());
+			string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			string dststr = tst[1];
 
-				string srcstr = tst[0].substr(0, tst[0].size() - 1);
-				string dststr = tst[1];
+			StringTokenizer sst(srcstr, ":");
+			EXPECT_EQ(2, (int)sst.count());
+			EXPECT_TRUE('4' == sst[0].c_str()[0]);
+			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_NE("0", sst[1]);
 
-				StringTokenizer sst(srcstr, ":");
-				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_EQ("40.0.0.0", sst[0]);
-
-				StringTokenizer dst(dststr, ":");
-				EXPECT_EQ(2, (int)dst.count());
-				EXPECT_EQ(server_address, dst[0]);
-				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
-
-				state++;
-			}
-			break;
-		case 1:
-			if(type == PPME_SOCKET_RECVFROM_X)
-			{
-				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
-				EXPECT_EQ(2, (int)tst.count());
-
-				string srcstr = tst[0].substr(0, tst[0].size() - 1);
-				string dststr = tst[1];
-
-				StringTokenizer sst(srcstr, ":");
-				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_TRUE('4' == sst[0].c_str()[0]);
-				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
-				EXPECT_NE("0", sst[1]);
-
-				StringTokenizer dst(dststr, ":");
-				EXPECT_EQ(2, (int)dst.count());
-				EXPECT_EQ("0.0.0.0", dst[0]);
-				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
-
-				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
-				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
-
-				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-
-				state++;
-			}
-			break;
-		case 2:
-			EXPECT_NE(PPME_SOCKET_SENDTO_X, type);
-			EXPECT_NE(PPME_SOCKET_RECVFROM_X, type);
-
-			if(type == PPME_SOCKET_SENDTO_E)
-			{
-				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
-				EXPECT_EQ(2, (int)tst.count());
-
-				string srcstr = tst[0].substr(0, tst[0].size() - 1);
-				string dststr = tst[1];
-
-				StringTokenizer sst(srcstr, ":");
-				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_EQ("40.0.0.0", sst[0]);
-				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
-
-				StringTokenizer dst(dststr, ":");
-				EXPECT_EQ(2, (int)dst.count());
-				EXPECT_EQ(server_address, dst[0]);
-				EXPECT_NE("0", dst[1]);
-
-//				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-
-				state++;
-			}
-			break;
-		case 3:
-			if(type == PPME_SOCKET_RECVFROM_X)
-			{
-				StringTokenizer tst(e->get_param_value_str("tuple"), ">");
-				EXPECT_EQ(2, (int)tst.count());
-
-				string srcstr = tst[0].substr(0, tst[0].size() - 1);
-				string dststr = tst[1];
-
-				StringTokenizer sst(srcstr, ":");
-				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_TRUE('4' == sst[0].c_str()[0]);
-				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
-				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
-
-				StringTokenizer dst(dststr, ":");
-				EXPECT_EQ(2, (int)dst.count());
-				EXPECT_EQ("0.0.0.0", dst[0]);
-				EXPECT_NE("0", dst[1]);
-
-				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
-				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
-
-				state = 4;
-			}
-			break;
-		case 4:
-			break;
-		default:
-			FAIL();
-			break;
+			StringTokenizer dst(dststr, ":");
+			EXPECT_EQ(2, (int)dst.count());
+			EXPECT_EQ("0.0.0.0", dst[0]);
+			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			EXPECT_EQ((int)BUFFER_LENGTH, (int)NumberParser::parse(e->get_param_value_str("size")));
+		}
+		else if(type == PPME_SOCKET_SENDMSG_X)
+		{
+			EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 		}
 	};
+
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 }

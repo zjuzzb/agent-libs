@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef VISIBILITY_PRIVATE
+#define VISIBILITY_PRIVATE private:
+#endif
+
 typedef class sinsp sinsp;
 typedef class sinsp_threadinfo sinsp_threadinfo;
 typedef class sinsp_fdinfo sinsp_fdinfo;
@@ -186,7 +190,8 @@ public:
 	void set_tostring_format(const string& fmt);
 #endif
 	void tostring(OUT string* res);
-private:
+
+VISIBILITY_PRIVATE
 	void load_params();
 	string get_param_value_str(uint32_t id, bool resolved);
 
