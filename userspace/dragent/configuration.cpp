@@ -41,12 +41,12 @@ void dragent_configuration::init(Application* app)
 	m_metrics_dir = Path(m_root_dir).append(config.getString("metricsfile.location", "metrics")).toString();
 	m_log_dir = Path(m_root_dir).append(config.getString("logfile.location", "logs")).toString();
 	m_customer_id = config.getString("customerid", "");
-	m_server_addr = config.getString("server.address", "");
-	m_server_port = config.getInt("server.port", 0);
+	m_server_addr = config.getString("server.address", "collector.draios.com");
+	m_server_port = config.getInt("server.port", 6666);
 	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_dropping_mode = config.getBool("droppingmode.enabled", false);
-	m_ssl_enabled = config.getBool("ssl.enabled", false);
-	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "")).toString();
+	m_ssl_enabled = config.getBool("ssl.enabled", true);
+	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", true);
 }
