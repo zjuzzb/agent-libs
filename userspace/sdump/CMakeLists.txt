@@ -10,4 +10,4 @@ target_link_libraries(sdump
 
 install(TARGETS sdump 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
-	COMPONENT sdump)
+	COMPONENT tests)
