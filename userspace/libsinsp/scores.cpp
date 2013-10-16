@@ -201,7 +201,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			bool has_transaction;
 			uint64_t intervaltime;
 			uint32_t ntr = 0;
-			uint32_t nfree = 0;
 			uint32_t nother = 0;
 			uint32_t ntrcpu = 0;
 
