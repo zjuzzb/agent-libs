@@ -495,91 +495,93 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&memsize);
 			}
 
-			if(tot.m_count == 0 && cpuload == 0)
-			{
-				++it;
-				continue;
-			}
-
-			//
-			// Basic values
-			//
-			draiosproto::process* proc = m_metrics->add_processes();
-			proc->set_pid(pid);
-			proc->set_comm(it->second.m_comm);
-			proc->set_exe(it->second.m_exe);
-			for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-				arg_it != it->second.m_args.end(); ++arg_it)
-			{
-				proc->add_args(*arg_it);
-			}
-
-			if(cpuload != -1)
-			{
-				proc->mutable_resource_counters()->set_cpu_pct(cpuload);
-				proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
-			}
-
-			if(tot.m_count != 0)
+			if(!(tot.m_count == 0 && cpuload == 0))
 			{
 				//
-				// Transaction-related metrics
+				// Basic values
 				//
-				it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
-				it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
-				proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
+				draiosproto::process* proc = m_metrics->add_processes();
+				proc->set_pid(pid);
+				proc->set_comm(it->second.m_comm);
+				proc->set_exe(it->second.m_exe);
+				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+					arg_it != it->second.m_args.end(); ++arg_it)
+				{
+					proc->add_args(*arg_it);
+				}
 
-				//
-				// Health-related metrics
-				//
-				it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(syshscore, &it->second);
-				proc->mutable_resource_counters()->set_health_score(it->second.m_procinfo->m_health_score);
-				proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
-				proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
+				if(cpuload != -1)
+				{
+					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
+				}
+				else
+				{
+					proc->mutable_resource_counters()->set_cpu_pct(0);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(0);
+				}
 
-				//
-				// Error-related metrics
-				//
-				it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
+				if(tot.m_count != 0)
+				{
+					//
+					// Transaction-related metrics
+					//
+					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
+					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
+					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
+
+					//
+					// Health-related metrics
+					//
+					it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(syshscore, &it->second);
+					proc->mutable_resource_counters()->set_health_score(it->second.m_procinfo->m_health_score);
+					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
+					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
+
+					//
+					// Error-related metrics
+					//
+					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
 
 #if 0
-				if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-				{
-					uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-					uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-					uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
-					uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+						uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
+						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
 
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
-						it->second.m_comm.c_str(),
-//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
-						it->second.m_tid,
-						it->second.m_refcount + 1,
-						it->second.m_procinfo->m_health_score,
-						cpuload,
-						it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
-						it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-						trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
-						trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
-						trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
-						it->second.m_fd_usage_pct,
-						it->second.m_connection_queue_usage_pct);
-				}
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+							it->second.m_comm.c_str(),
+	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
+							it->second.m_tid,
+							it->second.m_refcount + 1,
+							it->second.m_procinfo->m_health_score,
+							cpuload,
+							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
+							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+							trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
+							trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
+							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
+							it->second.m_fd_usage_pct,
+							it->second.m_connection_queue_usage_pct);
+					}
 #endif
-			}
+				}
 #endif // ANALYZER_EMITS_PROCESSES
 
-			//
-			// Update the host metrics with the info coming from this process
-			//
-			if(it->second.m_procinfo != NULL)
-			{
-				m_host_metrics.add(it->second.m_procinfo);
-			}
-			else
-			{
-				ASSERT(false);
+				//
+				// Update the host metrics with the info coming from this process
+				//
+				if(it->second.m_procinfo != NULL)
+				{
+					m_host_metrics.add(it->second.m_procinfo);
+				}
+				else
+				{
+					ASSERT(false);
+				}
 			}
 		}
 /*

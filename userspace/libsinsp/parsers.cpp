@@ -364,7 +364,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				//
 				// Remove the fd from the different tables
 				//
-				eparams.m_remove_from_table = false;
+				eparams.m_remove_from_table = true;
 				eparams.m_inspector = m_inspector;
 				eparams.m_tinfo = evt->m_tinfo;
 				eparams.m_ts = evt->get_ts();
@@ -1423,7 +1423,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 		// this thread. Since we currently handle just one canceling at at time (we
 		// don't have a list of canceled closes, just a single entry), the second one 
 		// will generate a failed FD lookup. We do nothing.
-		// NOTE: I realize that this can cause a connection leak, I just assume that it's
+		// NOTE: I do realize that this can cause a connection leak, I just assume that it's
 		//       rare enough that the delayed connection cleanup (when the timestamp expires)
 		//       is acceptable.
 		//
@@ -1559,6 +1559,11 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 	}
 	else
 	{
+		if(evt->m_fdinfo != NULL)
+		{
+			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
+		}
+
 		//
 		// It is normal when a close fails that the fd lookup failed, so we revert the
 		// increment of m_n_failed_fd_lookups (for the enter event too if there's one).

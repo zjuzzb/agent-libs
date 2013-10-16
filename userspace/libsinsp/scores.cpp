@@ -10,6 +10,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyze
 {
 	m_inspector = inspector;
 	m_sched_analyzer = sched_analyzer;
+	m_sample_length_ns = 0;
 }
 
 int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
@@ -159,19 +160,24 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 	}
 	int32_t num_cpus = machine_info->num_cpus;
 
+	if(m_sample_length_ns == 0)
+	{
+		m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
+		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+	}
+
+/*
 	if(m_cpu_transaction_vectors.size() == 0)
 	{
 		m_cpu_transaction_vectors = vector<vector<uint8_t>>(num_cpus);
 		for(cpuid = 0; cpuid < num_cpus; cpuid++)
 		{
-			m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
-			m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
-
 			m_cpu_transaction_vectors[cpuid].insert(m_cpu_transaction_vectors[cpuid].begin(), 
 				m_n_intervals_in_sample, 
 				0);
 		}
 	}
+*/
 
 	int32_t max_score = 0;
 	int32_t min_score = 200;
@@ -197,7 +203,10 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			uint32_t j;
 			uint32_t trsize = (*transactions)[cpuid].size();
 			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-			uint32_t nused = 0;
+			uint32_t nused_cpu = 0;
+			uint32_t nused_transaction = 0;
+			bool has_transaction;
+			uint64_t intervaltime;
 
 			//
 			// Count the number of concurrent transactions for each inerval of size
@@ -205,16 +214,8 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			//
 			for(j = 0; j < m_n_intervals_in_sample; j++)
 			{
-				uint64_t intervaltime = starttime + j * CONCURRENCY_OBSERVATION_INTERVAL_NS;
-
-				if((*cpu_vector)[j] != 0)
-				{
-					m_cpu_transaction_vectors[cpuid][j] = 1;
-					nused++;
-					continue;
-				}
-
-				m_cpu_transaction_vectors[cpuid][j] = 0;
+				intervaltime = starttime + j * CONCURRENCY_OBSERVATION_INTERVAL_NS;
+				has_transaction = false;
 
 				for(k = 0; k < trsize; k++)
 				{
@@ -222,8 +223,8 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 					{
 						if((*transactions)[cpuid][k].second >= (intervaltime - CONCURRENCY_OBSERVATION_INTERVAL_NS))
 						{
-							m_cpu_transaction_vectors[cpuid][j] = 1;
-							nused++;
+							has_transaction = true;
+							nused_transaction++;
 							break;
 						}
 					}
@@ -232,9 +233,17 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 						break;
 					}
 				}
+
+				if(!has_transaction)
+				{
+					if((*cpu_vector)[j] != 0)
+					{
+						nused_cpu++;
+					}
+				}
 			}
 
-			int32_t score = (int32_t)nused * 100 / m_n_intervals_in_sample;
+			int32_t score = (int32_t)(nused_transaction * 100 + nused_cpu * 100) / m_n_intervals_in_sample;
 			ASSERT(score <= 100);
 			score = 100 - score;
 

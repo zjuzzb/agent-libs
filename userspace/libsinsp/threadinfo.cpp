@@ -731,6 +731,8 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 			for(fdit = fdtable.begin(); fdit != fdtable.end(); ++fdit)
 			{
 				eparams.m_fd = fdit->first;
+
+				//
 				// The canceled fd should always be deleted immediately, so if it appears
 				// here it means we have a problem.
 				//

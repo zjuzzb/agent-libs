@@ -158,8 +158,14 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 {
 	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_fdtable.find(fd);
 
+	//
+	// Look for the FD in the table
+	//
 	if(fdit == m_fdtable.end())
 	{
+		//
+		// No entry in the table, this is the normal case
+		//
 		m_fdtable[fd] = *fdinfo;
 		m_last_accessed_fd = -1;
 #ifdef GATHER_INTERNAL_STATS
@@ -169,7 +175,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 	else
 	{
 		//
-		// the fd is already in the table
+		// the fd is already in the table.
 		//
 		if(fdit->second.m_flags & sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS)
 		{
