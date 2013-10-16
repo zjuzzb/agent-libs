@@ -182,6 +182,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 	int32_t max_score = 0;
 	int32_t min_score = 200;
 	int32_t tot_score = 0;
+	int32_t n_scores = 0;
 
 	if(num_cpus != 0)
 	{
@@ -273,33 +274,26 @@ for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
 
 			if(ntr != 0 && ntrcpu != 0)
 			{
-				uint32_t maxcpu = MIN(m_n_intervals_in_sample / 2, nother);
+				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
 				uint32_t avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
 				uint32_t maxavail = MAX(avail, ntr);
 				score = 100 - ntr * 100 / maxavail;
-			}
-			else
-			{
-				score = 0;
-			}
 
-			ASSERT(score >= 0);
-			ASSERT(score <= 100);
+				ASSERT(score >= 0);
+				ASSERT(score <= 100);
 
-//			int32_t nscore = (int32_t)(((double)nused_transaction + (double)nused_cpu_outside_tr * cpu_correction) * 100 / (double)m_n_intervals_in_sample);
-//			ASSERT(nscore <= 100);
-//			int32_t score = 100 - nscore;
+				tot_score += score;
+				n_scores++;
 
-			tot_score += score;
+				if(score > max_score)
+				{
+					max_score = score;
+				}
 
-			if(score > max_score)
-			{
-				max_score = score;
-			}
-
-			if(score < min_score)
-			{
-				min_score = score;
+				if(score < min_score)
+				{
+					min_score = score;
+				}
 			}
 		}
 
@@ -310,10 +304,10 @@ for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
 			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
 			min_score,
 			max_score,
-			tot_score / num_cpus,
-			num_cpus);
+			tot_score / n_scores,
+			n_scores);
 
-		return (tot_score / num_cpus);
+		return (tot_score / n_scores);
 	}
 
 	return -1;
