@@ -191,11 +191,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 		uint64_t starttime = sample_end_time - sample_duration;
 
 		//
-		// Make sure the transactions are ordered by start time
-		//
-		std::sort(transactions->begin(), transactions->end());
-
-		//
 		// Go through the CPUs and calculate the rest time for each of them
 		//
 		for(cpuid = 0; cpuid < num_cpus; cpuid++)
@@ -203,10 +198,28 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			uint32_t j;
 			uint32_t trsize = (*transactions)[cpuid].size();
 			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-			uint32_t nused_cpu = 0;
-			uint32_t nused_transaction = 0;
 			bool has_transaction;
 			uint64_t intervaltime;
+			uint32_t ntr = 0;
+			uint32_t nfree = 0;
+			uint32_t nother = 0;
+			uint32_t ntrcpu = 0;
+
+/*
+vector<uint64_t>v;
+uint64_t tot = 0;
+for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
+{
+	uint64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+	v.push_back(delta);
+	tot += delta;
+}
+*/
+
+			//
+			// Make sure the transactions are ordered by start time
+			//
+			std::sort(((*transactions)[cpuid]).begin(), ((*transactions)[cpuid]).end());
 
 			//
 			// Count the number of concurrent transactions for each inerval of size
@@ -224,7 +237,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 						if((*transactions)[cpuid][k].second >= (intervaltime - CONCURRENCY_OBSERVATION_INTERVAL_NS))
 						{
 							has_transaction = true;
-							nused_transaction++;
+							ntr++;
 							break;
 						}
 					}
@@ -234,18 +247,49 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 					}
 				}
 
-				if(!has_transaction)
+				int64_t tid = (*cpu_vector)[j];
+
+				if(tid != 0)
 				{
-					if((*cpu_vector)[j] != 0)
+					if(!has_transaction)
 					{
-						nused_cpu++;
+						if(tid != 0)
+						{
+							nother++;
+						}
+					}
+
+					sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
+					if(tinfo != NULL)
+					{
+						if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
+						{
+							ntrcpu++;
+						}
 					}
 				}
 			}
 
-			int32_t score = (int32_t)(nused_transaction * 100 + nused_cpu * 100) / m_n_intervals_in_sample;
+			int32_t score;
+
+			if(ntr != 0 && ntrcpu != 0)
+			{
+				uint32_t maxcpu = MIN(m_n_intervals_in_sample / 2, nother);
+				uint32_t avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				uint32_t maxavail = MAX(avail, ntr);
+				score = 100 - ntr * 100 / maxavail;
+			}
+			else
+			{
+				score = 0;
+			}
+
+			ASSERT(score >= 0);
 			ASSERT(score <= 100);
-			score = 100 - score;
+
+//			int32_t nscore = (int32_t)(((double)nused_transaction + (double)nused_cpu_outside_tr * cpu_correction) * 100 / (double)m_n_intervals_in_sample);
+//			ASSERT(nscore <= 100);
+//			int32_t score = 100 - nscore;
 
 			tot_score += score;
 
@@ -262,6 +306,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 
 		//
 		// Done scanning the transactions, return the average of the CPU rest times
+		//
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
 			min_score,
