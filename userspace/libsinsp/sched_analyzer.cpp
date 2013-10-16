@@ -199,7 +199,7 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 	{
 		cpustate& state = m_cpu_states[j];
 
-		if(state.m_last_switch_time == 0)
+		if(state.m_last_switch_time == 0 || state.m_last_time_segment == 0)
 		{
 			//
 			// No context switch for this processor yet
