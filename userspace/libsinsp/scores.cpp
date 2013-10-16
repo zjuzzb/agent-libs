@@ -300,14 +300,21 @@ for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
 		//
 		// Done scanning the transactions, return the average of the CPU rest times
 		//
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
-			min_score,
-			max_score,
-			tot_score / n_scores,
-			n_scores);
+		if(n_scores != 0)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+				min_score,
+				max_score,
+				tot_score / n_scores,
+				n_scores);
 
-		return (tot_score / n_scores);
+			return (tot_score / n_scores);
+		}
+		else
+		{
+			return -1;
+		}
 	}
 
 	return -1;
