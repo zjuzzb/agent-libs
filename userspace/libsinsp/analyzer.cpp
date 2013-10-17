@@ -843,11 +843,10 @@ void sinsp_analyzer::emit_aggregated_connections()
 		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-		tuple->set_sip(acit->first.m_fields.m_sip);
-		tuple->set_dip(acit->first.m_fields.m_dip);
+		tuple->set_sip(htonl(acit->first.m_fields.m_sip));
+		tuple->set_dip(htonl(acit->first.m_fields.m_dip));
 		tuple->set_sport(acit->first.m_fields.m_sport);
 		tuple->set_dport(acit->first.m_fields.m_dport);
-		tuple->set_sip(acit->first.m_fields.m_sip);
 		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
 
 		conn->set_spid(acit->second.m_spid);
@@ -880,11 +879,10 @@ void sinsp_analyzer::emit_full_connections()
 			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-			tuple->set_sip(cit->first.m_fields.m_sip);
-			tuple->set_dip(cit->first.m_fields.m_dip);
+			tuple->set_sip(htonl(cit->first.m_fields.m_sip));
+			tuple->set_dip(htonl(cit->first.m_fields.m_dip));
 			tuple->set_sport(cit->first.m_fields.m_sport);
 			tuple->set_dport(cit->first.m_fields.m_dport);
-			tuple->set_sip(cit->first.m_fields.m_sip);
 			tuple->set_l4proto(cit->first.m_fields.m_l4proto);
 
 			conn->set_spid(cit->second.m_spid);
@@ -1064,8 +1062,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				draiosproto::ipv4_network_interface* ni = m_metrics->add_ipv4_network_interfaces();
 
 				ni->set_name(v4iflist->at(k).m_name);
-				ni->set_addr(v4iflist->at(k).m_addr);
-				ni->set_netmask(v4iflist->at(k).m_netmask);
+				ni->set_addr(htonl(v4iflist->at(k).m_addr));
+				ni->set_netmask(htonl(v4iflist->at(k).m_netmask));
 			}
 
 			////////////////////////////////////////////////////////////////////////////
