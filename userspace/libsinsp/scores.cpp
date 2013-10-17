@@ -205,16 +205,19 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			uint32_t nother = 0;
 			uint32_t ntrcpu = 0;
 
-/*
-vector<uint64_t>v;
-uint64_t tot = 0;
-for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
+vector<int64_t>v;
+int64_t tot = 0;
+for(k = 1; k < ((*transactions)[cpuid]).size(); k++)
 {
-	uint64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
 	v.push_back(delta);
-	tot += delta;
+	if(delta > 0)
+	{
+		tot += delta;
+	}
 }
-*/
+
 
 			//
 			// Make sure the transactions are ordered by start time
@@ -251,22 +254,17 @@ for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
 
 				if(tid != 0)
 				{
-					if(!has_transaction)
-					{
-						if(tid != 0)
-						{
-							nother++;
-						}
-					}
-
 					sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
 					if(tinfo != NULL)
 					{
 						if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
 						{
 							ntrcpu++;
+							continue;
 						}
 					}
+
+					nother++;
 				}
 			}
 
@@ -278,7 +276,7 @@ for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
 				uint32_t avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
 				uint32_t maxavail = MAX(avail, ntr);
 				score = 100 - ntr * 100 / maxavail;
-
+//sort(cpu_vector->begin(), cpu_vector->end());
 				ASSERT(score >= 0);
 				ASSERT(score <= 100);
 

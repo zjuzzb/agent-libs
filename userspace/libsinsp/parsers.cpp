@@ -1806,8 +1806,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 					evt->m_fdinfo->is_role_client(),
 					evt->get_ts());
 			}
-			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
+			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
+				(connection->m_analysis_flags & sinsp_connection::AF_CLOSED))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
@@ -1878,8 +1879,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				    evt->m_fdinfo->is_role_client(),
 				    evt->get_ts());
 			}
-			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
+			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
+				(connection->m_analysis_flags & sinsp_connection::AF_CLOSED))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
