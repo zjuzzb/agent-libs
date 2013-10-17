@@ -24,6 +24,8 @@ public:
 	sinsp_connection();
 	sinsp_connection(uint64_t timestamp);
 	void reset();
+	void clear();
+	bool is_active();
 	bool is_client_only();
 	bool is_server_only();
 

@@ -495,7 +495,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&memsize);
 			}
 
-			if(!(tot.m_count == 0 && cpuload == 0))
+			if(tot.m_count != 0 || cpuload != 0)
 			{
 				//
 				// Basic values
@@ -816,7 +816,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			//
 			// Clear the transaction metrics, so we're ready for the next sample
 			//
-			cit->second.m_transaction_metrics.clear();
+			cit->second.clear();
 			++cit;
 		}
 	}
@@ -829,6 +829,17 @@ void sinsp_analyzer::emit_aggregated_connections()
 	for(acit = m_reduced_ipv4_connections.begin(); 
 		acit != m_reduced_ipv4_connections.end(); ++acit)
 	{
+		//
+		// Skip connection that had no activity during the sample
+		//
+		if(!acit->second.is_active())
+		{
+			continue;
+		}
+
+		//
+		// Add the connection to the protobuf
+		//
 		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
@@ -861,41 +872,47 @@ void sinsp_analyzer::emit_full_connections()
 	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
 		cit != m_inspector->m_ipv4_connections->m_connections.end();)
 	{
-		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
-		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
-
-		tuple->set_sip(cit->first.m_fields.m_sip);
-		tuple->set_dip(cit->first.m_fields.m_dip);
-		tuple->set_sport(cit->first.m_fields.m_sport);
-		tuple->set_dport(cit->first.m_fields.m_dport);
-		tuple->set_sip(cit->first.m_fields.m_sip);
-		tuple->set_l4proto(cit->first.m_fields.m_l4proto);
-
-		conn->set_spid(cit->second.m_spid);
-		conn->set_stid(cit->second.m_stid);
-		conn->set_dpid(cit->second.m_dpid);
-		conn->set_dtid(cit->second.m_dtid);
-
-		cit->second.m_metrics.to_protobuf(conn->mutable_counters());
-		cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
-
 		//
-		// Has this connection been closed druring this sample?
+		// We only include connections that had activity during the sample
 		//
-		if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+		if(cit->second.is_active())
 		{
+			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+
+			tuple->set_sip(cit->first.m_fields.m_sip);
+			tuple->set_dip(cit->first.m_fields.m_dip);
+			tuple->set_sport(cit->first.m_fields.m_sport);
+			tuple->set_dport(cit->first.m_fields.m_dport);
+			tuple->set_sip(cit->first.m_fields.m_sip);
+			tuple->set_l4proto(cit->first.m_fields.m_l4proto);
+
+			conn->set_spid(cit->second.m_spid);
+			conn->set_stid(cit->second.m_stid);
+			conn->set_dpid(cit->second.m_dpid);
+			conn->set_dtid(cit->second.m_dtid);
+
+			cit->second.m_metrics.to_protobuf(conn->mutable_counters());
+			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+
 			//
-			// Yes, remove the connection from the table
+			// Has this connection been closed druring this sample?
 			//
-			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
-		}
-		else
-		{
-			//
-			// Clear the transaction metrics, so we're ready for the next sample
-			//
-			cit->second.m_transaction_metrics.clear();
-			++cit;
+			if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+			{
+				//
+				// Yes, remove the connection from the table
+				//
+				m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+			}
+			else
+			{
+				//
+				// Clear the transaction metrics, so we're ready for the next sample
+				//
+				cit->second.m_transaction_metrics.clear();
+				++cit;
+			}
 		}
 	}
 }

@@ -38,3 +38,17 @@ bool sinsp_connection::is_server_only()
 {
 	return 0 == m_stid && 0 != m_dtid;
 }
+
+void sinsp_connection::clear()
+{
+	m_metrics.clear();
+	m_transaction_metrics.clear();
+}
+
+bool sinsp_connection::is_active()
+{
+	uint32_t totops = m_metrics.m_client.m_count_in + m_metrics.m_client.m_count_out + 
+				m_metrics.m_server.m_count_in + m_metrics.m_server.m_count_out;
+
+	return (totops != 0);
+}
