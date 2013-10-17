@@ -894,25 +894,25 @@ void sinsp_analyzer::emit_full_connections()
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters());
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+		}
 
+		//
+		// Has this connection been closed druring this sample?
+		//
+		if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
+		{
 			//
-			// Has this connection been closed druring this sample?
+			// Yes, remove the connection from the table
 			//
-			if(cit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
-			{
-				//
-				// Yes, remove the connection from the table
-				//
-				m_inspector->m_ipv4_connections->m_connections.erase(cit++);
-			}
-			else
-			{
-				//
-				// Clear the transaction metrics, so we're ready for the next sample
-				//
-				cit->second.m_transaction_metrics.clear();
-				++cit;
-			}
+			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+		}
+		else
+		{
+			//
+			// Clear the transaction metrics, so we're ready for the next sample
+			//
+			cit->second.clear();
+			++cit;
 		}
 	}
 }
