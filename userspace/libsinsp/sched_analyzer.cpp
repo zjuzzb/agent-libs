@@ -169,8 +169,6 @@ void sinsp_sched_analyzer::update(uint64_t ts, int16_t cpu, int64_t newtid)
 	//
 	// Update the current sample
 	//
-	ASSERT(delta > 0);
-
 	state.add_to_last_interval(state.m_last_switch_tid, delta);
 
 	state.m_last_switch_time = ts;
