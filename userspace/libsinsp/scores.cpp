@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <stack>
 
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
@@ -147,7 +148,62 @@ for(k = 0; k < trsize; k++)
 	return -1;
 }
 
-int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+//
+// The main function that takes a set of intervals, merges
+// overlapping intervals and prints the result
+//
+void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair<uint64_t, uint64_t>>* s, OUT uint64_t* tot_time)
+{
+	if(intervals->size() == 0)
+	{
+		return;
+	}
+
+	*tot_time = 0;
+
+	//
+    // sort the intervals based on start time
+	//
+    sort(intervals->begin(), intervals->end());
+ 
+    // push the first interval to stack
+    s->push((*intervals)[0]);
+	*tot_time += (((*intervals)[0].second - (*intervals)[0].first));
+ 
+	//
+    // Start from the next interval and merge if necessary
+	//
+    for(uint32_t i = 1 ; i < intervals->size(); i++)
+    {
+		//
+        // get interval from stack top
+		//
+        pair<uint64_t, uint64_t>& top = s->top();
+ 
+		//
+        // if current interval is not overlapping with stack top,
+        // push it to the stack.
+        // Otherwise update the ending time of top if ending of current 
+        // interval is more
+		//
+		if(top.second < (*intervals)[i].first)
+        {
+            s->push((*intervals)[i]);
+			*tot_time += (((*intervals)[i].second - (*intervals)[i].first));
+        }
+		else if(top.second < (*intervals)[i].second)
+        {
+			top.second = (*intervals)[i].second;
+			*tot_time += (((*intervals)[i].second - top.second));
+        }
+    }
+ 
+    return;
+}
+
+uint32_t ncalls = 0;
+
+int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -166,19 +222,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 	}
 
-/*
-	if(m_cpu_transaction_vectors.size() == 0)
-	{
-		m_cpu_transaction_vectors = vector<vector<uint8_t>>(num_cpus);
-		for(cpuid = 0; cpuid < num_cpus; cpuid++)
-		{
-			m_cpu_transaction_vectors[cpuid].insert(m_cpu_transaction_vectors[cpuid].begin(), 
-				m_n_intervals_in_sample, 
-				0);
-		}
-	}
-*/
-
+	ncalls++;
 	int32_t max_score = 0;
 	int32_t min_score = 200;
 	int32_t tot_score = 0;
@@ -205,19 +249,189 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			uint32_t nother = 0;
 			uint32_t ntrcpu = 0;
 
-vector<int64_t>v;
-int64_t tot = 0;
-for(k = 1; k < ((*transactions)[cpuid]).size(); k++)
-{
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
 //	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
-	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
-	v.push_back(delta);
-	if(delta > 0)
-	{
-		tot += delta;
+////	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+
+			stack<pair<uint64_t, uint64_t>> transaction_union;
+			uint64_t tot_time;
+			merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
+			ntr = tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+
+			//
+			// Count the number of concurrent transactions for each inerval of size
+			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+			//
+			for(j = 0; j < m_n_intervals_in_sample; j++)
+			{
+				int64_t tid = (*cpu_vector)[j];
+
+				if(tid != 0)
+				{
+					sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
+					if(tinfo != NULL)
+					{
+						if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
+						{
+							ntrcpu++;
+							continue;
+						}
+					}
+
+					nother++;
+				}
+			}
+
+			int32_t score;
+
+if(ncalls == 2)
+{
+	int a = 0;
+}
+			if(ntr != 0 && ntrcpu != 0)
+			{
+				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
+				uint32_t avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				uint32_t maxavail = MAX(avail, ntr);
+				score = 100 - ntr * 100 / maxavail;
+//sort(cpu_vector->begin(), cpu_vector->end());
+				ASSERT(score >= 0);
+				ASSERT(score <= 100);
+
+				tot_score += score;
+				n_scores++;
+
+				if(score > max_score)
+				{
+					max_score = score;
+				}
+
+				if(score < min_score)
+				{
+					min_score = score;
+				}
+			}
+		}
+
+		//
+		// Done scanning the transactions, return the average of the CPU rest times
+		//
+		if(n_scores != 0)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+				min_score,
+				max_score,
+				tot_score / n_scores,
+				n_scores);
+
+			return (tot_score / n_scores);
+		}
+		else
+		{
+			return -1;
+		}
 	}
+
+	return -1;
 }
 
+int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+	uint32_t n_server_threads,
+	uint64_t sample_end_time, uint64_t sample_duration)
+{
+	int32_t cpuid;
+	const scap_machine_info* machine_info = m_inspector->get_machine_info();
+	if(machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
+	}
+	int32_t num_cpus = machine_info->num_cpus;
+
+	if(m_sample_length_ns == 0)
+	{
+		m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
+		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+	}
+
+	//if(m_cpu_transaction_vectors.size() == 0)
+	//{
+	//	m_cpu_transaction_vectors = vector<vector<uint8_t>>(num_cpus);
+	//	for(cpuid = 0; cpuid < num_cpus; cpuid++)
+	//	{
+	//		m_cpu_transaction_vectors[cpuid].insert(m_cpu_transaction_vectors[cpuid].begin(), 
+	//			m_n_intervals_in_sample, 
+	//			0);
+	//	}
+	//}
+
+	ncalls++;
+	int32_t max_score = 0;
+	int32_t min_score = 200;
+	int32_t tot_score = 0;
+	int32_t n_scores = 0;
+
+	if(num_cpus != 0)
+	{
+		vector<uint64_t> time_by_concurrency;
+		uint32_t k;
+		vector<int64_t> cpu_counters;
+		uint64_t starttime = sample_end_time - sample_duration;
+
+		//
+		// Go through the CPUs and calculate the rest time for each of them
+		//
+		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		{
+			uint32_t j;
+			uint32_t trsize = (*transactions)[cpuid].size();
+			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
+			bool has_transaction;
+			uint64_t intervaltime;
+			uint32_t ntr = 0;
+			uint32_t nother = 0;
+			uint32_t ntrcpu = 0;
+
+//((*transactions)[cpuid]).clear();
+//((*transactions)[cpuid]).push_back(pair<uint64_t, uint64_t>(1, 3));
+//((*transactions)[cpuid]).push_back(pair<uint64_t, uint64_t>(3, 7));
+//((*transactions)[cpuid]).push_back(pair<uint64_t, uint64_t>(8, 10));
+//((*transactions)[cpuid]).push_back(pair<uint64_t, uint64_t>(11, 13));
+//
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
+//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+////	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+
+			stack<pair<uint64_t, uint64_t>> transaction_union;
+			uint64_t tot_time;
+			merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
 
 			//
 			// Make sure the transactions are ordered by start time
@@ -270,6 +484,10 @@ for(k = 1; k < ((*transactions)[cpuid]).size(); k++)
 
 			int32_t score;
 
+if(ncalls == 2)
+{
+	int a = 0;
+}
 			if(ntr != 0 && ntrcpu != 0)
 			{
 				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
@@ -318,7 +536,6 @@ for(k = 1; k < ((*transactions)[cpuid]).size(); k++)
 	return -1;
 }
 
-/*
 int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
@@ -510,7 +727,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pai
 
 	return -1;
 }
-*/
 
 int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sinsp_threadinfo* mainthread_info)
 {

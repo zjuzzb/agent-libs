@@ -58,7 +58,7 @@ void cpustate::complete_interval()
 
 	for(it = m_last_interval_threads.begin(); it != m_last_interval_threads.end(); ++it)
 	{
-		ASSERT(it->second > 0);
+//		ASSERT(it->second > 0);
 
 		if(it->second > max)
 		{
