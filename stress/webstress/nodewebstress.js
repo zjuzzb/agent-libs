@@ -8,8 +8,8 @@ var cnt = 0;
 
 var options = {
   host: '127.0.0.1',
-  path: '/search.php',
-//  path: '/',
+//  path: '/search.php',
+  path: '/',
 //  path: '/lo.scap',
 //  port: 80,
 //  agent:false
@@ -40,7 +40,7 @@ function req_loop()
 {
   j++;
 //  options.path = '/' + j.toString();
-  sleep.usleep(80000);
+  sleep.usleep(100);
   http.request(options, callback).end();
 
   if(j < MAX_VIDEO_REQUESTS)

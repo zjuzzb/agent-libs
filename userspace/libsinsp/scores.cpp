@@ -231,9 +231,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 	if(num_cpus != 0)
 	{
 		vector<uint64_t> time_by_concurrency;
-		uint32_t k;
 		vector<int64_t> cpu_counters;
-		uint64_t starttime = sample_end_time - sample_duration;
 
 		//
 		// Go through the CPUs and calculate the rest time for each of them
@@ -241,10 +239,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 		for(cpuid = 0; cpuid < num_cpus; cpuid++)
 		{
 			uint32_t j;
-			uint32_t trsize = (*transactions)[cpuid].size();
 			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-			bool has_transaction;
-			uint64_t intervaltime;
 			uint32_t ntr = 0;
 			uint32_t nother = 0;
 			uint32_t ntrcpu = 0;
@@ -400,7 +395,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			uint32_t j;
 			uint32_t trsize = (*transactions)[cpuid].size();
 			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-			bool has_transaction;
 			uint64_t intervaltime;
 			uint32_t ntr = 0;
 			uint32_t nother = 0;
@@ -445,7 +439,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			for(j = 0; j < m_n_intervals_in_sample; j++)
 			{
 				intervaltime = starttime + j * CONCURRENCY_OBSERVATION_INTERVAL_NS;
-				has_transaction = false;
 
 				for(k = 0; k < trsize; k++)
 				{
@@ -453,7 +446,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 					{
 						if((*transactions)[cpuid][k].second >= (intervaltime - CONCURRENCY_OBSERVATION_INTERVAL_NS))
 						{
-							has_transaction = true;
 							ntr++;
 							break;
 						}
