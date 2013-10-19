@@ -68,12 +68,15 @@ public:
 	    run_callback_t run_function,
 	    captured_event_callback_t captured_event_callback,
 	    event_filter_t filter,
-	    const sinsp_configuration& configuration)
+	    const sinsp_configuration& configuration,
+	    analyzer_callback_interface* analyzer_callback = NULL)
 	{
 		event_capture capturing;
 		capturing.m_captured_event_callback = captured_event_callback;
 		capturing.m_filter = filter;
 		capturing.m_configuration = configuration;
+		capturing.m_analyzer_callback = analyzer_callback;
+
 		Poco::RunnableAdapter<event_capture> runnable(capturing, &event_capture::capture);
 		Poco::Thread thread;
 		thread.start(runnable);
@@ -155,6 +158,7 @@ private:
 	string m_dump_filename;
 	callback_param m_param;
 	sinsp* m_inspector;
+	analyzer_callback_interface* m_analyzer_callback;
 };
 
 

@@ -414,10 +414,10 @@ TEST_F(sys_call_test, net_connection_table_limit)
 		}
 	};
 
-	sinsp_configuration configuration;
 	//
 	// Set a very long sample time, so we're sure no connection is removed
 	//
+	sinsp_configuration configuration;
 	configuration.set_analyzer_sample_length_ns(100 * ONE_SECOND_IN_NS);
 
 	//
@@ -426,4 +426,94 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	configuration.set_max_connection_table_size(3);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+}
+
+class analyzer_callback: public analyzer_callback_interface
+{
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
+	{
+		printf("ciao\n");
+	}
+};
+
+TEST_F(sys_call_test, net_connection_aggregation)
+{
+	int nconns = 0;
+	analyzer_callback ac;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		try
+		{
+			HTTPStreamFactory::registerFactory();
+			
+			NullOutputStream ostr;
+
+			URI uri1("http://www.google.com");
+			std::unique_ptr<std::istream> pStr1(URIStreamOpener::defaultOpener().open(uri1));
+			StreamCopier::copyStream(*pStr1.get(), ostr);
+
+			URI uri2("http://www.yahoo.com");
+			std::unique_ptr<std::istream> pStr2(URIStreamOpener::defaultOpener().open(uri2));
+			StreamCopier::copyStream(*pStr2.get(), ostr);
+
+			URI uri3("http://www.bing.com");
+			std::unique_ptr<std::istream> pStr3(URIStreamOpener::defaultOpener().open(uri3));
+			StreamCopier::copyStream(*pStr3.get(), ostr);
+
+			// We use a random call to tee to signal that we're done
+			tee(-1, -1, 0, 0);
+//			sleep(5);
+		}
+		catch (Exception& exc)
+		{
+			std::cerr << exc.displayText() << std::endl;
+			FAIL();
+		}
+
+		return;
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{		
+return;		
+		sinsp_evt *evt = param.m_evt;
+
+		if(evt->get_type() == PPME_GENERIC_E)
+		{
+			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			{
+				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
+				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				{
+					nconns++;
+				}
+
+				ASSERT_EQ(3, nconns);
+			}
+		}
+	};
+
+	//
+	// Set a very low connection table size
+	//
+	sinsp_configuration configuration;
+	configuration.set_analyzer_sample_length_ns(3 * ONE_SECOND_IN_NS);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration, &ac);});
 }

@@ -10,6 +10,11 @@ void event_capture::capture()
 	
 	m_inspector->set_configuration(m_configuration);
 	
+	if(m_analyzer_callback != NULL)
+	{
+		m_inspector->set_analyzer_callback(m_analyzer_callback);
+	}
+
 	m_param.m_inspector = m_inspector;
 	try
 	{

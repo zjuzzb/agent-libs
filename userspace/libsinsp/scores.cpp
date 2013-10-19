@@ -476,11 +476,12 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			}
 
 			int32_t score;
-
+/*
 if(ncalls == 2)
 {
 	int a = 0;
 }
+*/
 			if(ntr != 0 && ntrcpu != 0)
 			{
 				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
