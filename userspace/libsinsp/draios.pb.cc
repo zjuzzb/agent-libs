@@ -3326,7 +3326,7 @@ bool host::MergePartialFromCodedStream(
         break;
       }
 
-      // required .draiosproto.resource_categories resource_counters = 8;
+      // optional .draiosproto.resource_categories resource_counters = 8;
       case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -3396,7 +3396,7 @@ void host::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(7, this->transaction_processing_delay(), output);
   }
 
-  // required .draiosproto.resource_categories resource_counters = 8;
+  // optional .draiosproto.resource_categories resource_counters = 8;
   if (has_resource_counters()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
       8, this->resource_counters(), output);
@@ -3450,7 +3450,7 @@ int host::ByteSize() const {
           this->transaction_processing_delay());
     }
 
-    // required .draiosproto.resource_categories resource_counters = 8;
+    // optional .draiosproto.resource_categories resource_counters = 8;
     if (has_resource_counters()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -3514,7 +3514,7 @@ void host::CopyFrom(const host& from) {
 }
 
 bool host::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000088) != 0x00000088) return false;
+  if ((_has_bits_[0] & 0x00000008) != 0x00000008) return false;
 
   if (has_tcounters()) {
     if (!this->tcounters().IsInitialized()) return false;
@@ -3783,7 +3783,7 @@ bool process::MergePartialFromCodedStream(
         break;
       }
 
-      // required .draiosproto.resource_categories resource_counters = 8;
+      // optional .draiosproto.resource_categories resource_counters = 8;
       case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -3854,7 +3854,7 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(7, this->transaction_processing_delay(), output);
   }
 
-  // required .draiosproto.resource_categories resource_counters = 8;
+  // optional .draiosproto.resource_categories resource_counters = 8;
   if (has_resource_counters()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
       8, this->resource_counters(), output);
@@ -3908,7 +3908,7 @@ int process::ByteSize() const {
           this->transaction_processing_delay());
     }
 
-    // required .draiosproto.resource_categories resource_counters = 8;
+    // optional .draiosproto.resource_categories resource_counters = 8;
     if (has_resource_counters()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -3969,7 +3969,7 @@ void process::CopyFrom(const process& from) {
 }
 
 bool process::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000087) != 0x00000087) return false;
+  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
 
   if (has_tcounters()) {
     if (!this->tcounters().IsInitialized()) return false;

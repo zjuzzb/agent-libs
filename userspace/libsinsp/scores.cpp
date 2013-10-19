@@ -264,7 +264,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 			stack<pair<uint64_t, uint64_t>> transaction_union;
 			uint64_t tot_time;
 			merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
-			ntr = tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+			ntr = (uint32_t)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 			//
 			// Count the number of concurrent transactions for each inerval of size
@@ -291,11 +291,12 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 			}
 
 			int32_t score;
-
-if(ncalls == 2)
+/*
+if(ncalls >= 3)
 {
 	int a = 0;
 }
+*/
 			if(ntr != 0 && ntrcpu != 0)
 			{
 				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);

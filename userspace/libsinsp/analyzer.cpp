@@ -396,18 +396,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	if(m_inspector->m_transactions_with_cpu.size() != 0)
 	{
 		int32_t syshscore_g;
-/*
+
 		syshscore = m_score_calculator->get_system_health_score_bycpu_old(&m_inspector->m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
-*/
+
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			"1!!%" PRId32,
+			syshscore);
 
 		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"1!!%" PRId32,
+			"2!!%" PRId32,
 			syshscore);
 
 		syshscore = m_score_calculator->get_system_health_score_bycpu_3(&m_inspector->m_transactions_per_cpu,
@@ -743,72 +746,38 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
+		//
+		// If this is a server connection and the client address is outside the subnet, aggregate it
+		//
 		if(cit->second.is_server_only())
 		{
 			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
 			{
 				tuple.m_fields.m_sip = 0;
 			}
-
-			//
-			// Look for the entry in the reduced connection table
-			//
-			sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
-
-			if(conn.m_timestamp == 0)
-			{
-				//
-				// New entry
-				//
-				ASSERT(cit->second.m_dfd != 0);
-
-				//
-				// Structure copy the connection info
-				//
-				conn = cit->second;
-				conn.m_timestamp = 0;
-			}
-
-			//
-			// Add this connection's metrics to the aggregated connection's ones
-			//
-			conn.m_metrics.add(&cit->second.m_metrics);
-			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			conn.m_timestamp++;
 		}
-		else
+
+		//
+		// Look for the entry in the reduced connection table
+		//
+		sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
+
+		if(conn.m_timestamp == 0)
 		{
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_dip))
-			{
-				tuple.m_fields.m_dip = 0;
-			}
-
 			//
-			// Look for the entry in the remote connection table
+			// New entry.
+			// Structure copy the connection info.
 			//
-			sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
-
-			if(conn.m_timestamp == 0)
-			{
-				//
-				// New entry
-				//
-				ASSERT(cit->second.m_sfd != 0);
-
-				//
-				// Structure copy the connection info
-				//
-				conn = cit->second;
-				conn.m_timestamp = 0;
-			}
-
-			//
-			// Add this connection's metrics to the aggregated connection's ones
-			//
-			conn.m_metrics.add(&cit->second.m_metrics);
-			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			conn.m_timestamp++;
+			conn = cit->second;
+			conn.m_timestamp = 0;
 		}
+
+		//
+		// Add this connection's metrics to the aggregated connection's ones
+		//
+		conn.m_metrics.add(&cit->second.m_metrics);
+		conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+		conn.m_timestamp++;
 
 		//
 		// Has this connection been closed druring this sample?
