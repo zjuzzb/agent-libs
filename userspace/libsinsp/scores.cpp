@@ -297,10 +297,19 @@ if(ncalls >= 3)
 	int a = 0;
 }
 */
-			if(ntr != 0 && ntrcpu != 0)
+			if(ntr != 0)
 			{
 				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
-				uint32_t avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				uint32_t avail;
+				if(ntrcpu != 0)
+				{
+					avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				}
+				else
+				{
+					avail = m_n_intervals_in_sample;
+				}
+
 				uint32_t maxavail = MAX(avail, ntr);
 				score = 100 - ntr * 100 / maxavail;
 //sort(cpu_vector->begin(), cpu_vector->end());

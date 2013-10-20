@@ -188,7 +188,6 @@ int main(int argc, char **argv)
 	captureinfo cinfo;
 	string dumpfile;
 
-
 	{
 		sinsp inspector;
 inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %evt.dir %evt.name %evt.arg.0");

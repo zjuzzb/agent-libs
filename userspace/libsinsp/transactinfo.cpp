@@ -6,7 +6,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "connectinfo.h"
-
+#include "analyzer.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transact_table implementation
@@ -86,23 +86,6 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		// Update the metrics related to this transaction
 		//
 		ASSERT(ptinfo != NULL);
-
-#if 0
-		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_end_time;
-
-		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
-		{
-			m_n_server_transactions++;
-			ptinfo->m_transaction_metrics.m_incoming.add(1, delta);
-			ptinfo->m_total_server_transaction_counter.add(1, delta);
-			pconn->m_transaction_metrics.m_incoming.add(1, delta);
-
-			m_inspector->m_transactions_with_cpu.push_back(
-				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_end_time, 
-				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
-
-			tr->m_incoming_bytes = 0;
-#else
 		ASSERT(tr->m_prev_end_time > tr->m_prev_prev_start_of_transaction_time);
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
@@ -110,30 +93,17 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
 			m_n_server_transactions++;
+			ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
 			ptinfo->m_transaction_metrics.m_counter.add_in(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
 
-			m_inspector->m_transactions_with_cpu.push_back(
+			m_inspector->m_analyzer->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 
-			m_inspector->m_transactions_per_cpu[tr->m_cpuid].push_back(
+			m_inspector->m_analyzer->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 				pair<uint64_t, uint64_t>(tr->m_prev_prev_start_of_transaction_time, 
 				tr->m_prev_end_time));
-#endif
-/*
-			if(ptinfo->m_analysis_flags & sinsp_threadinfo::AF_IS_TRANSACTION_SERVER)
-			{
-				ptinfo->m_n_active_transactions++;
-			}
-			else
-			{
-				if(is_transaction_server(ptinfo))
-				{
-					ptinfo->m_analysis_flags |= sinsp_threadinfo::AF_IS_TRANSACTION_SERVER;
-				}
-			}
-*/
 		}
 		else
 		{

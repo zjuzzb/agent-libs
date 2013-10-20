@@ -49,6 +49,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
+	m_client_tr_time_by_servers = 0;
 
 	//
 	// Initialize the CPU calculation counters
@@ -66,6 +67,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
 
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer);
+
+	m_server_transactions_per_cpu = vector<vector<pair<uint64_t, uint64_t>>>(m_machine_info->num_cpus);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -249,12 +252,12 @@ void sinsp_analyzer::serialize(uint64_t ts)
 // Based on the transaction counters for this process, calculate the delay in trasanction 
 // handling that the process introduces
 //
-uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_counters* trcounters)
+uint64_t sinsp_analyzer::compute_thread_transaction_delay(sinsp_transaction_counters* trcounters)
 {
 	if(trcounters->m_counter.m_count_in == 0)
 	{
 		//
-		// This is a client
+		// This is not a server
 		//
 		return 0;
 	}
@@ -263,6 +266,32 @@ uint64_t sinsp_analyzer::compute_process_transaction_delay(sinsp_transaction_cou
 		ASSERT(trcounters->m_counter.m_time_ns_in != 0);
 
 		int64_t res = trcounters->m_counter.m_time_ns_in - trcounters->m_counter.m_time_ns_out;
+
+		if(res <= 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return res;
+		}
+	}
+}
+
+int64_t sinsp_analyzer::compute_host_transaction_delay()
+{
+	if(m_host_transaction_metrics.m_counter.m_count_in == 0)
+	{
+		//
+		// This host is not serving transactions
+		//
+		return -1;
+	}
+	else
+	{
+		ASSERT(m_host_transaction_metrics.m_counter.m_time_ns_in != 0);
+
+		int64_t res = m_host_transaction_metrics.m_counter.m_time_ns_in - m_client_tr_time_by_servers;
 
 		if(res <= 0)
 		{
@@ -337,7 +366,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			it->second.m_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
+			it->second.m_th_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
 		}
 
 		//
@@ -365,7 +394,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Add this thread's counters to the process ones
 		//
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-		it->second.m_transaction_processing_delay_ns = compute_process_transaction_delay(&it->second.m_transaction_metrics);
+		it->second.m_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_transaction_metrics);
 		mtinfo->add_all_metrics(&it->second);
 
 		//
@@ -393,11 +422,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Between the first and the second pass of the thread list, calculate the 
 	// health score for the machine
 	//
-	if(m_inspector->m_transactions_with_cpu.size() != 0)
+	if(m_transactions_with_cpu.size() != 0)
 	{
 		int32_t syshscore_g;
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu_old(&m_inspector->m_transactions_with_cpu,
+		syshscore = m_score_calculator->get_system_health_score_bycpu_old(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -405,7 +434,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"1!!%" PRId32,
 			syshscore);
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_inspector->m_transactions_per_cpu,
+		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -413,7 +442,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%" PRId32,
 			syshscore);
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu_3(&m_inspector->m_transactions_per_cpu,
+		syshscore = m_score_calculator->get_system_health_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -421,7 +450,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"3!!%" PRId32,
 			syshscore);
 
-		syshscore_g = m_score_calculator->get_system_health_score_global(&m_inspector->m_transactions_with_cpu,
+		syshscore_g = m_score_calculator->get_system_health_score_global(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -434,10 +463,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%" PRId32,
 			syshscore_g);
 
-		m_inspector->m_transactions_with_cpu.clear();
-		for(uint32_t k = 0; k < m_inspector->m_transactions_per_cpu.size(); k++)
+		m_transactions_with_cpu.clear();
+		for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
 		{
-			m_inspector->m_transactions_per_cpu[k].clear();
+			m_server_transactions_per_cpu[k].clear();
 		}
 	}
 
@@ -555,6 +584,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
 
+					//
+					// Update the global transaction metrics with this host's ones
+					//
+					m_host_transaction_metrics.add(&it->second.m_procinfo->m_proc_transaction_metrics);
+
+					// If this is a server process, add its client transaction time to the total that we use
+					// as a factor for the health score.
+					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						m_client_tr_time_by_servers += it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+					}
+
 #if 1
 					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
@@ -574,7 +615,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
 							trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
-							trcountout? ((double)trtimeout) / trcountout / 1000000000 : 0,
+							trcountout? ((double)trtimeout) / trcountin / 1000000000 : 0,
 							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
 							it->second.m_fd_usage_pct,
 							it->second.m_connection_queue_usage_pct);
@@ -619,7 +660,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
-		if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
+		if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_CLOSED)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -1075,6 +1116,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_resource_counters()->mutable_syscall_errors());
 
+			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
+
+			int64_t host_tr_delay = compute_host_transaction_delay();
+			if(host_tr_delay != -1)
+			{
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(host_tr_delay);
+
+				g_logger.format(sinsp_logger::SEV_DEBUG, 
+					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf",
+					m_host_transaction_metrics.m_counter.m_count_in,
+					m_host_transaction_metrics.m_counter.m_count_out,
+					(double)m_host_transaction_metrics.m_counter.m_time_ns_in / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
+					(double)m_client_tr_time_by_servers / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
+					(double)host_tr_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000);
+			}
+
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
 			////////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1140,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	}
 
 	//
-	// Clear the transaction table
+	// Clear the transaction state
 	//
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"# Client Transactions:%d",
@@ -1094,6 +1151,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	m_inspector->get_transactions()->m_n_client_transactions = 0;
 	m_inspector->get_transactions()->m_n_server_transactions = 0;
+
+	m_host_transaction_metrics.clear();
+	m_client_tr_time_by_servers = 0;
 
 	//
 	// Run the periodic connection and thread table cleanup
@@ -1165,13 +1225,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	// Check if this is an event that goes across sample boundaries
 	//
-	if((evt->m_tinfo->m_analysis_flags & sinsp_threadinfo::AF_PARTIAL_METRIC) != 0)
+	if((evt->m_tinfo->m_th_analysis_flags & sinsp_threadinfo::AF_PARTIAL_METRIC) != 0)
 	{
 		//
 		// Part of this event has already been attributed to the previous sample, 
 		// we just include the remaining part
 		//
-		evt->m_tinfo->m_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
+		evt->m_tinfo->m_th_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
 
 		delta = ts - m_prev_flush_time_ns;
 	}

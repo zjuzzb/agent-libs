@@ -87,7 +87,8 @@ public:
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
-	uint64_t compute_process_transaction_delay(sinsp_transaction_counters* trcounters);
+	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);
+	int64_t compute_host_transaction_delay();
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
 	void emit_aggregated_connections();
 	void emit_full_connections();
@@ -144,6 +145,15 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_sched_analyzer* m_sched_analyzer;
 
+	//
+	// Transaction-related state
+	//
+	sinsp_transaction_counters m_host_transaction_metrics; 
+	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
+	vector<vector<pair<uint64_t, uint64_t>>> m_server_transactions_per_cpu;
+
+	uint64_t m_client_tr_time_by_servers;
+
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//
 	// The temporary table that we build while scanning the process list.
@@ -152,4 +162,6 @@ VISIBILITY_PRIVATE
 	//
 	unordered_map<string, sinsp_threadinfo*> m_program_table;
 #endif
+
+	friend class sinsp_transaction_table;
 };

@@ -1693,7 +1693,7 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	if(evt->m_tinfo)
 	{
 #ifdef HAS_ANALYZER
-		evt->m_tinfo->m_analysis_flags |= sinsp_threadinfo::AF_CLOSED;
+		evt->m_tinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_CLOSED;
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();
 #endif

@@ -25,7 +25,7 @@ const event_property_info g_tostring_category_table[] =
 	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{ETSC_CPU, PT_INT16, EPF_NONE, PF_DEC, "evt", "cpu", "number of the CPU where this event happened."},
 	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "args", "all the event arguments."},
-	{ETSC_ARG, PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt", "arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg.0'."},
+	{ETSC_ARG, PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt", "arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
 	{ETSC_RES, PT_INT64, EPF_NONE, PF_DEC, "evt", "res", "event return value."},
 	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
 	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},

@@ -286,10 +286,6 @@ VISIBILITY_PRIVATE
 
 	sinsp_network_interfaces* m_network_interfaces;
 
-	// Used by the analyzer
-	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
-	vector<vector<pair<uint64_t, uint64_t>>> m_transactions_per_cpu;
-
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
 #endif
@@ -316,5 +312,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_partial_transaction;
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
+	friend class sinsp_transaction_table;
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

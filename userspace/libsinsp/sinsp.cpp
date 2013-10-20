@@ -280,8 +280,6 @@ void sinsp::init()
 	m_trans_table = new sinsp_transaction_table(this);
 	m_thread_manager = new sinsp_thread_manager(this);
 
-	m_transactions_per_cpu = vector<vector<pair<uint64_t, uint64_t>>>(m_num_cpus);
-
 	//
 	// Basic inits
 	//

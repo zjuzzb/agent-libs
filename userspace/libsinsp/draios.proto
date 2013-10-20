@@ -87,7 +87,7 @@ message host {
   required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
 
   optional time_categories tcounters = 5; // The time counters for this thread
-  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
+  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional resource_categories resource_counters = 8; // The resource counters for this process

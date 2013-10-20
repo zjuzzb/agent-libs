@@ -39,7 +39,7 @@ void sinsp_threadinfo::init()
 	m_lastevent_ts = 0;
 	m_lastaccess_ts = 0;
 	m_lastevent_category.m_category = EC_UNKNOWN;
-	m_analysis_flags = AF_PARTIAL_METRIC;
+	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	m_flags = 0;
 	m_refcount = 0;
 	m_procinfo = NULL;
