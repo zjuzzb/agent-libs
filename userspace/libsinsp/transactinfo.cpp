@@ -430,6 +430,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
+				m_outgoing_bytes = len;
 				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
 			}
@@ -440,7 +441,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 			{
 				m_direction = dir;
 
-				if(m_incoming_bytes == len)
+				if(m_outgoing_bytes == len)
 				{
 					m_start_of_transaction_time = exit_ts;
 				}
