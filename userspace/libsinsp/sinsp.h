@@ -312,6 +312,5 @@ VISIBILITY_PRIVATE
 	friend class sinsp_partial_transaction;
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
-	friend class sinsp_transaction_table;
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };
