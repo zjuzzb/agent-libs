@@ -436,7 +436,7 @@ class analyzer_callback: public analyzer_callback_interface
 	}
 };
 
-TEST_F(sys_call_test, net_connection_aggregation)
+TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 {
 	int nconns = 0;
 	analyzer_callback ac;
