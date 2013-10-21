@@ -56,7 +56,7 @@ message time_categories {
 }
 
 message counter_syscall_errors {
-  required uint32 cnt = 1;	// Syscall errors count
+  required uint32 count = 1;	// Syscall errors count
   repeated uint32 top_error_codes = 2; // Error codes that were generated the most
 }
 
@@ -66,7 +66,6 @@ message resource_categories {
   optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
   optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
   optional uint64 resident_memory_usage_kb = 5; // Resident (Physical) Memory usage in kb
-  optional counter_syscall_errors syscall_errors = 6; // Syscall error counter
 }
 
 message connection_categories {
@@ -91,6 +90,7 @@ message host {
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
+  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }
 
 //
@@ -111,6 +111,7 @@ message process {
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
+  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }
 
 //

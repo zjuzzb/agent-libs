@@ -862,12 +862,12 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
 
   // accessors -------------------------------------------------------
 
-  // required uint32 cnt = 1;
-  inline bool has_cnt() const;
-  inline void clear_cnt();
-  static const int kCntFieldNumber = 1;
-  inline ::google::protobuf::uint32 cnt() const;
-  inline void set_cnt(::google::protobuf::uint32 value);
+  // required uint32 count = 1;
+  inline bool has_count() const;
+  inline void clear_count();
+  static const int kCountFieldNumber = 1;
+  inline ::google::protobuf::uint32 count() const;
+  inline void set_count(::google::protobuf::uint32 value);
 
   // repeated uint32 top_error_codes = 2;
   inline int top_error_codes_size() const;
@@ -883,11 +883,11 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
 
   // @@protoc_insertion_point(class_scope:draiosproto.counter_syscall_errors)
  private:
-  inline void set_has_cnt();
-  inline void clear_has_cnt();
+  inline void set_has_count();
+  inline void clear_has_count();
 
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > top_error_codes_;
-  ::google::protobuf::uint32 cnt_;
+  ::google::protobuf::uint32 count_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
@@ -993,15 +993,6 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 resident_memory_usage_kb() const;
   inline void set_resident_memory_usage_kb(::google::protobuf::uint64 value);
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
-  inline bool has_syscall_errors() const;
-  inline void clear_syscall_errors();
-  static const int kSyscallErrorsFieldNumber = 6;
-  inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
-  inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
-  inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
-  inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
-
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_health_score();
@@ -1014,18 +1005,15 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline void clear_has_cpu_pct();
   inline void set_has_resident_memory_usage_kb();
   inline void clear_has_resident_memory_usage_kb();
-  inline void set_has_syscall_errors();
-  inline void clear_has_syscall_errors();
 
   ::google::protobuf::uint32 health_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
   ::google::protobuf::uint32 cpu_pct_;
   ::google::protobuf::uint64 resident_memory_usage_kb_;
-  ::draiosproto::counter_syscall_errors* syscall_errors_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1284,6 +1272,15 @@ class host : public ::google::protobuf::MessageLite {
   inline ::draiosproto::resource_categories* release_resource_counters();
   inline void set_allocated_resource_counters(::draiosproto::resource_categories* resource_counters);
 
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+  inline bool has_syscall_errors() const;
+  inline void clear_syscall_errors();
+  static const int kSyscallErrorsFieldNumber = 9;
+  inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
+  inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
+  inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
+  inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -1300,6 +1297,8 @@ class host : public ::google::protobuf::MessageLite {
   inline void clear_has_transaction_processing_delay();
   inline void set_has_resource_counters();
   inline void clear_has_resource_counters();
+  inline void set_has_syscall_errors();
+  inline void clear_has_syscall_errors();
 
   ::std::string* hostname_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_loads_;
@@ -1308,10 +1307,11 @@ class host : public ::google::protobuf::MessageLite {
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::draiosproto::resource_categories* resource_counters_;
+  ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1460,6 +1460,15 @@ class process : public ::google::protobuf::MessageLite {
   inline ::draiosproto::resource_categories* release_resource_counters();
   inline void set_allocated_resource_counters(::draiosproto::resource_categories* resource_counters);
 
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+  inline bool has_syscall_errors() const;
+  inline void clear_syscall_errors();
+  static const int kSyscallErrorsFieldNumber = 9;
+  inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
+  inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
+  inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
+  inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -1476,6 +1485,8 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_transaction_processing_delay();
   inline void set_has_resource_counters();
   inline void clear_has_resource_counters();
+  inline void set_has_syscall_errors();
+  inline void clear_has_syscall_errors();
 
   ::google::protobuf::uint64 pid_;
   ::std::string* comm_;
@@ -1485,9 +1496,10 @@ class process : public ::google::protobuf::MessageLite {
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::draiosproto::resource_categories* resource_counters_;
+  ::draiosproto::counter_syscall_errors* syscall_errors_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -3331,26 +3343,26 @@ inline void time_categories::set_allocated_processing(::draiosproto::counter_tim
 
 // counter_syscall_errors
 
-// required uint32 cnt = 1;
-inline bool counter_syscall_errors::has_cnt() const {
+// required uint32 count = 1;
+inline bool counter_syscall_errors::has_count() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void counter_syscall_errors::set_has_cnt() {
+inline void counter_syscall_errors::set_has_count() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void counter_syscall_errors::clear_has_cnt() {
+inline void counter_syscall_errors::clear_has_count() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void counter_syscall_errors::clear_cnt() {
-  cnt_ = 0u;
-  clear_has_cnt();
+inline void counter_syscall_errors::clear_count() {
+  count_ = 0u;
+  clear_has_count();
 }
-inline ::google::protobuf::uint32 counter_syscall_errors::cnt() const {
-  return cnt_;
+inline ::google::protobuf::uint32 counter_syscall_errors::count() const {
+  return count_;
 }
-inline void counter_syscall_errors::set_cnt(::google::protobuf::uint32 value) {
-  set_has_cnt();
-  cnt_ = value;
+inline void counter_syscall_errors::set_count(::google::protobuf::uint32 value) {
+  set_has_count();
+  count_ = value;
 }
 
 // repeated uint32 top_error_codes = 2;
@@ -3490,48 +3502,6 @@ inline ::google::protobuf::uint64 resource_categories::resident_memory_usage_kb(
 inline void resource_categories::set_resident_memory_usage_kb(::google::protobuf::uint64 value) {
   set_has_resident_memory_usage_kb();
   resident_memory_usage_kb_ = value;
-}
-
-// optional .draiosproto.counter_syscall_errors syscall_errors = 6;
-inline bool resource_categories::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void resource_categories::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void resource_categories::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void resource_categories::clear_syscall_errors() {
-  if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
-  clear_has_syscall_errors();
-}
-inline const ::draiosproto::counter_syscall_errors& resource_categories::syscall_errors() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance().syscall_errors_;
-#else
-  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance_->syscall_errors_;
-#endif
-}
-inline ::draiosproto::counter_syscall_errors* resource_categories::mutable_syscall_errors() {
-  set_has_syscall_errors();
-  if (syscall_errors_ == NULL) syscall_errors_ = new ::draiosproto::counter_syscall_errors;
-  return syscall_errors_;
-}
-inline ::draiosproto::counter_syscall_errors* resource_categories::release_syscall_errors() {
-  clear_has_syscall_errors();
-  ::draiosproto::counter_syscall_errors* temp = syscall_errors_;
-  syscall_errors_ = NULL;
-  return temp;
-}
-inline void resource_categories::set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors) {
-  delete syscall_errors_;
-  syscall_errors_ = syscall_errors;
-  if (syscall_errors) {
-    set_has_syscall_errors();
-  } else {
-    clear_has_syscall_errors();
-  }
 }
 
 // -------------------------------------------------------------------
@@ -3977,6 +3947,48 @@ inline void host::set_allocated_resource_counters(::draiosproto::resource_catego
   }
 }
 
+// optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+inline bool host::has_syscall_errors() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void host::set_has_syscall_errors() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void host::clear_has_syscall_errors() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void host::clear_syscall_errors() {
+  if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
+  clear_has_syscall_errors();
+}
+inline const ::draiosproto::counter_syscall_errors& host::syscall_errors() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance().syscall_errors_;
+#else
+  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance_->syscall_errors_;
+#endif
+}
+inline ::draiosproto::counter_syscall_errors* host::mutable_syscall_errors() {
+  set_has_syscall_errors();
+  if (syscall_errors_ == NULL) syscall_errors_ = new ::draiosproto::counter_syscall_errors;
+  return syscall_errors_;
+}
+inline ::draiosproto::counter_syscall_errors* host::release_syscall_errors() {
+  clear_has_syscall_errors();
+  ::draiosproto::counter_syscall_errors* temp = syscall_errors_;
+  syscall_errors_ = NULL;
+  return temp;
+}
+inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors) {
+  delete syscall_errors_;
+  syscall_errors_ = syscall_errors;
+  if (syscall_errors) {
+    set_has_syscall_errors();
+  } else {
+    clear_has_syscall_errors();
+  }
+}
+
 // -------------------------------------------------------------------
 
 // process
@@ -4332,6 +4344,48 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
     set_has_resource_counters();
   } else {
     clear_has_resource_counters();
+  }
+}
+
+// optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+inline bool process::has_syscall_errors() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void process::set_has_syscall_errors() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void process::clear_has_syscall_errors() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void process::clear_syscall_errors() {
+  if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
+  clear_has_syscall_errors();
+}
+inline const ::draiosproto::counter_syscall_errors& process::syscall_errors() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance().syscall_errors_;
+#else
+  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance_->syscall_errors_;
+#endif
+}
+inline ::draiosproto::counter_syscall_errors* process::mutable_syscall_errors() {
+  set_has_syscall_errors();
+  if (syscall_errors_ == NULL) syscall_errors_ = new ::draiosproto::counter_syscall_errors;
+  return syscall_errors_;
+}
+inline ::draiosproto::counter_syscall_errors* process::release_syscall_errors() {
+  clear_has_syscall_errors();
+  ::draiosproto::counter_syscall_errors* temp = syscall_errors_;
+  syscall_errors_ = NULL;
+  return temp;
+}
+inline void process::set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors) {
+  delete syscall_errors_;
+  syscall_errors_ = syscall_errors;
+  if (syscall_errors) {
+    set_has_syscall_errors();
+  } else {
+    clear_has_syscall_errors();
   }
 }
 

@@ -278,14 +278,14 @@ uint64_t sinsp_analyzer::compute_thread_transaction_delay(sinsp_transaction_coun
 	}
 }
 
-int64_t sinsp_analyzer::compute_host_transaction_delay()
+void sinsp_analyzer::compute_host_transaction_delay()
 {
 	if(m_host_transaction_metrics.m_counter.m_count_in == 0)
 	{
 		//
 		// This host is not serving transactions
 		//
-		return -1;
+		m_host_transaction_delay = -1;
 	}
 	else
 	{
@@ -295,11 +295,11 @@ int64_t sinsp_analyzer::compute_host_transaction_delay()
 
 		if(res <= 0)
 		{
-			return 0;
+			m_host_transaction_delay = 0;
 		}
 		else
 		{
-			return res;
+			m_host_transaction_delay = res;
 		}
 	}
 }
@@ -383,19 +383,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
 
 		//
-		// If this thread served requests, increase the server thread counter
-		//
+		// If this is a server process, increase the server thread counter and add its client transaction 
+		// time to the total that we use as a factor for the health score.
 		if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
 		{
 			n_server_threads++;
+			m_client_tr_time_by_servers += it->second.m_transaction_metrics.m_counter.m_time_ns_out;
 		}
 
 		//
-		// Add this thread's counters to the process ones
+		// Add this thread's counters to the process ones...
 		//
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 		it->second.m_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_transaction_metrics);
 		mtinfo->add_all_metrics(&it->second);
+
+		//
+		// ... And to the host ones
+		//
+		m_host_transaction_metrics.add(&it->second.m_transaction_metrics);
 
 		//
 		// Dump the thread info into the protobuf
@@ -420,8 +426,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	//
 	// Between the first and the second pass of the thread list, calculate the 
-	// health score for the machine
+	// host transaction delay and the health score for the machine.
 	//
+	compute_host_transaction_delay();
+
 	if(m_transactions_with_cpu.size() != 0)
 	{
 		int32_t syshscore_g;
@@ -582,19 +590,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Error-related metrics
 					//
-					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_resource_counters()->mutable_syscall_errors());
-
-					//
-					// Update the global transaction metrics with this host's ones
-					//
-					m_host_transaction_metrics.add(&it->second.m_procinfo->m_proc_transaction_metrics);
-
-					// If this is a server process, add its client transaction time to the total that we use
-					// as a factor for the health score.
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-					{
-						m_client_tr_time_by_servers += it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-					}
+					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
 					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
@@ -1114,14 +1110,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
-			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_resource_counters()->mutable_syscall_errors());
+			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
 
 			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
 
-			int64_t host_tr_delay = compute_host_transaction_delay();
-			if(host_tr_delay != -1)
+			if(m_host_transaction_delay != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(host_tr_delay);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay);
 
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
 					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf",
@@ -1129,7 +1124,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					m_host_transaction_metrics.m_counter.m_count_out,
 					(double)m_host_transaction_metrics.m_counter.m_time_ns_in / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
 					(double)m_client_tr_time_by_servers / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
-					(double)host_tr_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000);
+					(double)m_host_transaction_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000);
 			}
 
 			////////////////////////////////////////////////////////////////////////////

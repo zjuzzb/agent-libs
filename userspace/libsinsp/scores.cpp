@@ -4,6 +4,8 @@
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "connectinfo.h"
+#include "analyzer.h"
 #include "scores.h"
 #include "sched_analyzer.h"
 
@@ -204,8 +206,7 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
 uint32_t ncalls = 0;
 
 int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
-	uint32_t n_server_threads,
-	uint64_t sample_end_time, uint64_t sample_duration)
+	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	int32_t cpuid;
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
@@ -215,6 +216,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
 	}
 	int32_t num_cpus = machine_info->num_cpus;
+	ASSERT(num_cpus != 0);
 
 	if(m_sample_length_ns == 0)
 	{
@@ -228,28 +230,45 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 	int32_t tot_score = 0;
 	int32_t n_scores = 0;
 
-	if(num_cpus != 0)
+	double local_remote_ratio;
+	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
 	{
-		vector<uint64_t> time_by_concurrency;
-		vector<int64_t> cpu_counters;
-
-		//
-		// Go through the CPUs and calculate the rest time for each of them
-		//
-		for(cpuid = 0; cpuid < num_cpus; cpuid++)
+		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
 		{
-			uint32_t j;
-			vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-			uint32_t ntr = 0;
-			uint32_t nother = 0;
-			uint32_t ntrcpu = 0;
+			local_remote_ratio = (double)m_inspector->m_analyzer->m_host_transaction_delay / 
+				(double)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
+		}
+		else
+		{
+			ASSERT(false);
+			local_remote_ratio = -1;
+		}
+	}
+	else
+	{
+		local_remote_ratio = -1;
+	}
+
+	vector<uint64_t> time_by_concurrency;
+	vector<int64_t> cpu_counters;
+
+	//
+	// Go through the CPUs and calculate the rest time for each of them
+	//
+	for(cpuid = 0; cpuid < num_cpus; cpuid++)
+	{
+		uint32_t j;
+		vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
+		uint32_t ntr = 0;
+		uint32_t nother = 0;
+		uint32_t ntrcpu = 0;
 
 vector<int64_t>v;
 int64_t tot = 0;
 for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
 {
 	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
-//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+	//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
 	v.push_back(delta);
 	if(delta >= 0)
 	{
@@ -261,94 +280,94 @@ for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
 	}
 }
 
-			stack<pair<uint64_t, uint64_t>> transaction_union;
-			uint64_t tot_time;
-			merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
-			ntr = (uint32_t)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+		stack<pair<uint64_t, uint64_t>> transaction_union;
+		uint64_t tot_time;
+		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
+		ntr = (uint32_t)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
-			//
-			// Count the number of concurrent transactions for each inerval of size
-			// CONCURRENCY_OBSERVATION_INTERVAL_NS.
-			//
-			for(j = 0; j < m_n_intervals_in_sample; j++)
+		//
+		// Count the number of concurrent transactions for each inerval of size
+		// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+		//
+		for(j = 0; j < m_n_intervals_in_sample; j++)
+		{
+			int64_t tid = (*cpu_vector)[j];
+
+			if(tid != 0)
 			{
-				int64_t tid = (*cpu_vector)[j];
-
-				if(tid != 0)
+				sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
+				if(tinfo != NULL)
 				{
-					sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
-					if(tinfo != NULL)
+					if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
 					{
-						if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
-						{
-							ntrcpu++;
-							continue;
-						}
+						ntrcpu++;
+						continue;
 					}
-
-					nother++;
 				}
-			}
 
-			int32_t score;
+				nother++;
+			}
+		}
+
+		int32_t score;
 /*
 if(ncalls >= 3)
 {
 	int a = 0;
 }
 */
-			if(ntr != 0)
+		if(ntr != 0)
+		{
+			double ntrd = (double)ntr * local_remote_ratio;
+			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
+			double avail;
+			if(ntrcpu != 0)
 			{
-				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
-				uint32_t avail;
-				if(ntrcpu != 0)
-				{
-					avail = MIN(m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
-				}
-				else
-				{
-					avail = m_n_intervals_in_sample;
-				}
+				avail = MIN((double)m_n_intervals_in_sample, ntrd * maxcpu / ntrcpu);
+			}
+			else
+			{
+				avail = (double)m_n_intervals_in_sample;
+			}
 
-				uint32_t maxavail = MAX(avail, ntr);
-				score = 100 - ntr * 100 / maxavail;
+			double maxavail = MAX(avail, ntr);
+			score = 100 - (int32_t)(ntrd * 100 / maxavail);
 //sort(cpu_vector->begin(), cpu_vector->end());
-				ASSERT(score >= 0);
-				ASSERT(score <= 100);
+			ASSERT(score >= 0);
+			ASSERT(score <= 100);
 
-				tot_score += score;
-				n_scores++;
+			tot_score += score;
+			n_scores++;
 
-				if(score > max_score)
-				{
-					max_score = score;
-				}
+			if(score > max_score)
+			{
+				max_score = score;
+			}
 
-				if(score < min_score)
-				{
-					min_score = score;
-				}
+			if(score < min_score)
+			{
+				min_score = score;
 			}
 		}
+	}
 
-		//
-		// Done scanning the transactions, return the average of the CPU rest times
-		//
-		if(n_scores != 0)
-		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
-				min_score,
-				max_score,
-				tot_score / n_scores,
-				n_scores);
+	//
+	// Done scanning the transactions, return the average of the CPU rest times
+	//
+	if(n_scores != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+			min_score,
+			max_score,
+			tot_score / n_scores,
+			n_scores);
 
-			return (tot_score / n_scores);
-		}
-		else
-		{
-			return -1;
-		}
+		return (tot_score / n_scores);
+	}
+	else
+	{
+		return -1;
 	}
 
 	return -1;

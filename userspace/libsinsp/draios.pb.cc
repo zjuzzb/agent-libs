@@ -2224,7 +2224,7 @@ void time_categories::Swap(time_categories* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int counter_syscall_errors::kCntFieldNumber;
+const int counter_syscall_errors::kCountFieldNumber;
 const int counter_syscall_errors::kTopErrorCodesFieldNumber;
 #endif  // !_MSC_VER
 
@@ -2244,7 +2244,7 @@ counter_syscall_errors::counter_syscall_errors(const counter_syscall_errors& fro
 
 void counter_syscall_errors::SharedCtor() {
   _cached_size_ = 0;
-  cnt_ = 0u;
+  count_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2283,7 +2283,7 @@ counter_syscall_errors* counter_syscall_errors::New() const {
 
 void counter_syscall_errors::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    cnt_ = 0u;
+    count_ = 0u;
   }
   top_error_codes_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -2295,14 +2295,14 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required uint32 cnt = 1;
+      // required uint32 count = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &cnt_)));
-          set_has_cnt();
+                 input, &count_)));
+          set_has_count();
         } else {
           goto handle_uninterpreted;
         }
@@ -2349,9 +2349,9 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
 
 void counter_syscall_errors::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required uint32 cnt = 1;
-  if (has_cnt()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->cnt(), output);
+  // required uint32 count = 1;
+  if (has_count()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->count(), output);
   }
 
   // repeated uint32 top_error_codes = 2;
@@ -2366,11 +2366,11 @@ int counter_syscall_errors::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required uint32 cnt = 1;
-    if (has_cnt()) {
+    // required uint32 count = 1;
+    if (has_count()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->cnt());
+          this->count());
     }
 
   }
@@ -2399,8 +2399,8 @@ void counter_syscall_errors::MergeFrom(const counter_syscall_errors& from) {
   GOOGLE_CHECK_NE(&from, this);
   top_error_codes_.MergeFrom(from.top_error_codes_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_cnt()) {
-      set_cnt(from.cnt());
+    if (from.has_count()) {
+      set_count(from.count());
     }
   }
 }
@@ -2419,7 +2419,7 @@ bool counter_syscall_errors::IsInitialized() const {
 
 void counter_syscall_errors::Swap(counter_syscall_errors* other) {
   if (other != this) {
-    std::swap(cnt_, other->cnt_);
+    std::swap(count_, other->count_);
     top_error_codes_.Swap(&other->top_error_codes_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
@@ -2439,7 +2439,6 @@ const int resource_categories::kConnectionQueueUsagePctFieldNumber;
 const int resource_categories::kFdUsagePctFieldNumber;
 const int resource_categories::kCpuPctFieldNumber;
 const int resource_categories::kResidentMemoryUsageKbFieldNumber;
-const int resource_categories::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
 
 resource_categories::resource_categories()
@@ -2448,12 +2447,6 @@ resource_categories::resource_categories()
 }
 
 void resource_categories::InitAsDefaultInstance() {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(
-      ::draiosproto::counter_syscall_errors::internal_default_instance());
-#else
-  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
-#endif
 }
 
 resource_categories::resource_categories(const resource_categories& from)
@@ -2469,7 +2462,6 @@ void resource_categories::SharedCtor() {
   fd_usage_pct_ = 0u;
   cpu_pct_ = 0u;
   resident_memory_usage_kb_ = GOOGLE_ULONGLONG(0);
-  syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2483,7 +2475,6 @@ void resource_categories::SharedDtor() {
   #else
   if (this != default_instance_) {
   #endif
-    delete syscall_errors_;
   }
 }
 
@@ -2514,9 +2505,6 @@ void resource_categories::Clear() {
     fd_usage_pct_ = 0u;
     cpu_pct_ = 0u;
     resident_memory_usage_kb_ = GOOGLE_ULONGLONG(0);
-    if (has_syscall_errors()) {
-      if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
-    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -2602,20 +2590,6 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(50)) goto parse_syscall_errors;
-        break;
-      }
-
-      // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
-      case 6: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_syscall_errors:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_syscall_errors()));
-        } else {
-          goto handle_uninterpreted;
-        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2662,12 +2636,6 @@ void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(5, this->resident_memory_usage_kb(), output);
   }
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
-  if (has_syscall_errors()) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      6, this->syscall_errors(), output);
-  }
-
 }
 
 int resource_categories::ByteSize() const {
@@ -2709,13 +2677,6 @@ int resource_categories::ByteSize() const {
           this->resident_memory_usage_kb());
     }
 
-    // optional .draiosproto.counter_syscall_errors syscall_errors = 6;
-    if (has_syscall_errors()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->syscall_errors());
-    }
-
   }
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
@@ -2746,9 +2707,6 @@ void resource_categories::MergeFrom(const resource_categories& from) {
     if (from.has_resident_memory_usage_kb()) {
       set_resident_memory_usage_kb(from.resident_memory_usage_kb());
     }
-    if (from.has_syscall_errors()) {
-      mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
-    }
   }
 }
 
@@ -2760,9 +2718,6 @@ void resource_categories::CopyFrom(const resource_categories& from) {
 
 bool resource_categories::IsInitialized() const {
 
-  if (has_syscall_errors()) {
-    if (!this->syscall_errors().IsInitialized()) return false;
-  }
   return true;
 }
 
@@ -2773,7 +2728,6 @@ void resource_categories::Swap(resource_categories* other) {
     std::swap(fd_usage_pct_, other->fd_usage_pct_);
     std::swap(cpu_pct_, other->cpu_pct_);
     std::swap(resident_memory_usage_kb_, other->resident_memory_usage_kb_);
-    std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -3100,6 +3054,7 @@ const int host::kTcountersFieldNumber;
 const int host::kTransactionCountersFieldNumber;
 const int host::kTransactionProcessingDelayFieldNumber;
 const int host::kResourceCountersFieldNumber;
+const int host::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
 
 host::host()
@@ -3126,6 +3081,12 @@ void host::InitAsDefaultInstance() {
 #else
   resource_counters_ = const_cast< ::draiosproto::resource_categories*>(&::draiosproto::resource_categories::default_instance());
 #endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(
+      ::draiosproto::counter_syscall_errors::internal_default_instance());
+#else
+  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
+#endif
 }
 
 host::host(const host& from)
@@ -3143,6 +3104,7 @@ void host::SharedCtor() {
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
+  syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3162,6 +3124,7 @@ void host::SharedDtor() {
     delete tcounters_;
     delete transaction_counters_;
     delete resource_counters_;
+    delete syscall_errors_;
   }
 }
 
@@ -3203,6 +3166,11 @@ void host::Clear() {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
+    }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (has_syscall_errors()) {
+      if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
   }
   cpu_loads_.Clear();
@@ -3336,6 +3304,20 @@ bool host::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(74)) goto parse_syscall_errors;
+        break;
+      }
+
+      // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_syscall_errors:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_syscall_errors()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3402,6 +3384,12 @@ void host::SerializeWithCachedSizes(
       8, this->resource_counters(), output);
   }
 
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+  if (has_syscall_errors()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      9, this->syscall_errors(), output);
+  }
+
 }
 
 int host::ByteSize() const {
@@ -3458,6 +3446,15 @@ int host::ByteSize() const {
     }
 
   }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+    if (has_syscall_errors()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->syscall_errors());
+    }
+
+  }
   // repeated uint32 cpu_loads = 3;
   {
     int data_size = 0;
@@ -3505,6 +3502,11 @@ void host::MergeFrom(const host& from) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
   }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_syscall_errors()) {
+      mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
+    }
+  }
 }
 
 void host::CopyFrom(const host& from) {
@@ -3522,8 +3524,8 @@ bool host::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
-  if (has_resource_counters()) {
-    if (!this->resource_counters().IsInitialized()) return false;
+  if (has_syscall_errors()) {
+    if (!this->syscall_errors().IsInitialized()) return false;
   }
   return true;
 }
@@ -3538,6 +3540,7 @@ void host::Swap(host* other) {
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(resource_counters_, other->resource_counters_);
+    std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -3559,6 +3562,7 @@ const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
 const int process::kResourceCountersFieldNumber;
+const int process::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
 
 process::process()
@@ -3585,6 +3589,12 @@ void process::InitAsDefaultInstance() {
 #else
   resource_counters_ = const_cast< ::draiosproto::resource_categories*>(&::draiosproto::resource_categories::default_instance());
 #endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(
+      ::draiosproto::counter_syscall_errors::internal_default_instance());
+#else
+  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
+#endif
 }
 
 process::process(const process& from)
@@ -3602,6 +3612,7 @@ void process::SharedCtor() {
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
+  syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3624,6 +3635,7 @@ void process::SharedDtor() {
     delete tcounters_;
     delete transaction_counters_;
     delete resource_counters_;
+    delete syscall_errors_;
   }
 }
 
@@ -3669,6 +3681,11 @@ void process::Clear() {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
+    }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (has_syscall_errors()) {
+      if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
   }
   args_.Clear();
@@ -3793,6 +3810,20 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(74)) goto parse_syscall_errors;
+        break;
+      }
+
+      // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_syscall_errors:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_syscall_errors()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3860,6 +3891,12 @@ void process::SerializeWithCachedSizes(
       8, this->resource_counters(), output);
   }
 
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+  if (has_syscall_errors()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      9, this->syscall_errors(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -3916,6 +3953,15 @@ int process::ByteSize() const {
     }
 
   }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
+    if (has_syscall_errors()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->syscall_errors());
+    }
+
+  }
   // repeated string args = 4;
   total_size += 1 * this->args_size();
   for (int i = 0; i < this->args_size(); i++) {
@@ -3960,6 +4006,11 @@ void process::MergeFrom(const process& from) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
   }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_syscall_errors()) {
+      mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
+    }
+  }
 }
 
 void process::CopyFrom(const process& from) {
@@ -3977,8 +4028,8 @@ bool process::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
-  if (has_resource_counters()) {
-    if (!this->resource_counters().IsInitialized()) return false;
+  if (has_syscall_errors()) {
+    if (!this->syscall_errors().IsInitialized()) return false;
   }
   return true;
 }
@@ -3993,6 +4044,7 @@ void process::Swap(process* other) {
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(resource_counters_, other->resource_counters_);
+    std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

@@ -401,7 +401,7 @@ void sinsp_error_counters::clear()
 
 void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg)
 {
-	protobuf_msg->set_cnt(m_table.size());
+	protobuf_msg->set_count(m_table.size());
 
 	map<int32_t, sinsp_counter_cnt>::iterator it;
 
