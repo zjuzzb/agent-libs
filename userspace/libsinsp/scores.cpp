@@ -244,22 +244,22 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 			uint32_t nother = 0;
 			uint32_t ntrcpu = 0;
 
-//vector<int64_t>v;
-//int64_t tot = 0;
-//for(k = 0; k < ((*transactions)[cpuid]).size(); k++)
-//{
-//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
-////	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
-//	v.push_back(delta);
-//	if(delta >= 0)
-//	{
-//		tot += delta;
-//	}
-//	else
-//	{
-//		int a = 0;
-//	}
-//}
+vector<int64_t>v;
+int64_t tot = 0;
+for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
+{
+	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+	v.push_back(delta);
+	if(delta >= 0)
+	{
+		tot += delta;
+	}
+	else
+	{
+		int a = 0;
+	}
+}
 
 			stack<pair<uint64_t, uint64_t>> transaction_union;
 			uint64_t tot_time;

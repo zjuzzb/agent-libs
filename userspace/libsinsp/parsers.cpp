@@ -2016,6 +2016,22 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		}
 
 		//
+		// Determine the transaction direction.
+		// recv(), recvfrom() and recvmsg() return 0 if the connection has been closed by the other side.
+		//
+		sinsp_partial_transaction::direction trdir;
+
+		uint16_t etype = evt->get_type();
+		if(len == 0 && (etype == PPME_SOCKET_RECVFROM_X || etype == PPME_SOCKET_RECV_X || etype == PPME_SOCKET_RECVMSG_X))
+		{
+			trdir = sinsp_partial_transaction::DIR_CLOSE;
+		}
+		else
+		{
+			trdir = sinsp_partial_transaction::DIR_IN;
+		}
+
+		//
 		// Update the transaction state.
 		//
 		trinfo->update(m_inspector,
@@ -2024,7 +2040,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
 			evt->get_cpuid(),
-			sinsp_partial_transaction::DIR_IN, 
+			trdir, 
 			len);
 	}
 	else if(evt->m_fdinfo->is_pipe())
