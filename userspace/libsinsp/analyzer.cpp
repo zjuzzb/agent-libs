@@ -291,6 +291,17 @@ void sinsp_analyzer::compute_host_transaction_delay()
 	{
 		ASSERT(m_host_transaction_metrics.m_counter.m_time_ns_in != 0);
 
+		if(m_client_tr_time_by_servers == 0)
+		{
+			//
+			// No outbound connections made by servers: it means that This node is a
+			// leaf in the connection tree and the host_transaction_delay doesn't make
+			// sense.
+			//
+			m_host_transaction_delay = -1;
+			return;
+		}
+
 		int64_t res = m_host_transaction_metrics.m_counter.m_time_ns_in - m_client_tr_time_by_servers;
 
 		if(res <= 0)

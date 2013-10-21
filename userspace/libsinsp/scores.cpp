@@ -259,31 +259,31 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 	{
 		uint32_t j;
 		vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-		uint32_t ntr = 0;
+		double ntr = 0;
 		uint32_t nother = 0;
 		uint32_t ntrcpu = 0;
 
-vector<int64_t>v;
-int64_t tot = 0;
-for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
-{
-	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
-	//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
-	v.push_back(delta);
-	if(delta >= 0)
-	{
-		tot += delta;
-	}
-	else
-	{
-		int a = 0;
-	}
-}
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
+//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+//	//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
 
 		stack<pair<uint64_t, uint64_t>> transaction_union;
 		uint64_t tot_time;
 		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
-		ntr = (uint32_t)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+		ntr = (double)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
 		// Count the number of concurrent transactions for each inerval of size
@@ -318,12 +318,16 @@ if(ncalls >= 3)
 */
 		if(ntr != 0)
 		{
-			double ntrd = (double)ntr * local_remote_ratio;
+			if(local_remote_ratio != -1)
+			{
+				ntr *= local_remote_ratio;
+			}
+
 			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
 			double avail;
 			if(ntrcpu != 0)
 			{
-				avail = MIN((double)m_n_intervals_in_sample, ntrd * maxcpu / ntrcpu);
+				avail = MIN((double)m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
 			}
 			else
 			{
@@ -331,7 +335,7 @@ if(ncalls >= 3)
 			}
 
 			double maxavail = MAX(avail, ntr);
-			score = 100 - (int32_t)(ntrd * 100 / maxavail);
+			score = 100 - (int32_t)(ntr * 100 / maxavail);
 //sort(cpu_vector->begin(), cpu_vector->end());
 			ASSERT(score >= 0);
 			ASSERT(score <= 100);
