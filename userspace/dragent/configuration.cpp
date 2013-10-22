@@ -63,7 +63,7 @@ void dragent_configuration::init(Application* app)
 	m_ssl_enabled = config.getBool("ssl.enabled", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
-	m_emit_full_connections = config.getBool("emitfullconnections.enabled", true);
+	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
 }
 
 void dragent_configuration::print_configuration()
