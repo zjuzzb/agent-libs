@@ -621,9 +621,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							cpuload,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-							trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
-							trcountout? ((double)trtimeout) / trcountin / 1000000000 : 0,
-							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
+							//trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
+							//trcountout? ((double)trtimeout) / trcountin / 1000000000 : 0,
+							//trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
+							trcountin? ((double)trtimein) / 1000000000 : 0,
+							trcountout? ((double)trtimeout) / 1000000000 : 0,
+							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / 1000000000 : 0,
 							it->second.m_fd_usage_pct,
 							it->second.m_connection_queue_usage_pct);
 					}
@@ -1133,9 +1136,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf",
 					m_host_transaction_metrics.m_counter.m_count_in,
 					m_host_transaction_metrics.m_counter.m_count_out,
-					(double)m_host_transaction_metrics.m_counter.m_time_ns_in / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
-					(double)m_client_tr_time_by_servers / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
-					(double)m_host_transaction_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000);
+					//(double)m_host_transaction_metrics.m_counter.m_time_ns_in / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
+					//(double)m_client_tr_time_by_servers / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
+					//(double)m_host_transaction_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000
+					(double)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,
+					(double)m_client_tr_time_by_servers / 1000000000,
+					(double)m_host_transaction_delay / 1000000000
+					);
 			}
 
 			////////////////////////////////////////////////////////////////////////////
