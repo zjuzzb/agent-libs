@@ -295,10 +295,10 @@ void sinsp_analyzer::compute_host_transaction_delay()
 		{
 			//
 			// No outbound connections made by servers: it means that This node is a
-			// leaf in the connection tree and the host_transaction_delay doesn't make
-			// sense.
+			// leaf in the connection tree and the host_transaction_delay euqals to the
+			// input transaction processing time.
 			//
-			m_host_transaction_delay = -1;
+			m_host_transaction_delay = m_host_transaction_metrics.m_counter.m_time_ns_in;
 			return;
 		}
 
@@ -448,9 +448,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		syshscore = (float)m_score_calculator->get_system_health_score_bycpu_old(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
-
+/*
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"1!!%" PRId32,
+			"1!!%f",
 			syshscore);
 
 		syshscore = (float)m_score_calculator->get_system_health_score_bycpu(&m_server_transactions_per_cpu,
@@ -458,15 +458,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_prev_flush_time_ns, sample_duration);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"2!!%" PRId32,
+			"2!!%f",
 			syshscore);
-
+*/
 		syshscore = m_score_calculator->get_system_health_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"3!!%" PRId32,
+			"3!!%f",
 			syshscore);
 
 		syshscore_g = m_score_calculator->get_system_health_score_global(&m_transactions_with_cpu,
@@ -612,7 +612,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							" %s (%" PRIu64 ")%" PRIu64 " h:% " PRIu32 " cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 							it->second.m_comm.c_str(),
 	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 							it->second.m_tid,
@@ -1130,17 +1130,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_host_transaction_delay != -1)
 			{
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay);
+			}
 
+			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
+			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
-					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf",
+					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
 					m_host_transaction_metrics.m_counter.m_count_in,
 					m_host_transaction_metrics.m_counter.m_count_out,
-					//(double)m_host_transaction_metrics.m_counter.m_time_ns_in / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
-					//(double)m_client_tr_time_by_servers / m_host_transaction_metrics.m_counter.m_count_in / 1000000000,
-					//(double)m_host_transaction_delay / m_host_transaction_metrics.m_counter.m_count_in / 1000000000
-					(double)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,
-					(double)m_client_tr_time_by_servers / 1000000000,
-					(double)m_host_transaction_delay / 1000000000
+					(float)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,
+					(float)m_client_tr_time_by_servers / 1000000000,
+					(float)m_host_transaction_delay / 1000000000
 					);
 			}
 

@@ -228,7 +228,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 	float max_score = 0;
 	float min_score = 200;
 	float tot_score = 0;
-	float n_scores = 0;
+	uint32_t n_scores = 0;
 
 	float local_remote_ratio;
 	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
@@ -361,7 +361,7 @@ if(ncalls >= 3)
 	if(n_scores != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			">>%" PRId32"-%" PRId32"-%" PRId32"(%" PRId32 ")",
+			">>%f-%f-%f (%" PRId32 ")",
 			min_score,
 			max_score,
 			tot_score / n_scores,
@@ -776,7 +776,7 @@ float sinsp_scores::get_process_health_score(float system_health_score, sinsp_th
 	//
 	// Health score is currently calculated only for server processes only 
 	//
-	if(mainthread_info->m_transaction_metrics.m_counter.m_count_in == 0)
+	if(mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in == 0)
 	{
 		return res;
 	}
