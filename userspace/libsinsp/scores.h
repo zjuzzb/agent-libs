@@ -17,7 +17,7 @@ public:
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
-	int32_t get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+	float get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
@@ -29,7 +29,7 @@ public:
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
-	int32_t get_process_health_score(int32_t system_health_score, 
+	float get_process_health_score(float system_health_score, 
 		sinsp_threadinfo* mainthread_info);
 private:
 	sinsp* m_inspector;

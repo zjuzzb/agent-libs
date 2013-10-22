@@ -321,7 +321,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	uint32_t n_server_threads = 0;
-	int32_t syshscore = -1;
+	float syshscore = -1;
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"thread table size:%d",
@@ -445,7 +445,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		int32_t syshscore_g;
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu_old(&m_transactions_with_cpu,
+		syshscore = (float)m_score_calculator->get_system_health_score_bycpu_old(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -453,7 +453,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"1!!%" PRId32,
 			syshscore);
 
-		syshscore = m_score_calculator->get_system_health_score_bycpu(&m_server_transactions_per_cpu,
+		syshscore = (float)m_score_calculator->get_system_health_score_bycpu(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -475,7 +475,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(syshscore == -1)
 		{
-			syshscore = syshscore_g;
+			syshscore = (float)syshscore_g;
 		}
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -594,7 +594,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// Health-related metrics
 					//
 					it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(syshscore, &it->second);
-					proc->mutable_resource_counters()->set_health_score(it->second.m_procinfo->m_health_score);
+					proc->mutable_resource_counters()->set_health_score((uint32_t)(it->second.m_procinfo->m_health_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
 					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
 
@@ -1119,11 +1119,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
 			}		
 
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score((uint32_t)(m_host_metrics.m_health_score * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score(m_host_metrics.m_health_score);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
 
 			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());

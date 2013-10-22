@@ -205,7 +205,7 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
 
 uint32_t ncalls = 0;
 
-int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	int32_t cpuid;
@@ -225,18 +225,18 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 	}
 
 	ncalls++;
-	int32_t max_score = 0;
-	int32_t min_score = 200;
-	int32_t tot_score = 0;
-	int32_t n_scores = 0;
+	float max_score = 0;
+	float min_score = 200;
+	float tot_score = 0;
+	float n_scores = 0;
 
-	double local_remote_ratio;
+	float local_remote_ratio;
 	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
 	{
 		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
 		{
-			local_remote_ratio = (double)m_inspector->m_analyzer->m_host_transaction_delay / 
-				(double)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
+			local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay / 
+				(float)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
 		}
 		else
 		{
@@ -259,7 +259,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 	{
 		uint32_t j;
 		vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
-		double ntr = 0;
+		float ntr = 0;
 		uint32_t nother = 0;
 		uint32_t ntrcpu = 0;
 
@@ -283,7 +283,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 		stack<pair<uint64_t, uint64_t>> transaction_union;
 		uint64_t tot_time;
 		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
-		ntr = (double)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
 		// Count the number of concurrent transactions for each inerval of size
@@ -309,7 +309,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_
 			}
 		}
 
-		int32_t score;
+		float score;
 /*
 if(ncalls >= 3)
 {
@@ -324,18 +324,18 @@ if(ncalls >= 3)
 			}
 
 			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
-			double avail;
+			float avail;
 			if(ntrcpu != 0)
 			{
-				avail = MIN((double)m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				avail = MIN((float)m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
 			}
 			else
 			{
-				avail = (double)m_n_intervals_in_sample;
+				avail = (float)m_n_intervals_in_sample;
 			}
 
-			double maxavail = MAX(avail, ntr);
-			score = 100 - (int32_t)(ntr * 100 / maxavail);
+			float maxavail = MAX(avail, ntr);
+			score = 100 - (ntr * 100 / maxavail);
 //sort(cpu_vector->begin(), cpu_vector->end());
 			ASSERT(score >= 0);
 			ASSERT(score <= 100);
@@ -754,9 +754,9 @@ int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pai
 	return -1;
 }
 
-int32_t sinsp_scores::get_process_health_score(int32_t system_health_score, sinsp_threadinfo* mainthread_info)
+float sinsp_scores::get_process_health_score(float system_health_score, sinsp_threadinfo* mainthread_info)
 {
-	uint32_t res = -1;
+	float res = -1;
 
 	if(system_health_score == -1)
 	{

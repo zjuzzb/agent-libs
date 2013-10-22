@@ -50,7 +50,7 @@ public:
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// the process health score calculated with our secret sauce algorithms
-	uint32_t m_health_score;
+	float m_health_score;
 	// the process resident memory
 	uint64_t m_resident_memory_kb;
 };

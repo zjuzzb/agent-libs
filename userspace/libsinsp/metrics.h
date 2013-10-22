@@ -199,7 +199,7 @@ public:
 	sinsp_counters m_metrics; 
 	sinsp_transaction_counters m_transaction_metrics;
 	uint64_t m_transaction_processing_delay_ns;
-	uint32_t m_health_score;
+	float m_health_score;
 	uint32_t m_n_health_score_entries;
 	uint32_t m_connection_queue_usage_pct;
 	uint32_t m_fd_usage_pct;
