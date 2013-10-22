@@ -1,0 +1,12 @@
+diff -Naur poco-1.4.6p2-all.orig/Net/src/DNS.cpp poco-1.4.6p2-all/Net/src/DNS.cpp
+--- poco-1.4.6p2-all.orig/Net/src/DNS.cpp	2013-09-18 07:21:20.000000000 -0700
++++ poco-1.4.6p2-all/Net/src/DNS.cpp	2013-10-22 12:23:25.240993354 -0700
+@@ -92,7 +92,7 @@
+ 	struct addrinfo* pAI;
+ 	struct addrinfo hints;
+ 	std::memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME | AI_ADDRCONFIG;
++	hints.ai_flags = AI_CANONNAME;
+ 	int rc = getaddrinfo(hostname.c_str(), NULL, &hints, &pAI); 
+ 	if (rc == 0)
+ 	{
