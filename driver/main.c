@@ -55,8 +55,12 @@ TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id);
 TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret);
 TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p);
 #ifdef CAPTURE_CONTEXT_SWITCHES
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+TRACEPOINT_PROBE(sched_switch_probe, struct rq *rq, struct task_struct *prev, struct task_struct *next);
+#else
 TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next);
-#endif
+#endif // (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+#endif // CAPTURE_CONTEXT_SWITCHES
 
 static struct ppm_device* g_ppm_devs;
 static struct class *g_ppm_class = NULL;
@@ -977,7 +981,11 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 #include <linux/udp.h>
 
 #ifdef CAPTURE_CONTEXT_SWITCHES
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+TRACEPOINT_PROBE(sched_switch_probe, struct rq *rq, struct task_struct *prev, struct task_struct *next)
+#else
 TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struct *next)
+#endif
 {
 	record_event(PPME_SCHEDSWITCH_E, 
 		NULL, 
