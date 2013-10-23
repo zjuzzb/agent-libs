@@ -3091,8 +3091,6 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 		return res;
 	}
 
-printk(KERN_INFO "***%d %d\n", args->sched_prev->pid, args->sched_next->pid);
-
 	return add_sentinel(args);
 }
 #endif // CAPTURE_CONTEXT_SWITCHES
