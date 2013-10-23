@@ -51,7 +51,7 @@ public:
 		{
 			uint32_t m_ip[4];
 			uint16_t m_port;
-			uint8_t m_l6proto;
+			uint8_t m_l4proto;
 		} m_ipv6serverinfo;
 		unix_tuple m_unixinfo;
 	}m_info;

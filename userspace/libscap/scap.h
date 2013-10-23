@@ -146,7 +146,7 @@ typedef struct scap_fdinfo
 			uint32_t dip[4];
 			uint16_t sport;
 			uint16_t dport;
-			uint8_t l6proto;
+			uint8_t l4proto;
 		} ipv6info;
 		struct
 		{
@@ -158,7 +158,7 @@ typedef struct scap_fdinfo
 		{
 			uint32_t ip[4];
 			uint16_t port;
-			uint8_t l6proto;
+			uint8_t l4proto;
 		} ipv6serverinfo;
 		struct
 		{

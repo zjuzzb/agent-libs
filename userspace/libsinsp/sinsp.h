@@ -61,7 +61,7 @@ typedef union _ipv6tuple
 		uint32_t m_dip[4];
 		uint16_t m_sport;
 		uint16_t m_dport;
-		uint8_t m_l6proto;
+		uint8_t m_l4proto;
 	} m_fields;
 } ipv6tuple;
 

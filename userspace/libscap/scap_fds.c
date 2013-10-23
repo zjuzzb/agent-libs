@@ -158,12 +158,12 @@ uint32_t scap_fd_info_len(scap_fdinfo *fdi)
 				sizeof(uint32_t) * 4 + // dip
 				sizeof(uint16_t) + // sport
 				sizeof(uint16_t) + // dport
-				sizeof(uint8_t); // l6proto
+				sizeof(uint8_t); // l4proto
 		break;
 	case SCAP_FD_IPV6_SERVSOCK:
 		res += 	sizeof(uint32_t) * 4 + // ip
 				sizeof(uint16_t) + // port
-				sizeof(uint8_t); // l6proto
+				sizeof(uint8_t); // l4proto
 		break;
 	case SCAP_FD_UNIX_SOCK:
 		res += 
@@ -233,7 +233,7 @@ int32_t scap_fd_write_to_disk(scap_t *handle, scap_fdinfo *fdi, FILE *f)
 		        fwrite((char*)fdi->info.ipv6info.dip, sizeof(uint32_t) * 4, 1, f) != 1 ||
 		        fwrite(&(fdi->info.ipv6info.sport), sizeof(uint16_t), 1, f) != 1 ||
 		        fwrite(&(fdi->info.ipv6info.dport), sizeof(uint16_t), 1, f) != 1 ||
-		        fwrite(&(fdi->info.ipv6info.l6proto), sizeof(uint8_t), 1, f) != 1)
+		        fwrite(&(fdi->info.ipv6info.l4proto), sizeof(uint8_t), 1, f) != 1)
 		{
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (fi7)");
 		}
@@ -241,7 +241,7 @@ int32_t scap_fd_write_to_disk(scap_t *handle, scap_fdinfo *fdi, FILE *f)
 	case SCAP_FD_IPV6_SERVSOCK:
 		if(fwrite(&(fdi->info.ipv6serverinfo.ip), sizeof(uint32_t) * 4, 1, f) != 1 ||
 		        fwrite(&(fdi->info.ipv6serverinfo.port), sizeof(uint16_t), 1, f) != 1 ||
-		        fwrite(&(fdi->info.ipv6serverinfo.l6proto), sizeof(uint8_t), 1, f) != 1)
+		        fwrite(&(fdi->info.ipv6serverinfo.l4proto), sizeof(uint8_t), 1, f) != 1)
 		{
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (fi8)");
 		}
@@ -372,7 +372,7 @@ uint32_t scap_fd_read_from_disk(scap_t *handle, OUT scap_fdinfo *fdi, OUT size_t
 		        fread((char*)fdi->info.ipv6info.dip, 1, sizeof(uint32_t) * 4, f) != sizeof(uint32_t) * 4 ||
 		        fread(&(fdi->info.ipv6info.sport), 1, sizeof(uint16_t), f) != sizeof(uint16_t) ||
 		        fread(&(fdi->info.ipv6info.dport), 1, sizeof(uint16_t), f) != sizeof(uint16_t) ||
-		        fread(&(fdi->info.ipv6info.l6proto), 1, sizeof(uint8_t), f) != sizeof(uint8_t))
+		        fread(&(fdi->info.ipv6info.l4proto), 1, sizeof(uint8_t), f) != sizeof(uint8_t))
 		{
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (fi3)");
 		}
@@ -380,18 +380,18 @@ uint32_t scap_fd_read_from_disk(scap_t *handle, OUT scap_fdinfo *fdi, OUT size_t
 				sizeof(uint32_t) * 4 + // dip
 				sizeof(uint16_t) + // sport
 				sizeof(uint16_t) + // dport
-				sizeof(uint8_t)); // l6proto
+				sizeof(uint8_t)); // l4proto
 		break;
 	case SCAP_FD_IPV6_SERVSOCK:
 		if(fread((char*)fdi->info.ipv6serverinfo.ip, 1, sizeof(uint32_t) * 4, f) != sizeof(uint32_t) * 4||
 		        fread(&(fdi->info.ipv6serverinfo.port), 1, sizeof(uint16_t), f) != sizeof(uint16_t) ||
-		        fread(&(fdi->info.ipv6serverinfo.l6proto), 1, sizeof(uint8_t), f) != sizeof(uint8_t))
+		        fread(&(fdi->info.ipv6serverinfo.l4proto), 1, sizeof(uint8_t), f) != sizeof(uint8_t))
 		{
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (fi4)");
 		}
 		(*nbytes) += (sizeof(uint32_t) * 4 + // ip
 				sizeof(uint16_t) + // port
-				sizeof(uint8_t)); // l6proto
+				sizeof(uint8_t)); // l4proto
 		break;
 	case SCAP_FD_UNIX_SOCK:
 		if(fread(&(fdi->info.unix_socket_info.source), 1, sizeof(uint64_t), f) != sizeof(uint64_t) ||
@@ -828,7 +828,7 @@ int32_t scap_fd_is_ipv6_server_socket(uint32_t ip6_addr[4])
 	return 0 == ip6_addr[0] && 0 == ip6_addr[1] && 0 == ip6_addr[2] && 0 == ip6_addr[3];
 }
 
-int32_t scap_fd_read_ipv6_sockets_from_proc_fs(scap_t *handle, char *dir, int l6proto, scap_fdinfo **sockets)
+int32_t scap_fd_read_ipv6_sockets_from_proc_fs(scap_t *handle, char *dir, int l4proto, scap_fdinfo **sockets)
 {
 	FILE *f;
 	char line[1024];
@@ -888,7 +888,7 @@ int32_t scap_fd_read_ipv6_sockets_from_proc_fs(scap_t *handle, char *dir, int l6
 		if(scap_fd_is_ipv6_server_socket(fdinfo->info.ipv6info.dip))
 		{
 			fdinfo->type = SCAP_FD_IPV6_SERVSOCK;
-			fdinfo->info.ipv6serverinfo.l6proto = l6proto;
+			fdinfo->info.ipv6serverinfo.l4proto = l4proto;
 			fdinfo->info.ipv6serverinfo.port = fdinfo->info.ipv6info.sport;
 			fdinfo->info.ipv6serverinfo.ip[0] = fdinfo->info.ipv6info.sip[0];
 			fdinfo->info.ipv6serverinfo.ip[1] = fdinfo->info.ipv6info.sip[1];
@@ -898,7 +898,7 @@ int32_t scap_fd_read_ipv6_sockets_from_proc_fs(scap_t *handle, char *dir, int l6
 		else
 		{
 			fdinfo->type = SCAP_FD_IPV6_SOCK;
-			fdinfo->info.ipv6info.l6proto = l6proto;
+			fdinfo->info.ipv6info.l4proto = l4proto;
 		}
 		HASH_ADD_INT64((*sockets), ino, fdinfo);
 		if(uth_status != SCAP_SUCCESS)

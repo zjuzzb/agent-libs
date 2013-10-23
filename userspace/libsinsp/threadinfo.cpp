@@ -7,7 +7,7 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 
-static void copy_ipv6_address(uint32_t* src, uint32_t* dest)
+static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 {
 	dest[0] = src[0];
 	dest[1] = src[1];
@@ -176,17 +176,36 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 			newfdi.m_info.m_ipv4serverinfo.m_l4proto = fdi->info.ipv4serverinfo.l4proto;
 			break;
 		case SCAP_FD_IPV6_SOCK:
-			copy_ipv6_address(fdi->info.ipv6info.sip, newfdi.m_info.m_ipv6info.m_fields.m_sip);
-			copy_ipv6_address(fdi->info.ipv6info.dip, newfdi.m_info.m_ipv6info.m_fields.m_dip);
-			newfdi.m_info.m_ipv6info.m_fields.m_sport = fdi->info.ipv6info.sport;
-			newfdi.m_info.m_ipv6info.m_fields.m_dport = fdi->info.ipv6info.dport;
-			newfdi.m_info.m_ipv6info.m_fields.m_l6proto = fdi->info.ipv6info.l6proto;
-			newfdi.m_name = ipv6tuple_to_string(&newfdi.m_info.m_ipv6info);
+			if(sinsp_utils::is_ipv4_mapped_ipv6((uint8_t*)&fdi->info.ipv6info.sip) && 
+				sinsp_utils::is_ipv4_mapped_ipv6((uint8_t*)&fdi->info.ipv6info.dip))
+			{
+				//
+				// This is an IPv4-mapped IPv6 addresses (http://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses).
+				// Convert it into the IPv4 representation.
+				//
+				newfdi.m_type = SCAP_FD_IPV4_SOCK;
+				newfdi.m_info.m_ipv4info.m_fields.m_sip = fdi->info.ipv6info.sip[3];
+				newfdi.m_info.m_ipv4info.m_fields.m_dip = fdi->info.ipv6info.dip[3];
+				newfdi.m_info.m_ipv4info.m_fields.m_sport = fdi->info.ipv6info.sport;
+				newfdi.m_info.m_ipv4info.m_fields.m_dport = fdi->info.ipv6info.dport;
+				newfdi.m_info.m_ipv4info.m_fields.m_l4proto = fdi->info.ipv6info.l4proto;
+				m_inspector->m_network_interfaces->update_fd(&newfdi);
+				newfdi.m_name = ipv4tuple_to_string(&newfdi.m_info.m_ipv4info);
+			}
+			else
+			{
+				copy_ipv6_address(newfdi.m_info.m_ipv6info.m_fields.m_sip, fdi->info.ipv6info.sip);
+				copy_ipv6_address(newfdi.m_info.m_ipv6info.m_fields.m_dip, fdi->info.ipv6info.dip);
+				newfdi.m_info.m_ipv6info.m_fields.m_sport = fdi->info.ipv6info.sport;
+				newfdi.m_info.m_ipv6info.m_fields.m_dport = fdi->info.ipv6info.dport;
+				newfdi.m_info.m_ipv6info.m_fields.m_l4proto = fdi->info.ipv6info.l4proto;
+				newfdi.m_name = ipv6tuple_to_string(&newfdi.m_info.m_ipv6info);
+			}
 			break;
 		case SCAP_FD_IPV6_SERVSOCK:
-			copy_ipv6_address(fdi->info.ipv6serverinfo.ip, newfdi.m_info.m_ipv6serverinfo.m_ip);
+			copy_ipv6_address(newfdi.m_info.m_ipv6serverinfo.m_ip, fdi->info.ipv6serverinfo.ip);
 			newfdi.m_info.m_ipv6serverinfo.m_port = fdi->info.ipv6serverinfo.port;
-			newfdi.m_info.m_ipv6serverinfo.m_l6proto = fdi->info.ipv6serverinfo.l6proto;
+			newfdi.m_info.m_ipv6serverinfo.m_l4proto = fdi->info.ipv6serverinfo.l4proto;
 			//newfdi.m_name = newfi.m_info.m_ipv6serverinfo.to_string();
 			break;
 		case SCAP_FD_UNIX_SOCK:
