@@ -11,6 +11,50 @@
 #define PPM_MAX_NAME_LEN 32
 
 //
+// Socket families
+//
+#define PPM_AF_UNSPEC       0
+#define PPM_AF_UNIX         1       /* Unix domain sockets          */
+#define PPM_AF_LOCAL        1       /* POSIX name for PPM_AF_UNIX   */
+#define PPM_AF_INET         2       /* Internet IP Protocol         */
+#define PPM_AF_AX25         3       /* Amateur Radio AX.25          */
+#define PPM_AF_IPX          4       /* Novell IPX                   */
+#define PPM_AF_APPLETALK    5       /* AppleTalk DDP                */
+#define PPM_AF_NETROM       6       /* Amateur Radio NET/ROM        */
+#define PPM_AF_BRIDGE       7       /* Multiprotocol bridge         */
+#define PPM_AF_ATMPVC       8       /* ATM PVCs                     */
+#define PPM_AF_X25          9       /* Reserved for X.25 project    */
+#define PPM_AF_INET6        10      /* IP version 6                 */
+#define PPM_AF_ROSE         11      /* Amateur Radio X.25 PLP       */
+#define PPM_AF_DECnet       12      /* Reserved for DECnet project  */
+#define PPM_AF_NETBEUI      13      /* Reserved for 802.2LLC project*/
+#define PPM_AF_SECURITY     14      /* Security callback pseudo AF */
+#define PPM_AF_KEY          15      /* PF_KEY key management API */
+#define PPM_AF_NETLINK      16
+#define PPM_AF_ROUTE        PPM_AF_NETLINK /* Alias to emulate 4.4BSD */
+#define PPM_AF_PACKET       17      /* Packet family                */
+#define PPM_AF_ASH          18      /* Ash                          */
+#define PPM_AF_ECONET       19      /* Acorn Econet                 */
+#define PPM_AF_ATMSVC       20      /* ATM SVCs                     */
+#define PPM_AF_RDS          21      /* RDS sockets                  */
+#define PPM_AF_SNA          22      /* Linux SNA Project (nutters!) */
+#define PPM_AF_IRDA         23      /* IRDA sockets                 */
+#define PPM_AF_PPPOX        24      /* PPPoX sockets                */
+#define PPM_AF_WANPIPE      25      /* Wanpipe API Sockets */
+#define PPM_AF_LLC          26      /* Linux LLC                    */
+#define PPM_AF_CAN          29      /* Controller Area Network      */
+#define PPM_AF_TIPC         30      /* TIPC sockets                 */
+#define PPM_AF_BLUETOOTH    31      /* Bluetooth sockets            */
+#define PPM_AF_IUCV         32      /* IUCV sockets                 */
+#define PPM_AF_RXRPC        33      /* RxRPC sockets                */
+#define PPM_AF_ISDN         34      /* mISDN sockets                */
+#define PPM_AF_PHONET       35      /* Phonet sockets               */
+#define PPM_AF_IEEE802154   36      /* IEEE802154 sockets           */
+#define PPM_AF_CAIF         37      /* CAIF sockets                 */
+#define PPM_AF_ALG          38      /* Algorithm sockets            */
+#define PPM_AF_NFC          39      /* NFC sockets                  */
+
+//
 // File flags
 //
 #define PPM_O_NONE 	0
