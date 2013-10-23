@@ -2354,11 +2354,52 @@ void sinsp_parser::update_fd(sinsp_evt *evt, sinsp_evt_param *parinfo)
 {
 	uint8_t* packed_data = (uint8_t*)parinfo->m_val;
 	uint8_t family = *packed_data;
+
 	if(family == PPM_AF_INET)
 	{
 		evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
 		set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
+		
+		//
+		// If we reach this point, we can safely assume this connection is UDP, 
+		// because TCP would fail if the address is changed in the middle of a 
+		// connection
+		//
 		evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_UDP;
+
+		//
+		// If this is an incomplete tuple, patch it using interface info
+		//
+		m_inspector->m_network_interfaces->update_fd(evt->m_fdinfo);
+	}
+	else if(family == PPM_AF_INET6)
+	{
+		//
+		// For the moment, we only support IPv4-mapped IPv6 addresses 
+		// (http://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses)
+		//
+		uint8_t* sip = packed_data + 1;
+		uint8_t* dip = packed_data + 19;
+
+		if(!(sinsp_utils::is_ipv4_mapped_ipv6(sip) && sinsp_utils::is_ipv4_mapped_ipv6(dip)))
+		{
+			return;
+		}
+
+		evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
+
+		set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+
+		//
+		// If we reach this point, we can safely assume this connection is UDP, 
+		// because TCP would fail if the address is changed in the middle of a 
+		// connection
+		//
+		evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_UDP;
+
+		//
+		// If this is an incomplete tuple, patch it using interface info
+		//
 		m_inspector->m_network_interfaces->update_fd(evt->m_fdinfo);
 	}
 }
