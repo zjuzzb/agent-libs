@@ -159,6 +159,11 @@ public:
 	// Assumes that path1 is well formed. 
 	//
 	static bool concatenate_paths(char* target, uint32_t targetlen, const char* path1, uint32_t len1, const char* path2, uint32_t len2); 
+
+	//
+	// Determines if an IPv6 address is IPv4-mapped
+	//
+	static bool is_ipv4_mapped_ipv6(uint8_t* paddr);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

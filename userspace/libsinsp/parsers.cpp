@@ -933,13 +933,13 @@ inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain
 	fdi.m_type = SCAP_FD_UNKNOWN;
 	fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_UNKNOWN;
 
-	if(domain == AF_UNIX)
+	if(domain == PPM_AF_UNIX)
 	{
 		fdi.set_type_unix_socket();
 	}
-	else if(domain == AF_INET)
+	else if(domain == PPM_AF_INET || domain == PPM_AF_INET6)
 	{
-		fdi.m_type = SCAP_FD_IPV4_SOCK;
+		fdi.m_type = (domain == PPM_AF_INET)? SCAP_FD_IPV4_SOCK : SCAP_FD_IPV6_SOCK;
 
 		if(protocol == IPPROTO_TCP)
 		{
@@ -1086,7 +1086,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t tid = evt->get_tid();
-	char *packed_data;
+	uint8_t *packed_data;
 	uint8_t family;
 	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 	const char *parstr;
@@ -1124,51 +1124,64 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		return;
 	}
 
-	packed_data = (char *)parinfo->m_val;
+	packed_data = (uint8_t*)parinfo->m_val;
 
 	//
 	// Validate the family
 	//
 	family = *packed_data;
 
-	if(family != AF_INET && family != AF_UNIX)
-	{
-		return;
-	}
-
-	//
-	// Mark this fd as a client
-	//
-	evt->m_fdinfo->set_role_client();
-
-	//
-	// Mark this fd as a transaction
-	//
-	evt->m_fdinfo->set_is_transaction();
-
 	//
 	// Fill the fd with the socket info
 	//
-	if(family == AF_INET)
+	if(family == PPM_AF_INET || family == PPM_AF_INET6)
 	{
-		if(evt->m_fdinfo->m_type != SCAP_FD_IPV4_SOCK)
+		if(family == PPM_AF_INET6)
 		{
 			//
-			// This should happen only in case of a bug in our code, because I'm assuming that the OS
-			// causes a connect with the wrong socket type to fail.
-			// Assert in debug mode and just keep going in release mode.
+			// For the moment, we only support IPv4-mapped IPv6 addresses 
+			// (http://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses)
 			//
-			ASSERT(false);
+			uint8_t* sip = packed_data + 1;
+			uint8_t* dip = packed_data + 19;
+
+			if(!(sinsp_utils::is_ipv4_mapped_ipv6(sip) && sinsp_utils::is_ipv4_mapped_ipv6(dip)))
+			{
+				return;
+			}
 		}
 
 		//
-		// UDP sockets can have an arbitrary number of connects, and each new one overrides
-		// the previous one.
+		// Mark this fd as a client
+		//
+		evt->m_fdinfo->set_role_client();
+
+		//
+		// Mark this fd as a transaction
+		//
+		evt->m_fdinfo->set_is_transaction();
+
+		//
+		// This should happen only in case of a bug in our code, because I'm assuming that the OS
+		// causes a connect with the wrong socket type to fail.
+		// Assert in debug mode and just keep going in release mode.
+		//
+		ASSERT(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK);
+
+		//
+		// Lookup the connection
 		//
 		sinsp_connection* conn = m_inspector->m_ipv4_connections->get_connection(
 			evt->m_fdinfo->m_info.m_ipv4info,
 			evt->get_ts());
 
+		//
+		// If a connection for this tuple is already there, drop it and replace it with a new one.
+		// Note that remove_connection just decreases the connection reference counter, since connections
+		// are destroyed by the analyzer at the end of the sample.
+		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
+		// the previous one.
+		//
 		if(conn)
 		{
 			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
@@ -1187,8 +1200,14 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		//
 		// Update the FD with this tuple
 		//
-		set_addresses_and_ports(evt->m_fdinfo, packed_data);
-		//evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
+		if(family == PPM_AF_INET)
+		{
+			set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
+		}
+		else
+		{
+			set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+		}
 
 		//
 		// Add the friendly name to the fd info
@@ -1199,6 +1218,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		// Add the tuple to the connection table
 		//
 		string scomm = evt->m_tinfo->get_comm();
+
 		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 			&scomm,
 			evt->m_tinfo->m_pid,
@@ -1209,6 +1229,16 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	}
 	else
 	{
+		//
+		// Mark this fd as a client
+		//
+		evt->m_fdinfo->set_role_client();
+
+		//
+		// Mark this fd as a transaction
+		//
+		evt->m_fdinfo->set_is_transaction();
+
 		if(!evt->m_fdinfo->is_unix_socket())
 		{
 			//
@@ -1232,11 +1262,6 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
 	}
-
-	//
-	// Add this operation to the recend fd operations fifo
-	//
-	//  m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
 }
 
 void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
@@ -1244,7 +1269,7 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	sinsp_evt_param *parinfo;
 	int64_t tid = evt->get_tid();
 	int64_t fd;
-	char *packed_data;
+	uint8_t* packed_data;
 	uint8_t family;
 	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 	sinsp_fdinfo fdi;
@@ -1294,25 +1319,20 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		return;
 	}
 
-	packed_data = (char *)parinfo->m_val;
+	packed_data = (uint8_t*)parinfo->m_val;
 
 	//
 	// Validate the family
 	//
 	family = *packed_data;
 
-	if(family != AF_INET && family != AF_UNIX)
-	{
-		return;
-	}
-
 	//
 	// Populate the fd info class
 	//
-	if(*packed_data == AF_INET)
+	if(*packed_data == PPM_AF_INET)
 	{
 		fdi.m_type = SCAP_FD_IPV4_SOCK;
-		set_addresses_and_ports(&fdi, packed_data);
+		set_ipv4_addresses_and_ports(&fdi, packed_data);
 		fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
 
 		//
@@ -1327,7 +1347,36 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		    false,
 		    evt->get_ts());
 	}
-	else
+	else if(*packed_data == PPM_AF_INET6)
+	{
+		//
+		// We only support IPv4-mapped IPv6 addresses (http://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses) 
+		// for the moment
+		//
+		uint8_t* sip = packed_data + 1;
+		uint8_t* dip = packed_data + 19;
+
+		if(sinsp_utils::is_ipv4_mapped_ipv6(sip) && sinsp_utils::is_ipv4_mapped_ipv6(dip))
+		{
+			fdi.m_type = SCAP_FD_IPV4_SOCK;
+
+			set_ipv4_mapped_ipv6_addresses_and_ports(&fdi, packed_data);
+			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
+
+			//
+			// Add the tuple to the connection table
+			//
+			string scomm = evt->m_tinfo->get_comm();
+			m_inspector->m_ipv4_connections->add_connection(fdi.m_info.m_ipv4info,
+				&scomm,
+				evt->m_tinfo->m_pid,
+				tid,
+				fd,
+				false,
+				evt->get_ts());
+		}
+	}
+	else if(*packed_data == PPM_AF_UNIX)
 	{
 		fdi.set_type_unix_socket();
 		set_unix_info(&fdi, packed_data);
@@ -1339,6 +1388,13 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		    fd,
 		    false,
 		    evt->get_ts());
+	}
+	else
+	{
+		//
+		// Unsupported family
+		//
+		return;
 	}
 
 	fdi.m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
@@ -1354,26 +1410,7 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	// Mark this fd as a transaction
 	//
 	fdi.set_is_transaction();
-/*
-	//
-	// Sometimes this syscall can be called on an FD that is being closed (i.e
-	// the close enter has arrived but the close exit has not arrived yet). 
-	// If this is the case, mark the FD so that the successive close exit won't
-	// destroy it.
-	//
-	sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(fd);
-	if(fdinfo != NULL)
-	{
-		if(fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS)
-		{
-			fdi.m_flags |= sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
-		}
-		else
-		{
-			ASSERT(false);
-		}
-	}
-*/
+
 	//
 	// Add the entry to the table
 	//
@@ -2290,7 +2327,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 	}
 }
 
-void sinsp_parser::set_addresses_and_ports(sinsp_fdinfo *fdinfo, char *packed_data)
+void sinsp_parser::set_ipv4_addresses_and_ports(sinsp_fdinfo *fdinfo, uint8_t* packed_data)
 {
 	fdinfo->m_info.m_ipv4info.m_fields.m_sip = *(uint32_t *)(packed_data + 1);
 	fdinfo->m_info.m_ipv4info.m_fields.m_sport = *(uint16_t *)(packed_data + 5);
@@ -2298,7 +2335,15 @@ void sinsp_parser::set_addresses_and_ports(sinsp_fdinfo *fdinfo, char *packed_da
 	fdinfo->m_info.m_ipv4info.m_fields.m_dport = *(uint16_t *)(packed_data + 11);
 }
 
-void sinsp_parser::set_unix_info(sinsp_fdinfo *fdinfo, char *packed_data)
+void sinsp_parser::set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo* fdinfo, uint8_t* packed_data)
+{
+	fdinfo->m_info.m_ipv4info.m_fields.m_sip = *(uint32_t *)(packed_data + 13);
+	fdinfo->m_info.m_ipv4info.m_fields.m_sport = *(uint16_t *)(packed_data + 17);
+	fdinfo->m_info.m_ipv4info.m_fields.m_dip = *(uint32_t *)(packed_data + 31);
+	fdinfo->m_info.m_ipv4info.m_fields.m_dport = *(uint16_t *)(packed_data + 35);
+}
+
+void sinsp_parser::set_unix_info(sinsp_fdinfo *fdinfo, uint8_t* packed_data)
 {
 	fdinfo->m_info.m_unixinfo.m_fields.m_source = *(uint64_t *)(packed_data + 1);
 	fdinfo->m_info.m_unixinfo.m_fields.m_dest = *(uint64_t *)(packed_data + 9);
@@ -2307,12 +2352,12 @@ void sinsp_parser::set_unix_info(sinsp_fdinfo *fdinfo, char *packed_data)
 
 void sinsp_parser::update_fd(sinsp_evt *evt, sinsp_evt_param *parinfo)
 {
-	char *packed_data = parinfo->m_val;
+	uint8_t* packed_data = (uint8_t*)parinfo->m_val;
 	uint8_t family = *packed_data;
-	if(family == AF_INET)
+	if(family == PPM_AF_INET)
 	{
 		evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
-		set_addresses_and_ports(evt->m_fdinfo, packed_data);
+		set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
 		evt->m_fdinfo->m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_UDP;
 		m_inspector->m_network_interfaces->update_fd(evt->m_fdinfo);
 	}

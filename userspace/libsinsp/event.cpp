@@ -584,7 +584,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 				typestr,
 				sanitized_str.c_str());
 		}
-		else if(param->m_val[0] == AF_INET)
+		else if(param->m_val[0] == PPM_AF_INET)
 		{
 			if(param->m_len == 1 + 4 + 2)
 			{
@@ -633,36 +633,8 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 
 			break;
 		}
-		else if(param->m_val[0] == AF_UNIX)
-		{
-			//
-			// typestr contains the type character that goes
-			// at the beginning of the string if PF_NORMAL or
-			// PF_JSON is specified
-			//
-			char typestr[2] =
-			{
-				(fmt == PF_SIMPLE)?(char)0:(char)CHAR_FD_UNIX_SOCK,
-				0
-			};
-
-			ASSERT(param->m_len > 17);
-
-			//
-			// Sanitize the file string.
-			//
-            string sanitized_str = param->m_val + 17;
-            sanitized_str.erase(remove_if(sanitized_str.begin(), sanitized_str.end(), g_invalidchar()), sanitized_str.end());
-
-			snprintf(m_paramstr_storage,
-				sizeof(m_paramstr_storage), 
-				"%s%" PRIx64 "->%" PRIx64 " %s", 
-				typestr,
-				*(uint64_t*)(param->m_val + 1),
-				*(uint64_t*)(param->m_val + 9),
-				sanitized_str.c_str());
-		}
-		else if(param->m_val[0] == AF_INET)
+		
+		if(param->m_val[0] == PPM_AF_INET)
 		{
 			if(param->m_len == 1 + 4 + 2 + 4 + 2)
 			{
@@ -699,6 +671,81 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 				         sizeof(m_paramstr_storage),
 				         "INVALID IPv4");
 			}
+		}
+		else if(param->m_val[0] == PPM_AF_INET6)
+		{
+			if(param->m_len == 1 + 16 + 2 + 16 + 2)
+			{
+				uint8_t* sip6 = (uint8_t*)param->m_val + 1;
+				uint8_t* dip6 = (uint8_t*)param->m_val + 19;
+				uint8_t* sip = (uint8_t*)param->m_val + 13;
+				uint8_t* dip = (uint8_t*)param->m_val + 31;
+
+				if(sinsp_utils::is_ipv4_mapped_ipv6(sip6) && sinsp_utils::is_ipv4_mapped_ipv6(dip6))
+				{
+					//
+					// typestr contains the type character that goes
+					// at the beginning of the string if PF_NORMAL or
+					// PF_JSON is specified
+					//
+					char typestr[2] =
+					{
+						(fmt == PF_SIMPLE)?(char)0:(char)CHAR_FD_IPV4_SOCK,
+						0
+					};
+
+					snprintf(m_paramstr_storage,
+							 sizeof(m_paramstr_storage),
+							 "%s%u.%u.%u.%u:%u->%u.%u.%u.%u:%u",
+							 typestr,
+							 (unsigned int)sip[0],
+							 (unsigned int)sip[1],
+							 (unsigned int)sip[2],
+							 (unsigned int)sip[3],
+							 (unsigned int)*(uint16_t*)(param->m_val + 17),
+							 (unsigned int)dip[0],
+							 (unsigned int)dip[1],
+							 (unsigned int)dip[2],
+							 (unsigned int)dip[3],
+							 (unsigned int)*(uint16_t*)(param->m_val + 35));
+
+					break;
+				}
+			}
+
+			ASSERT(false);
+			snprintf(m_paramstr_storage,
+				        sizeof(m_paramstr_storage),
+				        "INVALID IPv4");
+		}
+		if(param->m_val[0] == AF_UNIX)
+		{
+			//
+			// typestr contains the type character that goes
+			// at the beginning of the string if PF_NORMAL or
+			// PF_JSON is specified
+			//
+			char typestr[2] =
+			{
+				(fmt == PF_SIMPLE)?(char)0:(char)CHAR_FD_UNIX_SOCK,
+				0
+			};
+
+			ASSERT(param->m_len > 17);
+
+			//
+			// Sanitize the file string.
+			//
+            string sanitized_str = param->m_val + 17;
+            sanitized_str.erase(remove_if(sanitized_str.begin(), sanitized_str.end(), g_invalidchar()), sanitized_str.end());
+
+			snprintf(m_paramstr_storage,
+				sizeof(m_paramstr_storage), 
+				"%s%" PRIx64 "->%" PRIx64 " %s", 
+				typestr,
+				*(uint64_t*)(param->m_val + 1),
+				*(uint64_t*)(param->m_val + 9),
+				sanitized_str.c_str());
 		}
 		else
 		{

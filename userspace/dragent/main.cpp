@@ -185,6 +185,7 @@ static void run_monitor(const string& pidfile)
 //
 static bool g_ssl_alert_received = false;
 
+#ifndef _WIN32
 static void g_ssl_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
 {
 	//
@@ -198,6 +199,7 @@ static void g_ssl_callback(int write_p, int version, int content_type, const voi
 		g_ssl_alert_received = true;
 	}
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Log management
