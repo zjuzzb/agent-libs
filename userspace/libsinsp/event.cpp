@@ -718,7 +718,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 				        sizeof(m_paramstr_storage),
 				        "INVALID IPv4");
 		}
-		if(param->m_val[0] == AF_UNIX)
+		else if(param->m_val[0] == AF_UNIX)
 		{
 			//
 			// typestr contains the type character that goes

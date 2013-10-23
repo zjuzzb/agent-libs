@@ -1212,6 +1212,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		//
 		// Add the friendly name to the fd info
 		//
+
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
 
 		//
