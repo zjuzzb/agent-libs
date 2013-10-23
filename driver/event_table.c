@@ -150,6 +150,6 @@ const struct ppm_event_info g_event_info[PPM_EVENT_MAX] =
 	/* PPME_SYSCALL_SETRLIMIT_X */{"setrlimit", EC_PROCESS, EF_NONE, 3, {{"res", PT_ERRNO, PF_DEC}, {"cur", PT_INT64, PF_DEC}, {"max", PT_INT64, PF_DEC}}},
 	/* PPME_SYSCALL_PRLIMIT_E */{"prlimit", EC_PROCESS, EF_NONE, 2, {{"pid", PT_PID, PF_DEC}, {"resource", PT_UINT8, PF_DEC}}},
 	/* PPME_SYSCALL_PRLIMIT_X */{"prlimit", EC_PROCESS, EF_NONE, 5, {{"res", PT_ERRNO, PF_DEC}, {"newcur", PT_INT64, PF_DEC}, {"newmax", PT_INT64, PF_DEC}, {"oldcur", PT_INT64, PF_DEC}, {"oldmax", PT_INT64, PF_DEC}}},
-	/* PPME_SCHEDSWITCH_E */{"switch", EC_SCHEDULER, EF_NONE, 1, {{"next", PT_PID, PF_DEC}}},
+	/* PPME_SCHEDSWITCH_E */{"switch", EC_SCHEDULER, EF_NONE, 2, {{"prev", PT_PID, PF_DEC}, {"next", PT_PID, PF_DEC}}},
 	/* PPME_SCHEDSWITCH_X */{"NA1", EC_SCHEDULER, EF_NONE, 0},
 };

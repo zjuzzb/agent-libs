@@ -603,6 +603,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	ring_info->n_evts++;
 	if(sched_prev != NULL)
 	{
+		ASSERT(sched_prev != NULL);
 		ASSERT(sched_next != NULL);
 		ASSERT(regs == NULL);
 		ring_info->n_context_switches++;
