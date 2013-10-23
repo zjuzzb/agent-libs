@@ -177,6 +177,28 @@ static void run_monitor(const string& pidfile)
 }
 #endif
 
+//
+// SSL callback: since the SSL is managed by ELB, he sends an encrypted alert type 21 when
+// no instances are available in the backend. Of course Poco is bugged and doesn't recognize
+// that, so we need to abort the connection ourselves otherwise we'll keep talking to noone:
+// https://forums.aws.amazon.com/message.jspa?messageID=453844
+//
+static bool g_ssl_alert_received = false;
+
+static void g_ssl_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
+{
+	//
+	// Code borrowed from s_cb.c in openssl
+	//
+	if(write_p == 0 &&
+		content_type == 21 &&
+		len == 2 &&
+		((const unsigned char*)buf)[1] == 0)
+	{
+		g_ssl_alert_received = true;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Log management
 ///////////////////////////////////////////////////////////////////////////////
@@ -529,6 +551,18 @@ protected:
 
 		while(true)
 		{
+			//
+			// Do a fake read to make sure openssl reads the stream from
+			// the server and detects any pending alerts
+			//
+			char buf;
+			m_socket->receiveBytes(&buf, 1);
+
+			if(g_ssl_alert_received)
+			{
+				throw sinsp_exception("Received SSL alert, terminating the connection");
+			}
+
 			int32_t res = m_socket->sendBytes(m_socketbufferptr, m_socketbuflen);
 			if(res == (int32_t) m_socketbuflen)
 			{
@@ -849,6 +883,12 @@ protected:
 						"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
 					Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
+
+					SSL_CTX* ssl_ctx = ptrContext->sslContext();
+					if(ssl_ctx)
+					{
+						SSL_CTX_set_msg_callback(ssl_ctx, g_ssl_callback);
+					}
 
 					m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
 					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
