@@ -12,7 +12,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 
-set(DRAIOS_VERSION "0.1.1")
+set(DRAIOS_VERSION "0.1.${DRAIOS_BUILD_NUMBER}")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(DRAIOS_PACKAGE_NAME "draios-debug")
 else()
