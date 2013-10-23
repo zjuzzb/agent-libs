@@ -10,7 +10,7 @@ if [ -x "/etc/init.d/dragent" ]; then
 fi
 
 DKMS_PACKAGE_NAME="draios"
-DKMS_VERSION="0.1.1"
+DKMS_VERSION="0.1."
 
 case "$1" in
     remove|upgrade|deconfigure)

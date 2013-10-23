@@ -31,8 +31,6 @@ using Poco::NumberParser;
 #define BUFFER_LENGTH   sizeof(PAYLOAD)
 #define FALSE           0
 
-#if 0
-
 typedef enum iotype
 {
 	READWRITE,
@@ -67,7 +65,7 @@ public:
 		unsigned int client_len;
 		uint32_t j;
 
-		int port = (m_exit_no_close)? SERVER_PORT + 1 : SERVER_PORT;
+		int port = (m_exit_no_close)? SERVER_PORT + 2 : SERVER_PORT;
 
 		m_tid = syscall(SYS_gettid);
 
@@ -93,7 +91,8 @@ public:
 		/* Bind to the local address */
 		if(::bind(servSock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
 		{
-			FAIL() << "bind() failed";
+			perror("bind() failed");
+			FAIL();
 			return;
 		}
 		/* Mark the socket so it will listen for incoming connections */
@@ -132,12 +131,12 @@ public:
 				}				
 			}
 
-			char str[INET6_ADDRSTRLEN];
-			if(inet_ntop(AF_INET6, &client_address.sin6_addr, str, sizeof(str))) 
-			{
-				printf("Client address is %s\n", str);
-				printf("Client port is %d\n", ntohs(client_address.sin6_port));
-			}
+			//char str[INET6_ADDRSTRLEN];
+			//if(inet_ntop(AF_INET6, &client_address.sin6_addr, str, sizeof(str))) 
+			//{
+			//	printf("Client address is %s\n", str);
+			//	printf("Client port is %d\n", ntohs(client_address.sin6_port));
+			//}
 
 			/* clntSock is connected to a client! */
 			wait_for_continue();
@@ -243,10 +242,10 @@ private:
 	bool m_exit_no_close;
 };
 
-class tcp_client
+class tcp_client_ipv4m
 {
 public:
-	tcp_client(uint32_t server_ip_address, 
+	tcp_client_ipv4m(uint32_t server_ip_address, 
 		iotype iot, 
 		bool on_thread = false, 
 		uint32_t ntransactions = 1,
@@ -267,7 +266,7 @@ public:
 		int payload_length;
 		int bytes_received;
 		uint32_t j;
-		int port = (m_exit_no_close)? SERVER_PORT + 1: SERVER_PORT;
+		int port = (m_exit_no_close)? SERVER_PORT + 2: SERVER_PORT;
 
 		m_tid = syscall(SYS_gettid);
 
@@ -287,7 +286,8 @@ public:
 		/* Establish the connection to the server */
 		if(connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
 		{
-			FAIL() << "connect() failed";
+			perror("connect() failed");
+			FAIL();
 			return;
 		}
 		signal_ready();
@@ -463,7 +463,7 @@ void runtest_ipv4m(iotype iot,
 		server_thread.start(runnable);
 		server.wait_till_ready();
 
-		tcp_client client(server_ip_address, 
+		tcp_client_ipv4m client(server_ip_address, 
 			iot, 
 			false, 
 			ntransactions,
@@ -488,7 +488,6 @@ void runtest_ipv4m(iotype iot,
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-return;		
 		sinsp_evt* evt = param.m_evt;
 		if(evt->get_type() == PPME_SOCKET_CONNECT_X)
 		{
@@ -747,17 +746,17 @@ TEST_F(sys_call_test, tcp_client_server_noclose_ipv4m)
 	runtest_ipv4m(SENDRECEIVE, false, false, 1, true);
 }
 
-/*
+
 TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts_ipv4m)
 {
 	Poco::Thread server_thread;
 	Poco::Thread client_thread;
-	tcp_server server(SENDRECEIVE, true);
+	tcp_server_ipv4m server(SENDRECEIVE, true);
 	uint32_t server_ip_address = get_server_address();
-	tcp_client client(server_ip_address,SENDRECEIVE,true);
+	tcp_client_ipv4m client(server_ip_address,SENDRECEIVE,true);
 	
-	Poco::RunnableAdapter<tcp_server> server_runnable(server, &tcp_server::run);
-	Poco::RunnableAdapter<tcp_client> client_runnable(client, &tcp_client::run);
+	Poco::RunnableAdapter<tcp_server_ipv4m> server_runnable(server, &tcp_server_ipv4m::run);
+	Poco::RunnableAdapter<tcp_client_ipv4m> client_runnable(client, &tcp_client_ipv4m::run);
 	int state = 0;
 
 	//
@@ -803,5 +802,5 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts_
 	ASSERT_EQ(1, state);
 
 }
-*/
-#endif
+
+

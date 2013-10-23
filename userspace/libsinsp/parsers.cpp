@@ -1271,7 +1271,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	int64_t tid = evt->get_tid();
 	int64_t fd;
 	uint8_t* packed_data;
-	uint8_t family;
 	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 	sinsp_fdinfo fdi;
 	const char *parstr;
@@ -1321,11 +1320,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	}
 
 	packed_data = (uint8_t*)parinfo->m_val;
-
-	//
-	// Validate the family
-	//
-	family = *packed_data;
 
 	//
 	// Populate the fd info class
