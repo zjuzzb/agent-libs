@@ -50,7 +50,7 @@ public:
 	vector<cpustate> m_cpu_states;
 
 private:
-	void update(uint64_t ts, int16_t cpu, int64_t newtid);
+	void update(uint64_t ts, int16_t cpu, int64_t nexttid);
 
 	sinsp* m_inspector;
 	uint32_t m_ncpus;
