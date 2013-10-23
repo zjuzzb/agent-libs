@@ -557,8 +557,18 @@ protected:
 			// Do a fake read to make sure openssl reads the stream from
 			// the server and detects any pending alerts
 			//
-			char buf;
-			m_socket->receiveBytes(&buf, 1);
+			try 
+			{
+				char buf;
+				m_socket->receiveBytes(&buf, 1);
+			}
+			catch(Poco::TimeoutException&)
+			{
+				//
+				// Poco signals a NONBLOCKING read that would block with
+				// an exception
+				//
+			}
 
 			if(g_ssl_alert_received)
 			{
