@@ -558,18 +558,24 @@ static inline uint8_t socket_family_to_scap(uint8_t family)
 	{
 		return PPM_AF_IEEE802154;
 	}
+#ifdef AF_CAIF	
 	else if(family == AF_CAIF)
 	{
 		return PPM_AF_CAIF;
 	}
+#endif	
+#ifdef AF_ALG
 	else if(family == AF_ALG)
 	{
 		return PPM_AF_ALG;
 	}
+#endif
+#ifdef AF_NFC
 	else if(family == AF_NFC)
 	{
 		return PPM_AF_NFC;
 	}
+#endif
 	else
 	{
 		ASSERT(false);
