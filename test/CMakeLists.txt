@@ -18,6 +18,7 @@ add_executable(test
 	socketpair.cpp
 	sys_call_test.cpp
 	tcp_client_server.cpp
+	tcp_client_server_ipv4_mapped.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
