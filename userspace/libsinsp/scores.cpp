@@ -203,8 +203,6 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
     return;
 }
 
-uint32_t ncalls = 0;
-
 float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -224,12 +222,15 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 	}
 
-	ncalls++;
 	float max_score = 0;
 	float min_score = 200;
 	float tot_score = 0;
 	uint32_t n_scores = 0;
 
+	//
+	// Calculate the local versus next tier processing time ratio, which we'll use below for score
+	// normalization.
+	//
 	float local_remote_ratio;
 	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
 	{
@@ -286,8 +287,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
-		// Count the number of concurrent transactions for each inerval of size
-		// CONCURRENCY_OBSERVATION_INTERVAL_NS.
+		// Claculate the CPU spent while serving transactions
 		//
 		for(j = 0; j < m_n_intervals_in_sample; j++)
 		{
@@ -309,13 +309,11 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 			}
 		}
 
+		//
+		// Perform score calculation
+		//
 		float score;
-/*
-if(ncalls >= 3)
-{
-	int a = 0;
-}
-*/
+
 		if(ntr != 0)
 		{
 			if(local_remote_ratio != -1)
@@ -336,7 +334,6 @@ if(ncalls >= 3)
 
 			float maxavail = MAX(avail, ntr);
 			score = 100 - (ntr * 100 / maxavail);
-//sort(cpu_vector->begin(), cpu_vector->end());
 			ASSERT(score >= 0);
 			ASSERT(score <= 100);
 
@@ -361,7 +358,7 @@ if(ncalls >= 3)
 	if(n_scores != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-			">>%f-%f-%f (%" PRId32 ")",
+			">>%.2f-%.2f-%.2f (%" PRId32 ")",
 			min_score,
 			max_score,
 			tot_score / n_scores,
@@ -407,7 +404,6 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 	//	}
 	//}
 
-	ncalls++;
 	int32_t max_score = 0;
 	int32_t min_score = 200;
 	int32_t tot_score = 0;
@@ -508,12 +504,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 			}
 
 			int32_t score;
-/*
-if(ncalls == 2)
-{
-	int a = 0;
-}
-*/
+
 			if(ntr != 0 && ntrcpu != 0)
 			{
 				uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);

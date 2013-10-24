@@ -289,6 +289,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 
 	if(PPME_IS_ENTER(etype))
 	{
+		evt->m_tinfo->m_lastevent_fd = -1;
 		evt->m_tinfo->m_lastevent_type = etype;
 
 		if(eflags & EF_USES_FD)

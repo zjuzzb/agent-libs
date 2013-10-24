@@ -281,10 +281,11 @@ bool sinsp_filter_check_fd::check_fdtype(sinsp_fdinfo* fdinfo)
 
 bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 {
+	ASSERT(evt);
 	sinsp_threadinfo* tinfo;
 	sinsp_fdinfo* fdinfo;
 	ppm_event_flags eflags = evt->get_flags();
-	ASSERT(evt);
+	uint16_t etype = evt->get_type();
 
 	//
 	// Make sure this is an event that creates or consumes an fd
@@ -302,7 +303,7 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 
 		fdinfo = evt->get_fd_info();
 
-		if(fdinfo == NULL)
+		if(fdinfo == NULL && tinfo->m_lastevent_fd != -1)
 		{
 			fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
 		}
