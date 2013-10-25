@@ -667,7 +667,7 @@ static int32_t f_proc_startupdate(struct event_filler_arguments* args)
 		}
 
 		memcpy(args->str_storage, (void*)mm->arg_start, args_len);
-		args->str_storage[args_len] = 0;
+		args->str_storage[args_len - 1] = 0;
 
 		exe_len = strnlen(args->str_storage, args_len);
 		if(exe_len < args_len)
