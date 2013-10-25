@@ -314,13 +314,13 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		//
 		float score;
 
+		if(local_remote_ratio != -1)
+		{
+			ntr *= local_remote_ratio;
+		}
+
 		if(ntr != 0)
 		{
-			if(local_remote_ratio != -1)
-			{
-				ntr *= local_remote_ratio;
-			}
-
 			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
 			float avail;
 			if(ntrcpu != 0)

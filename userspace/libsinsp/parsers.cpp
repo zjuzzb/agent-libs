@@ -35,6 +35,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
+BRK(788666);
 	uint16_t etype = evt->get_type();
 
 	//
