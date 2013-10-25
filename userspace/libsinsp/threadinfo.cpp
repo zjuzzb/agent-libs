@@ -518,6 +518,7 @@ void sinsp_threadinfo::clear_all_metrics()
 
 	m_metrics.clear();
 	m_transaction_metrics.clear();
+	m_external_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;

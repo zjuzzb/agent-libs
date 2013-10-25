@@ -97,6 +97,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			ptinfo->m_transaction_metrics.m_counter.add_in(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
 
+			if(pconn->is_server_only())
+			{
+				ptinfo->m_external_transaction_metrics.m_counter.add_in(1, delta);
+			}
+
 			m_inspector->m_analyzer->m_transactions_with_cpu.push_back(
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
@@ -110,6 +115,12 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 			m_n_client_transactions++;
 			ptinfo->m_transaction_metrics.m_counter.add_out(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_out(1, delta);
+
+			if(pconn->is_client_only())
+			{
+				ptinfo->m_external_transaction_metrics.m_counter.add_out(1, delta);
+			}
+
 /*
 			if(ptinfo->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
 			{

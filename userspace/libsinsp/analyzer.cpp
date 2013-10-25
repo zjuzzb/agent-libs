@@ -394,15 +394,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
 
 		//
-		// If this is a server process, increase the server thread counter and add its client transaction 
-		// time to the total that we use as a factor for the health score.
-		if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
-		{
-			n_server_threads++;
-			m_client_tr_time_by_servers += it->second.m_transaction_metrics.m_counter.m_time_ns_out;
-		}
-
-		//
 		// Add this thread's counters to the process ones...
 		//
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
@@ -412,7 +403,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// ... And to the host ones
 		//
-		m_host_transaction_metrics.add(&it->second.m_transaction_metrics);
+		m_host_transaction_metrics.add(&it->second.m_external_transaction_metrics);
+
+		if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
+		{
+			n_server_threads++;
+			m_client_tr_time_by_servers += it->second.m_external_transaction_metrics.m_counter.m_time_ns_out;
+		}
 
 		//
 		// Dump the thread info into the protobuf

@@ -129,6 +129,8 @@ public:
 	sinsp_counters m_metrics; 
 	// The transaction metrics
 	sinsp_transaction_counters m_transaction_metrics; 
+	// The metrics for transaction coming from the external world
+	sinsp_transaction_counters m_external_transaction_metrics; 
 	// The delay that this thread introduced in transaction processing.
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
