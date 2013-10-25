@@ -1150,6 +1150,8 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 			{
 				return;
 			}
+
+			evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
 		}
 
 		//
