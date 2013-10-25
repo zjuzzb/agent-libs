@@ -2690,7 +2690,22 @@ void sinsp_parser::parse_getcwd_exit(sinsp_evt *evt)
 				// following chdir(). If it does, it's almost sure there was an event drop.
 				// In that case, we use this value to update the thread cwd.
 				//
+#ifndef _WIN32
+#ifdef _DEBUG
+				int target_res;
+				char target_name[1024];
+				target_res = readlink((chkstr + "/").c_str(), 
+					target_name, 
+					sizeof(target_name) - 1);
+
+				if(target_name != evt->m_tinfo->get_cwd())
+				{
+					printf("%s != %s", target_name, evt->m_tinfo->get_cwd().c_str());
+				}
+
 				ASSERT(false);
+#endif
+#endif
 			}
 		}
 #endif
