@@ -96,6 +96,15 @@ bool sinsp_network_interfaces::is_ipv4addr_local(uint32_t addr)
 {
 	vector<sinsp_ipv4_ifinfo>::iterator it;
 
+	//
+	// Accept everything that comes from 192.168.0.0/16 or 10.0.0.0/8
+	//
+	if((addr & 0x000000ff) == 0x0000000a ||
+		(addr & 0x0000ffff) == 0x0000a8c0)
+	{
+		return true;
+	}
+
 	// try to find an interface for the same subnet
 	for(it = m_ipv4_interfaces.begin(); it != m_ipv4_interfaces.end(); it++)
 	{
