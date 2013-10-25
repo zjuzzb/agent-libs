@@ -823,7 +823,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 		break;
 	case PT_SIGTYPE:
 		{
-			string sigstr;
+			const char* sigstr;
 
 			ASSERT(param->m_len == sizeof(uint8_t));
 			uint8_t val = *(uint8_t *)param->m_val;
@@ -834,9 +834,12 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 					 sizeof(m_paramstr_storage),
 					 "%" PRIu8, val);
 
-			snprintf(m_resolved_paramstr_storage,
-						sizeof(m_resolved_paramstr_storage),
-						"%s", sigstr.c_str());
+			if(sigstr)
+			{
+				snprintf(m_resolved_paramstr_storage,
+							sizeof(m_resolved_paramstr_storage),
+							"%s", sigstr);
+			}
 		}
 		break;
 	case PT_RELTIME:

@@ -243,8 +243,7 @@ const char* sinsp_utils::signal_to_str(uint8_t code)
 	case SE_SIGSYS:
 		return "SIGSYS";
 	default:
-		ASSERT(false);
-		return "<invalid>";
+		return NULL;
 	}
 }
 

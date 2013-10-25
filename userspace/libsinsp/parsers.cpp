@@ -38,7 +38,6 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
-BRK(788666);
 	uint16_t etype = evt->get_type();
 
 	//
@@ -1154,6 +1153,8 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 			{
 				return;
 			}
+
+			evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
 		}
 
 		//
