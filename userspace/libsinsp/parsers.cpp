@@ -6,6 +6,9 @@
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef _DEBUG
+#endif // _DEBUG
+#include <unistd.h>
 #endif // _WIN32
 
 #include "../../driver/ppm_ringbuffer.h"
@@ -2698,12 +2701,15 @@ void sinsp_parser::parse_getcwd_exit(sinsp_evt *evt)
 					target_name, 
 					sizeof(target_name) - 1);
 
-				if(target_name != evt->m_tinfo->get_cwd())
+				if(target_res > 0)
 				{
-					printf("%s != %s", target_name, evt->m_tinfo->get_cwd().c_str());
+					if(target_name != evt->m_tinfo->get_cwd())
+					{
+						printf("%s != %s", target_name, evt->m_tinfo->get_cwd().c_str());
+						ASSERT(false);
+					}
 				}
 
-				ASSERT(false);
 #endif
 #endif
 			}

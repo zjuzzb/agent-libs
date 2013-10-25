@@ -285,7 +285,6 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 	sinsp_threadinfo* tinfo;
 	sinsp_fdinfo* fdinfo;
 	ppm_event_flags eflags = evt->get_flags();
-	uint16_t etype = evt->get_type();
 
 	//
 	// Make sure this is an event that creates or consumes an fd
