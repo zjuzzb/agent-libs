@@ -321,7 +321,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	uint32_t n_server_threads = 0;
-	float syshscore = -1;
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"thread table size:%d",
@@ -459,26 +458,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%f",
 			syshscore);
 */
-		syshscore = m_score_calculator->get_system_health_score_bycpu_3(&m_server_transactions_per_cpu,
+		m_host_metrics.m_health_score = m_score_calculator->get_system_health_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"3!!%.2f",
-			syshscore);
+			m_host_metrics.m_health_score);
 
 		syshscore_g = m_score_calculator->get_system_health_score_global(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
-		if(syshscore == -1)
-		{
-			syshscore = (float)syshscore_g;
-		}
-
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"2!!%" PRId32,
 			syshscore_g);
+
+		if(m_host_metrics.m_health_score == -1)
+		{
+			m_host_metrics.m_health_score = (float)syshscore_g;
+		}
 
 		m_transactions_with_cpu.clear();
 		for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
@@ -591,7 +590,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Health-related metrics
 					//
-					it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(syshscore, &it->second);
+					it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(m_host_metrics.m_health_score, &it->second);
 					proc->mutable_resource_counters()->set_health_score((uint32_t)(it->second.m_procinfo->m_health_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
 					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);

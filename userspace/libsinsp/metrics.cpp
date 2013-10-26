@@ -419,7 +419,7 @@ void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* prot
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_error_counters implementation
+// sinsp_host_metrics implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_host_metrics::sinsp_host_metrics()
 {
@@ -431,7 +431,7 @@ void sinsp_host_metrics::clear()
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
-	m_health_score = 0;
+	m_health_score = -1;
 	m_n_health_score_entries = 0;
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
@@ -443,8 +443,8 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_metrics.add(&pinfo->m_proc_metrics);
 	m_transaction_metrics.add(&pinfo->m_proc_transaction_metrics);
 	m_transaction_processing_delay_ns += pinfo->m_proc_transaction_processing_delay_ns;
-	m_health_score += pinfo->m_health_score;
-	m_n_health_score_entries++;
+//	m_health_score += pinfo->m_health_score;
+//	m_n_health_score_entries++;
 
 	if(pinfo->m_connection_queue_usage_pct > m_connection_queue_usage_pct)
 	{
