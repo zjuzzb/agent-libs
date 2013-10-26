@@ -12,7 +12,7 @@
 
 extern sinsp_evttables g_infotables;
 
-const event_property_info g_tostring_category_table[] =
+const filter_field_info g_tostring_category_table[] =
 {
 	{ETSC_NONE, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
 	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
@@ -1231,7 +1231,7 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		throw sinsp_exception("wrong event property " + to_string(prop));
 	}
 
-	const event_property_info propinfo = g_tostring_category_table[prop];
+	const filter_field_info propinfo = g_tostring_category_table[prop];
 
 	if(propinfo.m_category != prop)
 	{
@@ -1484,7 +1484,7 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			{
 				j += selected_toklen;
 				ASSERT(j < fmt.length());
-				const event_property_info* einfo = &(g_tostring_category_table[selected]);
+				const filter_field_info* einfo = &(g_tostring_category_table[selected]);
 
 				if(einfo->m_flags & EPF_REQUIRES_ARGUMENT)
 				{

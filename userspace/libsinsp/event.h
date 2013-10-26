@@ -70,7 +70,7 @@ typedef enum event_property_flags
 	EPF_REQUIRES_ARGUMENT, // this property includes an argument, under the form 'property.argument'
 }event_property_flags;
 
-typedef struct event_property_info
+typedef struct filter_field_info
 {
 	event_property_category m_category;
 	ppm_param_type m_type;
@@ -79,7 +79,7 @@ typedef struct event_property_info
 	char m_prefix[16];
 	char m_name[64];
 	char m_description[1024];
-}event_property_info;
+}filter_field_info;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Wrapper that exports the libscap event tables

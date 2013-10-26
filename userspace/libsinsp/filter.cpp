@@ -12,8 +12,8 @@
 #include "sinsp_int.h"
 
 #ifdef HAS_FILTERING
-#include "filterchecks.h"
 #include "filter.h"
+#include "filterchecks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // type-based comparison functions
@@ -438,8 +438,8 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 
 	chk->m_boolop = op;
 	chk->m_cmpop = co;
-	chk->parse_operand1(operand1);
-	chk->parse_operand2(operand2);
+	chk->parse_field_name(operand1);
+	chk->parse_filter_value(operand2);
 
 	parent_expr->add_check(chk);
 }

@@ -12,8 +12,8 @@
 #include "sinsp_int.h"
 
 #ifdef HAS_FILTERING
-#include "filterchecks.h"
 #include "filter.h"
+#include "filterchecks.h"
 
 extern sinsp_evttables g_infotables;
 
@@ -47,7 +47,7 @@ bool sinsp_filter_check_fd::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_fd::parse_operand1(string val)
+void sinsp_filter_check_fd::parse_field_name(string val)
 {
 	m_type = TYPE_NONE;
 
@@ -108,7 +108,7 @@ void sinsp_filter_check_fd::parse_operand1(string val)
 	throw sinsp_exception("filter error: unrecognized field " + val);
 }
 
-void sinsp_filter_check_fd::parse_operand2(string val)
+void sinsp_filter_check_fd::parse_filter_value(string val)
 {
 	switch(m_type)
 	{
@@ -512,7 +512,7 @@ bool sinsp_filter_check_thread::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_thread::parse_operand1(string val)
+void sinsp_filter_check_thread::parse_field_name(string val)
 {
 	m_type = TYPE_NONE;
 
@@ -565,7 +565,7 @@ void sinsp_filter_check_thread::parse_operand1(string val)
 	throw sinsp_exception("filter error: unrecognized field " + val);
 }
 
-void sinsp_filter_check_thread::parse_operand2(string val)
+void sinsp_filter_check_thread::parse_filter_value(string val)
 {
 	switch(m_type)
 	{
@@ -678,7 +678,7 @@ bool sinsp_filter_check_event::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_event::parse_operand1(string val)
+void sinsp_filter_check_event::parse_field_name(string val)
 {
 	m_type = TYPE_NONE;
 
@@ -724,7 +724,7 @@ void sinsp_filter_check_event::parse_operand1(string val)
 	throw sinsp_exception("filter error: unrecognized field " + val);
 }
 
-void sinsp_filter_check_event::parse_operand2(string val)
+void sinsp_filter_check_event::parse_filter_value(string val)
 {
 	switch(m_type)
 	{
@@ -950,7 +950,7 @@ bool sinsp_filter_check_user::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_user::parse_operand1(string val)
+void sinsp_filter_check_user::parse_field_name(string val)
 {
 	m_type = TYPE_NONE;
 
@@ -983,7 +983,7 @@ void sinsp_filter_check_user::parse_operand1(string val)
 	throw sinsp_exception("filter error: unrecognized field " + val);
 }
 
-void sinsp_filter_check_user::parse_operand2(string val)
+void sinsp_filter_check_user::parse_filter_value(string val)
 {
 	switch(m_type)
 	{
@@ -1079,7 +1079,7 @@ bool sinsp_filter_check_group::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_group::parse_operand1(string val)
+void sinsp_filter_check_group::parse_field_name(string val)
 {
 	m_type = TYPE_NONE;
 
@@ -1102,7 +1102,7 @@ void sinsp_filter_check_group::parse_operand1(string val)
 	throw sinsp_exception("filter error: unrecognized field " + val);
 }
 
-void sinsp_filter_check_group::parse_operand2(string val)
+void sinsp_filter_check_group::parse_filter_value(string val)
 {
 	switch(m_type)
 	{

@@ -4,6 +4,65 @@
 
 bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
 
+enum boolop
+{
+	BO_NONE = 0,
+	BO_NOT = 1,
+	BO_OR = 2,
+	BO_AND = 4,
+	BO_ORNOT = 3,
+	BO_ANDNOT = 5,
+};
+
+class operand_info
+{
+public:
+	uint32_t m_id;
+	ppm_param_type m_type;
+	string m_name;
+	string m_description;
+};
+
+class filter_check_info
+{
+public:
+	const string m_name;
+	const uint32_t m_nfiedls;
+	const filter_field_info* m_fields;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// The filter check interface
+// NOTE: in order to add a new type of filter check, you need to add a class for
+//       it and then add it to sinsp_filter::parse_check.
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_filter_check
+{
+public:
+	sinsp_filter_check();
+	virtual ~sinsp_filter_check()
+	{
+	}
+
+//	virtual filter_field_info get_info() = 0;
+
+	virtual void parse_field_name(string val)
+	{
+		return;
+	}
+	virtual void parse_filter_value(string val)
+	{
+		return;
+	}
+	virtual bool run(sinsp_evt *evt) = 0;
+
+	void set_inspector(sinsp* inspector);
+
+	sinsp* m_inspector;
+	boolop m_boolop;
+	ppm_cmp_operator m_cmpop;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Filter expression class
 // A filter expression contains multiple filters connected by boolean expressions,

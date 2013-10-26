@@ -20,8 +20,8 @@
 #include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
-#include "filterchecks.h"
 #include "filter.h"
+#include "filterchecks.h"
 
 sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)

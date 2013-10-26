@@ -2,60 +2,9 @@
 
 #ifdef HAS_FILTERING
 
-enum boolop
-{
-	BO_NONE = 0,
-	BO_NOT = 1,
-	BO_OR = 2,
-	BO_AND = 4,
-	BO_ORNOT = 3,
-	BO_ANDNOT = 5,
-};
-
-class operand_info
-{
-public:
-	uint32_t m_id;
-	ppm_param_type m_type;
-	string m_name;
-	string m_description;
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 // Filter check classes
 ///////////////////////////////////////////////////////////////////////////////
-
-//
-// The filter check interface
-// NOTE: in order to add a new type of filter check, you need to add a class for
-//       it and then add it to sinsp_filter::parse_check.
-//
-class sinsp_filter_check
-{
-public:
-	sinsp_filter_check();
-	virtual ~sinsp_filter_check()
-	{
-	}
-
-	virtual void parse_operand1(string val)
-	{
-		return;
-	}
-	virtual void parse_operand2(string val)
-	{
-		return;
-	}
-	virtual bool run(sinsp_evt *evt) = 0;
-
-	bool compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
-
-	void set_inspector(sinsp* inspector);
-
-	sinsp* m_inspector;
-	boolop m_boolop;
-	ppm_cmp_operator m_cmpop;
-};
 
 //
 // fd checks
@@ -94,8 +43,8 @@ public:
 	};
 
 	static bool recognize_operand(string operand);
-	void parse_operand1(string val);
-	void parse_operand2(string val);
+	void parse_field_name(string val);
+	void parse_filter_value(string val);
 	bool run(sinsp_evt *evt);
 	bool check_fdtype(sinsp_fdinfo* fdinfo);
 
@@ -127,8 +76,8 @@ public:
 	};
 
 	static bool recognize_operand(string operand);
-	void parse_operand1(string val);
-	void parse_operand2(string val);
+	void parse_field_name(string val);
+	void parse_filter_value(string val);
 	bool run(sinsp_evt *evt);
 
 	check_type m_type;
@@ -156,8 +105,8 @@ public:
 	};
 
 	static bool recognize_operand(string operand);
-	void parse_operand1(string val);
-	void parse_operand2(string val);
+	void parse_field_name(string val);
+	void parse_filter_value(string val);
 	bool run(sinsp_evt *evt);
 
 	check_type m_type;
@@ -186,8 +135,8 @@ public:
 	};
 
 	static bool recognize_operand(string operand);
-	void parse_operand1(string val);
-	void parse_operand2(string val);
+	void parse_field_name(string val);
+	void parse_filter_value(string val);
 	bool run(sinsp_evt *evt);
 
 	check_type m_type;
@@ -209,8 +158,8 @@ public:
 	};
 
 	static bool recognize_operand(string operand);
-	void parse_operand1(string val);
-	void parse_operand2(string val);
+	void parse_field_name(string val);
+	void parse_filter_value(string val);
 	bool run(sinsp_evt *evt);
 
 	check_type m_type;
