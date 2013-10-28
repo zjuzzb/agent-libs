@@ -128,6 +128,21 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_filter_check::sinsp_filter_check()
+{
+	m_boolop = BO_NONE;
+	m_cmpop = CO_NONE;
+	m_inspector = NULL;
+}
+
+void sinsp_filter_check::set_inspector(sinsp* inspector)
+{
+	m_inspector = inspector;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter_expression::sinsp_filter_expression()
@@ -153,8 +168,8 @@ void sinsp_filter_expression::add_check(sinsp_filter_check* chk)
 void sinsp_filter_expression::parse(string expr)
 {
 }
-	
-bool sinsp_filter_expression::run(sinsp_evt *evt)
+
+bool sinsp_filter_expression::compare(sinsp_evt *evt)
 {
 	uint32_t j;
 	uint32_t size = m_checks.size();
@@ -166,7 +181,7 @@ bool sinsp_filter_expression::run(sinsp_evt *evt)
 		sinsp_filter_check* chk = m_checks[j];
 		ASSERT(chk != NULL);
 
-		chkres = chk->run(evt);
+		chkres = chk->compare(evt);
 		if(j == 0)
 		{
 			switch(chk->m_boolop)
@@ -575,7 +590,7 @@ void sinsp_filter::parse(string fltstr)
 
 bool sinsp_filter::run(sinsp_evt *evt)
 {
-	return m_filter.run(evt);
+	return m_filter.compare(evt);
 }
 
 #endif // HAS_FILTERING

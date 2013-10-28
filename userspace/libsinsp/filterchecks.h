@@ -42,10 +42,12 @@ public:
 		FDT_TIMERFD
 	};
 
+	filter_check_fields get_filelds();
 	static bool recognize_operand(string operand);
 	void parse_field_name(string val);
 	void parse_filter_value(string val);
-	bool run(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 	bool check_fdtype(sinsp_fdinfo* fdinfo);
 
 	check_type m_type;
@@ -75,10 +77,12 @@ public:
 		TYPE_ISMAINTHREAD,
 	};
 
+	filter_check_fields get_filelds();
 	static bool recognize_operand(string operand);
 	void parse_field_name(string val);
 	void parse_filter_value(string val);
-	bool run(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	int64_t m_xid;
@@ -104,10 +108,12 @@ public:
 		TYPE_ARGS
 	};
 
+	filter_check_fields get_filelds();
 	static bool recognize_operand(string operand);
 	void parse_field_name(string val);
 	void parse_filter_value(string val);
-	bool run(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	ppm_param_type m_arg_type;
@@ -134,10 +140,12 @@ public:
 		TYPE_SHELL,
 	};
 
+	filter_check_fields get_filelds();
 	static bool recognize_operand(string operand);
 	void parse_field_name(string val);
 	void parse_filter_value(string val);
-	bool run(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	uint32_t m_uid;
@@ -157,10 +165,12 @@ public:
 		TYPE_NAME,
 	};
 
+	filter_check_fields get_filelds();
 	static bool recognize_operand(string operand);
 	void parse_field_name(string val);
 	void parse_filter_value(string val);
-	bool run(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	uint32_t m_gid;

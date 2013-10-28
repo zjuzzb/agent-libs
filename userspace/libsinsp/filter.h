@@ -23,12 +23,12 @@ public:
 	string m_description;
 };
 
-class filter_check_info
+class filter_check_fields
 {
 public:
-	const string m_name;
-	const uint32_t m_nfiedls;
-	const filter_field_info* m_fields;
+	string m_name;
+	uint32_t m_nfiedls;
+	const event_field_info* m_fields;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -40,21 +40,40 @@ class sinsp_filter_check
 {
 public:
 	sinsp_filter_check();
+	
 	virtual ~sinsp_filter_check()
 	{
 	}
 
-//	virtual filter_field_info get_info() = 0;
+	//
+	// Get the list of fields that this check exports
+	//
+	virtual filter_check_fields get_filelds()
+	{
+		filter_check_fields res;
+		res.m_nfiedls = 0;
+		return res;
+	}
 
-	virtual void parse_field_name(string val)
-	{
-		return;
-	}
-	virtual void parse_filter_value(string val)
-	{
-		return;
-	}
-	virtual bool run(sinsp_evt *evt) = 0;
+	//
+	// Parse the name if the field
+	//
+	virtual void parse_field_name(string val) = 0;
+	
+	//
+	// If this check is used by a filter, extract the constant to compare it to
+	//
+	virtual void parse_filter_value(string val) = 0;
+
+	//
+	// Extract the field from the event
+	//
+	virtual uint8_t* extract(sinsp_evt *evt) = 0;
+
+	//
+	// Compare the field with the constant value obtained from parse_filter_value()
+	//
+	virtual bool compare(sinsp_evt *evt) = 0;
 
 	void set_inspector(sinsp* inspector);
 
@@ -76,7 +95,25 @@ public:
 	void add_check(sinsp_filter_check* chk);
 	// does nothing for sinsp_filter_expression
 	void parse(string expr);
-	bool run(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
+
+	//
+	// The following 3 methods are part of the filter check interface but are irrelevant
+	// for this class, because they are used only for the leaves of the filtering tree.
+	//
+	void parse_field_name(string val)
+	{
+		ASSERT(false);
+	}
+	void parse_filter_value(string val)
+	{
+		ASSERT(false);
+	}
+	uint8_t* extract(sinsp_evt *evt)
+	{
+		ASSERT(false);
+		return NULL;
+	}
 
 	sinsp_filter_expression* m_parent;
 	vector<sinsp_filter_check*> m_checks;

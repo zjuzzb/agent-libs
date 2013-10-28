@@ -18,23 +18,37 @@
 extern sinsp_evttables g_infotables;
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_filter_check implementation
-///////////////////////////////////////////////////////////////////////////////
-sinsp_filter_check::sinsp_filter_check()
-{
-	m_boolop = BO_NONE;
-	m_cmpop = CO_NONE;
-	m_inspector = NULL;
-}
-
-void sinsp_filter_check::set_inspector(sinsp* inspector)
-{
-	m_inspector = inspector;
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_fd implementation
 ///////////////////////////////////////////////////////////////////////////////
+#define FID_FD_NUM 0
+#define FID_FD_TYPE 1
+#define FID_FD_NAME 2
+#define FID_FD_IP 3
+#define FID_FD_CLIENTADDR 4
+#define FID_FD_SERVERADDR 5
+#define FID_FD_PORT 6
+#define FID_FD_CLIENTPORT 7
+#define FID_FD_SERVERPORT 8
+#define FID_FD_L4PROTO 9
+#define FID_FD_SOCKFAMILY 10
+
+filter_check_fields sinsp_filter_check_fd::get_filelds()
+{
+	filter_check_fields res;
+
+	res.m_name = "fd";
+
+	const event_field_info fields[] =
+	{
+		{FID_FD_NUM, PT_NONE, EPF_NONE, PF_NA, "", "internal."},
+	};
+
+	res.m_fields = fields;
+	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
+
+	return res;
+}
+
 bool sinsp_filter_check_fd::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("fd").length()) == "fd")
@@ -279,7 +293,13 @@ bool sinsp_filter_check_fd::check_fdtype(sinsp_fdinfo* fdinfo)
 	return false;
 }
 
-bool sinsp_filter_check_fd::run(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
+{
+	ASSERT(false);
+	return NULL;
+}
+
+bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 {
 	ASSERT(evt);
 	sinsp_threadinfo* tinfo;
@@ -500,6 +520,39 @@ bool sinsp_filter_check_fd::run(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_thread implementation
 ///////////////////////////////////////////////////////////////////////////////
+#define FID_TH_TID 0
+#define FID_TH_PID 1
+#define FID_TH_EXE 2
+#define FID_TH_COMM 3
+#define FID_TH_ARGS 4
+#define FID_TH_CWD 5
+#define FID_TH_NCHILDS 6
+#define FID_TH_ISMAINTHREAD 7
+
+const event_field_info sinsp_filter_check_thread_fields[] =
+{
+	{sinsp_filter_check_thread::TYPE_TID, PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
+	{sinsp_filter_check_thread::TYPE_PID, PT_INT64, EPF_NONE, PF_DEC, "pid", "the id of the process generating the event."},
+	{sinsp_filter_check_thread::TYPE_EXE, PT_CHARBUF, EPF_NONE, PF_NA, "exe", "the full name (including the path) of the executable generating the event."},
+	{sinsp_filter_check_thread::TYPE_COMM, PT_CHARBUF, EPF_NONE, PF_NA, "comm", "the name (excluding thr path) of the executable generating the event."},
+	{sinsp_filter_check_thread::TYPE_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "args", "the arguments passed on the command line when starting the process generating the event."},
+	{sinsp_filter_check_thread::TYPE_CWD, PT_CHARBUF, EPF_NONE, PF_NA, "cwd", "the current working directory of the event."},
+	{sinsp_filter_check_thread::TYPE_NCHILDS, PT_UINT32, EPF_NONE, PF_DEC, "nchilds", "the number of childs of that the process generating the event currently has."},
+	{sinsp_filter_check_thread::TYPE_ISMAINTHREAD, PT_BOOL, EPF_NONE, PF_NA, "ismainthread", "'true' if the thread generating the event is the main one in the process."},
+};
+
+filter_check_fields sinsp_filter_check_thread::get_filelds()
+{
+	filter_check_fields res;
+
+	res.m_name = "thread";
+
+	res.m_fields = sinsp_filter_check_thread_fields;
+	res.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
+
+	return res;
+}
+
 bool sinsp_filter_check_thread::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("thread").length()) == "thread")
@@ -514,51 +567,30 @@ bool sinsp_filter_check_thread::recognize_operand(string operand)
 
 void sinsp_filter_check_thread::parse_field_name(string val)
 {
+	uint32_t j;
 	m_type = TYPE_NONE;
 
 	vector<string> components = sinsp_split(val, '.');
 
 	if(components.size() == 2)
 	{
-		if(components[1] == "tid")
+		if(components[1].substr(0, sizeof("arg") - 1) == "arg")
 		{
-			m_type = TYPE_TID;
-			return;
+			//
+			// 'arg' is handled in a custom way
+			//
+			throw sinsp_exception("filter error: thread.args filter not implemented yet");
 		}
-		else if(components[1] == "pid")
+		else
 		{
-			m_type = TYPE_PID;
-			return;
-		}
-		else if(components[1] == "comm")
-		{
-			m_type = TYPE_COMM;
-			return;
-		}
-		else if(components[1] == "exe")
-		{
-			m_type = TYPE_EXE;
-			return;
-		}
-		else if(components[1].substr(0, sizeof("arg") - 1) == "arg")
-		{
-			m_type = TYPE_ARGS;
-			return;
-		}
-		else if(components[1] == "cwd")
-		{
-			m_type = TYPE_CWD;
-			return;
-		}
-		else if(components[1] == "nchilds")
-		{
-			m_type = TYPE_NCHILDS;
-			return;
-		}
-		else if(components[1] == "ismainthread")
-		{
-			m_type = TYPE_ISMAINTHREAD;
-			return;
+			for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
+			{
+				if(components[1] == sinsp_filter_check_thread_fields[j].m_name)
+				{
+					m_type = (check_type)sinsp_filter_check_thread_fields[j].m_id;
+					return;
+				}
+			}
 		}
 	}
 
@@ -601,7 +633,13 @@ void sinsp_filter_check_thread::parse_filter_value(string val)
 	}
 }
 
-bool sinsp_filter_check_thread::run(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
+{
+	ASSERT(false);
+	return NULL;
+}
+
+bool sinsp_filter_check_thread::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -666,6 +704,23 @@ bool sinsp_filter_check_thread::run(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
+filter_check_fields sinsp_filter_check_event::get_filelds()
+{
+	filter_check_fields res;
+
+	res.m_name = "evt";
+
+	const event_field_info fields[] =
+	{
+		{FID_FD_NUM, PT_NONE, EPF_NONE, PF_NA, "", "internal."},
+	};
+
+	res.m_fields = fields;
+	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
+
+	return res;
+}
+
 bool sinsp_filter_check_event::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("evt").length()) == "evt")
@@ -801,7 +856,13 @@ void sinsp_filter_check_event::parse_filter_value(string val)
 	}
 }
 
-bool sinsp_filter_check_event::run(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
+{
+	ASSERT(false);
+	return NULL;
+}
+
+bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -938,6 +999,23 @@ bool sinsp_filter_check_event::run(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
+filter_check_fields sinsp_filter_check_user::get_filelds()
+{
+	filter_check_fields res;
+
+	res.m_name = "user";
+
+	const event_field_info fields[] =
+	{
+		{FID_FD_NUM, PT_NONE, EPF_NONE, PF_NA, "", "internal."},
+	};
+
+	res.m_fields = fields;
+	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
+
+	return res;
+}
+
 bool sinsp_filter_check_user::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("user").length()) == "user")
@@ -1000,7 +1078,13 @@ void sinsp_filter_check_user::parse_filter_value(string val)
 	}
 }
 
-bool sinsp_filter_check_user::run(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
+{
+	ASSERT(false);
+	return NULL;
+}
+
+bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	scap_userinfo* uinfo;
@@ -1067,6 +1151,23 @@ bool sinsp_filter_check_user::run(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
+filter_check_fields sinsp_filter_check_group::get_filelds()
+{
+	filter_check_fields res;
+
+	res.m_name = "group";
+
+	const event_field_info fields[] =
+	{
+		{FID_FD_NUM, PT_NONE, EPF_NONE, PF_NA, "", "internal."},
+	};
+
+	res.m_fields = fields;
+	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
+
+	return res;
+}
+
 bool sinsp_filter_check_group::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("group").length()) == "group")
@@ -1117,7 +1218,13 @@ void sinsp_filter_check_group::parse_filter_value(string val)
 	}
 }
 
-bool sinsp_filter_check_group::run(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
+{
+	ASSERT(false);
+	return NULL;
+}
+
+bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 

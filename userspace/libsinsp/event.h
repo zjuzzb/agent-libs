@@ -15,7 +15,7 @@ typedef class sinsp_fdinfo sinsp_fdinfo;
 //
 // tostring() argument categories
 //
-typedef enum event_property_category
+typedef enum event_field_id
 {
 	ETSC_NONE = 0,
 	ETSC_RAWSTRING,		// used when formatting events into strings
@@ -60,7 +60,7 @@ typedef enum event_property_category
 	// group fields
 	ETSC_G_GID,
 	ETSC_G_GROUPNAME,
-}event_property_category;
+}event_field_id;
 
 typedef enum event_property_flags
 {
@@ -70,16 +70,15 @@ typedef enum event_property_flags
 	EPF_REQUIRES_ARGUMENT, // this property includes an argument, under the form 'property.argument'
 }event_property_flags;
 
-typedef struct filter_field_info
+typedef struct event_field_info
 {
-	event_property_category m_category;
+	uint32_t m_id;
 	ppm_param_type m_type;
 	event_property_flags m_flags;
 	ppm_print_format m_print_format;
-	char m_prefix[16];
 	char m_name[64];
 	char m_description[1024];
-}filter_field_info;
+}event_field_info;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Wrapper that exports the libscap event tables
@@ -108,13 +107,13 @@ public:
 class tostring_entry
 {
 public:
-	tostring_entry(event_property_category cat, string data)
+	tostring_entry(event_field_id cat, string data)
 	{
 		m_cat = cat;
 		m_data = data;
 	}
 
-	event_property_category m_cat;
+	event_field_id m_cat;
 	string m_data;
 };
 
@@ -185,8 +184,8 @@ public:
 	void get_category(OUT sinsp_evt::category* cat);
 
 #ifdef HAS_FILTERING
-	uint8_t* get_property_raw(event_property_category prop);
-	void get_property_as_string(event_property_category prop, OUT char** val);
+	uint8_t* get_property_raw(event_field_id prop);
+	void get_property_as_string(event_field_id prop, OUT char** val);
 	void set_tostring_format(const string& fmt);
 #endif
 	void tostring(OUT string* res);

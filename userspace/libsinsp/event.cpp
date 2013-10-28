@@ -11,8 +11,8 @@
 #include "../libscap/scap.h"
 
 extern sinsp_evttables g_infotables;
-
-const filter_field_info g_tostring_category_table[] =
+/*
+const event_field_info g_tostring_category_table[] =
 {
 	{ETSC_NONE, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
 	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
@@ -53,6 +53,7 @@ const filter_field_info g_tostring_category_table[] =
 	{ETSC_G_GID, PT_UINT64, EPF_NONE, PF_DEC, "group", "gid", "group ID."},
 	{ETSC_G_GROUPNAME, PT_CHARBUF, EPF_NONE, PF_NA, "group", "name", "group name."},
 };
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_evt_param implementation
@@ -945,7 +946,7 @@ void sinsp_evt::load_params()
 }
 
 #ifdef HAS_FILTERING
-uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
+uint8_t* sinsp_evt::get_property_raw(event_field_id prop)
 {
 	uint8_t* res;
 
@@ -1222,8 +1223,9 @@ uint8_t* sinsp_evt::get_property_raw(event_property_category prop)
 	return res;
 }
 
-void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** val)
+void sinsp_evt::get_property_as_string(event_field_id prop, OUT char** val)
 {
+/*
 	char* prfmt;
 	if(prop > sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]))
 	{
@@ -1231,9 +1233,9 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 		throw sinsp_exception("wrong event property " + to_string(prop));
 	}
 
-	const filter_field_info propinfo = g_tostring_category_table[prop];
+	const event_field_info propinfo = g_tostring_category_table[prop];
 
-	if(propinfo.m_category != prop)
+	if(propinfo.m_id != prop)
 	{
 		//
 		// This happens only if g_tostring_category_table is corrupted
@@ -1437,10 +1439,12 @@ void sinsp_evt::get_property_as_string(event_property_category prop, OUT char** 
 			ASSERT(false);
 			throw sinsp_exception("wrong event type " + to_string(propinfo.m_type));
 	}
+*/
 }
 
 void sinsp_evt::set_tostring_format(const string& fmt)
 {
+/*
 	uint32_t j, k;
 	uint32_t last_nontoken_str_start = 0;
 	const char* cfmt = fmt.c_str();
@@ -1484,7 +1488,7 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			{
 				j += selected_toklen;
 				ASSERT(j < fmt.length());
-				const filter_field_info* einfo = &(g_tostring_category_table[selected]);
+				const event_field_info* einfo = &(g_tostring_category_table[selected]);
 
 				if(einfo->m_flags & EPF_REQUIRES_ARGUMENT)
 				{
@@ -1492,7 +1496,7 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 				}
 
 				m_tostring_tokens.push_back(
-					tostring_entry(einfo->m_category, ""));
+					tostring_entry((event_field_id)einfo->m_id, ""));
 			}
 			else
 			{
@@ -1502,6 +1506,7 @@ void sinsp_evt::set_tostring_format(const string& fmt)
 			last_nontoken_str_start = j + 1;
 		}
 	}
+*/
 }
 
 void sinsp_evt::tostring(OUT string* res)
