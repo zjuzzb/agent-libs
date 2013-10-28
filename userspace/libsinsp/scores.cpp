@@ -156,12 +156,12 @@ for(k = 0; k < trsize; k++)
 //
 void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair<uint64_t, uint64_t>>* s, OUT uint64_t* tot_time)
 {
+	*tot_time = 0;
+
 	if(intervals->size() == 0)
 	{
 		return;
 	}
-
-	*tot_time = 0;
 
 	//
     // sort the intervals based on start time
