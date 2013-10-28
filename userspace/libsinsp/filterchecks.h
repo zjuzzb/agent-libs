@@ -2,6 +2,11 @@
 
 #ifdef HAS_FILTERING
 
+#define VALIDATE_STR_VAL if(val.length() >= sizeof(m_val_storage)) \
+{ \
+	throw sinsp_exception("filter error: value too long: " + val); \
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Filter check classes
 ///////////////////////////////////////////////////////////////////////////////
@@ -66,15 +71,14 @@ class sinsp_filter_check_thread : public sinsp_filter_check
 public:
 	enum check_type
 	{
-		TYPE_NONE,
-		TYPE_TID,
-		TYPE_PID,
-		TYPE_COMM,
-		TYPE_EXE,
-		TYPE_ARGS,
-		TYPE_CWD,
-		TYPE_NCHILDS,
-		TYPE_ISMAINTHREAD,
+		TYPE_TID = 0,
+		TYPE_PID = 1,
+		TYPE_COMM = 2,
+		TYPE_EXE = 3,
+		TYPE_ARGS = 4,
+		TYPE_CWD = 5,
+		TYPE_NCHILDS = 6,
+		TYPE_ISMAINTHREAD = 7,
 	};
 
 	filter_check_fields get_filelds();
@@ -85,11 +89,12 @@ public:
 	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
-	int64_t m_xid;
-	string m_str;
-	uint64_t m_argtocheck; 
-	uint64_t m_nchilds; 
-	bool m_ismainthread;
+	// XXX this is overkill and wasted for most of the fields.
+	// It could be optimized by dynamically allocating the right amount
+	// of memory, but we don't care for the moment since we expect filters 
+	// to be pretty small.
+	uint8_t m_val_storage[1024];
+	bool m_tbool;
 };
 
 //

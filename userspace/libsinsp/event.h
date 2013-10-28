@@ -72,7 +72,6 @@ typedef enum event_property_flags
 
 typedef struct event_field_info
 {
-	uint32_t m_id;
 	ppm_param_type m_type;
 	event_property_flags m_flags;
 	ppm_print_format m_print_format;

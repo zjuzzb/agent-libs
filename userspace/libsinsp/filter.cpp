@@ -228,9 +228,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-//fltstr = "(comm ruby and tid 8976) or (comm rsyslogd and tid 393)";
-//fltstr = "(tid=63458)";
-//fltstr = "(thread.tid!=0)";
+fltstr = "thread.tid=2162";
 //fltstr = "user.name = loris";
 
 	m_inspector = inspector;
