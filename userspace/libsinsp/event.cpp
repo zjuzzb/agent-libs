@@ -682,19 +682,19 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 				uint8_t* sip = (uint8_t*)param->m_val + 13;
 				uint8_t* dip = (uint8_t*)param->m_val + 31;
 
+				//
+				// typestr contains the type character that goes
+				// at the beginning of the string if PF_NORMAL or
+				// PF_JSON is specified
+				//
+				char typestr[2] =
+				{
+					(fmt == PF_SIMPLE)?(char)0:(char)CHAR_FD_IPV6_SOCK,
+					0
+				};
+
 				if(sinsp_utils::is_ipv4_mapped_ipv6(sip6) && sinsp_utils::is_ipv4_mapped_ipv6(dip6))
 				{
-					//
-					// typestr contains the type character that goes
-					// at the beginning of the string if PF_NORMAL or
-					// PF_JSON is specified
-					//
-					char typestr[2] =
-					{
-						(fmt == PF_SIMPLE)?(char)0:(char)CHAR_FD_IPV4_SOCK,
-						0
-					};
-
 					snprintf(m_paramstr_storage,
 							 sizeof(m_paramstr_storage),
 							 "%s%u.%u.%u.%u:%u->%u.%u.%u.%u:%u",
@@ -709,15 +709,32 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 							 (unsigned int)dip[2],
 							 (unsigned int)dip[3],
 							 (unsigned int)*(uint16_t*)(param->m_val + 35));
-
 					break;
+				}
+				else
+				{
+					char srcstr[INET6_ADDRSTRLEN];
+					char dststr[INET6_ADDRSTRLEN];
+					if(inet_ntop(AF_INET6, sip6, srcstr, sizeof(srcstr)) && 
+						inet_ntop(AF_INET6, sip6, dststr, sizeof(dststr)))
+					{
+						snprintf(m_paramstr_storage,
+								 sizeof(m_paramstr_storage),
+								 "%s%s:%u->%s:%u",
+								 typestr,
+								 srcstr,
+								 (unsigned int)*(uint16_t*)(param->m_val + 17),
+								 dststr,
+								 (unsigned int)*(uint16_t*)(param->m_val + 35));
+						break;
+					}
 				}
 			}
 
 			ASSERT(false);
 			snprintf(m_paramstr_storage,
 				        sizeof(m_paramstr_storage),
-				        "INVALID IPv4");
+				        "INVALID IPv6");
 		}
 		else if(param->m_val[0] == AF_UNIX)
 		{

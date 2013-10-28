@@ -639,7 +639,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 
 	if(tinfo == NULL)
 	{
-		return false;
+		return NULL;
 	}
 
 	switch(m_type)
