@@ -34,7 +34,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 // The filter check interface
 // NOTE: in order to add a new type of filter check, you need to add a class for
-//       it and then add it to sinsp_filter::parse_check.
+//       it and then add it to new_filter_check_from_name.
 ///////////////////////////////////////////////////////////////////////////////
 class sinsp_filter_check
 {
@@ -44,6 +44,11 @@ public:
 	virtual ~sinsp_filter_check()
 	{
 	}
+
+	//
+	// Used by the engine to allocate new filter checks
+	//
+	static sinsp_filter_check* new_filter_check_from_name(string name);
 
 	//
 	// Get the list of fields that this check exports

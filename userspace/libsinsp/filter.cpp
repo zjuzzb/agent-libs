@@ -142,6 +142,45 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
+sinsp_filter_check* sinsp_filter_check::new_filter_check_from_name(string name)
+{
+	sinsp_filter_check* res;
+
+	//////////////////////////////////////////////////////////////////////////////
+	// ADD NEW FILTER CHECK CLASSES HERE
+	//////////////////////////////////////////////////////////////////////////////
+	if(sinsp_filter_check_fd::recognize_operand(name))
+	{
+		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
+		res = (sinsp_filter_check*)chk_fd;
+	}
+	else if(sinsp_filter_check_thread::recognize_operand(name))
+	{
+		sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
+		res = (sinsp_filter_check*)chk_thread;
+	}
+	else if(sinsp_filter_check_event::recognize_operand(name))
+	{
+		sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
+		res = (sinsp_filter_check*)chk_event;
+	}
+	else if(sinsp_filter_check_user::recognize_operand(name))
+	{
+		sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
+		res = (sinsp_filter_check*)chk_user;
+	}
+	else
+	{
+		//
+		// If you are implementing a new filter check and this point is reached,
+		// it's very likely that you've forgotten to add your filter to the list above
+		//
+		res = NULL;
+	}
+
+	return res;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -228,7 +267,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-fltstr = "thread.tid=2162";
+//fltstr = "thread.tid=2162";
 //fltstr = "user.name = loris";
 
 	m_inspector = inspector;
@@ -407,42 +446,13 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
 	string operand1 = next_operand();
-	sinsp_filter_check* chk;
+	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_name(operand1);
 
-	//////////////////////////////////////////////////////////////////////////////
-	// ADD NEW FILTER CHECK CLASSES HERE
-	//////////////////////////////////////////////////////////////////////////////
-	if(sinsp_filter_check_fd::recognize_operand(operand1))
+	if(chk == NULL)
 	{
-		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
-		chk = (sinsp_filter_check*)chk_fd;
-	}
-	else if(sinsp_filter_check_thread::recognize_operand(operand1))
-	{
-		sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
-		chk = (sinsp_filter_check*)chk_thread;
-	}
-	else if(sinsp_filter_check_event::recognize_operand(operand1))
-	{
-		sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
-		chk = (sinsp_filter_check*)chk_event;
-	}
-	else if(sinsp_filter_check_user::recognize_operand(operand1))
-	{
-		sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
-		chk = (sinsp_filter_check*)chk_user;
-	}
-	else
-	{
-		//
-		// If you are implementing a new filter check and this point is reached,
-		// it's very likely that you've forgotten to add your filter to the list above
-		//
 		throw sinsp_exception("filter error: unrecognized operand " + 
 			operand1 + " at pos " + to_string(startpos));
 	}
-	//////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////
 
 	chk->set_inspector(m_inspector);
 
