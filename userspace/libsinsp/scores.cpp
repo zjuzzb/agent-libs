@@ -222,11 +222,6 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 	}
 
-	float max_score = 0;
-	float min_score = 200;
-	float tot_score = 0;
-	uint32_t n_scores = 0;
-
 	//
 	// Calculate the local versus next tier processing time ratio, which we'll use below for score
 	// normalization.
@@ -250,6 +245,10 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		local_remote_ratio = -1;
 	}
 
+	float max_score = 0;
+	float min_score = 200;
+	float tot_score = 0;
+	uint32_t n_scores = 0;
 	vector<uint64_t> time_by_concurrency;
 	vector<int64_t> cpu_counters;
 
@@ -312,8 +311,6 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		//
 		// Perform score calculation
 		//
-		float score;
-
 		if(local_remote_ratio != -1)
 		{
 			ntr *= local_remote_ratio;
@@ -321,6 +318,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 
 		if(ntr != 0)
 		{
+			float score;
 			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
 			float avail;
 			if(ntrcpu != 0)
@@ -353,9 +351,14 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 	}
 
 	//
-	// Done scanning the transactions, return the average of the CPU rest times
+	// Done scanning the transactions, return the average of the CPU rest times.
+	// NOTE: if the number of scores (= number of processors that have been 
+	//       serving transactions) is smaller than the number of *threads* that 
+	//       have been serving transactions, it means that we have one or servers 
+	//       that are floating across CPUs. In that case, our number would not have 
+	//       sense and we return -1, so the global health score will be used.
 	//
-	if(n_scores != 0)
+	if(n_scores != 0 && n_scores <= n_server_threads)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			">>%.2f-%.2f-%.2f (%" PRId32 ")",
