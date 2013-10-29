@@ -26,8 +26,6 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 	{
 		if(cfmt[j] == '%')
 		{
-			int32_t selected = -1;
-
 			if(last_nontoken_str_start != j)
 			{
 				m_tokens.push_back(new rawstring_check(fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));

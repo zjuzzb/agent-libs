@@ -40,7 +40,7 @@ function req_loop()
 {
   j++;
 //  options.path = '/' + j.toString();
-  sleep.usleep(100);
+//  sleep.usleep(100);
   http.request(options, callback).end();
 
   if(j < MAX_VIDEO_REQUESTS)

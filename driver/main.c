@@ -181,7 +181,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 			TRACEPOINT_PROBE_UNREGISTER("sched_process_exit",
 			                            (void *) syscall_procexit_probe);
 
-			printk(KERN_ERR "PPM: can't create the netif_rx tracepoint\n");
+			printk(KERN_ERR "PPM: can't create the sched_switch tracepoint\n");
 
 			return ret;
 		}	
