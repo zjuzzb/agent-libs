@@ -377,6 +377,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 	return -1;
 }
 
+/*
 int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
@@ -747,6 +748,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pai
 
 	return -1;
 }
+*/
 
 float sinsp_scores::get_process_health_score(float system_health_score, sinsp_threadinfo* mainthread_info)
 {

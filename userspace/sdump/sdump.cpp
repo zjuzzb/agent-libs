@@ -45,7 +45,8 @@ captureinfo do_inspect(sinsp* inspector,
 					   uint64_t cnt, 
 					   bool quiet, 
 					   bool absolute_times,
-					   uint64_t emit_stats_every_x_sec)
+					   uint64_t emit_stats_every_x_sec,
+					   string format)
 {
 	captureinfo retval;
 	int32_t res;
@@ -56,6 +57,7 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t firstts = 0;
 	uint64_t screents;
 	string line;
+	sinsp_evt_formatter formatter(format);
 
 	//
 	// Loop through the events
@@ -113,7 +115,8 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		// Output the line
 		//
-		ev->tostring(&line);
+		//ev->tostring(&line);
+		formatter.tostring(ev, &line);
 
 		cout << line << endl;
 /*
@@ -187,10 +190,12 @@ int main(int argc, char **argv)
 	double duration = 1;
 	captureinfo cinfo;
 	string dumpfile;
+	string output_format;
 
 	{
 		sinsp inspector;
-inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %evt.dir %evt.name %evt.arg.0");
+//inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %evt.dir %evt.name %evt.arg.0");
+output_format = "%thread.pid:%thread.tid";
 
 		//
 		// Parse the args
@@ -234,7 +239,7 @@ inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cp
 
 				break;
 			case 'o':
-				inspector.set_events_formatting(optarg);
+				output_format = optarg;
 				break;
 			case 'r':
 				infile = optarg;
@@ -310,7 +315,8 @@ inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cp
 				cnt, 
 				quiet, 
 				get_stats, 
-				absolute_times);
+				absolute_times,
+				output_format);
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 		}

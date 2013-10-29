@@ -461,8 +461,8 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 
 	chk->m_boolop = op;
 	chk->m_cmpop = co;
-	chk->parse_field_name(operand1);
-	chk->parse_filter_value(operand2);
+	chk->parse_field_name(operand1.c_str());
+	chk->parse_filter_value(operand2.c_str());
 
 	parent_expr->add_check(chk);
 }

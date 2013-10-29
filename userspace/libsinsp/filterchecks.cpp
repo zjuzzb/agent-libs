@@ -1,13 +1,3 @@
-//
-// Why isn't this parser written using antlr or some other parser generator?
-// Essentially, after dealing with that stuff multiple times in the past, and fighting for a day
-// to configure everything with crappy documentation and code that doesn't compile,
-// I decided that I agree with this http://mortoray.com/2012/07/20/why-i-dont-use-a-parser-generator/
-// and that I'm going with a manually written parser. The grammar is simple enough that it's not
-// going to take more time. On the other hand I will avoid a crappy dependency that breaks my 
-// code at every new release, and I will have a cleaner and easier to understand code base.
-//
-
 #include "sinsp.h"
 #include "sinsp_int.h"
 
@@ -32,21 +22,9 @@ extern sinsp_evttables g_infotables;
 #define FID_FD_L4PROTO 9
 #define FID_FD_SOCKFAMILY 10
 
-filter_check_fields sinsp_filter_check_fd::get_filelds()
+filter_check_info* sinsp_filter_check_fd::get_filelds()
 {
-	filter_check_fields res;
-
-	res.m_name = "fd";
-
-	const event_field_info fields[] =
-	{
-		{PT_NONE, EPF_NONE, PF_NA, "", "internal."},
-	};
-
-	res.m_fields = fields;
-	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
-
-	return res;
+	return NULL;
 }
 
 bool sinsp_filter_check_fd::recognize_operand(string operand)
@@ -61,8 +39,9 @@ bool sinsp_filter_check_fd::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_fd::parse_field_name(string val)
+int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
 {
+/*
 	m_type = TYPE_NONE;
 
 	if(val.substr(0, string("fd").length()) == "fd")
@@ -120,10 +99,13 @@ void sinsp_filter_check_fd::parse_field_name(string val)
 	}
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
+*/
+	return 0;
 }
 
-void sinsp_filter_check_fd::parse_filter_value(string val)
+void sinsp_filter_check_fd::parse_filter_value(const char* str)
 {
+/*
 	switch(m_type)
 	{
 	case TYPE_FDNUM:
@@ -211,6 +193,12 @@ void sinsp_filter_check_fd::parse_filter_value(string val)
 	default:
 		ASSERT(false);
 	}
+*/
+}
+
+const event_field_info* sinsp_filter_check_fd::get_field_info()
+{
+	return NULL;
 }
 
 bool sinsp_filter_check_fd::check_fdtype(sinsp_fdinfo* fdinfo)
@@ -541,16 +529,17 @@ const event_field_info sinsp_filter_check_thread_fields[] =
 	{PT_BOOL, EPF_NONE, PF_NA, "ismainthread", "'true' if the thread generating the event is the main one in the process."},
 };
 
-filter_check_fields sinsp_filter_check_thread::get_filelds()
+sinsp_filter_check_thread::sinsp_filter_check_thread()
 {
-	filter_check_fields res;
+	m_info.m_name = "thread";
 
-	res.m_name = "thread";
+	m_info.m_fields = sinsp_filter_check_thread_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
+}
 
-	res.m_fields = sinsp_filter_check_thread_fields;
-	res.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
-
-	return res;
+filter_check_info* sinsp_filter_check_thread::get_filelds()
+{
+	return &m_info;
 }
 
 bool sinsp_filter_check_thread::recognize_operand(string operand)
@@ -565,39 +554,42 @@ bool sinsp_filter_check_thread::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_thread::parse_field_name(string val)
+int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 {
 	uint32_t j;
 
-	vector<string> components = sinsp_split(val, '.');
+	string val(str);
 
-	if(components.size() == 2)
+	if(string(val, 0, sizeof("arg") - 1) == "arg")
 	{
-		if(components[1].substr(0, sizeof("arg") - 1) == "arg")
+		//
+		// 'arg' is handled in a custom way
+		//
+		throw sinsp_exception("filter error: thread.args filter not implemented yet");
+	}
+	else
+	{
+		for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
 		{
-			//
-			// 'arg' is handled in a custom way
-			//
-			throw sinsp_exception("filter error: thread.args filter not implemented yet");
-		}
-		else
-		{
-			for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
+			string fldstr(val, 0, 
+				// 1 is the '.'
+				m_info.m_name.length() + 1 + string(sinsp_filter_check_thread_fields[j].m_name).length());
+
+			if(string(val, 0, fldstr.size()) == fldstr)
 			{
-				if(components[1] == sinsp_filter_check_thread_fields[j].m_name)
-				{
-					m_type = (check_type)j;
-					return;
-				}
+				m_type = (check_type)j;
+				return fldstr.length();
 			}
 		}
 	}
 
-	throw sinsp_exception("filter error: unrecognized field " + val);
+	throw sinsp_exception(string("filter error: unrecognized field ") + val);
 }
 
-void sinsp_filter_check_thread::parse_filter_value(string val)
+void sinsp_filter_check_thread::parse_filter_value(const char* str)
 {
+	string val(str);
+
 	switch(m_type)
 	{
 	case TYPE_TID:
@@ -631,6 +623,11 @@ void sinsp_filter_check_thread::parse_filter_value(string val)
 	default:
 		ASSERT(false);
 	}
+}
+
+const event_field_info* sinsp_filter_check_thread::get_field_info()
+{
+	return &sinsp_filter_check_thread_fields[m_type];
 }
 
 uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
@@ -684,21 +681,9 @@ bool sinsp_filter_check_thread::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_fields sinsp_filter_check_event::get_filelds()
+filter_check_info* sinsp_filter_check_event::get_filelds()
 {
-	filter_check_fields res;
-
-	res.m_name = "evt";
-
-	const event_field_info fields[] =
-	{
-		{PT_NONE, EPF_NONE, PF_NA, "", "internal."},
-	};
-
-	res.m_fields = fields;
-	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
-
-	return res;
+	return NULL;
 }
 
 bool sinsp_filter_check_event::recognize_operand(string operand)
@@ -713,8 +698,9 @@ bool sinsp_filter_check_event::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_event::parse_field_name(string val)
+int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
+/*
 	m_type = TYPE_NONE;
 
 	vector<string> components = sinsp_split(val, '.');
@@ -757,10 +743,13 @@ void sinsp_filter_check_event::parse_field_name(string val)
 	}
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
+*/
+	return 0;
 }
 
-void sinsp_filter_check_event::parse_filter_value(string val)
+void sinsp_filter_check_event::parse_filter_value(const char* str)
 {
+/*
 	switch(m_type)
 	{
 	case TYPE_TS:
@@ -834,6 +823,12 @@ void sinsp_filter_check_event::parse_filter_value(string val)
 	default:
 		ASSERT(false);
 	}
+*/
+}
+
+const event_field_info* sinsp_filter_check_event::get_field_info()
+{
+	return NULL;
 }
 
 uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
@@ -979,21 +974,9 @@ bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_fields sinsp_filter_check_user::get_filelds()
+filter_check_info* sinsp_filter_check_user::get_filelds()
 {
-	filter_check_fields res;
-
-	res.m_name = "user";
-
-	const event_field_info fields[] =
-	{
-		{PT_NONE, EPF_NONE, PF_NA, "", "internal."},
-	};
-
-	res.m_fields = fields;
-	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
-
-	return res;
+	return NULL;
 }
 
 bool sinsp_filter_check_user::recognize_operand(string operand)
@@ -1008,8 +991,9 @@ bool sinsp_filter_check_user::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_user::parse_field_name(string val)
+int32_t sinsp_filter_check_user::parse_field_name(const char* str)
 {
+/*
 	m_type = TYPE_NONE;
 
 	vector<string> components = sinsp_split(val, '.');
@@ -1039,10 +1023,14 @@ void sinsp_filter_check_user::parse_field_name(string val)
 	}
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
+*/
+	return 0;
+
 }
 
-void sinsp_filter_check_user::parse_filter_value(string val)
+void sinsp_filter_check_user::parse_filter_value(const char* str)
 {
+/*
 	switch(m_type)
 	{
 	case TYPE_UID:
@@ -1056,6 +1044,12 @@ void sinsp_filter_check_user::parse_filter_value(string val)
 	default:
 		ASSERT(false);
 	}
+*/
+}
+
+const event_field_info* sinsp_filter_check_user::get_field_info()
+{
+	return NULL;
 }
 
 uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
@@ -1131,21 +1125,9 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_fields sinsp_filter_check_group::get_filelds()
+filter_check_info* sinsp_filter_check_group::get_filelds()
 {
-	filter_check_fields res;
-
-	res.m_name = "group";
-
-	const event_field_info fields[] =
-	{
-		{PT_NONE, EPF_NONE, PF_NA, "", "internal."},
-	};
-
-	res.m_fields = fields;
-	res.m_nfiedls = sizeof(fields) / sizeof(fields[0]);
-
-	return res;
+	return NULL;
 }
 
 bool sinsp_filter_check_group::recognize_operand(string operand)
@@ -1160,8 +1142,9 @@ bool sinsp_filter_check_group::recognize_operand(string operand)
 	}
 }
 
-void sinsp_filter_check_group::parse_field_name(string val)
+int32_t sinsp_filter_check_group::parse_field_name(const char* str)
 {
+/*
 	m_type = TYPE_NONE;
 
 	vector<string> components = sinsp_split(val, '.');
@@ -1181,10 +1164,13 @@ void sinsp_filter_check_group::parse_field_name(string val)
 	}
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
+*/
+	return 0;
 }
 
-void sinsp_filter_check_group::parse_filter_value(string val)
+void sinsp_filter_check_group::parse_filter_value(const char* str)
 {
+/*
 	switch(m_type)
 	{
 	case TYPE_GID:
@@ -1196,6 +1182,12 @@ void sinsp_filter_check_group::parse_filter_value(string val)
 	default:
 		ASSERT(false);
 	}
+*/
+}
+
+const event_field_info* sinsp_filter_check_group::get_field_info()
+{
+	return NULL;
 }
 
 uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
@@ -1251,6 +1243,60 @@ bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 		break;
 	}
 
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// rawstring_check implementation
+///////////////////////////////////////////////////////////////////////////////
+const event_field_info rawstring_check_fields[] =
+{
+	{PT_CHARBUF, EPF_NONE, PF_NA, "NA", "INTERNAL."},
+};
+
+rawstring_check::rawstring_check(string text)
+{
+	set_text(text);
+}
+
+void rawstring_check::set_text(string text)
+{
+	m_text = text;
+}
+
+bool rawstring_check::recognize_operand(string operand)
+{
+	ASSERT(false);
+	return true;
+}
+
+int32_t rawstring_check::parse_field_name(const char* str)
+{
+	ASSERT(false);
+	return 0;
+}
+
+void rawstring_check::parse_filter_value(const char* str)
+{
+	ASSERT(false);
+}
+
+const event_field_info* rawstring_check::get_field_info()
+{
+	return &rawstring_check_fields[0];
+}
+
+uint8_t* rawstring_check::extract(sinsp_evt *evt)
+{
+	return (uint8_t*)m_text.c_str();
+}
+
+bool rawstring_check::compare(sinsp_evt *evt)
+{
+	//
+	// This should never be used by the filtering engine, only by the event formatter
+	//
+	ASSERT(false);
 	return false;
 }
 

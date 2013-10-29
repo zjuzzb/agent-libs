@@ -973,7 +973,7 @@ void sinsp_evt::load_params()
 	}
 }
 
-#ifdef HAS_FILTERING
+/*
 uint8_t* sinsp_evt::get_property_raw(event_field_id prop)
 {
 	uint8_t* res;
@@ -1250,10 +1250,11 @@ uint8_t* sinsp_evt::get_property_raw(event_field_id prop)
 
 	return res;
 }
+*/
 
+/*
 void sinsp_evt::get_property_as_string(event_field_id prop, OUT char** val)
 {
-/*
 	char* prfmt;
 	if(prop > sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]))
 	{
@@ -1467,101 +1468,8 @@ void sinsp_evt::get_property_as_string(event_field_id prop, OUT char** val)
 			ASSERT(false);
 			throw sinsp_exception("wrong event type " + to_string(propinfo.m_type));
 	}
+}
 */
-}
-
-void sinsp_evt::set_tostring_format(const string& fmt)
-{
-/*
-	uint32_t j, k;
-	uint32_t last_nontoken_str_start = 0;
-	const char* cfmt = fmt.c_str();
-	uint32_t ncategories = sizeof(g_tostring_category_table) / sizeof(g_tostring_category_table[0]);
-
-	m_tostring_tokens.clear();
-
-	for(j = 0; j < fmt.length(); j++)
-	{
-		if(cfmt[j] == '%')
-		{
-			int32_t selected = -1;
-			int32_t selected_toklen = 0;
-
-			if(last_nontoken_str_start != j)
-			{
-				m_tostring_tokens.push_back(
-					tostring_entry(ETSC_RAWSTRING, 
-						fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
-			}
-
-			for(k = 0; k < ncategories; k++)
-			{
-				string fullfield = string(g_tostring_category_table[k].m_prefix) + "." + g_tostring_category_table[k].m_name;
-
-				int32_t toklen = fullfield.length();
-
-				if(strncmp(cfmt + j + 1, 
-					fullfield.c_str(),
-					toklen) == 0)
-				{
-					if(toklen > selected_toklen)
-					{
-						selected_toklen = toklen;
-						selected = k;
-					}
-				}
-			}
-
-			if(selected != -1)
-			{
-				j += selected_toklen;
-				ASSERT(j < fmt.length());
-				const event_field_info* einfo = &(g_tostring_category_table[selected]);
-
-				if(einfo->m_flags & EPF_REQUIRES_ARGUMENT)
-				{
-					ASSERT(false);
-				}
-
-				m_tostring_tokens.push_back(
-					tostring_entry((event_field_id)einfo->m_id, ""));
-			}
-			else
-			{
-				throw sinsp_exception("error in the event format string at position " + to_string(j));
-			}
-
-			last_nontoken_str_start = j + 1;
-		}
-	}
-*/
-}
-
-void sinsp_evt::tostring(OUT string* res)
-{
-	vector<tostring_entry>::iterator it;
-	res->clear();
-	char* valptr;
-
-	for(it = m_tostring_tokens.begin(); it != m_tostring_tokens.end(); ++it)
-	{
-		if(it->m_cat == ETSC_RAWSTRING)
-		{
-			(*res) += it->m_data; 
-		}
-		else
-		{
-			get_property_as_string(it->m_cat, &valptr);
-			(*res) += valptr; 
-		}
-	}
-}
-#else
-void sinsp_evt::tostring(OUT string* res)
-{
-	throw sinsp_exception("sinsp_evt::tostring not supported because the library has not been compiled with filtering support.");
-}
-#endif
 
 void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 {

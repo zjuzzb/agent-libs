@@ -9,6 +9,7 @@ add_library(sinsp STATIC
 	config.cpp 
 	draios.pb.cc
 	event.cpp
+	eventformatter.cpp
 	fdinfo.cpp
 	filter.cpp
 	filterchecks.cpp

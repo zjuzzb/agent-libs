@@ -23,7 +23,7 @@ public:
 	string m_description;
 };
 
-class filter_check_fields
+class filter_check_info
 {
 public:
 	string m_name;
@@ -53,22 +53,28 @@ public:
 	//
 	// Get the list of fields that this check exports
 	//
-	virtual filter_check_fields get_filelds()
+	virtual filter_check_info* get_filelds()
 	{
-		filter_check_fields res;
-		res.m_nfiedls = 0;
-		return res;
+		return NULL;
 	}
 
 	//
-	// Parse the name if the field
+	// Parse the name of the field.
+	// Returns the lenght of the parsed field if successful, an exception in 
+	// case of error.
 	//
-	virtual void parse_field_name(string val) = 0;
+	virtual int32_t parse_field_name(const char* str) = 0;
 	
 	//
 	// If this check is used by a filter, extract the constant to compare it to
+	// Doesn't return the field lenght because the filtering engine can calculate it.
 	//
-	virtual void parse_filter_value(string val) = 0;
+	virtual void parse_filter_value(const char* str) = 0;
+
+	//
+	// Return the info about the field that this instance contains 
+	//
+	virtual const event_field_info* get_field_info() = 0;
 
 	//
 	// Extract the field from the event
@@ -103,17 +109,26 @@ public:
 	bool compare(sinsp_evt *evt);
 
 	//
-	// The following 3 methods are part of the filter check interface but are irrelevant
+	// The following methods are part of the filter check interface but are irrelevant
 	// for this class, because they are used only for the leaves of the filtering tree.
 	//
-	void parse_field_name(string val)
+	int32_t parse_field_name(const char* str)
+	{
+		ASSERT(false);
+		return 0;
+	}
+
+	void parse_filter_value(const char* str)
 	{
 		ASSERT(false);
 	}
-	void parse_filter_value(string val)
+
+	const event_field_info* get_field_info()
 	{
 		ASSERT(false);
+		return NULL;
 	}
+
 	uint8_t* extract(sinsp_evt *evt)
 	{
 		ASSERT(false);
@@ -141,7 +156,7 @@ private:
 		ST_NEED_EXPRESSION,
 	};
 
-	bool isblank(char c);
+	static bool isblank(char c);
 	bool is_special_char(char c);
 	char next();
 	bool compare_no_consume(string str);
@@ -164,6 +179,8 @@ private:
 	int32_t m_nest_level;
 
 	sinsp_filter_expression m_filter;
+
+	friend class sinsp_evt_formatter;
 };
 
 #endif // HAS_FILTERING

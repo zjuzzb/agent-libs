@@ -182,13 +182,6 @@ public:
 	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
 	void get_category(OUT sinsp_evt::category* cat);
 
-#ifdef HAS_FILTERING
-	uint8_t* get_property_raw(event_field_id prop);
-	void get_property_as_string(event_field_id prop, OUT char** val);
-	void set_tostring_format(const string& fmt);
-#endif
-	void tostring(OUT string* res);
-
 VISIBILITY_PRIVATE
 	void load_params();
 	string get_param_value_str(uint32_t id, bool resolved);
@@ -217,7 +210,6 @@ VISIBILITY_PRIVATE
 #ifdef _DEBUG
 	bool m_filtered_out;
 #endif
-	vector<tostring_entry> m_tostring_tokens;
 
 	friend class sinsp;
 	friend class sinsp_parser;

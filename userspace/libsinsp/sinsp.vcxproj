@@ -94,6 +94,7 @@
     <ClCompile Include="connectinfo.cpp" />
     <ClCompile Include="draios.pb.cc" />
     <ClCompile Include="event.cpp" />
+    <ClCompile Include="eventformatter.cpp" />
     <ClCompile Include="fdinfo.cpp" />
     <ClCompile Include="filter.cpp" />
     <ClCompile Include="filterchecks.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="connectinfo.h" />
     <ClInclude Include="draios.pb.h" />
     <ClInclude Include="event.h" />
+    <ClInclude Include="eventformatter.h" />
     <ClInclude Include="fdinfo.h" />
     <ClInclude Include="filter.h" />
     <ClInclude Include="filterchecks.h" />

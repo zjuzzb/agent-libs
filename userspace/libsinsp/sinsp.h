@@ -83,6 +83,7 @@ typedef union _unix_tuple
 #include "metrics.h"
 #include "threadinfo.h"
 #include "ifinfo.h"
+#include "eventformatter.h"
 
 template<typename OBJ> class simple_lifo_queue;
 class sinsp_partial_transaction;
@@ -191,8 +192,6 @@ public:
 	void stop_dropping_mode();
 	void start_dropping_mode();
 	
-	void set_events_formatting(const string& fmt);
-
 #ifdef _DEBUG
 	//
 	// Set the capture filter. Only in debug mode for the moment.
