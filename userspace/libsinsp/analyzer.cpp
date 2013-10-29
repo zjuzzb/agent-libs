@@ -433,16 +433,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	//
 	// Between the first and the second pass of the thread list, calculate the 
-	// host transaction delay and the health score for the machine.
+	// host transaction delay, the local versus next tier processing time ratio and 
+	// the health score for the machine.
 	//
 	compute_host_transaction_delay();
+
+	// 1 means no next tiers delay
+	m_local_remote_ratio = 1;
+	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
+	{
+		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
+		{
+			m_local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay / 
+				(float)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
+		}
+	}
 
 	if(m_transactions_with_cpu.size() != 0)
 	{
 		int32_t syshscore_g;
 
 /*
-		syshscore = (float)m_score_calculator->get_system_health_score_bycpu_old(&m_transactions_with_cpu,
+		syshscore = (float)m_score_calculator->get_system_capacity_score_bycpu_old(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -450,7 +462,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"1!!%f",
 			syshscore);
 
-		syshscore = (float)m_score_calculator->get_system_health_score_bycpu(&m_server_transactions_per_cpu,
+		syshscore = (float)m_score_calculator->get_system_capacity_score_bycpu(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -458,15 +470,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%f",
 			syshscore);
 */
-		m_host_metrics.m_health_score = m_score_calculator->get_system_health_score_bycpu_3(&m_server_transactions_per_cpu,
+		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"3!!%.2f",
-			m_host_metrics.m_health_score);
+			m_host_metrics.m_capacity_score);
 
-		syshscore_g = m_score_calculator->get_system_health_score_global(&m_transactions_with_cpu,
+		syshscore_g = m_score_calculator->get_system_capacity_score_global(&m_transactions_with_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration);
 
@@ -474,9 +486,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%" PRId32,
 			syshscore_g);
 
-		if(m_host_metrics.m_health_score == -1)
+		if(m_host_metrics.m_capacity_score == -1)
 		{
-			m_host_metrics.m_health_score = (float)syshscore_g;
+			m_host_metrics.m_capacity_score = (float)syshscore_g;
 		}
 
 		m_transactions_with_cpu.clear();
@@ -590,8 +602,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Health-related metrics
 					//
-					it->second.m_procinfo->m_health_score = m_score_calculator->get_process_health_score(m_host_metrics.m_health_score, &it->second);
-					proc->mutable_resource_counters()->set_health_score((uint32_t)(it->second.m_procinfo->m_health_score * 100));
+					it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(m_host_metrics.m_capacity_score, &it->second);
+					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(it->second.m_procinfo->m_capacity_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
 					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
 
@@ -614,7 +626,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 							it->second.m_tid,
 							it->second.m_refcount + 1,
-							it->second.m_procinfo->m_health_score,
+							it->second.m_procinfo->m_capacity_score,
 							cpuload,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
@@ -1116,7 +1128,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
 			}		
 
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_health_score((uint32_t)(m_host_metrics.m_health_score * 100));
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.m_capacity_score * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());

@@ -958,12 +958,12 @@ class resource_categories : public ::google::protobuf::MessageLite {
 
   // accessors -------------------------------------------------------
 
-  // optional uint32 health_score = 1;
-  inline bool has_health_score() const;
-  inline void clear_health_score();
-  static const int kHealthScoreFieldNumber = 1;
-  inline ::google::protobuf::uint32 health_score() const;
-  inline void set_health_score(::google::protobuf::uint32 value);
+  // optional uint32 capacity_score = 1;
+  inline bool has_capacity_score() const;
+  inline void clear_capacity_score();
+  static const int kCapacityScoreFieldNumber = 1;
+  inline ::google::protobuf::uint32 capacity_score() const;
+  inline void set_capacity_score(::google::protobuf::uint32 value);
 
   // optional uint32 connection_queue_usage_pct = 2;
   inline bool has_connection_queue_usage_pct() const;
@@ -995,8 +995,8 @@ class resource_categories : public ::google::protobuf::MessageLite {
 
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
-  inline void set_has_health_score();
-  inline void clear_has_health_score();
+  inline void set_has_capacity_score();
+  inline void clear_has_capacity_score();
   inline void set_has_connection_queue_usage_pct();
   inline void clear_has_connection_queue_usage_pct();
   inline void set_has_fd_usage_pct();
@@ -1006,7 +1006,7 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline void set_has_resident_memory_usage_kb();
   inline void clear_has_resident_memory_usage_kb();
 
-  ::google::protobuf::uint32 health_score_;
+  ::google::protobuf::uint32 capacity_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
   ::google::protobuf::uint32 cpu_pct_;
@@ -3394,26 +3394,26 @@ counter_syscall_errors::mutable_top_error_codes() {
 
 // resource_categories
 
-// optional uint32 health_score = 1;
-inline bool resource_categories::has_health_score() const {
+// optional uint32 capacity_score = 1;
+inline bool resource_categories::has_capacity_score() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void resource_categories::set_has_health_score() {
+inline void resource_categories::set_has_capacity_score() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void resource_categories::clear_has_health_score() {
+inline void resource_categories::clear_has_capacity_score() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void resource_categories::clear_health_score() {
-  health_score_ = 0u;
-  clear_has_health_score();
+inline void resource_categories::clear_capacity_score() {
+  capacity_score_ = 0u;
+  clear_has_capacity_score();
 }
-inline ::google::protobuf::uint32 resource_categories::health_score() const {
-  return health_score_;
+inline ::google::protobuf::uint32 resource_categories::capacity_score() const {
+  return capacity_score_;
 }
-inline void resource_categories::set_health_score(::google::protobuf::uint32 value) {
-  set_has_health_score();
-  health_score_ = value;
+inline void resource_categories::set_capacity_score(::google::protobuf::uint32 value) {
+  set_has_capacity_score();
+  capacity_score_ = value;
 }
 
 // optional uint32 connection_queue_usage_pct = 2;

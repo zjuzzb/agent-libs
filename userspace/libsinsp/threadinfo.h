@@ -28,7 +28,7 @@ public:
 		m_connection_queue_usage_pct = 0;
 		m_fd_usage_pct = 0;
 		m_syscall_errors.clear();
-		m_health_score = 0;
+		m_capacity_score = 0;
 		m_resident_memory_kb = 0;
 	}
 
@@ -50,7 +50,7 @@ public:
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// the process health score calculated with our secret sauce algorithms
-	float m_health_score;
+	float m_capacity_score;
 	// the process resident memory
 	uint64_t m_resident_memory_kb;
 };

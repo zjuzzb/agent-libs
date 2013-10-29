@@ -151,9 +151,11 @@ VISIBILITY_PRIVATE
 	sinsp_transaction_counters m_host_transaction_metrics; 
 	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
 	vector<vector<pair<uint64_t, uint64_t>>> m_server_transactions_per_cpu;
-//	vector<vector<pair<uint64_t, uint64_t>>> m_out_transactions_by_server_per_cpu;
 	uint64_t m_client_tr_time_by_servers;
 	int64_t m_host_transaction_delay;
+	// ratio between the the transaction delay introduced by this host and the delay 
+	// caused by the next tiers. Calculated by the score
+	float m_local_remote_ratio;
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 	//

@@ -16,7 +16,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyze
 	m_sample_length_ns = 0;
 }
 
-int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+int32_t sinsp_scores::get_system_capacity_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -65,7 +65,7 @@ int32_t sinsp_scores::get_system_health_score_global(vector<pair<uint64_t,pair<u
 		{
 			time_by_concurrency.push_back(0);
 		}
-
+/*
 vector<uint64_t>v;
 uint64_t tot = 0;
 for(k = 0; k < trsize; k++)
@@ -74,7 +74,7 @@ for(k = 0; k < trsize; k++)
 	v.push_back(delta);
 	tot += delta;
 }
-
+*/
 		//
 		// Make sure the transactions are ordered by start time
 		//
@@ -139,11 +139,11 @@ for(k = 0; k < trsize; k++)
 
 		if(actual_sample_duration != 0)
 		{
-			return (int32_t)(rest_time * 100 / actual_sample_duration);
+			return (int32_t)(100LL - rest_time * 100 / actual_sample_duration);
 		}
 		else
 		{
-			return 0;
+			return 100;
 		}
 	}
 
@@ -203,7 +203,7 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
     return;
 }
 
-float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
 {
 	int32_t cpuid;
@@ -220,29 +220,6 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 	{
 		m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
 		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
-	}
-
-	//
-	// Calculate the local versus next tier processing time ratio, which we'll use below for score
-	// normalization.
-	//
-	float local_remote_ratio;
-	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
-	{
-		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
-		{
-			local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay / 
-				(float)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
-		}
-		else
-		{
-			ASSERT(false);
-			local_remote_ratio = -1;
-		}
-	}
-	else
-	{
-		local_remote_ratio = -1;
 	}
 
 	float max_score = 0;
@@ -311,10 +288,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 		//
 		// Perform score calculation
 		//
-		if(local_remote_ratio != -1)
-		{
-			ntr *= local_remote_ratio;
-		}
+		ntr *= m_inspector->m_analyzer->m_local_remote_ratio;
 
 		if(ntr != 0)
 		{
@@ -331,7 +305,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 			}
 
 			float maxavail = MAX(avail, ntr);
-			score = 100 - (ntr * 100 / maxavail);
+			score = ntr * 100 / maxavail;
 			ASSERT(score >= 0);
 			ASSERT(score <= 100);
 
@@ -378,7 +352,7 @@ float sinsp_scores::get_system_health_score_bycpu_3(vector<vector<pair<uint64_t,
 }
 
 /*
-int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+int32_t sinsp_scores::get_system_capacity_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -557,7 +531,7 @@ int32_t sinsp_scores::get_system_health_score_bycpu(vector<vector<pair<uint64_t,
 	return -1;
 }
 
-int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+int32_t sinsp_scores::get_system_capacity_score_bycpu_old(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -750,11 +724,12 @@ int32_t sinsp_scores::get_system_health_score_bycpu_old(vector<pair<uint64_t,pai
 }
 */
 
-float sinsp_scores::get_process_health_score(float system_health_score, sinsp_threadinfo* mainthread_info)
+float sinsp_scores::get_process_capacity_score(float system_capacity_score, sinsp_threadinfo* mainthread_info)
 {
 	float res = -1;
+	float local_remote_ratio;
 
-	if(system_health_score == -1)
+	if(system_capacity_score == -1)
 	{
 		return res;
 	}
@@ -777,8 +752,27 @@ float sinsp_scores::get_process_health_score(float system_health_score, sinsp_th
 		return res;
 	}
 
-	res = system_health_score;
+	res = system_capacity_score;
 
+	//
+	// Take the system health score and normalize it using the local/remote ratios
+	//
+	if(mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns != -1)
+	{
+		if(mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in != 0)
+		{
+			local_remote_ratio = (float)mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns / 
+				(float)mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+
+			res = system_capacity_score * local_remote_ratio / m_inspector->m_analyzer->m_local_remote_ratio;
+			if(res > 100)
+			{
+				res = 100;
+			}
+		}
+	}
+
+/*
 	if(mainthread_info->m_connection_queue_usage_pct > 30)
 	{
 		res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_pct);
@@ -788,6 +782,6 @@ float sinsp_scores::get_process_health_score(float system_health_score, sinsp_th
 	{
 		res = MIN(res, 100 - mainthread_info->m_fd_usage_pct);
 	}
-
+*/
 	return res;
 }

@@ -2434,7 +2434,7 @@ void counter_syscall_errors::Swap(counter_syscall_errors* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int resource_categories::kHealthScoreFieldNumber;
+const int resource_categories::kCapacityScoreFieldNumber;
 const int resource_categories::kConnectionQueueUsagePctFieldNumber;
 const int resource_categories::kFdUsagePctFieldNumber;
 const int resource_categories::kCpuPctFieldNumber;
@@ -2457,7 +2457,7 @@ resource_categories::resource_categories(const resource_categories& from)
 
 void resource_categories::SharedCtor() {
   _cached_size_ = 0;
-  health_score_ = 0u;
+  capacity_score_ = 0u;
   connection_queue_usage_pct_ = 0u;
   fd_usage_pct_ = 0u;
   cpu_pct_ = 0u;
@@ -2500,7 +2500,7 @@ resource_categories* resource_categories::New() const {
 
 void resource_categories::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    health_score_ = 0u;
+    capacity_score_ = 0u;
     connection_queue_usage_pct_ = 0u;
     fd_usage_pct_ = 0u;
     cpu_pct_ = 0u;
@@ -2515,14 +2515,14 @@ bool resource_categories::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional uint32 health_score = 1;
+      // optional uint32 capacity_score = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &health_score_)));
-          set_has_health_score();
+                 input, &capacity_score_)));
+          set_has_capacity_score();
         } else {
           goto handle_uninterpreted;
         }
@@ -2611,9 +2611,9 @@ bool resource_categories::MergePartialFromCodedStream(
 
 void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // optional uint32 health_score = 1;
-  if (has_health_score()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->health_score(), output);
+  // optional uint32 capacity_score = 1;
+  if (has_capacity_score()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->capacity_score(), output);
   }
 
   // optional uint32 connection_queue_usage_pct = 2;
@@ -2642,11 +2642,11 @@ int resource_categories::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional uint32 health_score = 1;
-    if (has_health_score()) {
+    // optional uint32 capacity_score = 1;
+    if (has_capacity_score()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->health_score());
+          this->capacity_score());
     }
 
     // optional uint32 connection_queue_usage_pct = 2;
@@ -2692,8 +2692,8 @@ void resource_categories::CheckTypeAndMergeFrom(
 void resource_categories::MergeFrom(const resource_categories& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_health_score()) {
-      set_health_score(from.health_score());
+    if (from.has_capacity_score()) {
+      set_capacity_score(from.capacity_score());
     }
     if (from.has_connection_queue_usage_pct()) {
       set_connection_queue_usage_pct(from.connection_queue_usage_pct());
@@ -2723,7 +2723,7 @@ bool resource_categories::IsInitialized() const {
 
 void resource_categories::Swap(resource_categories* other) {
   if (other != this) {
-    std::swap(health_score_, other->health_score_);
+    std::swap(capacity_score_, other->capacity_score_);
     std::swap(connection_queue_usage_pct_, other->connection_queue_usage_pct_);
     std::swap(fd_usage_pct_, other->fd_usage_pct_);
     std::swap(cpu_pct_, other->cpu_pct_);
