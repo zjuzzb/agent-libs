@@ -100,15 +100,10 @@ static int ppm_open(struct inode *inode, struct file *filp)
 
 	ring = per_cpu(g_ring_buffers, ring_no);
 
-	// XXX this should be atomic
-	if(ring->state != CS_STOPPED)
+	if(atomic_cmpxchg(&ring->state, CS_STOPPED, CS_STARTED) != CS_STOPPED)
 	{
 		printk(KERN_INFO "PPM: invalid operation: attempting to open device %d multiple times\n", ring_no);
 		return -EBUSY;
-	}
-	else
-	{
-		ring->state = CS_STARTED;
 	}
 
 	ring->info->head = 0;
@@ -205,15 +200,10 @@ static int ppm_release(struct inode *inode, struct file *filp)
 
 	ring = per_cpu(g_ring_buffers, ring_no);
 
-	// XXX this should be atomic
-	if(ring->state == CS_STOPPED)
+	if(atomic_xchg(&ring->state, CS_STOPPED) == CS_STOPPED)
 	{
 		printk(KERN_INFO "PPM: attempting to close unopened device %d\n", ring_no);
 		return -EBUSY;
-	}
-	else
-	{
-		ring->state = CS_STOPPED;
 	}
 
 	printk(KERN_INFO "PPM: closing ring %d, evt:%llu, dr_buf:%llu, dr_pf:%llu, pr:%llu, cs:%llu\n",
@@ -257,8 +247,7 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		int ring_no = iminor(filp->f_dentry->d_inode);
 		struct ppm_ring_buffer_context* ring = per_cpu(g_ring_buffers, ring_no);
 
-		// xxx should be atomic
-		ring->state = CS_INACTIVE;
+		atomic_set(&(ring->state), CS_INACTIVE);
 
 		printk(KERN_INFO "PPM: PPM_IOCTL_DISABLE_CAPTURE for ring %d\n", ring_no);
 
@@ -269,8 +258,7 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		int ring_no = iminor(filp->f_dentry->d_inode);
 		struct ppm_ring_buffer_context* ring = per_cpu(g_ring_buffers, ring_no);
 
-		// xxx should be atomic
-		ring->state = CS_STARTED;
+		atomic_set(&ring->state, CS_STARTED);
 
 		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_CAPTURE for ring %d\n", ring_no);
 
@@ -625,8 +613,7 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 		return;
 	}
 
-	// xxx access to ring->state should be atomic
-	if(unlikely(ring->state == CS_INACTIVE))
+	if(unlikely(atomic_read(&ring->state) == CS_INACTIVE))
 	{
 		atomic_dec(&ring->preempt_count);
 		put_cpu_var(g_ring_buffers);
@@ -1061,7 +1048,7 @@ static struct ppm_ring_buffer_context* alloc_ring_buffer(struct ppm_ring_buffer_
 	//
 	// Initialize the buffer info structure
 	//
-	(*ring)->state = CS_STOPPED;
+	atomic_set(&(*ring)->state, CS_STOPPED);
 	(*ring)->info->head = 0;
 	(*ring)->info->tail = 0;
 	(*ring)->nevents = 0;

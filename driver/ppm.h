@@ -46,9 +46,9 @@
 ///////////////////////////////////////////////////////////////////////
 typedef enum ppm_capture_state
 {
-	CS_STOPPED,		// Not capturing. Either uninitialized or closed.
-	CS_STARTED,		// Capturing.
-	CS_INACTIVE,	// Not Capturing but active, returning the packets in the buffer to the user.
+	CS_STOPPED = 0,		// Not capturing. Either uninitialized or closed.
+	CS_STARTED = 1,		// Capturing.
+	CS_INACTIVE = 2,	// Not Capturing but active, returning the packets in the buffer to the user.
 }ppm_capture_state;
 
 enum syscall_used_flag
@@ -83,7 +83,7 @@ struct ppm_device
 //
 struct ppm_ring_buffer_context
 {
-	ppm_capture_state state;
+	atomic_t state;
 	struct ppm_ring_buffer_info* info;
 	char* buffer;
 	struct timespec last_print_time;
