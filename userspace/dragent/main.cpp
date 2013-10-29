@@ -643,17 +643,7 @@ protected:
 				ASSERT(m_socket == NULL);
 				ASSERT(m_socketbuflen == 0);
 
-#ifndef _WIN32
-				if(m_configuration.m_ssl_enabled)
-				{
-					m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
-					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
-				}
-				else
-#endif
-				{
-					m_socket = new Poco::Net::StreamSocket(*m_sa);
-				}
+				create_socket();
 
 				g_log->error(string("server connection recovered. Sending ") +
 					NumberFormatter::format(store_size) + " buffered samples");
@@ -747,6 +737,33 @@ protected:
 				return;
 			}
 		}
+	}
+
+	void create_socket()
+	{
+#ifndef _WIN32
+		if(m_configuration.m_ssl_enabled)
+		{
+			m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
+			((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
+
+			g_log->information("SSL identity verified");
+		}
+		else
+#endif
+		{
+			m_socket = new Poco::Net::StreamSocket(*m_sa);
+		}
+
+		//
+		// Set the send buffer size for the socket
+		//
+		m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
+
+		//
+		// Put the socket in nonblocking mode
+		//
+		m_socket->setBlocking(false);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -901,28 +918,11 @@ protected:
 					{
 						SSL_CTX_set_msg_callback(ssl_ctx, g_ssl_callback);
 					}
-
-					m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
-					((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
-
-					g_log->information("SSL identity verified");
 				}
-				else
-#endif
-				{
-					m_socket = new Poco::Net::StreamSocket(*m_sa);
-				}
+#endif				
 
-				//
-				// Set the send buffer size for the socket
-				//
-				m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
+				create_socket();
 
-				//
-				// Put the socket in nonblocking mode
-				//
-				m_socket->setBlocking(false);
-				
 				//
 				// Attach our transmit callback to the analyzer
 				//
