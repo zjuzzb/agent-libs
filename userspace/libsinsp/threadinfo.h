@@ -29,6 +29,7 @@ public:
 		m_fd_usage_pct = 0;
 		m_syscall_errors.clear();
 		m_capacity_score = 0;
+		m_cpuload = 0;
 		m_resident_memory_kb = 0;
 	}
 
@@ -51,8 +52,10 @@ public:
 	sinsp_error_counters m_syscall_errors;
 	// the process health score calculated with our secret sauce algorithms
 	float m_capacity_score;
+	// the process CPU load
+	int32_t m_cpuload;
 	// the process resident memory
-	uint64_t m_resident_memory_kb;
+	int64_t m_resident_memory_kb;
 };
 
 //
@@ -145,6 +148,10 @@ public:
 	uint32_t m_fd_usage_pct;
 	// This is used for CPU load calculation
 	uint64_t m_old_proc_jiffies;
+	// the process CPU load
+	int32_t m_cpuload;
+	// the process resident memory
+	int64_t m_resident_memory_kb;
 
 
 	//

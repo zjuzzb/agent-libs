@@ -31,7 +31,7 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-#undef ANALYZER_EMITS_PROGRAMS
+#define ANALYZER_EMITS_PROGRAMS
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_aggregated_ipv4_table(inspector)
@@ -406,9 +406,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	//
+	// Extract global CPU info
+	//
+	uint64_t cur_global_total_jiffies;
+	if(m_inspector->m_islive)
+	{
+		m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+	}
+	else
+	{
+		cur_global_total_jiffies = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes
-	//
+	///////////////////////////////////////////////////////////////////////////
 	threadinfo_map_iterator_t it;
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
@@ -457,10 +470,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it->second.m_metrics.get_total(&ttot);
 		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
+
 		//
 		// Go through the FD list to flush the transactions that haven't been active for a while
 		//
 		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+
+		//
+		// Compute CPU load and memory usage for this process
+		//
+		if(it->second.is_main_thread())
+		{
+			if(m_inspector->m_islive)
+			{
+				ASSERT(it->second.m_procinfo);
+
+				it->second.m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+					&it->second.m_old_proc_jiffies, 
+					cur_global_total_jiffies - m_old_global_total_jiffies,
+					&it->second.m_resident_memory_kb);
+			}
+		}
 
 		//
 		// Add this thread's counters to the process ones...
@@ -505,11 +535,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 	}
 
-	//
+	///////////////////////////////////////////////////////////////////////////
 	// Between the first and the second pass of the thread list, calculate the 
-	// host transaction delay, the local versus next tier processing time ratio and 
-	// the health score for the machine.
-	//
+	// host transaction delay, the local versus next tier processing time ratio 
+	// and the health score for the machine.
+	///////////////////////////////////////////////////////////////////////////
 	compute_host_transaction_delay();
 
 	// 1 means no next tiers delay
@@ -572,22 +602,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	//
-	// Second pass of the list of threads: aggreagate processes into programs.
-	// NOTE: this pass can be integrated in the previous one. We keep it seperate for.
-	// the moment so we have the option to emit single processes. This is useful until
-	// we clearly decide what to put in the UI.
-	//
-	uint64_t cur_global_total_jiffies;
-	if(m_inspector->m_islive)
-	{
-		m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
-	}
-	else
-	{
-		cur_global_total_jiffies = 0;
-	}
-
+	///////////////////////////////////////////////////////////////////////////
+	// Second pass of the list of threads: aggreagate threads into processes 
+	// or programs.
+	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
 		)
@@ -602,8 +620,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(it->second.is_main_thread())
 #endif
 		{
-			int32_t cpuload = -1;
-			int64_t memsize;
 			int64_t pid = it->second.m_pid;
 
 #ifdef ANALYZER_EMITS_PROCESSES
@@ -613,15 +629,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
-			if(m_inspector->m_islive)
-			{
-				cpuload = m_procfs_parser->get_process_cpu_load_and_mem(pid, 
-					&it->second.m_old_proc_jiffies, 
-					cur_global_total_jiffies - m_old_global_total_jiffies,
-					&memsize);
-			}
-
-			if(tot.m_count != 0 || cpuload != 0)
+			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0)
 			{
 				//
 				// Basic values
@@ -636,10 +644,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					proc->add_args(*arg_it);
 				}
 
-				if(cpuload != -1)
+				if(it->second.m_procinfo->m_cpuload != -1)
 				{
-					proc->mutable_resource_counters()->set_cpu_pct(cpuload);
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(memsize);
+					proc->mutable_resource_counters()->set_cpu_pct(it->second.m_procinfo->m_cpuload);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(it->second.m_procinfo->m_resident_memory_kb);
 				}
 				else
 				{
@@ -684,7 +692,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_tid,
 							it->second.m_nchilds + 1,
 							it->second.m_procinfo->m_capacity_score,
-							cpuload,
+							it->second.m_procinfo->m_cpuload,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
 							//trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,

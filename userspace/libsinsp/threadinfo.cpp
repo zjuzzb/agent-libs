@@ -51,6 +51,8 @@ void sinsp_threadinfo::init()
 	m_old_proc_jiffies = -1;
 	m_main_thread = NULL;
 	m_main_program_thread = NULL;
+	m_cpuload = 0;
+	m_resident_memory_kb = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -508,6 +510,9 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	{
 		m_procinfo->m_connection_queue_usage_pct = other->m_connection_queue_usage_pct;
 	}
+
+	m_procinfo->m_cpuload += other->m_cpuload;
+	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -524,6 +529,8 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_transaction_processing_delay_ns = 0;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
+	m_cpuload = 0;
+	m_resident_memory_kb = 0;
 }
 
 //
