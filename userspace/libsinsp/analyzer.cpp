@@ -627,7 +627,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
-			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0)
+			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0 ||
+				it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
 			{
 				//
 				// Basic values
