@@ -106,12 +106,14 @@ message process {
   required string exe = 3; // Full command name (e.g. "/bin/top")
   repeated string args = 4; // Command line arguments (e.g. "-d1")
 
-  optional time_categories tcounters = 5; // The time counters for this thread
-  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process
-  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
+  optional bool is_transaction_server = 5; // True if this process has served at least one transaction.
+  
+  optional time_categories tcounters = 6; // The time counters for this thread.
+  optional counter_time_bidirectional transaction_counters = 7; // The transaction counters for this process.
+  optional uint64 transaction_processing_delay = 8;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional resource_categories resource_counters = 8; // The resource counters for this process
-  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
+  optional resource_categories resource_counters = 9; // The resource counters for this process
+  optional counter_syscall_errors syscall_errors = 10; // Syscall error counter
 }
 
 //

@@ -513,6 +513,11 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 
 	m_procinfo->m_cpuload += other->m_cpuload;
 	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
+
+	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+	{
+		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
+	}
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -739,7 +744,6 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		// call that created this thread. The assertion will detect it, while in release mode we just
 		// keep going.
 		//
-//		ASSERT(false);
 #ifdef GATHER_INTERNAL_STATS
 		m_failed_lookups->increment();
 #endif

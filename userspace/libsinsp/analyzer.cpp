@@ -551,7 +551,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	if(m_transactions_with_cpu.size() != 0)
+	if(m_inspector->m_trans_table->m_n_server_transactions != 0)
 	{
 		int32_t syshscore_g;
 
@@ -636,6 +636,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				proc->set_pid(pid);
 				proc->set_comm(it->second.m_comm);
 				proc->set_exe(it->second.m_exe);
+				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+				{
+					proc->set_is_transaction_server(true);
+				}
+
 				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
 					arg_it != it->second.m_args.end(); ++arg_it)
 				{
