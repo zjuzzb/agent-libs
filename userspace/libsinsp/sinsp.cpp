@@ -231,8 +231,6 @@ void sinsp::import_proc_table()
 	{
 		m_thread_manager->increment_mainthread_childcount(it->second);
 	}
-
-	int a = 0;
 }
 
 void sinsp::import_ifaddr_list()
@@ -465,6 +463,7 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 			//
 			newpi.m_tid = tid;
 			newpi.m_pid = tid;
+			newpi.m_ptid = -1;
 			newpi.m_comm = "<NA>";
 			newpi.m_exe = "<NA>";
 		}
