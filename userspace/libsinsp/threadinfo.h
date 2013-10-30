@@ -100,14 +100,15 @@ public:
 	int64_t m_tid;  // The id of this thread
 	int64_t m_pid; // The id of the process containing this thread. In single thread threads, this is equal to tid.
 	int64_t m_ptid; // The id of the process that started this thread.
+	int64_t m_progid; // Main program id. If this process is part of a logical group of processes (e.g. it's one of the apache processes), the tid of the process that is the head of this group.
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // Full command name (e.g. "/bin/top")
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
 	uint32_t m_flags; // The thread flags.
-	uint64_t m_refcount; // When this is 0 the process can be deleted (i.e. no children)
 	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
 	uint32_t m_uid; // user id
 	uint32_t m_gid; // group id
+	uint64_t m_nchilds; // When this is 0 the process can be deleted
 
 	//
 	// State for multi-event processing
@@ -174,6 +175,7 @@ VISIBILITY_PRIVATE
 	sinsp_fdtable m_fdtable; // The fd table of this thread
 	string m_cwd; // current working directory
 	sinsp_threadinfo* m_main_thread;
+	sinsp_threadinfo* m_main_program_thread;
 
 	friend class sinsp;
 	friend class sinsp_parser;
@@ -192,7 +194,7 @@ public:
 	sinsp_thread_manager(sinsp* inspector);
 
 	sinsp_threadinfo* get_thread(int64_t tid);
-	void add_thread(const sinsp_threadinfo& threadinfo);
+	void add_thread(sinsp_threadinfo& threadinfo, bool from_scap_proctable=false);
 	void remove_thread(int64_t tid);
 	void remove_thread(threadinfo_map_iterator_t it);
 	void remove_inactive_threads();
@@ -210,6 +212,7 @@ public:
 	}
 
 private:
+	void increment_mainthread_childcount(sinsp_threadinfo& threadinfo);
 	sinsp* m_inspector;
 	threadinfo_map_t m_threadtable;
 	int64_t m_last_tid;

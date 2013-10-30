@@ -34,6 +34,7 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 void sinsp_threadinfo::init()
 {
 	m_pid = (uint64_t) - 1LL;
+	m_progid = (uint64_t) - 1LL;
 	set_lastevent_data_validity(false);
 	m_lastevent_type = -1;
 	m_lastevent_ts = 0;
@@ -41,7 +42,7 @@ void sinsp_threadinfo::init()
 	m_lastevent_category.m_category = EC_UNKNOWN;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	m_flags = 0;
-	m_refcount = 0;
+	m_nchilds = 0;
 	m_procinfo = NULL;
 	m_transaction_processing_delay_ns = 0;
 	m_fdlimit = -1;
@@ -49,6 +50,7 @@ void sinsp_threadinfo::init()
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
 	m_main_thread = NULL;
+	m_main_program_thread = NULL;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
@@ -659,7 +661,44 @@ sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 	}
 }
 
-void sinsp_thread_manager::add_thread(const sinsp_threadinfo& threadinfo)
+void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo& threadinfo)
+{
+	if(threadinfo.m_flags & PPM_CL_CLONE_THREAD)
+	{
+		//
+		// Increment the refcount of the main thread so it won't
+		// be deleted (if it calls pthread_exit()) until we are done
+		//
+		ASSERT(threadinfo.m_pid != threadinfo.m_tid);
+		sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo.m_pid, false);
+		if(main_thread)
+		{
+			++main_thread->m_nchilds;
+		}
+		else
+		{
+			ASSERT(false);
+		}
+	}
+	else
+	{
+		sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo.m_ptid, false);
+		if(parent_thread)
+		{
+			if(parent_thread->m_comm == threadinfo.m_comm)
+			{
+				threadinfo.m_progid = parent_thread->m_pid;
+				++parent_thread->m_nchilds;
+			}
+		}
+		else
+		{
+			ASSERT(threadinfo.m_pid == 1);
+		}
+	}
+}
+
+void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_scap_proctable)
 {
 #ifdef GATHER_INTERNAL_STATS
 	m_added_threads->increment();
@@ -673,22 +712,9 @@ void sinsp_thread_manager::add_thread(const sinsp_threadinfo& threadinfo)
 
 	m_threadtable[threadinfo.m_tid] = threadinfo;
 
-	if(threadinfo.m_flags & PPM_CL_CLONE_THREAD)
+	if(!from_scap_proctable)
 	{
-		//
-		// Increment the refcount of the main thread so it won't
-		// be deleted (if it calls pthread_exit()) until we are done
-		//
-		ASSERT(threadinfo.m_pid != threadinfo.m_tid);
-		sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo.m_pid, false);
-		if(main_thread)
-		{
-			++main_thread->m_refcount;
-		}
-		else
-		{
-			ASSERT(false);
-		}
+		increment_mainthread_childcount(threadinfo);
 	}
 }
 
@@ -713,20 +739,34 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 #endif
 		return;
 	}
-	else if(it->second.m_refcount == 0)
+	else if(it->second.m_nchilds == 0)
 	{
+		//
+		// Decrement the refcount of the main thread because
+		// this reference is gone
+		//
 		if(it->second.m_flags & PPM_CL_CLONE_THREAD)
 		{
-			//
-			// Decrement the refcount of the main thread because
-			// this reference is gone
-			//
 			ASSERT(it->second.m_pid != it->second.m_tid);
 			sinsp_threadinfo* main_thread = m_inspector->get_thread(it->second.m_pid, false);
 			if(main_thread)
 			{
-				ASSERT(main_thread->m_refcount);
-				--main_thread->m_refcount;
+				ASSERT(main_thread->m_nchilds);
+				--main_thread->m_nchilds;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+		}
+		else if(it->second.m_progid != -1)
+		{
+			ASSERT(it->second.m_pid != it->second.m_progid);
+			sinsp_threadinfo* main_thread = m_inspector->get_thread(it->second.m_progid, false);
+			if(main_thread)
+			{
+				ASSERT(main_thread->m_nchilds);
+				--main_thread->m_nchilds;
 			}
 			else
 			{
@@ -790,7 +830,7 @@ void sinsp_thread_manager::remove_inactive_threads()
 
 		for(threadinfo_map_iterator_t it = m_threadtable.begin(); it != m_threadtable.end();)
 		{
-			if(it->second.m_refcount == 0 &&
+			if(it->second.m_nchilds == 0 &&
 				m_inspector->m_lastevent_ts > 
 				it->second.m_lastaccess_ts + m_inspector->m_configuration.get_thread_timeout_ns())
 			{

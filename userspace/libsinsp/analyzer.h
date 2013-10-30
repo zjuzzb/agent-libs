@@ -85,6 +85,8 @@ public:
 	}
 
 VISIBILITY_PRIVATE
+	bool is_main_program_thread(sinsp_threadinfo* ptinfo);
+	sinsp_threadinfo* get_main_program_thread(sinsp_threadinfo* ptinfo);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
 	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);
@@ -152,19 +154,10 @@ VISIBILITY_PRIVATE
 	vector<pair<uint64_t,pair<uint64_t, uint16_t>>> m_transactions_with_cpu;
 	vector<vector<pair<uint64_t, uint64_t>>> m_server_transactions_per_cpu;
 	uint64_t m_client_tr_time_by_servers;
-	int64_t m_host_transaction_delay;
+	int64_t m_host_transaction_delay_ns;
 	// ratio between the the transaction delay introduced by this host and the delay 
 	// caused by the next tiers. Calculated by the score
 	float m_local_remote_ratio;
-
-#ifdef ANALYZER_EMITS_PROGRAMS
-	//
-	// The temporary table that we build while scanning the process list.
-	// Each entry contains a "program", i.e. a group of processes with the same 
-	// full executable path.
-	//
-	unordered_map<string, sinsp_threadinfo*> m_program_table;
-#endif
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

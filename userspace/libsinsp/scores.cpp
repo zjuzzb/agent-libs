@@ -757,18 +757,15 @@ float sinsp_scores::get_process_capacity_score(float system_capacity_score, sins
 	//
 	// Take the system health score and normalize it using the local/remote ratios
 	//
-	if(mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns != -1)
+	if(mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in != 0)
 	{
-		if(mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in != 0)
-		{
-			local_remote_ratio = (float)mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns / 
-				(float)mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+		local_remote_ratio = (float)mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns / 
+			(float)mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 
-			res = system_capacity_score * local_remote_ratio / m_inspector->m_analyzer->m_local_remote_ratio;
-			if(res > 100)
-			{
-				res = 100;
-			}
+		res = system_capacity_score * local_remote_ratio / m_inspector->m_analyzer->m_local_remote_ratio;
+		if(res > 100)
+		{
+			res = 100;
 		}
 	}
 

@@ -31,6 +31,8 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
+#undef ANALYZER_EMITS_PROGRAMS
+
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_aggregated_ipv4_table(inspector)
 {
@@ -110,6 +112,72 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	ASSERT(cb != NULL);
 	ASSERT(m_sample_callback == NULL);
 	m_sample_callback = cb;
+}
+
+bool sinsp_analyzer::is_main_program_thread(sinsp_threadinfo* ptinfo)
+{
+	if(ptinfo->m_progid != -1)
+	{
+		return false;
+	}
+	else
+	{
+		return ptinfo->m_tid == ptinfo->m_pid;
+	}
+}
+
+sinsp_threadinfo* sinsp_analyzer::get_main_program_thread(sinsp_threadinfo* ptinfo)
+{
+	if(ptinfo->m_main_program_thread == NULL)
+	{
+		//
+		// Is this a sub-process?
+		//
+		if(ptinfo->m_progid != -1)
+		{
+			//
+			// Yes, this is a child thread. Find the progrm root thread.
+			//
+			sinsp_threadinfo *ttinfo = m_inspector->get_thread(ptinfo->m_progid, true);
+			if(NULL == ttinfo)
+			{
+				ASSERT(false);
+				return NULL;
+			}
+
+			ptinfo->m_main_program_thread = ttinfo;
+		}
+		else
+		{
+			//
+			// Is this a child thread?
+			//
+			if(ptinfo->m_pid == ptinfo->m_tid)
+			{
+				//
+				// No, this is either a single thread process or the root thread of a
+				// multithread process,
+				//
+				return ptinfo;
+			}
+			else
+			{
+				//
+				// Yes, this is a child thread. Find the process root thread.
+				//
+				sinsp_threadinfo *ttinfo = m_inspector->get_thread(ptinfo->m_pid, true);
+				if(NULL == ttinfo)
+				{
+					ASSERT(false);
+					return NULL;
+				}
+
+				ptinfo->m_main_program_thread = ttinfo;
+			}
+		}
+	}
+
+	return ptinfo->m_main_program_thread;
 }
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
@@ -285,7 +353,7 @@ void sinsp_analyzer::compute_host_transaction_delay()
 		//
 		// This host is not serving transactions
 		//
-		m_host_transaction_delay = -1;
+		m_host_transaction_delay_ns = -1;
 	}
 	else
 	{
@@ -298,7 +366,7 @@ void sinsp_analyzer::compute_host_transaction_delay()
 			// leaf in the connection tree and the host_transaction_delay euqals to the
 			// input transaction processing time.
 			//
-			m_host_transaction_delay = m_host_transaction_metrics.m_counter.m_time_ns_in;
+			m_host_transaction_delay_ns = m_host_transaction_metrics.m_counter.m_time_ns_in;
 			return;
 		}
 
@@ -306,11 +374,11 @@ void sinsp_analyzer::compute_host_transaction_delay()
 
 		if(res <= 0)
 		{
-			m_host_transaction_delay = 0;
+			m_host_transaction_delay_ns = 0;
 		}
 		else
 		{
-			m_host_transaction_delay = res;
+			m_host_transaction_delay_ns = res;
 		}
 	}
 }
@@ -395,7 +463,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Add this thread's counters to the process ones...
 		//
+#ifdef ANALYZER_EMITS_PROGRAMS
+		sinsp_threadinfo* mtinfo = get_main_program_thread(&it->second);
+#else
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+#endif
 		it->second.m_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_transaction_metrics);
 		mtinfo->add_all_metrics(&it->second);
 
@@ -440,11 +512,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	// 1 means no next tiers delay
 	m_local_remote_ratio = 1;
-	if(m_inspector->m_analyzer->m_host_transaction_delay != -1)
+	if(m_inspector->m_analyzer->m_host_transaction_delay_ns != -1)
 	{
 		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
 		{
-			m_local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay / 
+			m_local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay_ns / 
 				(float)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
 		}
 	}
@@ -504,10 +576,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// the moment so we have the option to emit single processes. This is useful until
 	// we clearly decide what to put in the UI.
 	//
-#ifdef ANALYZER_EMITS_PROGRAMS
-	m_program_table.clear();
-#endif
-
 	uint64_t cur_global_total_jiffies;
 	if(m_inspector->m_islive)
 	{
@@ -520,34 +588,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
-#ifdef ANALYZER_EMITS_PROGRAMS
-		++it
-#endif
 		)
 	{
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
+#ifdef ANALYZER_EMITS_PROGRAMS
+		if(is_main_program_thread(&it->second))
+#else
 		if(it->second.is_main_thread())
+#endif
 		{
 			int32_t cpuload = -1;
 			int64_t memsize;
 			int64_t pid = it->second.m_pid;
-
-#ifdef ANALYZER_EMITS_PROGRAMS
-
-			//
-			// Do the aggregation into programs
-			//
-			std::pair<unordered_map<string, sinsp_threadinfo*>::iterator, bool> &element = 
-				m_program_table.insert(unordered_map<string, sinsp_threadinfo*>::value_type(it->second.m_exe, &it->second));
-			if(element.second == false)
-			{
-				ASSERT(element.first->second != &it->second);
-				element.first->second->add_proc_metrics(&it->second);
-			}
-#endif
 
 #ifdef ANALYZER_EMITS_PROCESSES
 			sinsp_counter_time tot;
@@ -625,7 +680,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_comm.c_str(),
 	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 							it->second.m_tid,
-							it->second.m_refcount + 1,
+							it->second.m_nchilds + 1,
 							it->second.m_procinfo->m_capacity_score,
 							cpuload,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
@@ -664,7 +719,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				it->second.m_comm.c_str(),
 				(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 				it->second.m_tid,
-				it->second.m_refcount + 1,
+				it->second.m_nchilds + 1,
 				it->second.m_transaction_metrics.m_incoming.m_count,
 				it->second.m_transaction_metrics.m_outgoing.m_count,
 				((double)it->second.m_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
@@ -675,7 +730,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				it->second.m_rest_time_ns);
 		}
 */
-#ifndef ANALYZER_EMITS_PROGRAMS
+
 		//
 		// Has this thread been closed druring this sample?
 		//
@@ -703,85 +758,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.clear_all_metrics();
 			++it;
 		}
-#endif
 	}
 
 	m_old_global_total_jiffies = cur_global_total_jiffies;
-
-	//
-	// Third pass of the list of threads: emit the programs
-	//
-#ifdef ANALYZER_EMITS_PROGRAMS
-	unordered_map<string, sinsp_threadinfo*>::iterator prit;
-	for(prit = m_program_table.begin(); 
-		prit != m_program_table.end(); ++ prit)
-	{
-		//
-		// If defined, emti the processes
-		//
-		sinsp_counter_time tot;
-	
-		ASSERT(prit->second->m_proc_metrics);
-		prit->second->m_proc_metrics->get_total(&tot);
-		ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-
-		if(tot.m_count != 0)
-		{
-			draiosproto::process* proc = m_metrics->add_processes();
-			proc->set_pid(prit->second->m_pid);
-			proc->set_comm(prit->second->m_comm);
-			proc->set_exe(prit->second->m_exe);
-			for(vector<string>::const_iterator arg_it = prit->second->m_args.begin(); 
-				arg_it != prit->second->m_args.end(); ++arg_it)
-			{
-				proc->add_args(*arg_it);
-			}
-
-			prit->second->m_proc_metrics->to_protobuf(proc->mutable_tcounters());
-			prit->second->m_proc_transaction_metrics->to_protobuf(proc->mutable_transaction_counters());
-
-#ifdef _DEBUG
-			if(prit->second->m_proc_transaction_metrics->m_incoming.m_count +
-				prit->second->m_proc_transaction_metrics->m_outgoing.m_count != 0)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, 
-					"\t%s %s (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32,
-					prit->second->m_comm.c_str(),
-					(prit->second->m_args.size() != 0)? prit->second->m_args[0].c_str() : "",
-					prit->second->m_tid,
-					prit->second->m_proc_transaction_metrics->m_incoming.m_count,
-					prit->second->m_proc_transaction_metrics->m_outgoing.m_count);
-			}
-#endif // _DEBUG
-		}
-	}
-
-	//
-	// fourth pass: thread table cleanup
-	//
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end();)
-	{
-		//
-		// Has this thread been closed druring this sample?
-		//
-		if(it->second.m_analysis_flags & sinsp_threadinfo::AF_CLOSED)
-		{
-			//
-			// Yes, remove the thread from the table
-			//
-			m_inspector->m_thread_manager->remove_thread(it++);
-		}
-		else
-		{
-			//
-			// Clear the thread metrics, so we're ready for the next sample
-			//
-			it->second.clear_all_metrics();
-			++it;
-		}
-	}
-#endif // ANALYZER_EMITS_PROGRAMS
 }
 
 void sinsp_analyzer::emit_aggregated_connections()
@@ -1136,9 +1115,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
 
-			if(m_host_transaction_delay != -1)
+			if(m_host_transaction_delay_ns != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
 			}
 
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
@@ -1149,7 +1128,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					m_host_transaction_metrics.m_counter.m_count_out,
 					(float)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,
 					(float)m_client_tr_time_by_servers / 1000000000,
-					(float)m_host_transaction_delay / 1000000000
+					(float)m_host_transaction_delay_ns / 1000000000
 					);
 			}
 
@@ -1320,8 +1299,11 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 			
 			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
+#ifdef ANALYZER_EMITS_PROGRAMS
+			sinsp_threadinfo* parentinfo = get_main_program_thread(evt->m_tinfo);
+#else
 			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
-
+#endif
 			if(parentinfo != NULL)
 			{
 				parentinfo->allocate_procinfo_if_not_present();

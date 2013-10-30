@@ -222,8 +222,17 @@ void sinsp::import_proc_table()
 	HASH_ITER(hh, table, pi, tpi)
 	{
 		newpi.init(pi);
-		m_thread_manager->add_thread(newpi);
+		m_thread_manager->add_thread(newpi, true);
 	}
+
+	threadinfo_map_iterator_t it;
+	for(it = m_thread_manager->m_threadtable.begin(); 
+		it != m_thread_manager->m_threadtable.end(); ++it)
+	{
+		m_thread_manager->increment_mainthread_childcount(it->second);
+	}
+
+	int a = 0;
 }
 
 void sinsp::import_ifaddr_list()
@@ -469,7 +478,7 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 
 void sinsp::add_thread(const sinsp_threadinfo& procinfo)
 {
-	m_thread_manager->add_thread(procinfo);
+	m_thread_manager->add_thread((sinsp_threadinfo&)procinfo);
 }
 
 void sinsp::remove_thread(int64_t tid)
