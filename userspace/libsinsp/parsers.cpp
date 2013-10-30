@@ -1198,6 +1198,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 				//
 				conn->reset();
 				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
+				conn->m_refcount = 1;
 			}
 
 			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
