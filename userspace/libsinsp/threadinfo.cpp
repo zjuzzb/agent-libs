@@ -691,10 +691,6 @@ void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo& thr
 				++parent_thread->m_nchilds;
 			}
 		}
-		else
-		{
-			ASSERT(threadinfo.m_pid == 1 || threadinfo.m_ptid == -1);
-		}
 	}
 }
 
