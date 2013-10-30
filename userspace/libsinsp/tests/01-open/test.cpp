@@ -418,8 +418,8 @@ int main(int argc, char **argv)
 			}
 		}
 
-	inspector.get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
-	inspector.get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
+//inspector.get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
+//inspector.get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 		//
 		// the filter is specified at the end of the command line
