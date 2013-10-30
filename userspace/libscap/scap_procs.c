@@ -274,7 +274,14 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	}
 	else
 	{
-		fgets(line, SCAP_MAX_PATH_SIZE, f);
+		if(fgets(line, SCAP_MAX_PATH_SIZE, f) == NULL)
+		{
+			snprintf(error, SCAP_LASTERR_SIZE, "can't read from %s", filename);
+			fclose(f);
+			free(tinfo);
+			return SCAP_FAILURE;
+		}
+
 		line[SCAP_MAX_PATH_SIZE - 1] = 0;
 		sscanf(line, "Name:%s", tinfo->comm);
 		fclose(f);
