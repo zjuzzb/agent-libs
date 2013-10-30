@@ -557,7 +557,6 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 		}
 		else
 		{
-			m_inspector->m_thread_manager->increment_program_childcount(evt->m_tinfo);
 			return;
 		}
 	}
@@ -684,6 +683,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	//
 	// Add the new thread info to the table
 	//
+BRK(1096090);
 	tinfo.m_tid = childtid;
 	tinfo.m_ptid = tid;
 	m_inspector->add_thread(tinfo);

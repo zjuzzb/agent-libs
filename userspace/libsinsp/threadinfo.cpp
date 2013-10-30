@@ -715,13 +715,13 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 		return;
 	}
 
-	m_threadtable[threadinfo.m_tid] = threadinfo;
-
 	if(!from_scap_proctable)
 	{
 		increment_mainthread_childcount(&threadinfo);
 		increment_program_childcount(&threadinfo);
 	}
+
+	m_threadtable[threadinfo.m_tid] = threadinfo;
 }
 
 void sinsp_thread_manager::remove_thread(int64_t tid)
