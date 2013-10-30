@@ -557,6 +557,7 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 		}
 		else
 		{
+			m_inspector->m_thread_manager->increment_program_childcount(evt->m_tinfo);
 			return;
 		}
 	}

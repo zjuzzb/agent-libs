@@ -668,16 +668,16 @@ sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 	}
 }
 
-void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo& threadinfo)
+void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo* threadinfo)
 {
-	if(threadinfo.m_flags & PPM_CL_CLONE_THREAD)
+	if(threadinfo->m_flags & PPM_CL_CLONE_THREAD)
 	{
 		//
 		// Increment the refcount of the main thread so it won't
 		// be deleted (if it calls pthread_exit()) until we are done
 		//
-		ASSERT(threadinfo.m_pid != threadinfo.m_tid);
-		sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo.m_pid, false);
+		ASSERT(threadinfo->m_pid != threadinfo->m_tid);
+		sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo->m_pid, false);
 		if(main_thread)
 		{
 			++main_thread->m_nchilds;
@@ -687,16 +687,18 @@ void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo& thr
 			ASSERT(false);
 		}
 	}
-	else
+}
+
+void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* threadinfo)
+{
+	sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo->m_ptid, false);
+
+	if(parent_thread)
 	{
-		sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo.m_ptid, false);
-		if(parent_thread)
+		if(parent_thread->m_comm == threadinfo->m_comm)
 		{
-			if(parent_thread->m_comm == threadinfo.m_comm)
-			{
-				threadinfo.m_progid = parent_thread->m_pid;
-				++parent_thread->m_nchilds;
-			}
+			threadinfo->m_progid = parent_thread->m_pid;
+			++parent_thread->m_nchilds;
 		}
 	}
 }
@@ -717,7 +719,8 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 
 	if(!from_scap_proctable)
 	{
-		increment_mainthread_childcount(threadinfo);
+		increment_mainthread_childcount(&threadinfo);
+		increment_program_childcount(&threadinfo);
 	}
 }
 

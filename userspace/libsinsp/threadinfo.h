@@ -219,7 +219,8 @@ public:
 	}
 
 private:
-	void increment_mainthread_childcount(sinsp_threadinfo& threadinfo);
+	void increment_mainthread_childcount(sinsp_threadinfo* threadinfo);
+	void increment_program_childcount(sinsp_threadinfo* threadinfo);
 	sinsp* m_inspector;
 	threadinfo_map_t m_threadtable;
 	int64_t m_last_tid;

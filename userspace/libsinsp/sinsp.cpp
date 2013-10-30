@@ -229,7 +229,8 @@ void sinsp::import_proc_table()
 	for(it = m_thread_manager->m_threadtable.begin(); 
 		it != m_thread_manager->m_threadtable.end(); ++it)
 	{
-		m_thread_manager->increment_mainthread_childcount(it->second);
+		m_thread_manager->increment_mainthread_childcount(&it->second);
+		m_thread_manager->increment_program_childcount(&it->second);
 	}
 }
 
