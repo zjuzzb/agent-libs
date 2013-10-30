@@ -483,8 +483,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			if(m_inspector->m_islive)
 			{
-				ASSERT(it->second.m_procinfo);
-
 				it->second.m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
 					&it->second.m_old_proc_jiffies, 
 					cur_global_total_jiffies - m_old_global_total_jiffies,
