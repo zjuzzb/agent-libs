@@ -1,5 +1,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "connectinfo.h"
+#include "analyzer.h"
 #include "sched_analyzer.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -393,12 +395,13 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 
 #if 1
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
-			"***CPU %" PRIu32 " server:%" PRIu64 " other:%" PRIu64 " unknown:%" PRIu64 " idle:%" PRIu64,
+			"***CPU %" PRIu32 " server:%" PRIu64 " other:%" PRIu64 " unknown:%" PRIu64 " idle:%" PRIu64 " idle1:%" PRIu32,
 			j,
 			state.m_lastsample_server_processes_ns,
 			state.m_lastsample_other_ns,
 			state.m_lastsample_unknown_ns,
-			state.m_lastsample_idle_ns);
+			state.m_lastsample_idle_ns,
+			(m_inspector->m_analyzer->m_cpu_idles.size() != 0)?m_inspector->m_analyzer->m_cpu_idles[j] : 0);
 #endif
 	}
 }

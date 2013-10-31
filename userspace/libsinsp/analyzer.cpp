@@ -994,6 +994,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
 
 			//
+			// Calculate CPU load
+			//
+			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles);
+
+			//
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
@@ -1129,7 +1134,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
 
-			m_procfs_parser->get_cpus_load(&m_cpu_loads);
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			string cpustr;
 			for(j = 0; j < m_cpu_loads.size(); j++)

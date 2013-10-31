@@ -131,6 +131,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
 	vector<uint32_t> m_cpu_loads;
+	vector<uint32_t> m_cpu_idles;
 
 	//
 	// The table of aggreagted connections
@@ -165,4 +166,5 @@ VISIBILITY_PRIVATE
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
+	friend class sinsp_sched_analyzer2;
 };
