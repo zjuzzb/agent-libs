@@ -256,6 +256,8 @@ void cpustate2::init()
 	m_other_ns = 0;
 	m_unknown_ns = 0;
 	m_server_processes_ns = 0;
+	m_last_effective_sample_start = 0;
+	m_sample_effective_length_ns = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -267,8 +269,6 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
 	m_ncpus = ncpus;
 	m_inspector = inspector;
 	m_cpu_states = vector<cpustate2>(ncpus);
-	m_last_effective_sample_start = 0;
-	m_sample_effective_length_ns = 0;
 }
 
 void sinsp_sched_analyzer2::on_capture_start()
@@ -287,7 +287,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	{
 		state.m_last_switch_time = ts;
 		state.m_last_switch_tid = nexttid;
-		m_last_effective_sample_start = ts;
+		state.m_last_effective_sample_start = ts;
 		return;
 	}
 
@@ -390,8 +390,8 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		state.m_other_ns = 0;
 		state.m_unknown_ns = 0;
 		state.m_server_processes_ns = 0;
-		m_sample_effective_length_ns = utime - m_last_effective_sample_start;
-		m_last_effective_sample_start = utime;
+		state.m_sample_effective_length_ns = utime - state.m_last_effective_sample_start;
+		state.m_last_effective_sample_start = utime;
 
 #if 1
 		g_logger.format(sinsp_logger::SEV_DEBUG, 

@@ -76,6 +76,8 @@ public:
 	uint64_t m_lastsample_other_ns;
 	uint64_t m_lastsample_unknown_ns;
 	uint64_t m_lastsample_server_processes_ns;
+	uint64_t m_last_effective_sample_start;
+	uint64_t m_sample_effective_length_ns;
 };
 
 class sinsp_sched_analyzer2
@@ -101,8 +103,6 @@ public:
 	void on_capture_start();
 
 	vector<cpustate2> m_cpu_states;
-	uint64_t m_last_effective_sample_start;
-	uint64_t m_sample_effective_length_ns;
 
 private:
 	void update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid);
