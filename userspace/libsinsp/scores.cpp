@@ -397,6 +397,19 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		// Extract the CPU spent while serving transactions
 		//
 		ntr = (float)cpu_state->m_lastsample_server_processes_ns * (float)m_n_intervals_in_sample / m_sched_analyzer2->m_sample_effective_length_ns;
+		float idle;
+		if(m_inspector->m_analyzer->m_cpu_idles.size() != 0)
+		{
+			ASSERT(m_inspector->m_analyzer->m_cpu_idles.size() == num_cpus);
+
+			idle = m_inspector->m_analyzer->m_cpu_idles[cpuid] * m_n_intervals_in_sample / 100;
+		}
+		else
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "no idle information, can't calculate capacity score");
+			return -1;
+		}
+
 		float otherns = (float)(m_sched_analyzer2->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - cpu_state->m_idle_ns);
 		ASSERT(otherns >= 0);
 		nother = otherns * (float)m_n_intervals_in_sample / m_sched_analyzer2->m_sample_effective_length_ns;
