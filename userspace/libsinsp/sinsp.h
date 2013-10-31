@@ -302,6 +302,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
 	friend class sinsp_sched_analyzer;
+	friend class sinsp_sched_analyzer2;
 	friend class sinsp_scores;
 	friend class sinsp_evt;
 	friend class sinsp_threadinfo;

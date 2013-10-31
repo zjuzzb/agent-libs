@@ -31,7 +31,7 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-#define ANALYZER_EMITS_PROGRAMS
+#undef ANALYZER_EMITS_PROGRAMS
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_aggregated_ipv4_table(inspector)
@@ -67,6 +67,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
+	m_sched_analyzer2 = new sinsp_sched_analyzer2(inspector, m_machine_info->num_cpus);
 
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer);
 
@@ -99,12 +100,19 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_sched_analyzer;
 	}
+
+	if(m_sched_analyzer2)
+	{
+		delete m_sched_analyzer2;
+	}
 }
 
 void sinsp_analyzer::on_capture_start()
 {
 	ASSERT(m_sched_analyzer != NULL);
 	m_sched_analyzer->on_capture_start();
+	ASSERT(m_sched_analyzer2 != NULL);
+	m_sched_analyzer2->on_capture_start();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -977,6 +985,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
+			//m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
 
 			//
 			// Reset the protobuffer
@@ -1201,6 +1210,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		if(etype == PPME_SCHEDSWITCH_E)
 		{
 			m_sched_analyzer->process_event(evt);
+			//m_sched_analyzer2->process_event(evt);
 			return;
 		}
 	}

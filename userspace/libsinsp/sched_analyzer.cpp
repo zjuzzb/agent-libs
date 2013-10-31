@@ -85,7 +85,7 @@ sinsp_sched_analyzer::sinsp_sched_analyzer(sinsp* inspector, uint32_t ncpus)
 	ASSERT(inspector != NULL);
 	m_ncpus = ncpus;
 	m_inspector = inspector;
-	m_cpu_states = vector<cpustate>(4);
+	m_cpu_states = vector<cpustate>(ncpus);
 }
 
 void sinsp_sched_analyzer::on_capture_start()
@@ -234,6 +234,151 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 			"CPU %" PRIu32 " estimated usage:%.2f",
 			j,
 			(float)nused * 100 / state.m_time_segments.size());
+#endif
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// cpustate2 implementation
+///////////////////////////////////////////////////////////////////////////////
+cpustate2::cpustate2()
+{
+	init();
+}
+
+void cpustate2::init()
+{
+	m_last_switch_time = 0;
+	m_last_switch_tid = 0;
+	m_idle_ns = 0;
+	m_other_ns = 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_sched_analyzer2 implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
+{
+	ASSERT(inspector != NULL);
+	m_ncpus = ncpus;
+	m_inspector = inspector;
+	m_cpu_states = vector<cpustate2>(ncpus);
+}
+
+void sinsp_sched_analyzer2::on_capture_start()
+{
+}
+
+void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
+{
+	cpustate2& state = m_cpu_states[cpu];
+	uint64_t time_in_sample = ts % m_sample_length_ns;
+	int64_t oldtid = state.m_last_switch_tid;
+	int32_t delta;
+
+	//
+	// If this is the first sample, just init the values
+	//
+	if(state.m_last_switch_time == 0)
+	{
+		state.m_last_switch_time = ts;
+		state.m_last_switch_tid = nexttid;
+		return;
+	}
+
+	//
+	// Calculate the delta
+	//
+	delta = (int32_t)(ts - state.m_last_switch_time);
+	ASSERT(delta > 0);
+	ASSERT(delta < m_inspector->m_configuration.get_analyzer_sample_length_ns());
+
+	//
+	// Attribute the delta to the proper thread
+	//
+	if(tinfo == NULL)
+	{
+		if(state.m_last_switch_tid == 0)
+		{
+			state.m_idle_ns += delta;
+		}
+		else
+		{
+			state.m_other_ns += delta;
+		}
+
+		return;
+	}
+	else
+	{
+		if(tinfo->m_cpu_time_ns.size() != m_ncpus)
+		{
+			ASSERT(tinfo->m_cpu_time_ns.size() == 0);
+			tinfo->m_cpu_time_ns.resize(m_ncpus);
+		}
+
+		tinfo->m_cpu_time_ns[cpu] += delta;
+	}
+
+	//
+	// Update the current sample
+	//
+	state.m_last_switch_time = ts;
+	state.m_last_switch_tid = nexttid;
+}
+
+void sinsp_sched_analyzer2::process_event(sinsp_evt* evt)
+{
+	int16_t cpu = evt->get_cpuid();
+	uint64_t ts = evt->get_ts();
+	ASSERT(cpu < (int16_t)m_cpu_states.size());
+
+	//
+	// Extract the tid
+	//
+	sinsp_evt_param *parinfo = evt->get_param(0);
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+	int64_t nexttid = *(int64_t *)parinfo->m_val;
+
+	update(evt->get_thread_info(), ts, cpu, nexttid);
+}
+
+void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof)
+{
+	uint32_t j;
+
+	for(j = 0; j < m_ncpus; j++)
+	{
+		cpustate2& state = m_cpu_states[j];
+
+		if(state.m_last_switch_time == 0)
+		{
+			//
+			// No context switch for this processor yet
+			//
+			continue;
+		}
+
+		//
+		// Complete the state for this CPU
+		//
+		sinsp_threadinfo* tinfo = m_inspector->get_thread(state.m_last_switch_tid, false);
+		update(NULL, flush_time - 1, j, state.m_last_switch_tid);
+
+		//
+		// Reset the state so we're ready for the next sample
+		//
+		state.m_last_switch_time = flush_time;
+		state.m_lastsample_idle_ns = state.m_idle_ns;
+		state.m_lastsample_other_ns = state.m_other_ns;
+		state.m_idle_ns = 0;
+		uint64_t m_other_ns = 0;
+
+#if 1
+		g_logger.format(sinsp_logger::SEV_DEBUG, 
+			"CPU %" PRIu32 " usage2:%.2f",
+			j,
+			(float)state.m_lastsample_idle_ns / 10000000);
 #endif
 	}
 }

@@ -152,6 +152,8 @@ public:
 	int32_t m_cpuload;
 	// the process resident memory
 	int64_t m_resident_memory_kb;
+	// Time spent by this process on each of the CPUs
+	vector<uint32_t> m_cpu_time_ns;
 
 
 	//

@@ -3,6 +3,7 @@
 class sinsp_scores;
 class sinsp_procfs_parser;
 class sinsp_sched_analyzer;
+class sinsp_sched_analyzer2;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -146,6 +147,7 @@ VISIBILITY_PRIVATE
 	// The scheduler analyzer
 	//
 	sinsp_sched_analyzer* m_sched_analyzer;
+	sinsp_sched_analyzer2* m_sched_analyzer2;
 
 	//
 	// Transaction-related state
