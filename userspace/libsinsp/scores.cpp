@@ -410,7 +410,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 			return -1;
 		}
 
-		float otherns = (float)(cpu_state->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - cpu_state->m_idle_ns);
+		float otherns = (float)(cpu_state->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - idle);
 		ASSERT(otherns >= 0);
 		nother = otherns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
 
