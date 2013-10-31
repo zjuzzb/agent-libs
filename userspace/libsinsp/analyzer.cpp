@@ -989,7 +989,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
-			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
+			//m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
 
 			//
 			// Reset the protobuffer
@@ -1214,7 +1214,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		if(etype == PPME_SCHEDSWITCH_E)
 		{
 			m_sched_analyzer->process_event(evt);
-			m_sched_analyzer2->process_event(evt);
+			//m_sched_analyzer2->process_event(evt);
 			return;
 		}
 	}
