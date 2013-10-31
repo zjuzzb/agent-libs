@@ -408,13 +408,13 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		{
 			ASSERT(m_inspector->m_analyzer->m_cpu_idles.size() == num_cpus);
 
-			idle = (float)m_inspector->m_analyzer->m_cpu_idles[cpuid] * cpu_state->m_sample_effective_length_ns / 100;
+			idle = (((float)m_inspector->m_analyzer->m_cpu_idles[cpuid]) * cpu_state->m_sample_effective_length_ns) / 100;
 		}
 		else
 		{
 //			g_logger.format(sinsp_logger::SEV_WARNING, "no idle information, can't calculate capacity score");
 //			return -1;
-			idle = 0;
+			idle = cpu_state->m_lastsample_idle_ns;
 		}
 
 		float otherns = (float)(cpu_state->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - idle);
