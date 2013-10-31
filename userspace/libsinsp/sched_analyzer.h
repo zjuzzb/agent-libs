@@ -101,14 +101,13 @@ public:
 	void on_capture_start();
 
 	vector<cpustate2> m_cpu_states;
+	uint64_t m_last_effective_sample_start;
+	uint64_t m_sample_effective_length_ns;
 
 private:
 	void update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid);
 
 	sinsp* m_inspector;
 	uint32_t m_ncpus;
-	uint64_t m_sample_length_ns;
-	uint64_t m_last_effective_sample_start;
-	uint64_t m_sample_effective_length_ns;
-};
+	uint64_t m_sample_length_ns;};
 

@@ -69,7 +69,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(inspector, m_machine_info->num_cpus);
 
-	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer);
+	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer, m_sched_analyzer2);
 
 	m_server_transactions_per_cpu = vector<vector<pair<uint64_t, uint64_t>>>(m_machine_info->num_cpus);
 }
@@ -590,6 +590,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"3!!%.2f",
+			m_host_metrics.m_capacity_score);
+
+		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_4(&m_server_transactions_per_cpu,
+			n_server_threads,
+			m_prev_flush_time_ns, sample_duration);
+
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			"4!!%.2f",
 			m_host_metrics.m_capacity_score);
 
 		syshscore_g = m_score_calculator->get_system_capacity_score_global(&m_transactions_with_cpu,

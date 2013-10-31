@@ -9,10 +9,11 @@
 #include "scores.h"
 #include "sched_analyzer.h"
 
-sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyzer)
+sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyzer, sinsp_sched_analyzer2* sched_analyzer2)
 {
 	m_inspector = inspector;
 	m_sched_analyzer = sched_analyzer;
+	m_sched_analyzer2 = sched_analyzer2;
 	m_sample_length_ns = 0;
 }
 
@@ -382,28 +383,10 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 	//
 	for(cpuid = 0; cpuid < num_cpus; cpuid++)
 	{
-		uint32_t j;
-		vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
+		cpustate2* cpu_state = &m_sched_analyzer2->m_cpu_states[cpuid];
 		float ntr = 0;
-		uint32_t nother = 0;
+		float nother = 0;
 		uint32_t ntrcpu = 0;
-
-//vector<int64_t>v;
-//int64_t tot = 0;
-//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
-//{
-//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
-//	//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
-//	v.push_back(delta);
-//	if(delta >= 0)
-//	{
-//		tot += delta;
-//	}
-//	else
-//	{
-//		int a = 0;
-//	}
-//}
 
 		stack<pair<uint64_t, uint64_t>> transaction_union;
 		uint64_t tot_time;
@@ -411,27 +394,12 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
-		// Claculate the CPU spent while serving transactions
+		// Extract the CPU spent while serving transactions
 		//
-		for(j = 0; j < m_n_intervals_in_sample; j++)
-		{
-			int64_t tid = (*cpu_vector)[j];
-
-			if(tid != 0)
-			{
-				sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
-				if(tinfo != NULL)
-				{
-					if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
-					{
-						ntrcpu++;
-						continue;
-					}
-				}
-
-				nother++;
-			}
-		}
+		ntr = (float)cpu_state->m_lastsample_server_processes_ns * (float)m_n_intervals_in_sample / m_sched_analyzer2->m_sample_effective_length_ns;
+		float otherns = (float)(m_sched_analyzer2->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - cpu_state->m_idle_ns);
+		ASSERT(otherns >= 0);
+		nother = otherns * (float)m_n_intervals_in_sample / m_sched_analyzer2->m_sample_effective_length_ns;
 
 		//
 		// Perform score calculation
@@ -441,15 +409,17 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		if(ntr != 0)
 		{
 			float score;
-			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
+			float fnintervals = (float)m_n_intervals_in_sample;
+
+			float maxcpu = MAX(fnintervals / 2, fnintervals - nother);
 			float avail;
 			if(ntrcpu != 0)
 			{
-				avail = MIN((float)m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+				avail = MIN(fnintervals, ntr * maxcpu / ntrcpu);
 			}
 			else
 			{
-				avail = (float)m_n_intervals_in_sample;
+				avail = fnintervals;
 			}
 
 			float maxavail = MAX(avail, ntr);
