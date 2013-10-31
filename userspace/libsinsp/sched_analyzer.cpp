@@ -276,8 +276,6 @@ void sinsp_sched_analyzer2::on_capture_start()
 void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
 {
 	cpustate2& state = m_cpu_states[cpu];
-	uint64_t time_in_sample = ts % m_sample_length_ns;
-	int64_t oldtid = state.m_last_switch_tid;
 	int64_t delta;
 
 	//
@@ -376,7 +374,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		//
 		sinsp_threadinfo* tinfo = m_inspector->get_thread(state.m_last_switch_tid, false);
 		uint64_t utime = MAX(flush_time - 1, state.m_last_switch_time);
-		update(NULL, utime, j, state.m_last_switch_tid);
+		update(tinfo, utime, j, state.m_last_switch_tid);
 
 		//
 		// Reset the state so we're ready for the next sample
