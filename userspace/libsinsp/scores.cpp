@@ -308,7 +308,13 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_
 			float maxavail = MAX(avail, ntr);
 			score = ntr * 100 / maxavail;
 			ASSERT(score >= 0);
-			ASSERT(score <= 100);
+
+			// Sometimes floating point precision causes the value to go slightly above 100
+			if(score > 100)
+			{
+				ASSERT(score <= 101);
+				score = 100;
+			}
 
 			tot_score += score;
 			n_scores++;
@@ -386,7 +392,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		cpustate2* cpu_state = &m_sched_analyzer2->m_cpu_states[cpuid];
 		float ntr = 0;
 		float nother = 0;
-		uint32_t ntrcpu = 0;
+		float ntrcpu = 0;
 
 		stack<pair<uint64_t, uint64_t>> transaction_union;
 		uint64_t tot_time;
@@ -396,7 +402,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		//
 		// Extract the CPU spent while serving transactions
 		//
-		ntr = (float)cpu_state->m_lastsample_server_processes_ns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
+		ntrcpu = (float)cpu_state->m_lastsample_server_processes_ns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
 		float idle;
 		if(m_inspector->m_analyzer->m_cpu_idles.size() != 0)
 		{
@@ -406,8 +412,9 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "no idle information, can't calculate capacity score");
-			return -1;
+//			g_logger.format(sinsp_logger::SEV_WARNING, "no idle information, can't calculate capacity score");
+//			return -1;
+			idle = 0;
 		}
 
 		float otherns = (float)(cpu_state->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - idle);
@@ -438,7 +445,13 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 			float maxavail = MAX(avail, ntr);
 			score = ntr * 100 / maxavail;
 			ASSERT(score >= 0);
-			ASSERT(score <= 100);
+
+			// Sometimes floating point precision causes the value to go slightly above 100
+			if(score > 100)
+			{
+				ASSERT(score <= 101);
+				score = 100;
+			}
 
 			tot_score += score;
 			n_scores++;
