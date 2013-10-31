@@ -518,6 +518,13 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	{
 		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
 	}
+	else
+	{
+		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+		{
+			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
+		}
+	}
 
 	uint32_t oc = other->m_cpu_time_ns.size();
 

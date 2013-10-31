@@ -108,5 +108,7 @@ private:
 	sinsp* m_inspector;
 	uint32_t m_ncpus;
 	uint64_t m_sample_length_ns;
+	uint64_t m_last_effective_sample_start;
+	uint64_t m_sample_effective_length_ns;
 };
 
