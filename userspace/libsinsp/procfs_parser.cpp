@@ -127,6 +127,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 #endif
 
 	loads->clear();
+	idles->clear();
 
 	FILE* f = fopen("/proc/stat", "r");
 	if(f == NULL)
