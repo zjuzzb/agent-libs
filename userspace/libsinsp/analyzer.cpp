@@ -499,6 +499,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		//
+		// Add the CPU
+		//
+
+		//
 		// Add this thread's counters to the process ones...
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
@@ -520,10 +524,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_client_tr_time_by_servers += it->second.m_external_transaction_metrics.m_counter.m_time_ns_out;
 		}
 
+#ifdef ANALYZER_EMITS_THREADS
 		//
 		// Dump the thread info into the protobuf
 		//
-#ifdef ANALYZER_EMITS_THREADS
 		sinsp_counter_time tot;
 		it->second.m_metrics.get_total(&tot);
 		ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
@@ -985,7 +989,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
-			//m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
+			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
 
 			//
 			// Reset the protobuffer
@@ -1210,7 +1214,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		if(etype == PPME_SCHEDSWITCH_E)
 		{
 			m_sched_analyzer->process_event(evt);
-			//m_sched_analyzer2->process_event(evt);
+			m_sched_analyzer2->process_event(evt);
 			return;
 		}
 	}

@@ -518,6 +518,24 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	{
 		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
 	}
+
+	uint32_t oc = other->m_cpu_time_ns.size();
+
+	if(oc != 0)
+	{
+		if(m_procinfo->m_cpu_time_ns.size() != oc)
+		{
+			ASSERT(m_procinfo->m_cpu_time_ns.size() == 0)
+			{
+				m_procinfo->m_cpu_time_ns.resize(oc);
+			}
+		}
+
+		for(uint32_t j = 0; j < oc; j++)
+		{
+			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
+		}
+	}
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -536,6 +554,12 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_connection_queue_usage_pct = 0;
 	m_cpuload = 0;
 	m_resident_memory_kb = 0;
+
+	vector<uint64_t>::iterator it;
+	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
+	{
+		*it = 0;
+	}
 }
 
 //

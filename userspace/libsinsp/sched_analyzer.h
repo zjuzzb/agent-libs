@@ -70,8 +70,12 @@ public:
 	int64_t m_last_switch_tid;
 	uint64_t m_idle_ns;
 	uint64_t m_other_ns;
+	uint64_t m_unknown_ns;
+	uint64_t m_server_processes_ns;
 	uint64_t m_lastsample_idle_ns;
 	uint64_t m_lastsample_other_ns;
+	uint64_t m_lastsample_unknown_ns;
+	uint64_t m_lastsample_server_processes_ns;
 };
 
 class sinsp_sched_analyzer2

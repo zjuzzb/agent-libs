@@ -20,6 +20,10 @@ public:
 	float get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
+
+	float get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+		uint32_t n_server_threads,
+		uint64_t sample_end_time, uint64_t sample_duration);
 /*
 	int32_t get_system_capacity_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 		uint32_t n_server_threads,

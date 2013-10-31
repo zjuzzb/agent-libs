@@ -351,6 +351,154 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_
 	return -1;
 }
 
+float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
+	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
+{
+	int32_t cpuid;
+	const scap_machine_info* machine_info = m_inspector->get_machine_info();
+	if(machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
+	}
+	int32_t num_cpus = machine_info->num_cpus;
+	ASSERT(num_cpus != 0);
+
+	if(m_sample_length_ns == 0)
+	{
+		m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
+		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+	}
+
+	float max_score = 0;
+	float min_score = 200;
+	float tot_score = 0;
+	uint32_t n_scores = 0;
+	vector<uint64_t> time_by_concurrency;
+	vector<int64_t> cpu_counters;
+
+	//
+	// Go through the CPUs and calculate the rest time for each of them
+	//
+	for(cpuid = 0; cpuid < num_cpus; cpuid++)
+	{
+		uint32_t j;
+		vector<int64_t>* cpu_vector = &m_sched_analyzer->m_cpu_states[cpuid].m_time_segments;
+		float ntr = 0;
+		uint32_t nother = 0;
+		uint32_t ntrcpu = 0;
+
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
+//	int64_t delta = ((*transactions)[cpuid])[k].second - ((*transactions)[cpuid])[k].first;
+//	//	int64_t delta = ((*transactions)[cpuid])[k].first - ((*transactions)[cpuid])[k-1].second;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+
+		stack<pair<uint64_t, uint64_t>> transaction_union;
+		uint64_t tot_time;
+		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
+		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
+
+		//
+		// Claculate the CPU spent while serving transactions
+		//
+		for(j = 0; j < m_n_intervals_in_sample; j++)
+		{
+			int64_t tid = (*cpu_vector)[j];
+
+			if(tid != 0)
+			{
+				sinsp_threadinfo* tinfo = m_inspector->get_thread(tid, false);
+				if(tinfo != NULL)
+				{
+					if(tinfo->m_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						ntrcpu++;
+						continue;
+					}
+				}
+
+				nother++;
+			}
+		}
+
+		//
+		// Perform score calculation
+		//
+		ntr *= m_inspector->m_analyzer->m_local_remote_ratio;
+
+		if(ntr != 0)
+		{
+			float score;
+			uint32_t maxcpu = MAX(m_n_intervals_in_sample / 2, m_n_intervals_in_sample - nother);
+			float avail;
+			if(ntrcpu != 0)
+			{
+				avail = MIN((float)m_n_intervals_in_sample, ntr * maxcpu / ntrcpu);
+			}
+			else
+			{
+				avail = (float)m_n_intervals_in_sample;
+			}
+
+			float maxavail = MAX(avail, ntr);
+			score = ntr * 100 / maxavail;
+			ASSERT(score >= 0);
+			ASSERT(score <= 100);
+
+			tot_score += score;
+			n_scores++;
+
+			if(score > max_score)
+			{
+				max_score = score;
+			}
+
+			if(score < min_score)
+			{
+				min_score = score;
+			}
+		}
+	}
+
+	//
+	// Done scanning the transactions, return the average of the CPU rest times.
+	// NOTE: if the number of scores (= number of processors that have been 
+	//       serving transactions) is smaller than the number of *threads* that 
+	//       have been serving transactions, it means that we have one or servers 
+	//       that are floating across CPUs. In that case, our number would not have 
+	//       sense and we return -1, so the global health score will be used.
+	//
+	if(n_scores != 0 && n_scores <= n_server_threads)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			">>%.2f-%.2f-%.2f (%" PRId32 ")",
+			min_score,
+			max_score,
+			tot_score / n_scores,
+			n_scores);
+
+		return (tot_score / n_scores);
+	}
+	else
+	{
+		return -1;
+	}
+
+	return -1;
+}
+
 /*
 int32_t sinsp_scores::get_system_capacity_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 	uint32_t n_server_threads,

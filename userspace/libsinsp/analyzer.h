@@ -160,6 +160,8 @@ VISIBILITY_PRIVATE
 	// ratio between the the transaction delay introduced by this host and the delay 
 	// caused by the next tiers. Calculated by the score
 	float m_local_remote_ratio;
+	// Time spent by this thread on each of the CPUs
+	vector<uint32_t> m_cpu_time_ns;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

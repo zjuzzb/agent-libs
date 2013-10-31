@@ -252,6 +252,8 @@ void cpustate2::init()
 	m_last_switch_tid = 0;
 	m_idle_ns = 0;
 	m_other_ns = 0;
+	m_unknown_ns = 0;
+	m_server_processes_ns = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -274,7 +276,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	cpustate2& state = m_cpu_states[cpu];
 	uint64_t time_in_sample = ts % m_sample_length_ns;
 	int64_t oldtid = state.m_last_switch_tid;
-	int32_t delta;
+	int64_t delta;
 
 	//
 	// If this is the first sample, just init the values
@@ -289,9 +291,9 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	//
 	// Calculate the delta
 	//
-	delta = (int32_t)(ts - state.m_last_switch_time);
+	delta = (int64_t)(ts - state.m_last_switch_time);
 	ASSERT(delta > 0);
-	ASSERT(delta < m_inspector->m_configuration.get_analyzer_sample_length_ns());
+	ASSERT(delta < (int64_t)m_inspector->m_configuration.get_analyzer_sample_length_ns());
 
 	//
 	// Attribute the delta to the proper thread
@@ -304,10 +306,8 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 		}
 		else
 		{
-			state.m_other_ns += delta;
+			state.m_unknown_ns += delta;
 		}
-
-		return;
 	}
 	else
 	{
@@ -318,6 +318,15 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 		}
 
 		tinfo->m_cpu_time_ns[cpu] += delta;
+
+		if(tinfo->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+		{
+			state.m_server_processes_ns += delta;
+		}
+		else
+		{
+			state.m_other_ns += delta;
+		}
 	}
 
 	//
@@ -371,14 +380,21 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		state.m_last_switch_time = flush_time;
 		state.m_lastsample_idle_ns = state.m_idle_ns;
 		state.m_lastsample_other_ns = state.m_other_ns;
+		state.m_lastsample_unknown_ns = state.m_unknown_ns;
+		state.m_lastsample_server_processes_ns = state.m_server_processes_ns;
 		state.m_idle_ns = 0;
-		uint64_t m_other_ns = 0;
+		state.m_other_ns = 0;
+		state.m_unknown_ns = 0;
+		state.m_server_processes_ns = 0;
 
 #if 1
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
-			"CPU %" PRIu32 " usage2:%.2f",
+			"***CPU %" PRIu32 " server:%" PRIu64 " other:%" PRIu64 " unknown:%" PRIu64 " idle:%" PRIu64,
 			j,
-			(float)state.m_lastsample_idle_ns / 10000000);
+			state.m_lastsample_server_processes_ns,
+			state.m_lastsample_other_ns,
+			state.m_lastsample_unknown_ns,
+			state.m_lastsample_idle_ns);
 #endif
 	}
 }

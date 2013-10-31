@@ -31,6 +31,12 @@ public:
 		m_capacity_score = 0;
 		m_cpuload = 0;
 		m_resident_memory_kb = 0;
+
+		vector<uint64_t>::iterator it;
+		for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+		{
+			*it = 0;
+		}
 	}
 
 	// Aggreaged metrics for the process.
@@ -56,6 +62,8 @@ public:
 	int32_t m_cpuload;
 	// the process resident memory
 	int64_t m_resident_memory_kb;
+	// Time spent by this thread on each of the CPUs
+	vector<uint64_t> m_cpu_time_ns;
 };
 
 //
@@ -153,7 +161,7 @@ public:
 	// the process resident memory
 	int64_t m_resident_memory_kb;
 	// Time spent by this process on each of the CPUs
-	vector<uint32_t> m_cpu_time_ns;
+	vector<uint64_t> m_cpu_time_ns;
 
 
 	//
