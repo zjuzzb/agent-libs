@@ -408,7 +408,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		{
 			ASSERT(m_inspector->m_analyzer->m_cpu_idles.size() == num_cpus);
 
-			idle = (float)m_inspector->m_analyzer->m_cpu_idles[cpuid] * m_n_intervals_in_sample / 100;
+			idle = (float)m_inspector->m_analyzer->m_cpu_idles[cpuid] * cpu_state->m_sample_effective_length_ns / 100;
 		}
 		else
 		{
