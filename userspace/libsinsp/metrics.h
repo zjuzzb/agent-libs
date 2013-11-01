@@ -44,7 +44,7 @@ public:
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bytes* other);
 	void clear();
-	void to_protobuf(draiosproto::counter_time* protobuf_msg);
+	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint32_t nthreads);
 
 	uint32_t m_count;
 	uint64_t m_time_ns;
@@ -100,7 +100,7 @@ public:
 	void add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
 	void add(sinsp_counter_time_bytes* other);
 	void clear();
-	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg);
+	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint32_t nthreads);
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;
@@ -145,6 +145,8 @@ public:
 private:
 	void to_protobuf_full(draiosproto::time_categories* protobuf_msg);
 	void to_protobuf_simple(draiosproto::time_categories* protobuf_msg);
+
+	uint32_t m_nthreads;
 };
 
 //

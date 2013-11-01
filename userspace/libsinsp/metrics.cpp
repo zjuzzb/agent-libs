@@ -42,9 +42,9 @@ void sinsp_counter_time::clear()
 	m_time_ns = 0;
 }
 
-void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg)
+void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, uint32_t nthreads)
 {
-	protobuf_msg->set_time_ns(m_time_ns);
+	protobuf_msg->set_time_ns(m_time_ns / nthreads);
 	protobuf_msg->set_count(m_count);
 }
 
@@ -206,11 +206,11 @@ void sinsp_counter_time_bytes::clear()
 	m_bytes_other = 0;
 }
 
-void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg)
+void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint32_t nthreads)
 {
-	protobuf_msg->set_time_ns_in(m_time_ns_in);
-	protobuf_msg->set_time_ns_out(m_time_ns_out);
-	protobuf_msg->set_time_ns_other(m_time_ns_other);
+	protobuf_msg->set_time_ns_in(m_time_ns_in / nthreads);
+	protobuf_msg->set_time_ns_out(m_time_ns_out / nthreads);
+	protobuf_msg->set_time_ns_other(m_time_ns_other / nthreads);
 	protobuf_msg->set_count_in(m_count_in);
 	protobuf_msg->set_count_out(m_count_out);
 	protobuf_msg->set_count_other(m_count_other);
@@ -241,6 +241,8 @@ void sinsp_counters::clear()
 	m_io_other.clear();
 	m_wait.clear();
 	m_processing.clear();
+
+	m_nthreads = 0;
 }
 
 void sinsp_counters::get_total(sinsp_counter_time* tot)
@@ -283,27 +285,29 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_io_other.add(&other->m_io_other);
 	m_wait.add(&other->m_wait);
 	m_processing.add(&other->m_processing);
+
+	m_nthreads++;
 }
 
 void sinsp_counters::to_protobuf_full(draiosproto::time_categories* protobuf_msg)
 {
-	m_unknown.to_protobuf(protobuf_msg->mutable_unknown());
-	m_other.to_protobuf(protobuf_msg->mutable_other());
-	m_file.to_protobuf(protobuf_msg->mutable_file());
-	m_net.to_protobuf(protobuf_msg->mutable_net());
-	m_ipc.to_protobuf(protobuf_msg->mutable_ipc());
-	m_memory.to_protobuf(protobuf_msg->mutable_memory());
-	m_process.to_protobuf(protobuf_msg->mutable_process());
-	m_sleep.to_protobuf(protobuf_msg->mutable_sleep());
-	m_system.to_protobuf(protobuf_msg->mutable_system());
-	m_signal.to_protobuf(protobuf_msg->mutable_signal());
-	m_user.to_protobuf(protobuf_msg->mutable_user());
-	m_time.to_protobuf(protobuf_msg->mutable_time());
-	m_io_file.to_protobuf(protobuf_msg->mutable_io_file());
-	m_io_net.to_protobuf(protobuf_msg->mutable_io_net());
-	m_io_other.to_protobuf(protobuf_msg->mutable_io_other());
-	m_wait.to_protobuf(protobuf_msg->mutable_wait());
-	m_processing.to_protobuf(protobuf_msg->mutable_processing());
+	m_unknown.to_protobuf(protobuf_msg->mutable_unknown(), m_nthreads);
+	m_other.to_protobuf(protobuf_msg->mutable_other(), m_nthreads);
+	m_file.to_protobuf(protobuf_msg->mutable_file(), m_nthreads);
+	m_net.to_protobuf(protobuf_msg->mutable_net(), m_nthreads);
+	m_ipc.to_protobuf(protobuf_msg->mutable_ipc(), m_nthreads);
+	m_memory.to_protobuf(protobuf_msg->mutable_memory(), m_nthreads);
+	m_process.to_protobuf(protobuf_msg->mutable_process(), m_nthreads);
+	m_sleep.to_protobuf(protobuf_msg->mutable_sleep(), m_nthreads);
+	m_system.to_protobuf(protobuf_msg->mutable_system(), m_nthreads);
+	m_signal.to_protobuf(protobuf_msg->mutable_signal(), m_nthreads);
+	m_user.to_protobuf(protobuf_msg->mutable_user(), m_nthreads);
+	m_time.to_protobuf(protobuf_msg->mutable_time(), m_nthreads);
+	m_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_nthreads);
+	m_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_nthreads);
+	m_io_other.to_protobuf(protobuf_msg->mutable_io_other(), m_nthreads);
+	m_wait.to_protobuf(protobuf_msg->mutable_wait(), m_nthreads);
+	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_nthreads);
 }
 
 void sinsp_counters::to_protobuf_simple(draiosproto::time_categories* protobuf_msg)
@@ -321,16 +325,16 @@ void sinsp_counters::to_protobuf_simple(draiosproto::time_categories* protobuf_m
 	other.add(&m_user);
 	other.add(&m_time);
 	other.add(&m_io_other);
-	other.to_protobuf(protobuf_msg->mutable_other());
+	other.to_protobuf(protobuf_msg->mutable_other(), m_nthreads);
 
 	sinsp_counter_time wait;
 	wait.add(&m_wait);
 	wait.add(&m_sleep);
-	wait.to_protobuf(protobuf_msg->mutable_wait());
+	wait.to_protobuf(protobuf_msg->mutable_wait(), m_nthreads);
 
-	m_io_file.to_protobuf(protobuf_msg->mutable_io_file());
-	m_io_net.to_protobuf(protobuf_msg->mutable_io_net());
-	m_processing.to_protobuf(protobuf_msg->mutable_processing());
+	m_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_nthreads);
+	m_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_nthreads);
+	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_nthreads);
 
 #ifdef _DEBUG
 	sinsp_counter_time ttot;
@@ -340,6 +344,7 @@ void sinsp_counters::to_protobuf_simple(draiosproto::time_categories* protobuf_m
 	ttot.add(&m_io_net);
 	ttot.add(&m_processing);
 	ASSERT(ttot.m_time_ns % 1000000000 == 0);
+	ASSERT(ttot.m_time_ns / 1000000000 == m_nthreads);
 #endif
 }
 
