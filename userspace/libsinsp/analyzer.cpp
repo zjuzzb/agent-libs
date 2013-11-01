@@ -554,12 +554,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	// 1 means no next tiers delay
 	m_local_remote_ratio = 1;
-	if(m_inspector->m_analyzer->m_host_transaction_delay_ns != -1)
+	if(m_host_transaction_delay_ns != -1)
 	{
-		if(m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
+		if(m_host_transaction_metrics.m_counter.m_time_ns_in != 0)
 		{
-			m_local_remote_ratio = (float)m_inspector->m_analyzer->m_host_transaction_delay_ns / 
-				(float)m_inspector->m_analyzer->m_host_transaction_metrics.m_counter.m_time_ns_in;
+			m_local_remote_ratio = (float)m_host_transaction_delay_ns / 
+				(float)m_host_transaction_metrics.m_counter.m_time_ns_in;
 		}
 	}
 
@@ -648,7 +648,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0 ||
-				it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+				it->second.m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER))
 			{
 				//
 				// Basic values
@@ -657,9 +657,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				proc->set_pid(pid);
 				proc->set_comm(it->second.m_comm);
 				proc->set_exe(it->second.m_exe);
-				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
 				{
-					proc->set_is_transaction_server(true);
+					proc->set_is_ipv4_transaction_server(true);
+				}
+				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
+				{
+					proc->set_is_unix_transaction_server(true);
 				}
 
 				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
@@ -701,7 +705,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
-#if 0
+#if 1
 					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;

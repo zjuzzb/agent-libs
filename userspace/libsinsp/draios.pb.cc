@@ -3558,7 +3558,8 @@ const int process::kPidFieldNumber;
 const int process::kCommFieldNumber;
 const int process::kExeFieldNumber;
 const int process::kArgsFieldNumber;
-const int process::kIsTransactionServerFieldNumber;
+const int process::kIsIpv4TransactionServerFieldNumber;
+const int process::kIsUnixTransactionServerFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
@@ -3609,7 +3610,8 @@ void process::SharedCtor() {
   pid_ = GOOGLE_ULONGLONG(0);
   comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  is_transaction_server_ = false;
+  is_ipv4_transaction_server_ = false;
+  is_unix_transaction_server_ = false;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -3674,16 +3676,17 @@ void process::Clear() {
         exe_->clear();
       }
     }
-    is_transaction_server_ = false;
+    is_ipv4_transaction_server_ = false;
+    is_unix_transaction_server_ = false;
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
-    transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
@@ -3755,19 +3758,19 @@ bool process::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(34)) goto parse_args;
-        if (input->ExpectTag(40)) goto parse_is_transaction_server;
+        if (input->ExpectTag(40)) goto parse_is_ipv4_transaction_server;
         break;
       }
 
-      // optional bool is_transaction_server = 5;
+      // optional bool is_ipv4_transaction_server = 5;
       case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_is_transaction_server:
+         parse_is_ipv4_transaction_server:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
-                 input, &is_transaction_server_)));
-          set_has_is_transaction_server();
+                 input, &is_ipv4_transaction_server_)));
+          set_has_is_ipv4_transaction_server();
         } else {
           goto handle_uninterpreted;
         }
@@ -3843,6 +3846,22 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(88)) goto parse_is_unix_transaction_server;
+        break;
+      }
+
+      // optional bool is_unix_transaction_server = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_unix_transaction_server:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_unix_transaction_server_)));
+          set_has_is_unix_transaction_server();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3887,9 +3906,9 @@ void process::SerializeWithCachedSizes(
       4, this->args(i), output);
   }
 
-  // optional bool is_transaction_server = 5;
-  if (has_is_transaction_server()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(5, this->is_transaction_server(), output);
+  // optional bool is_ipv4_transaction_server = 5;
+  if (has_is_ipv4_transaction_server()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(5, this->is_ipv4_transaction_server(), output);
   }
 
   // optional .draiosproto.time_categories tcounters = 6;
@@ -3921,6 +3940,11 @@ void process::SerializeWithCachedSizes(
       10, this->syscall_errors(), output);
   }
 
+  // optional bool is_unix_transaction_server = 11;
+  if (has_is_unix_transaction_server()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(11, this->is_unix_transaction_server(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -3948,8 +3972,13 @@ int process::ByteSize() const {
           this->exe());
     }
 
-    // optional bool is_transaction_server = 5;
-    if (has_is_transaction_server()) {
+    // optional bool is_ipv4_transaction_server = 5;
+    if (has_is_ipv4_transaction_server()) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_unix_transaction_server = 11;
+    if (has_is_unix_transaction_server()) {
       total_size += 1 + 1;
     }
 
@@ -3967,6 +3996,8 @@ int process::ByteSize() const {
           this->transaction_counters());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional uint64 transaction_processing_delay = 8;
     if (has_transaction_processing_delay()) {
       total_size += 1 +
@@ -3974,8 +4005,6 @@ int process::ByteSize() const {
           this->transaction_processing_delay());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.resource_categories resource_counters = 9;
     if (has_resource_counters()) {
       total_size += 1 +
@@ -4022,8 +4051,11 @@ void process::MergeFrom(const process& from) {
     if (from.has_exe()) {
       set_exe(from.exe());
     }
-    if (from.has_is_transaction_server()) {
-      set_is_transaction_server(from.is_transaction_server());
+    if (from.has_is_ipv4_transaction_server()) {
+      set_is_ipv4_transaction_server(from.is_ipv4_transaction_server());
+    }
+    if (from.has_is_unix_transaction_server()) {
+      set_is_unix_transaction_server(from.is_unix_transaction_server());
     }
     if (from.has_tcounters()) {
       mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
@@ -4031,11 +4063,11 @@ void process::MergeFrom(const process& from) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
@@ -4072,7 +4104,8 @@ void process::Swap(process* other) {
     std::swap(comm_, other->comm_);
     std::swap(exe_, other->exe_);
     args_.Swap(&other->args_);
-    std::swap(is_transaction_server_, other->is_transaction_server_);
+    std::swap(is_ipv4_transaction_server_, other->is_ipv4_transaction_server_);
+    std::swap(is_unix_transaction_server_, other->is_unix_transaction_server_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);

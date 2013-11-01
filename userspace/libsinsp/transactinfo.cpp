@@ -35,9 +35,10 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 	}
 }
 
-void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
-								   sinsp_connection *pconn,
-								   sinsp_partial_transaction *tr,
+void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
+								   sinsp_fdinfo* fdinfo,
+								   sinsp_connection* pconn,
+								   sinsp_partial_transaction* tr,
 								   uint32_t len)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
@@ -93,7 +94,20 @@ void sinsp_transaction_table::emit(sinsp_threadinfo *ptinfo,
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
 			m_n_server_transactions++;
-			ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
+
+			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			{
+				ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_SERVER;
+			}
+			else if(fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			{
+				ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_SERVER;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			ptinfo->m_transaction_metrics.m_counter.add_in(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
 
@@ -466,8 +480,9 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 }
 
 void sinsp_partial_transaction::update(sinsp* inspector, 
-	sinsp_threadinfo *ptinfo,
-	sinsp_connection *pconn,
+	sinsp_threadinfo* ptinfo,
+	sinsp_fdinfo* fdinfo,
+	sinsp_connection* pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 
 	int32_t cpuid,
@@ -490,7 +505,7 @@ void sinsp_partial_transaction::update(sinsp* inspector,
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
-		inspector->m_trans_table->emit(ptinfo, pconn, this, datalen);
+		inspector->m_trans_table->emit(ptinfo, fdinfo, pconn, this, datalen);
 	}
 }
 

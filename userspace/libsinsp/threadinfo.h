@@ -81,7 +81,8 @@ public:
 	    AF_INVALID = (1 << 0),
 	    AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
 	    AF_CLOSED = (1 << 2), // thread has been closed. It will have to be removed from the thread table.
-	    AF_IS_SERVER = (1 << 3), // set if this thread serves transactions.
+	    AF_IS_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions.
+	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
 	};
 
 	sinsp_threadinfo();

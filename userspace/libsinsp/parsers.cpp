@@ -38,6 +38,7 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
+BRK(619668);
 	uint16_t etype = evt->get_type();
 
 	//
@@ -1510,6 +1511,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 		{
 			params->m_fdinfo->m_transaction.update(params->m_inspector,
 				params->m_tinfo,
+				params->m_fdinfo,
 				connection,
 				params->m_ts, 
 				params->m_ts, 
@@ -1799,6 +1801,7 @@ void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
 
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
+			fdinfo,
 			connection,
 			0, 
 			0,
@@ -2075,6 +2078,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
+			evt->m_fdinfo,
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
@@ -2304,6 +2308,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		//
 		trinfo->update(m_inspector,
 			evt->m_tinfo,
+			evt->m_fdinfo,
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
@@ -2762,6 +2767,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 
 			evt->m_fdinfo->m_transaction.update(m_inspector,
 				evt->m_tinfo,
+				evt->m_fdinfo,
 				connection,
 				evt->get_ts(), 
 				evt->get_ts(), 

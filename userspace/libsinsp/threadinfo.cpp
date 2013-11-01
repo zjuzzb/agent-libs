@@ -514,20 +514,37 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	m_procinfo->m_cpuload += other->m_cpuload;
 	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
 
-	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+	//
+	// Propagate server flags
+	//
+	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
 	{
-		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
+		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_SERVER;
 	}
 	else
 	{
-		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
 		{
-			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_SERVER;
+			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_SERVER;
 		}
 	}
 
-	uint32_t oc = other->m_cpu_time_ns.size();
+	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
+	{
+		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_SERVER;
+	}
+	else
+	{
+		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
+		{
+			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_SERVER;
+		}
+	}
 
+	//
+	// Propagate the CPU times vector
+	//
+	uint32_t oc = other->m_cpu_time_ns.size();
 	if(oc != 0)
 	{
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
@@ -627,6 +644,7 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 
 						trinfo->update(m_inspector,
 							this,
+							&it->second,
 							connection,
 							0, 
 							0,

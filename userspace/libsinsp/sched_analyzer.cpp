@@ -322,7 +322,12 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 
 		tinfo->m_cpu_time_ns[cpu] += delta;
 
-		if(tinfo->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+		//
+		// XXX
+		// including AF_IS_UNIX_SERVER could catch a lot of noise from stuff like dbus-daemon.
+		// Don't really know how to address it.
+		//
+		if(tinfo->m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER))
 		{
 			state.m_server_processes_ns += delta;
 		}

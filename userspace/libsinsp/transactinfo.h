@@ -65,8 +65,9 @@ public:
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
 	void update(sinsp* inspector, 
-		sinsp_threadinfo *ptinfo,
-		sinsp_connection *pconn,
+		sinsp_threadinfo* ptinfo,
+		sinsp_fdinfo* fdinfo,
+		sinsp_connection* pconn,
 		uint64_t enter_ts, 
 		uint64_t exit_ts, 
 		int32_t cpuid,
@@ -151,9 +152,10 @@ public:
 	void clear();
 
 	//private:
-	void emit(sinsp_threadinfo *ptinfo, 
-		sinsp_connection *pconn,
-		sinsp_partial_transaction *tr,
+	void emit(sinsp_threadinfo* ptinfo, 
+		sinsp_fdinfo* fdinfo,
+		sinsp_connection* pconn,
+		sinsp_partial_transaction* tr,
 		uint32_t len);
 
 	//

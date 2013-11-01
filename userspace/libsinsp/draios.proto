@@ -106,7 +106,8 @@ message process {
   required string exe = 3; // Full command name (e.g. "/bin/top")
   repeated string args = 4; // Command line arguments (e.g. "-d1")
 
-  optional bool is_transaction_server = 5; // True if this process has served at least one transaction.
+  optional bool is_ipv4_transaction_server = 5; // True if this process has served at least one IPv4 transaction.
+  optional bool is_unix_transaction_server = 11; // True if this process has served at least one unix transaction.
   
   optional time_categories tcounters = 6; // The time counters for this thread.
   optional counter_time_bidirectional transaction_counters = 7; // The transaction counters for this process.
@@ -114,6 +115,7 @@ message process {
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional resource_categories resource_counters = 9; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 10; // Syscall error counter
+
 }
 
 //
