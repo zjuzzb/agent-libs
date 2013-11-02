@@ -34,7 +34,7 @@ sinsp_threadinfo::sinsp_threadinfo(sinsp *inspector) :
 void sinsp_threadinfo::init()
 {
 	m_pid = (uint64_t) - 1LL;
-	m_progid = (uint64_t) - 1LL;
+	m_progid = -1LL;
 	set_lastevent_data_validity(false);
 	m_lastevent_type = -1;
 	m_lastevent_ts = 0;
@@ -743,6 +743,25 @@ void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo* thr
 	}
 }
 
+void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* threadinfo)
+{
+	ASSERT(threadinfo->m_pid != threadinfo->m_progid);
+
+	sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo->m_progid, false);
+
+	if(main_thread)
+	{
+		ASSERT(main_thread->m_nchilds);
+		--main_thread->m_nchilds;
+	}
+	else
+	{
+		ASSERT(false);
+	}
+
+	threadinfo->m_progid = -1LL;
+}
+
 void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* threadinfo)
 {
 	sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo->m_ptid, false);
@@ -818,19 +837,9 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 				ASSERT(false);
 			}
 		}
-		else if(it->second.m_progid != -1)
+		else if(it->second.m_progid != -1LL)
 		{
-			ASSERT(it->second.m_pid != it->second.m_progid);
-			sinsp_threadinfo* main_thread = m_inspector->get_thread(it->second.m_progid, false);
-			if(main_thread)
-			{
-				ASSERT(main_thread->m_nchilds);
-				--main_thread->m_nchilds;
-			}
-			else
-			{
-				ASSERT(false);
-			}
+			decrement_program_childcount(&it->second);
 		}
 
 		//

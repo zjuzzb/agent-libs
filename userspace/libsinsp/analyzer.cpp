@@ -777,10 +777,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
 			// an exit for this process. In that case we wait until next sample.
+			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
+			//       not actually remove the thread if it has childs.
 			//
+			it->second.clear_all_metrics();
+
 			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
 			{
-				it->second.clear_all_metrics();
 				++it;
 			}
 			else
