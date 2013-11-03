@@ -124,13 +124,13 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 
 bool sinsp_analyzer::is_main_program_thread(sinsp_threadinfo* ptinfo)
 {
-	if(ptinfo->m_progid != -1)
+	if(ptinfo->m_progid == -1)
 	{
-		return false;
+		return ptinfo->m_tid == ptinfo->m_pid;
 	}
 	else
 	{
-		return ptinfo->m_tid == ptinfo->m_pid;
+		return false;
 	}
 }
 
@@ -154,11 +154,12 @@ sinsp_threadinfo* sinsp_analyzer::get_main_program_thread(sinsp_threadinfo* ptin
 			}
 
 			sinsp_threadinfo *pptinfo = get_main_program_thread(ttinfo);
-
 			ptinfo->m_main_program_thread = pptinfo;
 		}
 		else
 		{
+			sinsp_threadinfo *mtinfo;
+
 			//
 			// Is this a child thread?
 			//
@@ -168,6 +169,7 @@ sinsp_threadinfo* sinsp_analyzer::get_main_program_thread(sinsp_threadinfo* ptin
 				// No, this is either a single thread process or the root thread of a
 				// multithread process,
 				//
+				ptinfo->m_main_program_thread = ptinfo;
 				return ptinfo;
 			}
 			else
@@ -175,15 +177,16 @@ sinsp_threadinfo* sinsp_analyzer::get_main_program_thread(sinsp_threadinfo* ptin
 				//
 				// Yes, this is a child thread. Find the process root thread.
 				//
-				sinsp_threadinfo *ttinfo = m_inspector->get_thread(ptinfo->m_pid, true);
-				if(NULL == ttinfo)
+				mtinfo = m_inspector->get_thread(ptinfo->m_pid, true);
+				if(NULL == mtinfo)
 				{
 					ASSERT(false);
 					return NULL;
 				}
-
-				ptinfo->m_main_program_thread = ttinfo;
 			}
+
+			sinsp_threadinfo *pptinfo = get_main_program_thread(mtinfo);
+			ptinfo->m_main_program_thread = pptinfo;
 		}
 	}
 

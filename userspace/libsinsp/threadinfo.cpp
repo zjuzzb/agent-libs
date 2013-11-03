@@ -297,7 +297,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 		{
 			//
 			// No, this is either a single thread process or the root thread of a
-			// multithread process,
+			// multithread process.
 			//
 			return this;
 		}
