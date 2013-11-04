@@ -38,6 +38,9 @@ sinsp_parser::~sinsp_parser()
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
+//BRK(944);
+//BRK(988);
+BRK(1000);
 	uint16_t etype = evt->get_type();
 
 	//
@@ -767,6 +770,10 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 		evt->m_tinfo->m_flags |= PPM_CL_CLONE_INVERTED;
 	}
 
+	//
+	// The program child count was incremented at clone() time.
+	// execve breaks the program chain, and so we decrement the child count across the program chain.
+	//
 	if(evt->m_tinfo->m_progid != -1LL)
 	{
 		m_inspector->m_thread_manager->decrement_program_childcount(evt->m_tinfo);

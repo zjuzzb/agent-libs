@@ -819,36 +819,40 @@ void sinsp_thread_manager::increment_mainthread_childcount(sinsp_threadinfo* thr
 	}
 }
 
-void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* threadinfo)
-{
-	ASSERT(threadinfo->m_pid != threadinfo->m_progid);
-
-	sinsp_threadinfo* main_thread = m_inspector->get_thread(threadinfo->m_progid, false);
-
-	if(main_thread)
-	{
-		ASSERT(main_thread->m_nchilds);
-		--main_thread->m_nchilds;
-	}
-	else
-	{
-		ASSERT(false);
-	}
-
-	threadinfo->m_progid = -1LL;
-}
-
 void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* threadinfo)
 {
-	sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo->m_ptid, false);
-
-	if(parent_thread)
+	if(threadinfo->is_main_thread())
 	{
-		if(parent_thread->m_comm == threadinfo->m_comm)
+		sinsp_threadinfo* parent_thread = m_inspector->get_thread(threadinfo->m_ptid, false);
+
+		if(parent_thread)
 		{
-			threadinfo->m_progid = parent_thread->m_pid;
-			++parent_thread->m_nchilds;
+			if(parent_thread->m_comm == threadinfo->m_comm)
+			{
+				threadinfo->m_progid = parent_thread->m_pid;
+				++parent_thread->m_nchilds;
+				increment_program_childcount(parent_thread);
+			}
 		}
+	}
+}
+
+void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* threadinfo)
+{
+	if(threadinfo->is_main_thread())
+	{
+		ASSERT(threadinfo->m_pid != threadinfo->m_progid);
+
+		sinsp_threadinfo* prog_thread = m_inspector->get_thread(threadinfo->m_progid, false);
+
+		if(prog_thread)
+		{
+			ASSERT(prog_thread->m_nchilds);
+			--prog_thread->m_nchilds;
+			decrement_program_childcount(prog_thread);
+		}
+
+		threadinfo->m_progid = -1LL;
 	}
 }
 
@@ -896,7 +900,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 	else if(it->second.m_nchilds == 0)
 	{
 		//
-		// Decrement the refcount of the main thread because
+		// Decrement the refcount of the main thread/program because
 		// this reference is gone
 		//
 		if(it->second.m_flags & PPM_CL_CLONE_THREAD)
