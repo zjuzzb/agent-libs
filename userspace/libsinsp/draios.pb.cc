@@ -24,8 +24,9 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete resource_categories::default_instance_;
   delete connection_categories::default_instance_;
   delete host::default_instance_;
-  delete process::default_instance_;
   delete thread::default_instance_;
+  delete process::default_instance_;
+  delete program::default_instance_;
   delete ipv4tuple::default_instance_;
   delete ipv4_connection::default_instance_;
   delete ipv4_network_interface::default_instance_;
@@ -53,8 +54,9 @@ void protobuf_AddDesc_draios_2eproto() {
   resource_categories::default_instance_ = new resource_categories();
   connection_categories::default_instance_ = new connection_categories();
   host::default_instance_ = new host();
-  process::default_instance_ = new process();
   thread::default_instance_ = new thread();
+  process::default_instance_ = new process();
+  program::default_instance_ = new program();
   ipv4tuple::default_instance_ = new ipv4tuple();
   ipv4_connection::default_instance_ = new ipv4_connection();
   ipv4_network_interface::default_instance_ = new ipv4_network_interface();
@@ -68,8 +70,9 @@ void protobuf_AddDesc_draios_2eproto() {
   resource_categories::default_instance_->InitAsDefaultInstance();
   connection_categories::default_instance_->InitAsDefaultInstance();
   host::default_instance_->InitAsDefaultInstance();
-  process::default_instance_->InitAsDefaultInstance();
   thread::default_instance_->InitAsDefaultInstance();
+  process::default_instance_->InitAsDefaultInstance();
+  program::default_instance_->InitAsDefaultInstance();
   ipv4tuple::default_instance_->InitAsDefaultInstance();
   ipv4_connection::default_instance_->InitAsDefaultInstance();
   ipv4_network_interface::default_instance_->InitAsDefaultInstance();
@@ -3554,6 +3557,301 @@ void host::Swap(host* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int thread::kPidFieldNumber;
+const int thread::kTidFieldNumber;
+const int thread::kTcountersFieldNumber;
+const int thread::kTransactionCountersFieldNumber;
+#endif  // !_MSC_VER
+
+thread::thread()
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+}
+
+void thread::InitAsDefaultInstance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  tcounters_ = const_cast< ::draiosproto::time_categories*>(
+      ::draiosproto::time_categories::internal_default_instance());
+#else
+  tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(
+      ::draiosproto::counter_time_bidirectional::internal_default_instance());
+#else
+  transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+#endif
+}
+
+thread::thread(const thread& from)
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void thread::SharedCtor() {
+  _cached_size_ = 0;
+  pid_ = GOOGLE_ULONGLONG(0);
+  tid_ = GOOGLE_ULONGLONG(0);
+  tcounters_ = NULL;
+  transaction_counters_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+thread::~thread() {
+  SharedDtor();
+}
+
+void thread::SharedDtor() {
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  if (this != &default_instance()) {
+  #else
+  if (this != default_instance_) {
+  #endif
+    delete tcounters_;
+    delete transaction_counters_;
+  }
+}
+
+void thread::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const thread& thread::default_instance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  protobuf_AddDesc_draios_2eproto();
+#else
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+#endif
+  return *default_instance_;
+}
+
+thread* thread::default_instance_ = NULL;
+
+thread* thread::New() const {
+  return new thread;
+}
+
+void thread::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    pid_ = GOOGLE_ULONGLONG(0);
+    tid_ = GOOGLE_ULONGLONG(0);
+    if (has_tcounters()) {
+      if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
+    }
+    if (has_transaction_counters()) {
+      if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+bool thread::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required uint64 pid = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &pid_)));
+          set_has_pid();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(16)) goto parse_tid;
+        break;
+      }
+
+      // required uint64 tid = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_tid:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &tid_)));
+          set_has_tid();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_tcounters;
+        break;
+      }
+
+      // optional .draiosproto.time_categories tcounters = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_tcounters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_tcounters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(42)) goto parse_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void thread::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required uint64 pid = 1;
+  if (has_pid()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->pid(), output);
+  }
+
+  // required uint64 tid = 2;
+  if (has_tid()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(2, this->tid(), output);
+  }
+
+  // optional .draiosproto.time_categories tcounters = 3;
+  if (has_tcounters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      3, this->tcounters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
+  if (has_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      5, this->transaction_counters(), output);
+  }
+
+}
+
+int thread::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required uint64 pid = 1;
+    if (has_pid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->pid());
+    }
+
+    // required uint64 tid = 2;
+    if (has_tid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->tid());
+    }
+
+    // optional .draiosproto.time_categories tcounters = 3;
+    if (has_tcounters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->tcounters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
+    if (has_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->transaction_counters());
+    }
+
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void thread::CheckTypeAndMergeFrom(
+    const ::google::protobuf::MessageLite& from) {
+  MergeFrom(*::google::protobuf::down_cast<const thread*>(&from));
+}
+
+void thread::MergeFrom(const thread& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_pid()) {
+      set_pid(from.pid());
+    }
+    if (from.has_tid()) {
+      set_tid(from.tid());
+    }
+    if (from.has_tcounters()) {
+      mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
+    }
+    if (from.has_transaction_counters()) {
+      mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
+    }
+  }
+}
+
+void thread::CopyFrom(const thread& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool thread::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  if (has_tcounters()) {
+    if (!this->tcounters().IsInitialized()) return false;
+  }
+  if (has_transaction_counters()) {
+    if (!this->transaction_counters().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void thread::Swap(thread* other) {
+  if (other != this) {
+    std::swap(pid_, other->pid_);
+    std::swap(tid_, other->tid_);
+    std::swap(tcounters_, other->tcounters_);
+    std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::std::string thread::GetTypeName() const {
+  return "draiosproto.thread";
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int process::kPidFieldNumber;
 const int process::kCommFieldNumber;
 const int process::kExeFieldNumber;
@@ -4124,68 +4422,56 @@ void process::Swap(process* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int thread::kPidFieldNumber;
-const int thread::kTidFieldNumber;
-const int thread::kTcountersFieldNumber;
-const int thread::kTransactionCountersFieldNumber;
+const int program::kProcinfoFieldNumber;
+const int program::kPidsFieldNumber;
 #endif  // !_MSC_VER
 
-thread::thread()
+program::program()
   : ::google::protobuf::MessageLite() {
   SharedCtor();
 }
 
-void thread::InitAsDefaultInstance() {
+void program::InitAsDefaultInstance() {
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  tcounters_ = const_cast< ::draiosproto::time_categories*>(
-      ::draiosproto::time_categories::internal_default_instance());
+  procinfo_ = const_cast< ::draiosproto::process*>(
+      ::draiosproto::process::internal_default_instance());
 #else
-  tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
-#endif
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(
-      ::draiosproto::counter_time_bidirectional::internal_default_instance());
-#else
-  transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  procinfo_ = const_cast< ::draiosproto::process*>(&::draiosproto::process::default_instance());
 #endif
 }
 
-thread::thread(const thread& from)
+program::program(const program& from)
   : ::google::protobuf::MessageLite() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void thread::SharedCtor() {
+void program::SharedCtor() {
   _cached_size_ = 0;
-  pid_ = GOOGLE_ULONGLONG(0);
-  tid_ = GOOGLE_ULONGLONG(0);
-  tcounters_ = NULL;
-  transaction_counters_ = NULL;
+  procinfo_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-thread::~thread() {
+program::~program() {
   SharedDtor();
 }
 
-void thread::SharedDtor() {
+void program::SharedDtor() {
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
   #else
   if (this != default_instance_) {
   #endif
-    delete tcounters_;
-    delete transaction_counters_;
+    delete procinfo_;
   }
 }
 
-void thread::SetCachedSize(int size) const {
+void program::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const thread& thread::default_instance() {
+const program& program::default_instance() {
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   protobuf_AddDesc_draios_2eproto();
 #else
@@ -4194,87 +4480,59 @@ const thread& thread::default_instance() {
   return *default_instance_;
 }
 
-thread* thread::default_instance_ = NULL;
+program* program::default_instance_ = NULL;
 
-thread* thread::New() const {
-  return new thread;
+program* program::New() const {
+  return new program;
 }
 
-void thread::Clear() {
+void program::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    pid_ = GOOGLE_ULONGLONG(0);
-    tid_ = GOOGLE_ULONGLONG(0);
-    if (has_tcounters()) {
-      if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
-    }
-    if (has_transaction_counters()) {
-      if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    if (has_procinfo()) {
+      if (procinfo_ != NULL) procinfo_->::draiosproto::process::Clear();
     }
   }
+  pids_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-bool thread::MergePartialFromCodedStream(
+bool program::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required uint64 pid = 1;
+      // required .draiosproto.process procinfo = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &pid_)));
-          set_has_pid();
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_procinfo()));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(16)) goto parse_tid;
+        if (input->ExpectTag(16)) goto parse_pids;
         break;
       }
 
-      // required uint64 tid = 2;
+      // repeated uint64 pids = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_tid:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+         parse_pids:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &tid_)));
-          set_has_tid();
+                 1, 16, input, this->mutable_pids())));
+        } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
+                   == ::google::protobuf::internal::WireFormatLite::
+                      WIRETYPE_LENGTH_DELIMITED) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, this->mutable_pids())));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_tcounters;
-        break;
-      }
-
-      // optional .draiosproto.time_categories tcounters = 3;
-      case 3: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_tcounters:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_tcounters()));
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(42)) goto parse_transaction_counters;
-        break;
-      }
-
-      // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
-      case 5: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_transaction_counters:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_transaction_counters()));
-        } else {
-          goto handle_uninterpreted;
-        }
+        if (input->ExpectTag(16)) goto parse_pids;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -4294,125 +4552,91 @@ bool thread::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void thread::SerializeWithCachedSizes(
+void program::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required uint64 pid = 1;
-  if (has_pid()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->pid(), output);
-  }
-
-  // required uint64 tid = 2;
-  if (has_tid()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(2, this->tid(), output);
-  }
-
-  // optional .draiosproto.time_categories tcounters = 3;
-  if (has_tcounters()) {
+  // required .draiosproto.process procinfo = 1;
+  if (has_procinfo()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      3, this->tcounters(), output);
+      1, this->procinfo(), output);
   }
 
-  // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
-  if (has_transaction_counters()) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessage(
-      5, this->transaction_counters(), output);
+  // repeated uint64 pids = 2;
+  for (int i = 0; i < this->pids_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(
+      2, this->pids(i), output);
   }
 
 }
 
-int thread::ByteSize() const {
+int program::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required uint64 pid = 1;
-    if (has_pid()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->pid());
-    }
-
-    // required uint64 tid = 2;
-    if (has_tid()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->tid());
-    }
-
-    // optional .draiosproto.time_categories tcounters = 3;
-    if (has_tcounters()) {
+    // required .draiosproto.process procinfo = 1;
+    if (has_procinfo()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->tcounters());
-    }
-
-    // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
-    if (has_transaction_counters()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->transaction_counters());
+          this->procinfo());
     }
 
   }
+  // repeated uint64 pids = 2;
+  {
+    int data_size = 0;
+    for (int i = 0; i < this->pids_size(); i++) {
+      data_size += ::google::protobuf::internal::WireFormatLite::
+        UInt64Size(this->pids(i));
+    }
+    total_size += 1 * this->pids_size() + data_size;
+  }
+
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
   return total_size;
 }
 
-void thread::CheckTypeAndMergeFrom(
+void program::CheckTypeAndMergeFrom(
     const ::google::protobuf::MessageLite& from) {
-  MergeFrom(*::google::protobuf::down_cast<const thread*>(&from));
+  MergeFrom(*::google::protobuf::down_cast<const program*>(&from));
 }
 
-void thread::MergeFrom(const thread& from) {
+void program::MergeFrom(const program& from) {
   GOOGLE_CHECK_NE(&from, this);
+  pids_.MergeFrom(from.pids_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_pid()) {
-      set_pid(from.pid());
-    }
-    if (from.has_tid()) {
-      set_tid(from.tid());
-    }
-    if (from.has_tcounters()) {
-      mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
-    }
-    if (from.has_transaction_counters()) {
-      mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
+    if (from.has_procinfo()) {
+      mutable_procinfo()->::draiosproto::process::MergeFrom(from.procinfo());
     }
   }
 }
 
-void thread::CopyFrom(const thread& from) {
+void program::CopyFrom(const program& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool thread::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+bool program::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
-  if (has_tcounters()) {
-    if (!this->tcounters().IsInitialized()) return false;
-  }
-  if (has_transaction_counters()) {
-    if (!this->transaction_counters().IsInitialized()) return false;
+  if (has_procinfo()) {
+    if (!this->procinfo().IsInitialized()) return false;
   }
   return true;
 }
 
-void thread::Swap(thread* other) {
+void program::Swap(program* other) {
   if (other != this) {
-    std::swap(pid_, other->pid_);
-    std::swap(tid_, other->tid_);
-    std::swap(tcounters_, other->tcounters_);
-    std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(procinfo_, other->procinfo_);
+    pids_.Swap(&other->pids_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
 }
 
-::std::string thread::GetTypeName() const {
-  return "draiosproto.thread";
+::std::string program::GetTypeName() const {
+  return "draiosproto.program";
 }
 
 
@@ -5375,6 +5599,7 @@ const int metrics::kTimestampNsFieldNumber;
 const int metrics::kMachineIdFieldNumber;
 const int metrics::kCustomerIdFieldNumber;
 const int metrics::kHostinfoFieldNumber;
+const int metrics::kProgramsFieldNumber;
 const int metrics::kProcessesFieldNumber;
 const int metrics::kThreadsFieldNumber;
 const int metrics::kIpv4ConnectionsFieldNumber;
@@ -5467,6 +5692,7 @@ void metrics::Clear() {
       if (hostinfo_ != NULL) hostinfo_->::draiosproto::host::Clear();
     }
   }
+  programs_.Clear();
   processes_.Clear();
   threads_.Clear();
   ipv4_connections_.Clear();
@@ -5593,6 +5819,21 @@ bool metrics::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(66)) goto parse_ipv4_network_interfaces;
+        if (input->ExpectTag(74)) goto parse_programs;
+        break;
+      }
+
+      // repeated .draiosproto.program programs = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_programs:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_programs()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(74)) goto parse_programs;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -5661,6 +5902,12 @@ void metrics::SerializeWithCachedSizes(
       8, this->ipv4_network_interfaces(i), output);
   }
 
+  // repeated .draiosproto.program programs = 9;
+  for (int i = 0; i < this->programs_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      9, this->programs(i), output);
+  }
+
 }
 
 int metrics::ByteSize() const {
@@ -5696,6 +5943,14 @@ int metrics::ByteSize() const {
     }
 
   }
+  // repeated .draiosproto.program programs = 9;
+  total_size += 1 * this->programs_size();
+  for (int i = 0; i < this->programs_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->programs(i));
+  }
+
   // repeated .draiosproto.process processes = 5;
   total_size += 1 * this->processes_size();
   for (int i = 0; i < this->processes_size(); i++) {
@@ -5741,6 +5996,7 @@ void metrics::CheckTypeAndMergeFrom(
 
 void metrics::MergeFrom(const metrics& from) {
   GOOGLE_CHECK_NE(&from, this);
+  programs_.MergeFrom(from.programs_);
   processes_.MergeFrom(from.processes_);
   threads_.MergeFrom(from.threads_);
   ipv4_connections_.MergeFrom(from.ipv4_connections_);
@@ -5773,6 +6029,9 @@ bool metrics::IsInitialized() const {
   if (has_hostinfo()) {
     if (!this->hostinfo().IsInitialized()) return false;
   }
+  for (int i = 0; i < programs_size(); i++) {
+    if (!this->programs(i).IsInitialized()) return false;
+  }
   for (int i = 0; i < processes_size(); i++) {
     if (!this->processes(i).IsInitialized()) return false;
   }
@@ -5794,6 +6053,7 @@ void metrics::Swap(metrics* other) {
     std::swap(machine_id_, other->machine_id_);
     std::swap(customer_id_, other->customer_id_);
     std::swap(hostinfo_, other->hostinfo_);
+    programs_.Swap(&other->programs_);
     processes_.Swap(&other->processes_);
     threads_.Swap(&other->threads_);
     ipv4_connections_.Swap(&other->ipv4_connections_);

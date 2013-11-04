@@ -37,6 +37,10 @@ public:
 		{
 			*it = 0;
 		}
+
+#ifdef ANALYZER_EMITS_PROGRAMS
+		m_program_pids.clear();
+#endif
 	}
 
 	// Aggreaged metrics for the process.
@@ -64,6 +68,10 @@ public:
 	int64_t m_resident_memory_kb;
 	// Time spent by this thread on each of the CPUs
 	vector<uint64_t> m_cpu_time_ns;
+	// list of processes that are part of this program
+#ifdef ANALYZER_EMITS_PROGRAMS
+	vector<int64_t> m_program_pids;
+#endif
 };
 
 //
@@ -236,7 +244,8 @@ public:
 private:
 	void increment_mainthread_childcount(sinsp_threadinfo* threadinfo);
 	void increment_program_childcount(sinsp_threadinfo* threadinfo);
-	void decrement_program_childcount(sinsp_threadinfo* threadinfo);
+	// Don't set level, it's for internal use
+	void decrement_program_childcount(sinsp_threadinfo* threadinfo, uint32_t level = 0);
 	sinsp* m_inspector;
 	threadinfo_map_t m_threadtable;
 	int64_t m_last_tid;

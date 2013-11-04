@@ -43,7 +43,7 @@
 // If this is defined, the analyzer will include program information inside
 // the protocol buffers that it sends to the agent
 //
-#undef ANALYZER_EMITS_PROGRAMS
+#define ANALYZER_EMITS_PROGRAMS
 
 //
 // The min and max size for the memory buffer used as a target for protobuf 

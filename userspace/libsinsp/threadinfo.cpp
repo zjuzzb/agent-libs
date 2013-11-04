@@ -354,7 +354,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_program_thread()
 				return NULL;
 			}
 
-			sinsp_threadinfo *pptinfo = get_main_program_thread();
+			sinsp_threadinfo *pptinfo = ttinfo->get_main_program_thread();
 			m_main_program_thread = pptinfo;
 		}
 		else
@@ -388,7 +388,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_program_thread()
 				}
 			}
 
-			sinsp_threadinfo *pptinfo = get_main_program_thread();
+			sinsp_threadinfo *pptinfo = mtinfo->get_main_program_thread();
 			m_main_program_thread = pptinfo;
 		}
 	}
@@ -636,6 +636,14 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
 		}
 	}
+
+	//
+	// If we are returning programs to the backend, add the child pid to the
+	// m_program_pids list
+	//
+#ifdef ANALYZER_EMITS_PROGRAMS
+	m_procinfo->m_program_pids.push_back(other->m_pid);
+#endif
 }
 
 void sinsp_threadinfo::clear_all_metrics()
@@ -837,7 +845,8 @@ void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* thread
 	}
 }
 
-void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* threadinfo)
+// Don't set level, it's for internal use
+void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* threadinfo, uint32_t level)
 {
 	if(threadinfo->is_main_thread())
 	{
@@ -849,10 +858,13 @@ void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* thread
 		{
 			ASSERT(prog_thread->m_nchilds);
 			--prog_thread->m_nchilds;
-			decrement_program_childcount(prog_thread);
+			decrement_program_childcount(prog_thread, level + 1);
 		}
 
-		threadinfo->m_progid = -1LL;
+		if(level == 0)
+		{
+			threadinfo->m_progid = -1LL;
+		}
 	}
 }
 

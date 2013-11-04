@@ -31,8 +31,6 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-#undef ANALYZER_EMITS_PROGRAMS
-
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_aggregated_ipv4_table(inspector)
 {
@@ -575,17 +573,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifdef ANALYZER_EMITS_PROCESSES
 			sinsp_counter_time tot;
 	
-			ASSERT(it->second.m_procinfo);
+			ASSERT(it->second.m_procinfo != NULL);
+
 			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0 ||
 				it->second.m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER))
 			{
+#ifdef ANALYZER_EMITS_PROGRAMS
+				draiosproto::program* prog = m_metrics->add_programs();
+				draiosproto::process* proc = prog->mutable_procinfo();
+
+				vector<int64_t>* pids = &it->second.m_procinfo->m_program_pids;
+				for(uint32_t jj = 0; jj < pids->size(); jj++)
+				{
+					prog->add_pids((*pids)[jj]);
+				}
+#else // ANALYZER_EMITS_PROGRAMS
+				draiosproto::process* proc = m_metrics->add_processes();
+#endif // ANALYZER_EMITS_PROGRAMS
+
 				//
 				// Basic values
 				//
-				draiosproto::process* proc = m_metrics->add_processes();
 				proc->set_pid(pid);
 				proc->set_comm(it->second.m_comm);
 				proc->set_exe(it->second.m_exe);
