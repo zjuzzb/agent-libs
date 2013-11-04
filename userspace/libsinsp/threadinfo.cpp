@@ -864,6 +864,7 @@ void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* thread
 		if(level == 0)
 		{
 			threadinfo->m_progid = -1LL;
+			threadinfo->m_main_program_thread = NULL;
 		}
 	}
 }
