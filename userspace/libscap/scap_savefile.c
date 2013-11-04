@@ -605,6 +605,13 @@ int32_t scap_dump(scap_t *handle, scap_dumper_t *d, scap_evt *event, uint16_t cp
 		return SCAP_FAILURE;
 	}
 
+	//
+	// Enalbe this to make sure that everything is saved to disk during the tests
+	//
+#if 0
+	fflush(f);
+#endif
+
 	return SCAP_SUCCESS;
 }
 
