@@ -782,3 +782,142 @@ TEST_F(sys_call_test, procfs_globalmemory)
 		sleep(1);
 	}
 }
+
+class childthread
+{
+public:
+	void run()
+	{
+		m_tid = syscall(SYS_gettid);
+		tee(-1, -1, 0, 0);
+		sleep(1);
+	}
+
+	int64_t get_tid()
+	{
+		return m_tid;
+	}
+
+private:
+	int64_t m_tid;
+};
+
+TEST_F(sys_call_test, program_child_with_threads)
+{
+	int ctid;
+	int cctid;
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return true;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		ctid = fork();
+
+		if(ctid == 0)
+		{
+			//
+			// CHILD PROCESS
+			//
+			cctid = fork();
+	
+			if(cctid == 0)
+			{
+				//
+				// GRANDCHILD PROCESS
+				//
+				Poco::Thread th;
+				childthread ct;
+				Poco::RunnableAdapter<childthread> runnable(ct, &childthread::run);
+				th.start(runnable);
+				th.join();
+				tee(-1, -1, 0, 0);
+				_exit(0);
+			}
+			else
+			{
+				int status;
+				wait(&status);	// wait for child to exit, and store its status
+								// Use WEXITSTATUS to validate status.
+								// some time so the samples can flush
+				sleep(2);
+				tee(-1, -1, 0, 0);
+				_exit(0);
+			}
+		}
+		else
+		{
+			int status;
+			wait(&status);	// wait for child to exit, and store its status
+							// Use WEXITSTATUS to validate status.
+							// some time so the samples can flush
+			sleep(2);
+//			tee(-1, -1, 0, 0);
+			sleep(1);
+		}
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* evt = param.m_evt;
+		uint16_t type = evt->get_type();
+
+		if(type == PPME_GENERIC_E)
+		{
+			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			{
+				if(callnum == 0)
+				{
+					sinsp_threadinfo* tinfo;
+
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					EXPECT_EQ((uint64_t)0, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)3, tinfo->m_nchilds);
+				}
+				else if(callnum == 1)
+				{
+					sinsp_threadinfo* tinfo;
+
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)3, tinfo->m_nchilds);
+				}
+				else if(callnum == 2)
+				{
+					sinsp_threadinfo* tinfo;
+
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					EXPECT_EQ((uint64_t)0, tinfo->m_nchilds);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					EXPECT_EQ((uint64_t)2, tinfo->m_nchilds);
+				}
+
+				callnum++;
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+//	EXPECT_EQ(2, callnum);
+}
