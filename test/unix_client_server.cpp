@@ -41,7 +41,6 @@ using Poco::NumberFormatter;
 class unix_server
 {
 public:
-
 	void run()
 	{
 		int sockfd;
@@ -114,7 +113,6 @@ private:
 class unix_client
 {
 public:
-
 	void run()
 	{
 		int sockfd, servlen;
