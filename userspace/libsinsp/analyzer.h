@@ -86,8 +86,6 @@ public:
 	}
 
 VISIBILITY_PRIVATE
-	bool is_main_program_thread(sinsp_threadinfo* ptinfo);
-	sinsp_threadinfo* get_main_program_thread(sinsp_threadinfo* ptinfo);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
 	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);

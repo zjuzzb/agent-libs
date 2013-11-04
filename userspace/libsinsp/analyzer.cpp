@@ -122,77 +122,6 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	m_sample_callback = cb;
 }
 
-bool sinsp_analyzer::is_main_program_thread(sinsp_threadinfo* ptinfo)
-{
-	if(ptinfo->m_progid == -1)
-	{
-		return ptinfo->m_tid == ptinfo->m_pid;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-sinsp_threadinfo* sinsp_analyzer::get_main_program_thread(sinsp_threadinfo* ptinfo)
-{
-	if(ptinfo->m_main_program_thread == NULL)
-	{
-		//
-		// Is this a sub-process?
-		//
-		if(ptinfo->m_progid != -1)
-		{
-			//
-			// Yes, this is a child sub-process. Find the progrm root thread.
-			//
-			sinsp_threadinfo *ttinfo = m_inspector->get_thread(ptinfo->m_progid, true);
-			if(NULL == ttinfo)
-			{
-				ASSERT(false);
-				return NULL;
-			}
-
-			sinsp_threadinfo *pptinfo = get_main_program_thread(ttinfo);
-			ptinfo->m_main_program_thread = pptinfo;
-		}
-		else
-		{
-			sinsp_threadinfo *mtinfo;
-
-			//
-			// Is this a child thread?
-			//
-			if(ptinfo->m_pid == ptinfo->m_tid)
-			{
-				//
-				// No, this is either a single thread process or the root thread of a
-				// multithread process,
-				//
-				ptinfo->m_main_program_thread = ptinfo;
-				return ptinfo;
-			}
-			else
-			{
-				//
-				// Yes, this is a child thread. Find the process root thread.
-				//
-				mtinfo = m_inspector->get_thread(ptinfo->m_pid, true);
-				if(NULL == mtinfo)
-				{
-					ASSERT(false);
-					return NULL;
-				}
-			}
-
-			sinsp_threadinfo *pptinfo = get_main_program_thread(mtinfo);
-			ptinfo->m_main_program_thread = pptinfo;
-		}
-	}
-
-	return ptinfo->m_main_program_thread;
-}
-
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 {
 	//
@@ -509,7 +438,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Add this thread's counters to the process ones...
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		sinsp_threadinfo* mtinfo = get_main_program_thread(&it->second);
+		sinsp_threadinfo* mtinfo = it->second.get_main_program_thread();
 #else
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 #endif
@@ -636,7 +565,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// section too
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		if(is_main_program_thread(&it->second))
+		if(it->second.is_main_program_thread())
 #else
 		if(it->second.is_main_thread())
 #endif
@@ -1350,7 +1279,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
 #ifdef ANALYZER_EMITS_PROGRAMS
-			sinsp_threadinfo* parentinfo = get_main_program_thread(evt->m_tinfo);
+			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_program_thread();
 #else
 			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
 #endif

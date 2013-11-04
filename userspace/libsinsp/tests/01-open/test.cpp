@@ -272,7 +272,7 @@ captureinfo do_inspect(sinsp* inspector,
 
 			for(j = 0; j < ev->get_num_params(); j++)
 			{
-				if(ev->get_type() == 15 && j == 7)	// Custom treatment for CLONE_EXIT
+				if(ev->get_type() == 15 && j == 8)	// Custom treatment for CLONE_EXIT
 				{
 					sinsp_evt_param* param = ev->get_param(j);
 					int32_t val = *(int32_t*)param->m_val;

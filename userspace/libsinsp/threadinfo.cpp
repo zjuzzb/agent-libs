@@ -298,6 +298,9 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 			//
 			// No, this is either a single thread process or the root thread of a
 			// multithread process.
+			// Note: we don't set m_main_thread because there are cases in which this is 
+			//       invoked for a threadinfo that is in the stack. Caching the this pointer
+			//       would cause future mess.
 			//
 			return this;
 		}
@@ -318,6 +321,79 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 	}
 
 	return m_main_thread;
+}
+
+bool sinsp_threadinfo::is_main_program_thread()
+{
+	if(m_progid == -1)
+	{
+		return m_tid == m_pid;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+sinsp_threadinfo* sinsp_threadinfo::get_main_program_thread()
+{
+	if(m_main_program_thread == NULL)
+	{
+		//
+		// Is this a sub-process?
+		//
+		if(m_progid != -1)
+		{
+			//
+			// Yes, this is a child sub-process. Find the progrm root thread.
+			//
+			sinsp_threadinfo *ttinfo = m_inspector->get_thread(m_progid, true);
+			if(NULL == ttinfo)
+			{
+				ASSERT(false);
+				return NULL;
+			}
+
+			sinsp_threadinfo *pptinfo = get_main_program_thread();
+			m_main_program_thread = pptinfo;
+		}
+		else
+		{
+			sinsp_threadinfo *mtinfo;
+
+			//
+			// Is this a child thread?
+			//
+			if(m_pid == m_tid)
+			{
+				//
+				// No, this is either a single thread process or the root thread of a
+				// multithread process.
+				// Note: we don't set m_main_thread because there are cases in which this is 
+				//       invoked for a threadinfo that is in the stack. Caching the this pointer
+				//       would cause future mess.
+				//
+				return this;
+			}
+			else
+			{
+				//
+				// Yes, this is a child thread. Find the process root thread.
+				//
+				mtinfo = m_inspector->get_thread(m_pid, true);
+				if(NULL == mtinfo)
+				{
+					ASSERT(false);
+					return NULL;
+				}
+			}
+
+			sinsp_threadinfo *pptinfo = get_main_program_thread();
+			m_main_program_thread = pptinfo;
+		}
+	}
+
+	return m_main_program_thread;
 }
 
 sinsp_fdtable* sinsp_threadinfo::get_fd_table()

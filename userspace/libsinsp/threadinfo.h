@@ -101,6 +101,10 @@ public:
 	bool is_main_thread();
 	sinsp_threadinfo* get_main_thread();
 	sinsp_fdinfo *get_fd(int64_t fd);
+#ifdef HAS_ANALYZER
+	bool is_main_program_thread();
+	sinsp_threadinfo* get_main_program_thread();
+#endif
 
 	void print_on(FILE *f);
 
