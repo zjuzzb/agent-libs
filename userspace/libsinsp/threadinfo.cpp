@@ -68,11 +68,6 @@ void sinsp_threadinfo::fix_sockets_coming_from_proc()
 	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
 	sinsp_fdtable* fdtable = get_fd_table();
 
-if(m_tid == 14885)
-{
-	int a = 0;
-}
-
 	//
 	// Second pass: fix the sockets so that they are ordered by client->server
 	//
@@ -206,6 +201,13 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 			newfdi.m_info.m_ipv6serverinfo.m_port = fdi->info.ipv6serverinfo.port;
 			newfdi.m_info.m_ipv6serverinfo.m_l4proto = fdi->info.ipv6serverinfo.l4proto;
 			//newfdi.m_name = newfi.m_info.m_ipv6serverinfo.to_string();
+
+			//
+			// We keep note of all the host bound server ports.
+			// We'll need them later when patching connections direction.
+			//
+			m_inspector->m_thread_manager->m_server_ports.insert(newfdi.m_info.m_ipv6serverinfo.m_port);
+
 			break;
 		case SCAP_FD_UNIX_SOCK:
 			newfdi.m_info.m_unixinfo.m_fields.m_source = fdi->info.unix_socket_info.source;
@@ -242,8 +244,6 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 			m_fdtable.add(fdi->fd, &newfdi);
 		}
 	}
-
-//	fix_sockets_coming_from_proc();
 }
 
 string sinsp_threadinfo::get_comm()
