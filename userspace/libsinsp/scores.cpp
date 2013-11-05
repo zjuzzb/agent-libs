@@ -955,10 +955,10 @@ float sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info
 		uint32_t n_server_threads, uint64_t sample_end_time, uint64_t sample_duration)
 {
 	float local_remote_ratio = 1;
-	uint64_t proc_transaction_processing_delay_ns = mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns;
+	int64_t proc_transaction_processing_delay_ns = mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns;
 	uint64_t time_ns_in = mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 
-	if(proc_transaction_processing_delay_ns != -1)
+	if(proc_transaction_processing_delay_ns != -1LL)
 	{
 		if(time_ns_in != 0)
 		{
