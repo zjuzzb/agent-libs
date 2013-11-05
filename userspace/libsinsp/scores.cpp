@@ -410,6 +410,12 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 			&transaction_union, 
 			&tot_time, 
 			(program_info)? program_info->m_pid : -1LL);
+
+		if(tot_time > m_sample_length_ns)
+		{
+			tot_time = m_sample_length_ns;
+		}
+
 		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
@@ -417,9 +423,9 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 		//
 		ASSERT((program_info == NULL) || (program_info && program_info->m_procinfo != NULL));
 		ASSERT((program_info == NULL) || (program_info && (int32_t)program_info->m_procinfo->m_cpu_time_ns.size() == num_cpus));
-		uint64_t trtime = (program_info)? program_info->m_procinfo->m_cpu_time_ns[cpuid] : cpu_state->m_lastsample_server_processes_ns;
+		uint64_t tr_cpu_time = (program_info)? program_info->m_procinfo->m_cpu_time_ns[cpuid] : cpu_state->m_lastsample_server_processes_ns;
 
-		ntrcpu = (float)trtime * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
+		ntrcpu = (float)tr_cpu_time * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
 
 		//
 		// Extract the CPU spent not serving transactions
@@ -435,7 +441,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 			idle = (float)cpu_state->m_lastsample_idle_ns;
 		}
 
-		float otherns = (float)(cpu_state->m_sample_effective_length_ns - trtime - idle);
+		float otherns = (float)(cpu_state->m_sample_effective_length_ns - tr_cpu_time - idle);
 		if(otherns < 0)
 		{
 			otherns = 0;
