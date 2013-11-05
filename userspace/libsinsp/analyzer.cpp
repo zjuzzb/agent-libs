@@ -69,7 +69,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer, m_sched_analyzer2);
 
-	m_server_transactions_per_cpu = vector<vector<pair<uint64_t, uint64_t>>>(m_machine_info->num_cpus);
+	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -516,15 +516,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 */
 		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
-			m_prev_flush_time_ns, sample_duration);
+			m_prev_flush_time_ns, sample_duration, -1LL);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"3!!%.2f",
 			m_host_metrics.m_capacity_score);
 
 		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_4(&m_server_transactions_per_cpu,
-			n_server_threads,
-			m_prev_flush_time_ns, sample_duration);
+			n_server_threads, m_prev_flush_time_ns, sample_duration, NULL, m_local_remote_ratio);
 
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"4!!%.2f",
@@ -541,12 +540,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(m_host_metrics.m_capacity_score == -1)
 		{
 			m_host_metrics.m_capacity_score = (float)syshscore_g;
-		}
-
-		m_transactions_with_cpu.clear();
-		for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
-		{
-			m_server_transactions_per_cpu[k].clear();
 		}
 	}
 
@@ -638,7 +631,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Health-related metrics
 					//
-					it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(m_host_metrics.m_capacity_score, &it->second);
+					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(&it->second,
+							&m_server_transactions_per_cpu,
+							it->second.m_procinfo->m_program_pids.size(),
+							m_prev_flush_time_ns, sample_duration);
+					}
+					else
+					{
+						it->second.m_procinfo->m_capacity_score = -1;
+					}
+//					it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(m_host_metrics.m_capacity_score, &it->second);
+
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(it->second.m_procinfo->m_capacity_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
 					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
@@ -655,23 +660,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
 						uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
 						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+						uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%" PRId32 " in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 							it->second.m_comm.c_str(),
 	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 							it->second.m_tid,
 							it->second.m_nchilds + 1,
 							it->second.m_procinfo->m_capacity_score,
-							it->second.m_procinfo->m_cpuload,
+							(float)it->second.m_procinfo->get_tot_cputime() * 100 / (float)sample_duration,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-							//trcountin? ((double)trtimein) / trcountin / 1000000000 : 0,
-							//trcountout? ((double)trtimeout) / trcountin / 1000000000 : 0,
-							//trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / 1000000000 : 0,
-							trcountin? ((double)trtimein) / 1000000000 : 0,
-							trcountout? ((double)trtimeout) / 1000000000 : 0,
-							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / 1000000000 : 0,
+							//trcountin? ((double)trtimein) / trcountin / sample_duration : 0,
+							//trcountout? ((double)trtimeout) / trcountin / sample_duration : 0,
+							//trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / sample_duration : 0,
+							trcountin? ((double)trtimein) / sample_duration : 0,
+							trcountout? ((double)trtimeout) / sample_duration : 0,
+							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / sample_duration : 0,
 							it->second.m_fd_usage_pct,
 							it->second.m_connection_queue_usage_pct);
 					}
@@ -742,6 +748,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.clear_all_metrics();
 			++it;
 		}
+	}
+
+	//
+	// Last cleanups and then we're done
+	//
+	m_transactions_with_cpu.clear();
+	for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
+	{
+		m_server_transactions_per_cpu[k].clear();
 	}
 
 	m_old_global_total_jiffies = cur_global_total_jiffies;

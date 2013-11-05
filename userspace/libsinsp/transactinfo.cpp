@@ -120,9 +120,17 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
 				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
 
-			m_inspector->m_analyzer->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
-				pair<uint64_t, uint64_t>(tr->m_prev_prev_start_of_transaction_time, 
-				tr->m_prev_end_time));
+			sinsp_threadinfo* tinfo = ptinfo->get_main_program_thread();
+			if(tinfo != NULL)
+			{
+				m_inspector->m_analyzer->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+					sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
+					tr->m_prev_end_time, tinfo->m_pid));
+			}
+			else
+			{
+				ASSERT(false);
+			}
 		}
 		else
 		{

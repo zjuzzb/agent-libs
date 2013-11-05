@@ -43,6 +43,19 @@ public:
 #endif
 	}
 
+	uint64_t get_tot_cputime()
+	{
+		uint64_t res = 0;
+
+		vector<uint64_t>::iterator it;
+		for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+		{
+			res += *it;
+		}
+
+		return res;
+	}
+
 	// Aggreaged metrics for the process.
 	// This field is allocated only for process main threads.
 	sinsp_counters m_proc_metrics; 

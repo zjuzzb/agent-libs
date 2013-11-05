@@ -626,9 +626,7 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
 		{
 			ASSERT(m_procinfo->m_cpu_time_ns.size() == 0)
-			{
-				m_procinfo->m_cpu_time_ns.resize(oc);
-			}
+			m_procinfo->m_cpu_time_ns.resize(oc);
 		}
 
 		for(uint32_t j = 0; j < oc; j++)

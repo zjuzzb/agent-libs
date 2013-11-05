@@ -5,24 +5,6 @@ class sinsp_transaction_manager;
 class sinsp_connection;
 
 //
-// This class describes an fd that is active during a transaction
-//
-class sinsp_transactfd
-{
-public:
-	sinsp_transactfd()
-	{
-	}
-
-	sinsp_transactfd(uint32_t score)
-	{
-		m_score = score;
-	}
-
-	uint32_t m_score;
-};
-
-//
 // Transaction information class
 //
 class SINSP_PUBLIC sinsp_partial_transaction
@@ -172,4 +154,31 @@ private:
 	sinsp* m_inspector;
 
 	friend class sinsp_partial_transaction;
+};
+
+//
+// This little class describes an entry in the per-cpu transaction list that
+// is consumed when a sample is created
+//
+class SINSP_PUBLIC sinsp_trlist_entry
+{
+public:
+	sinsp_trlist_entry(uint64_t stime, uint64_t etime, int64_t progid)
+	{
+		m_stime = stime;
+		m_etime = etime;
+		m_progid = progid;
+	}
+
+	uint64_t m_stime;	// start time
+	uint64_t m_etime;	// end time
+	int64_t m_progid;	// pid of the program main process
+};
+
+struct sinsp_trlist_entry_comparer
+{
+    bool operator() (const sinsp_trlist_entry& first, const sinsp_trlist_entry& second) const 
+	{
+		return first.m_stime < second.m_stime;
+	}
 };

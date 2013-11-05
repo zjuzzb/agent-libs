@@ -152,10 +152,10 @@ for(k = 0; k < trsize; k++)
 }
 
 //
-// The main function that takes a set of intervals, merges
-// overlapping intervals and prints the result
+// helper function that takes a set of transactions and merges them.
+// progid can be used to filter on a specific program id. progid=-1 means accept all the transactions.
 //
-void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair<uint64_t, uint64_t>>* s, OUT uint64_t* tot_time)
+void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid)
 {
 	*tot_time = 0;
 
@@ -167,21 +167,29 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
 	//
     // sort the intervals based on start time
 	//
-    sort(intervals->begin(), intervals->end());
+    sort(intervals->begin(), intervals->end(), sinsp_trlist_entry_comparer());
  
     // push the first interval to stack
     s->push((*intervals)[0]);
-	*tot_time += (((*intervals)[0].second - (*intervals)[0].first));
+	*tot_time += (((*intervals)[0].m_etime - (*intervals)[0].m_stime));
  
 	//
     // Start from the next interval and merge if necessary
 	//
     for(uint32_t i = 1 ; i < intervals->size(); i++)
     {
+		if(progid != -1LL)
+		{
+			if((*intervals)[i].m_progid != progid)
+			{
+				continue;
+			}
+		}
+
 		//
         // get interval from stack top
 		//
-        pair<uint64_t, uint64_t>& top = s->top();
+        sinsp_trlist_entry& top = s->top();
  
 		//
         // if current interval is not overlapping with stack top,
@@ -189,23 +197,23 @@ void merge_intervals(vector<pair<uint64_t, uint64_t>>* intervals, OUT stack<pair
         // Otherwise update the ending time of top if ending of current 
         // interval is more
 		//
-		if(top.second < (*intervals)[i].first)
+		if(top.m_etime < (*intervals)[i].m_stime)
         {
             s->push((*intervals)[i]);
-			*tot_time += (((*intervals)[i].second - (*intervals)[i].first));
+			*tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
         }
-		else if(top.second < (*intervals)[i].second)
+		else if(top.m_etime < (*intervals)[i].m_etime)
         {
-			top.second = (*intervals)[i].second;
-			*tot_time += (((*intervals)[i].second - top.second));
+			top.m_etime = (*intervals)[i].m_etime;
+			*tot_time += (((*intervals)[i].m_etime - top.m_etime));
         }
     }
  
     return;
 }
 
-float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
-	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
+float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<sinsp_trlist_entry>>* transactions, 
+	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, int64_t progid)
 {
 	int32_t cpuid;
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
@@ -258,9 +266,9 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_
 //	}
 //}
 
-		stack<pair<uint64_t, uint64_t>> transaction_union;
+		stack<sinsp_trlist_entry> transaction_union;
 		uint64_t tot_time;
-		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
+		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time, progid);
 		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
@@ -358,8 +366,9 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<pair<uint64_
 	return -1;
 }
 
-float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_t, uint64_t>>>* transactions,
-	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration)
+float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions,
+	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, sinsp_threadinfo* program_info,
+	float local_remote_ratio)
 {
 	int32_t cpuid;
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
@@ -393,21 +402,31 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		float ntr = 0;
 		float nother = 0;
 		float ntrcpu = 0;
+		float idle;
 
-		stack<pair<uint64_t, uint64_t>> transaction_union;
+		stack<sinsp_trlist_entry> transaction_union;
 		uint64_t tot_time;
-		merge_intervals(&(*transactions)[cpuid], &transaction_union, &tot_time);
+		merge_intervals(&(*transactions)[cpuid], 
+			&transaction_union, 
+			&tot_time, 
+			(program_info)? program_info->m_pid : -1LL);
 		ntr = (float)tot_time / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 
 		//
 		// Extract the CPU spent while serving transactions
 		//
-		ntrcpu = (float)cpu_state->m_lastsample_server_processes_ns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
-		float idle;
+		ASSERT((program_info == NULL) || (program_info && program_info->m_procinfo != NULL));
+		ASSERT((program_info == NULL) || (program_info && program_info->m_procinfo->m_cpu_time_ns.size() == num_cpus));
+		uint64_t trtime = (program_info)? program_info->m_procinfo->m_cpu_time_ns[cpuid] : cpu_state->m_lastsample_server_processes_ns;
+
+		ntrcpu = (float)trtime * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
+
+		//
+		// Extract the CPU spent not serving transactions
+		//
 		if(m_inspector->m_analyzer->m_cpu_idles.size() != 0)
 		{
 			ASSERT(m_inspector->m_analyzer->m_cpu_idles.size() == num_cpus);
-
 			idle = (((float)m_inspector->m_analyzer->m_cpu_idles[cpuid]) * cpu_state->m_sample_effective_length_ns) / 100;
 		}
 		else
@@ -417,7 +436,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 			idle = (float)cpu_state->m_lastsample_idle_ns;
 		}
 
-		float otherns = (float)(cpu_state->m_sample_effective_length_ns - cpu_state->m_lastsample_server_processes_ns - idle);
+		float otherns = (float)(cpu_state->m_sample_effective_length_ns - trtime - idle);
 		if(otherns < 0)
 		{
 			otherns = 0;
@@ -428,7 +447,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<pair<uint64_
 		//
 		// Perform score calculation
 		//
-		ntr *= m_inspector->m_analyzer->m_local_remote_ratio;
+		ntr *= local_remote_ratio;
 
 		if(ntr != 0)
 		{
@@ -872,6 +891,7 @@ int32_t sinsp_scores::get_system_capacity_score_bycpu_old(vector<pair<uint64_t,p
 }
 */
 
+/*
 float sinsp_scores::get_process_capacity_score(float system_capacity_score, sinsp_threadinfo* mainthread_info)
 {
 	float res = -1;
@@ -917,16 +937,43 @@ float sinsp_scores::get_process_capacity_score(float system_capacity_score, sins
 		}
 	}
 
-/*
-	if(mainthread_info->m_connection_queue_usage_pct > 30)
+
+	//if(mainthread_info->m_connection_queue_usage_pct > 30)
+	//{
+	//	res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_pct);
+	//}
+
+	//if(mainthread_info->m_fd_usage_pct > 30)
+	//{
+	//	res = MIN(res, 100 - mainthread_info->m_fd_usage_pct);
+	//}
+
+	return res;
+}
+*/
+
+float sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, vector<vector<sinsp_trlist_entry>>* transactions, 
+		uint32_t n_server_threads, uint64_t sample_end_time, uint64_t sample_duration)
+{
+	float local_remote_ratio = 1;
+	uint64_t proc_transaction_processing_delay_ns = mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns;
+	uint64_t time_ns_in = mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+
+	if(proc_transaction_processing_delay_ns != -1)
 	{
-		res = MIN(res, 100 - mainthread_info->m_connection_queue_usage_pct);
+		if(time_ns_in != 0)
+		{
+			local_remote_ratio = (float)proc_transaction_processing_delay_ns / 
+				(float)time_ns_in;
+		}
 	}
 
-	if(mainthread_info->m_fd_usage_pct > 30)
-	{
-		res = MIN(res, 100 - mainthread_info->m_fd_usage_pct);
-	}
-*/
+	float res = get_system_capacity_score_bycpu_4(transactions, 
+		n_server_threads, 
+		sample_end_time,
+		sample_duration,
+		mainthread_info,
+		local_remote_ratio);
+
 	return res;
 }
