@@ -219,12 +219,18 @@ void sinsp::import_proc_table()
 
 	scap_threadinfo *table = scap_get_proc_table(m_h);
 
+	//
+	// Scan the scap table and add the threads to our list
+	//
 	HASH_ITER(hh, table, pi, tpi)
 	{
 		newpi.init(pi);
 		m_thread_manager->add_thread(newpi, true);
 	}
 
+	//
+	// Scan the list to create the proper parent/child dependencies
+	//
 	threadinfo_map_iterator_t it;
 	for(it = m_thread_manager->m_threadtable.begin(); 
 		it != m_thread_manager->m_threadtable.end(); ++it)
@@ -232,6 +238,11 @@ void sinsp::import_proc_table()
 		m_thread_manager->increment_mainthread_childcount(&it->second);
 		m_thread_manager->increment_program_childcount(&it->second);
 	}
+
+	//
+	// Scan the list to fix the direction of the sockets
+	//
+	m_thread_manager->fix_sockets_coming_from_proc();
 }
 
 void sinsp::import_ifaddr_list()

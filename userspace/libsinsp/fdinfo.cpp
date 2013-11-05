@@ -94,7 +94,7 @@ void sinsp_fdinfo::set_role_by_guessing(sinsp_partial_transaction::direction dir
 	else
 	{
 		//
-		// We just assume that a server usually starts witha read and a client with a write
+		// We just assume that a server usually starts with a read and a client with a write
 		//
 		if(dir == sinsp_partial_transaction::DIR_IN)
 		{
@@ -118,7 +118,7 @@ sinsp_fdtable::sinsp_fdtable(sinsp* inspector)
 
 sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_fdtable.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
 
 	//
 	// Try looking up in our simple cache
@@ -134,9 +134,9 @@ sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
 	//
 	// Caching failed, do a real lookup
 	//
-	fdit = m_fdtable.find(fd);
+	fdit = m_table.find(fd);
 
-	if(fdit == m_fdtable.end())
+	if(fdit == m_table.end())
 	{
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_failed_fd_lookups++;
@@ -156,17 +156,17 @@ sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
 
 void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_fdtable.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
 
 	//
 	// Look for the FD in the table
 	//
-	if(fdit == m_fdtable.end())
+	if(fdit == m_table.end())
 	{
 		//
 		// No entry in the table, this is the normal case
 		//
-		m_fdtable[fd] = *fdinfo;
+		m_table[fd] = *fdinfo;
 		m_last_accessed_fd = -1;
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_added_fds++;
@@ -188,7 +188,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 			fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
 			fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
 			
-			m_fdtable[CANCELED_FD_NUMBER] = fdit->second;
+			m_table[CANCELED_FD_NUMBER] = fdit->second;
 		}
 		else
 		{
@@ -214,14 +214,14 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 
 void sinsp_fdtable::erase(int64_t fd)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_fdtable.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
 
 	if(fd == m_last_accessed_fd)
 	{
 		m_last_accessed_fd = -1;		
 	}
 
-	if(fdit == m_fdtable.end())
+	if(fdit == m_table.end())
 	{
 		//
 		// Looks like there's no fd to remove.
@@ -236,7 +236,7 @@ void sinsp_fdtable::erase(int64_t fd)
 	}
 	else
 	{
-		m_fdtable.erase(fdit);
+		m_table.erase(fdit);
 #ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_noncached_fd_lookups++;
 		m_inspector->m_stats.m_n_removed_fds++;
@@ -246,19 +246,19 @@ void sinsp_fdtable::erase(int64_t fd)
 
 void sinsp_fdtable::clear()
 {
-	m_fdtable.clear();
+	m_table.clear();
 }
 
 size_t sinsp_fdtable::size()
 {
-	return m_fdtable.size();
+	return m_table.size();
 }
 
 void sinsp_fdtable::print_on(FILE* f)
 {
 	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 
-	for(fdit = m_fdtable.begin(); fdit != m_fdtable.end(); fdit++)
+	for(fdit = m_table.begin(); fdit != m_table.end(); fdit++)
 	{
 		fprintf(f,"\tfd %" PRIu64 " = ",fdit->first);
 		fdit->second.print_on(f);

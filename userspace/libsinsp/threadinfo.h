@@ -1,5 +1,6 @@
 #pragma once
 
+
 #ifndef VISIBILITY_PRIVATE
 #define VISIBILITY_PRIVATE private:
 #endif
@@ -241,6 +242,7 @@ public:
 	void remove_thread(int64_t tid);
 	void remove_thread(threadinfo_map_iterator_t it);
 	void remove_inactive_threads();
+	void fix_sockets_coming_from_proc();
 
 	uint32_t get_thread_count()
 	{
@@ -253,6 +255,8 @@ public:
 	{
 		return &m_threadtable;
 	}
+
+	set<uint16_t> m_server_ports;
 
 private:
 	void increment_mainthread_childcount(sinsp_threadinfo* threadinfo);

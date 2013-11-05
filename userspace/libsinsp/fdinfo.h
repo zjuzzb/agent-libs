@@ -199,7 +199,7 @@ public:
 	void print_on(FILE* f);
 
 	sinsp* m_inspector;
-	unordered_map<int64_t, sinsp_fdinfo> m_fdtable;
+	unordered_map<int64_t, sinsp_fdinfo> m_table;
 
 	//
 	// Simple fd cache

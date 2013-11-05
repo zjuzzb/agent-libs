@@ -1920,7 +1920,9 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 				// at the ports.
 				//
 				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
+
 				string scomm = evt->m_tinfo->get_comm();
+				
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 					&scomm,
 					evt->m_tinfo->m_pid,

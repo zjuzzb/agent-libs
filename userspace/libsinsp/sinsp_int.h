@@ -14,7 +14,6 @@
 #include <fstream>
 #include <exception>
 #include <sstream>
-#include <set>
 #include <deque>
 #include <queue>
 #include <list>

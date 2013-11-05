@@ -78,6 +78,7 @@ void sinsp_network_interfaces::update_fd(sinsp_fdinfo *fd)
 	{
 		return;
 	}
+
 	if(0 != pipv4info->m_fields.m_sip && 0 != pipv4info->m_fields.m_dip)
 	{
 		return;

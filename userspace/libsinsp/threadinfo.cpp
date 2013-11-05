@@ -65,54 +65,42 @@ sinsp_threadinfo::~sinsp_threadinfo()
 
 void sinsp_threadinfo::fix_sockets_coming_from_proc()
 {
+	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
 	sinsp_fdtable* fdtable = get_fd_table();
 
-	if(fdtable == &m_fdtable)
+if(m_tid == 14885)
+{
+	int a = 0;
+}
+
+	//
+	// Second pass: fix the sockets so that they are ordered by client->server
+	//
+	for(it = m_fdtable.m_table.begin(); it != m_fdtable.m_table.end(); it++)
 	{
-		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
-		vector<uint16_t> serverports;
-
-		//
-		// First pass: extract the ports on which this thread is listening
-		//
-		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
+		if(it->second.m_type == SCAP_FD_IPV4_SOCK)
 		{
-			if(it->second.m_type == SCAP_FD_IPV4_SERVSOCK)
+			if(m_inspector->m_thread_manager->m_server_ports.find(it->second.m_info.m_ipv4info.m_fields.m_sport) !=
+				m_inspector->m_thread_manager->m_server_ports.end())
 			{
-				serverports.push_back(it->second.m_info.m_ipv4serverinfo.m_port);
+				uint32_t tip;
+				uint16_t tport;
+
+				tip = it->second.m_info.m_ipv4info.m_fields.m_sip;
+				tport = it->second.m_info.m_ipv4info.m_fields.m_sport;
+
+				it->second.m_info.m_ipv4info.m_fields.m_sip = it->second.m_info.m_ipv4info.m_fields.m_dip;
+				it->second.m_info.m_ipv4info.m_fields.m_dip = tip;
+				it->second.m_info.m_ipv4info.m_fields.m_sport = it->second.m_info.m_ipv4info.m_fields.m_dport;
+				it->second.m_info.m_ipv4info.m_fields.m_dport = tport;
+
+				it->second.m_name = ipv4tuple_to_string(&it->second.m_info.m_ipv4info);
+
+				it->second.set_role_server();
 			}
-		}
-
-		//
-		// Second pass: fix the sockets so that they are ordered by client->server
-		//
-		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
-		{
-			if(it->second.m_type == SCAP_FD_IPV4_SOCK)
+			else
 			{
-				if(find(serverports.begin(), 
-					serverports.end(), 
-					it->second.m_info.m_ipv4info.m_fields.m_sport) != serverports.end())
-				{
-					uint32_t tip;
-					uint16_t tport;
-
-					tip = it->second.m_info.m_ipv4info.m_fields.m_sip;
-					tport = it->second.m_info.m_ipv4info.m_fields.m_sport;
-
-					it->second.m_info.m_ipv4info.m_fields.m_sip = it->second.m_info.m_ipv4info.m_fields.m_dip;
-					it->second.m_info.m_ipv4info.m_fields.m_dip = tip;
-					it->second.m_info.m_ipv4info.m_fields.m_sport = it->second.m_info.m_ipv4info.m_fields.m_dport;
-					it->second.m_info.m_ipv4info.m_fields.m_dport = tport;
-
-					it->second.m_name = ipv4tuple_to_string(&it->second.m_info.m_ipv4info);
-
-					it->second.set_role_server();
-				}
-				else
-				{
-					it->second.set_role_client();
-				}
+				it->second.set_role_client();
 			}
 		}
 	}
@@ -178,6 +166,13 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 			newfdi.m_info.m_ipv4serverinfo.m_ip = fdi->info.ipv4serverinfo.ip;
 			newfdi.m_info.m_ipv4serverinfo.m_port = fdi->info.ipv4serverinfo.port;
 			newfdi.m_info.m_ipv4serverinfo.m_l4proto = fdi->info.ipv4serverinfo.l4proto;
+			
+			//
+			// We keep note of all the host bound server ports.
+			// We'll need them later when patching connections direction.
+			//
+			m_inspector->m_thread_manager->m_server_ports.insert(newfdi.m_info.m_ipv4serverinfo.m_port);
+
 			break;
 		case SCAP_FD_IPV6_SOCK:
 			if(sinsp_utils::is_ipv4_mapped_ipv6((uint8_t*)&fdi->info.ipv6info.sip) && 
@@ -248,7 +243,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 		}
 	}
 
-	fix_sockets_coming_from_proc();
+//	fix_sockets_coming_from_proc();
 }
 
 string sinsp_threadinfo::get_comm()
@@ -679,7 +674,7 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 	{
 		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
 
-		for(it = m_fdtable.m_fdtable.begin(); it != m_fdtable.m_fdtable.end(); it++)
+		for(it = m_fdtable.m_table.begin(); it != m_fdtable.m_table.end(); it++)
 		{
 			uint64_t endtime = sample_end_time;
 
@@ -938,7 +933,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		//
 		if(it->second.m_pid == it->second.m_tid)
 		{
-			unordered_map<int64_t, sinsp_fdinfo> fdtable = it->second.get_fd_table()->m_fdtable;
+			unordered_map<int64_t, sinsp_fdinfo> fdtable = it->second.get_fd_table()->m_table;
 			unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
 
 			erase_fd_params eparams;
@@ -1009,6 +1004,17 @@ void sinsp_thread_manager::remove_inactive_threads()
 		}
 	}
 }
+
+void sinsp_thread_manager::fix_sockets_coming_from_proc()
+{
+	threadinfo_map_iterator_t it;
+	for(it = m_threadtable.begin(); 
+		it != m_threadtable.end(); ++it)
+	{
+		it->second.fix_sockets_coming_from_proc();
+	}
+}
+
 
 void sinsp_thread_manager::update_statistics()
 {
