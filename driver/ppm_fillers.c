@@ -3068,7 +3068,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 {
 	int32_t res;
-	uint64_t steal;
+//	uint64_t steal;
 
 	if(args->sched_prev == NULL || args->sched_next == NULL)
 	{
@@ -3084,7 +3084,7 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	{
 		return res;
 	}
-
+/*
 	//
 	// steal
 	//
@@ -3094,7 +3094,7 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	{
 		return res;
 	}
-
+*/
 	return add_sentinel(args);
 }
 #endif // CAPTURE_CONTEXT_SWITCHES
