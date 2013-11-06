@@ -3063,9 +3063,12 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args)
 }
 
 #ifdef CAPTURE_CONTEXT_SWITCHES
+#include <linux/kernel_stat.h>
+
 static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 {
 	int32_t res;
+	uint64_t steal;
 
 	if(args->sched_prev == NULL || args->sched_next == NULL)
 	{
@@ -3077,6 +3080,16 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	// next
 	//
 	res = val_to_ring(args, args->sched_next->pid, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	//
+	// steal
+	//
+	steal = kcpustat_this_cpu->cpustat[CPUTIME_STEAL];
+	res = val_to_ring(args, steal, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
