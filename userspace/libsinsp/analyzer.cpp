@@ -807,15 +807,18 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// Structure copy the connection info.
 			//
 			conn = cit->second;
-			conn.m_timestamp = 0;
+			conn.m_timestamp = 1;
 		}
-
-		//
-		// Add this connection's metrics to the aggregated connection's ones
-		//
-		conn.m_metrics.add(&cit->second.m_metrics);
-		conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-		conn.m_timestamp++;
+		else
+		{
+			//
+			// Existing entry.
+			// Add this connection's metrics to the aggregated connection's ones.
+			//
+			conn.m_metrics.add(&cit->second.m_metrics);
+			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			conn.m_timestamp++;
+		}
 
 		//
 		// Has this connection been closed druring this sample?
