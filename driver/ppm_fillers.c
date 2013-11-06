@@ -3088,7 +3088,7 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	//
 	// steal
 	//
-	steal = kcpustat_this_cpu->cpustat[CPUTIME_STEAL];
+	steal = cputime64_to_clock_t(kcpustat_this_cpu->cpustat[CPUTIME_STEAL]);
 	res = val_to_ring(args, steal, 0, false);
 	if(unlikely(res != PPM_SUCCESS))
 	{
