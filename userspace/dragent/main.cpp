@@ -12,7 +12,7 @@
 #define AGENT_PRIORITY 19
 #define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
 
-Logger* g_log = NULL;
+dragent_logger* g_log = NULL;
 
 //
 // Signal management
@@ -207,6 +207,8 @@ static void g_ssl_callback(int write_p, int version, int content_type, const voi
 
 void g_logger_callback(char* str, uint32_t sev)
 {
+	ASSERT(g_log != NULL);
+
 	switch(sev)
 	{
 	case sinsp_logger::SEV_DEBUG:
@@ -292,6 +294,8 @@ public:
 		m_socketbufferptr = NULL;
 		m_socketbuflen = 0;
 		m_socketbuffer_storage = NULL;
+		m_min_file_priority = Message::PRIO_DEBUG;
+		m_min_console_priority = Message::PRIO_DEBUG;
 
 #ifndef _WIN32
 		Poco::Net::initializeSSL();
@@ -321,6 +325,11 @@ public:
 #ifndef _WIN32
 		Poco::Net::uninitializeSSL();
 #endif
+
+		if(g_log != NULL)
+		{
+			delete g_log;
+		}
 	}
 
 protected:
@@ -402,51 +411,11 @@ protected:
 		}
 		else if(name == "consolepriority")
 		{
-			if(value == "error")
-			{
-				m_min_console_priority = Message::PRIO_ERROR;
-			}
-			else if(value == "warning")
-			{
-				m_min_console_priority = Message::PRIO_WARNING;
-			}
-			else if(value == "info")
-			{
-				m_min_console_priority = Message::PRIO_INFORMATION;
-			}
-			else if(value == "debug")
-			{
-				m_min_console_priority = Message::PRIO_DEBUG;
-			}
-			else
-			{
-				printf("invalid consolepriority. Accepted values are: 'error', 'warning', 'info' or 'debug'.");
-				exit(0);
-			}
+			m_min_console_priority = dragent_configuration::string_to_priority(value);
 		}
 		else if(name == "filepriority")
 		{
-			if(value == "error")
-			{
-				m_min_file_priority = Message::PRIO_ERROR;
-			}
-			else if(value == "warning")
-			{
-				m_min_file_priority = Message::PRIO_WARNING;
-			}
-			else if(value == "info")
-			{
-				m_min_file_priority = Message::PRIO_INFORMATION;
-			}
-			else if(value == "debug")
-			{
-				m_min_file_priority = Message::PRIO_DEBUG;
-			}
-			else
-			{
-				printf("invalid filepriority. Accepted values are: 'error', 'warning', 'info' or 'debug'.");
-				exit(0);
-			}
+			m_min_file_priority = dragent_configuration::string_to_priority(value);
 		}
 		else if(name == "readfile")
 		{
@@ -816,24 +785,29 @@ protected:
 		//
 		// Setup the logging
 		//
-		AutoPtr<SplitterChannel> splitterChannel(new SplitterChannel());
+		AutoPtr<Channel> console_channel(new ConsoleChannel());
+		AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
 
-		AutoPtr<Channel> consoleChannel(new ConsoleChannel());
-		AutoPtr<FileChannel> rotatedFileChannel(new FileChannel(logsdir));
-
-		rotatedFileChannel->setProperty("rotation", "10M");
-		rotatedFileChannel->setProperty("purgeCount", "5");
-		rotatedFileChannel->setProperty("archive", "timestamp");
-
-		splitterChannel->addChannel(consoleChannel);
-		splitterChannel->addChannel(rotatedFileChannel);
-
+		file_channel->setProperty("rotation", "10M");
+		file_channel->setProperty("purgeCount", "5");
+		file_channel->setProperty("archive", "timestamp");
 
 		AutoPtr<Formatter> formatter(new PatternFormatter("%h-%M-%S.%i, %p, %t"));
-		AutoPtr<Channel> formattingChannel(new FormattingChannel(formatter, splitterChannel));
 
-		Logger& logger = Logger::create("TestLog", formattingChannel, Message::PRIO_DEBUG);
-		g_log = &logger;
+		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
+		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+
+		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_min_file_priority);
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_min_console_priority);
+		
+		if(m_min_console_priority != -1)
+		{
+			g_log = new dragent_logger(&loggerf, &loggerc);
+		}
+		else
+		{
+			g_log = new dragent_logger(&loggerf, NULL);
+		}
 
 		g_log->information("Agent starting");
 

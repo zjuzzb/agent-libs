@@ -25,8 +25,11 @@ public:
 
 	void init(Application* app);
 	void print_configuration();
+	static Message::Priority string_to_priority(string priostr);
 
 	bool m_daemon;
+	Message::Priority m_min_console_priority;
+	Message::Priority m_min_file_priority;
 	string m_root_dir;
 	string m_metrics_dir;
 	string m_log_dir;
