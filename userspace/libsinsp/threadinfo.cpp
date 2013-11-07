@@ -66,7 +66,6 @@ sinsp_threadinfo::~sinsp_threadinfo()
 void sinsp_threadinfo::fix_sockets_coming_from_proc()
 {
 	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
-	sinsp_fdtable* fdtable = get_fd_table();
 
 	//
 	// Second pass: fix the sockets so that they are ordered by client->server
