@@ -514,6 +514,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"2!!%f",
 			syshscore);
 */
+/*
 		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_3(&m_server_transactions_per_cpu,
 			n_server_threads,
 			m_prev_flush_time_ns, sample_duration, -1LL);
@@ -521,7 +522,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"3!!%.2f",
 			m_host_metrics.m_capacity_score);
-
+*/
 		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_4(&m_server_transactions_per_cpu,
 			n_server_threads, m_prev_flush_time_ns, sample_duration, NULL, m_local_remote_ratio);
 
@@ -635,7 +636,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(&it->second,
 							&m_server_transactions_per_cpu,
+#ifdef ANALYZER_EMITS_PROGRAMS
 							it->second.m_procinfo->m_program_pids.size(),
+#else
+							(uint32_t)it->second.m_nchilds,
+#endif
 							m_prev_flush_time_ns, sample_duration);
 					}
 					else
@@ -678,8 +683,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							trcountin? ((double)trtimein) / sample_duration : 0,
 							trcountout? ((double)trtimeout) / sample_duration : 0,
 							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / sample_duration : 0,
-							it->second.m_fd_usage_pct,
-							it->second.m_connection_queue_usage_pct);
+							it->second.m_procinfo->m_fd_usage_pct,
+							it->second.m_procinfo->m_connection_queue_usage_pct);
 					}
 #endif
 				}

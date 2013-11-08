@@ -349,13 +349,14 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<sinsp_trlist
 	//
 	if(n_scores != 0 && n_scores <= n_server_threads)
 	{
+/*
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			">>%.2f-%.2f-%.2f (%" PRId32 ")",
 			min_score,
 			max_score,
 			tot_score / n_scores,
 			n_scores);
-
+*/
 		return (tot_score / n_scores);
 	}
 	else
@@ -506,13 +507,14 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 	//
 	if(n_scores != 0 && n_scores <= n_server_threads)
 	{
+/*
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			">>%.2f-%.2f-%.2f (%" PRId32 ")",
 			min_score,
 			max_score,
 			tot_score / n_scores,
 			n_scores);
-
+*/
 		return (tot_score / n_scores);
 	}
 	else
