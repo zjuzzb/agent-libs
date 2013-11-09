@@ -273,7 +273,7 @@ uint64_t sinsp_analyzer::compute_thread_transaction_delay(sinsp_transaction_coun
 	{
 		ASSERT(trcounters->m_counter.m_time_ns_in != 0);
 
-		int64_t res = trcounters->m_counter.m_time_ns_in - trcounters->m_counter.m_time_ns_out;
+		int64_t res =  trcounters->m_counter.m_time_ns_in - trcounters->m_counter.m_time_ns_out;
 
 		if(res <= 0)
 		{
@@ -495,7 +495,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	if(m_inspector->m_trans_table->m_n_server_transactions != 0)
 	{
-		int32_t syshscore_g;
+//		int32_t syshscore_g;
 
 /*
 		syshscore = (float)m_score_calculator->get_system_capacity_score_bycpu_old(&m_transactions_with_cpu,
@@ -523,6 +523,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			"3!!%.2f",
 			m_host_metrics.m_capacity_score);
 */
+/*
 		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_4(&m_server_transactions_per_cpu,
 			n_server_threads, m_prev_flush_time_ns, sample_duration, NULL, m_local_remote_ratio);
 
@@ -542,7 +543,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			m_host_metrics.m_capacity_score = (float)syshscore_g;
 		}
+*/
 	}
+
+	m_host_metrics.m_capacity_score = -1;
 
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggreagate threads into processes 
@@ -647,7 +651,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						it->second.m_procinfo->m_capacity_score = -1;
 					}
-//					it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(m_host_metrics.m_capacity_score, &it->second);
+
+					//
+					// Update the host capcity score
+					//
+					if(it->second.m_procinfo->m_capacity_score != -1)
+					{
+						if(it->second.m_procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
+						{
+							m_host_metrics.m_capacity_score = it->second.m_procinfo->m_capacity_score;
+						}
+					}
 
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(it->second.m_procinfo->m_capacity_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
@@ -1135,7 +1149,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
-					"host tr: in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
+					"host: h:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
+					m_host_metrics.m_capacity_score,
 					m_host_transaction_metrics.m_counter.m_count_in,
 					m_host_transaction_metrics.m_counter.m_count_out,
 					(float)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,

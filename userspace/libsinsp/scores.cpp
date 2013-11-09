@@ -982,5 +982,13 @@ float sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info
 		mainthread_info,
 		local_remote_ratio);
 
+	if(res == -1)
+	{
+		res = (float)get_system_capacity_score_global(&m_inspector->m_analyzer->m_transactions_with_cpu,
+			n_server_threads,
+			sample_end_time, 
+			sample_duration);
+	}
+
 	return res;
 }
