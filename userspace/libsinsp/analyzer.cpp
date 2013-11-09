@@ -448,7 +448,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		m_host_transaction_metrics.add(&it->second.m_external_transaction_metrics);
 
-		if(it->second.m_transaction_metrics.m_counter.m_count_in != 0)
+		if(mtinfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 		{
 			n_server_threads++;
 			m_client_tr_time_by_servers += it->second.m_external_transaction_metrics.m_counter.m_time_ns_out;
@@ -1175,6 +1175,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	if(evt)
 	{
+if(evt->get_num() - m_prev_sample_evtnum == 28590)
+{
+	int a = 0;
+}
 		g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
 		m_prev_sample_evtnum = evt->get_num();
 	}
