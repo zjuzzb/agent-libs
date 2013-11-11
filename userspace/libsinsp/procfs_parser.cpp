@@ -212,7 +212,7 @@ int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
 {
 	int64_t res = -1;
 	char line[512];
-	int64_t memfree;
+	int64_t tmp;
 
 #ifdef _WIN32
 	return -1;
@@ -230,14 +230,28 @@ int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
 		//
 		// Extract the line content
 		//
-		if(sscanf(line, "MemFree: %" PRId64, &memfree) == 1)
+		if(sscanf(line, "MemFree: %" PRId64, &tmp) == 1)
 		{
-			res = m_physical_memory_kb - memfree;
+			res = m_physical_memory_kb - tmp;
+		}
+		else if(sscanf(line, "Buffers: %" PRId64, &tmp) == 1)
+		{
+			res -= tmp;
+		}
+		else if(sscanf(line, "Cached: %" PRId64, &tmp) == 1)
+		{
+			res -= tmp;
 			break;
 		}
 	}
 
 	fclose(f);
+
+	if(res < 0)
+	{
+		ASSERT(false);
+		res = 0;
+	}
 
 	return res;
 }
