@@ -848,9 +848,15 @@ void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* thread
 
 		if(prog_thread)
 		{
-			ASSERT(prog_thread->m_nchilds);
-			--prog_thread->m_nchilds;
-			decrement_program_childcount(prog_thread, level + 1);
+			if(prog_thread->m_nchilds > 0)
+			{
+				--prog_thread->m_nchilds;
+				decrement_program_childcount(prog_thread, level + 1);
+			}
+			else
+			{
+				ASSERT(prog_thread->m_nchilds);
+			}
 		}
 
 		if(level == 0)
