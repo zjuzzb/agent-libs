@@ -720,6 +720,8 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 		return;
 	}
 
+	string prev_exe(evt->m_tinfo->m_exe);
+
 	// Get the command name
 	parinfo = evt->get_param(1);
 	string tmps = parinfo->m_val;
@@ -768,12 +770,18 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	}
 
 	//
-	// The program child count was incremented at clone() time.
-	// execve breaks the program chain, and so we decrement the child count across the program chain.
+	// execve potentially breaks the program chain, and so we need to reflect it in our parents program count.
 	//
-	if(evt->m_tinfo->m_progid != -1LL)
+	if(prev_exe != evt->m_tinfo->m_exe)
 	{
-		m_inspector->m_thread_manager->decrement_program_childcount(evt->m_tinfo);
+		if(evt->m_tinfo->m_progid != -1LL)
+		{
+			m_inspector->m_thread_manager->decrement_program_childcount(evt->m_tinfo);
+		}
+		else
+		{
+			m_inspector->m_thread_manager->increment_program_childcount(evt->m_tinfo);
+		}
 	}
 /*
 	//
