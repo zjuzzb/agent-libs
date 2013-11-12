@@ -803,14 +803,32 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		//
-		// If this is a server connection and the client address is outside the subnet, aggregate it
-		//
-		if(cit->second.is_server_only())
+		if(!cit->second.is_client_and_server())
 		{
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+			if(cit->second.is_server_only())
 			{
-				tuple.m_fields.m_sip = 0;
+				//
+				// If this is a server connection and the client address is outside the subnet, aggregate it
+				//
+				if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+				{
+					tuple.m_fields.m_sip = 0;
+				}
+
+				//
+				// Add this connection's bytes to the host network volume
+				//
+				m_io_net.add_in(cit->second.m_metrics.m_server.m_count_in, 0, cit->second.m_metrics.m_server.m_bytes_in);
+				m_io_net.add_out(cit->second.m_metrics.m_server.m_count_out, 0, cit->second.m_metrics.m_server.m_bytes_out);
+			}
+			else
+			{
+				//
+				// Add this connection's bytes to the host network volume
+				//
+				ASSERT(cit->second.is_client_only())
+				m_io_net.add_in(cit->second.m_metrics.m_client.m_count_in, 0, cit->second.m_metrics.m_client.m_bytes_in);
+				m_io_net.add_out(cit->second.m_metrics.m_client.m_count_out, 0, cit->second.m_metrics.m_client.m_bytes_out);
 			}
 		}
 
@@ -930,6 +948,24 @@ void sinsp_analyzer::emit_full_connections()
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters());
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+		}
+
+		//
+		// Add this connection's bytes to the host network volume
+		//
+		if(!cit->second.is_client_and_server())
+		{
+			if(cit->second.is_server_only())
+			{
+				m_io_net.add_in(cit->second.m_metrics.m_server.m_count_in, 0, cit->second.m_metrics.m_server.m_bytes_in);
+				m_io_net.add_out(cit->second.m_metrics.m_server.m_count_out, 0, cit->second.m_metrics.m_server.m_bytes_out);
+			}
+			else
+			{
+				ASSERT(cit->second.is_client_only())
+				m_io_net.add_in(cit->second.m_metrics.m_client.m_count_in, 0, cit->second.m_metrics.m_client.m_bytes_in);
+				m_io_net.add_out(cit->second.m_metrics.m_client.m_count_out, 0, cit->second.m_metrics.m_client.m_bytes_out);
+			}
 		}
 
 		//
@@ -1141,6 +1177,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
 
+			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters()->mutable_io_net(), 1);
+
+			m_metrics->mutable_hostinfo()->mutable_tcounters()->mutable_io_net()->set_time_ns_out(0);
+
 			if(m_host_transaction_delay_ns != -1)
 			{
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
@@ -1166,6 +1206,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// END OF SAMPLE CLEANUPS
+	///////////////////////////////////////////////////////////////////////////
+
 	//
 	// Clear the transaction state
 	//
@@ -1181,6 +1225,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	m_host_transaction_metrics.clear();
 	m_client_tr_time_by_servers = 0;
+
+	//
+	// Clear the network I/O counter
+	//
+	m_io_net.clear();
 
 	//
 	// Run the periodic connection and thread table cleanup

@@ -28,6 +28,7 @@ public:
 	bool is_active();
 	bool is_client_only();
 	bool is_server_only();
+	bool is_client_and_server();
 
 	int64_t m_spid;
 	int64_t m_stid;

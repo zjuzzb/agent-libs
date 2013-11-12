@@ -154,8 +154,6 @@ sinsp_counter_time_bytes::sinsp_counter_time_bytes()
 
 void sinsp_counter_time_bytes::add_in(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
 {
-	ASSERT(cnt_delta <= 1);
-
 	m_count_in += cnt_delta;
 	m_time_ns_in += time_delta;
 	m_bytes_in += bytes_delta;
@@ -163,8 +161,6 @@ void sinsp_counter_time_bytes::add_in(uint32_t cnt_delta, uint64_t time_delta, u
 
 void sinsp_counter_time_bytes::add_out(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
 {
-	ASSERT(cnt_delta <= 1);
-
 	m_count_out += cnt_delta;
 	m_time_ns_out += time_delta;
 	m_bytes_out += bytes_delta;
@@ -172,8 +168,6 @@ void sinsp_counter_time_bytes::add_out(uint32_t cnt_delta, uint64_t time_delta, 
 
 void sinsp_counter_time_bytes::add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
 {
-	ASSERT(cnt_delta <= 1);
-
 	m_count_other += cnt_delta;
 	m_time_ns_other += time_delta;
 	m_bytes_other += bytes_delta;
@@ -191,7 +185,6 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 	m_bytes_out += other->m_bytes_out;
 	m_bytes_other += other->m_bytes_other;
 }
-
 
 void sinsp_counter_time_bytes::clear()
 {

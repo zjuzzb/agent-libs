@@ -39,6 +39,11 @@ bool sinsp_connection::is_server_only()
 	return 0 == m_stid && 0 != m_dtid;
 }
 
+bool sinsp_connection::is_client_and_server()
+{
+	return 0 != m_stid && 0 != m_dtid;
+}
+
 void sinsp_connection::clear()
 {
 	m_metrics.clear();
