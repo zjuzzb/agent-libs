@@ -69,4 +69,3 @@ s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARC
 
 s3cmd --acl-public sync $SCRIPTS_DIR/install-agent s3://download.draios.com/
 s3cmd --acl-public sync $SCRIPTS_DIR/smoke-tests s3://download.draios.com/
-s3cmd --acl-public sync $SCRIPTS_DIR/performance-tests s3://download.draios.com/
