@@ -104,6 +104,7 @@ void dragent_configuration::init(Application* app)
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
+	m_dump_file = config.getString("dumpfile", "/tmp/dump.scap");
 }
 
 void dragent_configuration::print_configuration()
@@ -122,4 +123,5 @@ void dragent_configuration::print_configuration()
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + (m_compression_enabled ? string("true") : string("false")));
 	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
+	g_log->information("dumpfile: " + m_dump_file);
 }

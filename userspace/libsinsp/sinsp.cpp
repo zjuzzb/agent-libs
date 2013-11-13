@@ -169,7 +169,7 @@ void sinsp::close()
 #endif
 }
 
-void sinsp::start_dump(string dump_filename)
+void sinsp::start_dump(const string& dump_filename)
 {
 	if(NULL == m_h)
 	{
@@ -180,6 +180,20 @@ void sinsp::start_dump(string dump_filename)
 	if(NULL == m_dumper)
 	{
 		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
+void sinsp::stop_dump()
+{
+	if(NULL == m_h)
+	{
+		throw sinsp_exception("inspector not yet opened");
+	}
+
+	if(m_dumper != NULL)
+	{
+		scap_dump_close(m_dumper);
+		m_dumper = NULL;
 	}
 }
 

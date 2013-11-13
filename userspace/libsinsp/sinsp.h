@@ -228,7 +228,8 @@ public:
 	//
 	// Start dumping events to a capture file
 	//
-	void start_dump(string dump_filename);
+	void start_dump(const string& dump_filename);
+	void stop_dump();
 
 	sinsp_configuration* get_configuration();
 	void set_configuration(const sinsp_configuration& configuration);

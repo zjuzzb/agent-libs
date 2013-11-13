@@ -18,6 +18,7 @@ dragent_logger* g_log = NULL;
 // Signal management
 //
 static bool g_terminate = false;
+static bool g_toggle_capture = false;
 
 static void g_monitor_signal_callback(int sig)
 {
@@ -27,6 +28,11 @@ static void g_monitor_signal_callback(int sig)
 static void g_signal_callback(int sig)
 {
 	g_terminate = true;
+}
+
+static void g_usr_signal_callback(int sig)
+{
+	g_toggle_capture = true;
 }
 
 #ifndef _WIN32
@@ -109,6 +115,7 @@ static void run_monitor(const string& pidfile)
 {
 	signal(SIGINT, g_monitor_signal_callback);
 	signal(SIGTERM, g_monitor_signal_callback);
+	signal(SIGUSR1, SIG_IGN);
 
 	//
 	// Start the monitor process
@@ -294,6 +301,7 @@ public:
 		m_socketbufferptr = NULL;
 		m_socketbuflen = 0;
 		m_socketbuffer_storage = NULL;
+		m_capturing = false;
 
 #ifndef _WIN32
 		Poco::Net::initializeSSL();
@@ -473,6 +481,24 @@ protected:
 			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate)
 			{
 				break;
+			}
+
+			if(g_toggle_capture)
+			{
+				g_toggle_capture = false;
+
+				if(m_capturing)
+				{
+					g_log->information("Received SIGUSR1, Stopping dump");
+					m_capturing = false;
+					m_inspector.stop_dump();
+				}
+				else
+				{
+					g_log->information("Received SIGUSR1, Starting dump");
+					m_capturing = true;
+					m_inspector.start_dump(m_configuration.m_dump_file);
+				}
 			}
 
 			res = m_inspector.next(&ev);
@@ -761,6 +787,11 @@ protected:
 			ASSERT(false);
 		}
 
+		if(signal(SIGUSR1, g_usr_signal_callback) == SIG_ERR)
+		{
+			ASSERT(false);
+		}
+
 #ifndef _WIN32
 		if(initialize_crash_handler() == false)
 		{
@@ -962,6 +993,7 @@ protected:
 			if(m_writefile != "")
 			{
 				m_inspector.start_dump(m_writefile);
+				m_capturing = true;
 			}
 
 			//
@@ -996,6 +1028,7 @@ private:
 	string m_filename;
 	uint64_t m_evtcnt;
 	string m_writefile;
+	bool m_capturing;
 	string m_pidfile;
 	Poco::Net::SocketAddress* m_sa;
 	Poco::Net::StreamSocket* m_socket;
