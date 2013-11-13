@@ -9,6 +9,8 @@ dragent_configuration::dragent_configuration()
 	m_ssl_enabled = false;
 	m_compression_enabled = false;
 	m_emit_full_connections = false;
+	m_min_file_priority = (Message::Priority) 0;
+	m_min_console_priority = (Message::Priority) 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(string priostr)
@@ -86,8 +88,16 @@ void dragent_configuration::init(Application* app)
 		m_server_port = config.getInt("server.port", 6666);
 	}
 
-	m_min_file_priority = string_to_priority(config.getString("logpriority.file", "debug"));
-	m_min_console_priority = string_to_priority(config.getString("logpriority.console", "debug"));
+	if(m_min_file_priority == 0)
+	{
+		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "info"));
+	}
+
+	if(m_min_console_priority == 0)
+	{
+		m_min_console_priority = string_to_priority(config.getString("logpriority.console", "info"));
+	}
+
 	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_dropping_mode = config.getBool("droppingmode.enabled", false);
 	m_ssl_enabled = config.getBool("ssl.enabled", true);

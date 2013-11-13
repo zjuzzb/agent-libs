@@ -294,8 +294,6 @@ public:
 		m_socketbufferptr = NULL;
 		m_socketbuflen = 0;
 		m_socketbuffer_storage = NULL;
-		m_min_file_priority = Message::PRIO_DEBUG;
-		m_min_console_priority = Message::PRIO_DEBUG;
 
 #ifndef _WIN32
 		Poco::Net::initializeSSL();
@@ -353,13 +351,13 @@ protected:
 				.repeatable(false));
 
 		options.addOption(
-			Option("consolepriority", "", "min priotity of the log messages that go on console. Can be 'error', 'warning', 'info' or 'debug'.")
+			Option("consolepriority", "", "min priority of the log messages that go on console. Can be 'error', 'warning', 'info' or 'debug'.")
 				.required(false)
 				.repeatable(false)
 				.argument("priority"));
 
 		options.addOption(
-			Option("filepriority", "", "min priotity of the log messages that go on file. Can be 'error', 'warning', 'info' or 'debug'.")
+			Option("filepriority", "", "min priority of the log messages that go on file. Can be 'error', 'warning', 'info' or 'debug'.")
 				.required(false)
 				.repeatable(false)
 				.argument("priority"));
@@ -411,11 +409,11 @@ protected:
 		}
 		else if(name == "consolepriority")
 		{
-			m_min_console_priority = dragent_configuration::string_to_priority(value);
+			m_configuration.m_min_console_priority = dragent_configuration::string_to_priority(value);
 		}
 		else if(name == "filepriority")
 		{
-			m_min_file_priority = dragent_configuration::string_to_priority(value);
+			m_configuration.m_min_file_priority = dragent_configuration::string_to_priority(value);
 		}
 		else if(name == "readfile")
 		{
@@ -797,10 +795,10 @@ protected:
 		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
 		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 
-		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_min_file_priority);
-		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_min_console_priority);
+		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
 		
-		if(m_min_console_priority != -1)
+		if(m_configuration.m_min_console_priority != -1)
 		{
 			g_log = new dragent_logger(&loggerf, &loggerc);
 		}
@@ -994,8 +992,6 @@ protected:
 	
 private:
 	bool m_help_requested;
-	Message::Priority m_min_console_priority;
-	Message::Priority m_min_file_priority;
 	sinsp m_inspector;
 	string m_filename;
 	uint64_t m_evtcnt;
