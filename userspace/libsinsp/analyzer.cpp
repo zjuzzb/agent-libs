@@ -176,6 +176,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		*(uint32_t*) m_serialization_buffer = compressed_size;
 		*len = *(uint32_t*) m_serialization_buffer;
 		delete array_output;
+		delete gzip_output;
 		return m_serialization_buffer + sizeof(uint32_t);
 #endif
 	}
