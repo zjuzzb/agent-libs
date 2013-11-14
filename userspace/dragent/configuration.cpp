@@ -70,7 +70,12 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_root_dir = config.getString("rootdir", m_root_dir);
-	m_metrics_dir = Path(m_root_dir).append(config.getString("metricsfile.location", "metrics")).toString();
+
+	if(!config.getString("metricsfile.location", "").empty())
+	{
+		m_metrics_dir = Path(m_root_dir).append(config.getString("metricsfile.location", "")).toString();
+	}
+	
 	m_log_dir = Path(m_root_dir).append(config.getString("logfile.location", "logs")).toString();
 	
 	if(m_customer_id.empty())

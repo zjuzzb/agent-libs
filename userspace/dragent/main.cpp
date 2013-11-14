@@ -882,12 +882,6 @@ protected:
 		m_socketbuffer_storage = new char[SOCKETBUFFER_STORAGE_SIZE];
 
 		//
-		// Create the metrics directory if it doesn't exist
-		//
-		File md(m_configuration.m_metrics_dir);
-		md.createDirectories();
-
-		//
 		// From now on we can get exceptions
 		//
 		try
@@ -938,6 +932,11 @@ protected:
 			m_inspector.set_log_callback(g_logger_callback);
 			if(!m_configuration.m_metrics_dir.empty())
 			{
+				//
+				// Create the metrics directory if it doesn't exist
+				//
+				File md(m_configuration.m_metrics_dir);
+				md.createDirectories();
 				m_inspector.get_configuration()->set_emit_metrics_to_file(true);
 				m_inspector.get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
 			}
