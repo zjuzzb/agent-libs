@@ -44,7 +44,6 @@ void sinsp_threadinfo::init()
 	m_flags = 0;
 	m_nchilds = 0;
 	m_procinfo = NULL;
-	m_transaction_processing_delay_ns = 0;
 	m_fdlimit = -1;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
@@ -569,7 +568,6 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 
 	m_procinfo->m_proc_metrics.add(&other->m_metrics);
 	m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
-	m_procinfo->m_proc_transaction_processing_delay_ns += other->m_transaction_processing_delay_ns;
 
 	if(other->m_fd_usage_pct > m_procinfo->m_fd_usage_pct)
 	{
@@ -649,7 +647,6 @@ void sinsp_threadinfo::clear_all_metrics()
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_external_transaction_metrics.clear();
-	m_transaction_processing_delay_ns = 0;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
 	m_cpuload = 0;

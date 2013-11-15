@@ -441,7 +441,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 #endif
-		it->second.m_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_transaction_metrics);
 		mtinfo->add_all_metrics(&it->second);
 
 		//
@@ -630,6 +629,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Transaction-related metrics
 					//
+					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
+
 					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
@@ -1189,7 +1190,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, 
+				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"host: h:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
 					m_host_metrics.m_capacity_score,
 					m_host_transaction_metrics.m_counter.m_count_in,

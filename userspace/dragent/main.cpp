@@ -775,7 +775,6 @@ protected:
 		{
 			run_monitor(m_pidfile);
 		}
-#endif
 
 		if(signal(SIGINT, g_signal_callback) == SIG_ERR)
 		{
@@ -792,7 +791,6 @@ protected:
 			ASSERT(false);
 		}
 
-#ifndef _WIN32
 		if(initialize_crash_handler() == false)
 		{
 			ASSERT(false);

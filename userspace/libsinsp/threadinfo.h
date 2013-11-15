@@ -173,7 +173,7 @@ public:
 	// The delay that this thread introduced in transaction processing.
 	// This is calculated by subtracting the total outgoing transaction time to
 	// the total incoming transaction time.
-	uint64_t m_transaction_processing_delay_ns;
+	//uint64_t m_transaction_processing_delay_ns;
 	// Process-specific information
 	sinsp_procinfo* m_procinfo;
 	// The ratio between the number of connections waiting to be served and 
