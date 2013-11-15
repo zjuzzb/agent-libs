@@ -22,7 +22,7 @@ function install_rpm {
 	echo "* Installing Draios public key"
 	rpm --quiet --import http://download.draios.com/DRAIOS-GPG-KEY.public
 	echo "* Installing Draios repository"
-	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/$REPOSITORY_NAME/rpm/draios.repo
+	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/_REPOSITORY_NAME_/rpm/draios.repo
 	echo "* Installing kernel development files"
 	yum -q -y install kernel-devel-$(uname -r)
 	echo "* Installing Draios agent"
@@ -40,7 +40,7 @@ function install_deb {
 	echo "* Installing Draios public key"
 	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
 	echo "* Installing Draios repository"
-	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$REPOSITORY_NAME/deb/draios.list
+	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/_REPOSITORY_NAME_/deb/draios.list
 	apt-get -qq update
 	echo "* Installing kernel development files"
 	apt-get -qq -y install linux-headers-$(uname -r)
@@ -53,13 +53,12 @@ function unsupported {
     exit 1	
 }
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: $0 REPOSITORY_NAME ACCESS_KEY"
+if [ -z "$1" ]; then
+    echo "Usage: $0 ACCESS_KEY"
     exit 1
 fi
 
-REPOSITORY_NAME="$1"
-ACCESS_KEY="$2"
+ACCESS_KEY="$1"
 
 if [ $(id -u) != 0 ]; then
     echo "Installer must be run as root (or with sudo)."

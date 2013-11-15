@@ -59,13 +59,15 @@ cd -
 cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
 sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
+cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
+sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
+
 #
 # S3 upload
 #
+s3cmd --acl-public put $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/
 s3cmd --acl-public put $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/
 s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/
 s3cmd --acl-public put $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/
 s3cmd --delete-removed --acl-public sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/
-
-s3cmd --acl-public sync $SCRIPTS_DIR/install-agent s3://download.draios.com/
 s3cmd --acl-public sync $SCRIPTS_DIR/smoke-tests s3://download.draios.com/
