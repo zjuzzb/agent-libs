@@ -61,7 +61,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 		throw sinsp_exception("machine infor missing, analyzer can't start");
 	}
 
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024);
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, m_inspector->m_islive);
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);

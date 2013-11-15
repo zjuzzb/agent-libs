@@ -16,10 +16,12 @@
 #include "sinsp_int.h"
 #include "procfs_parser.h"
 
-sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb)
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture)
 {
 	m_ncpus = ncpus;
 	m_physical_memory_kb = physical_memory_kb;
+	m_is_live_capture = is_live_capture;
+
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
 #ifndef _WIN32
@@ -33,9 +35,10 @@ uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jif
 	char line[512];
 	char tmps[32];
 
-#ifdef _WIN32
-	return -1;
-#endif
+	if(!m_is_live_capture)
+	{
+		return -1;
+	}
 
 	FILE* f = fopen("/proc/stat", "r");
 	if(f == NULL)
@@ -122,9 +125,10 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 	//
 	// Nothing to do on windows
 	//
-#ifdef _WIN32
-	return;
-#endif
+	if(!m_is_live_capture)
+	{
+		return;
+	}
 
 	loads->clear();
 	idles->clear();
@@ -214,9 +218,10 @@ int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
 	char line[512];
 	int64_t tmp;
 
-#ifdef _WIN32
-	return -1;
-#endif
+	if(!m_is_live_capture)
+	{
+		return -1;
+	}
 
 	FILE* f = fopen("/proc/meminfo", "r");
 	if(f == NULL)
@@ -264,9 +269,10 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 	string path = string("/proc/") + to_string(pid) + "/stat";
 	uint64_t tval, val1, val2;
 
-#ifdef _WIN32
-	return -1;
-#endif
+	if(!m_is_live_capture)
+	{
+		return -1;
+	}
 
 	FILE* f = fopen(path.c_str(), "r");
 	if(f == NULL)

@@ -3,7 +3,7 @@
 class sinsp_procfs_parser
 {
 public:
-	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb);
+	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	uint32_t get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
 	void get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<uint32_t>* idles);
 	int64_t get_global_mem_usage_kb();
@@ -17,6 +17,8 @@ private:
 //	uint64_t m_last_read_time;
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
+	bool m_is_live_capture;
+
 	vector<uint64_t> m_old_total_jiffies;
 	vector<uint64_t> m_old_work_jiffies;
 	vector<uint64_t> m_old_idle_jiffies;
