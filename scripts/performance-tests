@@ -15,7 +15,7 @@ else
     exit 1
 fi
 
-curl -s http://download.draios.com/install-agent | sudo bash -s $REPOSITORY_NAME access_key
+curl -s http://download.draios.com/dev/install-agent | sudo bash -s $REPOSITORY_NAME access_key
 
 if [ -f /etc/debian_version ]; then
 	sudo apt-get -y install draios-tests
