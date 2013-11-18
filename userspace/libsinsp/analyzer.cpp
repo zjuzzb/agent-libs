@@ -172,6 +172,12 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		gzip_output->Close();
 
 		uint32_t compressed_size = (uint32_t)array_output->ByteCount();
+		if(compressed_size > tlen)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
+			throw sinsp_exception(estr);
+		}
 
 		*(uint32_t*) m_serialization_buffer = compressed_size;
 		*len = *(uint32_t*) m_serialization_buffer;
