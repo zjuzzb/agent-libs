@@ -188,13 +188,19 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	}
 	else
 	{
-		ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
-		m_metrics->SerializeToZeroCopyStream(array_output);
+		//
+		// Reserve 4 bytes at the beginning of the string for the length
+		//
+		m_serialization_string = "XXXX";
+		StringOutputStream string_output(&m_serialization_string);
+		m_metrics->SerializeToZeroCopyStream(&string_output);
+		ASSERT(m_serialization_string.length() == full_len);
+
+		char* buf = (char*)m_serialization_string.data();
 
 		*(uint32_t*) m_serialization_buffer = tlen;
-		*len = *(uint32_t*) m_serialization_buffer;
-		delete array_output;
-		return m_serialization_buffer + sizeof(uint32_t);
+		*len = tlen;
+		return buf + sizeof(uint32_t);
 	}
 }
 
