@@ -1343,6 +1343,24 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		// Switch the category to processing
 		//
 		cat.m_category = EC_PROCESSING;
+
+		//
+		// If this is an fd-based syscall that comes after a wait, update the wait time
+		//
+		ppm_event_flags eflags = evt->get_flags();
+		if(eflags & EF_USES_FD)
+		{
+			if(evt->m_tinfo->m_last_wait_duration_ns > 0)
+			{
+				evt->m_tinfo->m_last_wait_duration_ns = 0;
+				evt->m_tinfo->m_last_wait_end_time_ns = 0;
+			}
+			else if(evt->m_tinfo->m_last_wait_duration_ns < 0)
+			{
+				evt->m_tinfo->m_last_wait_duration_ns = 0;
+				evt->m_tinfo->m_last_wait_end_time_ns = 0;
+			}
+		}
 	}
 	else
 	{
@@ -1536,7 +1554,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 			}
 			break;
 		case EC_WAIT:
-			metrics->m_wait.add(cnt_delta, delta);
+			metrics->m_wait_other.add(cnt_delta, delta);
 			break;
 		case EC_SCHEDULER:
 			break;

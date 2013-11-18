@@ -51,7 +51,7 @@ captureinfo do_inspect(sinsp* inspector,
 	captureinfo retval;
 	int32_t res;
 	sinsp_evt* ev;
-	uint64_t n_printed_evts = 0;
+//	uint64_t n_printed_evts = 0;
 	uint64_t ts;
 	uint64_t deltats = 0;
 	uint64_t firstts = 0;

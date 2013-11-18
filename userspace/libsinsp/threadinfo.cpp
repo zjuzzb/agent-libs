@@ -52,6 +52,8 @@ void sinsp_threadinfo::init()
 	m_main_program_thread = NULL;
 	m_cpuload = 0;
 	m_resident_memory_kb = 0;
+	m_last_wait_duration_ns = 0;
+	m_last_wait_end_time_ns = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()

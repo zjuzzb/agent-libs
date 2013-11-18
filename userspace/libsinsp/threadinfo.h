@@ -189,6 +189,9 @@ public:
 	int64_t m_resident_memory_kb;
 	// Time spent by this process on each of the CPUs
 	vector<uint64_t> m_cpu_time_ns;
+	// Time and duration of the last select, poll or epoll
+	int64_t m_last_wait_end_time_ns;
+	int64_t m_last_wait_duration_ns;
 
 
 	//

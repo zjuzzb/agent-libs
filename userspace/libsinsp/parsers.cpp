@@ -91,24 +91,9 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_PRLIMIT_E:
 		store_event(evt);
 		break;
-	case PPME_SYSCALL_READ_E:
-	case PPME_SYSCALL_WRITE_E:
-	case PPME_SOCKET_RECV_E:
-	case PPME_SOCKET_SEND_E:
-	case PPME_SOCKET_RECVFROM_E:
-	case PPME_SOCKET_RECVMSG_E:
-	case PPME_SYSCALL_READV_E:
-	case PPME_SYSCALL_WRITEV_E:
-	case PPME_SYSCALL_PREAD_E:
-	case PPME_SYSCALL_PWRITE_E:
-	case PPME_SYSCALL_PREADV_E:
-	case PPME_SYSCALL_PWRITEV_E:
-//		parse_rw_enter(evt);
-		break;
 	case PPME_SOCKET_SENDTO_E:
 	case PPME_SOCKET_SENDMSG_E:
 		store_event(evt);
-//		parse_rw_enter(evt);
 		break;
 	case PPME_SYSCALL_READ_X:
 	case PPME_SYSCALL_WRITE_X:
@@ -131,6 +116,16 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_OPENAT_X:
 		parse_open_openat_creat_exit(evt); 
 		break;
+	case PPME_SYSCALL_SELECT_E:
+	case PPME_SYSCALL_POLL_E:
+	case PPME_SYSCALL_EPOLLWAIT_E:
+		parse_select_poll_epollwait_enter(evt); 
+		break;	
+	case PPME_SYSCALL_SELECT_X:
+	case PPME_SYSCALL_POLL_X:
+	case PPME_SYSCALL_EPOLLWAIT_X:
+		parse_select_poll_epollwait_exit(evt); 
+		break;	
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
 		break;
@@ -257,7 +252,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	}
 
 	//
-	// Extract the process
+	// Find the thread info
 	//
 
 	//
@@ -1309,6 +1304,12 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	}
 
 	//
+	// If this comes after a wait, reset the last wait time, since we don't count 
+	// time waiting for an accept as I/O time
+	//
+	evt->m_tinfo->m_last_wait_duration_ns = 0;
+
+	//
 	// Extract the fd
 	//
 	parinfo = evt->get_param(0);
@@ -1754,76 +1755,6 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();
 #endif
-	}
-}
-
-//
-// The only thing we do here checking if this fd is associated with a transaction and, 
-// if yes, update the transaction. We do this because we want to catch the direction 
-// change (which is the trigger for the end of the transaction) as soon as possible
-//
-void sinsp_parser::parse_rw_enter(sinsp_evt *evt)
-{
-	ASSERT(evt->m_tinfo);
-
-	if(evt->m_tinfo == NULL)
-	{
-		return;
-	}
-
-	sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
-	if(fdinfo == NULL || !fdinfo->is_transaction())
-	{
-		return;
-	}
-
-	//
-	// This is a legit transaction FD, find the connection
-	//
-	sinsp_connection *connection;
-	uint64_t ts = evt->get_ts();
-
-	if(fdinfo->is_ipv4_socket())
-	{
-		connection = m_inspector->get_connection(fdinfo->m_info.m_ipv4info, 
-			ts);
-
-		ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
-	}
-	else if(fdinfo->is_unix_socket())
-	{
-		connection = m_inspector->get_connection(fdinfo->m_info.m_unixinfo, 
-			ts);
-
-		ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
-	}
-	else
-	{
-		ASSERT(false);
-		return;
-	}
-
-	//
-	// If we have a connection, update the transaction with 0 bytes
-	// The actual data size will come in the exit event.
-	//
-	if(connection != NULL)
-	{
-		sinsp_partial_transaction *trinfo = &(fdinfo->m_transaction);
-
-		sinsp_partial_transaction::direction dir = 
-			(evt->get_flags() & EF_READS_FROM_FD)? 
-			sinsp_partial_transaction::DIR_IN : sinsp_partial_transaction::DIR_OUT;
-
-		trinfo->update(m_inspector,
-			evt->m_tinfo,
-			fdinfo,
-			connection,
-			0, 
-			0,
-			evt->get_cpuid(),
-			dir, 
-			0);
 	}
 }
 
@@ -3074,6 +3005,79 @@ void sinsp_parser::parse_prlimit_exit(sinsp_evt *evt)
 				// update the process fdlimit
 				//
 				ptinfo->m_fdlimit = newcur;
+			}
+		}
+	}
+}
+
+void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
+{
+	if(evt->m_tinfo == NULL)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
+}
+
+void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+		if(tinfo == NULL)
+		{
+			ASSERT(false);
+			return;
+		}
+
+		if(tinfo->is_lastevent_data_valid())
+		{
+			//
+			// We categorize this based on the next I/O operation only if the number of 
+			// FDs that were waited for is 1
+			//
+			if(retval == 0)
+			{
+				tinfo->m_last_wait_duration_ns = 0;
+			}
+			else
+			{
+				//
+				// If this was a wait on a *single* fd, we can easily categorize it with certainty and
+				// we encode the delta as a positive number.
+				// If this was a wait on multiple FDs, we encode the delta as a negative number so
+				// the next steps will know that it needs to be handled with more care.
+				//
+				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
+				uint64_t ts = evt->get_ts();
+
+				tinfo->m_last_wait_end_time_ns = ts;
+				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
+
+				if(retval == 1)
+				{
+					tinfo->m_last_wait_duration_ns = ts - start_time_ns;
+				}
+				else
+				{
+					tinfo->m_last_wait_duration_ns = start_time_ns - ts;
+				}
 			}
 		}
 	}

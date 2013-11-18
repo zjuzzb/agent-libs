@@ -134,7 +134,10 @@ public:
 	sinsp_counter_time_bytes m_io_file;
 	sinsp_counter_time_bytes m_io_net;
 	sinsp_counter_time_bytes m_io_other;
-	sinsp_counter_time m_wait;
+	sinsp_counter_time m_wait_file;
+	sinsp_counter_time m_wait_net;
+	sinsp_counter_time m_wait_ipc;
+	sinsp_counter_time m_wait_other;
 	sinsp_counter_time m_processing;
 
 	void clear();
@@ -143,7 +146,6 @@ public:
 	void to_protobuf(draiosproto::time_categories* protobuf_msg);
 
 private:
-	void to_protobuf_full(draiosproto::time_categories* protobuf_msg);
 	void to_protobuf_simple(draiosproto::time_categories* protobuf_msg);
 
 	uint32_t m_nthreads;
