@@ -711,7 +711,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_connection_queue_usage_pct);
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  %s) file:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+							"  %s) proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
 							it->second.m_comm.c_str(),
 							((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
 							((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
@@ -1367,7 +1367,6 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 					metrics->m_wait_other.subtract(1, delta);
 					break;
 				default:
-					ASSERT(evt->m_fdinfo == NULL);
 					break;
 				}
 			}
