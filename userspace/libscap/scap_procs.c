@@ -301,9 +301,8 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	}
 	else
 	{
-		filesize = fread(line, 1, sizeof(line) - 1, f);
-		line[filesize] = 0;
-		line[filesize + 1] = 0;
+		filesize = fread(line, 1, sizeof(line), f);
+		line[filesize - 1] = 0;
 
 		exe_len = strlen(line);
 		if(exe_len < filesize)
