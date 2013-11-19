@@ -74,8 +74,8 @@ public:
 	{
 		TYPE_TID = 0,
 		TYPE_PID = 1,
-		TYPE_COMM = 2,
-		TYPE_EXE = 3,
+		TYPE_EXE = 2,
+		TYPE_COMM = 3,
 		TYPE_ARGS = 4,
 		TYPE_CWD = 5,
 		TYPE_NCHILDS = 6,
@@ -99,6 +99,7 @@ public:
 	// to be pretty small.
 	uint8_t m_val_storage[1024];
 	bool m_tbool;
+	string m_tstr;
 };
 
 //

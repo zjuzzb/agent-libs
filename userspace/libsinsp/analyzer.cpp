@@ -709,16 +709,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / sample_duration : 0,
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
-
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
-							((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
 					}
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"  %s:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+						it->second.m_comm.c_str(),
+						((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
+						((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
+						((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
+						((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
+						((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
+						((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
 #endif
 				}
 #endif // ANALYZER_EMITS_PROCESSES
@@ -1412,6 +1413,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	// Get the event category and type
 	//
+BRK(18309);
 	evt->get_category(&cat);
 
 	//

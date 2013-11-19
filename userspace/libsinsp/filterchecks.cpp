@@ -508,15 +508,6 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_thread implementation
 ///////////////////////////////////////////////////////////////////////////////
-#define FID_TH_TID 0
-#define FID_TH_PID 1
-#define FID_TH_EXE 2
-#define FID_TH_COMM 3
-#define FID_TH_ARGS 4
-#define FID_TH_CWD 5
-#define FID_TH_NCHILDS 6
-#define FID_TH_ISMAINTHREAD 7
-
 const event_field_info sinsp_filter_check_thread_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
@@ -571,14 +562,10 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 	{
 		for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
 		{
-			string fldstr(val, 0, 
-				// 1 is the '.'
-				m_info.m_name.length() + 1 + string(sinsp_filter_check_thread_fields[j].m_name).length());
-
-			if(string(val, 0, fldstr.size()) == fldstr)
+			if(val == m_info.m_name + '.' + sinsp_filter_check_thread_fields[j].m_name)
 			{
 				m_type = (check_type)j;
-				return fldstr.length();
+				return val.length();
 			}
 		}
 	}
@@ -600,7 +587,7 @@ void sinsp_filter_check_thread::parse_filter_value(const char* str)
 	case TYPE_EXE:
 	case TYPE_CWD:
 		VALIDATE_STR_VAL
-		memcpy(m_val_storage, val.c_str(), val.length());
+		memcpy(m_val_storage, val.c_str(), val.length() + 1);
 		break;
 	case TYPE_NCHILDS:
 		*(uint64_t*)m_val_storage = sinsp_numparser::parseu64(val);
@@ -646,14 +633,17 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 	case TYPE_PID:
 		return (uint8_t*)&tinfo->m_pid;
 	case TYPE_COMM:
-		return (uint8_t*)tinfo->get_comm().c_str();
+		m_tstr = tinfo->get_comm();
+		return (uint8_t*)m_tstr.c_str();
 	case TYPE_EXE:
-		return (uint8_t*)tinfo->get_exe().c_str();
+		m_tstr = tinfo->get_exe();
+		return (uint8_t*)m_tstr.c_str();
 	case TYPE_ARGS:
 		ASSERT(false);
 		throw sinsp_exception("filter error: thread.args filter not implemented yet");
 	case TYPE_CWD:
-		return (uint8_t*)tinfo->get_cwd().c_str();
+		m_tstr = tinfo->get_cwd();
+		return (uint8_t*)m_tstr.c_str();
 	case TYPE_ISMAINTHREAD:
 		m_tbool = tinfo->is_main_thread();
 		return (uint8_t*)&m_tbool;

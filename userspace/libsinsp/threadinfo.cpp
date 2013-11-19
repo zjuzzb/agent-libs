@@ -248,14 +248,6 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 
 string sinsp_threadinfo::get_comm()
 {
-	if(m_comm == "python")
-	{
-		if(m_args.size() > 0)
-		{
-			return m_args[0];
-		}
-	}
-
 	return m_comm;
 }
 
