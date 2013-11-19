@@ -5,6 +5,7 @@
 //
 class sinsp_counter_time_bytes;
 class sinsp_procinfo;
+class sinsp_counter_time_bidirectional;
 
 namespace draiosproto
 {
@@ -43,6 +44,8 @@ public:
 	void add(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bytes* other);
+	void add(sinsp_counter_time_bidirectional* other);
+	void subtract(uint32_t cnt_delta, uint64_t time_delta);
 	void clear();
 	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint32_t nthreads);
 
@@ -59,14 +62,17 @@ public:
 	sinsp_counter_time_bidirectional();
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
+	void add_other(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg);
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;
+	uint32_t m_count_other;
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
+	uint64_t m_time_ns_other;
 };
 
 //
@@ -99,6 +105,8 @@ public:
 	void add_out(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
 	void add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
 	void add(sinsp_counter_time_bytes* other);
+	void add(sinsp_counter_time* other);
+	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint32_t nthreads);
 
@@ -134,9 +142,9 @@ public:
 	sinsp_counter_time_bytes m_io_file;
 	sinsp_counter_time_bytes m_io_net;
 	sinsp_counter_time_bytes m_io_other;
-	sinsp_counter_time m_wait_file;
-	sinsp_counter_time m_wait_net;
-	sinsp_counter_time m_wait_ipc;
+	sinsp_counter_time_bidirectional m_wait_file;
+	sinsp_counter_time_bidirectional m_wait_net;
+	sinsp_counter_time_bidirectional m_wait_ipc;
 	sinsp_counter_time m_wait_other;
 	sinsp_counter_time m_processing;
 
@@ -145,10 +153,19 @@ public:
 	void get_total(sinsp_counter_time* tot);
 	void to_protobuf(draiosproto::time_categories* protobuf_msg);
 
+	uint64_t get_total_other_time();
+	uint64_t get_total_wait_time();
+	uint64_t get_total_file_time();
+	uint64_t get_total_net_time();
+	uint64_t get_total_ipc_time();
 private:
-	void to_protobuf_simple(draiosproto::time_categories* protobuf_msg);
 
 	uint32_t m_nthreads;
+	sinsp_counter_time m_tot_other;
+	sinsp_counter_time m_tot_wait;
+	sinsp_counter_time_bytes m_tot_io_file;
+	sinsp_counter_time_bytes m_tot_io_net;
+	sinsp_counter_time m_tot_ipc;
 };
 
 //

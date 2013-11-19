@@ -424,6 +424,7 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 		//
 		ASSERT((program_info == NULL) || (program_info && program_info->m_procinfo != NULL));
 		ASSERT((program_info == NULL) || (program_info && (int32_t)program_info->m_procinfo->m_cpu_time_ns.size() == num_cpus));
+
 		uint64_t tr_cpu_time = (program_info)? program_info->m_procinfo->m_cpu_time_ns[cpuid] : cpu_state->m_lastsample_server_processes_ns;
 
 		ntrcpu = (float)tr_cpu_time * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;

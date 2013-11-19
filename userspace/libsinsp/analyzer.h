@@ -94,6 +94,7 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
+	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;

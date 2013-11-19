@@ -698,21 +698,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 							it->second.m_comm.c_str(),
-	//						(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
 							it->second.m_tid,
 							it->second.m_nchilds + 1,
 							it->second.m_procinfo->m_capacity_score,
 							(float)it->second.m_procinfo->get_tot_cputime() * 100 / (float)sample_duration,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-							//trcountin? ((double)trtimein) / trcountin / sample_duration : 0,
-							//trcountout? ((double)trtimeout) / trcountin / sample_duration : 0,
-							//trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / trcountin / sample_duration : 0,
 							trcountin? ((double)trtimein) / sample_duration : 0,
 							trcountout? ((double)trtimeout) / sample_duration : 0,
 							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / sample_duration : 0,
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
+
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"  proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+							((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
 					}
 #endif
 				}
@@ -1264,6 +1269,96 @@ if(evt->get_num() - m_prev_sample_evtnum == 28590)
 	}
 }
 
+//
+// Parses a previous select/poll/epoll and account its time based on the successive I/O operation
+//
+void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
+{
+	int64_t wd = evt->m_tinfo->m_last_wait_duration_ns;
+
+	if(wd != 0)
+	{
+		uint64_t we = evt->m_tinfo->m_last_wait_end_time_ns;
+
+		if(we >= m_prev_flush_time_ns)
+		{
+			uint64_t ws;
+			uint64_t delta;
+
+			if(wd > 0)
+			{
+				ws = we - wd; 
+			}
+			else
+			{
+				ws = we + wd; 
+			}
+
+			delta = we - MAX(ws, m_prev_flush_time_ns);
+
+			sinsp_counters* metrics = &evt->m_tinfo->m_metrics;
+
+			switch(cat->m_subcategory)
+			{
+			case sinsp_evt::SC_NET:
+				if(cat->m_category == EC_IO_READ)
+				{
+					metrics->m_wait_net.add_in(1, delta);
+				}
+				else if(cat->m_category == EC_IO_WRITE)
+				{
+					metrics->m_wait_net.add_out(1, delta);
+				}
+				else
+				{
+					metrics->m_wait_net.add_other(1, delta);
+				}
+
+				metrics->m_wait_other.subtract(1, delta);
+				break;
+			case sinsp_evt::SC_FILE:
+				if(cat->m_category == EC_IO_READ)
+				{
+					metrics->m_wait_file.add_in(1, delta);
+				}
+				else if(cat->m_category == EC_IO_WRITE)
+				{
+					metrics->m_wait_file.add_out(1, delta);
+				}
+				else
+				{
+					metrics->m_wait_file.add_other(1, delta);
+				}
+
+				metrics->m_wait_other.subtract(1, delta);
+				break;
+			case sinsp_evt::SC_IPC:
+				if(cat->m_category == EC_IO_READ)
+				{
+					metrics->m_wait_ipc.add_in(1, delta);
+				}
+				else if(cat->m_category == EC_IO_WRITE)
+				{
+					metrics->m_wait_ipc.add_out(1, delta);
+				}
+				else
+				{
+					metrics->m_wait_ipc.add_other(1, delta);
+				}
+
+				metrics->m_wait_other.subtract(1, delta);
+				break;
+			default:
+				break;
+			}
+		}
+
+
+		evt->m_tinfo->m_last_wait_duration_ns = 0;
+		evt->m_tinfo->m_last_wait_end_time_ns = 0;
+	}
+}
+
 void sinsp_analyzer::process_event(sinsp_evt* evt)
 {
 	uint64_t ts;
@@ -1355,24 +1450,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		// Switch the category to processing
 		//
 		cat.m_category = EC_PROCESSING;
-
-		//
-		// If this is an fd-based syscall that comes after a wait, update the wait time
-		//
-		ppm_event_flags eflags = evt->get_flags();
-		if(eflags & EF_USES_FD)
-		{
-			if(evt->m_tinfo->m_last_wait_duration_ns > 0)
-			{
-				evt->m_tinfo->m_last_wait_duration_ns = 0;
-				evt->m_tinfo->m_last_wait_end_time_ns = 0;
-			}
-			else if(evt->m_tinfo->m_last_wait_duration_ns < 0)
-			{
-				evt->m_tinfo->m_last_wait_duration_ns = 0;
-				evt->m_tinfo->m_last_wait_end_time_ns = 0;
-			}
-		}
 	}
 	else
 	{
@@ -1389,6 +1466,15 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		// be attributed to processing.
 		//
 		evt->m_tinfo->m_lastevent_category.m_category = EC_PROCESSING;
+
+		//
+		// If this is an fd-based syscall that comes after a wait, update the wait time
+		//
+		ppm_event_flags eflags = evt->get_flags();
+		if(eflags & EF_USES_FD)
+		{
+			add_wait_time(evt, &cat);
+		}
 	}
 
 	//
