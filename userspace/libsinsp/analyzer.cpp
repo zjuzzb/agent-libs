@@ -643,7 +643,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
 
+if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+{
 					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
+}
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
@@ -710,15 +713,23 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
 
+						//g_logger.format(sinsp_logger::SEV_DEBUG,
+						//	"  %s) proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+						//	it->second.m_comm.c_str(),
+						//	((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
+						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
+						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
+						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
+						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
+						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
+
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  %s) proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+							"  %s) proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
 							it->second.m_comm.c_str(),
-							((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
-							((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
+							it->second.m_procinfo->m_proc_metrics.get_processing_percentage() * 100,
+							it->second.m_procinfo->m_proc_metrics.get_file_percentage() * 100,
+							it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
+							it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
 					}
 #endif
 				}
@@ -1321,7 +1332,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 				case sinsp_evt::SC_NET:
 					if(cat->m_category == EC_IO_READ)
 					{
-						metrics->m_wait_net.add_in(1, delta);
+						break;
 					}
 					else if(cat->m_category == EC_IO_WRITE)
 					{

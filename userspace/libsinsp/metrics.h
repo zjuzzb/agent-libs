@@ -158,6 +158,12 @@ public:
 	uint64_t get_total_file_time();
 	uint64_t get_total_net_time();
 	uint64_t get_total_ipc_time();
+
+	double get_processing_percentage();
+	double get_other_percentage();
+	double get_file_percentage();
+	double get_net_percentage();
+
 private:
 
 	uint32_t m_nthreads;
@@ -166,6 +172,7 @@ private:
 	sinsp_counter_time_bytes m_tot_io_file;
 	sinsp_counter_time_bytes m_tot_io_net;
 	sinsp_counter_time m_tot_ipc;
+	sinsp_counter_time m_tot_relevant;
 };
 
 //

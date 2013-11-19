@@ -235,6 +235,12 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bidirectional* other, bool
 	m_time_ns_other += other->m_time_ns_other;
 }
 
+void sinsp_counter_time_bytes::add(sinsp_counter_time* other)
+{
+	m_count_other += other->m_count;
+	m_time_ns_other += other->m_time_ns;
+}
+
 void sinsp_counter_time_bytes::clear()
 {
 	m_count_in = 0;
@@ -343,10 +349,10 @@ void sinsp_counters::add(sinsp_counters* other)
 void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 {
 	m_tot_other.clear();
-	m_tot_other.add(&m_unknown);
+	// Unknown is usually garbage caused by drops or processes coming out of
+	// inactivity. We just ignore it.
+	//m_tot_other.add(&m_unknown);
 	m_tot_other.add(&m_other);
-	m_tot_other.add(&m_file);
-	m_tot_other.add(&m_net);
 	m_tot_other.add(&m_memory);
 	m_tot_other.add(&m_process);
 	m_tot_other.add(&m_system);
@@ -354,28 +360,36 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 	m_tot_other.add(&m_user);
 	m_tot_other.add(&m_time);
 	m_tot_other.add(&m_io_other);
-	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), m_nthreads);
 
 	m_tot_wait.clear();
 	m_tot_wait.add(&m_wait_other);
 	m_tot_wait.add(&m_sleep);
-	m_tot_wait.to_protobuf(protobuf_msg->mutable_wait(), m_nthreads);
 
 	m_tot_io_file.clear();
+	m_tot_io_file.add(&m_file);
 	m_tot_io_file.add(&m_io_file);
 	m_tot_io_file.add(&m_wait_file, true);
-	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_nthreads);
 
 	m_tot_io_net.clear();
+	m_tot_io_net.add(&m_net);
 	m_tot_io_net.add(&m_io_net);
 	m_tot_io_net.add(&m_wait_net, true);
-	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_nthreads);
 
 	m_tot_ipc.clear();
 	m_tot_ipc.add(&m_ipc);
 	m_tot_ipc.add(&m_wait_ipc);
-	m_tot_ipc.to_protobuf(protobuf_msg->mutable_ipc(), m_nthreads);
 
+	m_tot_relevant.clear();
+	m_tot_relevant.add(&m_tot_other);
+	m_tot_relevant.add(&m_tot_io_file);
+	m_tot_relevant.add(&m_tot_io_net);
+	m_tot_relevant.add(&m_processing);
+
+	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), m_nthreads);
+	m_tot_wait.to_protobuf(protobuf_msg->mutable_wait(), m_nthreads);
+	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_nthreads);
+	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_nthreads);
+	m_tot_ipc.to_protobuf(protobuf_msg->mutable_ipc(), m_nthreads);
 	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_nthreads);
 
 #ifdef _DEBUG
@@ -386,6 +400,7 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 	ttot.add(&m_tot_io_net);
 	ttot.add(&m_tot_ipc);
 	ttot.add(&m_processing);
+	ttot.add(&m_unknown);
 	ASSERT(ttot.m_time_ns % 1000000000 == 0);
 	ASSERT(ttot.m_time_ns / 1000000000 == m_nthreads);
 #endif
@@ -414,6 +429,26 @@ uint64_t sinsp_counters::get_total_net_time()
 uint64_t sinsp_counters::get_total_ipc_time()
 {
 	return m_tot_ipc.m_time_ns;
+}
+
+double sinsp_counters::get_processing_percentage()
+{
+	return ((double)m_processing.m_time_ns) / m_tot_relevant.m_time_ns;
+}
+
+double sinsp_counters::get_file_percentage()
+{
+	return ((double)m_tot_io_file.m_time_ns_in + m_tot_io_file.m_time_ns_out + m_tot_io_file.m_time_ns_other) / m_tot_relevant.m_time_ns;
+}
+
+double sinsp_counters::get_net_percentage()
+{
+	return ((double)m_tot_io_net.m_time_ns_in + m_tot_io_net.m_time_ns_out + m_tot_io_net.m_time_ns_other) / m_tot_relevant.m_time_ns;
+}
+
+double sinsp_counters::get_other_percentage()
+{
+	return ((double)m_tot_other.m_time_ns) / m_tot_relevant.m_time_ns;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

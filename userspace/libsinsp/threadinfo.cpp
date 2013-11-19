@@ -846,7 +846,7 @@ void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* thread
 			}
 			else
 			{
-				ASSERT(prog_thread->m_nchilds);
+				ASSERT(false);
 			}
 		}
 
