@@ -1546,5 +1546,9 @@ void sinsp_evt::get_category(OUT sinsp_evt::category* cat)
 				}
 			}
 		}
+		else
+		{
+			cat->m_subcategory = sinsp_evt::SC_NONE;
+		}
 	}
 }

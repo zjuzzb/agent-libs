@@ -709,17 +709,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							trcountin? ((double)it->second.m_procinfo->m_proc_transaction_processing_delay_ns) / sample_duration : 0,
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
-					}
 
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"  %s:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
-						it->second.m_comm.c_str(),
-						((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
-						((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
-						((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
-						((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
-						((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
-						((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"  %s) file:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
+							it->second.m_comm.c_str(),
+							((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
+							((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
+					}
 #endif
 				}
 #endif // ANALYZER_EMITS_PROCESSES
@@ -1299,61 +1299,79 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 
 			sinsp_counters* metrics = &evt->m_tinfo->m_metrics;
 
-			switch(cat->m_subcategory)
+			if(cat->m_category == EC_FILE)
 			{
-			case sinsp_evt::SC_NET:
-				if(cat->m_category == EC_IO_READ)
-				{
-					metrics->m_wait_net.add_in(1, delta);
-				}
-				else if(cat->m_category == EC_IO_WRITE)
-				{
-					metrics->m_wait_net.add_out(1, delta);
-				}
-				else
-				{
-					metrics->m_wait_net.add_other(1, delta);
-				}
-
+				metrics->m_wait_file.add_other(1, delta);
 				metrics->m_wait_other.subtract(1, delta);
-				break;
-			case sinsp_evt::SC_FILE:
-				if(cat->m_category == EC_IO_READ)
-				{
-					metrics->m_wait_file.add_in(1, delta);
-				}
-				else if(cat->m_category == EC_IO_WRITE)
-				{
-					metrics->m_wait_file.add_out(1, delta);
-				}
-				else
-				{
-					metrics->m_wait_file.add_other(1, delta);
-				}
-
+			}
+			else if(cat->m_category == EC_NET)
+			{
+				metrics->m_wait_net.add_other(1, delta);
 				metrics->m_wait_other.subtract(1, delta);
-				break;
-			case sinsp_evt::SC_IPC:
-				if(cat->m_category == EC_IO_READ)
-				{
-					metrics->m_wait_ipc.add_in(1, delta);
-				}
-				else if(cat->m_category == EC_IO_WRITE)
-				{
-					metrics->m_wait_ipc.add_out(1, delta);
-				}
-				else
-				{
-					metrics->m_wait_ipc.add_other(1, delta);
-				}
-
+			}
+			else if(cat->m_category == EC_IPC)
+			{
+				metrics->m_wait_ipc.add_other(1, delta);
 				metrics->m_wait_other.subtract(1, delta);
-				break;
-			default:
-				break;
+			}
+			else
+			{
+				switch(cat->m_subcategory)
+				{
+				case sinsp_evt::SC_NET:
+					if(cat->m_category == EC_IO_READ)
+					{
+						metrics->m_wait_net.add_in(1, delta);
+					}
+					else if(cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_net.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_net.add_other(1, delta);
+					}
+
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				case sinsp_evt::SC_FILE:
+					if(cat->m_category == EC_IO_READ)
+					{
+						metrics->m_wait_file.add_in(1, delta);
+					}
+					else if(cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_file.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_file.add_other(1, delta);
+					}
+
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				case sinsp_evt::SC_IPC:
+					if(cat->m_category == EC_IO_READ)
+					{
+						metrics->m_wait_ipc.add_in(1, delta);
+					}
+					else if(cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_ipc.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_ipc.add_other(1, delta);
+					}
+
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				default:
+					ASSERT(evt->m_fdinfo == NULL);
+					break;
+				}
 			}
 		}
-
 
 		evt->m_tinfo->m_last_wait_duration_ns = 0;
 		evt->m_tinfo->m_last_wait_end_time_ns = 0;
@@ -1413,7 +1431,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	// Get the event category and type
 	//
-BRK(18309);
 	evt->get_category(&cat);
 
 	//
