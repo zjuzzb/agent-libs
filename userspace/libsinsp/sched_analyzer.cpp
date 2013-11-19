@@ -258,6 +258,7 @@ void cpustate2::init()
 	m_server_processes_ns = 0;
 	m_last_effective_sample_start = 0;
 	m_sample_effective_length_ns = 0;
+	m_last_flush_time = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -273,6 +274,7 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
 
 void sinsp_sched_analyzer2::on_capture_start()
 {
+	m_sample_length_ns = (size_t)m_inspector->m_configuration.get_analyzer_sample_length_ns();
 }
 
 void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
@@ -295,6 +297,21 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	// Calculate the delta
 	//
 	delta = (int64_t)(ts - state.m_last_switch_time);
+	
+	//
+	// Account for cross-sample gaps
+	//
+	if(delta > m_sample_length_ns)
+	{
+		uint64_t sample_start = ts / m_sample_length_ns * m_sample_length_ns;
+
+		if(state.m_last_switch_time < sample_start)
+		{
+			state.m_last_switch_time = sample_start;
+			delta = (int64_t)(ts - state.m_last_switch_time);
+		}
+	}
+
 	ASSERT(delta >= 0);
 	ASSERT(delta < (int64_t)m_inspector->m_configuration.get_analyzer_sample_length_ns());
 
@@ -387,6 +404,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		// Reset the state so we're ready for the next sample
 		//
 		state.m_last_switch_time = flush_time;
+		state.m_last_flush_time = flush_time;
 		state.m_lastsample_idle_ns = state.m_idle_ns;
 		state.m_lastsample_other_ns = state.m_other_ns;
 		state.m_lastsample_unknown_ns = state.m_unknown_ns;
