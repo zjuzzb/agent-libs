@@ -182,12 +182,13 @@ TEST_F(sys_call_test, unix_client_server)
 		sinsp_threadinfo *info = evt->get_thread_info(false);
 		if(info)
 		{
-			return ends_with(info->get_comm(), "unix_server.py") || ends_with(info->get_comm(), "unix_client.py");
+			if(info->get_comm() == "python" && info->m_args.size() == 1)
+			{
+				return ends_with(info->m_args[0], "unix_server.py") || ends_with(info->m_args[0], "unix_client.py");				
+			}
 		}
-		else
-		{
-			return false;
-		}
+
+		return false;
 	};
 
 	//
@@ -352,7 +353,7 @@ TEST_F(sys_call_test, unix_client_server)
 			callnum++;
 		}
 
-		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->get_comm(), "unix_server.py"))
+		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->m_args[0], "unix_server.py"))
 		{
 			state = 1;
 			sinsp_threadinfo* ti = evt->get_thread_info();
