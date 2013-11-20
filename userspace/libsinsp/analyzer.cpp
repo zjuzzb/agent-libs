@@ -114,11 +114,6 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	uint32_t tlen = m_metrics->ByteSize();
 	
 	//
-	// We allocate 4 additional bytes for the buffer lenght
-	//
-	uint32_t full_len = tlen + sizeof(uint32_t);
-
-	//
 	// Do the serialization
 	//
 	m_serialization_string = "XXXX";
@@ -133,7 +128,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		StringOutputStream string_output(&m_serialization_string);
 		GzipOutputStream gzip_output(&string_output);
 		m_metrics->SerializeToZeroCopyStream(&gzip_output);
-		ASSERT(m_serialization_string.length() == full_len);
+		ASSERT(m_serialization_string.length() == tlen + sizeof(uint32_t));
 
 		char* buf = (char*)m_serialization_string.data();
 
@@ -149,7 +144,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		//
 		StringOutputStream string_output(&m_serialization_string);
 		m_metrics->SerializeToZeroCopyStream(&string_output);
-		ASSERT(m_serialization_string.length() == full_len);
+		ASSERT(m_serialization_string.length() == tlen + sizeof(uint32_t));
 
 		char* buf = (char*)m_serialization_string.data();
 
