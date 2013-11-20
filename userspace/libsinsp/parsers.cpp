@@ -2311,6 +2311,12 @@ void sinsp_parser::update_fd(sinsp_evt *evt, sinsp_evt_param *parinfo)
 	uint8_t* packed_data = (uint8_t*)parinfo->m_val;
 	uint8_t family = *packed_data;
 
+	if(parinfo->m_len == 0)
+	{
+		ASSERT(false);
+		return;
+	}
+
 	if(family == PPM_AF_INET)
 	{
 		evt->m_fdinfo->m_type = SCAP_FD_IPV4_SOCK;
