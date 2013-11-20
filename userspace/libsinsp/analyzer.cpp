@@ -608,8 +608,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				// Basic values
 				//
 				proc->set_pid(pid);
-				proc->set_comm(it->second.m_comm);
-				proc->set_exe(it->second.m_exe);
+				proc->mutable_details()->set_comm(it->second.m_comm);
+				proc->mutable_details()->set_exe(it->second.m_exe);
+				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+					arg_it != it->second.m_args.end(); ++arg_it)
+				{
+					proc->mutable_details()->add_args(*arg_it);
+				}
+
 				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
 				{
 					proc->set_is_ipv4_transaction_server(true);
@@ -617,12 +623,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
 				{
 					proc->set_is_unix_transaction_server(true);
-				}
-
-				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-					arg_it != it->second.m_args.end(); ++arg_it)
-				{
-					proc->add_args(*arg_it);
 				}
 
 				if(it->second.m_procinfo->m_cpuload != -1)

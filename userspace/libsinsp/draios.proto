@@ -79,6 +79,12 @@ message connection_categories {
   optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
 }
 
+message process_details {
+  required string comm = 1;	// Command name (e.g. "top")
+  required string exe = 2; // Full command name (e.g. "/bin/top")
+  repeated string args = 3; // Command line arguments (e.g. "-d1")
+}
+
 //
 // HOST
 // global host info.
@@ -125,19 +131,17 @@ message thread {
 message process {
   required uint64 pid = 1; // The ID of process this thread belongs to
 
-  required string comm = 2;	// Command name (e.g. "top")
-  required string exe = 3; // Full command name (e.g. "/bin/top")
-  repeated string args = 4; // Command line arguments (e.g. "-d1")
-
-  optional bool is_ipv4_transaction_server = 5; // True if this process has served at least one IPv4 transaction.
-  optional bool is_unix_transaction_server = 11; // True if this process has served at least one unix transaction.
+  optional process_details details = 2; // names and string constants relative to this process
   
-  optional time_categories tcounters = 6; // The time counters for this thread.
-  optional counter_time_bidirectional transaction_counters = 7; // The transaction counters for this process.
-  optional uint64 transaction_processing_delay = 8;	// the delay introduced by this process when processing transactions. 
+  optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
+  optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
+  
+  optional time_categories tcounters = 5; // The time counters for this thread.
+  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
+  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional resource_categories resource_counters = 9; // The resource counters for this process
-  optional counter_syscall_errors syscall_errors = 10; // Syscall error counter
+  optional resource_categories resource_counters = 8; // The resource counters for this process
+  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }
 
 //

@@ -40,6 +40,7 @@ class time_categories;
 class counter_syscall_errors;
 class resource_categories;
 class connection_categories;
+class process_details;
 class host;
 class thread;
 class process;
@@ -1188,6 +1189,126 @@ class connection_categories : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
+class process_details : public ::google::protobuf::MessageLite {
+ public:
+  process_details();
+  virtual ~process_details();
+
+  process_details(const process_details& from);
+
+  inline process_details& operator=(const process_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  static const process_details& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const process_details* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(process_details* other);
+
+  // implements Message ----------------------------------------------
+
+  process_details* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const process_details& from);
+  void MergeFrom(const process_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string comm = 1;
+  inline bool has_comm() const;
+  inline void clear_comm();
+  static const int kCommFieldNumber = 1;
+  inline const ::std::string& comm() const;
+  inline void set_comm(const ::std::string& value);
+  inline void set_comm(const char* value);
+  inline void set_comm(const char* value, size_t size);
+  inline ::std::string* mutable_comm();
+  inline ::std::string* release_comm();
+  inline void set_allocated_comm(::std::string* comm);
+
+  // required string exe = 2;
+  inline bool has_exe() const;
+  inline void clear_exe();
+  static const int kExeFieldNumber = 2;
+  inline const ::std::string& exe() const;
+  inline void set_exe(const ::std::string& value);
+  inline void set_exe(const char* value);
+  inline void set_exe(const char* value, size_t size);
+  inline ::std::string* mutable_exe();
+  inline ::std::string* release_exe();
+  inline void set_allocated_exe(::std::string* exe);
+
+  // repeated string args = 3;
+  inline int args_size() const;
+  inline void clear_args();
+  static const int kArgsFieldNumber = 3;
+  inline const ::std::string& args(int index) const;
+  inline ::std::string* mutable_args(int index);
+  inline void set_args(int index, const ::std::string& value);
+  inline void set_args(int index, const char* value);
+  inline void set_args(int index, const char* value, size_t size);
+  inline ::std::string* add_args();
+  inline void add_args(const ::std::string& value);
+  inline void add_args(const char* value);
+  inline void add_args(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& args() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_args();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.process_details)
+ private:
+  inline void set_has_comm();
+  inline void clear_has_comm();
+  inline void set_has_exe();
+  inline void clear_has_exe();
+
+  ::std::string* comm_;
+  ::std::string* exe_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> args_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_draios_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_draios_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static process_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class host : public ::google::protobuf::MessageLite {
  public:
   host();
@@ -1556,98 +1677,67 @@ class process : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 pid() const;
   inline void set_pid(::google::protobuf::uint64 value);
 
-  // required string comm = 2;
-  inline bool has_comm() const;
-  inline void clear_comm();
-  static const int kCommFieldNumber = 2;
-  inline const ::std::string& comm() const;
-  inline void set_comm(const ::std::string& value);
-  inline void set_comm(const char* value);
-  inline void set_comm(const char* value, size_t size);
-  inline ::std::string* mutable_comm();
-  inline ::std::string* release_comm();
-  inline void set_allocated_comm(::std::string* comm);
+  // optional .draiosproto.process_details details = 2;
+  inline bool has_details() const;
+  inline void clear_details();
+  static const int kDetailsFieldNumber = 2;
+  inline const ::draiosproto::process_details& details() const;
+  inline ::draiosproto::process_details* mutable_details();
+  inline ::draiosproto::process_details* release_details();
+  inline void set_allocated_details(::draiosproto::process_details* details);
 
-  // required string exe = 3;
-  inline bool has_exe() const;
-  inline void clear_exe();
-  static const int kExeFieldNumber = 3;
-  inline const ::std::string& exe() const;
-  inline void set_exe(const ::std::string& value);
-  inline void set_exe(const char* value);
-  inline void set_exe(const char* value, size_t size);
-  inline ::std::string* mutable_exe();
-  inline ::std::string* release_exe();
-  inline void set_allocated_exe(::std::string* exe);
-
-  // repeated string args = 4;
-  inline int args_size() const;
-  inline void clear_args();
-  static const int kArgsFieldNumber = 4;
-  inline const ::std::string& args(int index) const;
-  inline ::std::string* mutable_args(int index);
-  inline void set_args(int index, const ::std::string& value);
-  inline void set_args(int index, const char* value);
-  inline void set_args(int index, const char* value, size_t size);
-  inline ::std::string* add_args();
-  inline void add_args(const ::std::string& value);
-  inline void add_args(const char* value);
-  inline void add_args(const char* value, size_t size);
-  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& args() const;
-  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_args();
-
-  // optional bool is_ipv4_transaction_server = 5;
+  // optional bool is_ipv4_transaction_server = 3;
   inline bool has_is_ipv4_transaction_server() const;
   inline void clear_is_ipv4_transaction_server();
-  static const int kIsIpv4TransactionServerFieldNumber = 5;
+  static const int kIsIpv4TransactionServerFieldNumber = 3;
   inline bool is_ipv4_transaction_server() const;
   inline void set_is_ipv4_transaction_server(bool value);
 
-  // optional bool is_unix_transaction_server = 11;
+  // optional bool is_unix_transaction_server = 4;
   inline bool has_is_unix_transaction_server() const;
   inline void clear_is_unix_transaction_server();
-  static const int kIsUnixTransactionServerFieldNumber = 11;
+  static const int kIsUnixTransactionServerFieldNumber = 4;
   inline bool is_unix_transaction_server() const;
   inline void set_is_unix_transaction_server(bool value);
 
-  // optional .draiosproto.time_categories tcounters = 6;
+  // optional .draiosproto.time_categories tcounters = 5;
   inline bool has_tcounters() const;
   inline void clear_tcounters();
-  static const int kTcountersFieldNumber = 6;
+  static const int kTcountersFieldNumber = 5;
   inline const ::draiosproto::time_categories& tcounters() const;
   inline ::draiosproto::time_categories* mutable_tcounters();
   inline ::draiosproto::time_categories* release_tcounters();
   inline void set_allocated_tcounters(::draiosproto::time_categories* tcounters);
 
-  // optional .draiosproto.counter_time_bidirectional transaction_counters = 7;
+  // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
   inline bool has_transaction_counters() const;
   inline void clear_transaction_counters();
-  static const int kTransactionCountersFieldNumber = 7;
+  static const int kTransactionCountersFieldNumber = 6;
   inline const ::draiosproto::counter_time_bidirectional& transaction_counters() const;
   inline ::draiosproto::counter_time_bidirectional* mutable_transaction_counters();
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional uint64 transaction_processing_delay = 8;
+  // optional uint64 transaction_processing_delay = 7;
   inline bool has_transaction_processing_delay() const;
   inline void clear_transaction_processing_delay();
-  static const int kTransactionProcessingDelayFieldNumber = 8;
+  static const int kTransactionProcessingDelayFieldNumber = 7;
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
-  // optional .draiosproto.resource_categories resource_counters = 9;
+  // optional .draiosproto.resource_categories resource_counters = 8;
   inline bool has_resource_counters() const;
   inline void clear_resource_counters();
-  static const int kResourceCountersFieldNumber = 9;
+  static const int kResourceCountersFieldNumber = 8;
   inline const ::draiosproto::resource_categories& resource_counters() const;
   inline ::draiosproto::resource_categories* mutable_resource_counters();
   inline ::draiosproto::resource_categories* release_resource_counters();
   inline void set_allocated_resource_counters(::draiosproto::resource_categories* resource_counters);
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 10;
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
   inline bool has_syscall_errors() const;
   inline void clear_syscall_errors();
-  static const int kSyscallErrorsFieldNumber = 10;
+  static const int kSyscallErrorsFieldNumber = 9;
   inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
   inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
@@ -1657,10 +1747,8 @@ class process : public ::google::protobuf::MessageLite {
  private:
   inline void set_has_pid();
   inline void clear_has_pid();
-  inline void set_has_comm();
-  inline void clear_has_comm();
-  inline void set_has_exe();
-  inline void clear_has_exe();
+  inline void set_has_details();
+  inline void clear_has_details();
   inline void set_has_is_ipv4_transaction_server();
   inline void clear_has_is_ipv4_transaction_server();
   inline void set_has_is_unix_transaction_server();
@@ -1677,9 +1765,7 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_syscall_errors();
 
   ::google::protobuf::uint64 pid_;
-  ::std::string* comm_;
-  ::std::string* exe_;
-  ::google::protobuf::RepeatedPtrField< ::std::string> args_;
+  ::draiosproto::process_details* details_;
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
@@ -1689,7 +1775,7 @@ class process : public ::google::protobuf::MessageLite {
   bool is_unix_transaction_server_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -3930,6 +4016,194 @@ inline void connection_categories::set_n_aggregated_connections(::google::protob
 
 // -------------------------------------------------------------------
 
+// process_details
+
+// required string comm = 1;
+inline bool process_details::has_comm() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void process_details::set_has_comm() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void process_details::clear_has_comm() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void process_details::clear_comm() {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    comm_->clear();
+  }
+  clear_has_comm();
+}
+inline const ::std::string& process_details::comm() const {
+  return *comm_;
+}
+inline void process_details::set_comm(const ::std::string& value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void process_details::set_comm(const char* value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void process_details::set_comm(const char* value, size_t size) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* process_details::mutable_comm() {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  return comm_;
+}
+inline ::std::string* process_details::release_comm() {
+  clear_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = comm_;
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void process_details::set_allocated_comm(::std::string* comm) {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    delete comm_;
+  }
+  if (comm) {
+    set_has_comm();
+    comm_ = comm;
+  } else {
+    clear_has_comm();
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string exe = 2;
+inline bool process_details::has_exe() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void process_details::set_has_exe() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void process_details::clear_has_exe() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void process_details::clear_exe() {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    exe_->clear();
+  }
+  clear_has_exe();
+}
+inline const ::std::string& process_details::exe() const {
+  return *exe_;
+}
+inline void process_details::set_exe(const ::std::string& value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void process_details::set_exe(const char* value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void process_details::set_exe(const char* value, size_t size) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* process_details::mutable_exe() {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  return exe_;
+}
+inline ::std::string* process_details::release_exe() {
+  clear_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = exe_;
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void process_details::set_allocated_exe(::std::string* exe) {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    delete exe_;
+  }
+  if (exe) {
+    set_has_exe();
+    exe_ = exe;
+  } else {
+    clear_has_exe();
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated string args = 3;
+inline int process_details::args_size() const {
+  return args_.size();
+}
+inline void process_details::clear_args() {
+  args_.Clear();
+}
+inline const ::std::string& process_details::args(int index) const {
+  return args_.Get(index);
+}
+inline ::std::string* process_details::mutable_args(int index) {
+  return args_.Mutable(index);
+}
+inline void process_details::set_args(int index, const ::std::string& value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void process_details::set_args(int index, const char* value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void process_details::set_args(int index, const char* value, size_t size) {
+  args_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* process_details::add_args() {
+  return args_.Add();
+}
+inline void process_details::add_args(const ::std::string& value) {
+  args_.Add()->assign(value);
+}
+inline void process_details::add_args(const char* value) {
+  args_.Add()->assign(value);
+}
+inline void process_details::add_args(const char* value, size_t size) {
+  args_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+process_details::args() const {
+  return args_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+process_details::mutable_args() {
+  return &args_;
+}
+
+// -------------------------------------------------------------------
+
 // host
 
 // optional string hostname = 1;
@@ -4461,199 +4735,57 @@ inline void process::set_pid(::google::protobuf::uint64 value) {
   pid_ = value;
 }
 
-// required string comm = 2;
-inline bool process::has_comm() const {
+// optional .draiosproto.process_details details = 2;
+inline bool process::has_details() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void process::set_has_comm() {
+inline void process::set_has_details() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void process::clear_has_comm() {
+inline void process::clear_has_details() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void process::clear_comm() {
-  if (comm_ != &::google::protobuf::internal::kEmptyString) {
-    comm_->clear();
-  }
-  clear_has_comm();
+inline void process::clear_details() {
+  if (details_ != NULL) details_->::draiosproto::process_details::Clear();
+  clear_has_details();
 }
-inline const ::std::string& process::comm() const {
-  return *comm_;
+inline const ::draiosproto::process_details& process::details() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return details_ != NULL ? *details_ : *default_instance().details_;
+#else
+  return details_ != NULL ? *details_ : *default_instance_->details_;
+#endif
 }
-inline void process::set_comm(const ::std::string& value) {
-  set_has_comm();
-  if (comm_ == &::google::protobuf::internal::kEmptyString) {
-    comm_ = new ::std::string;
-  }
-  comm_->assign(value);
+inline ::draiosproto::process_details* process::mutable_details() {
+  set_has_details();
+  if (details_ == NULL) details_ = new ::draiosproto::process_details;
+  return details_;
 }
-inline void process::set_comm(const char* value) {
-  set_has_comm();
-  if (comm_ == &::google::protobuf::internal::kEmptyString) {
-    comm_ = new ::std::string;
-  }
-  comm_->assign(value);
+inline ::draiosproto::process_details* process::release_details() {
+  clear_has_details();
+  ::draiosproto::process_details* temp = details_;
+  details_ = NULL;
+  return temp;
 }
-inline void process::set_comm(const char* value, size_t size) {
-  set_has_comm();
-  if (comm_ == &::google::protobuf::internal::kEmptyString) {
-    comm_ = new ::std::string;
-  }
-  comm_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* process::mutable_comm() {
-  set_has_comm();
-  if (comm_ == &::google::protobuf::internal::kEmptyString) {
-    comm_ = new ::std::string;
-  }
-  return comm_;
-}
-inline ::std::string* process::release_comm() {
-  clear_has_comm();
-  if (comm_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
+inline void process::set_allocated_details(::draiosproto::process_details* details) {
+  delete details_;
+  details_ = details;
+  if (details) {
+    set_has_details();
   } else {
-    ::std::string* temp = comm_;
-    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void process::set_allocated_comm(::std::string* comm) {
-  if (comm_ != &::google::protobuf::internal::kEmptyString) {
-    delete comm_;
-  }
-  if (comm) {
-    set_has_comm();
-    comm_ = comm;
-  } else {
-    clear_has_comm();
-    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_details();
   }
 }
 
-// required string exe = 3;
-inline bool process::has_exe() const {
+// optional bool is_ipv4_transaction_server = 3;
+inline bool process::has_is_ipv4_transaction_server() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void process::set_has_exe() {
+inline void process::set_has_is_ipv4_transaction_server() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void process::clear_has_exe() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void process::clear_exe() {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    exe_->clear();
-  }
-  clear_has_exe();
-}
-inline const ::std::string& process::exe() const {
-  return *exe_;
-}
-inline void process::set_exe(const ::std::string& value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(value);
-}
-inline void process::set_exe(const char* value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(value);
-}
-inline void process::set_exe(const char* value, size_t size) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* process::mutable_exe() {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  return exe_;
-}
-inline ::std::string* process::release_exe() {
-  clear_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = exe_;
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void process::set_allocated_exe(::std::string* exe) {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    delete exe_;
-  }
-  if (exe) {
-    set_has_exe();
-    exe_ = exe;
-  } else {
-    clear_has_exe();
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
-// repeated string args = 4;
-inline int process::args_size() const {
-  return args_.size();
-}
-inline void process::clear_args() {
-  args_.Clear();
-}
-inline const ::std::string& process::args(int index) const {
-  return args_.Get(index);
-}
-inline ::std::string* process::mutable_args(int index) {
-  return args_.Mutable(index);
-}
-inline void process::set_args(int index, const ::std::string& value) {
-  args_.Mutable(index)->assign(value);
-}
-inline void process::set_args(int index, const char* value) {
-  args_.Mutable(index)->assign(value);
-}
-inline void process::set_args(int index, const char* value, size_t size) {
-  args_.Mutable(index)->assign(
-    reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* process::add_args() {
-  return args_.Add();
-}
-inline void process::add_args(const ::std::string& value) {
-  args_.Add()->assign(value);
-}
-inline void process::add_args(const char* value) {
-  args_.Add()->assign(value);
-}
-inline void process::add_args(const char* value, size_t size) {
-  args_.Add()->assign(reinterpret_cast<const char*>(value), size);
-}
-inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
-process::args() const {
-  return args_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::std::string>*
-process::mutable_args() {
-  return &args_;
-}
-
-// optional bool is_ipv4_transaction_server = 5;
-inline bool process::has_is_ipv4_transaction_server() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void process::set_has_is_ipv4_transaction_server() {
-  _has_bits_[0] |= 0x00000010u;
-}
 inline void process::clear_has_is_ipv4_transaction_server() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void process::clear_is_ipv4_transaction_server() {
   is_ipv4_transaction_server_ = false;
@@ -4667,15 +4799,15 @@ inline void process::set_is_ipv4_transaction_server(bool value) {
   is_ipv4_transaction_server_ = value;
 }
 
-// optional bool is_unix_transaction_server = 11;
+// optional bool is_unix_transaction_server = 4;
 inline bool process::has_is_unix_transaction_server() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void process::set_has_is_unix_transaction_server() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void process::clear_has_is_unix_transaction_server() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void process::clear_is_unix_transaction_server() {
   is_unix_transaction_server_ = false;
@@ -4689,15 +4821,15 @@ inline void process::set_is_unix_transaction_server(bool value) {
   is_unix_transaction_server_ = value;
 }
 
-// optional .draiosproto.time_categories tcounters = 6;
+// optional .draiosproto.time_categories tcounters = 5;
 inline bool process::has_tcounters() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void process::set_has_tcounters() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void process::clear_has_tcounters() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void process::clear_tcounters() {
   if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
@@ -4731,15 +4863,15 @@ inline void process::set_allocated_tcounters(::draiosproto::time_categories* tco
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional transaction_counters = 7;
+// optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
 inline bool process::has_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void process::set_has_transaction_counters() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void process::clear_has_transaction_counters() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void process::clear_transaction_counters() {
   if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -4773,15 +4905,15 @@ inline void process::set_allocated_transaction_counters(::draiosproto::counter_t
   }
 }
 
-// optional uint64 transaction_processing_delay = 8;
+// optional uint64 transaction_processing_delay = 7;
 inline bool process::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void process::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void process::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void process::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -4795,15 +4927,15 @@ inline void process::set_transaction_processing_delay(::google::protobuf::uint64
   transaction_processing_delay_ = value;
 }
 
-// optional .draiosproto.resource_categories resource_counters = 9;
+// optional .draiosproto.resource_categories resource_counters = 8;
 inline bool process::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void process::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void process::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void process::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -4837,15 +4969,15 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
   }
 }
 
-// optional .draiosproto.counter_syscall_errors syscall_errors = 10;
+// optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool process::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void process::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void process::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void process::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
