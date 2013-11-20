@@ -301,7 +301,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	//
 	// Account for cross-sample gaps
 	//
-	if(delta > m_sample_length_ns)
+	if(delta > (int64_t)m_sample_length_ns)
 	{
 		uint64_t sample_start = ts / m_sample_length_ns * m_sample_length_ns;
 
