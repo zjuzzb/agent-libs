@@ -47,7 +47,7 @@ public:
 	void add(sinsp_counter_time_bidirectional* other);
 	void subtract(uint32_t cnt_delta, uint64_t time_delta);
 	void clear();
-	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint32_t nthreads);
+	void to_protobuf(draiosproto::counter_time* protobuf_msg, double time_normaliztion_factor);
 
 	uint32_t m_count;
 	uint64_t m_time_ns;
@@ -108,7 +108,7 @@ public:
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
-	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint32_t nthreads);
+	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, double time_normaliztion_factor);
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;
@@ -151,7 +151,7 @@ public:
 	void clear();
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
-	void to_protobuf(draiosproto::time_categories* protobuf_msg);
+	void to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns);
 
 	uint64_t get_total_other_time();
 	uint64_t get_total_wait_time();

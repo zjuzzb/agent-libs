@@ -642,11 +642,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// Transaction-related metrics
 					//
 					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
-
-if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-{
-					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
-}
+//if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+//{
+					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
+//}
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
@@ -696,7 +695,6 @@ if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
 						uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
 						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
-						uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
@@ -1228,6 +1226,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					(float)m_client_tr_time_by_servers / 1000000000,
 					(float)m_host_transaction_delay_ns / 1000000000
 					);
+/*
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"  %s) proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
+					it->second.m_comm.c_str(),
+					it->second.m_procinfo->m_proc_metrics.get_processing_percentage() * 100,
+					it->second.m_procinfo->m_proc_metrics.get_file_percentage() * 100,
+					it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
+					it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
+*/
 			}
 
 			////////////////////////////////////////////////////////////////////////////

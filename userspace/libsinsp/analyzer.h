@@ -162,7 +162,7 @@ VISIBILITY_PRIVATE
 	// ratio between the the transaction delay introduced by this host and the delay 
 	// caused by the next tiers. Calculated by the score
 	float m_local_remote_ratio;
-	// Network I/O infor for the whole host.
+	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
 
