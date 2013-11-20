@@ -100,6 +100,7 @@ struct StaticDescriptorInitializer_draios_2eproto {
 #ifndef _MSC_VER
 const int counter_time::kCountFieldNumber;
 const int counter_time::kTimeNsFieldNumber;
+const int counter_time::kTimePercentageFieldNumber;
 #endif  // !_MSC_VER
 
 counter_time::counter_time()
@@ -120,6 +121,7 @@ void counter_time::SharedCtor() {
   _cached_size_ = 0;
   count_ = 0u;
   time_ns_ = GOOGLE_ULONGLONG(0);
+  time_percentage_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -160,6 +162,7 @@ void counter_time::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     count_ = 0u;
     time_ns_ = GOOGLE_ULONGLONG(0);
+    time_percentage_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -197,6 +200,22 @@ bool counter_time::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(24)) goto parse_time_percentage;
+        break;
+      }
+
+      // optional uint32 time_percentage = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_time_percentage:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &time_percentage_)));
+          set_has_time_percentage();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -228,6 +247,11 @@ void counter_time::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(2, this->time_ns(), output);
   }
 
+  // optional uint32 time_percentage = 3;
+  if (has_time_percentage()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->time_percentage(), output);
+  }
+
 }
 
 int counter_time::ByteSize() const {
@@ -246,6 +270,13 @@ int counter_time::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->time_ns());
+    }
+
+    // optional uint32 time_percentage = 3;
+    if (has_time_percentage()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->time_percentage());
     }
 
   }
@@ -269,6 +300,9 @@ void counter_time::MergeFrom(const counter_time& from) {
     if (from.has_time_ns()) {
       set_time_ns(from.time_ns());
     }
+    if (from.has_time_percentage()) {
+      set_time_percentage(from.time_percentage());
+    }
   }
 }
 
@@ -288,6 +322,7 @@ void counter_time::Swap(counter_time* other) {
   if (other != this) {
     std::swap(count_, other->count_);
     std::swap(time_ns_, other->time_ns_);
+    std::swap(time_percentage_, other->time_percentage_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -856,6 +891,9 @@ const int counter_time_bytes::kCountOtherFieldNumber;
 const int counter_time_bytes::kBytesInFieldNumber;
 const int counter_time_bytes::kBytesOutFieldNumber;
 const int counter_time_bytes::kBytesOtherFieldNumber;
+const int counter_time_bytes::kTimePercentageInFieldNumber;
+const int counter_time_bytes::kTimePercentageOutFieldNumber;
+const int counter_time_bytes::kTimePercentageOtherFieldNumber;
 #endif  // !_MSC_VER
 
 counter_time_bytes::counter_time_bytes()
@@ -883,6 +921,9 @@ void counter_time_bytes::SharedCtor() {
   bytes_in_ = 0u;
   bytes_out_ = 0u;
   bytes_other_ = 0u;
+  time_percentage_in_ = 0u;
+  time_percentage_out_ = 0u;
+  time_percentage_other_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -932,6 +973,9 @@ void counter_time_bytes::Clear() {
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     bytes_other_ = 0u;
+    time_percentage_in_ = 0u;
+    time_percentage_out_ = 0u;
+    time_percentage_other_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -1081,6 +1125,54 @@ bool counter_time_bytes::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_time_percentage_in;
+        break;
+      }
+
+      // optional uint32 time_percentage_in = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_time_percentage_in:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &time_percentage_in_)));
+          set_has_time_percentage_in();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_time_percentage_out;
+        break;
+      }
+
+      // optional uint32 time_percentage_out = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_time_percentage_out:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &time_percentage_out_)));
+          set_has_time_percentage_out();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(96)) goto parse_time_percentage_other;
+        break;
+      }
+
+      // optional uint32 time_percentage_other = 12;
+      case 12: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_time_percentage_other:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &time_percentage_other_)));
+          set_has_time_percentage_other();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1145,6 +1237,21 @@ void counter_time_bytes::SerializeWithCachedSizes(
   // required uint32 bytes_other = 9;
   if (has_bytes_other()) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(9, this->bytes_other(), output);
+  }
+
+  // optional uint32 time_percentage_in = 10;
+  if (has_time_percentage_in()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(10, this->time_percentage_in(), output);
+  }
+
+  // optional uint32 time_percentage_out = 11;
+  if (has_time_percentage_out()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(11, this->time_percentage_out(), output);
+  }
+
+  // optional uint32 time_percentage_other = 12;
+  if (has_time_percentage_other()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(12, this->time_percentage_other(), output);
   }
 
 }
@@ -1218,6 +1325,27 @@ int counter_time_bytes::ByteSize() const {
           this->bytes_other());
     }
 
+    // optional uint32 time_percentage_in = 10;
+    if (has_time_percentage_in()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->time_percentage_in());
+    }
+
+    // optional uint32 time_percentage_out = 11;
+    if (has_time_percentage_out()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->time_percentage_out());
+    }
+
+    // optional uint32 time_percentage_other = 12;
+    if (has_time_percentage_other()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->time_percentage_other());
+    }
+
   }
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
@@ -1262,6 +1390,15 @@ void counter_time_bytes::MergeFrom(const counter_time_bytes& from) {
     if (from.has_bytes_other()) {
       set_bytes_other(from.bytes_other());
     }
+    if (from.has_time_percentage_in()) {
+      set_time_percentage_in(from.time_percentage_in());
+    }
+    if (from.has_time_percentage_out()) {
+      set_time_percentage_out(from.time_percentage_out());
+    }
+    if (from.has_time_percentage_other()) {
+      set_time_percentage_other(from.time_percentage_other());
+    }
   }
 }
 
@@ -1288,6 +1425,9 @@ void counter_time_bytes::Swap(counter_time_bytes* other) {
     std::swap(bytes_in_, other->bytes_in_);
     std::swap(bytes_out_, other->bytes_out_);
     std::swap(bytes_other_, other->bytes_other_);
+    std::swap(time_percentage_in_, other->time_percentage_in_);
+    std::swap(time_percentage_out_, other->time_percentage_out_);
+    std::swap(time_percentage_other_, other->time_percentage_other_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -3058,6 +3198,7 @@ const int host::kTransactionCountersFieldNumber;
 const int host::kTransactionProcessingDelayFieldNumber;
 const int host::kResourceCountersFieldNumber;
 const int host::kSyscallErrorsFieldNumber;
+const int host::kExternalIoNetFieldNumber;
 #endif  // !_MSC_VER
 
 host::host()
@@ -3090,6 +3231,12 @@ void host::InitAsDefaultInstance() {
 #else
   syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
 #endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  external_io_net_ = const_cast< ::draiosproto::counter_time_bytes*>(
+      ::draiosproto::counter_time_bytes::internal_default_instance());
+#else
+  external_io_net_ = const_cast< ::draiosproto::counter_time_bytes*>(&::draiosproto::counter_time_bytes::default_instance());
+#endif
 }
 
 host::host(const host& from)
@@ -3108,6 +3255,7 @@ void host::SharedCtor() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
   syscall_errors_ = NULL;
+  external_io_net_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3128,6 +3276,7 @@ void host::SharedDtor() {
     delete transaction_counters_;
     delete resource_counters_;
     delete syscall_errors_;
+    delete external_io_net_;
   }
 }
 
@@ -3174,6 +3323,9 @@ void host::Clear() {
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_syscall_errors()) {
       if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
+    }
+    if (has_external_io_net()) {
+      if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();
     }
   }
   cpu_loads_.Clear();
@@ -3321,6 +3473,20 @@ bool host::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(82)) goto parse_external_io_net;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bytes external_io_net = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_external_io_net:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_external_io_net()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3393,6 +3559,12 @@ void host::SerializeWithCachedSizes(
       9, this->syscall_errors(), output);
   }
 
+  // optional .draiosproto.counter_time_bytes external_io_net = 10;
+  if (has_external_io_net()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      10, this->external_io_net(), output);
+  }
+
 }
 
 int host::ByteSize() const {
@@ -3457,6 +3629,13 @@ int host::ByteSize() const {
           this->syscall_errors());
     }
 
+    // optional .draiosproto.counter_time_bytes external_io_net = 10;
+    if (has_external_io_net()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->external_io_net());
+    }
+
   }
   // repeated uint32 cpu_loads = 3;
   {
@@ -3509,6 +3688,9 @@ void host::MergeFrom(const host& from) {
     if (from.has_syscall_errors()) {
       mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
     }
+    if (from.has_external_io_net()) {
+      mutable_external_io_net()->::draiosproto::counter_time_bytes::MergeFrom(from.external_io_net());
+    }
   }
 }
 
@@ -3530,6 +3712,9 @@ bool host::IsInitialized() const {
   if (has_syscall_errors()) {
     if (!this->syscall_errors().IsInitialized()) return false;
   }
+  if (has_external_io_net()) {
+    if (!this->external_io_net().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -3544,6 +3729,7 @@ void host::Swap(host* other) {
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(resource_counters_, other->resource_counters_);
     std::swap(syscall_errors_, other->syscall_errors_);
+    std::swap(external_io_net_, other->external_io_net_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

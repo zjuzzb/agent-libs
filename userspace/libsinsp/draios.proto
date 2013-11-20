@@ -7,6 +7,7 @@ option java_outer_classname = "Agent";
 message counter_time {
   required uint32 count = 1;
   required uint64 time_ns = 2;
+  optional uint32 time_percentage = 3;
 }
 
 message counter_time_bidirectional {
@@ -33,6 +34,9 @@ message counter_time_bytes {
   required uint32 bytes_in = 7;
   required uint32 bytes_out = 8;
   required uint32 bytes_other = 9;
+  optional uint32 time_percentage_in = 10;
+  optional uint32 time_percentage_out = 11;
+  optional uint32 time_percentage_other = 12;
 }
 
 message time_categories {
@@ -91,6 +95,8 @@ message host {
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
+  
+  optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
 }
 
 //

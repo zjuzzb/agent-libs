@@ -1176,7 +1176,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			}
 
 			////////////////////////////////////////////////////////////////////////////
-			// emit host metrics
+			// emit host stuff
 			////////////////////////////////////////////////////////////////////////////
 			m_metrics->set_machine_id(m_inspector->m_configuration.get_machine_id());
 			m_metrics->set_customer_id(m_inspector->m_configuration.get_customer_id());
@@ -1198,24 +1198,34 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
 			}		
 
+			//
+			// Machine info
+			//
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.m_capacity_score * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
 
+			//
+			// Transactions
+			//
 			m_host_transaction_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
 
-			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters()->mutable_io_net(), 1);
+			//
+			// Time splits
+			//
+			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters(), sample_duration);
 
-			m_metrics->mutable_hostinfo()->mutable_tcounters()->mutable_io_net()->set_time_ns_out(0);
+			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1);
+			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
 			if(m_host_transaction_delay_ns != -1)
 			{
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
 			}
 
-			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
+//			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"host: h:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
@@ -1226,15 +1236,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					(float)m_client_tr_time_by_servers / 1000000000,
 					(float)m_host_transaction_delay_ns / 1000000000
 					);
-/*
+
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"  %s) proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
-					it->second.m_comm.c_str(),
-					it->second.m_procinfo->m_proc_metrics.get_processing_percentage() * 100,
-					it->second.m_procinfo->m_proc_metrics.get_file_percentage() * 100,
-					it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
-					it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
-*/
+					"  proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
+					m_host_metrics.m_metrics.get_processing_percentage() * 100,
+					m_host_metrics.m_metrics.get_file_percentage() * 100,
+					m_host_metrics.m_metrics.get_net_percentage() * 100,
+					m_host_metrics.m_metrics.get_other_percentage() * 100);
 			}
 
 			////////////////////////////////////////////////////////////////////////////

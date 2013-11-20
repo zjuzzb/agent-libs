@@ -118,18 +118,28 @@ class counter_time : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 time_ns() const;
   inline void set_time_ns(::google::protobuf::uint64 value);
 
+  // optional uint32 time_percentage = 3;
+  inline bool has_time_percentage() const;
+  inline void clear_time_percentage();
+  static const int kTimePercentageFieldNumber = 3;
+  inline ::google::protobuf::uint32 time_percentage() const;
+  inline void set_time_percentage(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.counter_time)
  private:
   inline void set_has_count();
   inline void clear_has_count();
   inline void set_has_time_ns();
   inline void clear_has_time_ns();
+  inline void set_has_time_percentage();
+  inline void clear_has_time_percentage();
 
   ::google::protobuf::uint64 time_ns_;
   ::google::protobuf::uint32 count_;
+  ::google::protobuf::uint32 time_percentage_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -486,6 +496,27 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint32 bytes_other() const;
   inline void set_bytes_other(::google::protobuf::uint32 value);
 
+  // optional uint32 time_percentage_in = 10;
+  inline bool has_time_percentage_in() const;
+  inline void clear_time_percentage_in();
+  static const int kTimePercentageInFieldNumber = 10;
+  inline ::google::protobuf::uint32 time_percentage_in() const;
+  inline void set_time_percentage_in(::google::protobuf::uint32 value);
+
+  // optional uint32 time_percentage_out = 11;
+  inline bool has_time_percentage_out() const;
+  inline void clear_time_percentage_out();
+  static const int kTimePercentageOutFieldNumber = 11;
+  inline ::google::protobuf::uint32 time_percentage_out() const;
+  inline void set_time_percentage_out(::google::protobuf::uint32 value);
+
+  // optional uint32 time_percentage_other = 12;
+  inline bool has_time_percentage_other() const;
+  inline void clear_time_percentage_other();
+  static const int kTimePercentageOtherFieldNumber = 12;
+  inline ::google::protobuf::uint32 time_percentage_other() const;
+  inline void set_time_percentage_other(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.counter_time_bytes)
  private:
   inline void set_has_time_ns_in();
@@ -506,6 +537,12 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   inline void clear_has_bytes_out();
   inline void set_has_bytes_other();
   inline void clear_has_bytes_other();
+  inline void set_has_time_percentage_in();
+  inline void clear_has_time_percentage_in();
+  inline void set_has_time_percentage_out();
+  inline void clear_has_time_percentage_out();
+  inline void set_has_time_percentage_other();
+  inline void clear_has_time_percentage_other();
 
   ::google::protobuf::uint64 time_ns_in_;
   ::google::protobuf::uint64 time_ns_out_;
@@ -516,9 +553,12 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 bytes_in_;
   ::google::protobuf::uint32 bytes_out_;
   ::google::protobuf::uint32 bytes_other_;
+  ::google::protobuf::uint32 time_percentage_in_;
+  ::google::protobuf::uint32 time_percentage_out_;
+  ::google::protobuf::uint32 time_percentage_other_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1282,6 +1322,15 @@ class host : public ::google::protobuf::MessageLite {
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
   inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
 
+  // optional .draiosproto.counter_time_bytes external_io_net = 10;
+  inline bool has_external_io_net() const;
+  inline void clear_external_io_net();
+  static const int kExternalIoNetFieldNumber = 10;
+  inline const ::draiosproto::counter_time_bytes& external_io_net() const;
+  inline ::draiosproto::counter_time_bytes* mutable_external_io_net();
+  inline ::draiosproto::counter_time_bytes* release_external_io_net();
+  inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -1300,6 +1349,8 @@ class host : public ::google::protobuf::MessageLite {
   inline void clear_has_resource_counters();
   inline void set_has_syscall_errors();
   inline void clear_has_syscall_errors();
+  inline void set_has_external_io_net();
+  inline void clear_has_external_io_net();
 
   ::std::string* hostname_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_loads_;
@@ -1309,10 +1360,11 @@ class host : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
+  ::draiosproto::counter_time_bytes* external_io_net_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -2367,6 +2419,28 @@ inline void counter_time::set_time_ns(::google::protobuf::uint64 value) {
   time_ns_ = value;
 }
 
+// optional uint32 time_percentage = 3;
+inline bool counter_time::has_time_percentage() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void counter_time::set_has_time_percentage() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void counter_time::clear_has_time_percentage() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void counter_time::clear_time_percentage() {
+  time_percentage_ = 0u;
+  clear_has_time_percentage();
+}
+inline ::google::protobuf::uint32 counter_time::time_percentage() const {
+  return time_percentage_;
+}
+inline void counter_time::set_time_percentage(::google::protobuf::uint32 value) {
+  set_has_time_percentage();
+  time_percentage_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // counter_time_bidirectional
@@ -2751,6 +2825,72 @@ inline ::google::protobuf::uint32 counter_time_bytes::bytes_other() const {
 inline void counter_time_bytes::set_bytes_other(::google::protobuf::uint32 value) {
   set_has_bytes_other();
   bytes_other_ = value;
+}
+
+// optional uint32 time_percentage_in = 10;
+inline bool counter_time_bytes::has_time_percentage_in() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void counter_time_bytes::set_has_time_percentage_in() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void counter_time_bytes::clear_has_time_percentage_in() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void counter_time_bytes::clear_time_percentage_in() {
+  time_percentage_in_ = 0u;
+  clear_has_time_percentage_in();
+}
+inline ::google::protobuf::uint32 counter_time_bytes::time_percentage_in() const {
+  return time_percentage_in_;
+}
+inline void counter_time_bytes::set_time_percentage_in(::google::protobuf::uint32 value) {
+  set_has_time_percentage_in();
+  time_percentage_in_ = value;
+}
+
+// optional uint32 time_percentage_out = 11;
+inline bool counter_time_bytes::has_time_percentage_out() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void counter_time_bytes::set_has_time_percentage_out() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void counter_time_bytes::clear_has_time_percentage_out() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void counter_time_bytes::clear_time_percentage_out() {
+  time_percentage_out_ = 0u;
+  clear_has_time_percentage_out();
+}
+inline ::google::protobuf::uint32 counter_time_bytes::time_percentage_out() const {
+  return time_percentage_out_;
+}
+inline void counter_time_bytes::set_time_percentage_out(::google::protobuf::uint32 value) {
+  set_has_time_percentage_out();
+  time_percentage_out_ = value;
+}
+
+// optional uint32 time_percentage_other = 12;
+inline bool counter_time_bytes::has_time_percentage_other() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void counter_time_bytes::set_has_time_percentage_other() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void counter_time_bytes::clear_has_time_percentage_other() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void counter_time_bytes::clear_time_percentage_other() {
+  time_percentage_other_ = 0u;
+  clear_has_time_percentage_other();
+}
+inline ::google::protobuf::uint32 counter_time_bytes::time_percentage_other() const {
+  return time_percentage_other_;
+}
+inline void counter_time_bytes::set_time_percentage_other(::google::protobuf::uint32 value) {
+  set_has_time_percentage_other();
+  time_percentage_other_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -4118,6 +4258,48 @@ inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_er
     set_has_syscall_errors();
   } else {
     clear_has_syscall_errors();
+  }
+}
+
+// optional .draiosproto.counter_time_bytes external_io_net = 10;
+inline bool host::has_external_io_net() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void host::set_has_external_io_net() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void host::clear_has_external_io_net() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void host::clear_external_io_net() {
+  if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();
+  clear_has_external_io_net();
+}
+inline const ::draiosproto::counter_time_bytes& host::external_io_net() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return external_io_net_ != NULL ? *external_io_net_ : *default_instance().external_io_net_;
+#else
+  return external_io_net_ != NULL ? *external_io_net_ : *default_instance_->external_io_net_;
+#endif
+}
+inline ::draiosproto::counter_time_bytes* host::mutable_external_io_net() {
+  set_has_external_io_net();
+  if (external_io_net_ == NULL) external_io_net_ = new ::draiosproto::counter_time_bytes;
+  return external_io_net_;
+}
+inline ::draiosproto::counter_time_bytes* host::release_external_io_net() {
+  clear_has_external_io_net();
+  ::draiosproto::counter_time_bytes* temp = external_io_net_;
+  external_io_net_ = NULL;
+  return temp;
+}
+inline void host::set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net) {
+  delete external_io_net_;
+  external_io_net_ = external_io_net;
+  if (external_io_net) {
+    set_has_external_io_net();
+  } else {
+    clear_has_external_io_net();
   }
 }
 

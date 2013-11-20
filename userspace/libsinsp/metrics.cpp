@@ -64,9 +64,10 @@ void sinsp_counter_time::subtract(uint32_t cnt_delta, uint64_t time_delta)
 	m_time_ns -= time_delta;
 }
 
-void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, double time_normaliztion_factor)
+void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, uint64_t tot_relevant_time_ns)
 {
-	protobuf_msg->set_time_ns((uint64_t)(((double)m_time_ns) * time_normaliztion_factor));
+	protobuf_msg->set_time_ns(m_time_ns);
+	protobuf_msg->set_time_percentage((uint32_t)(((double)m_time_ns) * 10000 / tot_relevant_time_ns));
 	protobuf_msg->set_count(m_count);
 }
 
@@ -254,11 +255,14 @@ void sinsp_counter_time_bytes::clear()
 	m_bytes_other = 0;
 }
 
-void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, double time_normaliztion_factor)
+void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint64_t tot_relevant_time_ns)
 {
-	protobuf_msg->set_time_ns_in((uint64_t)(((double)m_time_ns_in) * time_normaliztion_factor));
-	protobuf_msg->set_time_ns_out((uint64_t)(((double)m_time_ns_out) * time_normaliztion_factor));
-	protobuf_msg->set_time_ns_other((uint64_t)(((double)m_time_ns_other) * time_normaliztion_factor));
+	protobuf_msg->set_time_ns_in(m_time_ns_in);
+	protobuf_msg->set_time_ns_out(m_time_ns_out);
+	protobuf_msg->set_time_ns_other(m_time_ns_other);
+	protobuf_msg->set_time_percentage_in((uint32_t)(((double)m_time_ns_in) * 10000 / tot_relevant_time_ns));
+	protobuf_msg->set_time_percentage_out((uint32_t)(((double)m_time_ns_out) * 10000 / tot_relevant_time_ns));
+	protobuf_msg->set_time_percentage_other((uint32_t)(((double)m_time_ns_other) * 10000 / tot_relevant_time_ns));
 	protobuf_msg->set_count_in(m_count_in);
 	protobuf_msg->set_count_out(m_count_out);
 	protobuf_msg->set_count_other(m_count_other);
@@ -292,8 +296,6 @@ void sinsp_counters::clear()
 	m_wait_ipc.clear();
 	m_wait_other.clear();
 	m_processing.clear();
-
-	m_nthreads = 0;
 }
 
 void sinsp_counters::get_total(sinsp_counter_time* tot)
@@ -342,8 +344,6 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_wait_ipc.add(&other->m_wait_ipc);
 	m_wait_other.add(&other->m_wait_other);
 	m_processing.add(&other->m_processing);
-
-	m_nthreads++;
 }
 
 void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns)
@@ -385,10 +385,10 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	m_tot_relevant.add(&m_tot_io_net);
 	m_tot_relevant.add(&m_processing);
 
-	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), ((double)1000000000) / m_tot_relevant.m_time_ns);
-	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), ((double)1000000000) / m_tot_relevant.m_time_ns);
-	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), ((double)1000000000) / m_tot_relevant.m_time_ns);
-	m_processing.to_protobuf(protobuf_msg->mutable_processing(), ((double)1000000000) / m_tot_relevant.m_time_ns);
+	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), m_tot_relevant.m_time_ns);
+	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_tot_relevant.m_time_ns);
+	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_tot_relevant.m_time_ns);
+	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_tot_relevant.m_time_ns);
 
 #ifdef _DEBUG
 	sinsp_counter_time ttot;
@@ -400,7 +400,6 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	ttot.add(&m_processing);
 	ttot.add(&m_unknown);
 	ASSERT(ttot.m_time_ns % 1000000000 == 0);
-	ASSERT(ttot.m_time_ns / 1000000000 == m_nthreads);
 #endif
 }
 
@@ -537,7 +536,16 @@ void sinsp_host_metrics::clear()
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 {
-	m_metrics.add(&pinfo->m_proc_metrics);
+	//
+	// Note how we only include server processes in the host metrics.
+	// That's because these are transaction time metrics, and therefore we don't 
+	// want to use processes that don't serve transactions.
+	//
+	if(pinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+	{
+		m_metrics.add(&pinfo->m_proc_metrics);
+	}
+
 	m_transaction_metrics.add(&pinfo->m_proc_transaction_metrics);
 	m_transaction_processing_delay_ns += pinfo->m_proc_transaction_processing_delay_ns;
 
