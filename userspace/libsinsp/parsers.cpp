@@ -2317,7 +2317,6 @@ void sinsp_parser::update_fd(sinsp_evt *evt, sinsp_evt_param *parinfo)
 
 	if(parinfo->m_len == 0)
 	{
-		ASSERT(false);
 		return;
 	}
 
