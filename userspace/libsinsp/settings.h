@@ -46,15 +46,6 @@
 #define ANALYZER_EMITS_PROGRAMS
 
 //
-// The min and max size for the memory buffer used as a target for protobuf 
-// serialization. Min is the starting value, while max is the growth limit.
-// This imposes a limit to the number of bytes that can be sent out by
-// the agent.
-//
-#define MIN_SERIALIZATION_BUF_SIZE_BYTES 128
-#define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
-
-//
 // Controls if assertions break execution or if they are just printed to the
 // log
 //

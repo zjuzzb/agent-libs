@@ -116,8 +116,6 @@ VISIBILITY_PRIVATE
 	// This is the protobuf class that we use to pack things
 	//
 	draiosproto::metrics* m_metrics;
-	char* m_serialization_buffer;
-	uint32_t m_serialization_buffer_size;
 	string m_serialization_string;
 
 	//

@@ -38,15 +38,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
-	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
-	if(!m_serialization_buffer)
-	{
-		char tbuf[256];
-		snprintf(tbuf, sizeof(tbuf), "memory allocation error at %s:%d", 
-			__FILE__, __LINE__);
-		throw sinsp_exception(string(tbuf));
-	}
-	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
@@ -77,11 +68,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_metrics)
 	{
 		delete m_metrics;
-	}
-
-	if(m_serialization_buffer)
-	{
-		free(m_serialization_buffer);
 	}
 
 	if(m_score_calculator)
@@ -133,31 +119,10 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	uint32_t full_len = tlen + sizeof(uint32_t);
 
 	//
-	// If the buffer is to small, eapnd it
-	//
-	if(m_serialization_buffer_size < (full_len))
-	{
-		if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
-		{
-			g_logger.log("Metrics sample too big. Dropping it.", sinsp_logger::SEV_ERROR);
-			return NULL;
-		}
-
-		m_serialization_buffer = (char*)realloc(m_serialization_buffer, full_len);
-
-		if(!m_serialization_buffer)
-		{
-			char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", 
-				__FILE__, __LINE__);
-			throw sinsp_exception(estr);
-		}
-
-		m_serialization_buffer_size = full_len;
-	}
-
-	//
 	// Do the serialization
 	//
+	m_serialization_string = "XXXX";
+
 	if(compressed)
 	{
 #ifdef _WIN32
@@ -165,25 +130,16 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		throw sinsp_exception("compression in agent protocol not implemented under windows");
 		return NULL;
 #else
-		ArrayOutputStream* array_output = new ArrayOutputStream(m_serialization_buffer + sizeof(uint32_t), tlen);
-		GzipOutputStream* gzip_output = new GzipOutputStream(array_output);
+		StringOutputStream string_output(&m_serialization_string);
+		GzipOutputStream gzip_output(&string_output);
+		m_metrics->SerializeToZeroCopyStream(&gzip_output);
+		ASSERT(m_serialization_string.length() == full_len);
 
-		m_metrics->SerializeToZeroCopyStream(gzip_output);
-		gzip_output->Close();
+		char* buf = (char*)m_serialization_string.data();
 
-		uint32_t compressed_size = (uint32_t)array_output->ByteCount();
-		if(compressed_size > tlen)
-		{
-			ASSERT(false);
-			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
-			throw sinsp_exception(estr);
-		}
-
-		*(uint32_t*) m_serialization_buffer = compressed_size;
-		*len = *(uint32_t*) m_serialization_buffer;
-		delete array_output;
-		delete gzip_output;
-		return m_serialization_buffer + sizeof(uint32_t);
+		*(uint32_t*)buf = tlen;
+		*len = tlen;
+		return buf + sizeof(uint32_t);
 #endif
 	}
 	else
@@ -191,14 +147,13 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		//
 		// Reserve 4 bytes at the beginning of the string for the length
 		//
-		m_serialization_string = "XXXX";
 		StringOutputStream string_output(&m_serialization_string);
 		m_metrics->SerializeToZeroCopyStream(&string_output);
 		ASSERT(m_serialization_string.length() == full_len);
 
 		char* buf = (char*)m_serialization_string.data();
 
-		*(uint32_t*) m_serialization_buffer = tlen;
+		*(uint32_t*)buf = tlen;
 		*len = tlen;
 		return buf + sizeof(uint32_t);
 	}
