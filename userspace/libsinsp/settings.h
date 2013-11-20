@@ -51,7 +51,7 @@
 // This imposes a limit to the number of bytes that can be sent out by
 // the agent.
 //
-#define MIN_SERIALIZATION_BUF_SIZE_BYTES 32000
+#define MIN_SERIALIZATION_BUF_SIZE_BYTES 128
 #define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
 
 //
