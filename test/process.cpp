@@ -647,19 +647,20 @@ TEST_F(sys_call_test, procfs_cpuload)
 {
 	vector<uint32_t> loads;
 	vector<uint32_t> idles;
+	vector<uint32_t> steals;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_cpus_load(&loads, &idles);
+	pparser.get_cpus_load(&loads, &idles, &steals);
 	sleep(1);
 	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
 
 	for(j = 0; j < 5; j++)
 	{
-		pparser.get_cpus_load(&loads, &idles);
+		pparser.get_cpus_load(&loads, &idles, &steals);
 		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
 
 		for(k = 0; k < loads.size(); k++)
@@ -674,21 +675,22 @@ TEST_F(sys_call_test, procfs_cpuload)
 
 TEST_F(sys_call_test, procfs_cpuload_longinterval)
 {
-	OUT vector<uint32_t> loads;
-	OUT vector<uint32_t> idles;
+	vector<uint32_t> loads;
+	vector<uint32_t> idles;
+	vector<uint32_t> steals;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_cpus_load(&loads, &idles);
+	pparser.get_cpus_load(&loads, &idles, &steals);
 	sleep(1);
 	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
 
 	for(j = 0; j < 3; j++)
 	{
-		pparser.get_cpus_load(&loads, &idles);
+		pparser.get_cpus_load(&loads, &idles, &steals);
 		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
 
 		for(k = 0; k < loads.size(); k++)
