@@ -208,7 +208,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 			uint32_t idle = (uint32_t)((double)delta_idle_jiffies * 100 / delta_total_jiffies);
 			idles->push_back(idle);
 
-			uint32_t steal = (uint32_t)((double)delta_steal_jiffies * 100 / delta_total_jiffies);
+			uint32_t steal = (uint32_t)((double)delta_steal_jiffies * 100 / (delta_steal_jiffies + delta_total_jiffies));
 			steals->push_back(steal);
 
 			m_old_total_jiffies[j] = total_jiffies;
