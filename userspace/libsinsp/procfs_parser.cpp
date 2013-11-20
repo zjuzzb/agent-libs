@@ -115,7 +115,7 @@ uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jif
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
-void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<uint32_t>* idles)
+void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<uint32_t>* idles, OUT vector<uint32_t>* steals)
 {
 	char line[512];
 	char tmps[32];
@@ -132,6 +132,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 
 	loads->clear();
 	idles->clear();
+	steals->clear();
 
 	FILE* f = fopen("/proc/stat", "r");
 	if(f == NULL)
@@ -154,13 +155,15 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 	//
 	for(j = 0; fgets(line, sizeof(line), f) != NULL; j++)
 	{
-		uint64_t val1, val2, val3, val4, val5, val6, val7;
+		uint64_t val1, val2, val3, val5, val6, val7;
 		uint64_t total_jiffies;
 		uint64_t work_jiffies;
 		uint64_t idle_jiffies;
+		uint64_t steal_jiffies;
 		uint64_t delta_total_jiffies;
 		uint64_t delta_work_jiffies;
 		uint64_t delta_idle_jiffies;
+		uint64_t delta_steal_jiffies;
 
 		if(strstr(line, "cpu") != line)
 		{
@@ -172,29 +175,31 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 			&val1, // user
 			&val2, // nice
 			&val3, // system
-			&val4, // idle
+			&idle_jiffies, // idle
 			&val5, // iowait
 			&val6, // irq
-			&val7) != 8) // softirq
+			&val7, // softirq
+			&steal_jiffies) != 9) // steal
 		{
 			ASSERT(false);
 			break;
 		}
 
-		total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7;
+		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7;
 		work_jiffies = val1 + val2 + val3;
-		idle_jiffies = val4;
 
 		if(old_array_size == 0)
 		{
 			m_old_total_jiffies.push_back(total_jiffies);
 			m_old_work_jiffies.push_back(work_jiffies);
 			m_old_idle_jiffies.push_back(idle_jiffies);
+			m_old_steal_jiffies.push_back(steal_jiffies);
 		}
 		else
 		{
 			delta_work_jiffies = work_jiffies - m_old_work_jiffies[j];
 			delta_idle_jiffies = idle_jiffies - m_old_idle_jiffies[j];
+			delta_steal_jiffies = steal_jiffies - m_old_steal_jiffies[j];
 			delta_total_jiffies = total_jiffies - m_old_total_jiffies[j];
 
 			uint32_t load = (uint32_t)((double)delta_work_jiffies * 100 / delta_total_jiffies);
@@ -203,9 +208,13 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 			uint32_t idle = (uint32_t)((double)delta_idle_jiffies * 100 / delta_total_jiffies);
 			idles->push_back(idle);
 
+			uint32_t steal = (uint32_t)((double)delta_steal_jiffies * 100 / delta_total_jiffies);
+			steals->push_back(steal);
+
 			m_old_total_jiffies[j] = total_jiffies;
 			m_old_work_jiffies[j] = work_jiffies;
 			m_old_idle_jiffies[j] = idle_jiffies;
+			m_old_steal_jiffies[j] = steal_jiffies;
 		}
 	}
 

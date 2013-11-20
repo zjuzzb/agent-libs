@@ -132,6 +132,7 @@ VISIBILITY_PRIVATE
 	sinsp_procfs_parser* m_procfs_parser;
 	vector<uint32_t> m_cpu_loads;
 	vector<uint32_t> m_cpu_idles;
+	vector<uint32_t> m_cpu_steals;
 
 	//
 	// The table of aggreagted connections

@@ -1048,7 +1048,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Calculate CPU load
 			//
-			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles);
+			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
 
 			//
 			// Flush the scheduler analyzer
