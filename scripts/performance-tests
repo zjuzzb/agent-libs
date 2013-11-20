@@ -15,10 +15,11 @@ else
     exit 1
 fi
 
-curl -s http://download.draios.com/dev/install-agent | sudo bash -s $REPOSITORY_NAME access_key
+curl -s http://download.draios.com/$REPOSITORY_NAME/install-agent | sudo bash -s $REPOSITORY_NAME access_key
 
 if [ -f /etc/debian_version ]; then
 	sudo apt-get -y install draios-tests
+	sudo apt-get -y install php5-cli php5-json php5-gd
 elif [ -f /etc/system-release-cpe ]; then
 	sudo yum -y install draios-tests
 else
@@ -27,8 +28,8 @@ else
 fi
 
 if [ ! -d phoronix-test-suite ]; then
-	wget http://phoronix-test-suite.com/releases/phoronix-test-suite-4.8.1.tar.gz
-	tar -xzf phoronix-test-suite-4.8.1.tar.gz
+	wget http://www.phoronix-test-suite.com/releases/phoronix-test-suite-4.8.4.tar.gz
+	tar -xzf phoronix-test-suite-4.8.4.tar.gz
 fi
 
 cd phoronix-test-suite
