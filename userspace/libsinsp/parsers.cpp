@@ -600,6 +600,12 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	//
 	sinsp_threadinfo tinfo(m_inspector);
 
+	//
+	// Set the tid and parent tid
+	//
+	tinfo.m_tid = childtid;
+	tinfo.m_ptid = tid;
+
 	// Copy the command name from the parent
 	tinfo.m_comm = ptinfo->m_comm;
 
@@ -676,10 +682,8 @@ void sinsp_parser::parse_clone_exit(sinsp_evt *evt)
 	tinfo.m_gid = *(int32_t *)parinfo->m_val;
 
 	//
-	// Add the new thread info to the table
+	// Add the new thread to the table
 	//
-	tinfo.m_tid = childtid;
-	tinfo.m_ptid = tid;
 	m_inspector->add_thread(tinfo);
 
 	return;

@@ -482,7 +482,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_cwd_root()
 	}
 	else
 	{
-		return  get_main_thread();
+		return get_main_thread();
 	}
 }
 

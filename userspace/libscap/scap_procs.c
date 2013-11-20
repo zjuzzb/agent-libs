@@ -241,6 +241,7 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	{
 		tinfo->pid = tid;
 	}
+
 	tinfo->fdlist = NULL;
 
 	//
@@ -380,6 +381,7 @@ int32_t scap_proc_add_from_proc(scap_t* handle, uint32_t tid, int parenttid, int
 	{
 		return scap_fd_scan_fd_dir(handle, dir_name, tinfo, sockets, error);
 	}
+
 	return SCAP_SUCCESS;
 }
 
@@ -680,7 +682,7 @@ void scap_proc_print_proc_by_tid(scap_t* handle, uint64_t tid)
 
 	HASH_ITER(hh, handle->m_proclist, tinfo, ttinfo)
 	{
-		if (tinfo->tid == tid)
+		if(tinfo->tid == tid)
 		{
 			scap_proc_print_info(tinfo);
 		}
