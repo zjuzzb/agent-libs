@@ -164,7 +164,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
         m_metrics->SerializeToZeroCopyStream(&gzip_output);
         gzip_output.Close();
 
-        uint32_t compressed_size = (uint32_t)array_output->ByteCount();
+        uint32_t compressed_size = (uint32_t)array_output.ByteCount();
         if(compressed_size > tlen)
         {
             ASSERT(false);
@@ -182,7 +182,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		//
 		// Reserve 4 bytes at the beginning of the string for the length
 		//
-		ArrayOutputStream array_output(&m_serialization_buffer + sizeof(uint32_t), tlen);
+		ArrayOutputStream array_output(m_serialization_buffer + sizeof(uint32_t), tlen);
 		m_metrics->SerializeToZeroCopyStream(&array_output);
 
         *(uint32_t*)m_serialization_buffer = tlen;
