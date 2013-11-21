@@ -370,6 +370,11 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_in
 char* sinsp_filter_check::tostring(sinsp_evt* evt)
 {
 	uint8_t* rawval = extract(evt);
+	if(rawval == NULL)
+	{
+		return "";
+	}
+
 	return rawval_to_string(rawval, m_field);
 }
 

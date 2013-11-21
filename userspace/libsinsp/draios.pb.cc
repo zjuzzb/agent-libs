@@ -2581,6 +2581,7 @@ void counter_syscall_errors::Swap(counter_syscall_errors* other) {
 
 #ifndef _MSC_VER
 const int resource_categories::kCapacityScoreFieldNumber;
+const int resource_categories::kStolenCapacityScoreFieldNumber;
 const int resource_categories::kConnectionQueueUsagePctFieldNumber;
 const int resource_categories::kFdUsagePctFieldNumber;
 const int resource_categories::kCpuPctFieldNumber;
@@ -2604,6 +2605,7 @@ resource_categories::resource_categories(const resource_categories& from)
 void resource_categories::SharedCtor() {
   _cached_size_ = 0;
   capacity_score_ = 0u;
+  stolen_capacity_score_ = 0u;
   connection_queue_usage_pct_ = 0u;
   fd_usage_pct_ = 0u;
   cpu_pct_ = 0u;
@@ -2647,6 +2649,7 @@ resource_categories* resource_categories::New() const {
 void resource_categories::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     capacity_score_ = 0u;
+    stolen_capacity_score_ = 0u;
     connection_queue_usage_pct_ = 0u;
     fd_usage_pct_ = 0u;
     cpu_pct_ = 0u;
@@ -2736,6 +2739,22 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(48)) goto parse_stolen_capacity_score;
+        break;
+      }
+
+      // optional uint32 stolen_capacity_score = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_stolen_capacity_score:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &stolen_capacity_score_)));
+          set_has_stolen_capacity_score();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2782,6 +2801,11 @@ void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(5, this->resident_memory_usage_kb(), output);
   }
 
+  // optional uint32 stolen_capacity_score = 6;
+  if (has_stolen_capacity_score()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(6, this->stolen_capacity_score(), output);
+  }
+
 }
 
 int resource_categories::ByteSize() const {
@@ -2793,6 +2817,13 @@ int resource_categories::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->capacity_score());
+    }
+
+    // optional uint32 stolen_capacity_score = 6;
+    if (has_stolen_capacity_score()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->stolen_capacity_score());
     }
 
     // optional uint32 connection_queue_usage_pct = 2;
@@ -2841,6 +2872,9 @@ void resource_categories::MergeFrom(const resource_categories& from) {
     if (from.has_capacity_score()) {
       set_capacity_score(from.capacity_score());
     }
+    if (from.has_stolen_capacity_score()) {
+      set_stolen_capacity_score(from.stolen_capacity_score());
+    }
     if (from.has_connection_queue_usage_pct()) {
       set_connection_queue_usage_pct(from.connection_queue_usage_pct());
     }
@@ -2870,6 +2904,7 @@ bool resource_categories::IsInitialized() const {
 void resource_categories::Swap(resource_categories* other) {
   if (other != this) {
     std::swap(capacity_score_, other->capacity_score_);
+    std::swap(stolen_capacity_score_, other->stolen_capacity_score_);
     std::swap(connection_queue_usage_pct_, other->connection_queue_usage_pct_);
     std::swap(fd_usage_pct_, other->fd_usage_pct_);
     std::swap(cpu_pct_, other->cpu_pct_);
@@ -3442,6 +3477,7 @@ void process_details::Swap(process_details* other) {
 const int host::kHostnameFieldNumber;
 const int host::kNumCpusFieldNumber;
 const int host::kCpuLoadsFieldNumber;
+const int host::kCpuStealFieldNumber;
 const int host::kPhysicalMemorySizeBytesFieldNumber;
 const int host::kTcountersFieldNumber;
 const int host::kTransactionCountersFieldNumber;
@@ -3566,11 +3602,11 @@ void host::Clear() {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_syscall_errors()) {
       if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
@@ -3579,6 +3615,7 @@ void host::Clear() {
     }
   }
   cpu_loads_.Clear();
+  cpu_steal_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3737,6 +3774,28 @@ bool host::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(88)) goto parse_cpu_steal;
+        break;
+      }
+
+      // repeated uint32 cpu_steal = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_steal:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 1, 88, input, this->mutable_cpu_steal())));
+        } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
+                   == ::google::protobuf::internal::WireFormatLite::
+                      WIRETYPE_LENGTH_DELIMITED) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, this->mutable_cpu_steal())));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_cpu_steal;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3815,6 +3874,12 @@ void host::SerializeWithCachedSizes(
       10, this->external_io_net(), output);
   }
 
+  // repeated uint32 cpu_steal = 11;
+  for (int i = 0; i < this->cpu_steal_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(
+      11, this->cpu_steal(i), output);
+  }
+
 }
 
 int host::ByteSize() const {
@@ -3863,6 +3928,8 @@ int host::ByteSize() const {
           this->transaction_processing_delay());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.resource_categories resource_counters = 8;
     if (has_resource_counters()) {
       total_size += 1 +
@@ -3870,8 +3937,6 @@ int host::ByteSize() const {
           this->resource_counters());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
     if (has_syscall_errors()) {
       total_size += 1 +
@@ -3897,6 +3962,16 @@ int host::ByteSize() const {
     total_size += 1 * this->cpu_loads_size() + data_size;
   }
 
+  // repeated uint32 cpu_steal = 11;
+  {
+    int data_size = 0;
+    for (int i = 0; i < this->cpu_steal_size(); i++) {
+      data_size += ::google::protobuf::internal::WireFormatLite::
+        UInt32Size(this->cpu_steal(i));
+    }
+    total_size += 1 * this->cpu_steal_size() + data_size;
+  }
+
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
@@ -3911,6 +3986,7 @@ void host::CheckTypeAndMergeFrom(
 void host::MergeFrom(const host& from) {
   GOOGLE_CHECK_NE(&from, this);
   cpu_loads_.MergeFrom(from.cpu_loads_);
+  cpu_steal_.MergeFrom(from.cpu_steal_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_hostname()) {
       set_hostname(from.hostname());
@@ -3930,11 +4006,11 @@ void host::MergeFrom(const host& from) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_syscall_errors()) {
       mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
     }
@@ -3951,7 +4027,7 @@ void host::CopyFrom(const host& from) {
 }
 
 bool host::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000008) != 0x00000008) return false;
+  if ((_has_bits_[0] & 0x00000010) != 0x00000010) return false;
 
   if (has_tcounters()) {
     if (!this->tcounters().IsInitialized()) return false;
@@ -3973,6 +4049,7 @@ void host::Swap(host* other) {
     std::swap(hostname_, other->hostname_);
     std::swap(num_cpus_, other->num_cpus_);
     cpu_loads_.Swap(&other->cpu_loads_);
+    cpu_steal_.Swap(&other->cpu_steal_);
     std::swap(physical_memory_size_bytes_, other->physical_memory_size_bytes_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);

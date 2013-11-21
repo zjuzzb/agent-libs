@@ -74,8 +74,10 @@ public:
 	uint32_t m_fd_usage_pct;
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
-	// the process health score calculated with our secret sauce algorithms
+	// the process capcity score calculated with our secret sauce algorithms
 	float m_capacity_score;
+	// the process capacity stolen by CPU steal time, calculated with our secret sauce algorithms
+	float m_stolen_capacity_score;
 	// the process CPU load
 	int32_t m_cpuload;
 	// the process resident memory

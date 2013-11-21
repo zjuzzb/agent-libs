@@ -367,10 +367,41 @@ float sinsp_scores::get_system_capacity_score_bycpu_3(vector<vector<sinsp_trlist
 	return -1;
 }
 
-float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions,
+float sinsp_scores::calculate_score_4(float ntr, float ntrcpu, float nother)
+{
+	float score;
+	float fnintervals = (float)m_n_intervals_in_sample;
+
+	float maxcpu = MAX(fnintervals / 2, fnintervals - nother);
+	float avail;
+	if(ntrcpu != 0)
+	{
+		avail = MIN(fnintervals, ntr * maxcpu / ntrcpu);
+	}
+	else
+	{
+		avail = fnintervals;
+	}
+
+	float maxavail = MAX(avail, ntr);
+	score = ntr * 100 / maxavail;
+	ASSERT(score >= 0);
+
+	// Sometimes floating point precision causes the value to go slightly above 100
+	if(score > 100)
+	{
+		ASSERT(score <= 101);
+		score = 100;
+	}
+
+	return score;
+}
+
+sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions,
 	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, sinsp_threadinfo* program_info,
 	float local_remote_ratio)
 {
+	sinsp_score_info res(-1,  -1);
 	int32_t cpuid;
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
 	if(machine_info == NULL)
@@ -391,6 +422,12 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 	float min_score = 200;
 	float tot_score = 0;
 	uint32_t n_scores = 0;
+
+	float max_score1 = 0;
+	float min_score1 = 200;
+	float tot_score1 = 0;
+	uint32_t n_scores1 = 0;
+
 	vector<uint64_t> time_by_concurrency;
 	vector<int64_t> cpu_counters;
 
@@ -453,37 +490,15 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 
 		nother = otherns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
 
-		//
-		// Perform score calculation
-		//
 		ntr *= local_remote_ratio;
 
 		if(ntr != 0)
 		{
-			float score;
-			float fnintervals = (float)m_n_intervals_in_sample;
-
-			float maxcpu = MAX(fnintervals / 2, fnintervals - nother);
-			float avail;
-			if(ntrcpu != 0)
-			{
-				avail = MIN(fnintervals, ntr * maxcpu / ntrcpu);
-			}
-			else
-			{
-				avail = fnintervals;
-			}
-
-			float maxavail = MAX(avail, ntr);
-			score = ntr * 100 / maxavail;
-			ASSERT(score >= 0);
-
-			// Sometimes floating point precision causes the value to go slightly above 100
-			if(score > 100)
-			{
-				ASSERT(score <= 101);
-				score = 100;
-			}
+			//
+			// Perform score calculation *excluding steal time*.
+			// This gives us the *actual* resouce limit.
+			//
+			float score = calculate_score_4(ntr, ntrcpu, nother);
 
 			tot_score += score;
 			n_scores++;
@@ -496,6 +511,47 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 			if(score < min_score)
 			{
 				min_score = score;
+			}
+
+			//
+			// Perform
+			//
+			float score1;
+
+			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
+			{
+				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
+//				uint32_t steal = 90;
+
+				float ntr1 = ntr;
+				float nother1 = nother * (100 - steal) / 100;
+				float ntrcpu1 = ntrcpu * (100 - steal) / 100;
+				float idle1 = m_n_intervals_in_sample - ntr1 - nother1 - MAX(ntr1, ntrcpu1);
+
+				if(idle1 < 0)
+				{
+					ASSERT(false);
+					idle1 = 0;
+				}
+
+				score1 = calculate_score_4(ntr1, ntrcpu1, nother1);
+			}
+			else
+			{
+				score1 = score;
+			}
+
+			tot_score1 += score1;
+			n_scores1++;
+
+			if(score1 > max_score1)
+			{
+				max_score1 = score1;
+			}
+
+			if(score1 < min_score1)
+			{
+				min_score1 = score1;
 			}
 		}
 	}
@@ -510,22 +566,21 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 	//
 	if(n_scores != 0 && n_scores <= n_server_threads)
 	{
-/*
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			">>%.2f-%.2f-%.2f (%" PRId32 ")",
-			min_score,
-			max_score,
-			tot_score / n_scores,
-			n_scores);
-*/
-		return (tot_score / n_scores);
-	}
-	else
-	{
-		return -1;
+		//g_logger.format(sinsp_logger::SEV_DEBUG,
+		//	">>%.2f-%.2f-%.2f (%" PRId32 ")",
+		//	min_score,
+		//	max_score,
+		//	tot_score / n_scores,
+		//	n_scores);
+
+		float nost = tot_score / n_scores;
+		float st = tot_score1 / n_scores1;
+
+		res.m_current_capacity = st;
+		res.m_stolen_capacity = (nost - st) / nost * 100;
 	}
 
-	return -1;
+	return res;
 }
 
 /*
@@ -962,7 +1017,7 @@ float sinsp_scores::get_process_capacity_score(float system_capacity_score, sins
 }
 */
 
-float sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, vector<vector<sinsp_trlist_entry>>* transactions, 
+sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, vector<vector<sinsp_trlist_entry>>* transactions, 
 		uint32_t n_server_threads, uint64_t sample_end_time, uint64_t sample_duration)
 {
 	float local_remote_ratio = 1;
@@ -978,19 +1033,21 @@ float sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info
 		}
 	}
 
-	float res = get_system_capacity_score_bycpu_4(transactions, 
+	sinsp_score_info res = get_system_capacity_score_bycpu_4(transactions, 
 		n_server_threads, 
 		sample_end_time,
 		sample_duration,
 		mainthread_info,
 		local_remote_ratio);
 
-	if(res == -1)
+	if(res.m_current_capacity == -1)
 	{
-		res = (float)get_system_capacity_score_global(&m_inspector->m_analyzer->m_transactions_with_cpu,
+		res.m_current_capacity = (float)get_system_capacity_score_global(&m_inspector->m_analyzer->m_transactions_with_cpu,
 			n_server_threads,
 			sample_end_time, 
 			sample_duration);
+
+		res.m_stolen_capacity = 0;
 	}
 
 	return res;

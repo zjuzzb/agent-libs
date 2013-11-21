@@ -1007,6 +1007,13 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint32 capacity_score() const;
   inline void set_capacity_score(::google::protobuf::uint32 value);
 
+  // optional uint32 stolen_capacity_score = 6;
+  inline bool has_stolen_capacity_score() const;
+  inline void clear_stolen_capacity_score();
+  static const int kStolenCapacityScoreFieldNumber = 6;
+  inline ::google::protobuf::uint32 stolen_capacity_score() const;
+  inline void set_stolen_capacity_score(::google::protobuf::uint32 value);
+
   // optional uint32 connection_queue_usage_pct = 2;
   inline bool has_connection_queue_usage_pct() const;
   inline void clear_connection_queue_usage_pct();
@@ -1039,6 +1046,8 @@ class resource_categories : public ::google::protobuf::MessageLite {
  private:
   inline void set_has_capacity_score();
   inline void clear_has_capacity_score();
+  inline void set_has_stolen_capacity_score();
+  inline void clear_has_stolen_capacity_score();
   inline void set_has_connection_queue_usage_pct();
   inline void clear_has_connection_queue_usage_pct();
   inline void set_has_fd_usage_pct();
@@ -1049,13 +1058,14 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline void clear_has_resident_memory_usage_kb();
 
   ::google::protobuf::uint32 capacity_score_;
+  ::google::protobuf::uint32 stolen_capacity_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
-  ::google::protobuf::uint32 cpu_pct_;
   ::google::protobuf::uint64 resident_memory_usage_kb_;
+  ::google::protobuf::uint32 cpu_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1393,6 +1403,18 @@ class host : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_cpu_loads();
 
+  // repeated uint32 cpu_steal = 11;
+  inline int cpu_steal_size() const;
+  inline void clear_cpu_steal();
+  static const int kCpuStealFieldNumber = 11;
+  inline ::google::protobuf::uint32 cpu_steal(int index) const;
+  inline void set_cpu_steal(int index, ::google::protobuf::uint32 value);
+  inline void add_cpu_steal(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      cpu_steal() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_cpu_steal();
+
   // required uint64 physical_memory_size_bytes = 4;
   inline bool has_physical_memory_size_bytes() const;
   inline void clear_physical_memory_size_bytes();
@@ -1475,6 +1497,7 @@ class host : public ::google::protobuf::MessageLite {
 
   ::std::string* hostname_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_loads_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_steal_;
   ::google::protobuf::uint64 physical_memory_size_bytes_;
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
@@ -1485,7 +1508,7 @@ class host : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -3774,15 +3797,37 @@ inline void resource_categories::set_capacity_score(::google::protobuf::uint32 v
   capacity_score_ = value;
 }
 
-// optional uint32 connection_queue_usage_pct = 2;
-inline bool resource_categories::has_connection_queue_usage_pct() const {
+// optional uint32 stolen_capacity_score = 6;
+inline bool resource_categories::has_stolen_capacity_score() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void resource_categories::set_has_connection_queue_usage_pct() {
+inline void resource_categories::set_has_stolen_capacity_score() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void resource_categories::clear_has_connection_queue_usage_pct() {
+inline void resource_categories::clear_has_stolen_capacity_score() {
   _has_bits_[0] &= ~0x00000002u;
+}
+inline void resource_categories::clear_stolen_capacity_score() {
+  stolen_capacity_score_ = 0u;
+  clear_has_stolen_capacity_score();
+}
+inline ::google::protobuf::uint32 resource_categories::stolen_capacity_score() const {
+  return stolen_capacity_score_;
+}
+inline void resource_categories::set_stolen_capacity_score(::google::protobuf::uint32 value) {
+  set_has_stolen_capacity_score();
+  stolen_capacity_score_ = value;
+}
+
+// optional uint32 connection_queue_usage_pct = 2;
+inline bool resource_categories::has_connection_queue_usage_pct() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void resource_categories::set_has_connection_queue_usage_pct() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void resource_categories::clear_has_connection_queue_usage_pct() {
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void resource_categories::clear_connection_queue_usage_pct() {
   connection_queue_usage_pct_ = 0u;
@@ -3798,13 +3843,13 @@ inline void resource_categories::set_connection_queue_usage_pct(::google::protob
 
 // optional uint32 fd_usage_pct = 3;
 inline bool resource_categories::has_fd_usage_pct() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void resource_categories::set_has_fd_usage_pct() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void resource_categories::clear_has_fd_usage_pct() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void resource_categories::clear_fd_usage_pct() {
   fd_usage_pct_ = 0u;
@@ -3820,13 +3865,13 @@ inline void resource_categories::set_fd_usage_pct(::google::protobuf::uint32 val
 
 // optional uint32 cpu_pct = 4;
 inline bool resource_categories::has_cpu_pct() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void resource_categories::set_has_cpu_pct() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void resource_categories::clear_has_cpu_pct() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void resource_categories::clear_cpu_pct() {
   cpu_pct_ = 0u;
@@ -3842,13 +3887,13 @@ inline void resource_categories::set_cpu_pct(::google::protobuf::uint32 value) {
 
 // optional uint64 resident_memory_usage_kb = 5;
 inline bool resource_categories::has_resident_memory_usage_kb() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void resource_categories::set_has_resident_memory_usage_kb() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void resource_categories::clear_has_resident_memory_usage_kb() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void resource_categories::clear_resident_memory_usage_kb() {
   resident_memory_usage_kb_ = GOOGLE_ULONGLONG(0);
@@ -4323,15 +4368,40 @@ host::mutable_cpu_loads() {
   return &cpu_loads_;
 }
 
+// repeated uint32 cpu_steal = 11;
+inline int host::cpu_steal_size() const {
+  return cpu_steal_.size();
+}
+inline void host::clear_cpu_steal() {
+  cpu_steal_.Clear();
+}
+inline ::google::protobuf::uint32 host::cpu_steal(int index) const {
+  return cpu_steal_.Get(index);
+}
+inline void host::set_cpu_steal(int index, ::google::protobuf::uint32 value) {
+  cpu_steal_.Set(index, value);
+}
+inline void host::add_cpu_steal(::google::protobuf::uint32 value) {
+  cpu_steal_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::cpu_steal() const {
+  return cpu_steal_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_cpu_steal() {
+  return &cpu_steal_;
+}
+
 // required uint64 physical_memory_size_bytes = 4;
 inline bool host::has_physical_memory_size_bytes() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void host::set_has_physical_memory_size_bytes() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void host::clear_has_physical_memory_size_bytes() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void host::clear_physical_memory_size_bytes() {
   physical_memory_size_bytes_ = GOOGLE_ULONGLONG(0);
@@ -4347,13 +4417,13 @@ inline void host::set_physical_memory_size_bytes(::google::protobuf::uint64 valu
 
 // optional .draiosproto.time_categories tcounters = 5;
 inline bool host::has_tcounters() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void host::set_has_tcounters() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void host::clear_has_tcounters() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void host::clear_tcounters() {
   if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
@@ -4389,13 +4459,13 @@ inline void host::set_allocated_tcounters(::draiosproto::time_categories* tcount
 
 // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
 inline bool host::has_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void host::set_has_transaction_counters() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void host::clear_has_transaction_counters() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void host::clear_transaction_counters() {
   if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -4431,13 +4501,13 @@ inline void host::set_allocated_transaction_counters(::draiosproto::counter_time
 
 // optional uint64 transaction_processing_delay = 7;
 inline bool host::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void host::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void host::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void host::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -4453,13 +4523,13 @@ inline void host::set_transaction_processing_delay(::google::protobuf::uint64 va
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool host::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void host::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void host::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void host::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -4495,13 +4565,13 @@ inline void host::set_allocated_resource_counters(::draiosproto::resource_catego
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool host::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void host::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void host::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void host::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -4537,13 +4607,13 @@ inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_er
 
 // optional .draiosproto.counter_time_bytes external_io_net = 10;
 inline bool host::has_external_io_net() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void host::set_has_external_io_net() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void host::clear_has_external_io_net() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void host::clear_external_io_net() {
   if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();

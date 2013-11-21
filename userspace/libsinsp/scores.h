@@ -2,6 +2,19 @@
 
 class sinsp_sched_analyzer;
 
+class sinsp_score_info
+{
+public:
+	sinsp_score_info(float current_capacity, float stolen_capacity)
+	{
+		m_current_capacity = current_capacity;
+		m_stolen_capacity = stolen_capacity;
+	}
+
+	float m_current_capacity;
+	float m_stolen_capacity;
+};
+
 //
 // The main analyzer class
 //
@@ -22,7 +35,7 @@ public:
 		uint64_t sample_end_time, uint64_t sample_duration,
 		int64_t progid);
 
-	float get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions, 
+	sinsp_score_info get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration, 
 		sinsp_threadinfo* program_info,
@@ -40,12 +53,14 @@ public:
 	float get_process_capacity_score(float system_capacity_score, 
 		sinsp_threadinfo* mainthread_info);
 */
-	float get_process_capacity_score(sinsp_threadinfo* mainthread_info,
+	sinsp_score_info get_process_capacity_score(sinsp_threadinfo* mainthread_info,
 		vector<vector<sinsp_trlist_entry>>* transactions, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
 private:
+	float calculate_score_4(float ntr, float ntrcpu, float nother);
+
 	sinsp* m_inspector;
 	sinsp_sched_analyzer* m_sched_analyzer;
 	sinsp_sched_analyzer2* m_sched_analyzer2;

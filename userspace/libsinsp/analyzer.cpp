@@ -641,7 +641,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
-						it->second.m_procinfo->m_capacity_score = m_score_calculator->get_process_capacity_score(&it->second,
+						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
 							&m_server_transactions_per_cpu,
 #ifdef ANALYZER_EMITS_PROGRAMS
 							it->second.m_procinfo->m_program_pids.size(),
@@ -649,10 +649,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							(uint32_t)it->second.m_nchilds,
 #endif
 							m_prev_flush_time_ns, sample_duration);
+
+							it->second.m_procinfo->m_capacity_score = scores.m_current_capacity;
+							it->second.m_procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
 					}
 					else
 					{
 						it->second.m_procinfo->m_capacity_score = -1;
+						it->second.m_procinfo->m_stolen_capacity_score = 0;
 					}
 
 					//
@@ -663,10 +667,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						if(it->second.m_procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
 						{
 							m_host_metrics.m_capacity_score = it->second.m_procinfo->m_capacity_score;
+							m_host_metrics.m_stolen_capacity_score = it->second.m_procinfo->m_stolen_capacity_score;
 						}
 					}
 
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(it->second.m_procinfo->m_capacity_score * 100));
+					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(it->second.m_procinfo->m_stolen_capacity_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
 					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
 
@@ -684,11 +690,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f cpu:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
+							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%f:%" PRIu32 " %%c:%" PRIu32,
 							it->second.m_comm.c_str(),
 							it->second.m_tid,
 							it->second.m_nchilds + 1,
 							it->second.m_procinfo->m_capacity_score,
+							it->second.m_procinfo->m_stolen_capacity_score,
 							(float)it->second.m_procinfo->get_tot_cputime() * 100 / (float)sample_duration,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
@@ -1174,11 +1181,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
 
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
+			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
 			string cpustr;
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
-				cpustr += to_string(m_cpu_loads[j]) + " ";
+				cpustr += to_string(m_cpu_loads[j]) + "(" + to_string(m_cpu_steals[j]) + ") ";
 				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j]);
+				m_metrics->mutable_hostinfo()->add_cpu_steal(m_cpu_steals[j]);
 			}
 			if(m_cpu_loads.size() != 0)
 			{
@@ -1189,6 +1198,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Machine info
 			//
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.m_capacity_score * 100));
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.m_stolen_capacity_score * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
@@ -1215,8 +1225,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"host: h:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
+					"host: h:%.2f(s:%.2f) in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
 					m_host_metrics.m_capacity_score,
+					m_host_metrics.m_stolen_capacity_score,
 					m_host_transaction_metrics.m_counter.m_count_in,
 					m_host_transaction_metrics.m_counter.m_count_out,
 					(float)m_host_transaction_metrics.m_counter.m_time_ns_in / 1000000000,

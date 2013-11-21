@@ -65,7 +65,8 @@ message counter_syscall_errors {
 }
 
 message resource_categories {
-  optional uint32 capacity_score = 1; // the capacity score for this process or host. 0 all the capacity is available, 10000 means that the entity (host or process) has reached the maximum mumber of requests it can serve.
+  optional uint32 capacity_score = 1; // the request capacity score for this process or host. 0 means all the capacity is available, 10000 means that the entity (host or process) has reached the maximum mumber of requests it can serve.
+  optional uint32 stolen_capacity_score = 6; // the percentage of request capacity that is not available because of CPU steal. 0 means there was no CPU steal during the sample. 100 means that all the capacity was stolen and the machine essentially couldn't run.
   optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
   optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
   optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
@@ -93,6 +94,7 @@ message host {
   optional string hostname = 1; // The name of the host sending the data
   optional uint32 num_cpus = 2;	// Number of CPUs in the system
   repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
+  repeated uint32 cpu_steal = 11;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
   required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
 
   optional time_categories tcounters = 5; // The time counters for this thread
