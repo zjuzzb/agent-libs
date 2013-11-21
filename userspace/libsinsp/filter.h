@@ -3,6 +3,7 @@
 #ifdef HAS_FILTERING
 
 bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
+char* flt_to_string(uint8_t* rawval, event_field_info* finfo);
 
 enum boolop
 {
@@ -88,9 +89,20 @@ public:
 
 	void set_inspector(sinsp* inspector);
 
+	//
+	// Extract the value from the event and convert it into a string
+	//
+	char* tostring(sinsp_evt* evt);
+
 	sinsp* m_inspector;
 	boolop m_boolop;
 	ppm_cmp_operator m_cmpop;
+
+protected:
+	char* rawval_to_string(uint8_t* rawval, const event_field_info* finfo);
+
+	char m_getpropertystr_storage[1024];
+	const event_field_info* m_field;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

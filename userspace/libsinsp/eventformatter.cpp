@@ -38,7 +38,7 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 			}
 
 			j += chk->parse_field_name(cfmt + j + 1);
-			ASSERT(j < fmt.length());
+			ASSERT(j <= fmt.length());
 
 			m_tokens.push_back(chk);
 
@@ -49,17 +49,13 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 
 void sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
 {
-/*
 	vector<sinsp_filter_check*>::iterator it;
 	res->clear();
-	char* valptr;
 
 	for(it = m_tokens.begin(); it != m_tokens.end(); ++it)
 	{
-		get_property_as_string(it->m_cat, &valptr);
-		(*res) += valptr; 
+		(*res) += (*it)->tostring(evt);
 	}
-*/
 }
 
 #else  // HAS_FILTERING

@@ -1212,7 +1212,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
 			}
 
-//			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
+			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"host: h:%.2f in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
@@ -1272,12 +1272,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	if(evt)
 	{
-/*
-if(evt->get_num() - m_prev_sample_evtnum == 28590)
-{
-	int a = 0;
-}
-*/
 		g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
 		m_prev_sample_evtnum = evt->get_num();
 	}

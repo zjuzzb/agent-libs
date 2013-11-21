@@ -405,6 +405,10 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 		float ntrcpu = 0;
 		float idle;
 
+		//
+		// Find the union of the time intervals and use it to calculate the time 
+		// spent serving transactions
+		//
 		stack<sinsp_trlist_entry> transaction_union;
 		uint64_t tot_time;
 		merge_intervals(&(*transactions)[cpuid], 
@@ -438,8 +442,6 @@ float sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist
 		}
 		else
 		{
-//			g_logger.format(sinsp_logger::SEV_WARNING, "no idle information, can't calculate capacity score");
-//			return -1;
 			idle = (float)cpu_state->m_lastsample_idle_ns;
 		}
 

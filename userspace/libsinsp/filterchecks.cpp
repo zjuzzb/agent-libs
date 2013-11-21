@@ -562,10 +562,14 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 	{
 		for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
 		{
-			if(val == m_info.m_name + '.' + sinsp_filter_check_thread_fields[j].m_name)
+			string fldname = m_info.m_name + '.' + sinsp_filter_check_thread_fields[j].m_name;
+			uint32_t fldlen = fldname.length();
+
+			if(val.compare(0, fldlen, fldname) == 0)
 			{
 				m_type = (check_type)j;
-				return val.length();
+				m_field = &sinsp_filter_check_thread_fields[j];
+				return fldlen + 1;
 			}
 		}
 	}

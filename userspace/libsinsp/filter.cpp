@@ -135,6 +135,7 @@ sinsp_filter_check::sinsp_filter_check()
 	m_boolop = BO_NONE;
 	m_cmpop = CO_NONE;
 	m_inspector = NULL;
+	m_field = NULL;
 }
 
 void sinsp_filter_check::set_inspector(sinsp* inspector)
@@ -179,6 +180,197 @@ sinsp_filter_check* sinsp_filter_check::new_filter_check_from_name(string name)
 	}
 
 	return res;
+}
+
+char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_info* finfo)
+{
+	char* prfmt;
+
+	switch(finfo->m_type)
+	{
+		case PT_INT8:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRId8;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIX8;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(int8_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_INT16:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRId16;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIX16;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(int16_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_INT32:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRId32;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIX32;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(int32_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_INT64:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRId64;
+			}
+			else if(finfo->m_print_format == PF_10_PADDED_DEC)
+			{
+				prfmt = (char*)"%09" PRId64;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIX64;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(int64_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_L4PROTO: // This can be resolved in the future
+		case PT_UINT8:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRIu8;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIu8;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(uint8_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_PORT: // This can be resolved in the future
+		case PT_UINT16:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRIu16;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIu16;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(uint16_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_UINT32:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRIu32;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIu32;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(uint32_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_UINT64:
+		case PT_RELTIME:
+		case PT_ABSTIME:
+			if(finfo->m_print_format == PF_DEC)
+			{
+				prfmt = (char*)"%" PRIu64;
+			}
+			else if(finfo->m_print_format == PF_10_PADDED_DEC)
+			{
+				prfmt = (char*)"%09" PRIu64;
+			}
+			else if(finfo->m_print_format == PF_HEX)
+			{
+				prfmt = (char*)"%" PRIX64;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
+			snprintf(m_getpropertystr_storage,
+					 sizeof(m_getpropertystr_storage),
+					 prfmt, *(uint64_t *)rawval);
+			return m_getpropertystr_storage;
+		case PT_CHARBUF:
+			return (char*)rawval;
+		case PT_SOCKADDR:
+			ASSERT(false);
+			return NULL;
+		case PT_SOCKFAMILY:
+			ASSERT(false);
+			return NULL;
+		case PT_BOOL:
+			if(*(uint32_t*)rawval == 0)
+			{
+				return (char*)"true";
+			}
+			else
+			{
+				return (char*)"false";
+			}
+		default:
+			ASSERT(false);
+			throw sinsp_exception("wrong event type " + to_string(finfo->m_type));
+	}
+}
+
+char* sinsp_filter_check::tostring(sinsp_evt* evt)
+{
+	uint8_t* rawval = extract(evt);
+	return rawval_to_string(rawval, m_field);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
