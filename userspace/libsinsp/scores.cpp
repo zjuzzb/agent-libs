@@ -158,6 +158,7 @@ for(k = 0; k < trsize; k++)
 void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid)
 {
 	*tot_time = 0;
+	bool initializing = true;
 
 	if(intervals->size() == 0)
 	{
@@ -169,14 +170,10 @@ void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trli
 	//
     sort(intervals->begin(), intervals->end(), sinsp_trlist_entry_comparer());
  
-    // push the first interval to stack
-    s->push((*intervals)[0]);
-	*tot_time += (((*intervals)[0].m_etime - (*intervals)[0].m_stime));
- 
 	//
     // Start from the next interval and merge if necessary
 	//
-    for(uint32_t i = 1 ; i < intervals->size(); i++)
+    for(uint32_t i = 0 ; i < intervals->size(); i++)
     {
 		if(progid != -1LL)
 		{
@@ -184,6 +181,15 @@ void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trli
 			{
 				continue;
 			}
+		}
+
+		if(initializing)
+		{
+			// push the first interval to the stack
+			s->push((*intervals)[i]);
+			*tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
+
+			initializing = false;
 		}
 
 		//
@@ -442,6 +448,21 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 		float ntrcpu = 0;
 		float idle;
 
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
+//	int64_t delta = ((*transactions)[cpuid])[k].m_etime - ((*transactions)[cpuid])[k].m_stime;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
 		//
 		// Find the union of the time intervals and use it to calculate the time 
 		// spent serving transactions
@@ -522,7 +543,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 //			if(true)
 			{
 				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
-//				uint32_t steal = 63;
+//				uint32_t steal = 65;
 
 				float ntr1 = ntr;
 				float nother1 = nother * (100 - steal) / 100;
