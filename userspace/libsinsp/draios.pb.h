@@ -2361,7 +2361,7 @@ class metrics : public ::google::protobuf::MessageLite {
   inline ::std::string* release_machine_id();
   inline void set_allocated_machine_id(::std::string* machine_id);
 
-  // required string customer_id = 3;
+  // optional string customer_id = 3;
   inline bool has_customer_id() const;
   inline void clear_customer_id();
   static const int kCustomerIdFieldNumber = 3;
@@ -5678,7 +5678,7 @@ inline void metrics::set_allocated_machine_id(::std::string* machine_id) {
   }
 }
 
-// required string customer_id = 3;
+// optional string customer_id = 3;
 inline bool metrics::has_customer_id() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }

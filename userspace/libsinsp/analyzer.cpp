@@ -124,7 +124,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
     //
     // We allocate 4 additional bytes for the buffer lenght
     //
-    uint32_t full_len = tlen + sizeof(uint32_t);
+    uint32_t full_len = tlen + sizeof(sinsp_sample_header);
 		
     //
     // If the buffer is not big enough, expand it
@@ -158,7 +158,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		throw sinsp_exception("compression in agent protocol not implemented under windows");
 		return NULL;
 #else
-        ArrayOutputStream array_output(m_serialization_buffer + sizeof(uint32_t), tlen);
+        ArrayOutputStream array_output(m_serialization_buffer + sizeof(sinsp_sample_header), tlen);
         GzipOutputStream gzip_output(&array_output);
 
         m_metrics->SerializeToZeroCopyStream(&gzip_output);
@@ -172,9 +172,8 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
             throw sinsp_exception(estr);
         }
 
-        *(uint32_t*)m_serialization_buffer = compressed_size;
         *len = compressed_size;
-        return m_serialization_buffer + sizeof(uint32_t);
+        return m_serialization_buffer + sizeof(sinsp_sample_header);
 #endif
 	}
 	else
@@ -182,12 +181,11 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		//
 		// Reserve 4 bytes at the beginning of the string for the length
 		//
-		ArrayOutputStream array_output(m_serialization_buffer + sizeof(uint32_t), tlen);
+		ArrayOutputStream array_output(m_serialization_buffer + sizeof(sinsp_sample_header), tlen);
 		m_metrics->SerializeToZeroCopyStream(&array_output);
 
-        *(uint32_t*)m_serialization_buffer = tlen;
         *len = tlen;
-        return m_serialization_buffer + sizeof(uint32_t);
+        return m_serialization_buffer + sizeof(sinsp_sample_header);
 	}
 }
 
@@ -201,6 +199,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 		m_inspector->m_configuration.get_compress_metrics());
+
 	g_logger.format(sinsp_logger::SEV_INFO,
 		"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
 		ts / 1000000000,
@@ -216,7 +215,13 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, buf - sizeof(uint32_t));
+		sinsp_sample_header* hdr = (sinsp_sample_header*)buf - sizeof(sinsp_sample_header);
+
+		hdr->m_sample_len = buflen + sizeof(sinsp_sample_header);
+		hdr->m_version = 1;
+		hdr->m_messagetype = 1;
+
+		m_sample_callback->sinsp_analyzer_data_ready(ts, (char*)hdr);
 	}
 
 	//

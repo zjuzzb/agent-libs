@@ -198,7 +198,7 @@ message ipv4_network_interface {
 message metrics {
   required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
   required string machine_id = 2; // The unique ID of the machine that is sending this data
-  required string customer_id = 3; // The unique ID of the customer that this machine belongs to
+  optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
   required host hostinfo = 4; // The list of processes
   repeated program programs = 9; // The list of programs
   repeated process processes = 5; // The list of processes

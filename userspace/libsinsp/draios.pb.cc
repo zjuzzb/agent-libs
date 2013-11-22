@@ -6180,7 +6180,7 @@ bool metrics::MergePartialFromCodedStream(
         break;
       }
 
-      // required string customer_id = 3;
+      // optional string customer_id = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -6311,7 +6311,7 @@ void metrics::SerializeWithCachedSizes(
       2, this->machine_id(), output);
   }
 
-  // required string customer_id = 3;
+  // optional string customer_id = 3;
   if (has_customer_id()) {
     ::google::protobuf::internal::WireFormatLite::WriteString(
       3, this->customer_id(), output);
@@ -6373,7 +6373,7 @@ int metrics::ByteSize() const {
           this->machine_id());
     }
 
-    // required string customer_id = 3;
+    // optional string customer_id = 3;
     if (has_customer_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -6469,7 +6469,7 @@ void metrics::CopyFrom(const metrics& from) {
 }
 
 bool metrics::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
+  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
 
   if (has_hostinfo()) {
     if (!this->hostinfo().IsInitialized()) return false;
