@@ -216,7 +216,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_sample_callback != NULL)
 	{
-		sinsp_sample_header* hdr = (sinsp_sample_header*)buf - sizeof(sinsp_sample_header);
+		sinsp_sample_header* hdr = (sinsp_sample_header*)(buf - sizeof(sinsp_sample_header));
 
 		hdr->m_sample_len = buflen + sizeof(sinsp_sample_header);
 		hdr->m_version = PROTOCOL_VERSION_NUMBER;
