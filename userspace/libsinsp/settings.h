@@ -128,3 +128,9 @@
 // this is the max number of entries in the list.
 //
 #define MAX_N_ERROR_CODES_IN_PROTO 5
+
+//
+// Protocol header constants
+//
+#define PROTOCOL_VERSION_NUMBER 1
+#define PROTOCOL_MESSAGE_TYPE_NUMBER 1
