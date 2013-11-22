@@ -569,7 +569,7 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 			{
 				m_type = (check_type)j;
 				m_field = &sinsp_filter_check_thread_fields[j];
-				return fldlen + 1;
+				return fldlen;
 			}
 		}
 	}
@@ -1250,6 +1250,7 @@ const event_field_info rawstring_check_fields[] =
 
 rawstring_check::rawstring_check(string text)
 {
+	m_field = rawstring_check_fields;
 	set_text(text);
 }
 

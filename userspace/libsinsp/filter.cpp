@@ -186,6 +186,9 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_in
 {
 	char* prfmt;
 
+	ASSERT(rawval != NULL);
+	ASSERT(finfo != NULL);
+
 	switch(finfo->m_type)
 	{
 		case PT_INT8:
