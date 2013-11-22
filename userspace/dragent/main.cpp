@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include "configuration.h"
+#include "../libsinsp/proto_header.h"
 
 #define AGENT_PRIORITY 19
 #define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
@@ -603,13 +604,14 @@ protected:
 		uint32_t j;
 
 		ASSERT(m_sa != NULL);
-		uint32_t* buflen = (uint32_t*)buffer;
-		uint32_t size = *buflen + sizeof(uint32_t);
+		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
+		uint32_t size = hdr->m_sample_len;
+		uint32_t* pbuflen = &hdr->m_sample_len;
 
 		//
 		// Turn the length into network byte order
 		//
-		*buflen = htonl(*buflen);
+		*pbuflen = htonl(*pbuflen);
 
 		try
 		{

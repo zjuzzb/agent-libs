@@ -162,6 +162,9 @@
     <ClInclude Include="eventformatter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="proto_header.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">

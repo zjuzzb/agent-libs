@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include "../libsinsp/proto_header.h"
 
 #ifdef _WIN32
 #pragma warning(disable: 4996)
@@ -69,6 +70,21 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 	delete buffer;
 }
 */
+
+class sample_collector: public analyzer_callback_interface
+{
+public:
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
+	{
+		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
+		uint32_t size = hdr->m_sample_len;
+		uint32_t* pbuflen = &hdr->m_sample_len;
+		*pbuflen = htonl(*pbuflen);
+		int a = 0;
+	}
+};
+
+sample_collector g_sample_collector;
 
 //
 // Event processing loop
@@ -475,6 +491,8 @@ int main(int argc, char **argv)
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
 			
+			inspector.set_analyzer_callback(&g_sample_collector);
+
 			cinfo = do_inspect(&inspector, 
 				cnt, 
 				emitjson, 

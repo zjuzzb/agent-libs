@@ -132,6 +132,7 @@
     <ClInclude Include="logger.h" />
     <ClInclude Include="parser_http.h" />
     <ClInclude Include="procfs_parser.h" />
+    <ClInclude Include="proto_header.h" />
     <ClInclude Include="sched_analyzer.h" />
     <ClInclude Include="scores.h" />
     <ClInclude Include="sinsp_signal.h" />

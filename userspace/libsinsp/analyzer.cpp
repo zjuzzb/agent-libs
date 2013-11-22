@@ -28,6 +28,7 @@ using namespace google::protobuf::io;
 #include "procfs_parser.h"
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
+#include "proto_header.h"
 
 #define DUMP_TO_DISK
 
