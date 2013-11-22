@@ -519,9 +519,10 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 			float score1;
 
 			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
+//			if(true)
 			{
 				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
-//				uint32_t steal = 90;
+//				uint32_t steal = 63;
 
 				float ntr1 = ntr;
 				float nother1 = nother * (100 - steal) / 100;
@@ -1040,15 +1041,15 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* main
 		mainthread_info,
 		local_remote_ratio);
 
-	if(res.m_current_capacity == -1)
-	{
-		res.m_current_capacity = (float)get_system_capacity_score_global(&m_inspector->m_analyzer->m_transactions_with_cpu,
-			n_server_threads,
-			sample_end_time, 
-			sample_duration);
+	//if(res.m_current_capacity == -1)
+	//{
+	//	res.m_current_capacity = (float)get_system_capacity_score_global(&m_inspector->m_analyzer->m_transactions_with_cpu,
+	//		n_server_threads,
+	//		sample_end_time, 
+	//		sample_duration);
 
-		res.m_stolen_capacity = 0;
-	}
+	//	res.m_stolen_capacity = 0;
+	//}
 
 	return res;
 }
