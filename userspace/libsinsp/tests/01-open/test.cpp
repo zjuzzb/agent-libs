@@ -76,11 +76,11 @@ class sample_collector: public analyzer_callback_interface
 public:
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
 	{
-		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
-		uint32_t size = hdr->m_sample_len;
-		uint32_t* pbuflen = &hdr->m_sample_len;
-		*pbuflen = htonl(*pbuflen);
-		int a = 0;
+		//sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
+		//uint32_t size = hdr->m_sample_len;
+		//uint32_t* pbuflen = &hdr->m_sample_len;
+		//*pbuflen = htonl(*pbuflen);
+		//int a = 0;
 	}
 };
 

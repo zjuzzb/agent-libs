@@ -19,16 +19,17 @@ class sinsp_filter_check_fd : public sinsp_filter_check
 public:
 	enum check_type
 	{
-		TYPE_NONE,
-		TYPE_FDNUM,
-		TYPE_FDTYPE,
-		TYPE_FDNAME,
-		TYPE_IP,
-		TYPE_CLIENTIP,
-		TYPE_SERVERIP,
-		TYPE_PORT,
-		TYPE_CLIENTPORT,
-		TYPE_SERVERPORT,
+		TYPE_FDNUM = 0,
+		TYPE_FDTYPE = 1,
+		TYPE_FDNAME = 2,
+		TYPE_IP = 3,
+		TYPE_CLIENTIP = 4,
+		TYPE_SERVERIP = 5,
+		TYPE_PORT = 6,
+		TYPE_CLIENTPORT = 7,
+		TYPE_SERVERPORT = 8,
+		TYPE_L4PROTO = 9,
+		TYPE_SOCKFAMILY = 10,
 	};
 
 	enum fd_type

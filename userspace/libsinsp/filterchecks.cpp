@@ -10,17 +10,30 @@ extern sinsp_evttables g_infotables;
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_fd implementation
 ///////////////////////////////////////////////////////////////////////////////
-#define FID_FD_NUM 0
-#define FID_FD_TYPE 1
-#define FID_FD_NAME 2
-#define FID_FD_IP 3
-#define FID_FD_CLIENTADDR 4
-#define FID_FD_SERVERADDR 5
-#define FID_FD_PORT 6
-#define FID_FD_CLIENTPORT 7
-#define FID_FD_SERVERPORT 8
-#define FID_FD_L4PROTO 9
-#define FID_FD_SOCKFAMILY 10
+const event_field_info sinsp_filter_check_fd_fields[] =
+{
+	{PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
+	{PT_INT64, EPF_NONE, PF_DEC, "pid", "the id of the process generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "exe", "the full name (including the path) of the executable generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "comm", "the name (excluding thr path) of the executable generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "args", "the arguments passed on the command line when starting the process generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "cwd", "the current working directory of the event."},
+	{PT_UINT32, EPF_NONE, PF_DEC, "nchilds", "the number of childs of that the process generating the event currently has."},
+	{PT_BOOL, EPF_NONE, PF_NA, "ismainthread", "'true' if the thread generating the event is the main one in the process."},
+/*
+	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
+	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
+	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
+	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd", "addr", "matches the ip address (client or server) of the fd."},
+	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "caddr", "source IP address."},
+	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "saddr", "destination IP address."},
+	{ETSC_FD_PORT, PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd", "port", "matches the port (client or server) of the fd."},
+	{ETSC_FD_CLIENTPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "cport", "source TCP/UDP port."},
+	{ETSC_FD_SERVERPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "sport", "destination TCP/UDP port."},
+	{ETSC_FD_L4PROTO, PT_UINT8, EPF_NONE, PF_DEC, "fd", "l4proto", "IP protocol number."},
+	{ETSC_FD_SOCKFAMILY, PT_SOCKFAMILY, EPF_NONE, PF_DEC, "fd", "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
+*/
+};
 
 filter_check_info* sinsp_filter_check_fd::get_filelds()
 {
