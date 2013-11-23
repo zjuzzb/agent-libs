@@ -511,6 +511,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 
 		nother = otherns * (float)m_n_intervals_in_sample / cpu_state->m_sample_effective_length_ns;
 
+		//
+		// Score calculation
+		//
 		ntr *= local_remote_ratio;
 
 		if(ntr != 0)
@@ -540,15 +543,15 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 			float score1;
 
 			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
-//			if(true)
+			if(true)
 			{
 				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
-//				uint32_t steal = 65;
+//				uint32_t steal = 60;
 
-				float ntr1 = ntr;
+				float ntr1 = ntr / 2;
 				float nother1 = nother * (100 - steal) / 100;
 				float ntrcpu1 = ntrcpu * (100 - steal) / 100;
-				float idle1 = m_n_intervals_in_sample - ntr1 - nother1 - MAX(ntr1, ntrcpu1);
+				float idle1 = m_n_intervals_in_sample - nother1 - ntrcpu1;
 
 				if(idle1 < 0)
 				{
