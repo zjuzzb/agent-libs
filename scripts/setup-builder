@@ -4,6 +4,7 @@ set -exu
 #
 # To be run on CentOS 6
 #
+export AWS_DEFAULT_REGION="us-east-1"
 
 #
 # Update the system
@@ -19,28 +20,22 @@ rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
 #
 # Install various crap
 #
-yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git glibc-static java-1.7.0-openjdk rpm-build s3cmd unzip wget 
+yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git glibc-static java-1.7.0-openjdk python-pip rpm-build unzip wget 
 
-#
-# Prepare Jenkins working directory
-#
-mkdir -p /work/jenkins
-
-#
-# Manual steps:
-# Copy git key
-#
-s3cmd --configure
-git clone git@github.com:ldegio/draios.git
+pip install awscli
 
 #
 # Needed by rpmsign
 #
 echo "%_gpg_name Draios Inc. <support@draios.com>" > ~/.rpmmacros
 
-s3cmd get s3://draios-backup/keys/DRAIOS-GPG-KEY.public
+aws s3 cp s3://draios-builder/DRAIOS-GPG-KEY.public .
 gpg --import DRAIOS-GPG-KEY.public
 rm -f DRAIOS-GPG-KEY.public
-s3cmd get s3://draios-backup/keys/DRAIOS-GPG-KEY.private
+aws s3 cp s3://draios-builder/DRAIOS-GPG-KEY.private .
 gpg --import DRAIOS-GPG-KEY.private
 rm -f DRAIOS-GPG-KEY.private
+
+aws s3 cp s3://draios-builder/config ~/.ssh
+aws s3 cp s3://draios-builder/jenkins-github-agent.pem ~/.ssh
+chmod 600 ~/.ssh/*
