@@ -136,6 +136,8 @@ sinsp_filter_check::sinsp_filter_check()
 	m_cmpop = CO_NONE;
 	m_inspector = NULL;
 	m_field = NULL;
+	m_info.m_fields = NULL;
+	m_info.m_nfiedls = -1;
 }
 
 void sinsp_filter_check::set_inspector(sinsp* inspector)
@@ -381,6 +383,42 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 	return rawval_to_string(rawval, m_field);
 }
 
+int32_t sinsp_filter_check::parse_field_name(const char* str)
+{
+	uint32_t j;
+
+	ASSERT(m_info.m_fields != NULL);
+	ASSERT(m_info.m_nfiedls != -1);
+
+	string val(str);
+
+	if(string(val, 0, sizeof("arg") - 1) == "arg")
+	{
+		//
+		// 'arg' is handled in a custom way
+		//
+		throw sinsp_exception("filter error: thread.args filter not implemented yet");
+	}
+	else
+	{
+		for(j = 0; j < m_info.m_nfiedls; j++)
+		{
+			string fldname = m_info.m_fields[j].m_name;
+			uint32_t fldlen = fldname.length();
+
+			if(val.compare(0, fldlen, fldname) == 0)
+			{
+				m_field_id = j;
+				m_field = &m_info.m_fields[j];
+				return fldlen;
+			}
+		}
+	}
+
+	throw sinsp_exception(string("filter error: unrecognized field ") + val);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -467,7 +505,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-//fltstr = "thread.tid=2162";
+fltstr = "tid=845";
 //fltstr = "user.name = loris";
 
 	m_inspector = inspector;

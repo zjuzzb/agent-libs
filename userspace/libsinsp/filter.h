@@ -28,7 +28,7 @@ class filter_check_info
 {
 public:
 	string m_name;
-	uint32_t m_nfiedls;
+	int32_t m_nfiedls;
 	const event_field_info* m_fields;
 };
 
@@ -56,7 +56,7 @@ public:
 	//
 	virtual filter_check_info* get_filelds()
 	{
-		return NULL;
+		return &m_info;
 	}
 
 	//
@@ -64,7 +64,7 @@ public:
 	// Returns the lenght of the parsed field if successful, an exception in 
 	// case of error.
 	//
-	virtual int32_t parse_field_name(const char* str) = 0;
+	virtual int32_t parse_field_name(const char* str);
 	
 	//
 	// If this check is used by a filter, extract the constant to compare it to
@@ -103,6 +103,8 @@ protected:
 
 	char m_getpropertystr_storage[1024];
 	const event_field_info* m_field;
+	filter_check_info m_info;
+	uint32_t m_field_id;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -12,32 +12,25 @@ extern sinsp_evttables g_infotables;
 ///////////////////////////////////////////////////////////////////////////////
 const event_field_info sinsp_filter_check_fd_fields[] =
 {
-	{PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
-	{PT_INT64, EPF_NONE, PF_DEC, "pid", "the id of the process generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "exe", "the full name (including the path) of the executable generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "comm", "the name (excluding thr path) of the executable generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "args", "the arguments passed on the command line when starting the process generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "cwd", "the current working directory of the event."},
-	{PT_UINT32, EPF_NONE, PF_DEC, "nchilds", "the number of childs of that the process generating the event currently has."},
-	{PT_BOOL, EPF_NONE, PF_NA, "ismainthread", "'true' if the thread generating the event is the main one in the process."},
-/*
-	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
-	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
-	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
-	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd", "addr", "matches the ip address (client or server) of the fd."},
-	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "caddr", "source IP address."},
-	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "saddr", "destination IP address."},
-	{ETSC_FD_PORT, PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd", "port", "matches the port (client or server) of the fd."},
-	{ETSC_FD_CLIENTPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "cport", "source TCP/UDP port."},
-	{ETSC_FD_SERVERPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "sport", "destination TCP/UDP port."},
-	{ETSC_FD_L4PROTO, PT_UINT8, EPF_NONE, PF_DEC, "fd", "l4proto", "IP protocol number."},
-	{ETSC_FD_SOCKFAMILY, PT_SOCKFAMILY, EPF_NONE, PF_DEC, "fd", "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
-*/
+	{PT_INT64, EPF_NONE, PF_DEC, "num", "the unique number identifying the file descriptor."},
+	{PT_UINT32, EPF_NONE, PF_DEC, "type", "type of FD. Can be one of XXX."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
+	{PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "addr", "matches the ip address (client or server) of the fd."},
+	{PT_SOCKADDR, EPF_NONE, PF_NA, "caddr", "source IP address."},
+	{PT_SOCKADDR, EPF_NONE, PF_NA, "saddr", "destination IP address."},
+	{PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "port", "matches the port (client or server) of the fd."},
+	{PT_PORT, EPF_NONE, PF_DEC, "cport", "source TCP/UDP port."},
+	{PT_PORT, EPF_NONE, PF_DEC, "sport", "destination TCP/UDP port."},
+	{PT_UINT8, EPF_NONE, PF_DEC, "l4proto", "IP protocol number."},
+	{PT_SOCKFAMILY, EPF_NONE, PF_DEC, "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
 };
 
-filter_check_info* sinsp_filter_check_fd::get_filelds()
+sinsp_filter_check_fd::sinsp_filter_check_fd()
 {
-	return NULL;
+	m_info.m_name = "fd";
+
+	m_info.m_fields = sinsp_filter_check_fd_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_fd_fields) / sizeof(sinsp_filter_check_fd_fields[0]);
 }
 
 bool sinsp_filter_check_fd::recognize_operand(string operand)
@@ -536,32 +529,30 @@ const event_field_info sinsp_filter_check_thread_fields[] =
 sinsp_filter_check_thread::sinsp_filter_check_thread()
 {
 	m_info.m_name = "thread";
-
 	m_info.m_fields = sinsp_filter_check_thread_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
 }
 
-filter_check_info* sinsp_filter_check_thread::get_filelds()
-{
-	return &m_info;
-}
-
 bool sinsp_filter_check_thread::recognize_operand(string operand)
 {
-	if(operand.substr(0, string("thread").length()) == "thread")
+	uint32_t j;
+
+	for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
 	{
-		return true;
+		string fldname = sinsp_filter_check_thread_fields[j].m_name;
+		uint32_t fldlen = fldname.length();
+
+		if(operand.compare(0, fldlen, fldname) == 0)
+		{
+			return true;
+		}
 	}
-	else
-	{
-		return false;
-	}
+
+	return false;
 }
 
 int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 {
-	uint32_t j;
-
 	string val(str);
 
 	if(string(val, 0, sizeof("arg") - 1) == "arg")
@@ -573,28 +564,15 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 	}
 	else
 	{
-		for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
-		{
-			string fldname = m_info.m_name + '.' + sinsp_filter_check_thread_fields[j].m_name;
-			uint32_t fldlen = fldname.length();
-
-			if(val.compare(0, fldlen, fldname) == 0)
-			{
-				m_type = (check_type)j;
-				m_field = &sinsp_filter_check_thread_fields[j];
-				return fldlen;
-			}
-		}
+		return sinsp_filter_check::parse_field_name(str);
 	}
-
-	throw sinsp_exception(string("filter error: unrecognized field ") + val);
 }
 
 void sinsp_filter_check_thread::parse_filter_value(const char* str)
 {
 	string val(str);
 
-	switch(m_type)
+	switch(m_field_id)
 	{
 	case TYPE_TID:
 	case TYPE_PID:
@@ -631,7 +609,7 @@ void sinsp_filter_check_thread::parse_filter_value(const char* str)
 
 const event_field_info* sinsp_filter_check_thread::get_field_info()
 {
-	return &sinsp_filter_check_thread_fields[m_type];
+	return &sinsp_filter_check_thread_fields[m_field_id];
 }
 
 uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
@@ -643,7 +621,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 		return NULL;
 	}
 
-	switch(m_type)
+	switch(m_field_id)
 	{
 	case TYPE_TID:
 		return (uint8_t*)&tinfo->m_tid;
@@ -680,7 +658,7 @@ bool sinsp_filter_check_thread::compare(sinsp_evt *evt)
 	}
 
 	return flt_compare(m_cmpop, 
-		sinsp_filter_check_thread_fields[m_type].m_type, 
+		sinsp_filter_check_thread_fields[m_field_id].m_type, 
 		extracted_val, 
 		&m_val_storage);
 }
@@ -688,11 +666,6 @@ bool sinsp_filter_check_thread::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_info* sinsp_filter_check_event::get_filelds()
-{
-	return NULL;
-}
-
 bool sinsp_filter_check_event::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("evt").length()) == "evt")
@@ -981,11 +954,6 @@ bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_info* sinsp_filter_check_user::get_filelds()
-{
-	return NULL;
-}
-
 bool sinsp_filter_check_user::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("user").length()) == "user")
@@ -1132,11 +1100,6 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
-filter_check_info* sinsp_filter_check_group::get_filelds()
-{
-	return NULL;
-}
-
 bool sinsp_filter_check_group::recognize_operand(string operand)
 {
 	if(operand.substr(0, string("group").length()) == "group")

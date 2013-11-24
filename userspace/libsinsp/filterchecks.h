@@ -48,7 +48,7 @@ public:
 		FDT_TIMERFD
 	};
 
-	filter_check_info* get_filelds();
+	sinsp_filter_check_fd();
 	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
@@ -84,7 +84,6 @@ public:
 	};
 
 	sinsp_filter_check_thread();
-	filter_check_info* get_filelds();
 	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
@@ -92,8 +91,6 @@ public:
 	uint8_t* extract(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
 
-	filter_check_info m_info;
-	check_type m_type;
 	// XXX this is overkill and wasted for most of the fields.
 	// It could be optimized by dynamically allocating the right amount
 	// of memory, but we don't care for the moment since we expect filters 
@@ -119,7 +116,6 @@ public:
 		TYPE_ARGS
 	};
 
-	filter_check_info* get_filelds();
 	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
@@ -152,7 +148,6 @@ public:
 		TYPE_SHELL,
 	};
 
-	filter_check_info* get_filelds();
 	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
@@ -178,7 +173,6 @@ public:
 		TYPE_NAME,
 	};
 
-	filter_check_info* get_filelds();
 	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
