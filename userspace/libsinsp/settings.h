@@ -134,3 +134,13 @@
 //
 #define PROTOCOL_VERSION_NUMBER 1
 #define PROTOCOL_MESSAGE_TYPE_NUMBER 1
+
+//
+// Number of samples after which the process information *of every process* is included in the sample.
+// Usually, the sample includes only process information for processes that have been created
+// during the sample or that did an execve during the sample.
+// Every once in a while, tough, we force the inclusion of every process, to make sure the backend stays
+// in sync.
+// This constant controls after how many normal samples we include a "full process" sample.
+//
+#define PROCINFO_IN_SAMPLE_INTERVAL 5 * 60

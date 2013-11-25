@@ -36,6 +36,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_aggregated_ipv4_table(inspector)
 {
 	m_inspector = inspector;
+	m_n_flushes = 0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -601,12 +602,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				// Basic values
 				//
 				proc->set_pid(pid);
-				proc->mutable_details()->set_comm(it->second.m_comm);
-				proc->mutable_details()->set_exe(it->second.m_exe);
-				for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-					arg_it != it->second.m_args.end(); ++arg_it)
+
+				if((it->second.m_th_analysis_flags & sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO) ||
+					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 				{
-					proc->mutable_details()->add_args(*arg_it);
+					proc->mutable_details()->set_comm(it->second.m_comm);
+					proc->mutable_details()->set_exe(it->second.m_exe);
+					for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+						arg_it != it->second.m_args.end(); ++arg_it)
+					{
+						proc->mutable_details()->add_args(*arg_it);
+					}
+
+					it->second.m_th_analysis_flags &= ~sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO;
 				}
 
 				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
@@ -1021,6 +1029,8 @@ void sinsp_analyzer::emit_full_connections()
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 {
 	uint32_t j;
+
+	m_n_flushes++;
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{

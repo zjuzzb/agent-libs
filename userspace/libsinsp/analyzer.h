@@ -96,6 +96,7 @@ VISIBILITY_PRIVATE
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
+	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 

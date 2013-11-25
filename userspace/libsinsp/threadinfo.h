@@ -107,6 +107,8 @@ public:
 	    AF_CLOSED = (1 << 2), // thread has been closed. It will have to be removed from the thread table.
 	    AF_IS_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions.
 	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
+	    AF_INCLUDE_INFO_IN_PROTO = (1 << 5), // In order to minimize network bw uitilization, we emit process information in the protocol only when the process is
+											 // detected, and then at regular intervals. This flag controls that behavior.
 	};
 
 	sinsp_threadinfo();

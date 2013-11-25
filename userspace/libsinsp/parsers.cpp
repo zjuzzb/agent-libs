@@ -769,6 +769,11 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	}
 
 	//
+	// This process' name changed, so we need to include it in the protocol again
+	//
+	evt->m_tinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO;
+
+	//
 	// execve potentially breaks the program chain, and so we need to reflect it in our parents program count.
 	//
 	if(prev_exe != evt->m_tinfo->m_exe)
