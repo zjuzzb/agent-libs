@@ -92,7 +92,7 @@ public:
 	// It could be optimized by dynamically allocating the right amount
 	// of memory, but we don't care for the moment since we expect filters 
 	// to be pretty small.
-	bool m_tbool;
+	uint32_t m_tbool;
 	string m_tstr;
 };
 

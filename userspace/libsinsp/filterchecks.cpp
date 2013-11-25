@@ -571,7 +571,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 		m_tstr = tinfo->get_cwd();
 		return (uint8_t*)m_tstr.c_str();
 	case TYPE_ISMAINTHREAD:
-		m_tbool = tinfo->is_main_thread();
+		m_tbool = (uint32_t)tinfo->is_main_thread();
 		return (uint8_t*)&m_tbool;
 	default:
 		ASSERT(false);

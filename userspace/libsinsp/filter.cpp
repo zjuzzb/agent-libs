@@ -108,6 +108,7 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 	case PT_SYSCALLID:
 		return flt_compare_uint64(op, (uint64_t)*(int16_t*)operand1, (uint64_t)*(int16_t*)operand2);
 	case PT_UINT32:
+	case PT_BOOL:
 		return flt_compare_uint64(op, (uint64_t)*(int32_t*)operand1, (uint64_t)*(int32_t*)operand2);
 	case PT_UINT64:
 	case PT_RELTIME:
@@ -407,7 +408,16 @@ void sinsp_filter_check::string_to_rawval(const char* str)
 		case PT_CHARBUF:
 		case PT_SOCKADDR:
 		case PT_SOCKFAMILY:
-			memcpy(m_val_storage, str, strlen(str));
+			{
+				uint32_t len = strlen(str);
+				if(len >= sizeof(m_val_storage) - 1)
+				{
+					throw sinsp_exception("filter parameter too long:" + string(str));
+				}
+
+				memcpy(m_val_storage, str, len);
+				m_val_storage[len] = 0;
+			}
 			break;
 		case PT_BOOL:
 			if(string(str) == "true")
@@ -557,8 +567,8 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-fltstr = "tid=845";
-//fltstr = "user.name = loris";
+//fltstr = "tid!=0";
+fltstr = "ismainthread=false";
 
 	m_inspector = inspector;
 	m_scanpos = -1;
