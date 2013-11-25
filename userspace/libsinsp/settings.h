@@ -143,4 +143,4 @@
 // in sync.
 // This constant controls after how many normal samples we include a "full process" sample.
 //
-#define PROCINFO_IN_SAMPLE_INTERVAL 5 * 60
+#define PROCINFO_IN_SAMPLE_INTERVAL 1
