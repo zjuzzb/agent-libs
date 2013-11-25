@@ -222,6 +222,10 @@ vector<string> sinsp_split(const string &s, char delim);
 class sinsp_numparser
 {
 public:
+	static uint32_t parseu8(const string& str);
+	static int32_t parsed8(const string& str);
+	static uint32_t parseu16(const string& str);
+	static int32_t parsed16(const string& str);
 	static uint32_t parseu32(const string& str);
 	static int32_t parsed32(const string& str);
 	static uint64_t parseu64(const string& str);

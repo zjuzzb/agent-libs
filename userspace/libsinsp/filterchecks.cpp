@@ -33,18 +33,6 @@ sinsp_filter_check_fd::sinsp_filter_check_fd()
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_fd_fields) / sizeof(sinsp_filter_check_fd_fields[0]);
 }
 
-bool sinsp_filter_check_fd::recognize_operand(string operand)
-{
-	if(operand.substr(0, string("fd").length()) == "fd")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
 {
 /*
@@ -106,7 +94,7 @@ int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
 */
-	return 0;
+	return -1;
 }
 
 void sinsp_filter_check_fd::parse_filter_value(const char* str)
@@ -533,24 +521,6 @@ sinsp_filter_check_thread::sinsp_filter_check_thread()
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
 }
 
-bool sinsp_filter_check_thread::recognize_operand(string operand)
-{
-	uint32_t j;
-
-	for(j = 0; j < sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]); j++)
-	{
-		string fldname = sinsp_filter_check_thread_fields[j].m_name;
-		uint32_t fldlen = fldname.length();
-
-		if(operand.compare(0, fldlen, fldname) == 0)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
 int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 {
 	string val(str);
@@ -565,45 +535,6 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 	else
 	{
 		return sinsp_filter_check::parse_field_name(str);
-	}
-}
-
-void sinsp_filter_check_thread::parse_filter_value(const char* str)
-{
-	string val(str);
-
-	switch(m_field_id)
-	{
-	case TYPE_TID:
-	case TYPE_PID:
-		*(int64_t*)m_val_storage = sinsp_numparser::parsed64(val);
-		break;
-	case TYPE_COMM:
-	case TYPE_EXE:
-	case TYPE_CWD:
-		VALIDATE_STR_VAL
-		memcpy(m_val_storage, val.c_str(), val.length() + 1);
-		break;
-	case TYPE_NCHILDS:
-		*(uint64_t*)m_val_storage = sinsp_numparser::parseu64(val);
-		break;
-	case TYPE_ISMAINTHREAD:
-		if(val == "true")
-		{
-			*(bool*)m_val_storage = true;
-		}
-		else if(val == "false")
-		{
-			*(bool*)m_val_storage = false;
-		}
-		else
-		{
-			throw sinsp_exception("filter error: unrecognized ismainthread value " + val);
-		}
-
-		break;
-	default:
-		ASSERT(false);
 	}
 }
 
@@ -666,18 +597,6 @@ bool sinsp_filter_check_thread::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
-bool sinsp_filter_check_event::recognize_operand(string operand)
-{
-	if(operand.substr(0, string("evt").length()) == "evt")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
 /*
@@ -724,7 +643,7 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
 */
-	return 0;
+	return -1;
 }
 
 void sinsp_filter_check_event::parse_filter_value(const char* str)
@@ -954,18 +873,6 @@ bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
-bool sinsp_filter_check_user::recognize_operand(string operand)
-{
-	if(operand.substr(0, string("user").length()) == "user")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 int32_t sinsp_filter_check_user::parse_field_name(const char* str)
 {
 /*
@@ -999,8 +906,7 @@ int32_t sinsp_filter_check_user::parse_field_name(const char* str)
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
 */
-	return 0;
-
+	return -1;
 }
 
 void sinsp_filter_check_user::parse_filter_value(const char* str)
@@ -1100,18 +1006,6 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
-bool sinsp_filter_check_group::recognize_operand(string operand)
-{
-	if(operand.substr(0, string("group").length()) == "group")
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 int32_t sinsp_filter_check_group::parse_field_name(const char* str)
 {
 /*
@@ -1135,7 +1029,7 @@ int32_t sinsp_filter_check_group::parse_field_name(const char* str)
 
 	throw sinsp_exception("filter error: unrecognized field " + val);
 */
-	return 0;
+	return -1;
 }
 
 void sinsp_filter_check_group::parse_filter_value(const char* str)
@@ -1235,16 +1129,10 @@ void rawstring_check::set_text(string text)
 	m_text = text;
 }
 
-bool rawstring_check::recognize_operand(string operand)
-{
-	ASSERT(false);
-	return true;
-}
-
 int32_t rawstring_check::parse_field_name(const char* str)
 {
 	ASSERT(false);
-	return 0;
+	return -1;
 }
 
 void rawstring_check::parse_filter_value(const char* str)

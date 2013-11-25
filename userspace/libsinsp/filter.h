@@ -49,7 +49,7 @@ public:
 	//
 	// Used by the engine to allocate new filter checks
 	//
-	static sinsp_filter_check* new_filter_check_from_name(string name);
+	static sinsp_filter_check* new_filter_check_from_fldname(string name);
 
 	//
 	// Get the list of fields that this check exports
@@ -70,7 +70,7 @@ public:
 	// If this check is used by a filter, extract the constant to compare it to
 	// Doesn't return the field lenght because the filtering engine can calculate it.
 	//
-	virtual void parse_filter_value(const char* str) = 0;
+	virtual void parse_filter_value(const char* str);
 
 	//
 	// Return the info about the field that this instance contains 
@@ -100,8 +100,10 @@ public:
 
 protected:
 	char* rawval_to_string(uint8_t* rawval, const event_field_info* finfo);
+	void string_to_rawval(const char* str);
 
 	char m_getpropertystr_storage[1024];
+	uint8_t m_val_storage[1024];
 	const event_field_info* m_field;
 	filter_check_info m_info;
 	uint32_t m_field_id;

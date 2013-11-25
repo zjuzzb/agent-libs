@@ -570,6 +570,58 @@ vector<string> sinsp_split(const string &s, char delim)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_numparser implementation
 ///////////////////////////////////////////////////////////////////////////////
+uint32_t sinsp_numparser::parseu8(const string& str)
+{
+	uint32_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRIu8 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+int32_t sinsp_numparser::parsed8(const string& str)
+{
+	int32_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId8 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+uint32_t sinsp_numparser::parseu16(const string& str)
+{
+	uint32_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRIu16 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
+int32_t sinsp_numparser::parsed16(const string& str)
+{
+	int32_t res;
+	char temp;
+
+	if(std::sscanf(str.c_str(), "%" PRId16 "%c", &res, &temp) != 1)
+	{
+		throw sinsp_exception(str + " is not a valid number");
+	}
+
+	return res;
+}
+
 uint32_t sinsp_numparser::parseu32(const string& str)
 {
 	uint32_t res;

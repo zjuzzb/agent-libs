@@ -49,7 +49,6 @@ public:
 	};
 
 	sinsp_filter_check_fd();
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();
@@ -84,9 +83,7 @@ public:
 	};
 
 	sinsp_filter_check_thread();
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
-	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
@@ -95,7 +92,6 @@ public:
 	// It could be optimized by dynamically allocating the right amount
 	// of memory, but we don't care for the moment since we expect filters 
 	// to be pretty small.
-	uint8_t m_val_storage[1024];
 	bool m_tbool;
 	string m_tstr;
 };
@@ -116,7 +112,6 @@ public:
 		TYPE_ARGS
 	};
 
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();
@@ -148,7 +143,6 @@ public:
 		TYPE_SHELL,
 	};
 
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();
@@ -173,7 +167,6 @@ public:
 		TYPE_NAME,
 	};
 
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();
@@ -193,7 +186,6 @@ class rawstring_check : public sinsp_filter_check
 public:
 	rawstring_check(string text);
 	void set_text(string text);
-	static bool recognize_operand(string operand);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	const event_field_info* get_field_info();

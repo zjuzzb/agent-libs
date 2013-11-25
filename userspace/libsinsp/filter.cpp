@@ -145,43 +145,41 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
-sinsp_filter_check* sinsp_filter_check::new_filter_check_from_name(string name)
+sinsp_filter_check* sinsp_filter_check::new_filter_check_from_fldname(string name)
 {
-	sinsp_filter_check* res;
-
 	//////////////////////////////////////////////////////////////////////////////
 	// ADD NEW FILTER CHECK CLASSES HERE
 	//////////////////////////////////////////////////////////////////////////////
-	if(sinsp_filter_check_fd::recognize_operand(name))
+	sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
+	if(chk_fd->parse_field_name(name.c_str()) != -1)
 	{
-		sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
-		res = (sinsp_filter_check*)chk_fd;
-	}
-	else if(sinsp_filter_check_thread::recognize_operand(name))
-	{
-		sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
-		res = (sinsp_filter_check*)chk_thread;
-	}
-	else if(sinsp_filter_check_event::recognize_operand(name))
-	{
-		sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
-		res = (sinsp_filter_check*)chk_event;
-	}
-	else if(sinsp_filter_check_user::recognize_operand(name))
-	{
-		sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
-		res = (sinsp_filter_check*)chk_user;
-	}
-	else
-	{
-		//
-		// If you are implementing a new filter check and this point is reached,
-		// it's very likely that you've forgotten to add your filter to the list above
-		//
-		res = NULL;
+		return (sinsp_filter_check*)chk_fd;
 	}
 
-	return res;
+	sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
+	if(chk_thread->parse_field_name(name.c_str()) != -1)
+	{
+		return (sinsp_filter_check*)chk_thread;
+	}
+
+	sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
+	if(chk_event->parse_field_name(name.c_str()) != -1)
+	{
+		return (sinsp_filter_check*)chk_event;
+	}
+
+	sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
+	if(chk_user->parse_field_name(name.c_str()) != -1)
+	{
+		return (sinsp_filter_check*)chk_user;
+	}
+
+	//
+	// If you are implementing a new filter check and this point is reached,
+	// it's very likely that you've forgotten to add your filter to the list above
+	//
+	ASSERT(false);
+	return NULL;
 }
 
 char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_info* finfo)
@@ -372,6 +370,66 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_in
 	}
 }
 
+void sinsp_filter_check::string_to_rawval(const char* str)
+{
+	switch(m_field->m_type)
+	{
+		case PT_INT8:
+			*(int8_t*)m_val_storage = sinsp_numparser::parsed8(str);
+			break;
+		case PT_INT16:
+			*(int16_t*)m_val_storage = sinsp_numparser::parsed16(str);
+			break;
+		case PT_INT32:
+			*(int32_t*)m_val_storage = sinsp_numparser::parsed32(str);
+			break;
+		case PT_INT64:
+			*(int64_t*)m_val_storage = sinsp_numparser::parsed64(str);
+			break;
+		case PT_L4PROTO: // This can be resolved in the future
+		case PT_UINT8:
+			*(uint8_t*)m_val_storage = sinsp_numparser::parseu8(str);
+			break;
+		case PT_PORT: // This can be resolved in the future
+		case PT_UINT16:
+			*(uint16_t*)m_val_storage = sinsp_numparser::parseu16(str);
+			break;
+		case PT_UINT32:
+			*(uint32_t*)m_val_storage = sinsp_numparser::parseu32(str);
+			break;
+		case PT_UINT64:
+			*(uint64_t*)m_val_storage = sinsp_numparser::parseu64(str);
+			break;
+		case PT_RELTIME:
+		case PT_ABSTIME:
+			*(uint64_t*)m_val_storage = sinsp_numparser::parseu64(str);
+			break;
+		case PT_CHARBUF:
+		case PT_SOCKADDR:
+		case PT_SOCKFAMILY:
+			memcpy(m_val_storage, str, strlen(str));
+			break;
+		case PT_BOOL:
+			if(string(str) == "true")
+			{
+				*(uint32_t*)m_val_storage = 1;
+			}
+			else if(string(str) == "false")
+			{
+				*(uint32_t*)m_val_storage = 0;
+			}
+			else
+			{
+				throw sinsp_exception("filter error: unrecognized boolean value " + string(str));
+			}
+
+			break;
+		default:
+			ASSERT(false);
+			throw sinsp_exception("wrong event type " + to_string(m_field->m_type));
+	}
+}
+
 char* sinsp_filter_check::tostring(sinsp_evt* evt)
 {
 	uint8_t* rawval = extract(evt);
@@ -385,39 +443,33 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 
 int32_t sinsp_filter_check::parse_field_name(const char* str)
 {
-	uint32_t j;
+	int32_t j;
 
 	ASSERT(m_info.m_fields != NULL);
 	ASSERT(m_info.m_nfiedls != -1);
 
 	string val(str);
 
-	if(string(val, 0, sizeof("arg") - 1) == "arg")
+	for(j = 0; j < m_info.m_nfiedls; j++)
 	{
-		//
-		// 'arg' is handled in a custom way
-		//
-		throw sinsp_exception("filter error: thread.args filter not implemented yet");
-	}
-	else
-	{
-		for(j = 0; j < m_info.m_nfiedls; j++)
-		{
-			string fldname = m_info.m_fields[j].m_name;
-			uint32_t fldlen = fldname.length();
+		string fldname = m_info.m_fields[j].m_name;
+		uint32_t fldlen = fldname.length();
 
-			if(val.compare(0, fldlen, fldname) == 0)
-			{
-				m_field_id = j;
-				m_field = &m_info.m_fields[j];
-				return fldlen;
-			}
+		if(val.compare(0, fldlen, fldname) == 0)
+		{
+			m_field_id = j;
+			m_field = &m_info.m_fields[j];
+			return fldlen;
 		}
 	}
 
-	throw sinsp_exception(string("filter error: unrecognized field ") + val);
+	return -1;
 }
 
+void sinsp_filter_check::parse_filter_value(const char* str)
+{
+	string_to_rawval(str);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
@@ -684,7 +736,7 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
 	string operand1 = next_operand();
-	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_name(operand1);
+	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_fldname(operand1);
 
 	if(chk == NULL)
 	{
