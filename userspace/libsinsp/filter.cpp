@@ -435,7 +435,7 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 	uint8_t* rawval = extract(evt);
 	if(rawval == NULL)
 	{
-		return "";
+		return (char*)"";
 	}
 
 	return rawval_to_string(rawval, m_field);
