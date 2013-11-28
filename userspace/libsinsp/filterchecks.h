@@ -51,7 +51,8 @@ public:
 	sinsp_filter_check_fd();
 	int32_t parse_field_name(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
-	bool check_fdtype(sinsp_fdinfo* fdinfo);
+	uint8_t* extract_fdtype(sinsp_fdinfo* fdinfo);
+	bool compare(sinsp_evt *evt);
 
 	string m_fdname;
 	fd_type m_fd_type;

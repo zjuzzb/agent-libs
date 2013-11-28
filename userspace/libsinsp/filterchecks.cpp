@@ -13,7 +13,7 @@ extern sinsp_evttables g_infotables;
 const event_field_info sinsp_filter_check_fd_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "fd.num", "the unique number identifying the file descriptor."},
-	{PT_UINT32, EPF_NONE, PF_DEC, "fd.type", "type of FD. Can be one of XXX."},
+	{PT_UINT32, EPF_NONE, PF_DEC, "fd.type", "type of FD. Can be 'file', 'ipv4', 'ipv6', 'unix', 'pipe', 'event', 'signalfd', 'eventpoll', 'inotify' or 'signalfd."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "fd.name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
 	{PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd.ip", "matches the ip address (client or server) of the fd."},
 	{PT_SOCKADDR, EPF_NONE, PF_NA, "fd.cip", "client IP address."},
@@ -37,84 +37,37 @@ int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
 	return sinsp_filter_check::parse_field_name(str);
 }
 
-bool sinsp_filter_check_fd::check_fdtype(sinsp_fdinfo* fdinfo)
+uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo* fdinfo)
 {
-	scap_fd_type evt_type = fdinfo->m_type;
-
-	switch(m_fd_type)
+	switch(fdinfo->m_type)
 	{
-	case FDT_FILE:
-		if(evt_type == SCAP_FD_FILE || evt_type == SCAP_FD_DIRECTORY)
-		{
-			return true;
-		}
-		break;
-	case FDT_SOCK:
-		if(evt_type == SCAP_FD_IPV4_SOCK || evt_type == SCAP_FD_IPV6_SOCK ||
-			 evt_type == SCAP_FD_IPV4_SERVSOCK || evt_type == SCAP_FD_IPV6_SERVSOCK || evt_type == SCAP_FD_UNIX_SOCK)
-		{
-			return true;
-		}
-		break;
-	case FDT_IPV4_SOCK:
-		if(evt_type == SCAP_FD_IPV4_SOCK || evt_type == SCAP_FD_IPV4_SERVSOCK)
-		{
-			return true;
-		}
-		break;
-	case FDT_IPV6_SOCK:
-		if(evt_type == SCAP_FD_IPV6_SOCK || evt_type == SCAP_FD_IPV6_SERVSOCK)
-		{
-			return true;
-		}
-		break;
-	case FDT_UNIX_SOCK:
-		if(evt_type == SCAP_FD_UNIX_SOCK)
-		{
-			return true;
-		}
-		break;
-	case FDT_PIPE:
-		if(evt_type == SCAP_FD_FIFO)
-		{
-			return true;
-		}
-		break;
-	case FDT_EVENT:
-		if(evt_type == SCAP_FD_EVENT)
-		{
-			return true;
-		}
-		break;
-	case FDT_SIGNALFD:
-		if(evt_type == SCAP_FD_SIGNALFD)
-		{
-			return true;
-		}
-		break;
-	case FDT_EVENTPOLL:
-		if(evt_type == SCAP_FD_EVENTPOLL)
-		{
-			return true;
-		}
-		break;
-	case FDT_INOTIFY:
-		if(evt_type == SCAP_FD_INOTIFY)
-		{
-			return true;
-		}
-		break;
-	case FDT_TIMERFD:
-		if(evt_type == SCAP_FD_TIMERFD)
-		{
-			return true;
-		}
-		break;
+	case SCAP_FD_FILE:
+	case SCAP_FD_DIRECTORY:
+		return (uint8_t*)"file";
+	case SCAP_FD_IPV4_SOCK:
+	case SCAP_FD_IPV4_SERVSOCK:
+		return (uint8_t*)"ipv4";
+	case SCAP_FD_IPV6_SOCK:
+	case SCAP_FD_IPV6_SERVSOCK:
+		return (uint8_t*)"ipv6";
+	case SCAP_FD_UNIX_SOCK:
+		return (uint8_t*)"unix";
+	case SCAP_FD_FIFO:
+		return (uint8_t*)"pipe";
+	case SCAP_FD_EVENT:
+		return (uint8_t*)"event";
+	case SCAP_FD_SIGNALFD:
+		return (uint8_t*)"signalfd";
+	case SCAP_FD_EVENTPOLL:
+		return (uint8_t*)"eventpoll";
+	case SCAP_FD_INOTIFY:
+		return (uint8_t*)"inotify";
+	case SCAP_FD_TIMERFD:
+		return (uint8_t*)"timerfd";
 	default:
 		ASSERT(false);
+		return NULL;
 	}
-
-	return false;
 }
 
 uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
@@ -182,8 +135,7 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 	case TYPE_FDTYPE:
 		if(fdinfo != NULL)
 		{
-			return NULL;
-//			return check_fdtype(fdinfo);
+			return extract_fdtype(fdinfo);
 		}
 
 		break;
@@ -317,6 +269,21 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 	}
 
 	return false;
+}
+
+bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
+{
+	uint8_t* extracted_val = extract(evt);
+
+	if(extracted_val == NULL)
+	{
+		return false;
+	}
+
+	return flt_compare(m_cmpop, 
+		m_info.m_fields[m_field_id].m_type, 
+		extracted_val, 
+		&m_val_storage);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
