@@ -53,8 +53,6 @@ public:
 	uint8_t* extract(sinsp_evt *evt);
 	bool check_fdtype(sinsp_fdinfo* fdinfo);
 
-	check_type m_type;
-	int64_t m_fd;
 	string m_fdname;
 	fd_type m_fd_type;
 	uint32_t m_ip;
