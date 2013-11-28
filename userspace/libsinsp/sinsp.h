@@ -249,7 +249,7 @@ VISIBILITY_PRIVATE
 	void import_user_list();
 
 	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
-	void add_thread(const sinsp_threadinfo& procinfo);
+	void add_thread(const sinsp_threadinfo& ptinfo);
 	void remove_thread(int64_t tid);
 
 	//

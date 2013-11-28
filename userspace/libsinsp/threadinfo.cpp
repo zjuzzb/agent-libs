@@ -820,7 +820,7 @@ void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* thread
 		{
 			if(parent_thread->m_exe == threadinfo->m_exe)
 			{
-				threadinfo->m_progid = parent_thread->m_pid;
+				threadinfo->m_progid = parent_thread->m_tid;
 				++parent_thread->m_nchilds;
 				increment_program_childcount(parent_thread);
 			}

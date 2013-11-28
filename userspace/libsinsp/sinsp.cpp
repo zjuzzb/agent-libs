@@ -501,9 +501,9 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 	return sinsp_proc;
 }
 
-void sinsp::add_thread(const sinsp_threadinfo& procinfo)
+void sinsp::add_thread(const sinsp_threadinfo& ptinfo)
 {
-	m_thread_manager->add_thread((sinsp_threadinfo&)procinfo);
+	m_thread_manager->add_thread((sinsp_threadinfo&)ptinfo);
 }
 
 void sinsp::remove_thread(int64_t tid)
