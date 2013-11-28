@@ -75,7 +75,7 @@ public:
 	//
 	// Return the info about the field that this instance contains 
 	//
-	virtual const event_field_info* get_field_info() = 0;
+	virtual const event_field_info* get_field_info();
 
 	//
 	// Extract the field from the event
@@ -85,7 +85,7 @@ public:
 	//
 	// Compare the field with the constant value obtained from parse_filter_value()
 	//
-	virtual bool compare(sinsp_evt *evt) = 0;
+	virtual bool compare(sinsp_evt *evt);
 
 	void set_inspector(sinsp* inspector);
 

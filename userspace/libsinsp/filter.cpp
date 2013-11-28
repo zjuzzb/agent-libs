@@ -481,6 +481,26 @@ void sinsp_filter_check::parse_filter_value(const char* str)
 	string_to_rawval(str);
 }
 
+const event_field_info* sinsp_filter_check::get_field_info()
+{
+	return &m_info.m_fields[m_field_id];
+}
+
+bool sinsp_filter_check::compare(sinsp_evt *evt)
+{
+	uint8_t* extracted_val = extract(evt);
+
+	if(extracted_val == NULL)
+	{
+		return false;
+	}
+
+	return flt_compare(m_cmpop, 
+		m_info.m_fields[m_field_id].m_type, 
+		extracted_val, 
+		&m_val_storage);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_expression implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -567,8 +587,8 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-//fltstr = "tid!=0";
-fltstr = "ismainthread=false";
+//fltstr = "comm=plasma-desktop";
+//fltstr = "ismainthread=false";
 
 	m_inspector = inspector;
 	m_scanpos = -1;

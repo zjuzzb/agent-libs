@@ -50,10 +50,7 @@ public:
 
 	sinsp_filter_check_fd();
 	int32_t parse_field_name(const char* str);
-	void parse_filter_value(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 	bool check_fdtype(sinsp_fdinfo* fdinfo);
 
 	check_type m_type;
@@ -84,9 +81,7 @@ public:
 
 	sinsp_filter_check_thread();
 	int32_t parse_field_name(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 
 	// XXX this is overkill and wasted for most of the fields.
 	// It could be optimized by dynamically allocating the right amount
@@ -114,9 +109,7 @@ public:
 
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	ppm_param_type m_arg_type;
@@ -145,9 +138,7 @@ public:
 
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	uint32_t m_uid;
@@ -169,9 +160,7 @@ public:
 
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 
 	check_type m_type;
 	uint32_t m_gid;
@@ -188,9 +177,7 @@ public:
 	void set_text(string text);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	const event_field_info* get_field_info();
 	uint8_t* extract(sinsp_evt *evt);
-	bool compare(sinsp_evt *evt);
 
 	// XXX this is overkill and wasted for most of the fields.
 	// It could be optimized by dynamically allocating the right amount
