@@ -190,10 +190,25 @@ bool sinsp_filter_check_fd::compare_ip(sinsp_evt *evt)
 
 		if(evt_type == SCAP_FD_IPV4_SOCK)
 		{
-			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sip == *(uint32_t*)m_val_storage ||
-				m_fdinfo->m_info.m_ipv4info.m_fields.m_dip == *(uint32_t*)m_val_storage)
+			if(m_cmpop == CO_EQ)
 			{
-				return true;
+				if(flt_compare(m_cmpop, PT_IPV4ADDR, &m_fdinfo->m_info.m_ipv4info.m_fields.m_sip, &m_val_storage) ||
+					flt_compare(m_cmpop, PT_IPV4ADDR, &m_fdinfo->m_info.m_ipv4info.m_fields.m_dip, &m_val_storage))
+				{
+					return true;
+				}
+			}
+			else if(m_cmpop == CO_NE)
+			{
+				if(flt_compare(m_cmpop, PT_IPV4ADDR, &m_fdinfo->m_info.m_ipv4info.m_fields.m_sip, &m_val_storage) &&
+					flt_compare(m_cmpop, PT_IPV4ADDR, &m_fdinfo->m_info.m_ipv4info.m_fields.m_dip, &m_val_storage))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				throw sinsp_exception("filter error: IP filter only supports '=' and '!=' operators");
 			}
 		}
 		else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
@@ -216,10 +231,25 @@ bool sinsp_filter_check_fd::compare_port(sinsp_evt *evt)
 
 		if(evt_type == SCAP_FD_IPV4_SOCK)
 		{
-			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sport == *(uint16_t*)m_val_storage ||
-				m_fdinfo->m_info.m_ipv4info.m_fields.m_dport == *(uint16_t*)m_val_storage)
+			if(m_cmpop == CO_EQ)
 			{
-				return true;
+				if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sport == *(uint16_t*)m_val_storage ||
+					m_fdinfo->m_info.m_ipv4info.m_fields.m_dport == *(uint16_t*)m_val_storage)
+				{
+					return true;
+				}
+			}
+			else if(m_cmpop == CO_NE)
+			{
+				if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sport != *(uint16_t*)m_val_storage &&
+					m_fdinfo->m_info.m_ipv4info.m_fields.m_dport != *(uint16_t*)m_val_storage)
+				{
+					return true;
+				}
+			}
+			else
+			{
+				throw sinsp_exception("filter error: IP filter only supports '=' and '!=' operators");
 			}
 		}
 		else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
