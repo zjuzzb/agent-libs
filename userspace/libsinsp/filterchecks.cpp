@@ -13,12 +13,12 @@ extern sinsp_evttables g_infotables;
 const event_field_info sinsp_filter_check_fd_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "fd.num", "the unique number identifying the file descriptor."},
-	{PT_UINT32, EPF_NONE, PF_DEC, "fd.type", "type of FD. Can be 'file', 'ipv4', 'ipv6', 'unix', 'pipe', 'event', 'signalfd', 'eventpoll', 'inotify' or 'signalfd."},
+	{PT_CHARBUF, EPF_NONE, PF_DEC, "fd.type", "type of FD. Can be 'file', 'ipv4', 'ipv6', 'unix', 'pipe', 'event', 'signalfd', 'eventpoll', 'inotify' or 'signalfd."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "fd.name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
-	{PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd.ip", "matches the ip address (client or server) of the fd."},
-	{PT_SOCKADDR, EPF_NONE, PF_NA, "fd.cip", "client IP address."},
-	{PT_SOCKADDR, EPF_NONE, PF_NA, "fd.sip", "server IP address."},
-	{PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd.port", "matches the port (client or server) of the fd."},
+	{PT_IPV4ADDR, EPF_FILTER_ONLY, PF_NA, "fd.ip", "matches the ip address (client or server) of the fd."},
+	{PT_IPV4ADDR, EPF_NONE, PF_NA, "fd.cip", "client IP address."},
+	{PT_IPV4ADDR, EPF_NONE, PF_NA, "fd.sip", "server IP address."},
+	{PT_PORT, EPF_FILTER_ONLY, PF_DEC, "fd.port", "matches the port (client or server) of the fd."},
 	{PT_PORT, EPF_NONE, PF_DEC, "fd.cport", "client TCP/UDP port."},
 	{PT_PORT, EPF_NONE, PF_DEC, "fd.sport", "server TCP/UDP port."},
 	{PT_UINT8, EPF_NONE, PF_DEC, "fd.l4proto", "IP protocol number."},
@@ -27,6 +27,9 @@ const event_field_info sinsp_filter_check_fd_fields[] =
 
 sinsp_filter_check_fd::sinsp_filter_check_fd()
 {
+	m_tinfo = NULL;
+	m_fdinfo = NULL;
+
 	m_info.m_name = "fd";
 	m_info.m_fields = sinsp_filter_check_fd_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_fd_fields) / sizeof(sinsp_filter_check_fd_fields[0]);
@@ -65,7 +68,6 @@ uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo* fdinfo)
 	case SCAP_FD_TIMERFD:
 		return (uint8_t*)"timerfd";
 	default:
-		ASSERT(false);
 		return NULL;
 	}
 }
@@ -73,58 +75,26 @@ uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo* fdinfo)
 uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 {
 	ASSERT(evt);
-	sinsp_threadinfo* tinfo;
-	sinsp_fdinfo* fdinfo;
-	ppm_event_flags eflags = evt->get_flags();
-
-	//
-	// Make sure this is an event that creates or consumes an fd
-	//
-	if(eflags & (EF_CREATES_FD | EF_USES_FD | EF_DESTROYS_FD))
-	{
-		//
-		// This is an fd-related event, get the thread info and the fd info
-		//
-		tinfo = evt->get_thread_info();
-		if(tinfo == NULL)
-		{
-			return NULL;
-		}
-
-		fdinfo = evt->get_fd_info();
-
-		if(fdinfo == NULL && tinfo->m_lastevent_fd != -1)
-		{
-			fdinfo = tinfo->get_fd(tinfo->m_lastevent_fd);
-		}
-
-		// We'll check if fd is null below
-	}
-	else
-	{
-		return false;
-	}
 
 	//
 	// TYPE_FDNUM doesn't need fdinfo
 	//
 	if(m_field_id == TYPE_FDNUM)
 	{
-		return (uint8_t*)&tinfo->m_lastevent_fd;
+		return (uint8_t*)&m_tinfo->m_lastevent_fd;
 	}
 
-	if(fdinfo == NULL)
+	if(m_fdinfo == NULL)
 	{
-		ASSERT(false);
 		return NULL;
 	}
 
 	switch(m_field_id)
 	{
 	case TYPE_FDNAME:
-		if(fdinfo != NULL)
+		if(m_fdinfo != NULL)
 		{
-			return (uint8_t*)fdinfo->m_name.c_str();
+			return (uint8_t*)m_fdinfo->m_name.c_str();
 		}
 		else
 		{
@@ -133,132 +103,73 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 
 		break;
 	case TYPE_FDTYPE:
-		if(fdinfo != NULL)
+		if(m_fdinfo != NULL)
 		{
-			return extract_fdtype(fdinfo);
-		}
-
-		break;
-	case TYPE_IP:
-		if(fdinfo != NULL)
-		{
-			scap_fd_type evt_type = fdinfo->m_type;
-
-			if(evt_type == SCAP_FD_IPV4_SOCK)
-			{
-				if(fdinfo->m_info.m_ipv4info.m_fields.m_sip == m_ip ||
-					fdinfo->m_info.m_ipv4info.m_fields.m_dip == m_ip)
-				{
-					return NULL;
-				}
-			}
-			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
-			{
-				if(fdinfo->m_info.m_ipv4serverinfo.m_ip == m_ip)
-				{
-					return NULL;
-				}
-			}
+			return extract_fdtype(m_fdinfo);
 		}
 
 		break;
 	case TYPE_CLIENTIP:
 		{
-			scap_fd_type evt_type = fdinfo->m_type;
+			scap_fd_type evt_type = m_fdinfo->m_type;
 
 			if(evt_type == SCAP_FD_IPV4_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4info.m_fields.m_sip);
 			}
 		}
 
 		break;
 	case TYPE_SERVERIP:
-		if(fdinfo != NULL)
+		if(m_fdinfo != NULL)
 		{
-			scap_fd_type evt_type = fdinfo->m_type;
+			scap_fd_type evt_type = m_fdinfo->m_type;
 
 			if(evt_type == SCAP_FD_IPV4_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4info.m_fields.m_dip);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4info.m_fields.m_dip);
 			}
 			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4serverinfo.m_ip);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4serverinfo.m_ip);
 			}
 		}
 
 		break;
-	case TYPE_PORT:
-		if(fdinfo != NULL)
-		{
-			scap_fd_type evt_type = fdinfo->m_type;
-
-			if(evt_type == SCAP_FD_IPV4_SOCK)
-			{
-				if(fdinfo->m_info.m_ipv4info.m_fields.m_sport == m_port ||
-					fdinfo->m_info.m_ipv4info.m_fields.m_dport == m_port)
-				{
-					return NULL;
-				}
-			}
-			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
-			{
-				if(fdinfo->m_info.m_ipv4serverinfo.m_port == m_port)
-				{
-					return NULL;
-				}
-			}
-			else if(evt_type == SCAP_FD_IPV6_SOCK)
-			{
-				if(fdinfo->m_info.m_ipv6info.m_fields.m_sport == m_port ||
-					fdinfo->m_info.m_ipv6info.m_fields.m_dport == m_port)
-				{
-					return NULL;
-				}
-			}
-			else if(evt_type == SCAP_FD_IPV6_SERVSOCK)
-			{
-				if(fdinfo->m_info.m_ipv6serverinfo.m_port == m_port)
-				{
-					return NULL;
-				}
-			}
-		}
 	case TYPE_CLIENTPORT:
-		if(fdinfo != NULL)
+		if(m_fdinfo != NULL)
 		{
-			scap_fd_type evt_type = fdinfo->m_type;
+			scap_fd_type evt_type = m_fdinfo->m_type;
 
 			if(evt_type == SCAP_FD_IPV4_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4info.m_fields.m_sport);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4info.m_fields.m_sport);
 			}
 			else if(evt_type == SCAP_FD_IPV6_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv6info.m_fields.m_sport);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv6info.m_fields.m_sport);
 			}
 		}
 	case TYPE_SERVERPORT:
-		if(fdinfo != NULL)
+		if(m_fdinfo != NULL)
 		{
-			scap_fd_type evt_type = fdinfo->m_type;
+			scap_fd_type evt_type = m_fdinfo->m_type;
 
 			if(evt_type == SCAP_FD_IPV4_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4info.m_fields.m_dport);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4info.m_fields.m_dport);
 			}
 			else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv4serverinfo.m_port);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv4serverinfo.m_port);
 			}
 			else if(evt_type == SCAP_FD_IPV6_SOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv6info.m_fields.m_dport);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv6info.m_fields.m_dport);
 			}
 			else if(evt_type == SCAP_FD_IPV6_SERVSOCK)
 			{
-				return (uint8_t*)&(fdinfo->m_info.m_ipv6serverinfo.m_port);
+				return (uint8_t*)&(m_fdinfo->m_info.m_ipv6serverinfo.m_port);
 			}
 		}
 
@@ -271,8 +182,120 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 	return false;
 }
 
+bool sinsp_filter_check_fd::compare_ip(sinsp_evt *evt)
+{
+	if(m_fdinfo != NULL)
+	{
+		scap_fd_type evt_type = m_fdinfo->m_type;
+
+		if(evt_type == SCAP_FD_IPV4_SOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sip == *(int32_t*)m_val_storage ||
+				m_fdinfo->m_info.m_ipv4info.m_fields.m_dip == *(int32_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+		else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv4serverinfo.m_ip == *(int32_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool sinsp_filter_check_fd::compare_port(sinsp_evt *evt)
+{
+	if(m_fdinfo != NULL)
+	{
+		scap_fd_type evt_type = m_fdinfo->m_type;
+
+		if(evt_type == SCAP_FD_IPV4_SOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sport == *(uint16_t*)m_val_storage ||
+				m_fdinfo->m_info.m_ipv4info.m_fields.m_dport == *(uint16_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+		else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv4serverinfo.m_port == *(uint16_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+		else if(evt_type == SCAP_FD_IPV6_SOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv6info.m_fields.m_sport == *(uint16_t*)m_val_storage ||
+				m_fdinfo->m_info.m_ipv6info.m_fields.m_dport == *(uint16_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+		else if(evt_type == SCAP_FD_IPV6_SERVSOCK)
+		{
+			if(m_fdinfo->m_info.m_ipv6serverinfo.m_port == *(uint16_t*)m_val_storage)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 {
+	ppm_event_flags eflags = evt->get_flags();
+
+	//
+	// Make sure this is an event that creates or consumes an fd
+	//
+	if(eflags & (EF_CREATES_FD | EF_USES_FD | EF_DESTROYS_FD))
+	{
+		//
+		// This is an fd-related event, get the thread info and the fd info
+		//
+		m_tinfo = evt->get_thread_info();
+		if(m_tinfo == NULL)
+		{
+			return NULL;
+		}
+
+		m_fdinfo = evt->get_fd_info();
+
+		if(m_fdinfo == NULL && m_tinfo->m_lastevent_fd != -1)
+		{
+			m_fdinfo = m_tinfo->get_fd(m_tinfo->m_lastevent_fd);
+		}
+
+		// We'll check if fd is null below
+	}
+	else
+	{
+		return false;
+	}
+
+	//
+	// A couple of fields are filter only and therefore get a special treatment
+	//
+	if(m_field_id == TYPE_IP)
+	{
+		return compare_ip(evt);
+	}
+	else if(m_field_id == TYPE_PORT)
+	{
+		return compare_port(evt);
+	}
+
+	//
+	// Standard estract-based fields
+	//
 	uint8_t* extracted_val = extract(evt);
 
 	if(extracted_val == NULL)

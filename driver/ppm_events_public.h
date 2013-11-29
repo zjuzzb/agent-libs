@@ -737,6 +737,7 @@ typedef enum ppm_param_type
 	PT_L4PROTO = 23, // A 1 byte IP protocol type.
 	PT_SOCKFAMILY = 24, // A 1 byte socket family.
 	PT_BOOL = 25, // A boolean value, 4 bytes.
+	PT_IPV4ADDR = 26, // A 4 byte raw IPv4 address.
 }ppm_param_type;
 
 typedef enum ppm_print_format

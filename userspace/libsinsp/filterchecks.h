@@ -52,12 +52,14 @@ public:
 	int32_t parse_field_name(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
 	uint8_t* extract_fdtype(sinsp_fdinfo* fdinfo);
+	bool compare_ip(sinsp_evt *evt);
+	bool compare_port(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
 
+	sinsp_threadinfo* m_tinfo;
+	sinsp_fdinfo* m_fdinfo;
 	string m_fdname;
 	fd_type m_fd_type;
-	uint32_t m_ip;
-	uint16_t m_port;
 };
 
 //

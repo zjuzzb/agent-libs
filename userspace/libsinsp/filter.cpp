@@ -105,10 +105,12 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 	case PT_SIGTYPE:
 		return flt_compare_uint64(op, (uint64_t)*(int8_t*)operand1, (uint64_t)*(int8_t*)operand2);
 	case PT_UINT16:
+	case PT_PORT:
 	case PT_SYSCALLID:
 		return flt_compare_uint64(op, (uint64_t)*(int16_t*)operand1, (uint64_t)*(int16_t*)operand2);
 	case PT_UINT32:
 	case PT_BOOL:
+	case PT_IPV4ADDR:
 		return flt_compare_uint64(op, (uint64_t)*(int32_t*)operand1, (uint64_t)*(int32_t*)operand2);
 	case PT_UINT64:
 	case PT_RELTIME:
@@ -365,6 +367,15 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_in
 			{
 				return (char*)"false";
 			}
+		case PT_IPV4ADDR:
+			snprintf(m_getpropertystr_storage,
+				        sizeof(m_getpropertystr_storage),
+				        "%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8,
+				        rawval[0],
+				        rawval[1],
+				        rawval[2],
+				        rawval[3]);
+			return m_getpropertystr_storage;
 		default:
 			ASSERT(false);
 			throw sinsp_exception("wrong event type " + to_string(finfo->m_type));
@@ -433,6 +444,12 @@ void sinsp_filter_check::string_to_rawval(const char* str)
 				throw sinsp_exception("filter error: unrecognized boolean value " + string(str));
 			}
 
+			break;
+		case PT_IPV4ADDR:
+			if(inet_pton(AF_INET, str, m_val_storage) != 1)
+			{
+				throw sinsp_exception("unrecognized IP address " + string(str));
+			}
 			break;
 		default:
 			ASSERT(false);
@@ -587,8 +604,8 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
-//fltstr = "comm=plasma-desktop";
-//fltstr = "ismainthread=false";
+//fltstr = "tid!=0";
+fltstr = "fd.ip!=108.160.162.110";
 
 	m_inspector = inspector;
 	m_scanpos = -1;
