@@ -11,57 +11,6 @@ typedef class sinsp_fdinfo sinsp_fdinfo;
 ///////////////////////////////////////////////////////////////////////////////
 // Event arguments
 ///////////////////////////////////////////////////////////////////////////////
-
-//
-// tostring() argument categories
-//
-typedef enum event_field_id
-{
-	ETSC_NONE = 0,
-	ETSC_RAWSTRING,		// used when formatting events into strings
-	// Event fields
-	ETSC_NUMBER,
-	ETSC_TS,
-	ETSC_RELTS,
-	ETSC_RELTS_S,
-	ETSC_RELTS_NS,
-	ETSC_DIRECTION,
-	ETSC_NAME,
-	ETSC_CPU,
-	ETSC_ARGS,
-	ETSC_ARG,
-	ETSC_RES,
-	// FD fields
-	ETSC_FD_NUM,
-	ETSC_FD_TYPE,
-	ETSC_FD_NAME,
-	ETSC_FD_IP,
-	ETSC_FD_CLIENTADDR,
-	ETSC_FD_SERVERADDR,
-	ETSC_FD_PORT,
-	ETSC_FD_CLIENTPORT,
-	ETSC_FD_SERVERPORT,
-	ETSC_FD_L4PROTO,
-	ETSC_FD_SOCKFAMILY,
-	// thread fields
-	ETSC_TH_TID,
-	ETSC_TH_PID,
-	ETSC_TH_EXE,
-	ETSC_TH_COMM,
-	ETSC_TH_ARGS,
-	ETSC_TH_CWD,
-	ETSC_TH_NCHILDS,
-	ETSC_TH_ISMAINTHREAD,
-	// user fields
-	ETSC_U_UID,
-	ETSC_U_USERNAME,
-	ETSC_U_HOMEDIR,
-	ETSC_U_SHELL,
-	// group fields
-	ETSC_G_GID,
-	ETSC_G_GROUPNAME,
-}event_field_id;
-
 typedef enum event_property_flags
 {
 	EPF_NONE = 0,
@@ -98,22 +47,6 @@ public:
 	void init(char* valptr, uint16_t len);
 	char* m_val;
 	uint16_t m_len;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// information about a tostring() piece 
-///////////////////////////////////////////////////////////////////////////////
-class tostring_entry
-{
-public:
-	tostring_entry(event_field_id cat, string data)
-	{
-		m_cat = cat;
-		m_data = data;
-	}
-
-	event_field_id m_cat;
-	string m_data;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

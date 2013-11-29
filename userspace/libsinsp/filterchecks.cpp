@@ -417,57 +417,62 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
+const event_field_info sinsp_filter_check_event_fields[] =
+{
+	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp."},
+	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime", "number of nanoseconds from the beginning of the capture."},
+	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime.s", "number of seconds from the beginning of the capture."},
+	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
+	{PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt.dir", "event direction can be either '>' for enter events or '<' for exit events."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
+	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments."},
+	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
+	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
+};
+
+sinsp_filter_check_event::sinsp_filter_check_event()
+{
+	m_first_ts = 0;
+	m_info.m_name = "evt";
+	m_info.m_fields = sinsp_filter_check_event_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_event_fields) / sizeof(sinsp_filter_check_event_fields[0]);
+}
+
 int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
-/*
-	m_type = TYPE_NONE;
+	string val(str);
 
-	vector<string> components = sinsp_split(val, '.');
-
-	if(components.size() >= 2)
+	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg")
 	{
-		if(components[1] == "ts")
-		{
-			m_type = TYPE_TS;
-			return;
-		}
-		else if(components[1] == "name")
-		{
-			m_type = TYPE_NAME;
-			return;
-		}
-		else if(components[1] == "num")
-		{
-			m_type = TYPE_NUMBER;
-			return;
-		}
-		else if(components[1] == "cpu")
-		{
-			m_type = TYPE_CPU;
-			return;
-		}
-		else if(components[1] == "args")
-		{
-			if(components.size() != 3)
-			{
-				throw sinsp_exception("filter error: unrecognized argument field " + val);
-			}
-
-			m_type = TYPE_ARGS;
-
-			m_argname = components[2];
-
-			return;
-		}
+		//
+		// 'arg' is handled in a custom way
+		//
+		throw sinsp_exception("filter error: evt.arg filter not implemented yet");
 	}
-
-	throw sinsp_exception("filter error: unrecognized field " + val);
-*/
-	return -1;
+	else
+	{
+		return sinsp_filter_check::parse_field_name(str);
+	}
 }
 
 void sinsp_filter_check_event::parse_filter_value(const char* str)
 {
+	string val(str);
+
+	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg")
+	{
+		//
+		// 'arg' is handled in a custom way
+		//
+		throw sinsp_exception("filter error: evt.arg filter not implemented yet");
+	}
+	else
+	{
+		return sinsp_filter_check::parse_filter_value(str);
+	}
+
 /*
 	switch(m_type)
 	{
@@ -547,7 +552,167 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 
 uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 {
-	ASSERT(false);
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	if(tinfo == NULL)
+	{
+		return NULL;
+	}
+
+	switch(m_field_id)
+	{
+	case TYPE_TS:
+		return (uint8_t*)&evt->m_pevt->ts;
+	case TYPE_RELTS:
+		if(m_first_ts == 0)
+		{
+			m_first_ts = evt->get_ts();
+		}
+
+		m_u64val = evt->get_ts() - m_first_ts;
+		return (uint8_t*)&m_u64val;
+	case TYPE_RELTS_S:
+		if(m_first_ts == 0)
+		{
+			m_first_ts = evt->get_ts();
+		}
+
+		m_u64val = (evt->get_ts() - m_first_ts) / ONE_SECOND_IN_NS;
+		return (uint8_t*)&m_u64val;
+	case TYPE_RELTS_NS:
+		if(m_first_ts == 0)
+		{
+			m_first_ts = evt->get_ts();
+		}
+
+		m_u64val = (evt->get_ts() - m_first_ts) % ONE_SECOND_IN_NS;
+		return (uint8_t*)&m_u64val;
+	case TYPE_DIR:
+		if(PPME_IS_ENTER(evt->get_type()))
+		{
+			return (uint8_t*)">";
+		}
+		else
+		{
+			return (uint8_t*)"<";
+		}
+
+/*
+	case TYPE_NAME:
+		{
+			uint16_t enter_type;
+			char* evname;
+
+			if(evt->m_pevt->type == PPME_GENERIC_E || evt->m_pevt->type == PPME_GENERIC_X)
+			{
+				sinsp_evt_param *parinfo = evt->get_param(0);
+				ASSERT(parinfo->m_len == sizeof(uint16_t));
+				uint16_t evid = *(uint16_t *)parinfo->m_val;
+
+				evname = g_infotables.m_syscall_info_table[evid].name;
+				enter_type = PPM_EVENT_MAX;
+			}
+			else
+			{
+				evname = (char*)evt->get_name();
+				enter_type = PPME_MAKE_ENTER(evt->m_pevt->type);
+			}
+
+			if(m_evttype == PPM_EVENT_MAX)
+			{
+				if(flt_compare(m_cmpop, PT_CHARBUF, 
+					evname, (char*)m_strval.c_str()) == true)
+				{
+					return true;
+				}
+			}
+			else
+			{
+				if(flt_compare(m_cmpop, PT_UINT16, 
+					&enter_type, &m_evttype) == true)
+				{
+					return true;
+				}
+			}
+		}
+		break;
+	case TYPE_NUMBER:
+		if(flt_compare(m_cmpop, PT_UINT64, &evt->m_evtnum, &m_u64val) == true)
+		{
+			return true;
+		}
+		break;
+	case TYPE_CPU:
+		{
+			int16_t cpuid = evt->get_cpuid();
+
+			if(flt_compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
+			{
+				return true;
+			}
+		}
+		break;
+	case TYPE_ARGS:
+		{
+			const char* resolved_argstr;
+			const char* argstr = evt->get_param_value_str(m_argname.c_str(), 
+				&resolved_argstr);
+
+			switch(m_arg_type)
+			{
+			case PT_CHARBUF:
+				if(argstr && flt_compare(m_cmpop, PT_CHARBUF, (void*)argstr, (void*)m_strval.c_str()) == true)
+				{
+					return true;
+				}
+
+				break;
+			case PT_UINT64:
+				{
+					uint64_t dval;
+					if(resolved_argstr && !sinsp_numparser::tryparseu64(resolved_argstr, &dval))
+					{
+						if(argstr && !sinsp_numparser::tryparseu64(argstr, &dval))
+						{
+							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
+						}
+					}
+
+					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_u64val) == true)
+					{
+						return true;
+					}
+				}
+				break;
+			case PT_INT64:
+				{
+					int64_t dval;
+					if(resolved_argstr && !sinsp_numparser::tryparsed64(resolved_argstr, &dval))
+					{
+						if(argstr && !sinsp_numparser::tryparsed64(argstr, &dval))
+						{
+							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
+						}
+					}
+
+					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_d64val) == true)
+					{
+						return true;
+					}
+				}
+				break;
+			default:
+				ASSERT(false);
+				break;
+			}
+		}
+		break;
+*/
+	default:
+		ASSERT(false);
+		return NULL;
+	}
+
 	return NULL;
 }
 
