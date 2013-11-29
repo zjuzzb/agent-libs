@@ -179,7 +179,7 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
 		ASSERT(false);
 	}
 
-	return false;
+	return NULL;
 }
 
 bool sinsp_filter_check_fd::compare_ip(sinsp_evt *evt)
@@ -190,15 +190,15 @@ bool sinsp_filter_check_fd::compare_ip(sinsp_evt *evt)
 
 		if(evt_type == SCAP_FD_IPV4_SOCK)
 		{
-			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sip == *(int32_t*)m_val_storage ||
-				m_fdinfo->m_info.m_ipv4info.m_fields.m_dip == *(int32_t*)m_val_storage)
+			if(m_fdinfo->m_info.m_ipv4info.m_fields.m_sip == *(uint32_t*)m_val_storage ||
+				m_fdinfo->m_info.m_ipv4info.m_fields.m_dip == *(uint32_t*)m_val_storage)
 			{
 				return true;
 			}
 		}
 		else if(evt_type == SCAP_FD_IPV4_SERVSOCK)
 		{
-			if(m_fdinfo->m_info.m_ipv4serverinfo.m_ip == *(int32_t*)m_val_storage)
+			if(m_fdinfo->m_info.m_ipv4serverinfo.m_ip == *(uint32_t*)m_val_storage)
 			{
 				return true;
 			}
