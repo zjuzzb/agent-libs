@@ -449,7 +449,10 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 		//
 		// 'arg' is handled in a custom way
 		//
-		throw sinsp_exception("filter error: evt.arg filter not implemented yet");
+		//throw sinsp_exception("filter error: evt.arg filter not implemented yet");
+		m_field_id = TYPE_ARG;
+		m_field = &m_info.m_fields[m_field_id];
+		return 7; 
 	}
 	else
 	{
@@ -596,12 +599,9 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 		{
 			return (uint8_t*)"<";
 		}
-
-/*
 	case TYPE_NAME:
 		{
-			uint16_t enter_type;
-			char* evname;
+			uint8_t* evname;
 
 			if(evt->m_pevt->type == PPME_GENERIC_E || evt->m_pevt->type == PPME_GENERIC_X)
 			{
@@ -609,105 +609,40 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 				ASSERT(parinfo->m_len == sizeof(uint16_t));
 				uint16_t evid = *(uint16_t *)parinfo->m_val;
 
-				evname = g_infotables.m_syscall_info_table[evid].name;
-				enter_type = PPM_EVENT_MAX;
+				evname = (uint8_t*)g_infotables.m_syscall_info_table[evid].name;
 			}
 			else
 			{
-				evname = (char*)evt->get_name();
-				enter_type = PPME_MAKE_ENTER(evt->m_pevt->type);
+				evname = (uint8_t*)evt->get_name();
 			}
 
-			if(m_evttype == PPM_EVENT_MAX)
-			{
-				if(flt_compare(m_cmpop, PT_CHARBUF, 
-					evname, (char*)m_strval.c_str()) == true)
-				{
-					return true;
-				}
-			}
-			else
-			{
-				if(flt_compare(m_cmpop, PT_UINT16, 
-					&enter_type, &m_evttype) == true)
-				{
-					return true;
-				}
-			}
+			return evname;
 		}
 		break;
 	case TYPE_NUMBER:
-		if(flt_compare(m_cmpop, PT_UINT64, &evt->m_evtnum, &m_u64val) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*)&evt->m_evtnum;
 	case TYPE_CPU:
-		{
-			int16_t cpuid = evt->get_cpuid();
-
-			if(flt_compare(m_cmpop, PT_UINT64, &cpuid, &m_u64val) == true)
-			{
-				return true;
-			}
-		}
-		break;
-	case TYPE_ARGS:
+		return (uint8_t*)&evt->m_cpuid;
+	case TYPE_ARG:
 		{
 			const char* resolved_argstr;
+			m_argname = "name";
 			const char* argstr = evt->get_param_value_str(m_argname.c_str(), 
 				&resolved_argstr);
 
-			switch(m_arg_type)
+			if(resolved_argstr != NULL)
 			{
-			case PT_CHARBUF:
-				if(argstr && flt_compare(m_cmpop, PT_CHARBUF, (void*)argstr, (void*)m_strval.c_str()) == true)
-				{
-					return true;
-				}
-
-				break;
-			case PT_UINT64:
-				{
-					uint64_t dval;
-					if(resolved_argstr && !sinsp_numparser::tryparseu64(resolved_argstr, &dval))
-					{
-						if(argstr && !sinsp_numparser::tryparseu64(argstr, &dval))
-						{
-							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
-						}
-					}
-
-					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_u64val) == true)
-					{
-						return true;
-					}
-				}
-				break;
-			case PT_INT64:
-				{
-					int64_t dval;
-					if(resolved_argstr && !sinsp_numparser::tryparsed64(resolved_argstr, &dval))
-					{
-						if(argstr && !sinsp_numparser::tryparsed64(argstr, &dval))
-						{
-							throw sinsp_exception("filter error: field " + m_argname + " is not a number");
-						}
-					}
-
-					if(flt_compare(m_cmpop, PT_INT64, &dval, &m_d64val) == true)
-					{
-						return true;
-					}
-				}
-				break;
-			default:
-				ASSERT(false);
-				break;
+				return (uint8_t*)resolved_argstr;
+			}
+			else
+			{
+				return (uint8_t*)argstr;
 			}
 		}
 		break;
-*/
+	case TYPE_RES:
+		ASSERT(false);
+		return NULL;
 	default:
 		ASSERT(false);
 		return NULL;
