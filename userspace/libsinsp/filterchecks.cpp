@@ -626,7 +626,7 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 	case TYPE_ARG:
 		{
 			const char* resolved_argstr;
-			m_argname = "name";
+			m_argname = "fd";
 			const char* argstr = evt->get_param_value_str(m_argname.c_str(), 
 				&resolved_argstr);
 

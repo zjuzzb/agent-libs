@@ -227,14 +227,6 @@ int32_t scap_write_proclist(scap_t *handle, FILE *f)
 //
 // Write the machine info block
 //
-#ifdef _WIN32
-int32_t scap_write_machine_info(scap_t *handle, FILE *f)
-{
-	ASSERT(false);
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_machine_info not implemented under Windows");
-	return SCAP_FAILURE;
-}
-#else
 int32_t scap_write_machine_info(scap_t *handle, FILE *f)
 {
 	block_header bh;
@@ -258,24 +250,16 @@ int32_t scap_write_machine_info(scap_t *handle, FILE *f)
 
 	return SCAP_SUCCESS;
 }
-#endif // _WIN32
 
 //
 // Write the interface list block
 //
-#ifdef _WIN32
-int32_t scap_write_iflist(scap_t *handle, FILE *f)
-{
-	ASSERT(false);
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_iflist not implemented under Windows");
-	return SCAP_FAILURE;
-}
-#else
 int32_t scap_write_iflist(scap_t *handle, FILE *f)
 {
 	block_header bh;
 	uint32_t bt;
 	uint32_t entrylen;
+	uint32_t totlen = 0;
 	uint32_t j;
 
 	//
@@ -314,6 +298,8 @@ int32_t scap_write_iflist(scap_t *handle, FILE *f)
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF2)");
 			return SCAP_FAILURE;
 		}
+
+		totlen += entrylen;
 	}
 
 	//
@@ -330,12 +316,14 @@ int32_t scap_write_iflist(scap_t *handle, FILE *f)
 			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF2)");
 			return SCAP_FAILURE;
 		}
+
+		totlen += entrylen;
 	}
 
 	//
 	// Blocks need to be 4-byte padded
 	//
-	if(scap_write_padding(f, handle->m_addrlist->totlen) != SCAP_SUCCESS)
+	if(scap_write_padding(f, totlen) != SCAP_SUCCESS)
 	{
 		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF3)");
 		return SCAP_FAILURE;
@@ -353,19 +341,10 @@ int32_t scap_write_iflist(scap_t *handle, FILE *f)
 
 	return SCAP_SUCCESS;
 }
-#endif // _WIN32
 
 //
 // Write the user list block
 //
-#ifdef _WIN32
-int32_t scap_write_userlist(scap_t *handle, FILE *f)
-{
-	ASSERT(false);
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "scap_write_userlist not implemented under Windows");
-	return SCAP_FAILURE;
-}
-#else
 int32_t scap_write_userlist(scap_t *handle, FILE *f)
 {
 	block_header bh;
@@ -375,6 +354,7 @@ int32_t scap_write_userlist(scap_t *handle, FILE *f)
 	uint16_t homedirlen;
 	uint16_t shelllen;
 	uint8_t type;
+	uint32_t totlen = 0;
 
 	//
 	// Make sure we have a user list interface list
@@ -387,10 +367,34 @@ int32_t scap_write_userlist(scap_t *handle, FILE *f)
 	}
 
 	//
+	// Calculate the block length
+	//
+	for(j = 0; j < handle->m_userlist->nusers; j++)
+	{
+		scap_userinfo* info = &handle->m_userlist->users[j];
+
+		namelen = strnlen(info->name, MAX_CREDENTIALS_STR_LEN);
+		homedirlen = strnlen(info->homedir, SCAP_MAX_PATH_SIZE);
+		shelllen = strnlen(info->shell, SCAP_MAX_PATH_SIZE);
+
+		totlen += sizeof(type) + sizeof(info->uid) + sizeof(info->gid) + sizeof(uint16_t) + 
+			namelen + sizeof(uint16_t) + homedirlen + sizeof(uint16_t) + shelllen;
+	}
+
+	for(j = 0; j < handle->m_userlist->ngroups; j++)
+	{
+		scap_groupinfo* info = &handle->m_userlist->groups[j];
+
+		namelen = strnlen(info->name, MAX_CREDENTIALS_STR_LEN);
+
+		totlen += sizeof(type) + sizeof(info->gid) + sizeof(uint16_t) + namelen;
+	}
+
+	//
 	// Create the block
 	//
 	bh.block_type = UL_BLOCK_TYPE;
-	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + handle->m_userlist->totsavelen + 4);
+	bh.block_total_length = scap_normalize_block_len(sizeof(block_header) + totlen + 4);
 
 	if(fwrite(&bh, sizeof(bh), 1, f) != 1)
 	{
@@ -448,7 +452,7 @@ int32_t scap_write_userlist(scap_t *handle, FILE *f)
 	//
 	// Blocks need to be 4-byte padded
 	//
-	if(scap_write_padding(f, handle->m_userlist->totsavelen) != SCAP_SUCCESS)
+	if(scap_write_padding(f, totlen) != SCAP_SUCCESS)
 	{
 		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "error writing to file (IF3)");
 		return SCAP_FAILURE;
@@ -466,7 +470,6 @@ int32_t scap_write_userlist(scap_t *handle, FILE *f)
 
 	return SCAP_SUCCESS;
 }
-#endif // _WIN32
 
 //
 // Create the dump file headers and add the tables

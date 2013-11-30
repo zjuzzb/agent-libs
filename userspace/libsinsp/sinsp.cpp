@@ -375,18 +375,6 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	}
 #endif
 
-	//
-	// If needed, dump the event to file
-	//
-	if(NULL != m_dumper)
-	{
-		res = scap_dump(m_h, m_dumper, m_evt.m_pevt, m_evt.m_cpuid);
-		if(SCAP_SUCCESS != res)
-		{
-			throw sinsp_exception(scap_getlasterr(m_h));
-		}
-	}
-
 #ifndef HAS_ANALYZER
 	//
 	// Deleayed removal of threads from the thread table, so that
@@ -443,10 +431,22 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	}
 #endif
 
-#ifdef HAS_ANALYZER
+	//
+	// If needed, dump the event to file
+	//
+	if(NULL != m_dumper)
+	{
+		res = scap_dump(m_h, m_dumper, m_evt.m_pevt, m_evt.m_cpuid);
+		if(SCAP_SUCCESS != res)
+		{
+			throw sinsp_exception(scap_getlasterr(m_h));
+		}
+	}
+
 	//
 	// Run the analysis engine
 	//
+#ifdef HAS_ANALYZER
 	m_analyzer->process_event(&m_evt);
 #endif
 
