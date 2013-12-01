@@ -428,6 +428,7 @@ const event_field_info sinsp_filter_check_event_fields[] =
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args_str", "all the event arguments."},
+	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.resarg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
 	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
 };
@@ -452,6 +453,22 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 		//
 		//throw sinsp_exception("filter error: evt.arg filter not implemented yet");
 		m_field_id = TYPE_ARG;
+		m_field = &m_info.m_fields[m_field_id];
+		return 7;
+	}
+	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
+	{
+		//
+		// 'resarg' is handled in a custom way
+		//
+		if(val[sizeof("evt.resarg") - 1] == '[')
+		{
+			uint32_t coff = val.find(']');
+			string numstr = val.substr(sizeof("evt.resarg"), coff - sizeof("evt.resarg"));
+			m_argid = sinsp_numparser::parsed32(numstr);
+		}
+
+		m_field_id = TYPE_RESARG;
 		m_field = &m_info.m_fields[m_field_id];
 		return 7; 
 	}
@@ -624,12 +641,15 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 		return (uint8_t*)&evt->m_evtnum;
 	case TYPE_CPU:
 		return (uint8_t*)&evt->m_cpuid;
-	case TYPE_ARG:
+	case TYPE_RESARG:
 		{
 			const char* resolved_argstr;
-			m_argname = "fd";
-			const char* argstr = evt->get_param_value_str(m_argname.c_str(), 
-				&resolved_argstr);
+			if(m_argid >= evt->m_info->nparams)
+			{
+				return NULL;
+			}
+
+			const char* argstr = evt->get_param_as_str(m_argid, &resolved_argstr);
 
 			if(resolved_argstr != NULL)
 			{

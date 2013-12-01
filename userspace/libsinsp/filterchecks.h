@@ -109,8 +109,9 @@ public:
 		TYPE_NAME = 6,
 		TYPE_CPU = 7,
 		TYPE_ARGS = 8,
-		TYPE_ARG = 9,
-		TYPE_RES = 10,
+		TYPE_RESARG = 9,
+		TYPE_ARG = 10,
+		TYPE_RES = 11,
 	};
 
 	sinsp_filter_check_event();
@@ -127,6 +128,7 @@ public:
 	uint16_t m_evttype;
 	int16_t m_cpuid;
 	string m_argname;
+	uint32_t m_argid;
 };
 
 //
