@@ -427,7 +427,7 @@ const event_field_info sinsp_filter_check_event_fields[] =
 	{PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt.dir", "event direction can be either '>' for enter events or '<' for exit events."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args_str", "all the event arguments."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
 	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
 };
@@ -444,7 +444,8 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
 	string val(str);
 
-	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg")
+	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg" &&
+		string(val, 0, sizeof("evt.args") - 1) != "evt.args")
 	{
 		//
 		// 'arg' is handled in a custom way
@@ -469,7 +470,7 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 		//
 		// 'arg' is handled in a custom way
 		//
-		throw sinsp_exception("filter error: evt.arg filter not implemented yet");
+		throw sinsp_exception("filter error: evt.arg filter not yet implemented");
 	}
 	else
 	{
@@ -638,6 +639,34 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 			{
 				return (uint8_t*)argstr;
 			}
+		}
+		break;
+	case TYPE_ARGS:
+		{
+			const char* resolved_argstr = NULL;
+			const char* argstr = NULL;
+			uint32_t nargs = evt->get_num_params();
+
+			for(uint32_t j = 0; j < nargs; j++)
+			{
+				argstr = evt->get_param_as_str(j, &resolved_argstr);
+
+				if(resolved_argstr[0] == 0)
+				{
+					m_strstorage = evt->get_param_name(j);
+					m_strstorage += '=';
+					m_strstorage += argstr;
+				}
+				else
+				{
+					m_strstorage = evt->get_param_name(j);
+					m_strstorage += '=';
+					m_strstorage += argstr;
+					m_strstorage += string("(") + resolved_argstr + ")";
+				}
+			}
+
+			return (uint8_t*)m_strstorage.c_str();
 		}
 		break;
 	case TYPE_RES:

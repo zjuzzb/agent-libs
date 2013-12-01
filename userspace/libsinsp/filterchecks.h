@@ -123,7 +123,7 @@ public:
 	ppm_param_type m_arg_type;
 	uint64_t m_u64val;
 	int64_t m_d64val;
-	string m_strval;
+	string m_strstorage;
 	uint16_t m_evttype;
 	int16_t m_cpuid;
 	string m_argname;

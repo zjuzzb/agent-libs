@@ -460,6 +460,7 @@ void sinsp_filter_check::string_to_rawval(const char* str)
 char* sinsp_filter_check::tostring(sinsp_evt* evt)
 {
 	uint8_t* rawval = extract(evt);
+
 	if(rawval == NULL)
 	{
 		return (char*)"";
@@ -605,7 +606,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "tid!=0";
-//fltstr = "evt.arg=-2";
+fltstr = "evt.args contains index.html";
 
 	m_inspector = inspector;
 	m_scanpos = -1;
