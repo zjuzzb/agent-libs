@@ -131,7 +131,7 @@ public:
 	int32_t m_argid;
 
 private:
-	int32_t extract_arg(string fldname, string val);
+	int32_t extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo);
 };
 
 //

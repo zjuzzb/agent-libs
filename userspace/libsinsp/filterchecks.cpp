@@ -429,7 +429,7 @@ const event_field_info sinsp_filter_check_event_fields[] =
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args_str", "all the event arguments."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.resarg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
-	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
+	{PT_NONE, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
 	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
 };
 
@@ -441,7 +441,7 @@ sinsp_filter_check_event::sinsp_filter_check_event()
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_event_fields) / sizeof(sinsp_filter_check_event_fields[0]);
 }
 
-int32_t sinsp_filter_check_event::extract_arg(string fldname, string val)
+int32_t sinsp_filter_check_event::extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo)
 {
 	uint32_t parsed_len = 0;
 
@@ -476,16 +476,16 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
 	string val(str);
 
+	//
+	// A couple of fields are handled in a custom way
+	//
 	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg" &&
 		string(val, 0, sizeof("evt.args") - 1) != "evt.args")
 	{
-		//
-		// 'arg' is handled in a custom way
-		//
-		//throw sinsp_exception("filter error: evt.arg filter not implemented yet");
 		m_field_id = TYPE_ARG;
 		m_field = &m_info.m_fields[m_field_id];
-		return 7;
+
+		return extract_arg("evt.arg", val);
 	}
 	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
 	{
@@ -493,13 +493,6 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 		m_field = &m_info.m_fields[m_field_id];
 
 		return extract_arg("evt.resarg", val);
-	}
-	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg")
-	{
-		m_field_id = TYPE_RESARG;
-		m_field = &m_info.m_fields[m_field_id];
-
-		return extract_arg("evt.arg", val);
 	}
 	else
 	{
@@ -522,82 +515,6 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 	{
 		return sinsp_filter_check::parse_filter_value(str);
 	}
-
-/*
-	switch(m_type)
-	{
-	case TYPE_TS:
-	case TYPE_NUMBER:
-		m_u64val = sinsp_numparser::parseu64(val);
-		break;
-	case TYPE_CPU:
-		m_cpuid = (uint16_t)sinsp_numparser::parseu32(val);
-		break;
-	case TYPE_NAME:
-		if(m_cmpop == CO_CONTAINS)
-		{
-			m_strval = val;
-			m_evttype = PPM_EVENT_MAX;
-		}
-		else
-		{
-			try
-			{
-				m_type = (check_type)sinsp_numparser::parseu32(val);
-			}
-			catch(...)
-			{
-				//
-				// Search for the event in the table of decoded events
-				//
-				for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
-				{
-					if(val == g_infotables.m_event_info[j].name)
-					{
-						m_evttype = PPME_MAKE_ENTER(j);
-						return;
-					}
-				}
-
-				//
-				// Event not found in the table. It might be an event that we don't support
-				// yet, so save it as string and give it a try
-				//
-				m_strval = val;
-				m_evttype = PPM_EVENT_MAX;
-			}
-		}
-
-		break;
-	case TYPE_ARGS:
-		{
-			try
-			{
-				if(val[0] == '-')
-				{
-					m_d64val = sinsp_numparser::parsed64(val);
-					m_arg_type = PT_INT64;
-					return;
-				}
-				else
-				{
-					m_u64val = sinsp_numparser::parseu64(val);
-					m_arg_type = PT_UINT64;
-					return;
-				}
-			}
-			catch(...)
-			{
-			}
-
-			m_strval = val;
-			m_arg_type = PT_CHARBUF;
-		}
-		break;
-	default:
-		ASSERT(false);
-	}
-*/
 }
 
 uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
