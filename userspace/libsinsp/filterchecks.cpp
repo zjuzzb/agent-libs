@@ -494,6 +494,13 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 
 		return extract_arg("evt.resarg", val);
 	}
+	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg")
+	{
+		m_field_id = TYPE_RESARG;
+		m_field = &m_info.m_fields[m_field_id];
+
+		return extract_arg("evt.arg", val);
+	}
 	else
 	{
 		return sinsp_filter_check::parse_field_name(str);
