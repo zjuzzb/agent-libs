@@ -441,6 +441,37 @@ sinsp_filter_check_event::sinsp_filter_check_event()
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_event_fields) / sizeof(sinsp_filter_check_event_fields[0]);
 }
 
+int32_t sinsp_filter_check_event::extract_arg(string fldname, string val)
+{
+	uint32_t parsed_len = 0;
+
+	//
+	// 'resarg' is handled in a custom way
+	//
+	if(val[fldname.size()] == '[')
+	{
+		parsed_len = val.find(']');
+		string numstr = val.substr(fldname.size() + 1, parsed_len - fldname.size() - 1);
+		m_argid = sinsp_numparser::parsed32(numstr);
+		parsed_len++;
+	}
+	else if(val[fldname.size()] == '.')
+	{
+		const struct ppm_param_info* pi = 
+			sinsp_utils::find_longest_matching_evt_param(val.substr(fldname.size() + 1));
+
+		m_argname = pi->name;
+		parsed_len = fldname.size() + strlen(pi->name) + 1;
+		m_argid = -1;
+	}
+	else
+	{
+		throw sinsp_exception("filter syntax error: val");
+	}
+
+	return parsed_len; 
+}
+
 int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 {
 	string val(str);
@@ -458,19 +489,10 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 	}
 	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
 	{
-		//
-		// 'resarg' is handled in a custom way
-		//
-		if(val[sizeof("evt.resarg") - 1] == '[')
-		{
-			uint32_t coff = val.find(']');
-			string numstr = val.substr(sizeof("evt.resarg"), coff - sizeof("evt.resarg"));
-			m_argid = sinsp_numparser::parsed32(numstr);
-		}
-
 		m_field_id = TYPE_RESARG;
 		m_field = &m_info.m_fields[m_field_id];
-		return 7; 
+
+		return extract_arg("evt.resarg", val);
 	}
 	else
 	{
@@ -644,12 +666,21 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 	case TYPE_RESARG:
 		{
 			const char* resolved_argstr;
-			if(m_argid >= evt->m_info->nparams)
-			{
-				return NULL;
-			}
+			const char* argstr;
 
-			const char* argstr = evt->get_param_as_str(m_argid, &resolved_argstr);
+			if(m_argid != -1)
+			{
+				if(m_argid >= (int32_t)evt->m_info->nparams)
+				{
+					return NULL;
+				}
+
+				argstr = evt->get_param_as_str(m_argid, &resolved_argstr);
+			}
+			else
+			{
+				argstr = evt->get_param_value_str(m_argname.c_str(), &resolved_argstr);
+			}
 
 			if(resolved_argstr != NULL)
 			{

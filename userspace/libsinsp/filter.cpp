@@ -606,7 +606,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "tid!=0";
-//fltstr = "evt.resarg[0] = 10";
+fltstr = "(evt.resarg.name contains nginx)";
 
 	m_inspector = inspector;
 	m_scanpos = -1;

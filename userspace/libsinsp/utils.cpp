@@ -439,6 +439,27 @@ bool sinsp_utils::is_ipv4_mapped_ipv6(uint8_t* paddr)
 	}
 }
 
+const struct ppm_param_info* sinsp_utils::find_longest_matching_evt_param(string name)
+{
+	for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
+	{
+		ppm_event_info ei = g_infotables.m_event_info[j];
+
+		for(uint32_t k = 0; k < ei.nparams; k++)
+		{
+			const struct ppm_param_info* pi = &ei.params[k];
+			const char* an = pi->name;
+			uint32_t alen = strlen(an);
+			string subs = string(name, 0, alen);
+			if(subs == an)
+			{
+				return pi;
+			}
+		}
+	}
+
+	return NULL;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // gettimeofday() windows implementation

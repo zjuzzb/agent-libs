@@ -128,7 +128,10 @@ public:
 	uint16_t m_evttype;
 	int16_t m_cpuid;
 	string m_argname;
-	uint32_t m_argid;
+	int32_t m_argid;
+
+private:
+	int32_t extract_arg(string fldname, string val);
 };
 
 //

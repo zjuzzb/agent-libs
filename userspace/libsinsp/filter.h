@@ -164,6 +164,8 @@ class sinsp_filter
 public:
 	sinsp_filter(string fltstr, sinsp* inspector);
 	bool run(sinsp_evt *evt);
+	static bool isblank(char c);
+	static bool is_special_char(char c);
 
 private:
 	enum state
@@ -172,8 +174,6 @@ private:
 		ST_NEED_EXPRESSION,
 	};
 
-	static bool isblank(char c);
-	bool is_special_char(char c);
 	char next();
 	bool compare_no_consume(string str);
 

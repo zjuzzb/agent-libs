@@ -11,6 +11,7 @@
 #include "../libscap/scap.h"
 
 extern sinsp_evttables g_infotables;
+
 /*
 const event_field_info g_tostring_category_table[] =
 {
