@@ -485,14 +485,14 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 		m_field_id = TYPE_ARG;
 		m_field = &m_info.m_fields[m_field_id];
 
-		return extract_arg("evt.arg", val);
+		return extract_arg("evt.arg", val, NULL);
 	}
 	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
 	{
 		m_field_id = TYPE_RESARG;
 		m_field = &m_info.m_fields[m_field_id];
 
-		return extract_arg("evt.resarg", val);
+		return extract_arg("evt.resarg", val, NULL);
 	}
 	else
 	{
