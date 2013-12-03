@@ -12,50 +12,6 @@
 
 extern sinsp_evttables g_infotables;
 
-/*
-const event_field_info g_tostring_category_table[] =
-{
-	{ETSC_NONE, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
-	{ETSC_RAWSTRING, PT_NONE, EPF_NONE, PF_NA, "", "", "internal."},
-	{ETSC_NUMBER, PT_UINT64, EPF_NONE, PF_DEC, "evt", "num", "event number."},
-	{ETSC_TS, PT_ABSTIME, EPF_NONE, PF_DEC, "evt", "time", "absolute event timestamp."},
-	{ETSC_RELTS, PT_RELTIME, EPF_NONE, PF_DEC, "evt", "reltime", "number of nanoseconds from the beginning of the capture."},
-	{ETSC_RELTS_S, PT_RELTIME, EPF_NONE, PF_DEC, "evt", "reltime.s", "number of seconds from the beginning of the capture."},
-	{ETSC_RELTS_NS, PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt", "reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
-	{ETSC_DIRECTION, PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt", "dir", "event direction can be either '>' for enter events or '<' for exit events."},
-	{ETSC_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
-	{ETSC_CPU, PT_INT16, EPF_NONE, PF_DEC, "evt", "cpu", "number of the CPU where this event happened."},
-	{ETSC_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "evt", "args", "all the event arguments."},
-	{ETSC_ARG, PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt", "arg", "one of the event arguments specified by name or by number. E.g. 'arg.fd' or 'arg[0]'."},
-	{ETSC_RES, PT_INT64, EPF_NONE, PF_DEC, "evt", "res", "event return value."},
-	{ETSC_FD_NUM, PT_INT64, EPF_NONE, PF_DEC, "fd", "num", "the unique number identifying the file descriptor."},
-	{ETSC_FD_TYPE, PT_UINT32, EPF_NONE, PF_DEC, "fd", "type", "type of FD. Can be one of XXX."},
-	{ETSC_FD_NAME, PT_CHARBUF, EPF_NONE, PF_NA, "fd", "name", "FD full name. If the fd is a file, this field contains the full path. If the FD is a socket, this field contain the connection tuple."},
-	{ETSC_FD_IP, PT_SOCKADDR, EPF_FILTER_ONLY, PF_NA, "fd", "addr", "matches the ip address (client or server) of the fd."},
-	{ETSC_FD_CLIENTADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "caddr", "source IP address."},
-	{ETSC_FD_SERVERADDR, PT_SOCKADDR, EPF_NONE, PF_NA, "fd", "saddr", "destination IP address."},
-	{ETSC_FD_PORT, PT_UINT64, EPF_FILTER_ONLY, PF_DEC, "fd", "port", "matches the port (client or server) of the fd."},
-	{ETSC_FD_CLIENTPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "cport", "source TCP/UDP port."},
-	{ETSC_FD_SERVERPORT, PT_PORT, EPF_NONE, PF_DEC, "fd", "sport", "destination TCP/UDP port."},
-	{ETSC_FD_L4PROTO, PT_UINT8, EPF_NONE, PF_DEC, "fd", "l4proto", "IP protocol number."},
-	{ETSC_FD_SOCKFAMILY, PT_SOCKFAMILY, EPF_NONE, PF_DEC, "fd", "sockfamily", "the socket family for socket events. Can be 'ip' or 'unix'."},
-	{ETSC_TH_TID, PT_INT64, EPF_NONE, PF_DEC, "thread", "tid", "the id of the thread generating the event."},
-	{ETSC_TH_PID, PT_INT64, EPF_NONE, PF_DEC, "thread", "pid", "the id of the process generating the event."},
-	{ETSC_TH_EXE, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "exe", "the full name (including the path) of the executable generating the event."},
-	{ETSC_TH_COMM, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "comm", "the name (excluding thr path) of the executable generating the event."},
-	{ETSC_TH_ARGS, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "args", "the arguments passed on the command line when starting the process generating the event."},
-	{ETSC_TH_CWD, PT_CHARBUF, EPF_NONE, PF_NA, "thread", "cwd", "the current working directory of the event."},
-	{ETSC_TH_NCHILDS, PT_UINT32, EPF_NONE, PF_DEC, "thread", "nchilds", "the number of childs of that the process generating the event currently has."},
-	{ETSC_TH_ISMAINTHREAD, PT_BOOL, EPF_NONE, PF_NA, "thread", "ismainthread", "'true' if the thread generating the event is the main one in the process."},
-	{ETSC_U_UID, PT_UINT64, EPF_NONE, PF_DEC, "user", "uid", "user ID."},
-	{ETSC_U_USERNAME, PT_CHARBUF, EPF_NONE, PF_NA, "user", "name", "user name."},
-	{ETSC_U_HOMEDIR, PT_CHARBUF, EPF_NONE, PF_NA, "user", "homedir", "home directory of the user."},
-	{ETSC_U_SHELL, PT_CHARBUF, EPF_NONE, PF_NA, "user", "shell", "user's shell."},
-	{ETSC_G_GID, PT_UINT64, EPF_NONE, PF_DEC, "group", "gid", "group ID."},
-	{ETSC_G_GROUPNAME, PT_CHARBUF, EPF_NONE, PF_NA, "group", "name", "group name."},
-};
-*/
-
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_evt_param implementation
 ///////////////////////////////////////////////////////////////////////////////
