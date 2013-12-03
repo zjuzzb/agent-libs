@@ -121,13 +121,8 @@ public:
 	bool compare(sinsp_evt *evt);
 
 	uint64_t m_first_ts;
-	check_type m_type;
-	ppm_param_type m_arg_type;
 	uint64_t m_u64val;
-	int64_t m_d64val;
 	string m_strstorage;
-	uint16_t m_evttype;
-	int16_t m_cpuid;
 	string m_argname;
 	int32_t m_argid;
 	const ppm_param_info* m_arginfo;
@@ -144,18 +139,15 @@ class sinsp_filter_check_user : public sinsp_filter_check
 public:
 	enum check_type
 	{
-		TYPE_NONE,
-		TYPE_UID,
-		TYPE_NAME,
-		TYPE_HOMEDIR,
-		TYPE_SHELL,
+		TYPE_UID = 0,
+		TYPE_NAME = 1,
+		TYPE_HOMEDIR = 2,
+		TYPE_SHELL = 3,
 	};
 
-	int32_t parse_field_name(const char* str);
-	void parse_filter_value(const char* str);
+	sinsp_filter_check_user();
 	uint8_t* extract(sinsp_evt *evt);
 
-	check_type m_type;
 	uint32_t m_uid;
 	string m_strval;
 };
@@ -173,11 +165,9 @@ public:
 		TYPE_NAME,
 	};
 
-	int32_t parse_field_name(const char* str);
-	void parse_filter_value(const char* str);
+	sinsp_filter_check_group();
 	uint8_t* extract(sinsp_evt *evt);
 
-	check_type m_type;
 	uint32_t m_gid;
 	string m_name;
 };

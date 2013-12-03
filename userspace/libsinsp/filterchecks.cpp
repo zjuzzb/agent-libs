@@ -707,69 +707,22 @@ bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
-int32_t sinsp_filter_check_user::parse_field_name(const char* str)
+const event_field_info sinsp_filter_check_user_fields[] =
 {
-/*
-	m_type = TYPE_NONE;
+	{PT_UINT64, EPF_NONE, PF_DEC, "user.id", "user ID."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "user.name", "user name."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "user.homedir", "home directory of the user."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "user.shell", "user's shell."},
+};
 
-	vector<string> components = sinsp_split(val, '.');
-
-	if(components.size() == 2)
-	{
-		if(components[1] == "uid")
-		{
-			m_type = TYPE_UID;
-			return;
-		}
-		else if(components[1] == "name")
-		{
-			m_type = TYPE_NAME;
-			return;
-		}
-		else if(components[1] == "homedir")
-		{
-			m_type = TYPE_HOMEDIR;
-			return;
-		}
-		else if(components[1] == "shell")
-		{
-			m_type = TYPE_SHELL;
-			return;
-		}
-	}
-
-	throw sinsp_exception("filter error: unrecognized field " + val);
-*/
-	return -1;
-}
-
-void sinsp_filter_check_user::parse_filter_value(const char* str)
+sinsp_filter_check_user::sinsp_filter_check_user()
 {
-/*
-	switch(m_type)
-	{
-	case TYPE_UID:
-		m_uid = sinsp_numparser::parsed32(val);
-		break;
-	case TYPE_NAME:
-	case TYPE_HOMEDIR:
-	case TYPE_SHELL:
-		m_strval = val;
-		break;
-	default:
-		ASSERT(false);
-	}
-*/
+	m_info.m_name = "user";
+	m_info.m_fields = sinsp_filter_check_user_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_user_fields) / sizeof(sinsp_filter_check_user_fields[0]);
 }
 
 uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
-{
-	ASSERT(false);
-	return NULL;
-}
-
-/*
-bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	scap_userinfo* uinfo;
@@ -779,7 +732,7 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 		return false;
 	}
 
-	if(m_type != TYPE_UID)
+	if(m_field_id != TYPE_UID)
 	{
 		unordered_map<uint32_t, scap_userinfo*>::iterator it;
 
@@ -799,32 +752,16 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 		ASSERT(uinfo != NULL);
 	}
 
-	switch(m_type)
+	switch(m_field_id)
 	{
 	case TYPE_UID:
-		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_uid, &m_uid) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*)&tinfo->m_uid;
 	case TYPE_NAME:
-		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->name, (char*)m_strval.c_str()) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*)uinfo->name;
 	case TYPE_HOMEDIR:
-		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->homedir, (char*)m_strval.c_str()) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*)uinfo->homedir;
 	case TYPE_SHELL:
-		if(flt_compare(m_cmpop, PT_CHARBUF, uinfo->shell, (char*)m_strval.c_str()) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*) uinfo->shell;
 	default:
 		ASSERT(false);
 		break;
@@ -832,62 +769,24 @@ bool sinsp_filter_check_user::compare(sinsp_evt *evt)
 
 	return false;
 }
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
-int32_t sinsp_filter_check_group::parse_field_name(const char* str)
+const event_field_info sinsp_filter_check_group_fields[] =
 {
-/*
-	m_type = TYPE_NONE;
+	{PT_UINT64, EPF_NONE, PF_DEC, "group.gid", "group ID."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "group.name", "group name."},
+};
 
-	vector<string> components = sinsp_split(val, '.');
-
-	if(components.size() == 2)
-	{
-		if(components[1] == "gid")
-		{
-			m_type = TYPE_GID;
-			return;
-		}
-		else if(components[1] == "name")
-		{
-			m_type = TYPE_NAME;
-			return;
-		}
-	}
-
-	throw sinsp_exception("filter error: unrecognized field " + val);
-*/
-	return -1;
-}
-
-void sinsp_filter_check_group::parse_filter_value(const char* str)
+sinsp_filter_check_group::sinsp_filter_check_group()
 {
-/*
-	switch(m_type)
-	{
-	case TYPE_GID:
-		m_gid = sinsp_numparser::parsed32(val);
-		break;
-	case TYPE_NAME:
-		m_name = val;
-		break;
-	default:
-		ASSERT(false);
-	}
-*/
+	m_info.m_name = "group";
+	m_info.m_fields = sinsp_filter_check_user_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_user_fields) / sizeof(sinsp_filter_check_user_fields[0]);
 }
 
 uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
-{
-	ASSERT(false);
-	return NULL;
-}
-
-/*
-bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -896,14 +795,10 @@ bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 		return false;
 	}
 
-	switch(m_type)
+	switch(m_field_id)
 	{
 	case TYPE_GID:
-		if(flt_compare(m_cmpop, PT_PID, &tinfo->m_gid, &m_gid) == true)
-		{
-			return true;
-		}
-		break;
+		return (uint8_t*)&tinfo->m_gid;
 	case TYPE_NAME:
 		{
 			unordered_map<uint32_t, scap_groupinfo*>::iterator it;
@@ -923,12 +818,8 @@ bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 			scap_groupinfo* ginfo = it->second;
 			ASSERT(ginfo != NULL);
 
-			if(flt_compare(m_cmpop, PT_CHARBUF, ginfo->name, (char*)m_name.c_str()) == true)
-			{
-				return true;
-			}
+			return (uint8_t*)ginfo->name;
 		}
-		break;
 	default:
 		ASSERT(false);
 		break;
@@ -936,7 +827,6 @@ bool sinsp_filter_check_group::compare(sinsp_evt *evt)
 
 	return false;
 }
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // rawstring_check implementation
