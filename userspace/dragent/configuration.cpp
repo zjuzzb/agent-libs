@@ -95,12 +95,20 @@ void dragent_configuration::init(Application* app)
 
 	if(m_min_file_priority == 0)
 	{
+#ifdef _DEBUG
 		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "debug"));
+#else
+		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "info"));
+#endif		
 	}
 
 	if(m_min_console_priority == 0)
 	{
+#ifdef _DEBUG
 		m_min_console_priority = string_to_priority(config.getString("logpriority.console", "debug"));
+#else
+		m_min_console_priority = string_to_priority(config.getString("logpriority.console", "info"));
+#endif		
 	}
 
 	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
