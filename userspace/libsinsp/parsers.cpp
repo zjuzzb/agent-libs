@@ -64,6 +64,11 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		{
 			if(m_inspector->m_filter->run(evt) == false)
 			{
+				if(evt->m_tinfo != NULL)
+				{
+					evt->m_tinfo->m_lastevent_type = PPM_SC_MAX;
+				}
+
 				evt->m_filtered_out = true;
 				return;
 			}
@@ -213,6 +218,11 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		{
 			if(m_inspector->m_filter->run(evt) == false)
 			{
+				if(evt->m_tinfo != NULL)
+				{
+					evt->m_tinfo->m_lastevent_type = PPM_SC_MAX;
+				}
+
 				evt->m_filtered_out = true;
 				return;
 			}
@@ -3039,6 +3049,15 @@ void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t retval;
+	uint16_t etype = evt->get_type();
+
+	if(etype != evt->m_tinfo->m_lastevent_type + 1)
+	{
+		//
+		// Packet drop. Previuos event didn't have a chance to 
+		//
+		return;
+	}
 
 	//
 	// Extract the return value
