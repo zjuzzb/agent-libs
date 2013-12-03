@@ -100,7 +100,7 @@ public:
 
 protected:
 	char* rawval_to_string(uint8_t* rawval, const event_field_info* finfo);
-	void string_to_rawval(const char* str);
+	void string_to_rawval(const char* str, ppm_param_type ptype);
 
 	char m_getpropertystr_storage[1024];
 	uint8_t m_val_storage[1024];

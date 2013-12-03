@@ -955,6 +955,33 @@ const char* sinsp_evt::get_param_value_str(const char* name, OUT const char** re
 	return NULL;
 }
 
+const sinsp_evt_param* sinsp_evt::get_param_value_raw(const char* name)
+{
+	//
+	// Make sure the params are actually loaded
+	//
+	if(!m_params_loaded)
+	{
+		load_params();
+		m_params_loaded = true;
+	}
+
+	//
+	// Locate the parameter given the name
+	//
+	uint32_t np = get_num_params();
+
+	for(uint32_t j = 0; j < np; j++)
+	{
+		if(strcmp(name, get_param_name(j)) == 0)
+		{
+			return &(m_params[j]);
+		}
+	}
+
+	return NULL;
+}
+
 void sinsp_evt::load_params()
 {
 	uint32_t j;

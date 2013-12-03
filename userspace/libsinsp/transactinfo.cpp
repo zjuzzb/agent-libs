@@ -499,7 +499,6 @@ void sinsp_partial_transaction::update(sinsp* inspector,
 {
 	if(pconn == NULL)
 	{
-//		ASSERT(false);
 		mark_inactive();
 		return;
 	}

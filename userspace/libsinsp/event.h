@@ -113,6 +113,7 @@ public:
 	string get_param_value_str(const char* name, bool resolved = true);
 	string get_param_value_str(string& name, bool resolved = true);
 	const char* get_param_value_str(const char* name, OUT const char** resolved_str);
+	const sinsp_evt_param* get_param_value_raw(const char* name);
 	void get_category(OUT sinsp_evt::category* cat);
 
 VISIBILITY_PRIVATE

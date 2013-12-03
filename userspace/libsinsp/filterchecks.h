@@ -118,6 +118,7 @@ public:
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
+	bool compare(sinsp_evt *evt);
 
 	uint64_t m_first_ts;
 	check_type m_type;
@@ -129,6 +130,7 @@ public:
 	int16_t m_cpuid;
 	string m_argname;
 	int32_t m_argid;
+	const ppm_param_info* m_arginfo;
 
 private:
 	int32_t extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo);

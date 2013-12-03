@@ -722,7 +722,7 @@ typedef enum ppm_param_type
 	PT_UINT64 = 8,
 	PT_CHARBUF = 9,	// A printable buffer of bytes, NULL terminated
 	PT_BYTEBUF = 10, // A raw buffer of bytes not suitable for printing
-	PT_ERRNO = 11,	// this is a UINT32, but will be interpreted as an error code
+	PT_ERRNO = 11,	// this is an INT64, but will be interpreted as an error code
 	PT_SOCKADDR = 12, // A sockaddr structure, 1byte family + data
 	PT_SOCKTUPLE = 13, // A sockaddr tuple,1byte family + 12byte data + 12byte data
 	PT_FD = 14, // An fd, 64bit

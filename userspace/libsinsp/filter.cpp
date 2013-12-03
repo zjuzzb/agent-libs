@@ -100,6 +100,7 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 	case PT_INT64:
 	case PT_FD:
 	case PT_PID:
+	case PT_ERRNO:
 		return flt_compare_int64(op, *(int64_t*)operand1, *(int64_t*)operand2);
 	case PT_UINT8:
 	case PT_SIGTYPE:
@@ -119,7 +120,6 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 	case PT_CHARBUF:
 		return flt_compare_string(op, (char*)operand1, (char*)operand2);
 	case PT_BYTEBUF:
-	case PT_ERRNO:
 	case PT_SOCKADDR:
 	case PT_SOCKTUPLE:
 	case PT_FDLIST:
@@ -382,9 +382,9 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_in
 	}
 }
 
-void sinsp_filter_check::string_to_rawval(const char* str)
+void sinsp_filter_check::string_to_rawval(const char* str, ppm_param_type ptype)
 {
-	switch(m_field->m_type)
+	switch(ptype)
 	{
 		case PT_INT8:
 			*(int8_t*)m_val_storage = sinsp_numparser::parsed8(str);
@@ -396,6 +396,7 @@ void sinsp_filter_check::string_to_rawval(const char* str)
 			*(int32_t*)m_val_storage = sinsp_numparser::parsed32(str);
 			break;
 		case PT_INT64:
+		case PT_ERRNO:
 			*(int64_t*)m_val_storage = sinsp_numparser::parsed64(str);
 			break;
 		case PT_L4PROTO: // This can be resolved in the future
@@ -496,7 +497,7 @@ int32_t sinsp_filter_check::parse_field_name(const char* str)
 
 void sinsp_filter_check::parse_filter_value(const char* str)
 {
-	string_to_rawval(str);
+	string_to_rawval(str, m_field->m_type);
 }
 
 const event_field_info* sinsp_filter_check::get_field_info()
@@ -606,7 +607,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "tid!=0";
-//fltstr = "(evt.resarg.name contains nginx)";
+//fltstr = "evt.arg.res < 0";
 
 	m_inspector = inspector;
 	m_scanpos = -1;
