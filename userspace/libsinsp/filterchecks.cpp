@@ -382,7 +382,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
-	if(tinfo == NULL)
+	if(tinfo == NULL && m_field_id != TYPE_TID)
 	{
 		return NULL;
 	}
@@ -390,7 +390,8 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 	switch(m_field_id)
 	{
 	case TYPE_TID:
-		return (uint8_t*)&tinfo->m_tid;
+		m_u64val = evt->get_tid();
+		return (uint8_t*)&m_u64val;
 	case TYPE_PID:
 		return (uint8_t*)&tinfo->m_pid;
 	case TYPE_COMM:
@@ -421,13 +422,15 @@ const event_field_info sinsp_filter_check_event_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
 	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time.s", "integer part of the event timestamp (e.g. seconds since epoch)."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time.ns", "fractional part of the absolute event timestamp."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime", "number of nanoseconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime.s", "number of seconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
 	{PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt.dir", "event direction can be either '>' for enter events or '<' for exit events."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args_str", "all the event arguments."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments, aggregated into a single string."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.resarg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
 	{PT_NONE, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name. E.g. 'arg.fd'."},
 	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
@@ -530,17 +533,16 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 
 uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 {
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
-
-	if(tinfo == NULL)
-	{
-		return NULL;
-	}
-
 	switch(m_field_id)
 	{
 	case TYPE_TS:
 		return (uint8_t*)&evt->m_pevt->ts;
+	case TYPE_TS_S:
+		m_u64val = evt->get_ts() / ONE_SECOND_IN_NS;
+		return (uint8_t*)&m_u64val;
+	case TYPE_TS_NS:
+		m_u64val = evt->get_ts() % ONE_SECOND_IN_NS;
+		return (uint8_t*)&m_u64val;
 	case TYPE_RELTS:
 		if(m_first_ts == 0)
 		{
@@ -631,7 +633,7 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 				argstr = evt->get_param_value_str(m_argname.c_str(), &resolved_argstr);
 			}
 
-			if(resolved_argstr != NULL)
+			if(resolved_argstr[0] != 0)
 			{
 				return (uint8_t*)resolved_argstr;
 			}
@@ -643,9 +645,18 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 		break;
 	case TYPE_ARGS:
 		{
+			if(evt->get_type() == PPME_GENERIC_E || evt->get_type() == PPME_GENERIC_X)
+			{
+				//
+				// Don't print the arguments for generic events: they have only internal use
+				//
+				return (uint8_t*)"";
+			}
+
 			const char* resolved_argstr = NULL;
 			const char* argstr = NULL;
 			uint32_t nargs = evt->get_num_params();
+			m_strstorage.clear();
 
 			for(uint32_t j = 0; j < nargs; j++)
 			{
@@ -653,16 +664,17 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 
 				if(resolved_argstr[0] == 0)
 				{
-					m_strstorage = evt->get_param_name(j);
+					m_strstorage += evt->get_param_name(j);
 					m_strstorage += '=';
 					m_strstorage += argstr;
+					m_strstorage += " ";
 				}
 				else
 				{
-					m_strstorage = evt->get_param_name(j);
+					m_strstorage += evt->get_param_name(j);
 					m_strstorage += '=';
 					m_strstorage += argstr;
-					m_strstorage += string("(") + resolved_argstr + ")";
+					m_strstorage += string("(") + resolved_argstr + ") ";
 				}
 			}
 

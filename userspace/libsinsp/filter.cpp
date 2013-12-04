@@ -464,7 +464,7 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 
 	if(rawval == NULL)
 	{
-		return (char*)"";
+		return (char*)"<NA>";
 	}
 
 	return rawval_to_string(rawval, m_field);
@@ -473,6 +473,7 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 int32_t sinsp_filter_check::parse_field_name(const char* str)
 {
 	int32_t j;
+	int32_t max_fldlen = -1;
 
 	ASSERT(m_info.m_fields != NULL);
 	ASSERT(m_info.m_nfiedls != -1);
@@ -482,17 +483,20 @@ int32_t sinsp_filter_check::parse_field_name(const char* str)
 	for(j = 0; j < m_info.m_nfiedls; j++)
 	{
 		string fldname = m_info.m_fields[j].m_name;
-		uint32_t fldlen = fldname.length();
+		int32_t fldlen = fldname.length();
 
 		if(val.compare(0, fldlen, fldname) == 0)
 		{
-			m_field_id = j;
-			m_field = &m_info.m_fields[j];
-			return fldlen;
+			if(fldlen > max_fldlen)
+			{
+				m_field_id = j;
+				m_field = &m_info.m_fields[j];
+				max_fldlen = fldlen;
+			}
 		}
 	}
 
-	return -1;
+	return max_fldlen;
 }
 
 void sinsp_filter_check::parse_filter_value(const char* str)

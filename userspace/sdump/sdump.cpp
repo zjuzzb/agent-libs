@@ -194,9 +194,9 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-//inspector.set_events_formatting("%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %evt.dir %evt.name %evt.arg.0");
+output_format = "%user.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
 //output_format = "%evt.num)%evt.arg.res";
-output_format = "%evt.num)";
+//output_format = "%evt.num)";
 
 		//
 		// Parse the args

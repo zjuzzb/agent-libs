@@ -90,6 +90,7 @@ public:
 	// to be pretty small.
 	uint32_t m_tbool;
 	string m_tstr;
+	uint64_t m_u64val;
 };
 
 //
@@ -102,16 +103,18 @@ public:
 	{
 		TYPE_NUMBER = 0,
 		TYPE_TS = 1,
-		TYPE_RELTS = 2,
-		TYPE_RELTS_S = 3,
-		TYPE_RELTS_NS = 4,
-		TYPE_DIR = 5,
-		TYPE_NAME = 6,
-		TYPE_CPU = 7,
-		TYPE_ARGS = 8,
-		TYPE_RESARG = 9,
-		TYPE_ARG = 10,
-		TYPE_RES = 11,
+		TYPE_TS_S = 2,
+		TYPE_TS_NS = 3,
+		TYPE_RELTS = 4,
+		TYPE_RELTS_S = 5,
+		TYPE_RELTS_NS = 6,
+		TYPE_DIR = 7,
+		TYPE_NAME = 8,
+		TYPE_CPU = 9,
+		TYPE_ARGS = 10,
+		TYPE_RESARG = 11,
+		TYPE_ARG = 12,
+		TYPE_RES = 13,
 	};
 
 	sinsp_filter_check_event();
