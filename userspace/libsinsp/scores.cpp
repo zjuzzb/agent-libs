@@ -563,12 +563,10 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 			float score1;
 
 			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
-//			if(true)
 			{
 				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
-//				uint32_t steal = 60;
 
-				float ntr1 = ntr / 2;
+				float ntr1 = ntr * (100 - steal) / 100;
 				float nother1 = nother * (100 - steal) / 100;
 				float ntrcpu1 = ntrcpu * (100 - steal) / 100;
 				float idle1 = m_n_intervals_in_sample - nother1 - ntrcpu1;
