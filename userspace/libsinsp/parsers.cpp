@@ -56,7 +56,8 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		ppm_event_flags eflags = evt->get_flags();
 
 		if((eflags & (EF_CREATES_FD | EF_DESTROYS_FD)) || 
-			etype == PPME_SOCKET_CONNECT_X || etype == PPME_CLONE_X || etype == PPME_SYSCALL_EXECVE_X)
+			etype == PPME_SOCKET_CONNECT_E || etype == PPME_SOCKET_CONNECT_X || 
+			etype == PPME_CLONE_X || etype == PPME_SYSCALL_EXECVE_X)
 		{
 			do_filter_later = true;
 		}
@@ -218,11 +219,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		{
 			if(m_inspector->m_filter->run(evt) == false)
 			{
-				if(evt->m_tinfo != NULL)
-				{
-					evt->m_tinfo->m_lastevent_type = PPM_SC_MAX;
-				}
-
 				evt->m_filtered_out = true;
 				return;
 			}

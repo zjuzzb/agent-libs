@@ -643,10 +643,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// Transaction-related metrics
 					//
 					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
-//if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-//{
 					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
-//}
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
 
@@ -918,7 +915,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-
 	for(acit = m_reduced_ipv4_connections.begin(); 
 		acit != m_reduced_ipv4_connections.end(); ++acit)
 	{
