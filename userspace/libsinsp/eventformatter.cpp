@@ -66,7 +66,7 @@ void sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
 
 #else  // HAS_FILTERING
 
-sinsp_evt_formatter::sinsp_evt_formatter(const string& fmt)
+sinsp_evt_formatter::sinsp_evt_formatter(const string& fmt, sinsp* inspector)
 {
 }
 
