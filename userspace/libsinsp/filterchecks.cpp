@@ -753,6 +753,11 @@ uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
 			(unordered_map<uint32_t, scap_userinfo*>*)m_inspector->get_userlist();
 		ASSERT(userlist->size() != 0);
 
+		if(tinfo->m_uid == 0xffffffff)
+		{
+			return false;
+		}
+
 		it = userlist->find(tinfo->m_uid);
 		if(it == userlist->end())
 		{
@@ -794,8 +799,8 @@ const event_field_info sinsp_filter_check_group_fields[] =
 sinsp_filter_check_group::sinsp_filter_check_group()
 {
 	m_info.m_name = "group";
-	m_info.m_fields = sinsp_filter_check_user_fields;
-	m_info.m_nfiedls = sizeof(sinsp_filter_check_user_fields) / sizeof(sinsp_filter_check_user_fields[0]);
+	m_info.m_fields = sinsp_filter_check_group_fields;
+	m_info.m_nfiedls = sizeof(sinsp_filter_check_group_fields) / sizeof(sinsp_filter_check_group_fields[0]);
 }
 
 uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
@@ -819,6 +824,11 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 			unordered_map<uint32_t, scap_groupinfo*>* grouplist = 
 				(unordered_map<uint32_t, scap_groupinfo*>*)m_inspector->get_grouplist();
 			ASSERT(grouplist->size() != 0);
+
+			if(tinfo->m_gid == 0xffffffff)
+			{
+				return false;
+			}
 
 			it = grouplist->find(tinfo->m_gid);
 			if(it == grouplist->end())
@@ -874,16 +884,5 @@ uint8_t* rawstring_check::extract(sinsp_evt *evt)
 {
 	return (uint8_t*)m_text.c_str();
 }
-
-/*
-bool rawstring_check::compare(sinsp_evt *evt)
-{
-	//
-	// This should never be used by the filtering engine, only by the event formatter
-	//
-	ASSERT(false);
-	return false;
-}
-*/
 
 #endif // HAS_FILTERING

@@ -115,6 +115,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	m_ptid = pi->ptid;
 
 	m_comm = pi->comm;
+
 	if(tcomm == "" || tcomm[tcomm.length() - 1] == '/')
 	{
 		string ts(pi->exe);

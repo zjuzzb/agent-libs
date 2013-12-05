@@ -57,7 +57,7 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t firstts = 0;
 	uint64_t screents;
 	string line;
-	sinsp_evt_formatter formatter(format);
+	sinsp_evt_formatter formatter(format, inspector);
 
 	//
 	// Loop through the events
@@ -194,9 +194,9 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-//output_format = "%user.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
+output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
 //output_format = "%evt.num)%evt.arg.res";
-output_format = "%evt.num)";
+//output_format = "%evt.num)";
 
 		//
 		// Parse the args

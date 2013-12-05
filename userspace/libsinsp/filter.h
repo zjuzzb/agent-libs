@@ -49,7 +49,7 @@ public:
 	//
 	// Used by the engine to allocate new filter checks
 	//
-	static sinsp_filter_check* new_filter_check_from_fldname(string name);
+	static sinsp_filter_check* new_filter_check_from_fldname(string name, sinsp* inspector);
 
 	//
 	// Get the list of fields that this check exports
@@ -87,8 +87,6 @@ public:
 	//
 	virtual bool compare(sinsp_evt *evt);
 
-	void set_inspector(sinsp* inspector);
-
 	//
 	// Extract the value from the event and convert it into a string
 	//
@@ -107,6 +105,9 @@ protected:
 	const event_field_info* m_field;
 	filter_check_info m_info;
 	uint32_t m_field_id;
+
+private:
+	void set_inspector(sinsp* inspector);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

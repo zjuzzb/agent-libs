@@ -492,6 +492,8 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 			newpi.m_ptid = -1;
 			newpi.m_comm = "<NA>";
 			newpi.m_exe = "<NA>";
+			newpi.m_uid = 0xffffffff;
+			newpi.m_gid = 0xffffffff;
 		}
 
 		m_thread_manager->add_thread(newpi);

@@ -163,7 +163,6 @@ class sinsp_filter_check_group : public sinsp_filter_check
 public:
 	enum check_type
 	{
-		TYPE_NONE,
 		TYPE_GID,
 		TYPE_NAME,
 	};

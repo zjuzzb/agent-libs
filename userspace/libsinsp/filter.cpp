@@ -148,7 +148,7 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
-sinsp_filter_check* sinsp_filter_check::new_filter_check_from_fldname(string name)
+sinsp_filter_check* sinsp_filter_check::new_filter_check_from_fldname(string name, sinsp* inspector)
 {
 	//////////////////////////////////////////////////////////////////////////////
 	// ADD NEW FILTER CHECK CLASSES HERE
@@ -156,25 +156,36 @@ sinsp_filter_check* sinsp_filter_check::new_filter_check_from_fldname(string nam
 	sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
 	if(chk_fd->parse_field_name(name.c_str()) != -1)
 	{
+		chk_fd->set_inspector(inspector);
 		return (sinsp_filter_check*)chk_fd;
 	}
 
 	sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
 	if(chk_thread->parse_field_name(name.c_str()) != -1)
 	{
+		chk_thread->set_inspector(inspector);
 		return (sinsp_filter_check*)chk_thread;
 	}
 
 	sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
 	if(chk_event->parse_field_name(name.c_str()) != -1)
 	{
+		chk_event->set_inspector(inspector);
 		return (sinsp_filter_check*)chk_event;
 	}
 
 	sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
 	if(chk_user->parse_field_name(name.c_str()) != -1)
 	{
+		chk_user->set_inspector(inspector);
 		return (sinsp_filter_check*)chk_user;
+	}
+
+	sinsp_filter_check_group* chk_group = new sinsp_filter_check_group();
+	if(chk_group->parse_field_name(name.c_str()) != -1)
+	{
+		chk_group->set_inspector(inspector);
+		return (sinsp_filter_check*)chk_group;
 	}
 
 	//
@@ -789,15 +800,13 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
 	string operand1 = next_operand();
-	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_fldname(operand1);
+	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_fldname(operand1, m_inspector);
 
 	if(chk == NULL)
 	{
 		throw sinsp_exception("filter error: unrecognized operand " + 
 			operand1 + " at pos " + to_string(startpos));
 	}
-
-	chk->set_inspector(m_inspector);
 
 	ppm_cmp_operator co = next_comparison_operator();
 	string operand2 = next_operand();
