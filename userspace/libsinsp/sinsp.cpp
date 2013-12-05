@@ -743,7 +743,13 @@ const unordered_map<uint32_t, scap_groupinfo*>* sinsp::get_grouplist()
 	return &m_grouplist;
 }
 
+#ifdef HAS_FILTERING
 void sinsp::get_filtercheck_fields_info(OUT vector<filter_check_info>* list)
 {
 	sinsp_utils::get_filtercheck_fields_info(list);
 }
+#else
+void sinsp::get_filtercheck_fields_info(OUT vector<filter_check_info>* list)
+{
+}
+#endif

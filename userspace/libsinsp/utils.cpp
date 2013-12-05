@@ -18,7 +18,9 @@
 sinsp_evttables g_infotables;
 sinsp_logger g_logger;
 sinsp_initializer g_initializer;
+#ifdef HAS_FILTERING
 sinsp_filter_check_list g_filterlist;
+#endif
 
 //
 // loading time initializations
@@ -471,10 +473,12 @@ const struct ppm_param_info* sinsp_utils::find_longest_matching_evt_param(string
 	return res;
 }
 
+#ifdef HAS_FILTERING
 void sinsp_utils::get_filtercheck_fields_info(OUT vector<filter_check_info>* list)
 {
 	g_filterlist.get_all_fields(list);
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // gettimeofday() windows implementation

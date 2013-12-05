@@ -761,7 +761,7 @@ uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
 
 	if(tinfo == NULL)
 	{
-		return false;
+		return NULL;
 	}
 
 	if(m_field_id != TYPE_UID)
@@ -775,14 +775,14 @@ uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
 
 		if(tinfo->m_uid == 0xffffffff)
 		{
-			return false;
+			return NULL;
 		}
 
 		it = userlist->find(tinfo->m_uid);
 		if(it == userlist->end())
 		{
 			ASSERT(false);
-			return false;
+			return NULL;
 		}
 
 		uinfo = it->second;
@@ -804,7 +804,7 @@ uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
 		break;
 	}
 
-	return false;
+	return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -834,7 +834,7 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 
 	if(tinfo == NULL)
 	{
-		return false;
+		return NULL;
 	}
 
 	switch(m_field_id)
@@ -859,7 +859,7 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 			if(it == grouplist->end())
 			{
 				ASSERT(false);
-				return false;
+				return NULL;
 			}
 
 			scap_groupinfo* ginfo = it->second;
@@ -872,7 +872,7 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 		break;
 	}
 
-	return false;
+	return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

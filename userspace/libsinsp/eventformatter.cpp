@@ -4,12 +4,12 @@
 #include "filterchecks.h"
 #include "eventformatter.h"
 
-extern sinsp_filter_check_list g_filterlist;
-
 ///////////////////////////////////////////////////////////////////////////////
 // rawstring_check implementation
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef HAS_FILTERING
+extern sinsp_filter_check_list g_filterlist;
+
 sinsp_evt_formatter::sinsp_evt_formatter(const string& fmt, sinsp* inspector)
 {
 	m_inspector = inspector;
