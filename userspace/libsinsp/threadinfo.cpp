@@ -627,7 +627,11 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	// m_program_pids list
 	//
 #ifdef ANALYZER_EMITS_PROGRAMS
-	m_procinfo->m_program_pids.push_back(other->m_pid);
+	if(other->is_main_thread())
+//	if(other->is_main_thread() && other->m_pid != m_pid)
+	{
+		m_procinfo->m_program_pids.push_back(other->m_pid);
+	}
 #endif
 }
 
