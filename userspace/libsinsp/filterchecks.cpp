@@ -852,7 +852,7 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 
 			if(tinfo->m_gid == 0xffffffff)
 			{
-				return false;
+				return NULL;
 			}
 
 			it = grouplist->find(tinfo->m_gid);
