@@ -640,7 +640,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "tid!=-1";
-fltstr = "comm = bash";
+fltstr = "comm = pv";
 
 	m_inspector = inspector;
 	m_scanpos = -1;

@@ -345,8 +345,7 @@ void sinsp_counters::add(sinsp_counters* other)
 	m_wait_other.add(&other->m_wait_other);
 	m_processing.add(&other->m_processing);
 }
-
-void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns)
+void sinsp_counters::calculate_totals()
 {
 	m_tot_other.clear();
 	// Unknown is usually garbage caused by drops or processes coming out of
@@ -384,6 +383,33 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	m_tot_relevant.add(&m_tot_io_file);
 	m_tot_relevant.add(&m_tot_io_net);
 	m_tot_relevant.add(&m_processing);
+}
+
+void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns)
+{
+	calculate_totals();
+
+	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), m_tot_relevant.m_time_ns);
+	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_tot_relevant.m_time_ns);
+	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_tot_relevant.m_time_ns);
+	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_tot_relevant.m_time_ns);
+
+#ifdef _DEBUG
+	sinsp_counter_time ttot;
+	ttot.add(&m_tot_other);
+	ttot.add(&m_tot_wait);
+	ttot.add(&m_tot_io_file);
+	ttot.add(&m_tot_io_net);
+	ttot.add(&m_tot_ipc);
+	ttot.add(&m_processing);
+	ttot.add(&m_unknown);
+	ASSERT(ttot.m_time_ns % 1000000000 == 0);
+#endif
+}
+
+void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint64_t sample_length_ns)
+{
+	calculate_totals();
 
 	m_tot_other.to_protobuf(protobuf_msg->mutable_other(), m_tot_relevant.m_time_ns);
 	m_tot_io_file.to_protobuf(protobuf_msg->mutable_io_file(), m_tot_relevant.m_time_ns);
@@ -528,6 +554,7 @@ void sinsp_host_metrics::clear()
 	m_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
 	m_capacity_score = -1;
+	m_stolen_capacity_score = -1;
 	m_n_capacity_score_entries = 0;
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
@@ -536,15 +563,7 @@ void sinsp_host_metrics::clear()
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 {
-	//
-	// Note how we only include server processes in the host metrics.
-	// That's because these are transaction time metrics, and therefore we don't 
-	// want to use processes that don't serve transactions.
-	//
-	if(pinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-	{
-		m_metrics.add(&pinfo->m_proc_metrics);
-	}
+	m_metrics.add(&pinfo->m_proc_metrics);
 
 	m_transaction_metrics.add(&pinfo->m_proc_transaction_metrics);
 	m_transaction_processing_delay_ns += pinfo->m_proc_transaction_processing_delay_ns;

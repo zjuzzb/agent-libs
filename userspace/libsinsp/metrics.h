@@ -18,6 +18,7 @@ namespace draiosproto
 	class transaction_categories;
 	class connection_categories;
 	class counter_syscall_errors;
+	class transaction_breakdown_categories;
 };
 
 //
@@ -151,7 +152,9 @@ public:
 	void clear();
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
+	void calculate_totals();
 	void to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns);
+	void to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint64_t sample_length_ns);
 
 	uint64_t get_total_other_time();
 	uint64_t get_total_wait_time();
@@ -163,8 +166,6 @@ public:
 	double get_other_percentage();
 	double get_file_percentage();
 	double get_net_percentage();
-
-private:
 
 	sinsp_counter_time m_tot_other;
 	sinsp_counter_time m_tot_wait;

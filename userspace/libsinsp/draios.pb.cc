@@ -20,6 +20,7 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete counter_bytes::default_instance_;
   delete counter_time_bytes::default_instance_;
   delete time_categories::default_instance_;
+  delete transaction_breakdown_categories::default_instance_;
   delete counter_syscall_errors::default_instance_;
   delete resource_categories::default_instance_;
   delete connection_categories::default_instance_;
@@ -51,6 +52,7 @@ void protobuf_AddDesc_draios_2eproto() {
   counter_bytes::default_instance_ = new counter_bytes();
   counter_time_bytes::default_instance_ = new counter_time_bytes();
   time_categories::default_instance_ = new time_categories();
+  transaction_breakdown_categories::default_instance_ = new transaction_breakdown_categories();
   counter_syscall_errors::default_instance_ = new counter_syscall_errors();
   resource_categories::default_instance_ = new resource_categories();
   connection_categories::default_instance_ = new connection_categories();
@@ -68,6 +70,7 @@ void protobuf_AddDesc_draios_2eproto() {
   counter_bytes::default_instance_->InitAsDefaultInstance();
   counter_time_bytes::default_instance_->InitAsDefaultInstance();
   time_categories::default_instance_->InitAsDefaultInstance();
+  transaction_breakdown_categories::default_instance_->InitAsDefaultInstance();
   counter_syscall_errors::default_instance_->InitAsDefaultInstance();
   resource_categories::default_instance_->InitAsDefaultInstance();
   connection_categories::default_instance_->InitAsDefaultInstance();
@@ -2370,6 +2373,322 @@ void time_categories::Swap(time_categories* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int transaction_breakdown_categories::kOtherFieldNumber;
+const int transaction_breakdown_categories::kIoFileFieldNumber;
+const int transaction_breakdown_categories::kIoNetFieldNumber;
+const int transaction_breakdown_categories::kProcessingFieldNumber;
+#endif  // !_MSC_VER
+
+transaction_breakdown_categories::transaction_breakdown_categories()
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+}
+
+void transaction_breakdown_categories::InitAsDefaultInstance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  other_ = const_cast< ::draiosproto::counter_time*>(
+      ::draiosproto::counter_time::internal_default_instance());
+#else
+  other_ = const_cast< ::draiosproto::counter_time*>(&::draiosproto::counter_time::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  io_file_ = const_cast< ::draiosproto::counter_time_bytes*>(
+      ::draiosproto::counter_time_bytes::internal_default_instance());
+#else
+  io_file_ = const_cast< ::draiosproto::counter_time_bytes*>(&::draiosproto::counter_time_bytes::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  io_net_ = const_cast< ::draiosproto::counter_time_bytes*>(
+      ::draiosproto::counter_time_bytes::internal_default_instance());
+#else
+  io_net_ = const_cast< ::draiosproto::counter_time_bytes*>(&::draiosproto::counter_time_bytes::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  processing_ = const_cast< ::draiosproto::counter_time*>(
+      ::draiosproto::counter_time::internal_default_instance());
+#else
+  processing_ = const_cast< ::draiosproto::counter_time*>(&::draiosproto::counter_time::default_instance());
+#endif
+}
+
+transaction_breakdown_categories::transaction_breakdown_categories(const transaction_breakdown_categories& from)
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void transaction_breakdown_categories::SharedCtor() {
+  _cached_size_ = 0;
+  other_ = NULL;
+  io_file_ = NULL;
+  io_net_ = NULL;
+  processing_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+transaction_breakdown_categories::~transaction_breakdown_categories() {
+  SharedDtor();
+}
+
+void transaction_breakdown_categories::SharedDtor() {
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  if (this != &default_instance()) {
+  #else
+  if (this != default_instance_) {
+  #endif
+    delete other_;
+    delete io_file_;
+    delete io_net_;
+    delete processing_;
+  }
+}
+
+void transaction_breakdown_categories::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const transaction_breakdown_categories& transaction_breakdown_categories::default_instance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  protobuf_AddDesc_draios_2eproto();
+#else
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+#endif
+  return *default_instance_;
+}
+
+transaction_breakdown_categories* transaction_breakdown_categories::default_instance_ = NULL;
+
+transaction_breakdown_categories* transaction_breakdown_categories::New() const {
+  return new transaction_breakdown_categories;
+}
+
+void transaction_breakdown_categories::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_other()) {
+      if (other_ != NULL) other_->::draiosproto::counter_time::Clear();
+    }
+    if (has_io_file()) {
+      if (io_file_ != NULL) io_file_->::draiosproto::counter_time_bytes::Clear();
+    }
+    if (has_io_net()) {
+      if (io_net_ != NULL) io_net_->::draiosproto::counter_time_bytes::Clear();
+    }
+    if (has_processing()) {
+      if (processing_ != NULL) processing_->::draiosproto::counter_time::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+bool transaction_breakdown_categories::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional .draiosproto.counter_time other = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_other()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(106)) goto parse_io_file;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bytes io_file = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_io_file:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_io_file()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(114)) goto parse_io_net;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bytes io_net = 14;
+      case 14: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_io_net:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_io_net()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(138)) goto parse_processing;
+        break;
+      }
+
+      // optional .draiosproto.counter_time processing = 17;
+      case 17: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_processing:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_processing()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void transaction_breakdown_categories::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional .draiosproto.counter_time other = 2;
+  if (has_other()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      2, this->other(), output);
+  }
+
+  // optional .draiosproto.counter_time_bytes io_file = 13;
+  if (has_io_file()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      13, this->io_file(), output);
+  }
+
+  // optional .draiosproto.counter_time_bytes io_net = 14;
+  if (has_io_net()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      14, this->io_net(), output);
+  }
+
+  // optional .draiosproto.counter_time processing = 17;
+  if (has_processing()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      17, this->processing(), output);
+  }
+
+}
+
+int transaction_breakdown_categories::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional .draiosproto.counter_time other = 2;
+    if (has_other()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->other());
+    }
+
+    // optional .draiosproto.counter_time_bytes io_file = 13;
+    if (has_io_file()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->io_file());
+    }
+
+    // optional .draiosproto.counter_time_bytes io_net = 14;
+    if (has_io_net()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->io_net());
+    }
+
+    // optional .draiosproto.counter_time processing = 17;
+    if (has_processing()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->processing());
+    }
+
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void transaction_breakdown_categories::CheckTypeAndMergeFrom(
+    const ::google::protobuf::MessageLite& from) {
+  MergeFrom(*::google::protobuf::down_cast<const transaction_breakdown_categories*>(&from));
+}
+
+void transaction_breakdown_categories::MergeFrom(const transaction_breakdown_categories& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_other()) {
+      mutable_other()->::draiosproto::counter_time::MergeFrom(from.other());
+    }
+    if (from.has_io_file()) {
+      mutable_io_file()->::draiosproto::counter_time_bytes::MergeFrom(from.io_file());
+    }
+    if (from.has_io_net()) {
+      mutable_io_net()->::draiosproto::counter_time_bytes::MergeFrom(from.io_net());
+    }
+    if (from.has_processing()) {
+      mutable_processing()->::draiosproto::counter_time::MergeFrom(from.processing());
+    }
+  }
+}
+
+void transaction_breakdown_categories::CopyFrom(const transaction_breakdown_categories& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool transaction_breakdown_categories::IsInitialized() const {
+
+  if (has_other()) {
+    if (!this->other().IsInitialized()) return false;
+  }
+  if (has_io_file()) {
+    if (!this->io_file().IsInitialized()) return false;
+  }
+  if (has_io_net()) {
+    if (!this->io_net().IsInitialized()) return false;
+  }
+  if (has_processing()) {
+    if (!this->processing().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void transaction_breakdown_categories::Swap(transaction_breakdown_categories* other) {
+  if (other != this) {
+    std::swap(other_, other->other_);
+    std::swap(io_file_, other->io_file_);
+    std::swap(io_net_, other->io_net_);
+    std::swap(processing_, other->processing_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::std::string transaction_breakdown_categories::GetTypeName() const {
+  return "draiosproto.transaction_breakdown_categories";
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int counter_syscall_errors::kCountFieldNumber;
 const int counter_syscall_errors::kTopErrorCodesFieldNumber;
 #endif  // !_MSC_VER
@@ -3480,6 +3799,7 @@ const int host::kCpuLoadsFieldNumber;
 const int host::kCpuStealFieldNumber;
 const int host::kPhysicalMemorySizeBytesFieldNumber;
 const int host::kTcountersFieldNumber;
+const int host::kReqcountersFieldNumber;
 const int host::kTransactionCountersFieldNumber;
 const int host::kTransactionProcessingDelayFieldNumber;
 const int host::kResourceCountersFieldNumber;
@@ -3498,6 +3818,12 @@ void host::InitAsDefaultInstance() {
       ::draiosproto::time_categories::internal_default_instance());
 #else
   tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
+#endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  reqcounters_ = const_cast< ::draiosproto::transaction_breakdown_categories*>(
+      ::draiosproto::transaction_breakdown_categories::internal_default_instance());
+#else
+  reqcounters_ = const_cast< ::draiosproto::transaction_breakdown_categories*>(&::draiosproto::transaction_breakdown_categories::default_instance());
 #endif
 #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(
@@ -3537,6 +3863,7 @@ void host::SharedCtor() {
   num_cpus_ = 0u;
   physical_memory_size_bytes_ = GOOGLE_ULONGLONG(0);
   tcounters_ = NULL;
+  reqcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
@@ -3559,6 +3886,7 @@ void host::SharedDtor() {
   if (this != default_instance_) {
   #endif
     delete tcounters_;
+    delete reqcounters_;
     delete transaction_counters_;
     delete resource_counters_;
     delete syscall_errors_;
@@ -3598,12 +3926,15 @@ void host::Clear() {
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
+    if (has_reqcounters()) {
+      if (reqcounters_ != NULL) reqcounters_->::draiosproto::transaction_breakdown_categories::Clear();
+    }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
-    transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
@@ -3796,6 +4127,20 @@ bool host::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(88)) goto parse_cpu_steal;
+        if (input->ExpectTag(98)) goto parse_reqcounters;
+        break;
+      }
+
+      // optional .draiosproto.transaction_breakdown_categories reqcounters = 12;
+      case 12: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_reqcounters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_reqcounters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3880,6 +4225,12 @@ void host::SerializeWithCachedSizes(
       11, this->cpu_steal(i), output);
   }
 
+  // optional .draiosproto.transaction_breakdown_categories reqcounters = 12;
+  if (has_reqcounters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      12, this->reqcounters(), output);
+  }
+
 }
 
 int host::ByteSize() const {
@@ -3914,6 +4265,13 @@ int host::ByteSize() const {
           this->tcounters());
     }
 
+    // optional .draiosproto.transaction_breakdown_categories reqcounters = 12;
+    if (has_reqcounters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->reqcounters());
+    }
+
     // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
     if (has_transaction_counters()) {
       total_size += 1 +
@@ -3921,6 +4279,8 @@ int host::ByteSize() const {
           this->transaction_counters());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional uint64 transaction_processing_delay = 7;
     if (has_transaction_processing_delay()) {
       total_size += 1 +
@@ -3928,8 +4288,6 @@ int host::ByteSize() const {
           this->transaction_processing_delay());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.resource_categories resource_counters = 8;
     if (has_resource_counters()) {
       total_size += 1 +
@@ -4000,14 +4358,17 @@ void host::MergeFrom(const host& from) {
     if (from.has_tcounters()) {
       mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
     }
+    if (from.has_reqcounters()) {
+      mutable_reqcounters()->::draiosproto::transaction_breakdown_categories::MergeFrom(from.reqcounters());
+    }
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
@@ -4032,6 +4393,9 @@ bool host::IsInitialized() const {
   if (has_tcounters()) {
     if (!this->tcounters().IsInitialized()) return false;
   }
+  if (has_reqcounters()) {
+    if (!this->reqcounters().IsInitialized()) return false;
+  }
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
@@ -4052,6 +4416,7 @@ void host::Swap(host* other) {
     cpu_steal_.Swap(&other->cpu_steal_);
     std::swap(physical_memory_size_bytes_, other->physical_memory_size_bytes_);
     std::swap(tcounters_, other->tcounters_);
+    std::swap(reqcounters_, other->reqcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(resource_counters_, other->resource_counters_);

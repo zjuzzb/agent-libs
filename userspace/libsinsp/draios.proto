@@ -59,6 +59,16 @@ message time_categories {
 	optional counter_time processing = 17;
 }
 
+//
+// Stores how time is spent serving requests by the host
+//
+message transaction_breakdown_categories {
+	optional counter_time other = 2;
+	optional counter_time_bytes io_file = 13;
+	optional counter_time_bytes io_net = 14;
+	optional counter_time processing = 17;
+}
+
 message counter_syscall_errors {
   required uint32 count = 1;	// Syscall errors count
   repeated uint32 top_error_codes = 2; // Error codes that were generated the most
@@ -98,6 +108,7 @@ message host {
   required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
 
   optional time_categories tcounters = 5; // The time counters for this thread
+  optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 

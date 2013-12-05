@@ -144,6 +144,7 @@ VISIBILITY_PRIVATE
 	// The aggreagted host metrics
 	//
 	sinsp_host_metrics m_host_metrics;
+	sinsp_counters m_host_req_metrics;
 
 	//
 	// The scheduler analyzer

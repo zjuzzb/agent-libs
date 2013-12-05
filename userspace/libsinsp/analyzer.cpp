@@ -693,7 +693,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+//					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
@@ -727,10 +727,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  %s) proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
+							"  %s) proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
 							it->second.m_comm.c_str(),
 							it->second.m_procinfo->m_proc_metrics.get_processing_percentage() * 100,
 							it->second.m_procinfo->m_proc_metrics.get_file_percentage() * 100,
+							(uint64_t)(it->second.m_procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + it->second.m_procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
 							it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
 							it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
 					}
@@ -743,6 +744,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				if(it->second.m_procinfo != NULL)
 				{
+					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						m_host_req_metrics.add(&it->second.m_procinfo->m_proc_metrics);
+					}
+
+					//
+					// Note how we only include server processes.
+					// That's because these are transaction time metrics, and therefore we don't 
+					// want to use processes that don't serve transactions.
+					//
 					m_host_metrics.add(it->second.m_procinfo);
 				}
 				else
@@ -1071,6 +1082,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Reset the aggreagted host metrics
 			//
 			m_host_metrics.clear();
+			m_host_req_metrics.clear();
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
@@ -1226,6 +1238,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters(), sample_duration);
 
+			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), sample_duration);
+
 			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
@@ -1234,10 +1248,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
 			}
 
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"host times: proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+				m_host_metrics.m_metrics.get_processing_percentage() * 100,
+				m_host_metrics.m_metrics.get_file_percentage() * 100,
+				(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
+				m_host_metrics.m_metrics.get_net_percentage() * 100,
+				m_host_metrics.m_metrics.get_other_percentage() * 100);
+
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"host: h:%.2f(s:%.2f) in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
+					"host transactions: h:%.2f(s:%.2f) in:%" PRIu32 " out:%" PRIu32 " tin:%f tout:%f tloc:%f",
 					m_host_metrics.m_capacity_score,
 					m_host_metrics.m_stolen_capacity_score,
 					m_host_transaction_metrics.m_counter.m_count_in,
@@ -1248,11 +1270,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					);
 
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"  proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
-					m_host_metrics.m_metrics.get_processing_percentage() * 100,
-					m_host_metrics.m_metrics.get_file_percentage() * 100,
-					m_host_metrics.m_metrics.get_net_percentage() * 100,
-					m_host_metrics.m_metrics.get_other_percentage() * 100);
+					"host transaction times: proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
+					m_host_req_metrics.get_processing_percentage() * 100,
+					m_host_req_metrics.get_file_percentage() * 100,
+					m_host_req_metrics.get_net_percentage() * 100,
+					m_host_req_metrics.get_other_percentage() * 100);
 			}
 
 			////////////////////////////////////////////////////////////////////////////
