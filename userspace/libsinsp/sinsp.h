@@ -119,6 +119,17 @@ struct sinsp_exception : std::exception
 	string m_error_str;
 };
 
+//
+// Filter check information
+//
+class filter_check_info
+{
+public:
+	string m_name;
+	int32_t m_nfiedls;
+	const filtercheck_field_info* m_fields;
+};
+
 #ifdef HAS_ANALYZER
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -231,6 +242,13 @@ public:
 	void start_dump(const string& dump_filename);
 	void stop_dump();
 
+	//
+	// Return the full list of filter check fields
+	//
+#ifdef HAS_FILTERING
+	static void get_filtercheck_fields_info(vector<filter_check_info>* list);
+#endif
+
 	sinsp_configuration* get_configuration();
 	void set_configuration(const sinsp_configuration& configuration);
 
@@ -270,9 +288,6 @@ VISIBILITY_PRIVATE
 	vector<int64_t>* m_fds_to_remove;
 	int64_t m_tid_of_fd_to_remove;
 	uint64_t m_lastevent_ts;
-#ifdef HAS_FILTERING
-	uint64_t m_firstevent_ts;
-#endif
 	// the parsing engine
 	sinsp_parser* m_parser;
 	// the statistics analysis engine
@@ -295,6 +310,7 @@ VISIBILITY_PRIVATE
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
 #ifdef HAS_FILTERING
+	uint64_t m_firstevent_ts;
 	sinsp_filter* m_filter;
 #endif
 

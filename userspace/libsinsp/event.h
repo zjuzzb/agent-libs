@@ -19,14 +19,14 @@ typedef enum event_property_flags
 	EPF_REQUIRES_ARGUMENT, // this property includes an argument, under the form 'property.argument'
 }event_property_flags;
 
-typedef struct event_field_info
+typedef struct filtercheck_field_info
 {
 	ppm_param_type m_type;
 	event_property_flags m_flags;
 	ppm_print_format m_print_format;
 	char m_name[64];
 	char m_description[1024];
-}event_field_info;
+}filtercheck_field_info;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Wrapper that exports the libscap event tables

@@ -16,8 +16,6 @@
 #include <unistd.h>
 #endif
 
-static inline string clone_flags_to_str(uint32_t flags);
-
 bool ctrl_c_pressed = false;
 
 static void signal_callback(int signal)
@@ -119,50 +117,6 @@ captureinfo do_inspect(sinsp* inspector,
 		formatter.tostring(ev, &line);
 
 		cout << line << endl;
-/*
-		sinsp_threadinfo* tinfo = ev->get_thread_info();
-		uint32_t j;
-
-		n_printed_evts++;
-
-		printf("%" PRIu64 ")%" PRIu64 ".%09" PRIu64 " %s (%" PRId64 ") %s %s",
-			    inspector->get_num_events(),
-			    screents / 1000000000,
-			    screents % 1000000000,
-			    (tinfo)?tinfo->get_comm().c_str():"<NA>",
-			    ev->get_tid(),
-			    (ev->get_direction() == SCAP_ED_IN)? ">" : "<",
-			    ev->get_name()
-			    );
-
-		for(j = 0; j < ev->get_num_params(); j++)
-		{
-			if(ev->get_type() == 15 && j == 7)	// Custom treatment for CLONE_EXIT
-			{
-				sinsp_evt_param* param = ev->get_param(j);
-				int32_t val = *(int32_t*)param->m_val;
-				printf(" %s=(%u)%s", ev->get_param_name(j), val, clone_flags_to_str(val).c_str());
-			}
-			else
-			{
-				const char* paramstr;
-				const char* resolved_paramstr;
-
-				paramstr = ev->get_param_as_str(j, &resolved_paramstr);
-
-				if(resolved_paramstr[0] == 0)
-				{
-					printf(" %s=%s", ev->get_param_name(j), paramstr);
-				}
-				else
-				{
-					printf(" %s=%s(%s)", ev->get_param_name(j), paramstr, resolved_paramstr);
-				}
-			}
-		}
-
-		printf("\n");
-*/
 	}
 
 	retval.m_time = deltats;
@@ -174,12 +128,21 @@ static void usage(char *program_name)
 	fprintf(stderr, "%s [ -r filename ]\n", program_name);
 }
 
+static void list_fields()
+{
+	vector<filter_check_info> fc_plugins;
+	sinsp::get_filtercheck_fields_info(&fc_plugins);
+
+	printf("ciao\n");
+}
+
 //
 // MAIN
 //
 int main(int argc, char **argv)
 {
-	char *infile = NULL;
+	string infile;
+	string outfile;
 	int op;
 	uint64_t cnt = -1;
 	bool emitjson = false;
@@ -189,7 +152,6 @@ int main(int argc, char **argv)
 	char* transact_fname = NULL;
 	double duration = 1;
 	captureinfo cinfo;
-	string dumpfile;
 	string output_format;
 
 	{
@@ -201,7 +163,7 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:f:jl:o:qr:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:fhjo:qr:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -219,26 +181,12 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 			case 'j':
 				emitjson = true;
 				break;
-			case 'l':
-				if(string(optarg) == "stdout")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
-				}
-				else if(string(optarg) == "stderr")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
-				}
-				else if(string(optarg) == "file")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
-				}
-				else
-				{
-					fprintf(stderr, "wrong -l option %s. Accepted values: stdout, sterr or file.", optarg);
-					return -1;
-				}
-
-				break;
+			case 'h':
+				usage(argv[0]);
+				return 0;
+			case 'f':
+				list_fields();
+				return 0;
 			case 'o':
 				output_format = optarg;
 				break;
@@ -249,12 +197,10 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 				quiet = true;
 				break;
 			case 'w':
-				dumpfile = optarg;
+				outfile = optarg;
 				break;
 			default:
 				break;
-				usage(argv[0]);
-				return 0;
 			}
 		}
 
@@ -296,7 +242,7 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 		//
 		try
 		{
-			if(infile)
+			if(infile != "")
 			{
 				inspector.open(infile);
 			}
@@ -305,9 +251,9 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 				inspector.open("");
 			}
 
-			if(dumpfile != "")
+			if(outfile != "")
 			{
-				inspector.start_dump(dumpfile);
+				inspector.start_dump(outfile);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
@@ -379,91 +325,4 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
 #endif
-}
-
-static inline string clone_flags_to_str(uint32_t flags)
-{
-	string res;
-
-	if(flags & PPM_CL_CLONE_FILES)
-	{
-		res += "|CLONE_FILES";
-	}
-
-	if(flags & PPM_CL_CLONE_FS)
-	{
-		res += "|CLONE_FS";
-	}
-
-	if(flags & PPM_CL_CLONE_IO)
-	{
-		res += "|CLONE_IO";
-	}
-
-	if(flags & PPM_CL_CLONE_NEWIPC)
-	{
-		res += "|CLONE_NEWIPC";
-	}
-
-	if(flags & PPM_CL_CLONE_NEWNET)
-	{
-		res += "|CLONE_NEWNET";
-	}
-
-	if(flags & PPM_CL_CLONE_NEWNS)
-	{
-		res += "|CLONE_NEWNS";
-	}
-
-	if(flags & PPM_CL_CLONE_NEWPID)
-	{
-		res += "|CLONE_NEWPID";
-	}
-
-	if(flags & PPM_CL_CLONE_NEWUTS)
-	{
-		res += "|CLONE_NEWUTS";
-	}
-
-	if(flags & PPM_CL_CLONE_PARENT_SETTID)
-	{
-		res += "|CLONE_PARENT_SETTID";
-	}
-
-	if(flags & PPM_CL_CLONE_PARENT)
-	{
-		res += "|CLONE_PARENT";
-	}
-
-	if(flags & PPM_CL_CLONE_PTRACE)
-	{
-		res += "|CLONE_PTRACE";
-	}
-
-	if(flags & PPM_CL_CLONE_SIGHAND)
-	{
-		res += "|CLONE_SIGHAND";
-	}
-
-	if(flags & PPM_CL_CLONE_SYSVSEM)
-	{
-		res += "|CLONE_SYSVSEM";
-	}
-
-	if(flags & PPM_CL_CLONE_THREAD)
-	{
-		res += "|CLONE_THREAD";
-	}
-
-	if(flags & PPM_CL_CLONE_UNTRACED)
-	{
-		res += "|CLONE_UNTRACED";
-	}
-
-	if(flags & PPM_CL_CLONE_VM)
-	{
-		res += "|CLONE_VM";
-	}
-
-	return res;
 }

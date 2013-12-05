@@ -169,6 +169,11 @@ public:
 	// Given a string, scan the event list and find the longest argument that the input string contains
 	//
 	static const struct ppm_param_info* find_longest_matching_evt_param(string name);
+
+	//
+	// Get the list of filtercheck fields
+	//
+	static void get_filtercheck_fields_info(vector<filter_check_info>* list);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

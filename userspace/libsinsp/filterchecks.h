@@ -49,6 +49,7 @@ public:
 	};
 
 	sinsp_filter_check_fd();
+	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
 	uint8_t* extract_fdtype(sinsp_fdinfo* fdinfo);
@@ -81,6 +82,7 @@ public:
 	};
 
 	sinsp_filter_check_thread();
+	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
 
@@ -118,6 +120,7 @@ public:
 	};
 
 	sinsp_filter_check_event();
+	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
@@ -149,6 +152,7 @@ public:
 	};
 
 	sinsp_filter_check_user();
+	sinsp_filter_check* allocate_new();
 	uint8_t* extract(sinsp_evt *evt);
 
 	uint32_t m_uid;
@@ -168,6 +172,7 @@ public:
 	};
 
 	sinsp_filter_check_group();
+	sinsp_filter_check* allocate_new();
 	uint8_t* extract(sinsp_evt *evt);
 
 	uint32_t m_gid;
@@ -181,6 +186,7 @@ class rawstring_check : public sinsp_filter_check
 {
 public:
 	rawstring_check(string text);
+	sinsp_filter_check* allocate_new();
 	void set_text(string text);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);

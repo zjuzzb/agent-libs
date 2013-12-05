@@ -3,7 +3,7 @@
 #ifdef HAS_FILTERING
 
 bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void* operand2);
-char* flt_to_string(uint8_t* rawval, event_field_info* finfo);
+char* flt_to_string(uint8_t* rawval, filtercheck_field_info* finfo);
 
 enum boolop
 {
@@ -24,14 +24,6 @@ public:
 	string m_description;
 };
 
-class filter_check_info
-{
-public:
-	string m_name;
-	int32_t m_nfiedls;
-	const event_field_info* m_fields;
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 // The filter check interface
 // NOTE: in order to add a new type of filter check, you need to add a class for
@@ -47,9 +39,10 @@ public:
 	}
 
 	//
-	// Used by the engine to allocate new filter checks
+	// Allocate a new check of the same type.
+	// Every filtercheck plugin must implement this.
 	//
-	static sinsp_filter_check* new_filter_check_from_fldname(string name, sinsp* inspector);
+	virtual sinsp_filter_check* allocate_new() = 0;
 
 	//
 	// Get the list of fields that this check exports
@@ -75,7 +68,7 @@ public:
 	//
 	// Return the info about the field that this instance contains 
 	//
-	virtual const event_field_info* get_field_info();
+	virtual const filtercheck_field_info* get_field_info();
 
 	//
 	// Extract the field from the event
@@ -97,17 +90,35 @@ public:
 	ppm_cmp_operator m_cmpop;
 
 protected:
-	char* rawval_to_string(uint8_t* rawval, const event_field_info* finfo);
+	char* rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo);
 	void string_to_rawval(const char* str, ppm_param_type ptype);
 
 	char m_getpropertystr_storage[1024];
 	uint8_t m_val_storage[1024];
-	const event_field_info* m_field;
+	const filtercheck_field_info* m_field;
 	filter_check_info m_info;
 	uint32_t m_field_id;
 
 private:
 	void set_inspector(sinsp* inspector);
+
+friend class sinsp_filter_check_list;
+};
+
+//
+// Global class that stores the list of filtercheck plugins and offers
+// functions to work with it.
+//
+class sinsp_filter_check_list
+{
+public:
+	sinsp_filter_check_list();
+	~sinsp_filter_check_list();
+	void get_all_fields(vector<filter_check_info>* list);
+	sinsp_filter_check* new_filter_check_from_fldname(string name, sinsp* inspector);
+
+private:
+	vector<sinsp_filter_check*> m_check_list;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -120,6 +131,7 @@ class sinsp_filter_expression : public sinsp_filter_check
 public:
 	sinsp_filter_expression();
 	~sinsp_filter_expression();
+	sinsp_filter_check* allocate_new();
 	void add_check(sinsp_filter_check* chk);
 	// does nothing for sinsp_filter_expression
 	void parse(string expr);
@@ -140,7 +152,7 @@ public:
 		ASSERT(false);
 	}
 
-	const event_field_info* get_field_info()
+	const filtercheck_field_info* get_field_info()
 	{
 		ASSERT(false);
 		return NULL;

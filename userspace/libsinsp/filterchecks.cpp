@@ -10,7 +10,7 @@ extern sinsp_evttables g_infotables;
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_fd implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info sinsp_filter_check_fd_fields[] =
+const filtercheck_field_info sinsp_filter_check_fd_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "fd.num", "the unique number identifying the file descriptor."},
 	{PT_CHARBUF, EPF_NONE, PF_DEC, "fd.type", "type of FD. Can be 'file', 'ipv4', 'ipv6', 'unix', 'pipe', 'event', 'signalfd', 'eventpoll', 'inotify' or 'signalfd."},
@@ -33,6 +33,11 @@ sinsp_filter_check_fd::sinsp_filter_check_fd()
 	m_info.m_name = "fd";
 	m_info.m_fields = sinsp_filter_check_fd_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_fd_fields) / sizeof(sinsp_filter_check_fd_fields[0]);
+}
+
+sinsp_filter_check* sinsp_filter_check_fd::allocate_new()
+{
+	return (sinsp_filter_check*) new sinsp_filter_check_fd();
 }
 
 int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
@@ -342,7 +347,7 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_thread implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info sinsp_filter_check_thread_fields[] =
+const filtercheck_field_info sinsp_filter_check_thread_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
 	{PT_INT64, EPF_NONE, PF_DEC, "pid", "the id of the process generating the event."},
@@ -359,6 +364,11 @@ sinsp_filter_check_thread::sinsp_filter_check_thread()
 	m_info.m_name = "thread";
 	m_info.m_fields = sinsp_filter_check_thread_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
+}
+
+sinsp_filter_check* sinsp_filter_check_thread::allocate_new()
+{
+	return (sinsp_filter_check*) new sinsp_filter_check_thread();
 }
 
 int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
@@ -418,7 +428,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_event implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info sinsp_filter_check_event_fields[] =
+const filtercheck_field_info sinsp_filter_check_event_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
 	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp."},
@@ -442,6 +452,11 @@ sinsp_filter_check_event::sinsp_filter_check_event()
 	m_info.m_name = "evt";
 	m_info.m_fields = sinsp_filter_check_event_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_event_fields) / sizeof(sinsp_filter_check_event_fields[0]);
+}
+
+sinsp_filter_check* sinsp_filter_check_event::allocate_new()
+{
+	return (sinsp_filter_check*) new sinsp_filter_check_event();
 }
 
 int32_t sinsp_filter_check_event::extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo)
@@ -719,7 +734,7 @@ bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_user implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info sinsp_filter_check_user_fields[] =
+const filtercheck_field_info sinsp_filter_check_user_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "user.id", "user ID."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "user.name", "user name."},
@@ -732,6 +747,11 @@ sinsp_filter_check_user::sinsp_filter_check_user()
 	m_info.m_name = "user";
 	m_info.m_fields = sinsp_filter_check_user_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_user_fields) / sizeof(sinsp_filter_check_user_fields[0]);
+}
+
+sinsp_filter_check* sinsp_filter_check_user::allocate_new()
+{
+	return (sinsp_filter_check*) new sinsp_filter_check_user();
 }
 
 uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
@@ -790,7 +810,7 @@ uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter_check_group implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info sinsp_filter_check_group_fields[] =
+const filtercheck_field_info sinsp_filter_check_group_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "group.gid", "group ID."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "group.name", "group name."},
@@ -801,6 +821,11 @@ sinsp_filter_check_group::sinsp_filter_check_group()
 	m_info.m_name = "group";
 	m_info.m_fields = sinsp_filter_check_group_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_group_fields) / sizeof(sinsp_filter_check_group_fields[0]);
+}
+
+sinsp_filter_check* sinsp_filter_check_group::allocate_new()
+{
+	return (sinsp_filter_check*) new sinsp_filter_check_group();
 }
 
 uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
@@ -853,7 +878,7 @@ uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // rawstring_check implementation
 ///////////////////////////////////////////////////////////////////////////////
-const event_field_info rawstring_check_fields[] =
+const filtercheck_field_info rawstring_check_fields[] =
 {
 	{PT_CHARBUF, EPF_NONE, PF_NA, "NA", "INTERNAL."},
 };
@@ -862,6 +887,12 @@ rawstring_check::rawstring_check(string text)
 {
 	m_field = rawstring_check_fields;
 	set_text(text);
+}
+
+sinsp_filter_check* rawstring_check::allocate_new()
+{
+	ASSERT(false);
+	return NULL;
 }
 
 void rawstring_check::set_text(string text)

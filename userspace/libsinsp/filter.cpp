@@ -15,6 +15,66 @@
 #include "filter.h"
 #include "filterchecks.h"
 
+extern sinsp_filter_check_list g_filterlist;
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_filter_check_list implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_filter_check_list::sinsp_filter_check_list()
+{
+	//////////////////////////////////////////////////////////////////////////////
+	// ADD NEW FILTER CHECK CLASSES HERE
+	//////////////////////////////////////////////////////////////////////////////
+	m_check_list.push_back(new sinsp_filter_check_fd());
+	m_check_list.push_back(new sinsp_filter_check_thread());
+	m_check_list.push_back(new sinsp_filter_check_event());
+	m_check_list.push_back(new sinsp_filter_check_user());
+	m_check_list.push_back(new sinsp_filter_check_group());
+}
+
+sinsp_filter_check_list::~sinsp_filter_check_list()
+{
+	uint32_t j;
+
+	for(j = 0; j < m_check_list.size(); j++)
+	{
+		delete m_check_list[j];
+	}
+}
+
+void sinsp_filter_check_list::get_all_fields(OUT vector<filter_check_info>* list)
+{
+	uint32_t j;
+
+	for(j = 0; j < m_check_list.size(); j++)
+	{
+		list->push_back(m_check_list[j]->m_info);
+	}
+}
+
+sinsp_filter_check* sinsp_filter_check_list::new_filter_check_from_fldname(string name, sinsp* inspector)
+{
+	uint32_t j;
+
+	for(j = 0; j < m_check_list.size(); j++)
+	{
+		if(m_check_list[j]->parse_field_name(name.c_str()) != -1)
+		{
+			sinsp_filter_check* newchk = m_check_list[j]->allocate_new();
+			newchk->set_inspector(inspector);
+			return newchk;
+		}
+	}
+
+	//
+	// If you are implementing a new filter check and this point is reached,
+	// it's very likely that you've forgotten to add your filter to the list in 
+	// the constructor
+	//
+	ASSERT(false);
+	return NULL;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // type-based comparison functions
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,55 +208,7 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
-sinsp_filter_check* sinsp_filter_check::new_filter_check_from_fldname(string name, sinsp* inspector)
-{
-	//////////////////////////////////////////////////////////////////////////////
-	// ADD NEW FILTER CHECK CLASSES HERE
-	//////////////////////////////////////////////////////////////////////////////
-	sinsp_filter_check_fd* chk_fd = new sinsp_filter_check_fd();
-	if(chk_fd->parse_field_name(name.c_str()) != -1)
-	{
-		chk_fd->set_inspector(inspector);
-		return (sinsp_filter_check*)chk_fd;
-	}
-
-	sinsp_filter_check_thread* chk_thread = new sinsp_filter_check_thread();
-	if(chk_thread->parse_field_name(name.c_str()) != -1)
-	{
-		chk_thread->set_inspector(inspector);
-		return (sinsp_filter_check*)chk_thread;
-	}
-
-	sinsp_filter_check_event* chk_event = new sinsp_filter_check_event();
-	if(chk_event->parse_field_name(name.c_str()) != -1)
-	{
-		chk_event->set_inspector(inspector);
-		return (sinsp_filter_check*)chk_event;
-	}
-
-	sinsp_filter_check_user* chk_user = new sinsp_filter_check_user();
-	if(chk_user->parse_field_name(name.c_str()) != -1)
-	{
-		chk_user->set_inspector(inspector);
-		return (sinsp_filter_check*)chk_user;
-	}
-
-	sinsp_filter_check_group* chk_group = new sinsp_filter_check_group();
-	if(chk_group->parse_field_name(name.c_str()) != -1)
-	{
-		chk_group->set_inspector(inspector);
-		return (sinsp_filter_check*)chk_group;
-	}
-
-	//
-	// If you are implementing a new filter check and this point is reached,
-	// it's very likely that you've forgotten to add your filter to the list above
-	//
-	ASSERT(false);
-	return NULL;
-}
-
-char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const event_field_info* finfo)
+char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo)
 {
 	char* prfmt;
 
@@ -515,7 +527,7 @@ void sinsp_filter_check::parse_filter_value(const char* str)
 	string_to_rawval(str, m_field->m_type);
 }
 
-const event_field_info* sinsp_filter_check::get_field_info()
+const filtercheck_field_info* sinsp_filter_check::get_field_info()
 {
 	return &m_info.m_fields[m_field_id];
 }
@@ -551,6 +563,12 @@ sinsp_filter_expression::~sinsp_filter_expression()
 	{
 		delete m_checks[j];
 	}
+}
+
+sinsp_filter_check* sinsp_filter_expression::allocate_new()
+{
+	ASSERT(false);
+	return NULL;
 }
 
 void sinsp_filter_expression::add_check(sinsp_filter_check* chk)
@@ -622,7 +640,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 {
 //fltstr = "tid!=-1";
-fltstr = "fd.port = 11211";
+fltstr = "comm = bash";
 
 	m_inspector = inspector;
 	m_scanpos = -1;
@@ -800,7 +818,7 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
 	string operand1 = next_operand();
-	sinsp_filter_check* chk = sinsp_filter_check::new_filter_check_from_fldname(operand1, m_inspector);
+	sinsp_filter_check* chk = g_filterlist.new_filter_check_from_fldname(operand1, m_inspector);
 
 	if(chk == NULL)
 	{
