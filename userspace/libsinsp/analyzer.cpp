@@ -1473,6 +1473,14 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	evt->get_category(&cat);
 
 	//
+	// For pur purposes, accept() is wait, not networking
+	//
+	if(etype == PPME_SOCKET_ACCEPT_E || etype == PPME_SOCKET_ACCEPT_X)
+	{
+		cat.m_category = EC_WAIT;
+	}
+
+	//
 	// Check if this is an event that goes across sample boundaries
 	//
 	if((evt->m_tinfo->m_th_analysis_flags & sinsp_threadinfo::AF_PARTIAL_METRIC) != 0)
@@ -1524,13 +1532,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		// be attributed to processing.
 		//
 		evt->m_tinfo->m_lastevent_category.m_category = EC_PROCESSING;
-
-/*
-		if(etype == PPME_SOCKET_ACCEPT_X)
-		{
-			cat.m_category = EC_WAIT;
-		}
-*/
 
 		//
 		// If this is an fd-based syscall that comes after a wait, update the wait time
