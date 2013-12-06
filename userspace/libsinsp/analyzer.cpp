@@ -1525,6 +1525,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		//
 		evt->m_tinfo->m_lastevent_category.m_category = EC_PROCESSING;
 
+/*
+		if(etype == PPME_SOCKET_ACCEPT_X)
+		{
+			cat.m_category = EC_WAIT;
+		}
+*/
+
 		//
 		// If this is an fd-based syscall that comes after a wait, update the wait time
 		//
