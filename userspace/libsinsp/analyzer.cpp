@@ -716,16 +716,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
 
-						//g_logger.format(sinsp_logger::SEV_DEBUG,
-						//	"  %s) proc:%.2f file:%.2f net:%.2f ipc:%.2f wait:%.2f other:%.2f",
-						//	it->second.m_comm.c_str(),
-						//	((float)it->second.m_procinfo->m_proc_metrics.m_processing.m_time_ns) / tot.m_time_ns * 100,
-						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_file_time()) / tot.m_time_ns * 100,
-						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_net_time()) / tot.m_time_ns * 100,
-						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_ipc_time()) / tot.m_time_ns * 100,
-						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_wait_time()) / tot.m_time_ns * 100,
-						//	((float)it->second.m_procinfo->m_proc_metrics.get_total_other_time()) / tot.m_time_ns * 100);
-
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							"  %s) proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
 							it->second.m_comm.c_str(),
@@ -735,7 +725,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
 							it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
 					}
+
 #endif
+
+#ifdef _DEBUG
+					double totpct = it->second.m_procinfo->m_proc_metrics.get_processing_percentage() +
+						it->second.m_procinfo->m_proc_metrics.get_file_percentage() + 
+						it->second.m_procinfo->m_proc_metrics.get_net_percentage() +
+						it->second.m_procinfo->m_proc_metrics.get_other_percentage();
+
+					ASSERT(totpct > 0.99);
+					ASSERT(totpct < 1.01);
+#endif // _DEBUG
 				}
 #endif // ANALYZER_EMITS_PROCESSES
 
@@ -762,25 +763,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 			}
 		}
-/*
-		if(it->second.m_transaction_metrics.m_incoming.m_count != 0)
-		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				"*\t%s %s (%" PRIu64 ") (%" PRIu64 ") in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf tloc:%lf %%fd:%" PRIu32 " %%conns:%" PRIu32 " rest:%" PRIu64,
-				it->second.m_comm.c_str(),
-				(it->second.m_args.size() != 0)? it->second.m_args[0].c_str() : "",
-				it->second.m_tid,
-				it->second.m_nchilds + 1,
-				it->second.m_transaction_metrics.m_incoming.m_count,
-				it->second.m_transaction_metrics.m_outgoing.m_count,
-				((double)it->second.m_transaction_metrics.m_incoming.m_time_ns) / 1000000000,
-				((double)it->second.m_transaction_metrics.m_outgoing.m_time_ns) / 1000000000,
-				((double)it->second.m_transaction_processing_delay_ns) / 1000000000,
-				it->second.m_fd_usage_pct,
-				it->second.m_connection_queue_usage_pct,
-				it->second.m_rest_time_ns);
-		}
-*/
 
 		//
 		// Has this thread been closed druring this sample?
@@ -1255,6 +1237,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
 				m_host_metrics.m_metrics.get_net_percentage() * 100,
 				m_host_metrics.m_metrics.get_other_percentage() * 100);
+
+#ifdef _DEBUG
+			double totpct = m_host_metrics.m_metrics.get_processing_percentage() +
+				m_host_metrics.m_metrics.get_file_percentage() + 
+				m_host_metrics.m_metrics.get_net_percentage() +
+				m_host_metrics.m_metrics.get_other_percentage();
+
+			ASSERT(totpct > 0.99);
+			ASSERT(totpct < 1.01);
+#endif // _DEBUG
 
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
 			{
