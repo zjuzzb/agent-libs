@@ -90,6 +90,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		ASSERT(tr->m_prev_end_time > tr->m_prev_prev_start_of_transaction_time);
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
+		sinsp_threadinfo* tinfo = ptinfo->get_main_program_thread();
+		ASSERT(tinfo != NULL);
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
@@ -116,20 +118,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ptinfo->m_external_transaction_metrics.m_counter.add_in(1, delta);
 			}
 
-			m_inspector->m_analyzer->m_transactions_with_cpu.push_back(
-				pair<uint64_t,pair<uint64_t, uint16_t>>(tr->m_prev_prev_start_of_transaction_time, 
-				pair<uint64_t,uint16_t>(tr->m_prev_end_time, tr->m_cpuid)));
-
-			sinsp_threadinfo* tinfo = ptinfo->get_main_program_thread();
 			if(tinfo != NULL)
 			{
 				m_inspector->m_analyzer->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 					sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 					tr->m_prev_end_time, tinfo->m_pid));
-			}
-			else
-			{
-				ASSERT(false);
 			}
 		}
 		else
@@ -143,14 +136,12 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ptinfo->m_external_transaction_metrics.m_counter.add_out(1, delta);
 			}
 
-/*
-			if(ptinfo->m_th_analysis_flags & sinsp_threadinfo::AF_IS_SERVER)
+			if(tinfo != NULL)
 			{
-				m_inspector->m_analyzer->m_out_transactions_by_server_per_cpu[tr->m_cpuid].push_back(
-					pair<uint64_t, uint64_t>(tr->m_prev_prev_start_of_transaction_time, 
-					tr->m_prev_end_time));
+				m_inspector->m_analyzer->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+					sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
+					tr->m_prev_end_time, tinfo->m_pid));
 			}
-*/
 		}
 
 //
