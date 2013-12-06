@@ -422,7 +422,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
 
 		//
-		// Compute CPU load and memory usage for this process
+		// If this is a process, compute CPU load and memory usage
 		//
 		if(it->second.is_main_thread())
 		{
@@ -434,10 +434,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&it->second.m_resident_memory_kb);
 			}
 		}
-
-		//
-		// Add the CPU
-		//
 
 		//
 		// Add this thread's counters to the process ones...
@@ -693,7 +689,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+//					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;

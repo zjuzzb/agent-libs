@@ -561,8 +561,14 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 {
 	allocate_procinfo_if_not_present();
 
-	m_procinfo->m_proc_metrics.add(&other->m_metrics);
-	m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
+	sinsp_counter_time ttot;
+	other->m_metrics.get_total(&ttot);
+
+	if(ttot.m_count != 0)
+	{
+		m_procinfo->m_proc_metrics.add(&other->m_metrics);
+		m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
+	}
 
 	if(other->m_fd_usage_pct > m_procinfo->m_fd_usage_pct)
 	{
