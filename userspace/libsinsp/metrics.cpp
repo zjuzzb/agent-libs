@@ -358,7 +358,7 @@ void sinsp_counters::calculate_totals()
 	m_tot_other.add(&m_signal);
 	m_tot_other.add(&m_user);
 	m_tot_other.add(&m_time);
-	m_tot_other.add(&m_io_other);
+	//m_tot_other.add(&m_io_other);
 
 	m_tot_wait.clear();
 	m_tot_wait.add(&m_wait_other);
@@ -371,7 +371,10 @@ void sinsp_counters::calculate_totals()
 
 	m_tot_io_net.clear();
 	m_tot_io_net.add(&m_net);
-	m_tot_io_net.add(&m_io_net);
+	sinsp_counter_time_bytes t_io_net;
+	t_io_net.add(&m_io_net);
+	t_io_net.m_time_ns_in = 0;
+	m_tot_io_net.add(&t_io_net);
 	m_tot_io_net.add(&m_wait_net, true);
 
 	m_tot_ipc.clear();
@@ -396,6 +399,7 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 
 #ifdef _DEBUG
 	sinsp_counter_time ttot;
+	ttot.add(&m_io_other);
 	ttot.add(&m_tot_other);
 	ttot.add(&m_tot_wait);
 	ttot.add(&m_tot_io_file);
@@ -403,6 +407,7 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	ttot.add(&m_tot_ipc);
 	ttot.add(&m_processing);
 	ttot.add(&m_unknown);
+	ttot.m_time_ns += m_io_net.m_time_ns_in;
 	ASSERT(ttot.m_time_ns % 1000000000 == 0);
 #endif
 }
@@ -418,6 +423,7 @@ void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categorie
 
 #ifdef _DEBUG
 	sinsp_counter_time ttot;
+	ttot.add(&m_io_other);
 	ttot.add(&m_tot_other);
 	ttot.add(&m_tot_wait);
 	ttot.add(&m_tot_io_file);
@@ -425,6 +431,7 @@ void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categorie
 	ttot.add(&m_tot_ipc);
 	ttot.add(&m_processing);
 	ttot.add(&m_unknown);
+	ttot.m_time_ns += m_io_net.m_time_ns_in;
 	ASSERT(ttot.m_time_ns % 1000000000 == 0);
 #endif
 }

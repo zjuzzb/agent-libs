@@ -689,7 +689,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
-//					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
@@ -1658,7 +1658,6 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
 					break;
 				}
-
 			}
 			break;
 		case EC_IO_WRITE:
@@ -1686,7 +1685,6 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
 					break;
 				}
-
 			}
 			break;
 		case EC_IO_OTHER:
@@ -1714,7 +1712,6 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
 					break;
 				}
-
 			}
 			break;
 		case EC_WAIT:

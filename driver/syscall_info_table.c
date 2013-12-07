@@ -42,7 +42,7 @@ const struct ppm_syscall_desc g_syscall_info_table[PPM_SC_MAX] =
 	/*PPM_SC_BRK*/ { EC_MEMORY, "brk" },
 	/*PPM_SC_ACCT*/ { EC_PROCESS, "acct" },
 	/*PPM_SC_IOCTL*/ { EC_IO_OTHER, "ioctl" },
-	/*PPM_SC_FCNTL*/ { EC_IO_OTHER, "fcntl" },
+	/*PPM_SC_FCNTL*/ { EC_WAIT, "fcntl" },
 	/*PPM_SC_SETPGID*/ { EC_PROCESS, "setpgid" },
 	/*PPM_SC_UMASK*/ { EC_PROCESS, "umask" },	// sets the calling process's file mode creation mask
 	/*PPM_SC_CHROOT*/ { EC_IPC, "chroot" }, //  changes the root directory of the calling process to that specified in path. This directory will be used for pathnames beginning with /. The root directory is inherited by all children of the calling process.

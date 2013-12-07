@@ -74,7 +74,7 @@ public:
 	//
 	void process_event(sinsp_evt* evt);
 
-	void add_syscall_time(sinsp_counters* metrics, 
+	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat, 
 		uint64_t delta, 
 		uint32_t bytes, 
