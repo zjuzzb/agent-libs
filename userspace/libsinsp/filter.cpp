@@ -42,13 +42,13 @@ sinsp_filter_check_list::~sinsp_filter_check_list()
 	}
 }
 
-void sinsp_filter_check_list::get_all_fields(OUT vector<filter_check_info>* list)
+void sinsp_filter_check_list::get_all_fields(OUT vector<const filter_check_info>* list)
 {
 	uint32_t j;
 
 	for(j = 0; j < m_check_list.size(); j++)
 	{
-		list->push_back(m_check_list[j]->m_info);
+		list->push_back((const filter_check_info)(m_check_list[j]->m_info));
 	}
 }
 

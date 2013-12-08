@@ -130,10 +130,39 @@ static void usage(char *program_name)
 
 static void list_fields()
 {
-	vector<filter_check_info> fc_plugins;
+	uint32_t j;
+	int32_t k;
+	uint32_t l;
+
+	vector<const filter_check_info> fc_plugins;
 	sinsp::get_filtercheck_fields_info(&fc_plugins);
 
-	printf("ciao\n");
+	for(j = 0; j < fc_plugins.size(); j++)
+	{
+		filter_check_info* fci = &fc_plugins[j];
+
+		printf("***%s***\n", fci->m_name.c_str());
+
+		for(k = 0; k < fci->m_nfiedls; k++)
+		{
+			const filtercheck_field_info* fld = &fci->m_fields[k];
+
+			printf("%s\n", fld->m_name);
+
+			size_t dlen = strlen(fld->m_description);
+
+			for(l = 0; l < dlen; l++)
+			{
+				if(l % 60 == 0)
+				{
+					printf("                    ");
+				}
+				printf("%c", fld->m_description[l]);
+			}
+
+			printf("\n");
+		}
+	}
 }
 
 //
@@ -156,14 +185,12 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
-//output_format = "%evt.num)%evt.arg.res";
-//output_format = "%evt.num)";
+		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
 
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:fhjo:qr:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:f:hjlqr:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -185,11 +212,21 @@ output_format = "%group.name %evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%
 				usage(argv[0]);
 				return 0;
 			case 'f':
+				if(string(optarg) == "f")
+				{
+					//
+					// -ff shows the default output format, useful if the user wants to tweak it.
+					//
+					printf("%s", output_format.c_str());
+					return 0;
+				}
+				else
+				{
+					output_format = optarg;
+				}
+			case 'l':
 				list_fields();
 				return 0;
-			case 'o':
-				output_format = optarg;
-				break;
 			case 'r':
 				infile = optarg;
 				break;
