@@ -144,3 +144,10 @@
 // This constant controls after how many normal samples we include a "full process" sample.
 //
 #define PROCINFO_IN_SAMPLE_INTERVAL 1
+
+//
+// Maximum numeber of external TCP/UDP client endpoints that are reported independently.
+// If the number goes beyond this treshold, the clients will be aggregated into a single
+// 0.0.0.0 endpoint.
+//
+#define MAX_N_EXTERNAL_CLIENTS 30

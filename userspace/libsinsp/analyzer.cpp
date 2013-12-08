@@ -804,10 +804,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	m_old_global_total_jiffies = cur_global_total_jiffies;
 }
 
-void sinsp_analyzer::emit_aggregated_connections()
+void sinsp_analyzer::emit_aggregated_connections(bool aggregate_external_clients)
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 	process_tuple tuple;
+	uint32_t n_external_clients = 0;
 
 	m_reduced_ipv4_connections.clear();
 	m_aggregated_ipv4_table.clear();
@@ -831,11 +832,15 @@ void sinsp_analyzer::emit_aggregated_connections()
 			if(cit->second.is_server_only())
 			{
 				//
-				// If this is a server connection and the client address is outside the subnet, aggregate it
+				// If external client aggregation is enabled, this is a server connection, and 
+				// the client address is outside the subnet, mask it so it get aggregated
 				//
-				if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+				if(aggregate_external_clients)
 				{
-					tuple.m_fields.m_sip = 0;
+					if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+					{
+						tuple.m_fields.m_sip = 0;
+					}
 				}
 
 				//
@@ -843,6 +848,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				m_io_net.add_in(cit->second.m_metrics.m_server.m_count_in, 0, cit->second.m_metrics.m_server.m_bytes_in);
 				m_io_net.add_out(cit->second.m_metrics.m_server.m_count_out, 0, cit->second.m_metrics.m_server.m_bytes_out);
+
+				n_external_clients++;
 			}
 			else
 			{
@@ -900,45 +907,52 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 	}
 
-	//
-	// Emit the aggregated table into the sample
-	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = m_reduced_ipv4_connections.begin(); 
-		acit != m_reduced_ipv4_connections.end(); ++acit)
+	if(aggregate_external_clients && n_external_clients < MAX_N_EXTERNAL_CLIENTS)
+	{
+		return emit_aggregated_connections(false);
+	}
+	else
 	{
 		//
-		// Skip connection that had no activity during the sample
+		// Emit the aggregated table into the sample
 		//
-		if(!acit->second.is_active())
+		unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
+		for(acit = m_reduced_ipv4_connections.begin(); 
+			acit != m_reduced_ipv4_connections.end(); ++acit)
 		{
-			continue;
-		}
+			//
+			// Skip connection that had no activity during the sample
+			//
+			if(!acit->second.is_active())
+			{
+				continue;
+			}
 
-		//
-		// Add the connection to the protobuf
-		//
-		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
-		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+			//
+			// Add the connection to the protobuf
+			//
+			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-		tuple->set_sip(htonl(acit->first.m_fields.m_sip));
-		tuple->set_dip(htonl(acit->first.m_fields.m_dip));
-		tuple->set_sport(acit->first.m_fields.m_sport);
-		tuple->set_dport(acit->first.m_fields.m_dport);
-		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
+			tuple->set_sip(htonl(acit->first.m_fields.m_sip));
+			tuple->set_dip(htonl(acit->first.m_fields.m_dip));
+			tuple->set_sport(acit->first.m_fields.m_sport);
+			tuple->set_dport(acit->first.m_fields.m_dport);
+			tuple->set_l4proto(acit->first.m_fields.m_l4proto);
 
-		conn->set_spid(acit->second.m_spid);
-		conn->set_stid(acit->second.m_stid);
-		conn->set_dpid(acit->second.m_dpid);
-		conn->set_dtid(acit->second.m_dtid);
+			conn->set_spid(acit->second.m_spid);
+			conn->set_stid(acit->second.m_stid);
+			conn->set_dpid(acit->second.m_dpid);
+			conn->set_dtid(acit->second.m_dtid);
 
-		acit->second.m_metrics.to_protobuf(conn->mutable_counters());
-		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+			acit->second.m_metrics.to_protobuf(conn->mutable_counters());
+			acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
 		
-		//
-		// The timestamp field is used to count the number of sub-connections
-		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
+			//
+			// The timestamp field is used to count the number of sub-connections
+			//
+			conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
+		}
 	}
 }
 
@@ -1088,7 +1102,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			if(m_inspector->m_configuration.get_aggregate_connections_in_proto())
 			{
-				emit_aggregated_connections();
+				emit_aggregated_connections(true);
 			}
 			else
 			{
