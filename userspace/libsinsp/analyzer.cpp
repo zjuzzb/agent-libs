@@ -71,6 +71,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector) :
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer, m_sched_analyzer2);
 
 	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
+	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -495,59 +496,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	if(m_inspector->m_trans_table->m_n_server_transactions != 0)
-	{
-//		int32_t syshscore_g;
-
-/*
-		syshscore = (float)m_score_calculator->get_system_capacity_score_bycpu_old(&m_transactions_with_cpu,
-			n_server_threads,
-			m_prev_flush_time_ns, sample_duration);
-
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"1!!%f",
-			syshscore);
-
-		syshscore = (float)m_score_calculator->get_system_capacity_score_bycpu(&m_server_transactions_per_cpu,
-			n_server_threads,
-			m_prev_flush_time_ns, sample_duration);
-
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"2!!%f",
-			syshscore);
-*/
-/*
-		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_3(&m_server_transactions_per_cpu,
-			n_server_threads,
-			m_prev_flush_time_ns, sample_duration, -1LL);
-
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"3!!%.2f",
-			m_host_metrics.m_capacity_score);
-*/
-/*
-		m_host_metrics.m_capacity_score = m_score_calculator->get_system_capacity_score_bycpu_4(&m_server_transactions_per_cpu,
-			n_server_threads, m_prev_flush_time_ns, sample_duration, NULL, m_local_remote_ratio);
-
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"4!!%.2f",
-			m_host_metrics.m_capacity_score);
-
-		syshscore_g = m_score_calculator->get_system_capacity_score_global(&m_transactions_with_cpu,
-			n_server_threads,
-			m_prev_flush_time_ns, sample_duration);
-
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"2!!%" PRId32,
-			syshscore_g);
-
-		if(m_host_metrics.m_capacity_score == -1)
-		{
-			m_host_metrics.m_capacity_score = (float)syshscore_g;
-		}
-*/
-	}
-
 	m_host_metrics.m_capacity_score = -1;
 
 	///////////////////////////////////////////////////////////////////////////
@@ -795,10 +743,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//
 	// Last cleanups and then we're done
 	//
-	m_transactions_with_cpu.clear();
 	for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
 	{
 		m_server_transactions_per_cpu[k].clear();
+		m_client_transactions_per_cpu[k].clear();
 	}
 
 	m_old_global_total_jiffies = cur_global_total_jiffies;
