@@ -107,7 +107,9 @@ public:
 	    AF_CLOSED = (1 << 2), // thread has been closed. It will have to be removed from the thread table.
 	    AF_IS_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions.
 	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
-	    AF_INCLUDE_INFO_IN_PROTO = (1 << 5), // In order to minimize network bw uitilization, we emit process information in the protocol only when the process is
+	    AF_IS_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions.
+	    AF_IS_UNIX_CLIENT = (1 << 6), // set if this thread creates unix transactions.
+	    AF_INCLUDE_INFO_IN_PROTO = (1 << 7), // In order to minimize network bw uitilization, we emit process information in the protocol only when the process is
 											 // detected, and then at regular intervals. This flag controls that behavior.
 	};
 
@@ -211,6 +213,7 @@ VISIBILITY_PRIVATE
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
 	void allocate_procinfo_if_not_present();
+	void propagate_flag_bidirectional(analysis_flags flag, sinsp_threadinfo* other);
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);

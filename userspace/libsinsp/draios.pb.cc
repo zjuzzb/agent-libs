@@ -4734,6 +4734,8 @@ const int process::kPidFieldNumber;
 const int process::kDetailsFieldNumber;
 const int process::kIsIpv4TransactionServerFieldNumber;
 const int process::kIsUnixTransactionServerFieldNumber;
+const int process::kIsIpv4TransactionClientFieldNumber;
+const int process::kIsUnixTransactionClientFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
@@ -4791,6 +4793,8 @@ void process::SharedCtor() {
   details_ = NULL;
   is_ipv4_transaction_server_ = false;
   is_unix_transaction_server_ = false;
+  is_ipv4_transaction_client_ = false;
+  is_unix_transaction_client_ = false;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -4845,18 +4849,20 @@ void process::Clear() {
     }
     is_ipv4_transaction_server_ = false;
     is_unix_transaction_server_ = false;
+    is_ipv4_transaction_client_ = false;
+    is_unix_transaction_client_ = false;
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_syscall_errors()) {
       if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
@@ -4999,6 +5005,38 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_is_ipv4_transaction_client;
+        break;
+      }
+
+      // optional bool is_ipv4_transaction_client = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_ipv4_transaction_client:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_ipv4_transaction_client_)));
+          set_has_is_ipv4_transaction_client();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_is_unix_transaction_client;
+        break;
+      }
+
+      // optional bool is_unix_transaction_client = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_unix_transaction_client:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_unix_transaction_client_)));
+          set_has_is_unix_transaction_client();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -5070,6 +5108,16 @@ void process::SerializeWithCachedSizes(
       9, this->syscall_errors(), output);
   }
 
+  // optional bool is_ipv4_transaction_client = 10;
+  if (has_is_ipv4_transaction_client()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(10, this->is_ipv4_transaction_client(), output);
+  }
+
+  // optional bool is_unix_transaction_client = 11;
+  if (has_is_unix_transaction_client()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(11, this->is_unix_transaction_client(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -5100,6 +5148,16 @@ int process::ByteSize() const {
       total_size += 1 + 1;
     }
 
+    // optional bool is_ipv4_transaction_client = 10;
+    if (has_is_ipv4_transaction_client()) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_unix_transaction_client = 11;
+    if (has_is_unix_transaction_client()) {
+      total_size += 1 + 1;
+    }
+
     // optional .draiosproto.time_categories tcounters = 5;
     if (has_tcounters()) {
       total_size += 1 +
@@ -5114,6 +5172,8 @@ int process::ByteSize() const {
           this->transaction_counters());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional uint64 transaction_processing_delay = 7;
     if (has_transaction_processing_delay()) {
       total_size += 1 +
@@ -5128,8 +5188,6 @@ int process::ByteSize() const {
           this->resource_counters());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
     if (has_syscall_errors()) {
       total_size += 1 +
@@ -5164,20 +5222,26 @@ void process::MergeFrom(const process& from) {
     if (from.has_is_unix_transaction_server()) {
       set_is_unix_transaction_server(from.is_unix_transaction_server());
     }
+    if (from.has_is_ipv4_transaction_client()) {
+      set_is_ipv4_transaction_client(from.is_ipv4_transaction_client());
+    }
+    if (from.has_is_unix_transaction_client()) {
+      set_is_unix_transaction_client(from.is_unix_transaction_client());
+    }
     if (from.has_tcounters()) {
       mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
     }
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_syscall_errors()) {
       mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
     }
@@ -5214,6 +5278,8 @@ void process::Swap(process* other) {
     std::swap(details_, other->details_);
     std::swap(is_ipv4_transaction_server_, other->is_ipv4_transaction_server_);
     std::swap(is_unix_transaction_server_, other->is_unix_transaction_server_);
+    std::swap(is_ipv4_transaction_client_, other->is_ipv4_transaction_client_);
+    std::swap(is_unix_transaction_client_, other->is_unix_transaction_client_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);

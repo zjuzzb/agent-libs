@@ -526,7 +526,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0 ||
-				it->second.m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER))
+				it->second.m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER | sinsp_threadinfo::AF_IS_IPV4_CLIENT | sinsp_threadinfo::AF_IS_UNIX_CLIENT))
 			{
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
@@ -567,6 +567,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
 				{
 					proc->set_is_unix_transaction_server(true);
+				}
+
+				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_CLIENT)
+				{
+					proc->set_is_ipv4_transaction_client(true);
+				}
+				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_CLIENT)
+				{
+					proc->set_is_unix_transaction_client(true);
 				}
 
 				if(it->second.m_procinfo->m_cpuload != -1)

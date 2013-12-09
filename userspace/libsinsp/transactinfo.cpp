@@ -128,6 +128,20 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		else
 		{
 			m_n_client_transactions++;
+
+			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			{
+				ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_CLIENT;
+			}
+			else if(fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			{
+				ptinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_CLIENT;
+			}
+			else
+			{
+				ASSERT(false);
+			}
+
 			ptinfo->m_transaction_metrics.m_counter.add_out(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_out(1, delta);
 

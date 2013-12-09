@@ -557,6 +557,21 @@ void sinsp_threadinfo::allocate_procinfo_if_not_present()
 	}
 }
 
+void sinsp_threadinfo::propagate_flag_bidirectional(analysis_flags flag, sinsp_threadinfo* other)
+{
+	if(other->m_th_analysis_flags & flag)
+	{
+		m_th_analysis_flags |= flag;
+	}
+	else
+	{
+		if(m_th_analysis_flags & flag)
+		{
+			other->m_th_analysis_flags |= flag;
+		}
+	}
+}
+
 void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 {
 	allocate_procinfo_if_not_present();
@@ -584,31 +599,12 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
 
 	//
-	// Propagate server flags
+	// Propagate client-server flags
 	//
-	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
-	{
-		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_SERVER;
-	}
-	else
-	{
-		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
-		{
-			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_IPV4_SERVER;
-		}
-	}
-
-	if(other->m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
-	{
-		m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_SERVER;
-	}
-	else
-	{
-		if(m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
-		{
-			other->m_th_analysis_flags |= sinsp_threadinfo::AF_IS_UNIX_SERVER;
-		}
-	}
+	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_IPV4_SERVER, other);
+	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_UNIX_SERVER, other);
+	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_IPV4_CLIENT, other);
+	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_UNIX_CLIENT, other);
 
 	//
 	// Propagate the CPU times vector
