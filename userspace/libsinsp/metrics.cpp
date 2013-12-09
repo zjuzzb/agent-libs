@@ -67,7 +67,19 @@ void sinsp_counter_time::subtract(uint32_t cnt_delta, uint64_t time_delta)
 void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, uint64_t tot_relevant_time_ns)
 {
 	protobuf_msg->set_time_ns(m_time_ns);
-	protobuf_msg->set_time_percentage((uint32_t)(((double)m_time_ns) * 10000 / tot_relevant_time_ns));
+
+	if(tot_relevant_time_ns != 0)
+	{
+		protobuf_msg->set_time_percentage((uint32_t)(((double)m_time_ns) * 10000 / tot_relevant_time_ns));
+	}
+	else
+	{
+		//
+		// This can happen in case of gaps longer than 1 second in the event stream
+		//
+		protobuf_msg->set_time_percentage(0);
+	}
+
 	protobuf_msg->set_count(m_count);
 }
 
@@ -260,9 +272,23 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_time_ns_in(m_time_ns_in);
 	protobuf_msg->set_time_ns_out(m_time_ns_out);
 	protobuf_msg->set_time_ns_other(m_time_ns_other);
-	protobuf_msg->set_time_percentage_in((uint32_t)(((double)m_time_ns_in) * 10000 / tot_relevant_time_ns));
-	protobuf_msg->set_time_percentage_out((uint32_t)(((double)m_time_ns_out) * 10000 / tot_relevant_time_ns));
-	protobuf_msg->set_time_percentage_other((uint32_t)(((double)m_time_ns_other) * 10000 / tot_relevant_time_ns));
+
+	if(tot_relevant_time_ns != 0)
+	{
+		protobuf_msg->set_time_percentage_in((uint32_t)(((double)m_time_ns_in) * 10000 / tot_relevant_time_ns));
+		protobuf_msg->set_time_percentage_out((uint32_t)(((double)m_time_ns_out) * 10000 / tot_relevant_time_ns));
+		protobuf_msg->set_time_percentage_other((uint32_t)(((double)m_time_ns_other) * 10000 / tot_relevant_time_ns));
+	}
+	else
+	{
+		//
+		// This can happen in case of gaps longer than 1 second in the event stream
+		//
+		protobuf_msg->set_time_percentage_in(0);
+		protobuf_msg->set_time_percentage_out(0);
+		protobuf_msg->set_time_percentage_other(0);
+	}
+
 	protobuf_msg->set_count_in(m_count_in);
 	protobuf_msg->set_count_out(m_count_out);
 	protobuf_msg->set_count_other(m_count_other);
@@ -463,22 +489,50 @@ uint64_t sinsp_counters::get_total_ipc_time()
 
 double sinsp_counters::get_processing_percentage()
 {
-	return ((double)m_processing.m_time_ns) / m_tot_relevant.m_time_ns;
+	if(m_tot_relevant.m_time_ns != 0)
+	{
+		return ((double)m_processing.m_time_ns) / m_tot_relevant.m_time_ns;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 double sinsp_counters::get_file_percentage()
 {
-	return ((double)m_tot_io_file.m_time_ns_in + m_tot_io_file.m_time_ns_out + m_tot_io_file.m_time_ns_other) / m_tot_relevant.m_time_ns;
+	if(m_tot_relevant.m_time_ns != 0)
+	{
+		return ((double)m_tot_io_file.m_time_ns_in + m_tot_io_file.m_time_ns_out + m_tot_io_file.m_time_ns_other) / m_tot_relevant.m_time_ns;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 double sinsp_counters::get_net_percentage()
 {
-	return ((double)m_tot_io_net.m_time_ns_in + m_tot_io_net.m_time_ns_out + m_tot_io_net.m_time_ns_other) / m_tot_relevant.m_time_ns;
+	if(m_tot_relevant.m_time_ns != 0)
+	{
+		return ((double)m_tot_io_net.m_time_ns_in + m_tot_io_net.m_time_ns_out + m_tot_io_net.m_time_ns_other) / m_tot_relevant.m_time_ns;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 double sinsp_counters::get_other_percentage()
 {
-	return ((double)m_tot_other.m_time_ns) / m_tot_relevant.m_time_ns;
+	if(m_tot_relevant.m_time_ns != 0)
+	{
+		return ((double)m_tot_other.m_time_ns) / m_tot_relevant.m_time_ns;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

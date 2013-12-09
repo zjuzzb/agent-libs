@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #ifdef _WIN32
 #pragma warning(disable: 4996)
@@ -15,6 +16,15 @@
 #else
 #include <unistd.h>
 #endif
+
+//
+// ASSERT implementation
+//
+#ifdef _DEBUG
+#define ASSERT(X) assert(X)
+#else // _DEBUG
+#define ASSERT(X)
+#endif // _DEBUG
 
 bool ctrl_c_pressed = false;
 
@@ -129,7 +139,7 @@ static void usage(char *program_name)
 }
 
 #define DESCRITION_TEXT_START 15
-#define CONSOLE_LINE_LEN 80
+#define CONSOLE_LINE_LEN 79
 
 static void list_fields()
 {
@@ -153,6 +163,8 @@ static void list_fields()
 			printf("%s", fld->m_name);
 			uint32_t namelen = strlen(fld->m_name);
 
+			ASSERT(namelen > DESCRITION_TEXT_START);
+
 			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
 			{
 				printf(" ");
@@ -164,6 +176,8 @@ static void list_fields()
 			{
 				if(l % (CONSOLE_LINE_LEN - DESCRITION_TEXT_START) == 0 && l != 0)
 				{
+					printf("\n");
+
 					for(m = 0; m < DESCRITION_TEXT_START; m++)
 					{
 						printf(" ");

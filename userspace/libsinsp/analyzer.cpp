@@ -1254,8 +1254,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 				m_host_metrics.m_metrics.get_net_percentage() +
 				m_host_metrics.m_metrics.get_other_percentage();
 
-			ASSERT(totpct > 0.99);
-			ASSERT(totpct < 1.01);
+			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
 #endif // _DEBUG
 
 			if(m_host_transaction_metrics.m_counter.m_count_in + m_host_transaction_metrics.m_counter.m_count_out != 0)
