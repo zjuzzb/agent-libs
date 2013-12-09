@@ -431,9 +431,9 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
 const filtercheck_field_info sinsp_filter_check_event_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
-	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp, i.e. nanoseconds from epoch."},
 	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time.s", "integer part of the event timestamp (e.g. seconds since epoch)."},
-	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time.ns", "fractional part of the absolute event timestamp."},
+	{PT_ABSTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.time.ns", "fractional part of the absolute event timestamp."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime", "number of nanoseconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime.s", "number of seconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
