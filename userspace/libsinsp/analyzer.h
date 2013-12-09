@@ -91,7 +91,7 @@ VISIBILITY_PRIVATE
 	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);
 	void compute_host_transaction_delay();
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
-	void emit_aggregated_connections(bool aggregate_external_clients);
+	void emit_aggregated_connections();
 	void emit_full_connections();
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -137,7 +137,6 @@ VISIBILITY_PRIVATE
 	//
 	// The table of aggreagted connections
 	//
-	sinsp_ipv4_connection_manager m_aggregated_ipv4_table;
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> m_reduced_ipv4_connections;
 
 	//
