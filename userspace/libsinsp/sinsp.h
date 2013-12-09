@@ -245,7 +245,7 @@ public:
 	//
 	// Populate the given vector with the full list of filter check fields
 	//
-	static void get_filtercheck_fields_info(vector<const filter_check_info>* list);
+	static void get_filtercheck_fields_info(vector<const filter_check_info*>* list);
 
 	sinsp_configuration* get_configuration();
 	void set_configuration(const sinsp_configuration& configuration);

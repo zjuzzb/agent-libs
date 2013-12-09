@@ -134,12 +134,12 @@ static void list_fields()
 	int32_t k;
 	uint32_t l;
 
-	vector<const filter_check_info> fc_plugins;
+	vector<const filter_check_info*> fc_plugins;
 	sinsp::get_filtercheck_fields_info(&fc_plugins);
 
 	for(j = 0; j < fc_plugins.size(); j++)
 	{
-		filter_check_info* fci = &fc_plugins[j];
+		const filter_check_info* fci = fc_plugins[j];
 
 		printf("***%s***\n", fci->m_name.c_str());
 

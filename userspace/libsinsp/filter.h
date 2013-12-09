@@ -114,7 +114,7 @@ class sinsp_filter_check_list
 public:
 	sinsp_filter_check_list();
 	~sinsp_filter_check_list();
-	void get_all_fields(vector<const filter_check_info>* list);
+	void get_all_fields(vector<const filter_check_info*>* list);
 	sinsp_filter_check* new_filter_check_from_fldname(string name, sinsp* inspector);
 
 private:
