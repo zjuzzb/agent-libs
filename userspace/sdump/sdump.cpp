@@ -128,11 +128,13 @@ static void usage(char *program_name)
 	fprintf(stderr, "%s [ -r filename ]\n", program_name);
 }
 
+#define DESCRITION_TEXT_START 15
+#define CONSOLE_LINE_LEN 80
+
 static void list_fields()
 {
-	uint32_t j;
+	uint32_t j, l, m;
 	int32_t k;
-	uint32_t l;
 
 	vector<const filter_check_info*> fc_plugins;
 	sinsp::get_filtercheck_fields_info(&fc_plugins);
@@ -141,22 +143,33 @@ static void list_fields()
 	{
 		const filter_check_info* fci = fc_plugins[j];
 
-		printf("***%s***\n", fci->m_name.c_str());
+		printf("\n----------------------\n");
+		printf("Field Class: %s\n\n", fci->m_name.c_str());
 
 		for(k = 0; k < fci->m_nfiedls; k++)
 		{
 			const filtercheck_field_info* fld = &fci->m_fields[k];
 
-			printf("%s\n", fld->m_name);
+			printf("%s", fld->m_name);
+			uint32_t namelen = strlen(fld->m_name);
 
-			size_t dlen = strlen(fld->m_description);
-
-			for(l = 0; l < dlen; l++)
+			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
 			{
-				if(l % 60 == 0)
+				printf(" ");
+			}
+				
+			size_t desclen = strlen(fld->m_description);
+
+			for(l = 0; l < desclen; l++)
+			{
+				if(l % (CONSOLE_LINE_LEN - DESCRITION_TEXT_START) == 0 && l != 0)
 				{
-					printf("                    ");
+					for(m = 0; m < DESCRITION_TEXT_START; m++)
+					{
+						printf(" ");
+					}
 				}
+
 				printf("%c", fld->m_description[l]);
 			}
 
