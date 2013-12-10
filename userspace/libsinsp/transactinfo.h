@@ -168,8 +168,6 @@ public:
 		sinsp_partial_transaction* tr,
 		uint32_t len);
 
-	static void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid);
-
 	//
 	// Stores the global list of transactions.
 	// Key is the tid

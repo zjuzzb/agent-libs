@@ -6,6 +6,7 @@
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "scores.h"
+#include "delays.h"
 #include "sched_analyzer.h"
 
 sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyzer2)
@@ -245,7 +246,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 		//
 		stack<sinsp_trlist_entry> transaction_union;
 		uint64_t tot_time;
-		sinsp_transaction_table::merge_intervals(&(*transactions)[cpuid], 
+		sinsp_delays::merge_intervals(&(*transactions)[cpuid], 
 			&transaction_union, 
 			&tot_time, 
 			(program_info)? program_info->m_pid : -1LL);
