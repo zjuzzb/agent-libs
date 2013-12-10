@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #ifndef _WIN32
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
