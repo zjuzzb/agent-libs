@@ -281,6 +281,12 @@ void sinsp::import_user_list()
 	}
 }
 
+void sinsp::import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo)
+{
+	ASSERT(m_network_interfaces);
+	m_network_interfaces->import_ipv4_interface(ifinfo);
+}
+
 void sinsp::init()
 {
 	//

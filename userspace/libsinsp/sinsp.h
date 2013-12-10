@@ -31,6 +31,7 @@ using namespace std;
 #include "event.h"
 #include "stats.h"
 #include "config.h"
+#include "ifinfo.h"
 
 #ifndef VISIBILITY_PRIVATE
 #define VISIBILITY_PRIVATE private:
@@ -235,6 +236,8 @@ public:
 	// Set the target for the log strings
 	//
 	void set_log_callback(sinsp_logger_callback cb);
+
+	void import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo);
 
 	//
 	// Start dumping events to a capture file
