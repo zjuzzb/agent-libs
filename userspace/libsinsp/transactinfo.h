@@ -133,12 +133,12 @@ public:
 	uint32_t get_size();
 	void clear();
 
-	//private:
 	void emit(sinsp_threadinfo* ptinfo, 
 		sinsp_fdinfo* fdinfo,
 		sinsp_connection* pconn,
 		sinsp_partial_transaction* tr,
 		uint32_t len);
+
 
 	//
 	// Stores the global list of transactions.

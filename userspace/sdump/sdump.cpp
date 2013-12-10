@@ -197,6 +197,7 @@ static void list_fields()
 //
 int main(int argc, char **argv)
 {
+	int res = EXIT_SUCCESS;
 	string infile;
 	string outfile;
 	int op;
@@ -205,7 +206,6 @@ int main(int argc, char **argv)
 	bool quiet = false;
 	bool get_stats = false;
 	bool absolute_times = false;
-	char* transact_fname = NULL;
 	double duration = 1;
 	captureinfo cinfo;
 	string output_format;
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
 				if(cnt <= 0)
 				{
 					fprintf(stderr, "invalid packet count %s\n", optarg);
-					return -1;
+					return EXIT_FAILURE;
 				}
 				break;
 			case 'j':
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 				break;
 			case 'h':
 				usage(argv[0]);
-				return 0;
+				return EXIT_SUCCESS;
 			case 'f':
 				if(string(optarg) == "f")
 				{
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
 					// -ff shows the default output format, useful if the user wants to tweak it.
 					//
 					printf("%s", output_format.c_str());
-					return 0;
+					return EXIT_SUCCESS;
 				}
 				else
 				{
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 				}
 			case 'l':
 				list_fields();
-				return 0;
+				return EXIT_SUCCESS;
 			case 'r':
 				infile = optarg;
 				break;
@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 			inspector.set_filter(filter);
 #else
 			fprintf(stderr, "filtering not supported in release mode.\n");
-			return -1;				
+			return EXIT_FAILURE;				
 #endif
 		}
 
@@ -339,35 +339,11 @@ int main(int argc, char **argv)
 			}
 
 			cerr << e.what() << endl;
+			res = EXIT_FAILURE;
 		}
 		catch(...)
 		{
-		}
-
-		//
-		// If specified on the command line, save the transactions
-		//
-		if(transact_fname)
-		{
-			try
-			{
-				sinsp_transaction_table* ttable = inspector.get_transactions();
-				if(ttable)
-				{
-					ttable->save_json(transact_fname);
-				}
-				else
-				{
-					cerr << "error retrieving the transaction table" << endl;
-				}
-			}
-			catch(sinsp_exception e)
-			{
-				cerr << e.what() << endl;
-			}
-			catch(...)
-			{
-			}
+			res = EXIT_FAILURE;
 		}
 
 		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
@@ -389,4 +365,6 @@ int main(int argc, char **argv)
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
 #endif
+
+	return res;
 }
