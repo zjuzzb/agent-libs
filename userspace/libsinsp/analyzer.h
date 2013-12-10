@@ -4,6 +4,7 @@ class sinsp_scores;
 class sinsp_procfs_parser;
 class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
+class sinsp_delays;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -88,8 +89,6 @@ public:
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
-	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);
-	void compute_host_transaction_delay();
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
 	void emit_aggregated_connections();
 	void emit_full_connections();
@@ -148,7 +147,6 @@ VISIBILITY_PRIVATE
 	//
 	// The scheduler analyzer
 	//
-	sinsp_sched_analyzer* m_sched_analyzer;
 	sinsp_sched_analyzer2* m_sched_analyzer2;
 
 	//
@@ -166,7 +164,13 @@ VISIBILITY_PRIVATE
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
 
+	//
+	// Support for delay calculation
+	//
+	sinsp_delays* m_delay_calculator;
+
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;
+	friend class sinsp_delays;
 };

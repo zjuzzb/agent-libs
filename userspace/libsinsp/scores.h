@@ -21,7 +21,7 @@ public:
 class sinsp_scores
 {
 public:
-	sinsp_scores(sinsp* inspector, sinsp_sched_analyzer* sched_analyzer, sinsp_sched_analyzer2* sched_analyzer2);
+	sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyzer2);
 
 	//
 	// Return the health score for a process
@@ -62,7 +62,6 @@ private:
 	float calculate_score_4(float ntr, float ntrcpu, float nother);
 
 	sinsp* m_inspector;
-	sinsp_sched_analyzer* m_sched_analyzer;
 	sinsp_sched_analyzer2* m_sched_analyzer2;
 //	vector<vector<uint8_t>> m_cpu_transaction_vectors;
 	uint64_t m_sample_length_ns;

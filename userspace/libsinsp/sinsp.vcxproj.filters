@@ -70,6 +70,9 @@
     <ClCompile Include="eventformatter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="delays.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="analyzer.h">
@@ -163,6 +166,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="proto_header.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="delays.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

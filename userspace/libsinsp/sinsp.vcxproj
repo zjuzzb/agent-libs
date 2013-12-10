@@ -92,6 +92,7 @@
     <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="connectinfo.cpp" />
+    <ClCompile Include="delays.cpp" />
     <ClCompile Include="draios.pb.cc" />
     <ClCompile Include="event.cpp" />
     <ClCompile Include="eventformatter.cpp" />
@@ -120,6 +121,7 @@
     <ClInclude Include="analyzer.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="connectinfo.h" />
+    <ClInclude Include="delays.h" />
     <ClInclude Include="draios.pb.h" />
     <ClInclude Include="event.h" />
     <ClInclude Include="eventformatter.h" />

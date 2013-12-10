@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stack>
+
 class sinsp_fdinfo;
 class sinsp_transaction_manager;
 class sinsp_connection;
@@ -120,43 +122,6 @@ public:
 };
 
 //
-// Transaction table class
-// This stores the transactions that have been completed and can be accessed by the user.
-//
-class SINSP_PUBLIC sinsp_transaction_table
-{
-public:
-	sinsp_transaction_table(sinsp* inspector);
-	~sinsp_transaction_table();
-	void save_json(string filename);
-	void print_on(FILE *stream);
-	uint32_t get_size();
-	void clear();
-
-	void emit(sinsp_threadinfo* ptinfo, 
-		sinsp_fdinfo* fdinfo,
-		sinsp_connection* pconn,
-		sinsp_partial_transaction* tr,
-		uint32_t len);
-
-
-	//
-	// Stores the global list of transactions.
-	// Key is the tid
-	//
-	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
-	uint32_t m_n_client_transactions;
-	uint32_t m_n_server_transactions;
-
-private:
-	bool is_transaction_server(sinsp_threadinfo *ptinfo);
-
-	sinsp* m_inspector;
-
-	friend class sinsp_partial_transaction;
-};
-
-//
 // This little class describes an entry in the per-cpu transaction list that
 // is consumed when a sample is created
 //
@@ -182,3 +147,42 @@ struct sinsp_trlist_entry_comparer
 		return first.m_stime < second.m_stime;
 	}
 };
+
+//
+// Transaction table class
+// This stores the transactions that have been completed and can be accessed by the user.
+//
+class SINSP_PUBLIC sinsp_transaction_table
+{
+public:
+	sinsp_transaction_table(sinsp* inspector);
+	~sinsp_transaction_table();
+	void save_json(string filename);
+	void print_on(FILE *stream);
+	uint32_t get_size();
+	void clear();
+
+	void emit(sinsp_threadinfo* ptinfo, 
+		sinsp_fdinfo* fdinfo,
+		sinsp_connection* pconn,
+		sinsp_partial_transaction* tr,
+		uint32_t len);
+
+	static void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT stack<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid);
+
+	//
+	// Stores the global list of transactions.
+	// Key is the tid
+	//
+	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
+	uint32_t m_n_client_transactions;
+	uint32_t m_n_server_transactions;
+
+private:
+	bool is_transaction_server(sinsp_threadinfo *ptinfo);
+
+	sinsp* m_inspector;
+
+	friend class sinsp_partial_transaction;
+};
+

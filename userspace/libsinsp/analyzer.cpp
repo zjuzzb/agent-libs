@@ -25,6 +25,7 @@ using namespace google::protobuf::io;
 #include "analyzer.h"
 #include "draios.pb.h"
 #include "scores.h"
+#include "delays.h"
 #include "procfs_parser.h"
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
@@ -64,13 +65,14 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, m_inspector->m_islive);
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
-	m_sched_analyzer = new sinsp_sched_analyzer(inspector, m_machine_info->num_cpus);
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(inspector, m_machine_info->num_cpus);
 
-	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer, m_sched_analyzer2);
+	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer2);
 
 	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
+
+	m_delay_calculator = new sinsp_delays(this);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -90,21 +92,19 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_procfs_parser;
 	}
 
-	if(m_sched_analyzer)
-	{
-		delete m_sched_analyzer;
-	}
-
 	if(m_sched_analyzer2)
 	{
 		delete m_sched_analyzer2;
+	}
+
+	if(m_delay_calculator)
+	{
+		delete m_delay_calculator;
 	}
 }
 
 void sinsp_analyzer::on_capture_start()
 {
-	ASSERT(m_sched_analyzer != NULL);
-	m_sched_analyzer->on_capture_start();
 	ASSERT(m_sched_analyzer2 != NULL);
 	m_sched_analyzer2->on_capture_start();
 }
@@ -263,73 +263,6 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	}
 }
 
-//
-// Based on the transaction counters for this process, calculate the delay in trasanction 
-// handling that the process introduces
-//
-uint64_t sinsp_analyzer::compute_thread_transaction_delay(sinsp_transaction_counters* trcounters)
-{
-	if(trcounters->m_counter.m_count_in == 0)
-	{
-		//
-		// This is not a server
-		//
-		return 0;
-	}
-	else
-	{
-		ASSERT(trcounters->m_counter.m_time_ns_in != 0);
-
-		int64_t res =  trcounters->m_counter.m_time_ns_in - trcounters->m_counter.m_time_ns_out;
-
-		if(res <= 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return res;
-		}
-	}
-}
-
-void sinsp_analyzer::compute_host_transaction_delay()
-{
-	if(m_host_transaction_metrics.m_counter.m_count_in == 0)
-	{
-		//
-		// This host is not serving transactions
-		//
-		m_host_transaction_delay_ns = -1;
-	}
-	else
-	{
-		ASSERT(m_host_transaction_metrics.m_counter.m_time_ns_in != 0);
-
-		if(m_client_tr_time_by_servers == 0)
-		{
-			//
-			// No outbound connections made by servers: it means that This node is a
-			// leaf in the connection tree and the host_transaction_delay euqals to the
-			// input transaction processing time.
-			//
-			m_host_transaction_delay_ns = m_host_transaction_metrics.m_counter.m_time_ns_in;
-			return;
-		}
-
-		int64_t res = m_host_transaction_metrics.m_counter.m_time_ns_in - m_client_tr_time_by_servers;
-
-		if(res <= 0)
-		{
-			m_host_transaction_delay_ns = 0;
-		}
-		else
-		{
-			m_host_transaction_delay_ns = res;
-		}
-	}
-}
-
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof)
 {
 	uint64_t delta;
@@ -482,7 +415,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// host transaction delay, the local versus next tier processing time ratio 
 	// and the health score for the machine.
 	///////////////////////////////////////////////////////////////////////////
-	compute_host_transaction_delay();
+	m_delay_calculator->compute_host_transaction_delay(&m_host_transaction_metrics);
 
 	// 1 means no next tiers delay
 	m_local_remote_ratio = 1;
@@ -594,7 +527,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Transaction-related metrics
 					//
-					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
+					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = m_delay_calculator->compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
 					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
@@ -1031,7 +964,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Flush the scheduler analyzer
 			//
-			m_sched_analyzer->flush(evt, m_prev_flush_time_ns, is_eof);
 			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
 
 			//
@@ -1417,7 +1349,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		etype = evt->get_type();
 		if(etype == PPME_SCHEDSWITCH_E)
 		{
-			m_sched_analyzer->process_event(evt);
 			m_sched_analyzer2->process_event(evt);
 			return;
 		}

@@ -6,7 +6,8 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 add_library(sinsp STATIC
 	analyzer.cpp
 	connectinfo.cpp 
-	config.cpp 
+	config.cpp
+	delays.cpp	
 	draios.pb.cc
 	event.cpp
 	eventformatter.cpp
