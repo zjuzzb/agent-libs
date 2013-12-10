@@ -165,6 +165,7 @@ bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
 		struct in_addr addr;
 		if(inet_aton(s.c_str(), &addr) == 0)
 		{
+			g_log->information("Received invalid AWS public-ipv4: '" + s + "'");
 			return false;
 		}
 
