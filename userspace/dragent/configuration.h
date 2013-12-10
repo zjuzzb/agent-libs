@@ -17,6 +17,11 @@
 //
 #define MAX_SAMPLE_STORE_SIZE	30
 
+class aws_metadata
+{
+public:
+	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4 
+};
 
 class dragent_configuration
 {
@@ -26,6 +31,7 @@ public:
 	void init(Application* app);
 	void print_configuration();
 	static Message::Priority string_to_priority(string priostr);
+	static bool get_aws_metadata(aws_metadata* metadata);
 
 	bool m_daemon;
 	Message::Priority m_min_console_priority;

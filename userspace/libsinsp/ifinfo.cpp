@@ -119,6 +119,10 @@ bool sinsp_network_interfaces::is_ipv4addr_local(uint32_t addr)
 	return false;
 }
 
+void sinsp_network_interfaces::import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo)
+{
+	m_ipv4_interfaces.push_back(ifinfo);
+}
 
 void sinsp_network_interfaces::import_ipv4_ifaddr_list(uint32_t count, scap_ifinfo_ipv4* plist)
 {

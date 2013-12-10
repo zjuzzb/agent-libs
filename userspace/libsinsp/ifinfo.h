@@ -47,6 +47,7 @@ class SINSP_PUBLIC sinsp_network_interfaces
 {
 public:
 	void import_interfaces(scap_addrlist* paddrlist);
+	void import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo);
 	void update_fd(sinsp_fdinfo *fd);
 	bool is_ipv4addr_local(uint32_t addr);
 	vector<sinsp_ipv4_ifinfo>* get_ipv4_list();

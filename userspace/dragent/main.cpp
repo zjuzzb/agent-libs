@@ -983,6 +983,13 @@ protected:
 				m_inspector.open("");
 			}
 
+			aws_metadata metadata;
+			if(m_configuration.get_aws_metadata(&metadata))
+			{
+				sinsp_ipv4_ifinfo aws_interface(metadata.m_public_ipv4, metadata.m_public_ipv4, metadata.m_public_ipv4, "aws");
+				m_inspector.import_ipv4_interface(aws_interface);
+			}
+
 			if(m_configuration.m_dropping_mode)
 			{
 				g_log->information("Enabling dropping mode");

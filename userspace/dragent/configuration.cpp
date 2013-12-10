@@ -1,5 +1,13 @@
 #include "configuration.h"
 
+#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPRequest.h"
+#include "Poco/Net/HTTPResponse.h"
+#include "Poco/StreamCopier.h"
+
+using namespace Poco;
+using namespace Poco::Net;
+
 dragent_configuration::dragent_configuration()
 {
 	m_daemon = false;
@@ -137,4 +145,38 @@ void dragent_configuration::print_configuration()
 	g_log->information("compression.enabled: " + (m_compression_enabled ? string("true") : string("false")));
 	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
 	g_log->information("dumpfile: " + m_dump_file);
+}
+
+bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
+{
+	try {
+		HTTPClientSession client("169.254.169.254", 80);
+		client.setTimeout(1000000);
+
+		HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
+		client.sendRequest(request);
+
+		HTTPResponse response; 
+		std::istream& rs = client.receiveResponse(response); 
+
+		string s;
+		StreamCopier::copyToString(rs, s);
+
+		struct in_addr addr;
+		if(inet_aton(s.c_str(), &addr) == 0)
+		{
+			return false;
+		}
+
+		metadata->m_public_ipv4 = addr.s_addr;
+
+		g_log->information("AWS public-ipv4: " + s);
+
+		return true;
+	}
+	catch(Poco::Exception& e)
+	{
+		g_log->information("Cannot get AWS metadata: " + e.displayText());
+		return false;
+	}
 }
