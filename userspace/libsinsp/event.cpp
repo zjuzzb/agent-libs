@@ -84,6 +84,11 @@ uint16_t sinsp_evt::get_type()
 	return m_pevt->type;
 }
 
+bool sinsp_evt::is_exit()
+{
+	return PPME_IS_EXIT(m_pevt->type);
+}
+
 ppm_event_flags sinsp_evt::get_flags()
 {
 	return m_info->flags;

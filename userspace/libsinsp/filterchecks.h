@@ -110,13 +110,14 @@ public:
 		TYPE_RELTS = 4,
 		TYPE_RELTS_S = 5,
 		TYPE_RELTS_NS = 6,
-		TYPE_DIR = 7,
-		TYPE_NAME = 8,
-		TYPE_CPU = 9,
-		TYPE_ARGS = 10,
-		TYPE_RESARG = 11,
-		TYPE_ARG = 12,
-		TYPE_RES = 13,
+		TYPE_LATENCY = 7,
+		TYPE_DIR = 8,
+		TYPE_NAME = 9,
+		TYPE_CPU = 10,
+		TYPE_ARGS = 11,
+		TYPE_RESARG = 12,
+		TYPE_ARG = 13,
+		TYPE_RES = 14,
 	};
 
 	sinsp_filter_check_event();

@@ -437,6 +437,7 @@ const filtercheck_field_info sinsp_filter_check_event_fields[] =
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime", "number of nanoseconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime.s", "number of seconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
+	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.latency", "delta between an exit event and the correspondent enter event."},
 	{PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt.dir", "event direction can be either '>' for enter events or '<' for exit events."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
@@ -581,6 +582,19 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 		}
 
 		m_u64val = (evt->get_ts() - m_first_ts) % ONE_SECOND_IN_NS;
+		return (uint8_t*)&m_u64val;
+	case TYPE_LATENCY:
+		m_u64val = 0;
+
+		if(evt->is_exit())
+		{
+			if(evt->m_tinfo->m_lastevent_ts != 0)
+			{
+				m_u64val = evt->get_ts() - evt->m_tinfo->m_lastevent_ts;
+				ASSERT(m_u64val > 0);
+			}
+		}
+
 		return (uint8_t*)&m_u64val;
 	case TYPE_DIR:
 		if(PPME_IS_ENTER(evt->get_type()))

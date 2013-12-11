@@ -213,6 +213,7 @@ int main(int argc, char **argv)
 	{
 		sinsp inspector;
 		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
+//		output_format = "%evt.num)%evt.latency %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
 
 		//
 		// Parse the args

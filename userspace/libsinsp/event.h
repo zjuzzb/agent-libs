@@ -96,6 +96,7 @@ public:
 	uint64_t get_num();
 	int16_t get_cpuid();
 	uint16_t get_type();
+	bool is_exit();
 	ppm_event_flags get_flags();
 	uint64_t get_ts();
 	const char* get_name();
