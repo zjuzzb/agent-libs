@@ -103,27 +103,7 @@ sinsp_logger::output_type sinsp_configuration::get_log_output_type() const
 
 void sinsp_configuration::set_log_output_type(sinsp_logger::output_type log_output_type)
 {
-	if(log_output_type == sinsp_logger::OT_STDOUT)
-	{
-		g_logger.add_stdout_log();
-	}
-	else if(log_output_type == sinsp_logger::OT_STDERR)
-	{
-		g_logger.add_stderr_log();
-	}
-	else if(log_output_type == sinsp_logger::OT_STDERR)
-	{
-		g_logger.add_file_log("sisnsp.log");
-	}
-	else if(log_output_type == sinsp_logger::OT_NONE)
-	{
-		return;
-	}
-	else
-	{
-		ASSERT(false);
-		throw sinsp_exception("invalid log output type");
-	}
+	g_logger.set_log_output_type(log_output_type);
 }
 
 const string& sinsp_configuration::get_machine_id() const

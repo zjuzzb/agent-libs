@@ -27,6 +27,27 @@ sinsp_logger::~sinsp_logger()
 	}
 }
 
+void sinsp_logger::set_log_output_type(sinsp_logger::output_type log_output_type)
+{
+	if(log_output_type & (sinsp_logger::OT_STDOUT | sinsp_logger::OT_STDERR)) 
+	{
+		m_flags = log_output_type;
+	}
+	else if(log_output_type == sinsp_logger::OT_STDERR)
+	{
+		add_file_log("sisnsp.log");
+	}
+	else if(log_output_type == sinsp_logger::OT_NONE)
+	{
+		return;
+	}
+	else
+	{
+		ASSERT(false);
+		throw sinsp_exception("invalid log output type");
+	}
+}
+
 void sinsp_logger::add_stdout_log()
 {
 	ASSERT((m_flags & sinsp_logger::OT_STDERR) == 0);
@@ -81,17 +102,24 @@ void sinsp_logger::log(string msg, severity sev)
 		return;
 	}
 
-	gettimeofday(&ts, NULL);
-	time_t rawtime = (time_t)ts.tv_sec;
-	struct tm* time_info = gmtime(&rawtime);
-	snprintf(m_tbuf, sizeof(m_tbuf), "%.2d-%.2d %.2d:%.2d:%.2d.%.6d %s",
-		time_info->tm_mon + 1,
-		time_info->tm_mday,
-		time_info->tm_hour,
-		time_info->tm_min,
-		time_info->tm_sec,
-		(int)ts.tv_usec,
-		msg.c_str());
+	if((m_flags & sinsp_logger::OT_NOTS) == 0)
+	{
+		gettimeofday(&ts, NULL);
+		time_t rawtime = (time_t)ts.tv_sec;
+		struct tm* time_info = gmtime(&rawtime);
+		snprintf(m_tbuf, sizeof(m_tbuf), "%.2d-%.2d %.2d:%.2d:%.2d.%.6d %s",
+			time_info->tm_mon + 1,
+			time_info->tm_mday,
+			time_info->tm_hour,
+			time_info->tm_min,
+			time_info->tm_sec,
+			(int)ts.tv_usec,
+			msg.c_str());
+	}
+	else
+	{
+		snprintf(m_tbuf, sizeof(m_tbuf), "%s", msg.c_str());
+	}
 
 	if(m_flags & sinsp_logger::OT_CALLBACK)
 	{

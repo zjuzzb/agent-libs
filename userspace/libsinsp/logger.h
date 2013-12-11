@@ -25,11 +25,13 @@ public:
 		OT_STDERR = 2,
 		OT_FILE = 4,
 		OT_CALLBACK = 8,
+		OT_NOTS = 256,
 	};
 
 	sinsp_logger();
 	~sinsp_logger();
 
+	void set_log_output_type(sinsp_logger::output_type log_output_type);
 	void add_stdout_log();
 	void add_stderr_log();
 	void add_file_log(string filename);

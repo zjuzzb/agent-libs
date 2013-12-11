@@ -24,8 +24,8 @@ using namespace google::protobuf::io;
 #include "metrics.h"
 #include "analyzer.h"
 #include "draios.pb.h"
-#include "scores.h"
 #include "delays.h"
+#include "scores.h"
 #include "procfs_parser.h"
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
@@ -72,7 +72,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 
-	m_delay_calculator = new sinsp_delays(this);
+	m_delay_calculator = new sinsp_delays(this, m_machine_info->num_cpus);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -524,10 +524,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				if(tot.m_count != 0)
 				{
+					sinsp_program_delays* prog_delays = m_delay_calculator->compute_program_delays(&it->second);
+
 					//
 					// Transaction-related metrics
 					//
-					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = m_delay_calculator->compute_thread_transaction_delay(&it->second.m_procinfo->m_proc_transaction_metrics);
+					it->second.m_procinfo->m_proc_transaction_processing_delay_ns = prog_delays->m_transaction_processing_delay_ns;
 					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
 					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
@@ -538,7 +540,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
-							&m_server_transactions_per_cpu,
+							prog_delays,
 #ifdef ANALYZER_EMITS_PROGRAMS
 							it->second.m_procinfo->m_program_pids.size(),
 #else

@@ -162,16 +162,17 @@ bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
 		string s;
 		StreamCopier::copyToString(rs, s);
 
-		struct in_addr addr;
 #ifndef _WIN32
+		struct in_addr addr;
+
 		if(inet_aton(s.c_str(), &addr) == 0)
 		{
 			g_log->information("Received invalid AWS public-ipv4: '" + s + "'");
 			return false;
 		}
-#endif
 
 		metadata->m_public_ipv4 = addr.s_addr;
+#endif
 
 		g_log->information("AWS public-ipv4: " + s);
 

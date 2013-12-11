@@ -35,11 +35,10 @@ public:
 		uint64_t sample_end_time, uint64_t sample_duration,
 		int64_t progid);
 
-	sinsp_score_info get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions, 
+	sinsp_score_info get_system_capacity_score_bycpu_4(sinsp_program_delays* delays, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration, 
-		sinsp_threadinfo* program_info,
-		float local_remote_ratio);
+		sinsp_threadinfo* program_info);
 /*
 	int32_t get_system_capacity_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
 		uint32_t n_server_threads,
@@ -54,7 +53,7 @@ public:
 		sinsp_threadinfo* mainthread_info);
 */
 	sinsp_score_info get_process_capacity_score(sinsp_threadinfo* mainthread_info,
-		vector<vector<sinsp_trlist_entry>>* transactions, 
+		sinsp_program_delays* delays, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 

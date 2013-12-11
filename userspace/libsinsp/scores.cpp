@@ -5,8 +5,8 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer.h"
-#include "scores.h"
 #include "delays.h"
+#include "scores.h"
 #include "sched_analyzer.h"
 
 sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyzer2)
@@ -180,9 +180,8 @@ float sinsp_scores::calculate_score_4(float ntr, float ntrcpu, float nother)
 	return score;
 }
 
-sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<sinsp_trlist_entry>>* transactions,
-	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, sinsp_threadinfo* program_info,
-	float local_remote_ratio)
+sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_program_delays* delays,
+	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, sinsp_threadinfo* program_info)
 {
 	sinsp_score_info res(-1,  -1);
 	int32_t cpuid;
@@ -244,12 +243,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 		// Find the union of the time intervals and use it to calculate the time 
 		// spent serving transactions
 		//
-		stack<sinsp_trlist_entry> transaction_union;
-		uint64_t tot_time;
-		sinsp_delays::merge_intervals(&(*transactions)[cpuid], 
-			&transaction_union, 
-			&tot_time, 
-			(program_info)? program_info->m_pid : -1LL);
+		uint64_t tot_time = delays->m_last_prog_delays[cpuid].m_total_merged_inbound_delay;
 
 		if(tot_time > m_sample_length_ns)
 		{
@@ -261,8 +255,8 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 		//
 		// Extract the CPU spent while serving transactions
 		//
-
 		uint64_t tr_cpu_time;
+
 		if(program_info != NULL)
 		{
 			ASSERT(program_info->m_procinfo != NULL);
@@ -311,7 +305,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 		//
 		// Score calculation
 		//
-		ntr *= local_remote_ratio;
+		ntr *= (float)delays->m_local_remote_ratio;
 
 		if(ntr != 0)
 		{
@@ -403,28 +397,14 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(vector<vector<s
 	return res;
 }
 
-sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, vector<vector<sinsp_trlist_entry>>* transactions, 
+sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, sinsp_program_delays* delays, 
 		uint32_t n_server_threads, uint64_t sample_end_time, uint64_t sample_duration)
 {
-	float local_remote_ratio = 1;
-	int64_t proc_transaction_processing_delay_ns = mainthread_info->m_procinfo->m_proc_transaction_processing_delay_ns;
-	uint64_t time_ns_in = mainthread_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-
-	if(proc_transaction_processing_delay_ns != -1LL)
-	{
-		if(time_ns_in != 0)
-		{
-			local_remote_ratio = (float)proc_transaction_processing_delay_ns / 
-				(float)time_ns_in;
-		}
-	}
-
-	sinsp_score_info res = get_system_capacity_score_bycpu_4(transactions, 
+	sinsp_score_info res = get_system_capacity_score_bycpu_4(delays, 
 		n_server_threads, 
 		sample_end_time,
 		sample_duration,
-		mainthread_info,
-		local_remote_ratio);
+		mainthread_info);
 
 	//if(res.m_current_capacity == -1)
 	//{

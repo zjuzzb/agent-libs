@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:f:hjlqr:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:f:hi:jlqr:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -251,6 +251,38 @@ int main(int argc, char **argv)
 				{
 					output_format = optarg;
 				}
+			case 'i':
+				if(string(optarg) == "stdout")
+				{
+					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
+				}
+				else if(string(optarg) == "stderr")
+				{
+					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
+				}
+				else if(string(optarg) == "file")
+				{
+					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
+				}
+				else if(string(optarg) == "stdout_nots")
+				{
+					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
+				}
+				else if(string(optarg) == "stderr_nots")
+				{
+					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
+				}
+				else if(string(optarg) == "file_nots")
+				{
+					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
+				}
+				else
+				{
+					fprintf(stderr, "wrong -i option %s. Accepted values: stdout, sterr or file.", optarg);
+					return -1;
+				}
+
+				break;
 			case 'l':
 				list_fields();
 				return EXIT_SUCCESS;
@@ -346,10 +378,10 @@ int main(int argc, char **argv)
 			res = EXIT_FAILURE;
 		}
 
-		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
-			duration,
-			cinfo.m_nevts,
-			(double)cinfo.m_nevts / duration);
+		//fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
+		//	duration,
+		//	cinfo.m_nevts,
+		//	(double)cinfo.m_nevts / duration);
 
 		fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
 			cinfo.m_time / 1000000000,
