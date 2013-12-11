@@ -697,8 +697,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 	process_tuple tuple;
-	uint32_t n_external_clients = 0;
 	bool aggregate_external_clients = false;
+	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections.clear();
 
@@ -711,16 +711,18 @@ void sinsp_analyzer::emit_aggregated_connections()
 	{
 		if(cit->second.is_server_only())
 		{
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
-			{
-				n_external_clients++;
-			}
-		}
+			uint32_t sip = cit->first.m_fields.m_sip;
 
-		if(n_external_clients > MAX_N_EXTERNAL_CLIENTS)
-		{
-			aggregate_external_clients = true;
-			break;
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(sip))
+			{
+				unique_external_ips.insert(sip);
+
+				if(unique_external_ips.size() > MAX_N_EXTERNAL_CLIENTS)
+				{
+					aggregate_external_clients = true;
+					break;
+				}
+			}
 		}
 	}
 
