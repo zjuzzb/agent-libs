@@ -16,6 +16,59 @@ static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_procinfo implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_procinfo::clear()
+{
+	m_proc_metrics.clear();
+	m_proc_transaction_metrics.clear();
+	m_proc_transaction_processing_delay_ns = 0;
+	m_connection_queue_usage_pct = 0;
+	m_fd_usage_pct = 0;
+	m_syscall_errors.clear();
+	m_capacity_score = 0;
+	m_cpuload = 0;
+	m_resident_memory_kb = 0;
+
+	vector<uint64_t>::iterator it;
+	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+	{
+		*it = 0;
+	}
+
+#ifdef ANALYZER_EMITS_PROGRAMS
+	m_program_pids.clear();
+#endif
+
+	vector<vector<sinsp_trlist_entry>>::iterator sts;
+	for(sts = m_server_transactions_per_cpu.begin(); 
+		sts != m_server_transactions_per_cpu.end(); sts++)
+	{
+		sts->clear();
+	}
+
+	vector<vector<sinsp_trlist_entry>>::iterator cts;
+	for(cts = m_client_transactions_per_cpu.begin(); 
+		cts != m_client_transactions_per_cpu.end(); cts++)
+	{
+		cts->clear();
+	}
+}
+
+uint64_t sinsp_procinfo::get_tot_cputime()
+{
+	uint64_t res = 0;
+
+	vector<uint64_t>::iterator it;
+	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+	{
+		res += *it;
+	}
+
+	return res;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_threadinfo implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_threadinfo::sinsp_threadinfo() :
@@ -553,6 +606,8 @@ void sinsp_threadinfo::allocate_procinfo_if_not_present()
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
+		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
+		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
 		m_procinfo->clear();
 	}
 }
@@ -660,7 +715,7 @@ void sinsp_threadinfo::clear_all_metrics()
 }
 
 //
-// Emit all the transactions that are in 
+// Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
 //
 void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration)
 {
@@ -732,6 +787,32 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 			}
 		}
 	}
+}
+
+//
+// Helper function to add a server transaction to the process list.
+// Makes sure that the process is allocated first.
+//
+void sinsp_threadinfo::add_completed_server_transaction(sinsp_partial_transaction* tr, uint64_t pid)
+{
+	allocate_procinfo_if_not_present();
+
+	m_procinfo->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
+		tr->m_prev_end_time, pid));
+}
+
+//
+// Helper function to add a client transaction to the process list.
+// Makes sure that the process is allocated first.
+//
+void sinsp_threadinfo::add_completed_client_transaction(sinsp_partial_transaction* tr, uint64_t pid)
+{
+	allocate_procinfo_if_not_present();
+
+	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
+		tr->m_prev_end_time, pid));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

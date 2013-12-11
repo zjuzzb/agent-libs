@@ -66,12 +66,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(inspector, m_machine_info->num_cpus);
-
 	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer2);
-
-	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
-	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
-
 	m_delay_calculator = new sinsp_delays(this, m_machine_info->num_cpus);
 }
 
@@ -681,15 +676,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			it->second.clear_all_metrics();
 			++it;
 		}
-	}
-
-	//
-	// Last cleanups and then we're done
-	//
-	for(uint32_t k = 0; k < m_server_transactions_per_cpu.size(); k++)
-	{
-		m_server_transactions_per_cpu[k].clear();
-		m_client_transactions_per_cpu[k].clear();
 	}
 
 	m_old_global_total_jiffies = cur_global_total_jiffies;

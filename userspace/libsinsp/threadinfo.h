@@ -21,41 +21,8 @@ typedef struct erase_fd_params
 class sinsp_procinfo
 {
 public:
-	void clear()
-	{
-		m_proc_metrics.clear();
-		m_proc_transaction_metrics.clear();
-		m_proc_transaction_processing_delay_ns = 0;
-		m_connection_queue_usage_pct = 0;
-		m_fd_usage_pct = 0;
-		m_syscall_errors.clear();
-		m_capacity_score = 0;
-		m_cpuload = 0;
-		m_resident_memory_kb = 0;
-
-		vector<uint64_t>::iterator it;
-		for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
-		{
-			*it = 0;
-		}
-
-#ifdef ANALYZER_EMITS_PROGRAMS
-		m_program_pids.clear();
-#endif
-	}
-
-	uint64_t get_tot_cputime()
-	{
-		uint64_t res = 0;
-
-		vector<uint64_t>::iterator it;
-		for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
-		{
-			res += *it;
-		}
-
-		return res;
-	}
+	void clear();
+	uint64_t get_tot_cputime();
 
 	// Aggreaged metrics for the process.
 	// This field is allocated only for process main threads.
@@ -88,6 +55,9 @@ public:
 #ifdef ANALYZER_EMITS_PROGRAMS
 	vector<int64_t> m_program_pids;
 #endif
+	// Completed transactions lists
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 };
 
 //
@@ -217,6 +187,8 @@ VISIBILITY_PRIVATE
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
+	void add_completed_server_transaction(sinsp_partial_transaction* tr, uint64_t pid);
+	void add_completed_client_transaction(sinsp_partial_transaction* tr, uint64_t pid);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
@@ -236,6 +208,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_analyzer;
 	friend class sinsp_evt;
 	friend class sinsp_thread_manager;
+	friend class sinsp_transaction_table;
 };
 
 typedef unordered_map<int64_t, sinsp_threadinfo> threadinfo_map_t;

@@ -153,8 +153,6 @@ VISIBILITY_PRIVATE
 	// Transaction-related state
 	//
 	sinsp_transaction_counters m_host_transaction_metrics; 
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	uint64_t m_client_tr_time_by_servers;
 	int64_t m_host_transaction_delay_ns;
 	// ratio between the the transaction delay introduced by this host and the delay 

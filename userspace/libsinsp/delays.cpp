@@ -87,15 +87,17 @@ void sinsp_delays::compute_host_transaction_delay(sinsp_transaction_counters* co
 //
 // helper function that takes a set of transactions and merges them.
 // progid can be used to filter on a specific program id. progid=-1 means accept all the transactions.
+// Returns the sum of the time of the merged transactions.
 //
-void sinsp_delays::merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid)
+uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* s)
 {
-	*tot_time = 0;
+	uint64_t tot_time = 0;
 	bool initializing = true;
+	uint32_t size = intervals->size();
 
-	if(intervals->size() == 0)
+	if(size == 0)
 	{
-		return;
+		return 0;
 	}
 
 	//
@@ -106,21 +108,13 @@ void sinsp_delays::merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT ve
 	//
     // Start from the next interval and merge if necessary
 	//
-    for(uint32_t i = 0 ; i < intervals->size(); i++)
+    for(uint32_t i = 0 ; i < size; i++)
     {
-		if(progid != -1LL)
-		{
-			if((*intervals)[i].m_progid != progid)
-			{
-				continue;
-			}
-		}
-
 		if(initializing)
 		{
 			// push the first interval to the stack
 			s->push_back((*intervals)[i]);
-			*tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
+			tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
 
 			initializing = false;
 		}
@@ -139,16 +133,45 @@ void sinsp_delays::merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT ve
 		if(top.m_etime < (*intervals)[i].m_stime)
         {
             s->push_back((*intervals)[i]);
-			*tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
+			tot_time += (((*intervals)[i].m_etime - (*intervals)[i].m_stime));
         }
 		else if(top.m_etime < (*intervals)[i].m_etime)
         {
 			top.m_etime = (*intervals)[i].m_etime;
-			*tot_time += (((*intervals)[i].m_etime - top.m_etime));
+			tot_time += (((*intervals)[i].m_etime - top.m_etime));
         }
     }
  
-    return;
+    return tot_time;
+}
+
+//
+// helper function that removes the outbound transactions that are not contained inside any inbound transaction
+//
+uint64_t sinsp_delays::prune_client_transactions(vector<sinsp_trlist_entry>* client_transactions, 
+											   vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu)
+{
+	uint64_t tot_time = 0;
+	uint32_t size = client_transactions->size();
+
+	if(size == 0)
+	{
+		return 0;
+	}
+
+	//
+    // sort the intervals based on start time
+	//
+    sort(client_transactions->begin(), client_transactions->end(), sinsp_trlist_entry_comparer());
+/* 
+	//
+    // Start from the next interval and merge if necessary
+	//
+    for(uint32_t i = 0 ; i < size; i++)
+    {
+    }
+*/ 
+    return tot_time;
 }
 
 void sinsp_delays::compute_program_cpu_delays(sinsp_threadinfo* program_info, int32_t cpuid)
@@ -159,10 +182,8 @@ void sinsp_delays::compute_program_cpu_delays(sinsp_threadinfo* program_info, in
 
 	ASSERT(m_analyzer != NULL);
 
-	sinsp_delays::merge_intervals(&(m_analyzer->m_server_transactions_per_cpu[cpuid]),
-		&pd->m_last_inbound_transaction_union, 
-		&pd->m_total_merged_inbound_delay, 
-		(program_info)? program_info->m_pid : -1LL);
+	pd->m_total_merged_inbound_delay = sinsp_delays::merge_transactions(&(program_info->m_procinfo->m_server_transactions_per_cpu[cpuid]),
+		&pd->m_last_inbound_transaction_union);
 }
 
 sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info)

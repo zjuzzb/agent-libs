@@ -32,12 +32,13 @@ public:
 	sinsp_delays(sinsp_analyzer* analyzer, uint32_t ncpus);
 	uint64_t compute_thread_transaction_delay(sinsp_transaction_counters* trcounters);
 	void compute_host_transaction_delay(sinsp_transaction_counters* counters);
-	static void merge_intervals(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* s, OUT uint64_t* tot_time, int64_t progid);
 
 	sinsp_program_delays* compute_program_delays(sinsp_threadinfo* program_info);
 
 private:
+	static uint64_t merge_transactions(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* s);
 	void compute_program_cpu_delays(sinsp_threadinfo* program_info, int32_t cpuid);
+	uint64_t prune_client_transactions(vector<sinsp_trlist_entry>* client_transactions, vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu);
 
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
