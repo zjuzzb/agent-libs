@@ -110,6 +110,11 @@ uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals,
 	//
     for(uint32_t i = 0 ; i < size; i++)
     {
+		if((*intervals)[i].m_flags & sinsp_trlist_entry::FL_FILTERED_OUT)
+		{
+			continue;
+		}
+
 		if(initializing)
 		{
 			// push the first interval to the stack
@@ -148,31 +153,84 @@ uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals,
 //
 // helper function that removes the outbound transactions that are not contained inside any inbound transaction
 //
-uint64_t sinsp_delays::prune_client_transactions(vector<sinsp_trlist_entry>* client_transactions, 
-											   vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu)
+uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entry>>* client_transactions_per_cpu, 
+	vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu)
 {
+	uint32_t j, k;
 	uint64_t tot_time = 0;
-	uint32_t size = client_transactions->size();
+	uint32_t ncpus = client_transactions_per_cpu->size();
+	vector<uint32_t> procpos;
+	vector<vector<sinsp_trlist_entry>::iterator> server_iters = vector<vector<sinsp_trlist_entry>::iterator>(ncpus);
+	vector<sinsp_trlist_entry>::iterator ppit;
 
-	if(size == 0)
+	if(ncpus == 0)
 	{
 		return 0;
 	}
 
+	for(j = 0; j < ncpus; j++)
+	{
+		server_iters[j] = server_transactions_per_cpu->at(j).begin();
+	}
+
 	//
-    // sort the intervals based on start time
+	// Go through the different CPUs
 	//
-    sort(client_transactions->begin(), client_transactions->end(), sinsp_trlist_entry_comparer());
-/* 
-	//
-    // Start from the next interval and merge if necessary
-	//
-    for(uint32_t i = 0 ; i < size; i++)
-    {
-    }
-*/ 
-    return tot_time;
+	for(j = 0; j < ncpus; j++)
+	{
+		vector<sinsp_trlist_entry>* trs = &client_transactions_per_cpu->at(j);
+		vector<sinsp_trlist_entry>::iterator client_iter;
+
+		//
+		// sort the intervals based on start time
+		//
+		sort(trs->begin(), trs->end(), sinsp_trlist_entry_comparer());
+
+		//
+		// cycle through the client transactions
+		//
+		bool filter = true;
+
+		for(client_iter = trs->begin(); client_iter != trs->end(); trs++)
+		{
+			for(k = 0; k < ncpus; k++)
+			{
+				while(true)
+				{
+					if(server_iters[k] == server_iters[k] != server_transactions_per_cpu->at(j).end())
+					
+					if(client_iter->m_stime > server_iters[k]->m_stime)
+					{
+						if(client_iter->m_etime < server_iters[k]->m_etime)
+						{
+							filter = false;
+							break;
+						}
+					}
+
+					++server_iters[k];
+				}
+			}
+		}
+	}
+
+	return tot_time;
 }
+
+/*
+					else
+					{
+						while(true)
+						{
+							++server_iters[k];
+
+							if(client_iter->m_stime <= server_iters[k]->m_stime) 
+							{
+							}
+								&& (server_iters[k] != server_transactions_per_cpu->at(j).end()))
+						}
+					}
+*/
 
 void sinsp_delays::compute_program_cpu_delays(sinsp_threadinfo* program_info, int32_t cpuid)
 {
@@ -197,6 +255,12 @@ sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* pro
 	{
 		compute_program_cpu_delays(program_info, j);
 	}
+
+	//
+	//
+	//
+	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
+		&program_info->m_procinfo->m_server_transactions_per_cpu);
 
 	//
 	// Local transaction processing delay

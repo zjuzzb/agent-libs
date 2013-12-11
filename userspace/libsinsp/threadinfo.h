@@ -187,8 +187,8 @@ VISIBILITY_PRIVATE
 	void add_all_metrics(sinsp_threadinfo* other);
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
-	void add_completed_server_transaction(sinsp_partial_transaction* tr, uint64_t pid);
-	void add_completed_client_transaction(sinsp_partial_transaction* tr, uint64_t pid);
+	void add_completed_server_transaction(sinsp_partial_transaction* tr);
+	void add_completed_client_transaction(sinsp_partial_transaction* tr);
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations

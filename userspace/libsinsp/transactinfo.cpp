@@ -124,7 +124,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tinfo != NULL && proginfo != NULL)
 			{
-				proginfo->add_completed_server_transaction(tr, tinfo->m_pid);
+				proginfo->add_completed_server_transaction(tr);
 			}
 		}
 		else
@@ -154,7 +154,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tinfo != NULL && proginfo != NULL)
 			{
-				proginfo->add_completed_client_transaction(tr, tinfo->m_pid);
+				proginfo->add_completed_client_transaction(tr);
 			}
 		}
 

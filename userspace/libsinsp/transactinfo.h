@@ -128,16 +128,22 @@ public:
 class SINSP_PUBLIC sinsp_trlist_entry
 {
 public:
-	sinsp_trlist_entry(uint64_t stime, uint64_t etime, int64_t progid)
+	enum flags
+	{
+	    FL_NONE = 0,
+	    FL_FILTERED_OUT = 1,
+	};
+
+	sinsp_trlist_entry(uint64_t stime, uint64_t etime)
 	{
 		m_stime = stime;
 		m_etime = etime;
-		m_progid = progid;
+		m_flags = FL_NONE;
 	}
 
 	uint64_t m_stime;	// start time
 	uint64_t m_etime;	// end time
-	int64_t m_progid;	// pid of the program main process
+	int32_t m_flags;	// pid of the program main process
 };
 
 struct sinsp_trlist_entry_comparer

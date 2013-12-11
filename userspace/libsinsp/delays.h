@@ -38,7 +38,8 @@ public:
 private:
 	static uint64_t merge_transactions(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* s);
 	void compute_program_cpu_delays(sinsp_threadinfo* program_info, int32_t cpuid);
-	uint64_t prune_client_transactions(vector<sinsp_trlist_entry>* client_transactions, vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu);
+	uint64_t prune_client_transactions(vector<vector<sinsp_trlist_entry>>* client_transactions_per_cpu, 
+		vector<vector<sinsp_trlist_entry>>* server_transactions_per_cpu);
 
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;

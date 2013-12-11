@@ -793,26 +793,26 @@ void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uin
 // Helper function to add a server transaction to the process list.
 // Makes sure that the process is allocated first.
 //
-void sinsp_threadinfo::add_completed_server_transaction(sinsp_partial_transaction* tr, uint64_t pid)
+void sinsp_threadinfo::add_completed_server_transaction(sinsp_partial_transaction* tr)
 {
 	allocate_procinfo_if_not_present();
 
 	m_procinfo->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
-		tr->m_prev_end_time, pid));
+		tr->m_prev_end_time));
 }
 
 //
 // Helper function to add a client transaction to the process list.
 // Makes sure that the process is allocated first.
 //
-void sinsp_threadinfo::add_completed_client_transaction(sinsp_partial_transaction* tr, uint64_t pid)
+void sinsp_threadinfo::add_completed_client_transaction(sinsp_partial_transaction* tr)
 {
 	allocate_procinfo_if_not_present();
 
 	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
-		tr->m_prev_end_time, pid));
+		tr->m_prev_end_time));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

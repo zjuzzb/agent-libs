@@ -508,7 +508,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				if(it->second.m_procinfo->m_cpuload != -1)
 				{
-					proc->mutable_resource_counters()->set_cpu_pct(it->second.m_procinfo->m_cpuload);
+					proc->mutable_resource_counters()->set_cpu_pct(it->second.m_procinfo->m_cpuload * 100);
 					proc->mutable_resource_counters()->set_resident_memory_usage_kb(it->second.m_procinfo->m_resident_memory_kb);
 				}
 				else
