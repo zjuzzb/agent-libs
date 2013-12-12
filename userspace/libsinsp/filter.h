@@ -83,7 +83,7 @@ public:
 	//
 	// Extract the value from the event and convert it into a string
 	//
-	char* tostring(sinsp_evt* evt);
+	virtual char* tostring(sinsp_evt* evt);
 
 	sinsp* m_inspector;
 	boolop m_boolop;

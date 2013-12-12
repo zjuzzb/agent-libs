@@ -374,6 +374,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 					 prfmt, *(uint64_t *)rawval);
 			return m_getpropertystr_storage;
 		case PT_CHARBUF:
+		case PT_BYTEBUF:
 			return (char*)rawval;
 		case PT_SOCKADDR:
 			ASSERT(false);
@@ -487,7 +488,7 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 
 	if(rawval == NULL)
 	{
-		return (char*)"<NA>";
+		return NULL;
 	}
 
 	return rawval_to_string(rawval, m_field);

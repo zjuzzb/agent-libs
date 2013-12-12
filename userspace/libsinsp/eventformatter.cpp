@@ -20,17 +20,41 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 {
 	uint32_t j;
 	uint32_t last_nontoken_str_start = 0;
-	const char* cfmt = fmt.c_str();
+	string lfmt(fmt);
+
+	if(lfmt == "")
+	{
+		throw sinsp_exception("empty formatting token");
+	}
+
+	//
+	// If the string starts with a *, it means that we are ok with printing
+	// the string even when not all the values it specifies are set.
+	//
+	if(lfmt[0] == '*')
+	{
+		m_require_all_values = false;
+		lfmt.erase(0, 1);
+	}
+	else
+	{
+		m_require_all_values = true;
+	}
+
+	//
+	// Parse the string and extract the tokens
+	//
+	const char* cfmt = lfmt.c_str();
 
 	m_tokens.clear();
 
-	for(j = 0; j < fmt.length(); j++)
+	for(j = 0; j < lfmt.length(); j++)
 	{
 		if(cfmt[j] == '%')
 		{
 			if(last_nontoken_str_start != j)
 			{
-				m_tokens.push_back(new rawstring_check(fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
+				m_tokens.push_back(new rawstring_check(lfmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
 			}
 
 			sinsp_filter_check* chk = g_filterlist.new_filter_check_from_fldname(string(cfmt + j + 1), m_inspector);
@@ -40,7 +64,7 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 			}
 
 			j += chk->parse_field_name(cfmt + j + 1);
-			ASSERT(j <= fmt.length());
+			ASSERT(j <= lfmt.length());
 
 			m_tokens.push_back(chk);
 
@@ -50,19 +74,37 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 
 	if(last_nontoken_str_start != j)
 	{
-		m_tokens.push_back(new rawstring_check(fmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
+		m_tokens.push_back(new rawstring_check(lfmt.substr(last_nontoken_str_start, j - last_nontoken_str_start)));
 	}
 }
 
-void sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
+bool sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
 {
 	vector<sinsp_filter_check*>::iterator it;
 	res->clear();
 
 	for(it = m_tokens.begin(); it != m_tokens.end(); ++it)
 	{
-		(*res) += (*it)->tostring(evt);
+		char* str = (*it)->tostring(evt);
+
+		if(str != NULL)
+		{
+			(*res) += str;
+		}
+		else
+		{
+			if(m_require_all_values)
+			{
+				return false;
+			}
+			else
+			{
+				(*res) += "<NA>";
+			}
+		}
 	}
+
+	return true;
 }
 
 #else  // HAS_FILTERING

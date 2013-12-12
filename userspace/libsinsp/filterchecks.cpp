@@ -439,7 +439,7 @@ const filtercheck_field_info sinsp_filter_check_event_fields[] =
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.latency", "delta between an exit event and the correspondent enter event."},
 	{PT_CHARBUF, EPF_PRINT_ONLY, PF_NA, "evt.dir", "event direction can be either '>' for enter events or '<' for exit events."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.name", "event name. For system call events, this is the name of the system call (e.g. 'open')."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.type", "For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments, aggregated into a single string."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.resarg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
@@ -465,7 +465,7 @@ int32_t sinsp_filter_check_event::extract_arg(string fldname, string val, OUT co
 	uint32_t parsed_len = 0;
 
 	//
-	// 'resarg' is handled in a custom way
+	// 'arg' and 'resarg' are handled in a custom way
 	//
 	if(val[fldname.size()] == '[')
 	{
@@ -512,14 +512,18 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 		string(val, 0, sizeof("evt.args") - 1) != "evt.args")
 	{
 		m_field_id = TYPE_ARG;
-		m_field = &m_info.m_fields[m_field_id];
+		m_customfield = m_info.m_fields[m_field_id];
 
-		return extract_arg("evt.arg", val, &m_arginfo);
+		int32_t res = extract_arg("evt.arg", val, &m_arginfo);
+
+		m_customfield.m_type = m_arginfo->type;
+
+		return res;
 	}
 	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
 	{
 		m_field_id = TYPE_RESARG;
-		m_field = &m_info.m_fields[m_field_id];
+		m_customfield = m_info.m_fields[m_field_id];
 
 		return extract_arg("evt.resarg", val, NULL);
 	}
@@ -722,6 +726,25 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 	}
 
 	return NULL;
+}
+
+char* sinsp_filter_check_event::tostring(sinsp_evt* evt)
+{
+	if(m_field_id == TYPE_ARG)
+	{
+		uint8_t* rawval = extract(evt);
+
+		if(rawval == NULL)
+		{
+			return NULL;
+		}
+
+		return rawval_to_string(rawval, &m_customfield);
+	}
+	else
+	{
+		return sinsp_filter_check::tostring(evt);
+	}
 }
 
 bool sinsp_filter_check_event::compare(sinsp_evt *evt)

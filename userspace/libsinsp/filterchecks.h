@@ -126,6 +126,7 @@ public:
 	void parse_filter_value(const char* str);
 	uint8_t* extract(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
+	char* tostring(sinsp_evt* evt);
 
 	uint64_t m_first_ts;
 	uint64_t m_u64val;
@@ -133,6 +134,11 @@ public:
 	string m_argname;
 	int32_t m_argid;
 	const ppm_param_info* m_arginfo;
+	//
+	// Note: this copy of the field is used by some fields, like TYPE_ARGS and 
+	// TYPE_RESARG, that need to do on the fly type customization
+	//
+	filtercheck_field_info m_customfield;
 
 private:
 	int32_t extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo);
