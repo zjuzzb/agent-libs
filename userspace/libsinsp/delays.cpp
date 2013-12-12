@@ -260,16 +260,6 @@ sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* pro
 {
 	int32_t j;
 
-	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
-	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
-
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
-
-	prune_client_transactions(&client_tr,
-		&server_tr);
-
 	//
 	// Prune the client connections
 	//
