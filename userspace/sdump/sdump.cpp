@@ -202,6 +202,7 @@ int main(int argc, char **argv)
 	double duration = 1;
 	captureinfo cinfo;
 	string output_format;
+	uint32_t snaplen = 0;
 
 	{
 		sinsp inspector;
@@ -211,7 +212,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:f:hi:jlqr:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:f:hi:jlqr:s:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -285,6 +286,10 @@ int main(int argc, char **argv)
 			case 'r':
 				infile = optarg;
 				break;
+			case 's':
+				snaplen = atoi(optarg);
+				printf("***%d", snaplen);
+				break;
 			case 'q':
 				quiet = true;
 				break;
@@ -342,6 +347,11 @@ int main(int argc, char **argv)
 			else
 			{
 				inspector.open("");
+			}
+
+			if(snaplen != 0)
+			{
+				inspector.set_snaplen(snaplen);
 			}
 
 			if(outfile != "")

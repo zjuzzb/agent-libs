@@ -84,6 +84,7 @@ static struct file_operations g_ppm_fops =
 DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
 static atomic_t g_open_count;
 static int g_dropping_mode = 0;
+uint32_t g_snaplen = RW_SNAPLEN;
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -106,6 +107,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 		return -EBUSY;
 	}
 
+	g_snaplen = RW_SNAPLEN;
 	ring->info->head = 0;
 	ring->info->tail = 0;
 	ring->nevents = 0;
@@ -274,6 +276,30 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		g_dropping_mode = 1;
 		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_DROPPING_MODE\n");
+		return 0;
+	}
+	case PPM_IOCTL_SET_SNAPLEN:
+	{
+		uint32_t new_snaplen;
+
+		printk(KERN_INFO "PPM: PPM_IOCTL_SET_SNAPLEN\n");
+/*
+		f(copy_from_user(&new_snaplen, (uint32_t*)arg, sizeof(uint32_t)))
+		{
+			return -EACCES;
+		}
+*/
+		new_snaplen = (uint32_t)arg;
+
+		if(new_snaplen > RW_MAX_SNAPLEN)
+		{
+			printk(KERN_INFO "PPM: invalid snaplen %u\n", new_snaplen);
+			return -EINVAL;
+		}
+
+		g_snaplen = new_snaplen;
+
+		printk(KERN_INFO "PPM: new snaplen: %d\n", g_snaplen);
 		return 0;
 	}
 	default:

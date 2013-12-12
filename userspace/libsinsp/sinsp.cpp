@@ -593,6 +593,14 @@ sinsp_transaction_table *sinsp::get_transactions()
 	return m_trans_table;
 }
 
+void sinsp::set_snaplen(uint32_t snaplen)
+{
+	if(scap_set_snaplen(m_h, snaplen) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}	
+}
+
 void sinsp::stop_capture()
 {
 	if(scap_stop_capture(m_h) != SCAP_SUCCESS)

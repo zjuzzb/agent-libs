@@ -882,3 +882,28 @@ const scap_machine_info* scap_get_machine_info(scap_t* handle)
 		return NULL;
 	}
 }
+
+int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen)
+{
+	//
+	// Not supported on files
+	//
+	if(handle->m_file)
+	{
+		snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "dropping mode not supported on offline captures");
+		ASSERT(false);
+		return SCAP_FAILURE;
+	}
+
+	//
+	// Tell the driver to change the snaplen
+	//
+	if(ioctl(handle->m_devs[0].m_fd, PPM_IOCTL_SET_SNAPLEN, snaplen))
+	{
+		snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "scap_set_snaplen failed");
+		ASSERT(false);
+		return SCAP_FAILURE;
+	}
+
+	return SCAP_SUCCESS;
+}

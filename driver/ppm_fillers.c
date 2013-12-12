@@ -17,7 +17,6 @@
 #include "ppm_events.h"
 #include "ppm.h"
 
-
 static int32_t f_sys_generic(struct event_filler_arguments* args);	// generic syscall event filler that includes the system call number
 static int32_t f_sys_empty(struct event_filler_arguments* args);		// empty filler
 static int32_t f_sys_single(struct event_filler_arguments* args);		// generic enter filler that copies a single argument syscall into a single parameter event
@@ -491,7 +490,7 @@ static int32_t f_sys_read_x(struct event_filler_arguments* args)
 		bufsize = retval;
 	}
 
-	res = val_to_ring(args, val, min(bufsize, (unsigned long)RW_SNAPLEN), true);
+	res = val_to_ring(args, val, min(bufsize, (unsigned long)g_snaplen), true);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -524,7 +523,7 @@ static int32_t f_sys_write_x(struct event_filler_arguments* args)
 	bufsize = val;
 
 	syscall_get_arguments(current, args->regs, 1, 1, &val);
-	res = val_to_ring(args, val, min(bufsize, (unsigned long)RW_SNAPLEN), true);
+	res = val_to_ring(args, val, min(bufsize, (unsigned long)g_snaplen), true);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -1326,7 +1325,7 @@ static int32_t f_sys_send_x(struct event_filler_arguments* args)
 		bufsize = retval;
 	}
 
-	res = val_to_ring(args, val, min(bufsize, (unsigned long)RW_SNAPLEN), true);
+	res = val_to_ring(args, val, min(bufsize, (unsigned long)g_snaplen), true);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -1444,7 +1443,7 @@ static int32_t f_sys_recv_x_common(struct event_filler_arguments* args, int64_t*
 		bufsize = *retval;
 	}
 
-	res = val_to_ring(args, val, min(bufsize, (unsigned long)RW_SNAPLEN), true);
+	res = val_to_ring(args, val, min(bufsize, (unsigned long)g_snaplen), true);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -1614,7 +1613,7 @@ static int32_t f_sys_sendmsg_e(struct event_filler_arguments* args)
 	iov = mh.msg_iov;
 	iovcnt = mh.msg_iovlen;
 
-	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	res = parse_readv_writev_bufs(args, iov, iovcnt, g_snaplen, PRB_FLAG_PUSH_SIZE);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -1699,7 +1698,7 @@ static int32_t f_sys_sendmsg_x(struct event_filler_arguments* args)
 	iov = mh.msg_iov;
 	iovcnt = mh.msg_iovlen;
 
-	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_DATA);
+	res = parse_readv_writev_bufs(args, iov, iovcnt, g_snaplen, PRB_FLAG_PUSH_DATA);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2596,7 +2595,7 @@ static int32_t f_sys_writev_e(struct event_filler_arguments* args)
 	iov = (const struct iovec*)val;
 	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
 
-	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	res = parse_readv_writev_bufs(args, iov, iovcnt, g_snaplen, PRB_FLAG_PUSH_SIZE);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2630,7 +2629,7 @@ static int32_t f_sys_writev_pwritev_x(struct event_filler_arguments* args)
 	iov = (const struct iovec*)val;
 	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
 
-	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_DATA);
+	res = parse_readv_writev_bufs(args, iov, iovcnt, g_snaplen, PRB_FLAG_PUSH_DATA);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;
@@ -2739,7 +2738,7 @@ static int32_t f_sys_pwritev_e(struct event_filler_arguments* args)
 	iov = (const struct iovec*)val;
 	syscall_get_arguments(current, args->regs, 2, 1, &iovcnt);
 
-	res = parse_readv_writev_bufs(args, iov, iovcnt, RW_SNAPLEN, PRB_FLAG_PUSH_SIZE);
+	res = parse_readv_writev_bufs(args, iov, iovcnt, g_snaplen, PRB_FLAG_PUSH_SIZE);
 	if(unlikely(res != PPM_SUCCESS))
 	{
 		return res;

@@ -192,6 +192,11 @@ public:
 	//
 	// Stop event capture
 	//
+	void set_snaplen(uint32_t snaplen);
+
+	//
+	// Stop event capture
+	//
 	void stop_capture();
 
 	//

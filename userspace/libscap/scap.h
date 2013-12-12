@@ -434,6 +434,10 @@ const struct ppm_syscall_desc* scap_get_syscall_info_table();
 // from files witthout that information)
 const scap_machine_info* scap_get_machine_info(scap_t* handle);
 
+// Set the capture snaplen, i.e. the maximum size after which the driver starts 
+// truncating the string or byte buffer arguments
+int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen);
+
 #ifdef __cplusplus
 }
 #endif

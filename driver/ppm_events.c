@@ -1026,7 +1026,7 @@ int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, const struc
 	//
 	// data
 	// NOTE: for the moment, we limit our data copy to the first buffer.
-	//       We assume that in the vast majority of the cases RW_SNAPLEN is much smaller 
+	//       We assume that in the vast majority of the cases g_snaplen is much smaller 
 	//       than iov[0].iov_len, and therefore we don't bother complicvating the code.
 	//
 	if(flags & PRB_FLAG_PUSH_DATA)
@@ -1037,7 +1037,7 @@ int32_t parse_readv_writev_bufs(struct event_filler_arguments* args, const struc
 
 			res = val_to_ring(args, 
 				(unsigned long)iov[0].iov_base, 
-				min(bufsize, (unsigned long)RW_SNAPLEN),
+				min(bufsize, (unsigned long)g_snaplen),
 				true);
 			if(unlikely(res != PPM_SUCCESS))
 			{
