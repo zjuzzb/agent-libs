@@ -51,7 +51,7 @@ public:
 	sinsp_filter_check_fd();
 	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 	uint8_t* extract_fdtype(sinsp_fdinfo* fdinfo);
 	bool compare_ip(sinsp_evt *evt);
 	bool compare_port(sinsp_evt *evt);
@@ -84,7 +84,7 @@ public:
 	sinsp_filter_check_thread();
 	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 
 	// XXX this is overkill and wasted for most of the fields.
 	// It could be optimized by dynamically allocating the right amount
@@ -115,8 +115,8 @@ public:
 		TYPE_NAME = 9,
 		TYPE_CPU = 10,
 		TYPE_ARGS = 11,
-		TYPE_RESARG = 12,
-		TYPE_ARG = 13,
+		TYPE_ARGSTR = 12,
+		TYPE_ARGRAW = 13,
 		TYPE_RES = 14,
 	};
 
@@ -124,7 +124,7 @@ public:
 	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 	bool compare(sinsp_evt *evt);
 	char* tostring(sinsp_evt* evt);
 
@@ -160,7 +160,7 @@ public:
 
 	sinsp_filter_check_user();
 	sinsp_filter_check* allocate_new();
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 
 	uint32_t m_uid;
 	string m_strval;
@@ -180,7 +180,7 @@ public:
 
 	sinsp_filter_check_group();
 	sinsp_filter_check* allocate_new();
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 
 	uint32_t m_gid;
 	string m_name;
@@ -197,13 +197,14 @@ public:
 	void set_text(string text);
 	int32_t parse_field_name(const char* str);
 	void parse_filter_value(const char* str);
-	uint8_t* extract(sinsp_evt *evt);
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
 
 	// XXX this is overkill and wasted for most of the fields.
 	// It could be optimized by dynamically allocating the right amount
 	// of memory, but we don't care for the moment since we expect filters 
 	// to be pretty small.
 	string m_text;
+	uint32_t m_text_len;
 };
 
 #endif // HAS_FILTERING

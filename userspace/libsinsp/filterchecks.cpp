@@ -77,7 +77,7 @@ uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo* fdinfo)
 	}
 }
 
-uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	ASSERT(evt);
 
@@ -329,9 +329,10 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 	}
 
 	//
-	// Standard estract-based fields
+	// Standard extract-based fields
 	//
-	uint8_t* extracted_val = extract(evt);
+	uint32_t len;
+	uint8_t* extracted_val = extract(evt, &len);
 
 	if(extracted_val == NULL)
 	{
@@ -388,7 +389,7 @@ int32_t sinsp_filter_check_thread::parse_field_name(const char* str)
 	}
 }
 
-uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -442,8 +443,8 @@ const filtercheck_field_info sinsp_filter_check_event_fields[] =
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.type", "For system call events, this is the name of the system call (e.g. 'open')."},
 	{PT_INT16, EPF_NONE, PF_DEC, "evt.cpu", "number of the CPU where this event happened."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments, aggregated into a single string."},
-	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.resarg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
-	{PT_NONE, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name. E.g. 'arg.fd'."},
+	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
+	{PT_NONE, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.rawarg", "one of the event arguments specified by name. E.g. 'arg.fd'."},
 	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
 };
 
@@ -511,21 +512,21 @@ int32_t sinsp_filter_check_event::parse_field_name(const char* str)
 	if(string(val, 0, sizeof("evt.arg") - 1) == "evt.arg" &&
 		string(val, 0, sizeof("evt.args") - 1) != "evt.args")
 	{
-		m_field_id = TYPE_ARG;
+		m_field_id = TYPE_ARGSTR;
+		m_field = &m_info.m_fields[m_field_id];
+
+		return extract_arg("evt.arg", val, NULL);
+	}
+	if(string(val, 0, sizeof("evt.rawarg") - 1) == "evt.rawarg")
+	{
+		m_field_id = TYPE_ARGRAW;
 		m_customfield = m_info.m_fields[m_field_id];
 
-		int32_t res = extract_arg("evt.arg", val, &m_arginfo);
+		int32_t res = extract_arg("evt.rawarg", val, &m_arginfo);
 
 		m_customfield.m_type = m_arginfo->type;
 
 		return res;
-	}
-	if(string(val, 0, sizeof("evt.resarg") - 1) == "evt.resarg")
-	{
-		m_field_id = TYPE_RESARG;
-		m_customfield = m_info.m_fields[m_field_id];
-
-		return extract_arg("evt.resarg", val, NULL);
 	}
 	else
 	{
@@ -537,10 +538,10 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 {
 	string val(str);
 
-	if(m_field_id == TYPE_ARG)
+	if(m_field_id == TYPE_ARGRAW)
 	{
 		//
-		// 'arg' is handled in a custom way
+		// 'rawarg' is handled in a custom way
 		//
 		ASSERT(m_arginfo != NULL);
 		return sinsp_filter_check::string_to_rawval(str, m_arginfo->type);
@@ -551,7 +552,7 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 	}
 }
 
-uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	switch(m_field_id)
 	{
@@ -636,12 +637,13 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 		return (uint8_t*)&evt->m_evtnum;
 	case TYPE_CPU:
 		return (uint8_t*)&evt->m_cpuid;
-	case TYPE_ARG:
+	case TYPE_ARGRAW:
 		{
 			const sinsp_evt_param* pi = evt->get_param_value_raw(m_arginfo->name);
 
 			if(pi != NULL)
 			{
+				*len = pi->m_len;
 				return (uint8_t*)pi->m_val;
 			}
 			else
@@ -650,7 +652,7 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 			}
 		}
 		break;
-	case TYPE_RESARG:
+	case TYPE_ARGSTR:
 		{
 			const char* resolved_argstr;
 			const char* argstr;
@@ -669,7 +671,7 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 				argstr = evt->get_param_value_str(m_argname.c_str(), &resolved_argstr);
 			}
 
-			if(resolved_argstr[0] != 0)
+			if(resolved_argstr != NULL && resolved_argstr[0] != 0)
 			{
 				return (uint8_t*)resolved_argstr;
 			}
@@ -730,16 +732,17 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 
 char* sinsp_filter_check_event::tostring(sinsp_evt* evt)
 {
-	if(m_field_id == TYPE_ARG)
+	if(m_field_id == TYPE_ARGRAW)
 	{
-		uint8_t* rawval = extract(evt);
+		uint32_t len;
+		uint8_t* rawval = extract(evt, &len);
 
 		if(rawval == NULL)
 		{
 			return NULL;
 		}
 
-		return rawval_to_string(rawval, &m_customfield);
+		return rawval_to_string(rawval, &m_customfield, len);
 	}
 	else
 	{
@@ -749,9 +752,10 @@ char* sinsp_filter_check_event::tostring(sinsp_evt* evt)
 
 bool sinsp_filter_check_event::compare(sinsp_evt *evt)
 {
-	if(m_field_id == TYPE_ARG)
+	if(m_field_id == TYPE_ARGRAW)
 	{
-		uint8_t* extracted_val = extract(evt);
+		uint32_t len;
+		uint8_t* extracted_val = extract(evt, &len);
 
 		if(extracted_val == NULL)
 		{
@@ -794,7 +798,7 @@ sinsp_filter_check* sinsp_filter_check_user::allocate_new()
 	return (sinsp_filter_check*) new sinsp_filter_check_user();
 }
 
-uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_user::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	scap_userinfo* uinfo;
@@ -868,7 +872,7 @@ sinsp_filter_check* sinsp_filter_check_group::allocate_new()
 	return (sinsp_filter_check*) new sinsp_filter_check_group();
 }
 
-uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt)
+uint8_t* sinsp_filter_check_group::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -937,6 +941,7 @@ sinsp_filter_check* rawstring_check::allocate_new()
 
 void rawstring_check::set_text(string text)
 {
+	m_text_len = text.size();
 	m_text = text;
 }
 
@@ -951,8 +956,9 @@ void rawstring_check::parse_filter_value(const char* str)
 	ASSERT(false);
 }
 
-uint8_t* rawstring_check::extract(sinsp_evt *evt)
+uint8_t* rawstring_check::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
+	*len = m_text_len;
 	return (uint8_t*)m_text.c_str();
 }
 

@@ -73,7 +73,7 @@ public:
 	//
 	// Extract the field from the event
 	//
-	virtual uint8_t* extract(sinsp_evt *evt) = 0;
+	virtual uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len) = 0;
 
 	//
 	// Compare the field with the constant value obtained from parse_filter_value()
@@ -90,7 +90,7 @@ public:
 	ppm_cmp_operator m_cmpop;
 
 protected:
-	char* rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo);
+	char* rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo, uint32_t len);
 	void string_to_rawval(const char* str, ppm_param_type ptype);
 
 	char m_getpropertystr_storage[1024];
@@ -158,7 +158,7 @@ public:
 		return NULL;
 	}
 
-	uint8_t* extract(sinsp_evt *evt)
+	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len)
 	{
 		ASSERT(false);
 		return NULL;

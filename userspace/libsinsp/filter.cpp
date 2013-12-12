@@ -180,6 +180,7 @@ bool flt_compare(ppm_cmp_operator op, ppm_param_type type, void* operand1, void*
 	case PT_CHARBUF:
 		return flt_compare_string(op, (char*)operand1, (char*)operand2);
 	case PT_BYTEBUF:
+		throw sinsp_exception("bytebuf comparison not implemented yet");
 	case PT_SOCKADDR:
 	case PT_SOCKTUPLE:
 	case PT_FDLIST:
@@ -208,7 +209,7 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
-char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo)
+char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_field_info* finfo, uint32_t len)
 {
 	char* prfmt;
 
@@ -374,8 +375,18 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 					 prfmt, *(uint64_t *)rawval);
 			return m_getpropertystr_storage;
 		case PT_CHARBUF:
-		case PT_BYTEBUF:
 			return (char*)rawval;
+		case PT_BYTEBUF:
+			if(rawval[len] == 0)
+			{
+				return (char*)rawval;
+			}
+			else
+			{
+				memcpy(m_val_storage, rawval, len);
+				m_val_storage[len] = 0;
+				return (char*)m_val_storage;
+			}
 		case PT_SOCKADDR:
 			ASSERT(false);
 			return NULL;
@@ -484,14 +495,15 @@ void sinsp_filter_check::string_to_rawval(const char* str, ppm_param_type ptype)
 
 char* sinsp_filter_check::tostring(sinsp_evt* evt)
 {
-	uint8_t* rawval = extract(evt);
+	uint32_t len;
+	uint8_t* rawval = extract(evt, &len);
 
 	if(rawval == NULL)
 	{
 		return NULL;
 	}
 
-	return rawval_to_string(rawval, m_field);
+	return rawval_to_string(rawval, m_field, len);
 }
 
 int32_t sinsp_filter_check::parse_field_name(const char* str)
@@ -503,6 +515,8 @@ int32_t sinsp_filter_check::parse_field_name(const char* str)
 	ASSERT(m_info.m_nfiedls != -1);
 
 	string val(str);
+
+	m_field_id = 0xffffffff;
 
 	for(j = 0; j < m_info.m_nfiedls; j++)
 	{
@@ -535,7 +549,8 @@ const filtercheck_field_info* sinsp_filter_check::get_field_info()
 
 bool sinsp_filter_check::compare(sinsp_evt *evt)
 {
-	uint8_t* extracted_val = extract(evt);
+	uint32_t len;
+	uint8_t* extracted_val = extract(evt, &len);
 
 	if(extracted_val == NULL)
 	{
