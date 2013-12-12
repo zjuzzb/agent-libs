@@ -459,6 +459,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Update the last event time for this thread
 	if(m_evt.m_tinfo)
 	{
+		m_evt.m_tinfo->m_prevevent_ts = m_evt.m_tinfo->m_lastevent_ts;
 		m_evt.m_tinfo->m_lastevent_ts = m_lastevent_ts;
 	}
 

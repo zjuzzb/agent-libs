@@ -91,6 +91,7 @@ void sinsp_threadinfo::init()
 	set_lastevent_data_validity(false);
 	m_lastevent_type = -1;
 	m_lastevent_ts = 0;
+	m_prevevent_ts = 0;
 	m_lastaccess_ts = 0;
 	m_lastevent_category.m_category = EC_UNKNOWN;
 	m_th_analysis_flags = AF_PARTIAL_METRIC | AF_INCLUDE_INFO_IN_PROTO;

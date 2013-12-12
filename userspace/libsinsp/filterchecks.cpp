@@ -588,9 +588,9 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt)
 
 		if(evt->is_exit())
 		{
-			if(evt->m_tinfo->m_lastevent_ts != 0)
+			if(evt->m_tinfo->m_prevevent_ts != 0)
 			{
-				m_u64val = evt->get_ts() - evt->m_tinfo->m_lastevent_ts;
+				m_u64val = evt->get_ts() - evt->m_tinfo->m_prevevent_ts;
 				ASSERT(m_u64val > 0);
 			}
 		}

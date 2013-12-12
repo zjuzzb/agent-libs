@@ -129,7 +129,8 @@ public:
 	//
 	uint8_t m_lastevent_data[SP_EVT_BUF_SIZE]; // Used by some event parsers to store the last enter event
 	int64_t m_lastevent_fd;
-	uint64_t m_lastevent_ts;
+	uint64_t m_lastevent_ts;	// timestamp of the last event for this thread
+	uint64_t m_prevevent_ts;	// timestamp of the event before the last for this thread
 	uint16_t m_lastevent_type;
 	uint16_t m_lastevent_cpuid;
 	uint64_t m_lastaccess_ts;
