@@ -179,6 +179,8 @@ public:
 	bool run(sinsp_evt *evt);
 	static bool isblank(char c);
 	static bool is_special_char(char c);
+	static bool is_bracket(char c);
+
 
 private:
 	enum state
@@ -190,7 +192,7 @@ private:
 	char next();
 	bool compare_no_consume(string str);
 
-	string next_operand();
+	string next_operand(bool expecting_first_operand);
 	ppm_cmp_operator next_comparison_operator();
 	void parse_check(sinsp_filter_expression* parent_expr, boolop op);
 	void push_expression(boolop op);

@@ -675,6 +675,16 @@ bool sinsp_filter::is_special_char(char c)
 	return false;
 }
 
+bool sinsp_filter::is_bracket(char c)
+{
+	if(c == '(' || c == ')')
+	{
+		return true;
+	}
+
+	return false;
+}
+
 char sinsp_filter::next()
 {
 	while(true)
@@ -693,7 +703,7 @@ char sinsp_filter::next()
 	}
 }
 
-string sinsp_filter::next_operand()
+string sinsp_filter::next_operand(bool expecting_first_operand)
 {
 	int32_t start;
 
@@ -713,8 +723,19 @@ string sinsp_filter::next_operand()
 	for(; m_scanpos < m_scansize; m_scanpos++)
 	{
 		char curchar = m_fltstr[m_scanpos];
+		
+		bool is_end_of_word;
 
-		if(isblank(curchar) || is_special_char(curchar))
+		if(expecting_first_operand)
+		{
+			is_end_of_word = (isblank(curchar) || is_special_char(curchar));
+		}
+		else
+		{
+			is_end_of_word = (isblank(curchar) || is_bracket(curchar));
+		}
+
+		if(is_end_of_word)
 		{
 			//
 			// End of word
@@ -817,7 +838,7 @@ ppm_cmp_operator sinsp_filter::next_comparison_operator()
 void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 {
 	uint32_t startpos = m_scanpos;
-	string operand1 = next_operand();
+	string operand1 = next_operand(true);
 	sinsp_filter_check* chk = g_filterlist.new_filter_check_from_fldname(operand1, m_inspector);
 
 	if(chk == NULL)
@@ -827,7 +848,7 @@ void sinsp_filter::parse_check(sinsp_filter_expression* parent_expr, boolop op)
 	}
 
 	ppm_cmp_operator co = next_comparison_operator();
-	string operand2 = next_operand();
+	string operand2 = next_operand(false);
 
 	chk->m_boolop = op;
 	chk->m_cmpop = co;

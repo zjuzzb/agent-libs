@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 					//
 					// -ff shows the default output format, useful if the user wants to tweak it.
 					//
-					printf("%s", output_format.c_str());
+					printf("%s\n", output_format.c_str());
 					return EXIT_SUCCESS;
 				}
 				else
