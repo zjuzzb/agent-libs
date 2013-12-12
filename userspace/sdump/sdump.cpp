@@ -63,7 +63,6 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t ts;
 	uint64_t deltats = 0;
 	uint64_t firstts = 0;
-	uint64_t screents;
 	string line;
 	sinsp_evt_formatter formatter(format, inspector);
 
@@ -102,15 +101,6 @@ captureinfo do_inspect(sinsp* inspector,
 		}
 		deltats = ts - firstts;
 
-		if(absolute_times)
-		{
-			screents = ts;
-		}
-		else
-		{
-			screents = deltats;
-		}
-
 		//
 		// When the quiet flag is specified, we don't do any kind of processing other
 		// than counting the events.
@@ -123,10 +113,11 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		// Output the line
 		//
-		//ev->tostring(&line);
-		formatter.tostring(ev, &line);
-
-		cout << line << endl;
+		if(!quiet)
+		{
+			formatter.tostring(ev, &line);
+			cout << line << endl;			
+		}
 	}
 
 	retval.m_time = deltats;
@@ -213,7 +204,7 @@ int main(int argc, char **argv)
 	{
 		sinsp inspector;
 //		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
-		output_format = "%evt.num))%evt.time.s.%evt.time.ns(%evt.latency) %evt.cpu %comm (%tid) %evt.dir %evt.name %evt.args";
+		output_format = "%evt.num))%evt.time.s.%evt.time.ns(%evt.latency) %evt.cpu %proc.comm (%thread.tid) %evt.dir %evt.name %evt.args";
 
 		//
 		// Parse the args
@@ -295,6 +286,7 @@ int main(int argc, char **argv)
 				break;
 			case 'w':
 				outfile = optarg;
+				quiet = true;
 				break;
 			default:
 				break;

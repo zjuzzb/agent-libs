@@ -356,7 +356,7 @@ const filtercheck_field_info sinsp_filter_check_thread_fields[] =
 	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.cwd", "the current working directory of the event."},
 	{PT_UINT32, EPF_NONE, PF_DEC, "proc.nchilds", "the number of child threads of that the process generating the event currently has."},
 	{PT_INT64, EPF_NONE, PF_DEC, "thread.tid", "the id of the thread generating the event."},
-	{PT_BOOL, EPF_NONE, PF_NA, "thread.ismainthread", "'true' if the thread generating the event is the main one in the process."},
+	{PT_BOOL, EPF_NONE, PF_NA, "thread.ismain", "'true' if the thread generating the event is the main one in the process."},
 };
 
 sinsp_filter_check_thread::sinsp_filter_check_thread()
