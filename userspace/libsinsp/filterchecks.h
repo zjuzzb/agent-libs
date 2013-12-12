@@ -71,13 +71,13 @@ class sinsp_filter_check_thread : public sinsp_filter_check
 public:
 	enum check_type
 	{
-		TYPE_TID = 0,
-		TYPE_PID = 1,
-		TYPE_EXE = 2,
-		TYPE_COMM = 3,
-		TYPE_ARGS = 4,
-		TYPE_CWD = 5,
-		TYPE_NCHILDS = 6,
+		TYPE_PID = 0,
+		TYPE_EXE = 1,
+		TYPE_COMM = 2,
+		TYPE_ARGS = 3,
+		TYPE_CWD = 4,
+		TYPE_NCHILDS = 5,
+		TYPE_TID = 6,
 		TYPE_ISMAINTHREAD = 7,
 	};
 

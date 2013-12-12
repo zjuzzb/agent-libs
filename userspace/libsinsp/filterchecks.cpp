@@ -349,19 +349,19 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 const filtercheck_field_info sinsp_filter_check_thread_fields[] =
 {
-	{PT_INT64, EPF_NONE, PF_DEC, "tid", "the id of the thread generating the event."},
-	{PT_INT64, EPF_NONE, PF_DEC, "pid", "the id of the process generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "exe", "the full name (including the path) of the executable generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "comm", "the name (excluding thr path) of the executable generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "args", "the arguments passed on the command line when starting the process generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "cwd", "the current working directory of the event."},
-	{PT_UINT32, EPF_NONE, PF_DEC, "nchilds", "the number of childs of that the process generating the event currently has."},
-	{PT_BOOL, EPF_NONE, PF_NA, "ismainthread", "'true' if the thread generating the event is the main one in the process."},
+	{PT_INT64, EPF_NONE, PF_DEC, "proc.pid", "the id of the process generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.exe", "the full name (including the path) of the executable generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.comm", "the name (excluding thr path) of the executable generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.args", "the arguments passed on the command line when starting the process generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.cwd", "the current working directory of the event."},
+	{PT_UINT32, EPF_NONE, PF_DEC, "proc.nchilds", "the number of child threads of that the process generating the event currently has."},
+	{PT_INT64, EPF_NONE, PF_DEC, "thread.tid", "the id of the thread generating the event."},
+	{PT_BOOL, EPF_NONE, PF_NA, "thread.ismainthread", "'true' if the thread generating the event is the main one in the process."},
 };
 
 sinsp_filter_check_thread::sinsp_filter_check_thread()
 {
-	m_info.m_name = "thread";
+	m_info.m_name = "process";
 	m_info.m_fields = sinsp_filter_check_thread_fields;
 	m_info.m_nfiedls = sizeof(sinsp_filter_check_thread_fields) / sizeof(sinsp_filter_check_thread_fields[0]);
 }
