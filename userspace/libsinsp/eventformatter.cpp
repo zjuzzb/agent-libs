@@ -118,8 +118,9 @@ void sinsp_evt_formatter::set_format(const string& fmt)
 	throw sinsp_exception("sinsp_evt_formatter unvavailable because it was not compiled in the library");
 }
 
-void sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
+bool sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
 {
 	throw sinsp_exception("sinsp_evt_formatter unvavailable because it was not compiled in the library");
+	return false;
 }
 #endif // HAS_FILTERING
