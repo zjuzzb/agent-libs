@@ -243,6 +243,8 @@ int main(int argc, char **argv)
 				{
 					output_format = optarg;
 				}
+
+				break;
 			case 'i':
 				if(string(optarg) == "stdout")
 				{
