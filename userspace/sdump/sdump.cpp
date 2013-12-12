@@ -163,7 +163,7 @@ static void list_fields()
 			printf("%s", fld->m_name);
 			uint32_t namelen = strlen(fld->m_name);
 
-			ASSERT(namelen > DESCRITION_TEXT_START);
+			ASSERT(namelen < DESCRITION_TEXT_START);
 
 			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
 			{
