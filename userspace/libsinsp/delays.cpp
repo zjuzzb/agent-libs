@@ -178,20 +178,20 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 	//
 	for(j = 0; j < ncpus; j++)
 	{
-		vector<sinsp_trlist_entry>* trs = &client_transactions_per_cpu->at(j);
+		vector<sinsp_trlist_entry>* client_trs = &client_transactions_per_cpu->at(j);
 		vector<sinsp_trlist_entry>::iterator client_iter;
 
 		//
 		// sort the intervals based on start time
 		//
-		sort(trs->begin(), trs->end(), sinsp_trlist_entry_comparer());
+		sort(client_trs->begin(), client_trs->end(), sinsp_trlist_entry_comparer());
 
 		//
 		// cycle through the client transactions
 		//
-		for(client_iter = trs->begin(); client_iter != trs->end(); client_iter++)
+		for(client_iter = client_trs->begin(); client_iter != client_trs->end(); client_iter++)
 		{
-			bool filter = true;
+			bool filter_out = true;
 
 			for(k = 0; k < ncpus; k++)
 			{
@@ -206,7 +206,7 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 					{
 						if(client_iter->m_etime < server_iters[k]->m_etime)
 						{
-							filter = false;
+							filter_out = false;
 							break;
 						}
 					}
@@ -219,7 +219,7 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 				}
 			}
 
-			if(filter == true)
+			if(filter_out == true)
 			{
 				client_iter->m_flags |= sinsp_trlist_entry::FL_FILTERED_OUT;
 			}
@@ -260,8 +260,15 @@ sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* pro
 {
 	int32_t j;
 
-	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
-		&program_info->m_procinfo->m_server_transactions_per_cpu);
+	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
+	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
+
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
+	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
+
+	prune_client_transactions(&client_tr,
+		&server_tr);
 
 	//
 	// Prune the client connections
