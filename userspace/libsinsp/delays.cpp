@@ -189,15 +189,18 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 		//
 		// cycle through the client transactions
 		//
-		bool filter = true;
-
-		for(client_iter = trs->begin(); client_iter != trs->end(); trs++)
+		for(client_iter = trs->begin(); client_iter != trs->end(); client_iter++)
 		{
+			bool filter = true;
+
 			for(k = 0; k < ncpus; k++)
 			{
 				while(true)
 				{
-					if(server_iters[k] == server_iters[k] != server_transactions_per_cpu->at(j).end())
+					if(server_iters[k] == server_transactions_per_cpu->at(k).end())
+					{
+						break;
+					}
 					
 					if(client_iter->m_stime > server_iters[k]->m_stime)
 					{
@@ -207,9 +210,18 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 							break;
 						}
 					}
+					else
+					{
+						break;
+					}
 
 					++server_iters[k];
 				}
+			}
+
+			if(filter == true)
+			{
+				client_iter->m_flags |= sinsp_trlist_entry::FL_FILTERED_OUT;
 			}
 		}
 	}
@@ -248,6 +260,15 @@ sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* pro
 {
 	int32_t j;
 
+	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
+		&program_info->m_procinfo->m_server_transactions_per_cpu);
+
+	//
+	// Prune the client connections
+	//
+	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
+		&program_info->m_procinfo->m_server_transactions_per_cpu);
+
 	//
 	// Per CPU transaction merging
 	//
@@ -255,12 +276,6 @@ sinsp_program_delays* sinsp_delays::compute_program_delays(sinsp_threadinfo* pro
 	{
 		compute_program_cpu_delays(program_info, j);
 	}
-
-	//
-	//
-	//
-	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
-		&program_info->m_procinfo->m_server_transactions_per_cpu);
 
 	//
 	// Local transaction processing delay
