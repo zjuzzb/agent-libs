@@ -206,13 +206,13 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-//		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %comm (%tid) %evt.dir %evt.type %evt.args";
-		output_format = "%evt.rawarg.data";
+		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.comm (%thread.tid) %evt.dir %evt.type %evt.args";
+//		output_format = "%evt.rawarg.data";
 
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:f:hi:jlqr:s:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:hi:jlp:qr:s:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -233,21 +233,6 @@ int main(int argc, char **argv)
 			case 'h':
 				usage(argv[0]);
 				return EXIT_SUCCESS;
-			case 'f':
-				if(string(optarg) == "f")
-				{
-					//
-					// -ff shows the default output format, useful if the user wants to tweak it.
-					//
-					printf("%s\n", output_format.c_str());
-					return EXIT_SUCCESS;
-				}
-				else
-				{
-					output_format = optarg;
-				}
-
-				break;
 			case 'i':
 				if(string(optarg) == "stdout")
 				{
@@ -283,6 +268,21 @@ int main(int argc, char **argv)
 			case 'l':
 				list_fields();
 				return EXIT_SUCCESS;
+			case 'p':
+				if(string(optarg) == "p")
+				{
+					//
+					// -ff shows the default output format, useful if the user wants to tweak it.
+					//
+					printf("%s\n", output_format.c_str());
+					return EXIT_SUCCESS;
+				}
+				else
+				{
+					output_format = optarg;
+				}
+
+				break;
 			case 'r':
 				infile = optarg;
 				break;
