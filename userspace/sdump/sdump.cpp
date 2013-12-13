@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-		output_format = "%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.comm (%thread.tid) %evt.dir %evt.type %evt.args";
+		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.comm (%thread.tid) %evt.dir %evt.type %evt.args";
 //		output_format = "%evt.rawarg.data";
 
 		//

@@ -377,7 +377,8 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				erase_fd(&eparams);
 			}
 		}
-		else if(eflags & EF_CREATES_FD)
+		
+		if(eflags & EF_CREATES_FD)
 		{
 			//
 			// Calculate (and if necessary update) the fd usage ratio
@@ -395,7 +396,9 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(parnum)->type == PT_FD);
 			fd = *(int64_t *)parinfo->m_val;
 
-			if(evt->m_tinfo->m_fdlimit != -1)
+			sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
+
+			if(fdinfo == NULL && evt->m_tinfo->m_fdlimit != -1)
 			{
 				int64_t m_fd_usage_pct = fd * 100 / evt->m_tinfo->m_fdlimit;
 				ASSERT(m_fd_usage_pct <= 100);
