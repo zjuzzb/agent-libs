@@ -895,6 +895,10 @@ int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen)
 		return SCAP_FAILURE;
 	}
 
+#ifdef _WIN32
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	return SCAP_FAILURE;
+#else
 	//
 	// Tell the driver to change the snaplen
 	//
@@ -906,4 +910,5 @@ int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen)
 	}
 
 	return SCAP_SUCCESS;
+#endif
 }
