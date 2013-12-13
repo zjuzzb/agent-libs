@@ -73,12 +73,13 @@ public:
 	{
 		TYPE_PID = 0,
 		TYPE_EXE = 1,
-		TYPE_COMM = 2,
+		TYPE_NAME = 2,
 		TYPE_ARGS = 3,
 		TYPE_CWD = 4,
 		TYPE_NCHILDS = 5,
 		TYPE_TID = 6,
 		TYPE_ISMAINTHREAD = 7,
+		TYPE_PARENTNAME = 8,
 	};
 
 	sinsp_filter_check_thread();

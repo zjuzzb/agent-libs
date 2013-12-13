@@ -255,12 +255,26 @@ public:
 	//
 	static void get_filtercheck_fields_info(vector<const filter_check_info*>* list);
 
+	//
+	// Get and set the library configuration settings
+	//
 	sinsp_configuration* get_configuration();
 	void set_configuration(const sinsp_configuration& configuration);
 
 	bool has_metrics();
 
+	//
+	// Get information about the physical machine generating the events
+	//
 	const scap_machine_info* get_machine_info();
+
+	//
+	// Return a thread's information given its tid
+	//
+	sinsp_threadinfo* get_thread(int64_t tid)
+	{
+		return get_thread(tid, false);
+	}
 
 	const unordered_map<uint32_t, scap_userinfo*>* get_userlist();
 	const unordered_map<uint32_t, scap_groupinfo*>* get_grouplist();

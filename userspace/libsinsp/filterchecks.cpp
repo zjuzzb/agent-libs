@@ -352,12 +352,13 @@ const filtercheck_field_info sinsp_filter_check_thread_fields[] =
 {
 	{PT_INT64, EPF_NONE, PF_DEC, "proc.pid", "the id of the process generating the event."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.exe", "the full name (including the path) of the executable generating the event."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.comm", "the name (excluding thr path) of the executable generating the event."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.name", "the name (excluding thr path) of the executable generating the event."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.args", "the arguments passed on the command line when starting the process generating the event."},
 	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.cwd", "the current working directory of the event."},
 	{PT_UINT32, EPF_NONE, PF_DEC, "proc.nchilds", "the number of child threads of that the process generating the event currently has."},
 	{PT_INT64, EPF_NONE, PF_DEC, "thread.tid", "the id of the thread generating the event."},
 	{PT_BOOL, EPF_NONE, PF_NA, "thread.ismain", "'true' if the thread generating the event is the main one in the process."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "proc.parentname", "the name (excluding thr path) of the parent of the process generating the event."},
 };
 
 sinsp_filter_check_thread::sinsp_filter_check_thread()
@@ -405,7 +406,7 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 		return (uint8_t*)&m_u64val;
 	case TYPE_PID:
 		return (uint8_t*)&tinfo->m_pid;
-	case TYPE_COMM:
+	case TYPE_NAME:
 		m_tstr = tinfo->get_comm();
 		return (uint8_t*)m_tstr.c_str();
 	case TYPE_EXE:
@@ -429,6 +430,21 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 	case TYPE_ISMAINTHREAD:
 		m_tbool = (uint32_t)tinfo->is_main_thread();
 		return (uint8_t*)&m_tbool;
+	case TYPE_PARENTNAME:
+		{
+			sinsp_threadinfo* ptinfo = 
+				m_inspector->get_thread(tinfo->m_ptid);
+
+			if(ptinfo != NULL)
+			{
+				m_tstr = ptinfo->get_comm();
+				return (uint8_t*)m_tstr.c_str();
+			}
+			else
+			{
+				return NULL;
+			}
+		}
 	default:
 		ASSERT(false);
 		return NULL;
