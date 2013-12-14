@@ -945,11 +945,6 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 	// Add the fd to the table.
 	//
 	evt->m_tinfo->add_fd(fd, &fdi);
-
-	//
-	// Update the last event fd. It's needed by the filtering engine
-	//
-	evt->m_tinfo->m_lastevent_fd = fd;
 }
 
 //
@@ -1033,11 +1028,6 @@ inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain
 	// Add the fd to the table.
 	//
 	evt->m_tinfo->add_fd(fd, &fdi);
-
-	//
-	// Add this operation to the recend fd operations fifo
-	//
-	//  m_inspector->push_fdop(tid, &fdi, sinsp_fdop(fd, PPME_SOCKET_SOCKET_X));
 }
 
 void sinsp_parser::parse_socket_exit(sinsp_evt *evt)

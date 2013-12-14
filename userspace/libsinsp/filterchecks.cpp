@@ -97,23 +97,9 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 	switch(m_field_id)
 	{
 	case TYPE_FDNAME:
-		if(m_fdinfo != NULL)
-		{
-			return (uint8_t*)m_fdinfo->m_name.c_str();
-		}
-		else
-		{
-			return NULL;
-		}
-
-		break;
+		return (uint8_t*)m_fdinfo->m_name.c_str();
 	case TYPE_FDTYPE:
-		if(m_fdinfo != NULL)
-		{
-			return extract_fdtype(m_fdinfo);
-		}
-
-		break;
+		return extract_fdtype(m_fdinfo);
 	case TYPE_CLIENTIP:
 		{
 			scap_fd_type evt_type = m_fdinfo->m_type;
@@ -126,7 +112,6 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 
 		break;
 	case TYPE_SERVERIP:
-		if(m_fdinfo != NULL)
 		{
 			scap_fd_type evt_type = m_fdinfo->m_type;
 
@@ -142,7 +127,6 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 
 		break;
 	case TYPE_CLIENTPORT:
-		if(m_fdinfo != NULL)
 		{
 			scap_fd_type evt_type = m_fdinfo->m_type;
 
@@ -156,7 +140,6 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 			}
 		}
 	case TYPE_SERVERPORT:
-		if(m_fdinfo != NULL)
 		{
 			scap_fd_type evt_type = m_fdinfo->m_type;
 
@@ -176,10 +159,11 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 			{
 				return (uint8_t*)&(m_fdinfo->m_info.m_ipv6serverinfo.m_port);
 			}
+			else
+			{
+				return NULL;
+			}
 		}
-
-		break;
-
 	default:
 		ASSERT(false);
 	}
@@ -284,7 +268,7 @@ bool sinsp_filter_check_fd::compare_port(sinsp_evt *evt)
 	return false;
 }
 
-bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
+bool sinsp_filter_check_fd::extract_fd(sinsp_evt *evt)
 {
 	ppm_event_flags eflags = evt->get_flags();
 
@@ -315,6 +299,14 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 	{
 		return false;
 	}
+}
+
+bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
+{
+	if(!extract_fd(evt))
+	{
+		return NULL;
+	}
 
 	//
 	// A couple of fields are filter only and therefore get a special treatment
@@ -343,6 +335,25 @@ bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
 		m_info.m_fields[m_field_id].m_type, 
 		extracted_val, 
 		&m_val_storage);
+}
+
+char* sinsp_filter_check_fd::tostring(sinsp_evt* evt)
+{
+	uint32_t len;
+
+	if(!extract_fd(evt))
+	{
+		return NULL;
+	}
+
+	uint8_t* rawval = extract(evt, &len);
+
+	if(rawval == NULL)
+	{
+		return NULL;
+	}
+
+	return rawval_to_string(rawval, m_field, len);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

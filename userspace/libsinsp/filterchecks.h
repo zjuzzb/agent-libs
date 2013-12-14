@@ -56,11 +56,15 @@ public:
 	bool compare_ip(sinsp_evt *evt);
 	bool compare_port(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
+	char* tostring(sinsp_evt* evt);
 
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
 	string m_fdname;
 	fd_type m_fd_type;
+
+private:
+	bool extract_fd(sinsp_evt *evt);
 };
 
 //

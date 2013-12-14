@@ -462,6 +462,11 @@ sinsp_fdtable* sinsp_threadinfo::get_fd_table()
 void sinsp_threadinfo::add_fd(int64_t fd, sinsp_fdinfo *fdinfo)
 {
 	get_fd_table()->add(fd, fdinfo);
+
+	//
+	// Update the last event fd. It's needed by the filtering engine
+	//
+	m_lastevent_fd = fd;
 }
 
 void sinsp_threadinfo::remove_fd(int64_t fd)
