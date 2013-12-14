@@ -299,6 +299,8 @@ bool sinsp_filter_check_fd::extract_fd(sinsp_evt *evt)
 	{
 		return false;
 	}
+
+	return true;
 }
 
 bool sinsp_filter_check_fd::compare(sinsp_evt *evt)
