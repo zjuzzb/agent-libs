@@ -207,7 +207,8 @@ int main(int argc, char **argv)
 	{
 		sinsp inspector;
 		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-//		output_format = "%fd.name";
+//		output_format = "*%evt.num]] %evt.type) %fd.name error:%evt.res";
+//		output_format = "%evt.res";
 
 		//
 		// Parse the args

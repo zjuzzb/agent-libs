@@ -60,8 +60,8 @@ public:
 
 	sinsp_threadinfo* m_tinfo;
 	sinsp_fdinfo* m_fdinfo;
-	string m_fdname;
 	fd_type m_fd_type;
+	string m_tstr;
 
 private:
 	bool extract_fd(sinsp_evt *evt);
@@ -122,7 +122,8 @@ public:
 		TYPE_ARGS = 11,
 		TYPE_ARGSTR = 12,
 		TYPE_ARGRAW = 13,
-		TYPE_RES = 14,
+		TYPE_RESSTR = 14,
+		TYPE_RESRAW = 15,
 	};
 
 	sinsp_filter_check_event();

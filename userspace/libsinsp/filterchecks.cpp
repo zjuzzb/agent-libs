@@ -97,7 +97,10 @@ uint8_t* sinsp_filter_check_fd::extract(sinsp_evt *evt, OUT uint32_t* len)
 	switch(m_field_id)
 	{
 	case TYPE_FDNAME:
-		return (uint8_t*)m_fdinfo->m_name.c_str();
+		m_tstr = m_fdinfo->m_name;
+		m_tstr.erase(remove_if(m_tstr.begin(), m_tstr.end(), g_invalidchar()), m_tstr.end());
+
+		return (uint8_t*)m_tstr.c_str();
 	case TYPE_FDTYPE:
 		return extract_fdtype(m_fdinfo);
 	case TYPE_CLIENTIP:
@@ -483,7 +486,8 @@ const filtercheck_field_info sinsp_filter_check_event_fields[] =
 	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.args", "all the event arguments, aggregated into a single string."},
 	{PT_CHARBUF, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.arg", "one of the event arguments specified by name or by number. Some events (e.g. return codes or FDs) will be converted into a text representation when possible. E.g. 'resarg.fd' or 'resarg[0]'."},
 	{PT_NONE, EPF_REQUIRES_ARGUMENT, PF_NA, "evt.rawarg", "one of the event arguments specified by name. E.g. 'arg.fd'."},
-	{PT_INT64, EPF_NONE, PF_DEC, "evt.res", "event return value."},
+	{PT_CHARBUF, EPF_NONE, PF_DEC, "evt.res", "event return value, as an error code string (e.g. 'ENOENT')."},
+	{PT_INT64, EPF_NONE, PF_DEC, "evt.rawres", "event return value, as a number (e.g. -2). Useful for range comparisons."},
 };
 
 sinsp_filter_check_event::sinsp_filter_check_event()
@@ -534,7 +538,7 @@ int32_t sinsp_filter_check_event::extract_arg(string fldname, string val, OUT co
 	}
 	else
 	{
-		throw sinsp_exception("filter syntax error: val");
+		throw sinsp_exception("filter syntax error: " + val);
 	}
 
 	return parsed_len; 
@@ -757,9 +761,70 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt, OUT uint32_t* len)
 			return (uint8_t*)m_strstorage.c_str();
 		}
 		break;
-	case TYPE_RES:
-		ASSERT(false);
-		return NULL;
+	case TYPE_RESRAW:
+		{
+			const sinsp_evt_param* pi = evt->get_param_value_raw("res");
+
+			if(pi != NULL)
+			{
+				*len = pi->m_len;
+				return (uint8_t*)pi->m_val;
+			}
+
+			if((evt->get_flags() & EF_CREATES_FD) && PPME_IS_EXIT(evt->get_type()))
+			{
+				pi = evt->get_param_value_raw("fd");
+
+				if(pi != NULL)
+				{
+					*len = pi->m_len;
+					return (uint8_t*)pi->m_val;
+				}
+			}
+
+			return NULL;
+		}
+		break;
+	case TYPE_RESSTR:
+		{
+			const char* resolved_argstr;
+			const char* argstr;
+
+			argstr = evt->get_param_value_str("res", &resolved_argstr);
+
+			if(resolved_argstr != NULL && resolved_argstr[0] != 0)
+			{
+				return (uint8_t*)resolved_argstr;
+			}
+			else
+			{
+				if(argstr == NULL)
+				{
+					if((evt->get_flags() & EF_CREATES_FD) && PPME_IS_EXIT(evt->get_type()))
+					{
+						argstr = evt->get_param_value_str("fd", &resolved_argstr);
+
+						if(resolved_argstr != NULL && resolved_argstr[0] != 0)
+						{
+							return (uint8_t*)resolved_argstr;
+						}
+						else
+						{
+							return (uint8_t*)argstr;
+						}
+					}
+					else
+					{
+						return NULL;
+					}
+				}
+				else
+				{
+					return (uint8_t*)argstr;
+				}
+			}
+		}
+		break;
 	default:
 		ASSERT(false);
 		return NULL;
