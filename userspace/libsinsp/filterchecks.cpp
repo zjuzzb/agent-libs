@@ -1,3 +1,6 @@
+#ifndef _WIN32
+#include <algorithm>
+#endif
 #include "sinsp.h"
 #include "sinsp_int.h"
 
