@@ -330,8 +330,11 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		//
 		// event latency
 		//
-		evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_lastevent_ts;
-		ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
+		if(evt->m_tinfo->m_lastevent_ts != 0)
+		{
+			evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_lastevent_ts;
+			ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
+		}
 
 		//
 		// Error detection logic
