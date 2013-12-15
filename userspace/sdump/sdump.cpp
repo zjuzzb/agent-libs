@@ -206,8 +206,8 @@ int main(int argc, char **argv)
 
 	{
 		sinsp inspector;
-		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-//		output_format = "%evt.num]] %evt.type) %iobytes, tot:%totiobytes";
+//		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
+		output_format = "%evt.num]] %evt.type) %latency, tot:%totlatency";
 
 		//
 		// Parse the args

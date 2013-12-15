@@ -482,6 +482,18 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 	case TOTIOBYTES:
 		m_u64val += tinfo->m_iobytes;
 		return (uint8_t*)&m_u64val;
+	case LATENCY:
+		if(tinfo->m_latency != 0)
+		{
+			return (uint8_t*)&tinfo->m_latency;
+		}
+		else
+		{
+			return NULL;
+		}
+	case TOTLATENCY:
+		m_u64val += tinfo->m_latency;
+		return (uint8_t*)&m_u64val;
 	default:
 		ASSERT(false);
 		return NULL;
