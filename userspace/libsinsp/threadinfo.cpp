@@ -108,6 +108,8 @@ void sinsp_threadinfo::init()
 	m_resident_memory_kb = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
+	m_iobytes = 0;
+	m_latency = 0;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()

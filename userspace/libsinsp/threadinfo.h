@@ -170,6 +170,11 @@ public:
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
 
+	//
+	// Temporary state for filtering
+	//
+	uint64_t m_latency;
+	uint64_t m_iobytes;
 
 	//
 	// Global state

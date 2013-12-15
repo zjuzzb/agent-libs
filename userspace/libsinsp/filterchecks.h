@@ -84,6 +84,10 @@ public:
 		TYPE_TID = 6,
 		TYPE_ISMAINTHREAD = 7,
 		TYPE_PARENTNAME = 8,
+		IOBYTES = 9,
+		TOTIOBYTES = 10,
+		LATENCY = 11,
+		TOTLATENCY = 12,
 	};
 
 	sinsp_filter_check_thread();
