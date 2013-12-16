@@ -288,7 +288,6 @@ int main(int argc, char **argv)
 				break;
 			case 's':
 				snaplen = atoi(optarg);
-				printf("***%d", snaplen);
 				break;
 			case 'q':
 				quiet = true;
