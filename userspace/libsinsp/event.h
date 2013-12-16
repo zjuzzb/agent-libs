@@ -142,7 +142,7 @@ VISIBILITY_PRIVATE
 	sinsp_fdinfo* m_fdinfo;
 	uint32_t m_iosize;
 	int32_t m_errorcode;
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 	bool m_filtered_out;
 #endif
 

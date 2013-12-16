@@ -18,9 +18,9 @@
 //
 // If defined, the filtering system is compiled
 //
-#ifdef _DEBUG
+//#ifdef _DEBUG
 #define HAS_FILTERING
-#endif
+//#endif
 
 //
 // The analyzer emit interval

@@ -210,7 +210,7 @@ public:
 	void stop_dropping_mode();
 	void start_dropping_mode();
 	
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 	//
 	// Set the capture filter. Only in debug mode for the moment.
 	//

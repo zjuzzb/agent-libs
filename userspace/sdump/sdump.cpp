@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 	{
 		sinsp inspector;
 //		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-		output_format = "%evt.num]] %evt.type) %latency, tot:%totlatency";
+		output_format = "%evt.num)%evt.type time:%latencyns";
 
 		//
 		// Parse the args
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 		//
 		if(optind < argc)
 		{
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 			string filter;
 
 			for(int32_t j = optind; j < argc; j++)

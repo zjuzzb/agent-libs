@@ -442,7 +442,7 @@ int main(int argc, char **argv)
 		//
 		if(optind < argc)
 		{
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 			string filter;
 
 			for(int32_t j = optind; j < argc; j++)

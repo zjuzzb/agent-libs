@@ -314,9 +314,19 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		}
 
 		evt->m_tinfo->m_latency = 0;
+		evt->m_tinfo->m_last_latency_entertime = evt->get_ts();
 	}
 	else
 	{
+		//
+		// event latency
+		//
+		if(evt->m_tinfo->m_last_latency_entertime != 0)
+		{
+			evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_last_latency_entertime;
+			ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
+		}
+
 		if(etype == evt->m_tinfo->m_lastevent_type + 1)
 		{
 			evt->m_tinfo->set_lastevent_data_validity(true);
@@ -325,15 +335,6 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		{
 			evt->m_tinfo->set_lastevent_data_validity(false);
 			return false;
-		}
-
-		//
-		// event latency
-		//
-		if(evt->m_tinfo->m_lastevent_ts != 0)
-		{
-			evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_lastevent_ts;
-			ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
 		}
 
 		//

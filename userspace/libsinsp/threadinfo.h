@@ -173,6 +173,7 @@ public:
 	//
 	// Temporary state for filtering
 	//
+	uint64_t m_last_latency_entertime;
 	uint64_t m_latency;
 	uint64_t m_iobytes;
 

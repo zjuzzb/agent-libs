@@ -456,7 +456,9 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	m_analyzer->process_event(&m_evt);
 #endif
 
+	//
 	// Update the last event time for this thread
+	//
 	if(m_evt.m_tinfo)
 	{
 		m_evt.m_tinfo->m_prevevent_ts = m_evt.m_tinfo->m_lastevent_ts;
@@ -633,7 +635,7 @@ void sinsp::start_dropping_mode()
 	}
 }
 
-#ifdef _DEBUG
+#ifdef HAS_FILTERING
 void sinsp::set_filter(string filter)
 {
 	if(m_filter != NULL)
