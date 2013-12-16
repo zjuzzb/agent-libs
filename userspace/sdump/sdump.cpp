@@ -131,7 +131,7 @@ static void usage(char *program_name)
 	fprintf(stderr, "%s [ -r filename ]\n", program_name);
 }
 
-#define DESCRITION_TEXT_START 15
+#define DESCRITION_TEXT_START 16
 #define CONSOLE_LINE_LEN 79
 
 static void list_fields()
