@@ -471,17 +471,44 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 			}
 		}
 	case IOBYTES:
-		if(tinfo->m_iobytes != 0)
-		{
-			return (uint8_t*)&tinfo->m_iobytes;
-		}
-		else
-		{
-			return NULL;
-		}
 	case TOTIOBYTES:
-		m_u64val += tinfo->m_iobytes;
-		return (uint8_t*)&m_u64val;
+		{
+			//
+			// Extract the return value
+			//
+			uint16_t etype = evt->get_type();
+			uint64_t res;
+
+			if(etype == PPME_SYSCALL_READ_X || etype == PPME_SYSCALL_WRITE_X || etype == PPME_SOCKET_RECV_X ||
+				etype == PPME_SOCKET_SEND_X|| etype == PPME_SOCKET_RECVFROM_X || etype == PPME_SOCKET_RECVMSG_X ||
+				etype == PPME_SOCKET_SENDTO_X || etype == PPME_SOCKET_SENDMSG_X || etype == PPME_SYSCALL_READV_X ||
+				etype == PPME_SYSCALL_WRITEV_X || etype == PPME_SYSCALL_PREAD_X || etype == PPME_SYSCALL_PWRITE_X || 
+				etype == PPME_SYSCALL_PREADV_X || etype == PPME_SYSCALL_PWRITEV_X)
+			{
+				sinsp_evt_param *parinfo = evt->get_param(0);
+				ASSERT(parinfo->m_len == sizeof(int64_t));
+				res = *(int64_t *)parinfo->m_val;
+			}
+
+			if(m_field_id == IOBYTES)
+			{
+				m_u64val = res;
+
+				if(m_u64val != 0)
+				{
+					return (uint8_t*)&m_u64val;
+				}
+				else
+				{
+					return NULL;
+				}
+			}
+			else
+			{
+				m_u64val += res;
+				return (uint8_t*)&m_u64val;
+			}
+		}
 	case LATENCY:
 		if(tinfo->m_latency != 0)
 		{

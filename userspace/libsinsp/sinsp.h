@@ -279,6 +279,13 @@ public:
 	const unordered_map<uint32_t, scap_userinfo*>* get_userlist();
 	const unordered_map<uint32_t, scap_groupinfo*>* get_grouplist();
 
+	//
+	// Allocates private state in the thread info class.
+	// Returns the ID to use when retrieving the memory area.
+	// Will fail if called after the capture starts.
+	//
+	uint32_t reserve_thread_memory(uint32_t size);
+
 VISIBILITY_PRIVATE
 
 	void init();
@@ -329,6 +336,7 @@ VISIBILITY_PRIVATE
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 	analyzer_callback_interface* m_analyzer_callback;
+
 #ifdef HAS_FILTERING
 	uint64_t m_firstevent_ts;
 	sinsp_filter* m_filter;

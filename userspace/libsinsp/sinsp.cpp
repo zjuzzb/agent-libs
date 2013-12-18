@@ -173,7 +173,7 @@ void sinsp::start_dump(const string& dump_filename)
 {
 	if(NULL == m_h)
 	{
-		throw sinsp_exception("inspector not yet opened");
+		throw sinsp_exception("inspector not opened yet");
 	}
 
 	m_dumper = scap_dump_open(m_h, dump_filename.c_str());
@@ -187,7 +187,7 @@ void sinsp::stop_dump()
 {
 	if(NULL == m_h)
 	{
-		throw sinsp_exception("inspector not yet opened");
+		throw sinsp_exception("inspector not opened yet");
 	}
 
 	if(m_dumper != NULL)
@@ -770,3 +770,13 @@ void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* li
 {
 }
 #endif
+
+uint32_t sinsp::reserve_thread_memory(uint32_t size)
+{
+	if(m_h != NULL)
+	{
+		throw sinsp_exception("reserve_thread_memory can't be called after capture starts");
+	}
+
+	return m_thread_manager->m_thread_privatestate_manager.reserve(size);
+}

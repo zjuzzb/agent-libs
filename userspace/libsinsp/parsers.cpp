@@ -291,8 +291,6 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		return false;
 	}
 
-	evt->m_tinfo->m_iobytes = 0;
-
 	if(PPME_IS_ENTER(etype))
 	{
 		evt->m_tinfo->m_lastevent_fd = -1;
@@ -2461,8 +2459,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 			handle_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-
-			evt->m_tinfo->m_iobytes = retval;
 		}
 		else
 		{
@@ -2500,8 +2496,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-
-			evt->m_tinfo->m_iobytes = retval;
 		}
 	}
 }

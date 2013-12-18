@@ -74,6 +74,7 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 sinsp_threadinfo::sinsp_threadinfo() :
 	m_fdtable(NULL)
 {
+	m_inspector = NULL;
 	init();
 }
 
@@ -108,16 +109,26 @@ void sinsp_threadinfo::init()
 	m_resident_memory_kb = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
+#ifdef HAS_FILTERING
 	m_last_latency_entertime = 0;
 	m_latency = 0;
-	m_iobytes = 0;
+#endif
+
+	allocate_private_state();
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
 {
+	uint32_t j;
+
 	if(m_procinfo)
 	{
 		delete m_procinfo;
+	}
+
+	for(j = 0; j < m_private_state.size(); j++)
+	{
+		free(m_private_state[j]);
 	}
 }
 
@@ -822,6 +833,23 @@ void sinsp_threadinfo::add_completed_client_transaction(sinsp_partial_transactio
 	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time));
+}
+
+void sinsp_threadinfo::allocate_private_state()
+{
+	uint32_t j = 0;
+
+	ASSERT(m_inspector != NULL);
+
+	m_private_state.clear();
+
+	vector<uint32_t>* m_sizes = &m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes;
+	
+	for(j = 0; j < m_sizes->size(); j++)
+	{
+		void* newbuf = malloc(m_sizes->at(j));
+		m_private_state.push_back(newbuf);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

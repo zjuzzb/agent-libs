@@ -15,9 +15,9 @@ typedef struct erase_fd_params
 	uint64_t m_ts;
 }erase_fd_params;
 
-//
-// Information that is included only in process main threads
-//
+///////////////////////////////////////////////////////////////////////////////
+// Information that is included only in processes that are main threads
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_procinfo
 {
 public:
@@ -60,9 +60,9 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 };
 
-//
+///////////////////////////////////////////////////////////////////////////////
 // thread info entry
-//
+///////////////////////////////////////////////////////////////////////////////
 class SINSP_PUBLIC sinsp_threadinfo
 {
 public:
@@ -170,12 +170,13 @@ public:
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
 
+#ifdef HAS_FILTERING
 	//
-	// Temporary state for filtering
+	// State for filtering
 	//
 	uint64_t m_last_latency_entertime;
 	uint64_t m_latency;
-	uint64_t m_iobytes;
+#endif
 
 	//
 	// Global state
@@ -196,6 +197,7 @@ VISIBILITY_PRIVATE
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
 	void add_completed_server_transaction(sinsp_partial_transaction* tr);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr);
+	void allocate_private_state();
 
 	//  void push_fdop(sinsp_fdop* op);
 	// the queue of recent fd operations
@@ -209,6 +211,7 @@ VISIBILITY_PRIVATE
 	string m_cwd; // current working directory
 	sinsp_threadinfo* m_main_thread;
 	sinsp_threadinfo* m_main_program_thread;
+	vector<void*> m_private_state;
 
 	friend class sinsp;
 	friend class sinsp_parser;
@@ -222,6 +225,30 @@ typedef unordered_map<int64_t, sinsp_threadinfo> threadinfo_map_t;
 typedef threadinfo_map_t::iterator threadinfo_map_iterator_t;
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Little class that manages the allocation of private state in the thread info class
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_thread_privatestate_manager
+{
+public:
+	//
+	// The return value is the ID of the newly reserved memory area
+	//
+	uint32_t reserve(uint32_t size)
+	{
+		m_memory_sizes.push_back(size);
+		return m_memory_sizes.size() - 1;
+	}
+
+private:
+	vector<uint32_t> m_memory_sizes;
+
+	friend class sinsp_threadinfo;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// This class manages the thread table
+///////////////////////////////////////////////////////////////////////////////
 class SINSP_PUBLIC sinsp_thread_manager
 {
 public:
@@ -248,11 +275,14 @@ public:
 
 	set<uint16_t> m_server_ports;
 
+	sinsp_thread_privatestate_manager m_thread_privatestate_manager;
+
 private:
 	void increment_mainthread_childcount(sinsp_threadinfo* threadinfo);
 	void increment_program_childcount(sinsp_threadinfo* threadinfo);
 	// Don't set level, it's for internal use
 	void decrement_program_childcount(sinsp_threadinfo* threadinfo, uint32_t level = 0);
+
 	sinsp* m_inspector;
 	threadinfo_map_t m_threadtable;
 	int64_t m_last_tid;
