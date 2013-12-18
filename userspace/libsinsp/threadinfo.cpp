@@ -713,6 +713,9 @@ void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
 
 void sinsp_threadinfo::clear_all_metrics()
 {
+	ASSERT(m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes.size() 
+		== m_private_state.size());
+
 	if(m_procinfo != NULL)
 	{
 		ASSERT(is_main_thread());
@@ -839,16 +842,17 @@ void sinsp_threadinfo::allocate_private_state()
 {
 	uint32_t j = 0;
 
-	ASSERT(m_inspector != NULL);
-
-	m_private_state.clear();
-
-	vector<uint32_t>* m_sizes = &m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes;
-	
-	for(j = 0; j < m_sizes->size(); j++)
+	if(m_inspector != NULL)
 	{
-		void* newbuf = malloc(m_sizes->at(j));
-		m_private_state.push_back(newbuf);
+		m_private_state.clear();
+
+		vector<uint32_t>* sizes = &m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes;
+	
+		for(j = 0; j < sizes->size(); j++)
+		{
+			void* newbuf = malloc(sizes->at(j));
+			m_private_state.push_back(newbuf);
+		}
 	}
 }
 
@@ -1000,7 +1004,8 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 		increment_program_childcount(&threadinfo);
 	}
 
-	m_threadtable[threadinfo.m_tid] = threadinfo;
+	sinsp_threadinfo& newentry = (m_threadtable[threadinfo.m_tid] = threadinfo);
+//	newentry.allocate_private_state();
 }
 
 void sinsp_thread_manager::remove_thread(int64_t tid)
