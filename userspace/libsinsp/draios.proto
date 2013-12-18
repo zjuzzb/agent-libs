@@ -219,3 +219,17 @@ message metrics {
   repeated ipv4_connection ipv4_connections = 7; // The list of threads
   repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
 }
+
+message dump_request {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required uint64 duration_ns = 4; // The duration for the capture in ns
+}
+
+message dump_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required bytes content = 4; // The bynary dump file
+}
