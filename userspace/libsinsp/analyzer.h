@@ -152,12 +152,14 @@ VISIBILITY_PRIVATE
 	//
 	// Transaction-related state
 	//
-	sinsp_transaction_counters m_host_transaction_metrics; 
+	sinsp_transaction_counters m_host_transaction_counters; 
 	uint64_t m_client_tr_time_by_servers;
 	int64_t m_host_transaction_delay_ns;
+	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
+	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
 	// ratio between the the transaction delay introduced by this host and the delay 
-	// caused by the next tiers. Calculated by the score
-	float m_local_remote_ratio;
+	// caused by the next tiers.
+	//float m_local_remote_ratio;
 	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;

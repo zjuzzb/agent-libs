@@ -99,6 +99,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
 		{
+			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;
 
 			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
@@ -117,18 +118,19 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			ptinfo->m_transaction_metrics.m_counter.add_in(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
 
-			if(pconn->is_server_only())
+			if(isexternal)
 			{
 				ptinfo->m_external_transaction_metrics.m_counter.add_in(1, delta);
 			}
 
 			if(tinfo != NULL && proginfo != NULL)
 			{
-				proginfo->add_completed_server_transaction(tr);
+				proginfo->add_completed_server_transaction(tr, isexternal);
 			}
 		}
 		else
 		{
+			bool isexternal = pconn->is_client_only();
 			m_n_client_transactions++;
 
 			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
@@ -147,14 +149,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			ptinfo->m_transaction_metrics.m_counter.add_out(1, delta);
 			pconn->m_transaction_metrics.m_counter.add_out(1, delta);
 
-			if(pconn->is_client_only())
+			if(isexternal)
 			{
 				ptinfo->m_external_transaction_metrics.m_counter.add_out(1, delta);
 			}
 
 			if(tinfo != NULL && proginfo != NULL)
 			{
-				proginfo->add_completed_client_transaction(tr);
+				proginfo->add_completed_client_transaction(tr, isexternal);
 			}
 		}
 

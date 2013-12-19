@@ -131,14 +131,15 @@ public:
 	enum flags
 	{
 	    FL_NONE = 0,
-	    FL_FILTERED_OUT = 1,
+	    FL_FILTERED_OUT = (1 << 0),
+	    FL_EXTERNAL = (1 << 1),
 	};
 
-	sinsp_trlist_entry(uint64_t stime, uint64_t etime)
+	sinsp_trlist_entry(uint64_t stime, uint64_t etime, flags f)
 	{
 		m_stime = stime;
 		m_etime = etime;
-		m_flags = FL_NONE;
+		m_flags = f;
 	}
 
 	uint64_t m_stime;	// start time

@@ -180,7 +180,7 @@ float sinsp_scores::calculate_score_4(float ntr, float ntrcpu, float nother)
 	return score;
 }
 
-sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_program_delays* delays,
+sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_info* delays,
 	uint32_t n_server_threads, 	uint64_t sample_end_time, uint64_t sample_duration, sinsp_threadinfo* program_info)
 {
 	sinsp_score_info res(-1,  -1);
@@ -243,7 +243,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_program_d
 		// Find the union of the time intervals and use it to calculate the time 
 		// spent serving transactions
 		//
-		uint64_t tot_time = delays->m_last_prog_delays[cpuid].m_total_merged_inbound_delay;
+		uint64_t tot_time = delays->m_last_percpu_delays[cpuid].m_merged_server_delay;
 
 		if(tot_time > m_sample_length_ns)
 		{
@@ -397,9 +397,11 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_program_d
 	return res;
 }
 
-sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, sinsp_program_delays* delays, 
+sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* mainthread_info, sinsp_delays_info* delays, 
 		uint32_t n_server_threads, uint64_t sample_end_time, uint64_t sample_duration)
 {
+	ASSERT(delays != NULL);
+
 	sinsp_score_info res = get_system_capacity_score_bycpu_4(delays, 
 		n_server_threads, 
 		sample_end_time,
