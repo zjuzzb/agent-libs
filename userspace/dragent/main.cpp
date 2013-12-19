@@ -12,6 +12,7 @@
 #include "blocking_queue.h"
 #include "sender.h"
 #include "receiver.h"
+#include "error_handler.h"
 #include "sinsp_data_handler.h"
 
 #define AGENT_PRIORITY 19
@@ -395,7 +396,7 @@ protected:
 
 		while(1)
 		{
-			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate)
+			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate || dragent_error_handler::m_exception)
 			{
 				break;
 			}
@@ -493,6 +494,9 @@ protected:
 			ASSERT(false);
 		}
 #endif
+
+		dragent_error_handler error_handler;
+		Poco::ErrorHandler::set(&error_handler);
 
 		m_configuration.init(this);
 
@@ -694,8 +698,16 @@ protected:
 			return Application::EXIT_SOFTWARE;
 		}
 
-		g_log->information("Application::EXIT_OK\n");
-		return Application::EXIT_OK;
+		if(dragent_error_handler::m_exception)
+		{
+			g_log->error("Application::EXIT_SOFTWARE\n");
+			return Application::EXIT_SOFTWARE;
+		}
+		else
+		{
+			g_log->information("Application::EXIT_OK\n");
+			return Application::EXIT_OK;
+		}
 	}
 	
 private:

@@ -57,6 +57,7 @@
 #include "Poco/Process.h"
 #include "Poco/Semaphore.h"
 #include "Poco/Runnable.h"
+#include "Poco/ErrorHandler.h"
 
 #include <sinsp.h>
 
