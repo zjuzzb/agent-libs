@@ -11,6 +11,7 @@
 #include "connection_manager.h"
 #include "blocking_queue.h"
 #include "sender.h"
+#include "receiver.h"
 #include "sinsp_data_handler.h"
 
 #define AGENT_PRIORITY 19
@@ -540,9 +541,7 @@ protected:
 		blocking_queue queue;
 		sinsp_data_handler sinsp_handler(&queue);
 		dragent_sender sender_thread(&queue, &m_connection_manager);
-
-		sender_thread.m_thread.start(sender_thread);
-
+		dragent_receiver receiver_thread(&queue, &m_connection_manager);
 
 #if 0
 		if(m_configuration.m_daemon)
@@ -589,6 +588,9 @@ protected:
 			//
 			m_connection_manager.init(&m_configuration);
 			m_connection_manager.connect();
+
+			sender_thread.m_thread.start(sender_thread);
+			receiver_thread.m_thread.start(receiver_thread);
 
 			//
 			// Attach our transmit callback to the analyzer
