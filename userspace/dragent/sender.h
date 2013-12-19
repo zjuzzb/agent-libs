@@ -15,7 +15,6 @@ public:
 		while (!m_stop)
 		{
 			blocking_queue::item* item = m_queue->get();
-			printf("received %p!\n", item);
 			transmit_buffer(item->m_buf, item->m_len);
 			delete item;
 		}

@@ -11,7 +11,7 @@
 #include "connection_manager.h"
 #include "blocking_queue.h"
 #include "sender.h"
-#include "../libsinsp/proto_header.h"
+#include "sinsp_data_handler.h"
 
 #define AGENT_PRIORITY 19
 #define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
@@ -235,42 +235,9 @@ public:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// A simple class to store an analyzer sample when the backend is not reachable
-///////////////////////////////////////////////////////////////////////////////
-class sample_store
-{
-public:
-	sample_store()
-	{
-		m_buf = NULL;
-		m_buflen = 0;
-	}
-
-	sample_store(char* buf, uint32_t buflen)
-	{
-		m_buf = new char[buflen];
-		memcpy(m_buf, buf, buflen);
-		m_buflen = buflen;
-	}
-
-	~sample_store()
-	{
-		if(m_buf)
-		{
-			delete [] m_buf;
-		}
-	}
-
-	char* m_buf;
-	uint32_t m_buflen;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
-class dragent_app: 
-	public Poco::Util::ServerApplication,
-	public analyzer_callback_interface
+class dragent_app: public Poco::Util::ServerApplication
 {
 public:
 	dragent_app(): m_help_requested(false)
@@ -489,23 +456,6 @@ protected:
 	}
 
 	///////////////////////////////////////////////////////////////////////////
-	// This function is called every time the sinsp analyzer has a new sample ready
-	///////////////////////////////////////////////////////////////////////////
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
-	{
-		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
-		uint32_t size = hdr->m_sample_len;
-		uint32_t* pbuflen = &hdr->m_sample_len;
-
-		//
-		// Turn the length into network byte order
-		//
-		*pbuflen = htonl(*pbuflen);
-
-		m_queue.put(new blocking_queue::item(buffer, size));
-	}
-
-	///////////////////////////////////////////////////////////////////////////
 	// MAIN
 	///////////////////////////////////////////////////////////////////////////
 	int main(const std::vector<std::string>& args)
@@ -587,8 +537,12 @@ protected:
 		m_configuration.print_configuration();
 
 		connection_manager m_connection_manager;
-		dragent_sender sender_thread(&m_queue, &m_connection_manager);
+		blocking_queue queue;
+		sinsp_data_handler sinsp_handler(&queue);
+		dragent_sender sender_thread(&queue, &m_connection_manager);
+
 		sender_thread.m_thread.start(sender_thread);
+
 
 #if 0
 		if(m_configuration.m_daemon)
@@ -639,7 +593,7 @@ protected:
 			//
 			// Attach our transmit callback to the analyzer
 			//
-			m_inspector.set_analyzer_callback(this);
+			m_inspector.set_analyzer_callback(&sinsp_handler);
 
 			//
 			// Plug the sinsp logger into our one
@@ -751,7 +705,6 @@ private:
 	bool m_capturing;
 	string m_pidfile;
 	dragent_configuration m_configuration;
-	blocking_queue m_queue;
 };
 
 
