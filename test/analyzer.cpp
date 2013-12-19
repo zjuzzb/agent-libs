@@ -148,9 +148,9 @@ TEST_F(sys_call_test, client_transaction_pruning1)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -162,9 +162,9 @@ TEST_F(sys_call_test, client_transaction_pruning2)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -176,10 +176,10 @@ TEST_F(sys_call_test, client_transaction_pruning3)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
-	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -192,9 +192,9 @@ TEST_F(sys_call_test, client_transaction_pruning4)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -206,9 +206,9 @@ TEST_F(sys_call_test, client_transaction_pruning5)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1000, 1100));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1000, 1100, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -220,9 +220,9 @@ TEST_F(sys_call_test, client_transaction_pruning6)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1100, 2000));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1100, 2000, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -234,9 +234,9 @@ TEST_F(sys_call_test, client_transaction_pruning7)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(500, 700));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(500, 700, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -248,9 +248,9 @@ TEST_F(sys_call_test, client_transaction_pruning8)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(4100, 4500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(4100, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -262,9 +262,9 @@ TEST_F(sys_call_test, client_transaction_pruning9)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(4000, 4500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(4000, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -276,9 +276,9 @@ TEST_F(sys_call_test, client_transaction_pruning10)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(3900, 4500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(3900, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -290,9 +290,9 @@ TEST_F(sys_call_test, client_transaction_pruning11)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(900, 1500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(900, 1500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -304,9 +304,9 @@ TEST_F(sys_call_test, client_transaction_pruning12)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1500, 3500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1500, 3500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -320,9 +320,9 @@ TEST_F(sys_call_test, client_transaction_pruning13)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -334,9 +334,9 @@ TEST_F(sys_call_test, client_transaction_pruning14)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -348,10 +348,10 @@ TEST_F(sys_call_test, client_transaction_pruning15)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300));
-	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(2200, 2300, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1200, 1300, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -364,9 +364,9 @@ TEST_F(sys_call_test, client_transaction_pruning16)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -378,9 +378,9 @@ TEST_F(sys_call_test, client_transaction_pruning17)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1000, 1100));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1000, 1100, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -392,9 +392,9 @@ TEST_F(sys_call_test, client_transaction_pruning18)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1100, 2000));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1100, 2000, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -406,9 +406,9 @@ TEST_F(sys_call_test, client_transaction_pruning19)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(500, 700));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(500, 700, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -420,9 +420,9 @@ TEST_F(sys_call_test, client_transaction_pruning20)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(4100, 4500));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(4100, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -434,9 +434,9 @@ TEST_F(sys_call_test, client_transaction_pruning21)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(4000, 4500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(4000, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -448,9 +448,9 @@ TEST_F(sys_call_test, client_transaction_pruning22)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(3900, 4500));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(3900, 4500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -462,9 +462,9 @@ TEST_F(sys_call_test, client_transaction_pruning23)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(900, 1500));
+	server_tr[0].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(900, 1500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -476,9 +476,9 @@ TEST_F(sys_call_test, client_transaction_pruning24)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000));
-	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000));
-	client_tr[0].push_back(sinsp_trlist_entry(1500, 3500));
+	server_tr[1].push_back(sinsp_trlist_entry(1000, 2000, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(3000, 4000, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(1500, 3500, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -490,10 +490,10 @@ TEST_F(sys_call_test, client_transaction_pruning25)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(10, 20));
-	server_tr[0].push_back(sinsp_trlist_entry(30, 40));
-	server_tr[1].push_back(sinsp_trlist_entry(10, 50));
-	client_tr[0].push_back(sinsp_trlist_entry(5, 7));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(5, 7, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -505,10 +505,10 @@ TEST_F(sys_call_test, client_transaction_pruning26)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(10, 20));
-	server_tr[0].push_back(sinsp_trlist_entry(30, 40));
-	server_tr[1].push_back(sinsp_trlist_entry(10, 50));
-	client_tr[0].push_back(sinsp_trlist_entry(5, 15));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(5, 15, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -520,10 +520,10 @@ TEST_F(sys_call_test, client_transaction_pruning27)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(10, 20));
-	server_tr[0].push_back(sinsp_trlist_entry(30, 40));
-	server_tr[1].push_back(sinsp_trlist_entry(10, 50));
-	client_tr[0].push_back(sinsp_trlist_entry(5, 60));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(5, 60, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -535,12 +535,12 @@ TEST_F(sys_call_test, client_transaction_pruning28)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[1].push_back(sinsp_trlist_entry(10, 20));
-	server_tr[0].push_back(sinsp_trlist_entry(30, 40));
-	server_tr[1].push_back(sinsp_trlist_entry(10, 50));
-	client_tr[0].push_back(sinsp_trlist_entry(25, 27));
-	client_tr[0].push_back(sinsp_trlist_entry(43, 47));
-	client_tr[0].push_back(sinsp_trlist_entry(5, 15));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(25, 27, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(43, 47, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(5, 15, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
@@ -554,12 +554,12 @@ TEST_F(sys_call_test, client_transaction_pruning29)
 	vector<vector<sinsp_trlist_entry>> client_tr = vector<vector<sinsp_trlist_entry>>(2);
 	vector<vector<sinsp_trlist_entry>> server_tr = vector<vector<sinsp_trlist_entry>>(2);
 
-	server_tr[0].push_back(sinsp_trlist_entry(10, 50));
-	server_tr[1].push_back(sinsp_trlist_entry(10, 20));
-	server_tr[0].push_back(sinsp_trlist_entry(30, 40));
-	client_tr[0].push_back(sinsp_trlist_entry(25, 27));
-	client_tr[0].push_back(sinsp_trlist_entry(43, 47));
-	client_tr[0].push_back(sinsp_trlist_entry(5, 15));
+	server_tr[0].push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+	server_tr[1].push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	server_tr[0].push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(25, 27, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(43, 47, sinsp_trlist_entry::FL_NONE));
+	client_tr[0].push_back(sinsp_trlist_entry(5, 15, sinsp_trlist_entry::FL_NONE));
 
 	sinsp_delays::prune_client_transactions(&client_tr, &server_tr);
 
