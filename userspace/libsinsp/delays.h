@@ -38,7 +38,6 @@ class sinsp_delays
 {
 public:
 	sinsp_delays(sinsp_analyzer* analyzer, uint32_t ncpus);
-	int64_t compute_host_transaction_delay(sinsp_transaction_counters* counters);
 
 	sinsp_delays_info* compute_program_delays(sinsp_threadinfo* program_info);
 	sinsp_delays_info* compute_host_delays();
