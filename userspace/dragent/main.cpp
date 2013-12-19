@@ -8,6 +8,9 @@
 #include <fstream>
 
 #include "configuration.h"
+#include "connection_manager.h"
+#include "blocking_queue.h"
+#include "sender.h"
 #include "../libsinsp/proto_header.h"
 
 #define AGENT_PRIORITY 19
@@ -185,30 +188,6 @@ static void run_monitor(const string& pidfile)
 }
 #endif
 
-//
-// SSL callback: since the SSL is managed by ELB, he sends an encrypted alert type 21 when
-// no instances are available in the backend. Of course Poco is bugged and doesn't recognize
-// that, so we need to abort the connection ourselves otherwise we'll keep talking to noone:
-// https://forums.aws.amazon.com/message.jspa?messageID=453844
-//
-static bool g_ssl_alert_received = false;
-
-#ifndef _WIN32
-static void g_ssl_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
-{
-	//
-	// Code borrowed from s_cb.c in openssl
-	//
-	if(write_p == 0 &&
-		content_type == 21 &&
-		len == 2 &&
-		((const unsigned char*)buf)[1] == 0)
-	{
-		g_ssl_alert_received = true;
-	}
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 // Log management
 ///////////////////////////////////////////////////////////////////////////////
@@ -297,42 +276,11 @@ public:
 	dragent_app(): m_help_requested(false)
 	{
 		m_evtcnt = 0;
-		m_socket = NULL;
-		m_sa = NULL;
-		m_socketbufferptr = NULL;
-		m_socketbuflen = 0;
-		m_socketbuffer_storage = NULL;
 		m_capturing = false;
-
-#ifndef _WIN32
-		Poco::Net::initializeSSL();
-#endif
 	}
 	
 	~dragent_app()
 	{
-		if(m_sa)
-		{
-			delete m_sa;
-			m_sa = NULL;
-		}
-
-		if(m_socket)
-		{
-			delete m_socket;
-			m_socket = NULL;
-		}
-
-		if(m_socketbuffer_storage)
-		{
-			delete [] m_socketbuffer_storage;
-			m_socketbuffer_storage = NULL;
-		}
-
-#ifndef _WIN32
-		Poco::Net::uninitializeSSL();
-#endif
-
 		if(g_log != NULL)
 		{
 			delete g_log;
@@ -540,70 +488,11 @@ protected:
 		return retval;
 	}
 
-	void transmit_buffer(char* buffer, uint32_t buflen)
-	{
-		m_socketbufferptr = buffer;
-		m_socketbuflen = buflen;
-
-		while(true)
-		{
-			//
-			// Do a fake read to make sure openssl reads the stream from
-			// the server and detects any pending alerts
-			//
-			try 
-			{
-				char buf;
-				m_socket->receiveBytes(&buf, 1);
-			}
-			catch(Poco::TimeoutException&)
-			{
-				//
-				// Poco signals a NONBLOCKING read that would block with
-				// an exception
-				//
-			}
-
-			if(g_ssl_alert_received)
-			{
-				throw sinsp_exception("Received SSL alert, terminating the connection");
-			}
-
-			int32_t res = m_socket->sendBytes(m_socketbufferptr, m_socketbuflen);
-			if(res == (int32_t) m_socketbuflen)
-			{
-				//
-				// Transmission finished
-				//
-				m_socketbuflen = 0;
-				break;
-			}
-			else if(res <= 0)
-			{
-				ASSERT(false); // sendBytes() throws exception, doesn't return < 0
-				//
-				// There's no way we can easily recover from this, at least when we're
-				// in the middle of a multi-segment send. We just die so the backend
-				// resets its state and doesn't expect the rest of the buffer.
-				//
-				throw sinsp_exception("socket transmission error");
-			}
-			else
-			{
-				m_socketbufferptr += res;
-				m_socketbuflen -= res;
-			}
-		}
-	}
-
 	///////////////////////////////////////////////////////////////////////////
 	// This function is called every time the sinsp analyzer has a new sample ready
 	///////////////////////////////////////////////////////////////////////////
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
 	{
-		uint32_t j;
-
-		ASSERT(m_sa != NULL);
 		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
 		uint32_t size = hdr->m_sample_len;
 		uint32_t* pbuflen = &hdr->m_sample_len;
@@ -613,152 +502,7 @@ protected:
 		//
 		*pbuflen = htonl(*pbuflen);
 
-		try
-		{
-			//
-			// First of all, check if there's a partially sent buffer and try
-			// to send it
-			//
-			if(m_socketbuflen != 0)
-			{
-				transmit_buffer(m_socketbufferptr, m_socketbuflen);
-			}
-
-			m_is_partial_buffer_stored = false;
-
-			//
-			// If the connection was lost, try to reconnect and send the unsent samples
-			//
-			uint32_t store_size = m_unsent_samples.size();
-
-			ASSERT(store_size < MAX_SAMPLE_STORE_SIZE);
-
-			if(store_size != 0)
-			{
-				ASSERT(m_socket == NULL);
-				ASSERT(m_socketbuflen == 0);
-
-				create_socket();
-
-				g_log->error(string("server connection recovered. Sending ") +
-					NumberFormatter::format(store_size) + " buffered samples");
-
-				for(j = 0; j < store_size; j++)
-				{
-					transmit_buffer(m_unsent_samples[j]->m_buf, m_unsent_samples[j]->m_buflen);
-					delete m_unsent_samples[j];
-				}
-			}
-
-			m_unsent_samples.clear();
-
-			//
-			// Send the current sample
-			//
-			transmit_buffer(buffer, size);
-		}
-		catch(Poco::IOException& e)
-		{
-			if(e.code() == POCO_EWOULDBLOCK)
-			{
-				//
-				// Send buffer full.
-				// Keeping processing the data in libsinsp to minimize event drops is
-				// more important than dropping the sample, therefore we don't block
-				// and keep going.
-				// 
-				
-				ASSERT(m_socketbuflen);
-
-				if(m_is_partial_buffer_stored == false)
-				{
-					//
-					// a buffer coming from sinsp could only be partially sent. We need to
-					// copy it so we can finsh sending it later.
-					//
-					if(m_socketbuflen > SOCKETBUFFER_STORAGE_SIZE)
-					{
-						//
-						// There's no way we can easily recover from this, at least when we're
-						// in the middle of a multi-segment send. We just die so the backend
-						// resets its state and doesn't expect the rest of the buffer.
-						//
-						throw sinsp_exception("transmit storage exhausted");
-					}
-
-					memcpy(m_socketbuffer_storage, 
-						m_socketbufferptr,
-						m_socketbuflen);
-
-					m_socketbufferptr = m_socketbuffer_storage;
-
-					m_is_partial_buffer_stored = true;
-				}
-				else
-				{
-					g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
-						", cause:socket buffer full, len:" + NumberFormatter::format(size));						
-				}
-
-				return;
-			}
-			else
-			{
-				//
-				// Looks like we lost the connection to the backend.
-				// If there's space, make a copy of this sample so we can try to send it later.
-				//
-				if(m_unsent_samples.size() == 0)
-				{
-					g_log->error("lost server connection");
-					if(m_socket != NULL)
-					{
-						m_socketbuflen = 0;
-						delete m_socket;
-						m_socket = NULL;
-					}
-					else
-					{
-						ASSERT(false);
-					}
-				}
-
-				if(m_unsent_samples.size() < MAX_SAMPLE_STORE_SIZE)
-				{
-					sample_store* sstore = new sample_store(buffer, size);
-					m_unsent_samples.push_back(sstore);
-				}
-
-				return;
-			}
-		}
-	}
-
-	void create_socket()
-	{
-#ifndef _WIN32
-		if(m_configuration.m_ssl_enabled)
-		{
-			m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
-
-			g_log->information("SSL identity verified");
-		}
-		else
-#endif
-		{
-			m_socket = new Poco::Net::StreamSocket(*m_sa);
-		}
-
-		//
-		// Set the send buffer size for the socket
-		//
-		m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
-
-		//
-		// Put the socket in nonblocking mode
-		//
-		m_socket->setBlocking(false);
+		m_queue.put(new blocking_queue::item(buffer, size));
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -842,6 +586,10 @@ protected:
 
 		m_configuration.print_configuration();
 
+		connection_manager m_connection_manager;
+		dragent_sender sender_thread(&m_queue, &m_connection_manager);
+		sender_thread.m_thread.start(sender_thread);
+
 #if 0
 		if(m_configuration.m_daemon)
 		{
@@ -876,10 +624,6 @@ protected:
 #endif
 		}
 #endif
-		//
-		// Allocate the buffer for partial socket sends
-		//
-		m_socketbuffer_storage = new char[SOCKETBUFFER_STORAGE_SIZE];
 
 		//
 		// From now on we can get exceptions
@@ -889,42 +633,13 @@ protected:
 			//
 			// Connect to the server
 			//
-			if(m_configuration.m_server_addr != "" && m_configuration.m_server_port != 0)
-			{
-				m_sa = new Poco::Net::SocketAddress(m_configuration.m_server_addr, m_configuration.m_server_port);
+			m_connection_manager.init(&m_configuration);
+			m_connection_manager.connect();
 
-#ifndef _WIN32
-				if(m_configuration.m_ssl_enabled)
-				{
-					g_log->information("SSL enabled, initializing context");
-
-					Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
-						Poco::Net::Context::CLIENT_USE, 
-						"", 
-						"", 
-						m_configuration.m_ssl_ca_certificate, 
-						Poco::Net::Context::VERIFY_STRICT, 
-						9, 
-						false, 
-						"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-
-					Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
-
-					SSL_CTX* ssl_ctx = ptrContext->sslContext();
-					if(ssl_ctx)
-					{
-						SSL_CTX_set_msg_callback(ssl_ctx, g_ssl_callback);
-					}
-				}
-#endif				
-
-				create_socket();
-
-				//
-				// Attach our transmit callback to the analyzer
-				//
-				m_inspector.set_analyzer_callback(this);
-			}
+			//
+			// Attach our transmit callback to the analyzer
+			//
+			m_inspector.set_analyzer_callback(this);
 
 			//
 			// Plug the sinsp logger into our one
@@ -1014,7 +729,6 @@ protected:
 		}
 		catch(Poco::Exception& e)
 		{
-
 			g_log->error(e.displayText());
 			return Application::EXIT_SOFTWARE;
 		}
@@ -1036,14 +750,8 @@ private:
 	string m_writefile;
 	bool m_capturing;
 	string m_pidfile;
-	Poco::Net::SocketAddress* m_sa;
-	Poco::Net::StreamSocket* m_socket;
-	char* m_socketbufferptr;
-	char* m_socketbuffer_storage;
-	bool m_is_partial_buffer_stored;
-	uint32_t m_socketbuflen;
-	vector<sample_store*> m_unsent_samples;
 	dragent_configuration m_configuration;
+	blocking_queue m_queue;
 };
 
 

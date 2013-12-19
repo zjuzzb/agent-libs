@@ -47,6 +47,7 @@
 #include "Poco/PatternFormatter.h"
 #include "Poco/FormattingChannel.h"
 #include "Poco/Message.h"
+#include "Poco/Mutex.h"
 #include "Poco/Logger.h"
 #include "Poco/File.h"
 #include "Poco/NumberParser.h"
@@ -54,11 +55,14 @@
 #include "Poco/Path.h"
 #include "Poco/Environment.h"
 #include "Poco/Process.h"
+#include "Poco/Semaphore.h"
+#include "Poco/Runnable.h"
 
 #include <sinsp.h>
 
 using Poco::Net::SocketReactor;
 using Poco::Net::SocketAcceptor;
+using Poco::Net::SocketAddress;
 using Poco::Net::ReadableNotification;
 using Poco::Net::ShutdownNotification;
 using Poco::Net::ServerSocket;
@@ -87,6 +91,9 @@ using Poco::NumberParser;
 using Poco::NumberFormatter;
 using Poco::Path;
 using Poco::Environment;
+using Poco::Mutex;
+using Poco::Semaphore;
+using Poco::Runnable;
 
 #ifdef _DEBUG
 #define ASSERT(X) \
