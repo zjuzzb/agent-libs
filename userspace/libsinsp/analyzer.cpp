@@ -1084,12 +1084,24 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
 			string cpustr;
+#ifdef _DEBUG
+			uint32_t totcpuload = 0;
+			uint32_t totcpusteal = 0;
+#endif
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
 				cpustr += to_string(m_cpu_loads[j]) + "(" + to_string(m_cpu_steals[j]) + ") ";
 				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j] * 100);
 				m_metrics->mutable_hostinfo()->add_cpu_steal(m_cpu_steals[j] * 100);
+#ifdef _DEBUG
+				totcpuload += m_cpu_loads[j];
+				totcpusteal += m_cpu_steals[j];
+#endif
 			}
+
+			ASSERT(totcpuload < 100 * m_cpu_loads.size());
+			ASSERT(totcpusteal < 100 * m_cpu_loads.size());
+
 			if(m_cpu_loads.size() != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
