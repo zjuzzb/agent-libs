@@ -106,7 +106,8 @@ void dragent_configuration::init(Application* app)
 #ifdef _DEBUG
 		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "debug"));
 #else
-		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "info"));
+//		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "info"));
+		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "debug"));
 #endif		
 	}
 
