@@ -580,7 +580,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_capacity_score,
 							it->second.m_procinfo->m_stolen_capacity_score,
 //							(float)it->second.m_procinfo->get_tot_cputime() * 100 / (float)sample_duration,
-							it->second.m_procinfo->m_cpuload,
+							(float)it->second.m_procinfo->m_cpuload,
 							it->second.m_procinfo->m_fd_usage_pct,
 							it->second.m_procinfo->m_connection_queue_usage_pct);
 

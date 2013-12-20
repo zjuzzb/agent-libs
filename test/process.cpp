@@ -766,6 +766,95 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	}
 }
 
+class loadthread
+{
+public:
+	loadthread()
+	{
+		m_die = false;
+		m_tid = syscall(SYS_gettid);
+	}
+
+	void run()
+	{
+		uint64_t k = 0;
+		uint64_t t = 0;
+
+		while(true)
+		{
+			t += k;
+			t = t % 35689;
+
+			if(m_die)
+			{
+				return;
+			}
+		}
+	}
+
+	int64_t get_tid()
+	{
+		return m_tid;
+	}
+
+	bool m_die;
+	int64_t m_tid;
+};
+
+TEST_F(sys_call_test, procfs_processchild_cpuload)
+{
+	uint32_t load;
+	uint32_t j;
+	int pid = getpid();
+	uint64_t old_global_total_jiffies;
+	uint64_t cur_global_total_jiffies;
+	uint64_t old_proc_jiffies = (uint64_t)-1LL;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+	int64_t mem;
+	uint32_t num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+	uint32_t m = (num_cpus > 2) ? 2:num_cpus;
+ 
+	Poco::Thread th;
+	loadthread ct;
+	Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
+	th.start(runnable);
+
+	Poco::Thread th1;
+	loadthread ct1;
+	Poco::RunnableAdapter<loadthread> runnable1(ct1, &loadthread::run);
+	th1.start(runnable1);
+
+	sinsp_procfs_parser pparser(nprocs, memkb, true);
+
+	pparser.get_global_cpu_load(&cur_global_total_jiffies);
+	load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, 0, &mem);
+
+	sleep(1);
+
+	EXPECT_EQ((int32_t)-1, (int32_t)load);
+
+	for(j = 0; j < 3; j++)
+	{
+		pparser.get_global_cpu_load(&cur_global_total_jiffies);
+		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
+
+		//printf("%" PRIu32 " %d \n", load, pid);
+
+		old_global_total_jiffies = cur_global_total_jiffies;
+		sleep(1);
+
+		if(j > 0)
+		{
+			EXPECT_LE(m * 100 - 15, load);
+			EXPECT_GE(m * 100 + 15, load);
+		}
+	}
+
+	ct.m_die = true;
+	ct1.m_die = true;
+}
+
 TEST_F(sys_call_test, procfs_globalmemory)
 {
 	int64_t memusage;
