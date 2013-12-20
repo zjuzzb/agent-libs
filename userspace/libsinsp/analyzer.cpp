@@ -356,6 +356,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
+		it->second.m_cpuload = 0;
+
 		if(it->second.is_main_thread())
 		{
 			if(m_inspector->m_islive)
