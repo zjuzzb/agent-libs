@@ -367,6 +367,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
+if(it->second.m_comm == "test")
+{
+	int a = 0;
+}
 		//
 		// Add this thread's counters to the process ones...
 		//
@@ -565,7 +569,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+//					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
 						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
@@ -589,9 +593,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
 							trcountin? ((double)trtimein) / sample_duration : 0,
 							trcountout? ((double)trtimeout) / sample_duration : 0,
-							((double)prog_delays->m_merged_server_delay) / sample_duration,
-							((double)prog_delays->m_merged_client_delay) / sample_duration,
-							((double)prog_delays->m_local_processing_delay_ns) / sample_duration);
+							(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
+							(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
+							(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
@@ -1099,8 +1103,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 #endif
 			}
 
-			ASSERT(totcpuload < 100 * m_cpu_loads.size());
-			ASSERT(totcpusteal < 100 * m_cpu_loads.size());
+			ASSERT(totcpuload <= 100 * m_cpu_loads.size());
+			ASSERT(totcpusteal <= 100 * m_cpu_loads.size());
 
 			if(m_cpu_loads.size() != 0)
 			{
