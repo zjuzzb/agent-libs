@@ -6,6 +6,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "connectinfo.h"
+#include "delays.h"
 
 static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 {
@@ -18,6 +19,16 @@ static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
 ///////////////////////////////////////////////////////////////////////////////
+sinsp_procinfo::sinsp_procinfo()
+{
+	m_transaction_delays = new sinsp_delays_info();
+}
+
+sinsp_procinfo::~sinsp_procinfo()
+{
+	delete m_transaction_delays;
+}
+
 void sinsp_procinfo::clear()
 {
 	m_proc_metrics.clear();

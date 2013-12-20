@@ -71,6 +71,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
+	m_last_transaction_delays_update_time = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -1113,7 +1114,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			if(host_delays != NULL)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delay_ns);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(host_delays->m_local_processing_delay_ns);
 			}
 
 			//

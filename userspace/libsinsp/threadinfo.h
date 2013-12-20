@@ -1,9 +1,10 @@
 #pragma once
 
-
 #ifndef VISIBILITY_PRIVATE
 #define VISIBILITY_PRIVATE private:
 #endif
+
+class sinsp_delays_info;
 
 typedef struct erase_fd_params
 {
@@ -21,6 +22,8 @@ typedef struct erase_fd_params
 class sinsp_procinfo
 {
 public:
+	sinsp_procinfo();
+	~sinsp_procinfo();
 	void clear();
 	uint64_t get_tot_cputime();
 
@@ -58,6 +61,8 @@ public:
 	// Completed transactions lists
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+
+	sinsp_delays_info* m_transaction_delays;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

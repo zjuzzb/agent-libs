@@ -154,7 +154,6 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_transaction_counters m_host_transaction_counters; 
 	uint64_t m_client_tr_time_by_servers;
-	int64_t m_host_transaction_delay_ns;
 	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
 	// ratio between the the transaction delay introduced by this host and the delay 
@@ -163,6 +162,9 @@ VISIBILITY_PRIVATE
 	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
+	sinsp_delays_info* m_host_transaction_delays;
+	// Timestamps the last time transaction delays
+	uint64_t m_last_transaction_delays_update_time;
 
 	//
 	// Support for delay calculation

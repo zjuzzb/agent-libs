@@ -163,7 +163,7 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 	return tot_time;
 }
 
-void sinsp_delays::compute_program_cpu_delays(sinsp_threadinfo* program_info, int32_t cpuid)
+void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info, int32_t cpuid)
 {
 	sinsp_program_percpu_delays* pd = &m_last_delays.m_last_percpu_delays[cpuid];
 
@@ -244,7 +244,7 @@ sinsp_delays_info* sinsp_delays::compute_program_delays(sinsp_threadinfo* progra
 	//
 	for(j = 0; j < m_num_cpus; j++)
 	{
-		compute_program_cpu_delays(program_info, j);
+		compute_program_percpu_delays(program_info, j);
 	}
 
 	//
@@ -273,7 +273,7 @@ sinsp_delays_info* sinsp_delays::compute_program_delays(sinsp_threadinfo* progra
 	return &m_last_delays;
 }
 
-void sinsp_delays::compute_host_cpu_delays(int32_t cpuid)
+void sinsp_delays::compute_host_percpu_delays(int32_t cpuid)
 {
 	sinsp_program_percpu_delays* pd = &m_last_delays.m_last_percpu_delays[cpuid];
 
@@ -319,7 +319,7 @@ sinsp_delays_info* sinsp_delays::compute_host_delays()
 	//
 	for(j = 0; j < m_num_cpus; j++)
 	{
-		compute_host_cpu_delays(j);
+		compute_host_percpu_delays(j);
 	}
 
 	//
