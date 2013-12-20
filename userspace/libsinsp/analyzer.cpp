@@ -72,6 +72,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_last_transaction_delays_update_time = 0;
+	m_total_process_cpu = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -366,6 +367,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					&it->second.m_old_proc_jiffies, 
 					cur_global_total_jiffies - m_old_global_total_jiffies,
 					&it->second.m_resident_memory_kb);
+
+				m_total_process_cpu += it->second.m_cpuload;
 			}
 		}
 
@@ -947,6 +950,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Calculate CPU load
 			//
 			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
+			m_total_process_cpu = 0; // this will be calculated when scannin the processes
 
 			//
 			// Flush the scheduler analyzer
@@ -1087,23 +1091,26 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
 			string cpustr;
-#ifdef _DEBUG
+
 			uint32_t totcpuload = 0;
 			uint32_t totcpusteal = 0;
-#endif
+
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
 				cpustr += to_string(m_cpu_loads[j]) + "(" + to_string(m_cpu_steals[j]) + ") ";
 				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j] * 100);
 				m_metrics->mutable_hostinfo()->add_cpu_steal(m_cpu_steals[j] * 100);
-#ifdef _DEBUG
+
 				totcpuload += m_cpu_loads[j];
 				totcpusteal += m_cpu_steals[j];
-#endif
 			}
 
 			ASSERT(totcpuload <= 100 * m_cpu_loads.size());
 			ASSERT(totcpusteal <= 100 * m_cpu_loads.size());
+			if(totcpuload != 0)
+			{
+				ASSERT(m_total_process_cpu <= totcpuload + 10);
+			}
 
 			if(m_cpu_loads.size() != 0)
 			{

@@ -132,6 +132,8 @@ VISIBILITY_PRIVATE
 	vector<uint32_t> m_cpu_loads;
 	vector<uint32_t> m_cpu_idles;
 	vector<uint32_t> m_cpu_steals;
+	// Sum of the cpu usage of all the processes
+	uint32_t m_total_process_cpu;
 
 	//
 	// The table of aggreagted connections
