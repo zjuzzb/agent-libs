@@ -797,7 +797,7 @@ public:
 		return m_tid;
 	}
 
-	bool m_die;
+	volatile bool m_die;
 	int64_t m_tid;
 };
 
@@ -827,7 +827,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_global_cpu_load(&cur_global_total_jiffies);
+	pparser.get_global_cpu_load(&old_global_total_jiffies);
 	load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, 0, &mem);
 
 	sleep(1);

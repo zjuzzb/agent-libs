@@ -567,3 +567,16 @@ TEST_F(sys_call_test, client_transaction_pruning29)
 	EXPECT_EQ((int32_t)sinsp_trlist_entry::FL_NONE, client_tr[0][1].m_flags);
 	EXPECT_EQ((int32_t)sinsp_trlist_entry::FL_NONE, client_tr[0][2].m_flags);
 }
+
+TEST_F(sys_call_test, transaction_merging1)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 30, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)20, sum);
+}
