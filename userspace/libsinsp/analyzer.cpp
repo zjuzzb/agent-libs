@@ -1107,10 +1107,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			ASSERT(totcpuload <= 100 * m_cpu_loads.size());
 			ASSERT(totcpusteal <= 100 * m_cpu_loads.size());
+
+			if(totcpuload < m_total_process_cpu)
+			{
+				totcpuload = m_total_process_cpu;
+			}
+
 			if(totcpuload != 0)
 			{
-				ASSERT(totcpuload >= m_total_process_cpu);
-				ASSERT(m_total_process_cpu <= totcpuload + 10);
+				//ASSERT(totcpuload + 10 >= m_total_process_cpu);
+				//ASSERT(m_total_process_cpu <= totcpuload + 10);
 			}
 
 			if(m_cpu_loads.size() != 0)

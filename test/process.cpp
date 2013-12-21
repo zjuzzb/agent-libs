@@ -839,7 +839,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
 		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
 
-		//printf("%" PRIu32 " %d \n", load, pid);
+		//printf("%" PRIu32 " %lu \n", load, mem);
 
 		old_global_total_jiffies = cur_global_total_jiffies;
 		sleep(1);
@@ -853,6 +853,9 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	ct.m_die = true;
 	ct1.m_die = true;
+
+	th.join();
+	th1.join();
 }
 
 TEST_F(sys_call_test, procfs_globalmemory)
