@@ -322,7 +322,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		if(evt->m_tinfo->m_last_latency_entertime != 0)
 		{
 			evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_last_latency_entertime;
-			ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
+			ASSERT((int64_t)evt->m_tinfo->m_latency >= 0);
 		}
 
 		if(etype == evt->m_tinfo->m_lastevent_type + 1)

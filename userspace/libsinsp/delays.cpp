@@ -73,8 +73,8 @@ uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals,
         }
 		else if(top.m_etime < (*intervals)[i].m_etime)
         {
-			top.m_etime = (*intervals)[i].m_etime;
 			tot_time += (((*intervals)[i].m_etime - top.m_etime));
+			top.m_etime = (*intervals)[i].m_etime;
         }
     }
  
@@ -280,6 +280,25 @@ void sinsp_delays::compute_host_percpu_delays(int32_t cpuid)
 	pd->clear();
 
 	ASSERT(m_analyzer != NULL);
+
+//vector<vector<sinsp_trlist_entry>>* transactions = &m_analyzer->m_host_server_transactions;
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
+//{
+//	((*transactions)[cpuid])[k].m_stime -= 1387500785000000000;
+//	((*transactions)[cpuid])[k].m_etime -= 1387500785000000000;
+//	int64_t delta = ((*transactions)[cpuid])[k].m_etime - ((*transactions)[cpuid])[k].m_stime;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
 
 	//
 	// Merge the server transactions
