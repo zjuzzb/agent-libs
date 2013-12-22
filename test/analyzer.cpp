@@ -579,4 +579,181 @@ TEST_F(sys_call_test, transaction_merging1)
 	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
 
 	EXPECT_EQ((uint64_t)20, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)30, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging2)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 25, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 30, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)20, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)30, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging3)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 30, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)20, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)30, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging4)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(9, 30, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)21, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)9, result[0].m_stime);
+	EXPECT_EQ((uint64_t)30, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging5)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 30, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(40, 50, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)40, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)50, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging6)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 19, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 29, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(30, 39, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(40, 49, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)36, sum);
+	EXPECT_EQ((uint64_t)4, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)19, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging7)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(40, 49, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 29, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 19, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(30, 39, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)36, sum);
+	EXPECT_EQ((uint64_t)4, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)19, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging8)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)10, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)20, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging9)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 30, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 40, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 50, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)40, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)50, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging10)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(15, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 30, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 40, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(20, 50, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)40, sum);
+	EXPECT_EQ((uint64_t)1, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)50, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, transaction_merging11)
+{
+	vector<sinsp_trlist_entry> tr;
+	vector<sinsp_trlist_entry> result;
+
+	tr.push_back(sinsp_trlist_entry(10, 20, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(10, 25, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(30, 40, sinsp_trlist_entry::FL_NONE));
+	tr.push_back(sinsp_trlist_entry(27, 50, sinsp_trlist_entry::FL_NONE));
+
+	uint64_t sum = sinsp_delays::merge_transactions(&tr, &result);
+
+	EXPECT_EQ((uint64_t)38, sum);
+	EXPECT_EQ((uint64_t)2, result.size());
+	EXPECT_EQ((uint64_t)10, result[0].m_stime);
+	EXPECT_EQ((uint64_t)25, result[0].m_etime);
 }
