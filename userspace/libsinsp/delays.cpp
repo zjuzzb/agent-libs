@@ -12,7 +12,6 @@ sinsp_delays::sinsp_delays(sinsp_analyzer* analyzer, uint32_t ncpus)
 	ASSERT(analyzer);
 	m_analyzer = analyzer;
 	m_num_cpus = ncpus;
-	m_last_delays.m_last_percpu_delays = vector<sinsp_program_percpu_delays>(ncpus);
 }
 
 //
@@ -163,9 +162,9 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 	return tot_time;
 }
 
-void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info, int32_t cpuid)
+void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info, int32_t cpuid, sinsp_delays_info* delays)
 {
-	sinsp_program_percpu_delays* pd = &m_last_delays.m_last_percpu_delays[cpuid];
+	sinsp_percpu_delays* pd = &delays->m_last_percpu_delays[cpuid];
 
 	pd->clear();
 
@@ -186,8 +185,8 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	//
 	// Add the just computed delays to the program ones
 	//
-	m_last_delays.m_merged_server_delay += pd->m_merged_server_delay;
-	m_last_delays.m_merged_client_delay += pd->m_merged_client_delay;
+	delays->m_merged_server_delay += pd->m_merged_server_delay;
+	delays->m_merged_client_delay += pd->m_merged_client_delay;
 
 	//
 	// Copy the external transactions to the host list
@@ -219,7 +218,7 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	}
 }
 
-sinsp_delays_info* sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info)
+void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT sinsp_delays_info* delays)
 {
 	int32_t j;
 
@@ -228,10 +227,17 @@ sinsp_delays_info* sinsp_delays::compute_program_delays(sinsp_threadinfo* progra
 		//
 		// Not a server
 		//
-		return NULL;
+		delays->m_local_processing_delay_ns = -1;
+		return;
 	}
 
-	m_last_delays.clear();
+	if(delays->m_last_percpu_delays.size() == 0)
+	{
+		ASSERT(m_num_cpus != 0);
+		delays->m_last_percpu_delays = vector<sinsp_percpu_delays>(m_num_cpus);
+	}
+
+	delays->clear();
 
 	//
 	// Prune the client connections
@@ -244,38 +250,38 @@ sinsp_delays_info* sinsp_delays::compute_program_delays(sinsp_threadinfo* progra
 	//
 	for(j = 0; j < m_num_cpus; j++)
 	{
-		compute_program_percpu_delays(program_info, j);
+		compute_program_percpu_delays(program_info, j, delays);
 	}
 
 	//
 	// Local transaction processing delay
 	//
-	m_last_delays.m_local_processing_delay_ns = 
-		(int64_t)(m_last_delays.m_merged_server_delay - m_last_delays.m_merged_client_delay);
+	delays->m_local_processing_delay_ns = 
+		(int64_t)(delays->m_merged_server_delay - delays->m_merged_client_delay);
 
-	ASSERT(m_last_delays.m_local_processing_delay_ns >= 0);
+	ASSERT(delays->m_local_processing_delay_ns >= 0);
 
 	//
 	// Ratio between inbound transaction time and local processing time
 	//
-	if(m_last_delays.m_merged_server_delay != 0)
+	if(delays->m_merged_server_delay != 0)
 	{
-		m_last_delays.m_local_remote_ratio = 
-			((double)m_last_delays.m_local_processing_delay_ns) / m_last_delays.m_merged_server_delay;
+		delays->m_local_remote_ratio = 
+			((double)delays->m_local_processing_delay_ns) / delays->m_merged_server_delay;
 	}
 	else
 	{
-		m_last_delays.m_local_remote_ratio = 1;
-		ASSERT(m_last_delays.m_merged_server_delay == 0);
-		ASSERT(m_last_delays.m_merged_client_delay == 0);
+		delays->m_local_remote_ratio = 1;
+		ASSERT(delays->m_merged_server_delay == 0);
+		ASSERT(delays->m_merged_client_delay == 0);
 	}
 
-	return &m_last_delays;
+	return;
 }
 
-void sinsp_delays::compute_host_percpu_delays(int32_t cpuid)
+void sinsp_delays::compute_host_percpu_delays(int32_t cpuid, sinsp_delays_info* delays)
 {
-	sinsp_program_percpu_delays* pd = &m_last_delays.m_last_percpu_delays[cpuid];
+	sinsp_percpu_delays* pd = &delays->m_last_percpu_delays[cpuid];
 
 	pd->clear();
 
@@ -315,11 +321,11 @@ void sinsp_delays::compute_host_percpu_delays(int32_t cpuid)
 	//
 	// Add the just computed delays to the program ones
 	//
-	m_last_delays.m_merged_server_delay += pd->m_merged_server_delay;
-	m_last_delays.m_merged_client_delay += pd->m_merged_client_delay;
+	delays->m_merged_server_delay += pd->m_merged_server_delay;
+	delays->m_merged_client_delay += pd->m_merged_client_delay;
 }
 
-sinsp_delays_info* sinsp_delays::compute_host_delays()
+void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 {
 	int32_t j;
 
@@ -328,26 +334,33 @@ sinsp_delays_info* sinsp_delays::compute_host_delays()
 		//
 		// Not a server
 		//
-		return NULL;
+		delays->m_local_processing_delay_ns = -1;
+		return;
 	}
 
-	m_last_delays.clear();
+	if(delays->m_last_percpu_delays.size() == 0)
+	{
+		ASSERT(m_num_cpus != 0);
+		delays->m_last_percpu_delays = vector<sinsp_percpu_delays>(m_num_cpus);
+	}
+
+	delays->clear();
 
 	//
 	// Per CPU transaction merging
 	//
 	for(j = 0; j < m_num_cpus; j++)
 	{
-		compute_host_percpu_delays(j);
+		compute_host_percpu_delays(j, delays);
 	}
 
 	//
 	// Local transaction processing delay
 	//
-	m_last_delays.m_local_processing_delay_ns = 
-		(int64_t)(m_last_delays.m_merged_server_delay - m_last_delays.m_merged_client_delay);
+	delays->m_local_processing_delay_ns = 
+		(int64_t)(delays->m_merged_server_delay - delays->m_merged_client_delay);
 
-	ASSERT(m_last_delays.m_local_processing_delay_ns >= 0);
+	ASSERT(delays->m_local_processing_delay_ns >= 0);
 
-	return &m_last_delays;
+	return;
 }

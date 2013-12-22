@@ -73,6 +73,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_last_transaction_delays_update_time = 0;
 	m_total_process_cpu = 0;
+
+	m_host_transaction_delays = new sinsp_delays_info();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -100,6 +102,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_delay_calculator)
 	{
 		delete m_delay_calculator;
+	}
+
+	if(m_host_transaction_delays)
+	{
+		delete m_host_transaction_delays;
 	}
 }
 
@@ -511,12 +518,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				if(tot.m_count != 0)
 				{
-					sinsp_delays_info* prog_delays = m_delay_calculator->compute_program_delays(&it->second);
+					sinsp_delays_info* prog_delays = it->second.m_procinfo->m_transaction_delays;
+					m_delay_calculator->compute_program_delays(&it->second, it->second.m_procinfo->m_transaction_delays);
 
 					//
 					// Transaction-related metrics
 					//
-					if(prog_delays != NULL)
+					if(prog_delays->m_local_processing_delay_ns != -1)
 					{
 						it->second.m_procinfo->m_proc_transaction_processing_delay_ns = prog_delays->m_local_processing_delay_ns;
 					}
@@ -1137,13 +1145,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Transactions
 			//
-			sinsp_delays_info* host_delays = m_delay_calculator->compute_host_delays();
+			m_delay_calculator->compute_host_delays(m_host_transaction_delays);
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
 
-			if(host_delays != NULL)
+			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(host_delays->m_local_processing_delay_ns);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns);
 			}
 
 			//
@@ -1186,9 +1194,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					m_host_transaction_counters.m_counter.m_count_out,
 					(float)m_host_transaction_counters.m_counter.m_time_ns_in / 1000000000,
 					(float)m_client_tr_time_by_servers / 1000000000,
-					(host_delays)?((double)host_delays->m_merged_server_delay) / sample_duration : -1,
-					(host_delays)?((double)host_delays->m_merged_client_delay) / sample_duration : -1,
-					(host_delays)?((double)host_delays->m_local_processing_delay_ns) / sample_duration : -1);
+					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
+					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,
+					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_local_processing_delay_ns) / sample_duration : -1);
 
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"host transaction times: proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
