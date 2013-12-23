@@ -306,7 +306,7 @@ TEST_F(sys_call_test, udp_client_server)
 		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
 		{
 			sinsp_threadinfo* ti = e->get_thread_info();
-			ASSERT_EQ(2, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+			ASSERT_EQ(2, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
 
 		if(type == PPME_SOCKET_RECVFROM_E)
@@ -496,7 +496,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 		sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
 		if(ti)
 		{
-			transaction_count = (int)ti->m_transaction_metrics.m_counter.m_count_in;
+			transaction_count = (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in;
 		}
 	};
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
@@ -547,7 +547,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
 		{
 			sinsp_threadinfo* ti = e->get_thread_info();
-			ASSERT_EQ(2, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+			ASSERT_EQ(2, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
 
 		if(type == PPME_SOCKET_RECVMSG_X)

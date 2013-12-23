@@ -357,7 +357,7 @@ TEST_F(sys_call_test, unix_client_server)
 		{
 			state = 1;
 			sinsp_threadinfo* ti = evt->get_thread_info();
-			ASSERT_EQ(1, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+			ASSERT_EQ(1, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
 
 	};
