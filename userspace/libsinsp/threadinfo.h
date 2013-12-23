@@ -6,6 +6,7 @@
 
 class sinsp_delays_info;
 
+
 typedef struct erase_fd_params
 {
 	bool m_remove_from_table;
@@ -16,14 +17,47 @@ typedef struct erase_fd_params
 	uint64_t m_ts;
 }erase_fd_params;
 
+//
+// Delays info
+// XXX this is a temporary place for these classes
+//
+class sinsp_percpu_delays
+{
+public:
+	void clear()
+	{
+		m_last_server_transaction_union.clear();
+		m_last_client_transaction_union.clear();
+	}
+
+	vector<sinsp_trlist_entry> m_last_server_transaction_union;
+	vector<sinsp_trlist_entry> m_last_client_transaction_union;
+	uint64_t m_merged_server_delay;
+	uint64_t m_merged_client_delay;
+};
+
+class sinsp_delays_info
+{
+public:
+	void clear()
+	{
+		m_merged_server_delay = 0;
+		m_merged_client_delay = 0;
+	}
+
+	vector<sinsp_percpu_delays> m_last_percpu_delays;
+	double m_local_remote_ratio;
+	uint64_t m_merged_server_delay;
+	uint64_t m_merged_client_delay;
+	int64_t m_local_processing_delay_ns;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
 ///////////////////////////////////////////////////////////////////////////////
 class sinsp_procinfo
 {
 public:
-	sinsp_procinfo();
-	~sinsp_procinfo();
 	void clear();
 	uint64_t get_tot_cputime();
 
@@ -62,13 +96,10 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 
-	sinsp_delays_info* m_transaction_delays;
+	sinsp_delays_info m_transaction_delays;
 };
 
-///////////////////////////////////////////////////////////////////////////////
-// thread info entry
-///////////////////////////////////////////////////////////////////////////////
-class SINSP_PUBLIC sinsp_threadinfo
+class thread_analyzer_info
 {
 public:
 	//
@@ -88,62 +119,21 @@ public:
 											 // detected, and then at regular intervals. This flag controls that behavior.
 	};
 
-	sinsp_threadinfo();
-	void init();
-	//sinsp_threadinfo(const sinsp_threadinfo &orig);
-	sinsp_threadinfo(sinsp *inspector);
-	~sinsp_threadinfo();
-	void init(const scap_threadinfo* pi);
-	string get_comm();
-	string get_exe();
-	string get_cwd();
-	void set_args(const char* args, size_t len);
-	void store_event(sinsp_evt *evt);
-	bool is_lastevent_data_valid();
-	void set_lastevent_data_validity(bool isvalid);
-	bool is_main_thread();
-	sinsp_threadinfo* get_main_thread();
-	sinsp_fdinfo *get_fd(int64_t fd);
-#ifdef HAS_ANALYZER
-	bool is_main_program_thread();
-	sinsp_threadinfo* get_main_program_thread();
-#endif
-
-	void print_on(FILE *f);
-
+	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
+	void destroy();
 	const sinsp_counters* get_metrics();
+	void allocate_procinfo_if_not_present();
+	void propagate_flag_bidirectional(analysis_flags flag, thread_analyzer_info* other);
+	void add_all_metrics(thread_analyzer_info* other);
+	void clear_all_metrics();
+	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
+	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
+	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
 
-	//
-	// Core state
-	//
-	int64_t m_tid;  // The id of this thread
-	int64_t m_pid; // The id of the process containing this thread. In single thread threads, this is equal to tid.
-	int64_t m_ptid; // The id of the process that started this thread.
-	int64_t m_progid; // Main program id. If this process is part of a logical group of processes (e.g. it's one of the apache processes), the tid of the process that is the head of this group.
-	string m_comm; // Command name (e.g. "top")
-	string m_exe; // Full command name (e.g. "/bin/top")
-	vector<string> m_args; // Command line arguments (e.g. "-d1")
-	uint32_t m_flags; // The thread flags.
-	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
-	uint32_t m_uid; // user id
-	uint32_t m_gid; // group id
-	uint64_t m_nchilds; // When this is 0 the process can be deleted
+	// Global state
+	sinsp *m_inspector;
+	sinsp_threadinfo* m_tinfo;
 
-	//
-	// State for multi-event processing
-	//
-	uint8_t m_lastevent_data[SP_EVT_BUF_SIZE]; // Used by some event parsers to store the last enter event
-	int64_t m_lastevent_fd;
-	uint64_t m_lastevent_ts;	// timestamp of the last event for this thread
-	uint64_t m_prevevent_ts;	// timestamp of the event before the last for this thread
-	uint16_t m_lastevent_type;
-	uint16_t m_lastevent_cpuid;
-	uint64_t m_lastaccess_ts;
-	sinsp_evt::category m_lastevent_category;
-
-	//
-	// Analyzer state
-	//
 	// Flags word used by the analysis engine.
 	uint8_t m_th_analysis_flags;
 	// The analyzer metrics
@@ -174,6 +164,66 @@ public:
 	// Time and duration of the last select, poll or epoll
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// thread info entry
+///////////////////////////////////////////////////////////////////////////////
+class SINSP_PUBLIC sinsp_threadinfo
+{
+public:
+	sinsp_threadinfo();
+	void init();
+	//sinsp_threadinfo(const sinsp_threadinfo &orig);
+	sinsp_threadinfo(sinsp *inspector);
+	~sinsp_threadinfo();
+	void init(const scap_threadinfo* pi);
+	string get_comm();
+	string get_exe();
+	string get_cwd();
+	void set_args(const char* args, size_t len);
+	void store_event(sinsp_evt *evt);
+	bool is_lastevent_data_valid();
+	void set_lastevent_data_validity(bool isvalid);
+	bool is_main_thread();
+	sinsp_threadinfo* get_main_thread();
+	sinsp_fdinfo *get_fd(int64_t fd);
+#ifdef HAS_ANALYZER
+	bool is_main_program_thread();
+	sinsp_threadinfo* get_main_program_thread();
+#endif
+
+	void print_on(FILE *f);
+
+	//
+	// Core state
+	//
+	int64_t m_tid;  // The id of this thread
+	int64_t m_pid; // The id of the process containing this thread. In single thread threads, this is equal to tid.
+	int64_t m_ptid; // The id of the process that started this thread.
+	int64_t m_progid; // Main program id. If this process is part of a logical group of processes (e.g. it's one of the apache processes), the tid of the process that is the head of this group.
+	string m_comm; // Command name (e.g. "top")
+	string m_exe; // Full command name (e.g. "/bin/top")
+	vector<string> m_args; // Command line arguments (e.g. "-d1")
+	uint32_t m_flags; // The thread flags.
+	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
+	uint32_t m_uid; // user id
+	uint32_t m_gid; // group id
+	uint64_t m_nchilds; // When this is 0 the process can be deleted
+
+	//
+	// State for multi-event processing
+	//
+	uint8_t m_lastevent_data[SP_EVT_BUF_SIZE]; // Used by some event parsers to store the last enter event
+	int64_t m_lastevent_fd;
+	uint64_t m_lastevent_ts;	// timestamp of the last event for this thread
+	uint64_t m_prevevent_ts;	// timestamp of the event before the last for this thread
+	uint16_t m_lastevent_type;
+	uint16_t m_lastevent_cpuid;
+	uint64_t m_lastaccess_ts;
+	sinsp_evt::category m_lastevent_category;
+
+	thread_analyzer_info* m_ainfo;
 
 #ifdef HAS_FILTERING
 	//
@@ -195,13 +245,6 @@ VISIBILITY_PRIVATE
 	sinsp_fdtable* get_fd_table();
 	void set_cwd(const char *cwd, uint32_t cwdlen);
 	sinsp_threadinfo* get_cwd_root();
-	void allocate_procinfo_if_not_present();
-	void propagate_flag_bidirectional(analysis_flags flag, sinsp_threadinfo* other);
-	void add_all_metrics(sinsp_threadinfo* other);
-	void clear_all_metrics();
-	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
-	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
-	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void allocate_private_state();
 
 	//  void push_fdop(sinsp_fdop* op);
@@ -224,6 +267,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_evt;
 	friend class sinsp_thread_manager;
 	friend class sinsp_transaction_table;
+	friend class thread_analyzer_info;
 };
 
 typedef unordered_map<int64_t, sinsp_threadinfo> threadinfo_map_t;
@@ -243,6 +287,11 @@ public:
 	{
 		m_memory_sizes.push_back(size);
 		return m_memory_sizes.size() - 1;
+	}
+
+	uint32_t get_size()
+	{
+		return m_memory_sizes.size();
 	}
 
 private:
@@ -279,8 +328,6 @@ public:
 	}
 
 	set<uint16_t> m_server_ports;
-
-	sinsp_thread_privatestate_manager m_thread_privatestate_manager;
 
 private:
 	void increment_mainthread_childcount(sinsp_threadinfo* threadinfo);

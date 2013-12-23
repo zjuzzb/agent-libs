@@ -75,6 +75,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_total_process_cpu = 0;
 
 	m_host_transaction_delays = new sinsp_delays_info();
+
+	inspector->reserve_thread_memory(10);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -335,7 +337,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				cat = &tcat;
 			}
 
-			add_syscall_time(&it->second.m_metrics, 
+			add_syscall_time(&it->second.m_ainfo->m_metrics, 
 				cat, 
 				delta,
 				0,
@@ -344,7 +346,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			it->second.m_th_analysis_flags |= sinsp_threadinfo::AF_PARTIAL_METRIC;
+			it->second.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
 		}
 
 		//
@@ -352,30 +354,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
-		it->second.m_metrics.get_total(&ttot);
+		it->second.m_ainfo->m_metrics.get_total(&ttot);
 		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
 
 		//
 		// Go through the FD list to flush the transactions that haven't been active for a while
 		//
-		it->second.flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
 
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
-		it->second.m_cpuload = 0;
+		it->second.m_ainfo->m_cpuload = 0;
 
 		if(it->second.is_main_thread())
 		{
 			if(m_inspector->m_islive)
 			{
-				it->second.m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
-					&it->second.m_old_proc_jiffies, 
+				it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+					&it->second.m_ainfo->m_old_proc_jiffies, 
 					cur_global_total_jiffies - m_old_global_total_jiffies,
-					&it->second.m_resident_memory_kb);
+					&it->second.m_ainfo->m_resident_memory_kb);
 
-				m_total_process_cpu += it->second.m_cpuload;
+				m_total_process_cpu += it->second.m_ainfo->m_cpuload;
 			}
 		}
 
@@ -387,17 +389,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 #endif
-		mtinfo->add_all_metrics(&it->second);
+		mtinfo->m_ainfo->add_all_metrics(it->second.m_ainfo);
 
 		//
 		// ... And to the host ones
 		//
-		m_host_transaction_counters.add(&it->second.m_external_transaction_metrics);
+		m_host_transaction_counters.add(&it->second.m_ainfo->m_external_transaction_metrics);
 
-		if(mtinfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 		{
 			n_server_threads++;
-			m_client_tr_time_by_servers += it->second.m_external_transaction_metrics.m_counter.m_time_ns_out;
+			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.m_counter.m_time_ns_out;
 		}
 
 #ifdef ANALYZER_EMITS_THREADS
@@ -443,23 +445,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 		{
 			int64_t pid = it->second.m_pid;
+			sinsp_procinfo* procinfo = it->second.m_ainfo->m_procinfo;
 
 #ifdef ANALYZER_EMITS_PROCESSES
 			sinsp_counter_time tot;
 	
-			ASSERT(it->second.m_procinfo != NULL);
+			ASSERT(procinfo != NULL);
 
-			it->second.m_procinfo->m_proc_metrics.get_total(&tot);
+			procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
-			if(tot.m_count != 0 || it->second.m_procinfo->m_cpuload != 0 ||
-				it->second.m_th_analysis_flags & (sinsp_threadinfo::AF_IS_IPV4_SERVER | sinsp_threadinfo::AF_IS_UNIX_SERVER | sinsp_threadinfo::AF_IS_IPV4_CLIENT | sinsp_threadinfo::AF_IS_UNIX_CLIENT))
+			if(tot.m_count != 0 || procinfo->m_cpuload != 0 ||
+				it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_IPV4_SERVER | thread_analyzer_info::AF_IS_UNIX_SERVER | 
+				thread_analyzer_info::AF_IS_IPV4_CLIENT | thread_analyzer_info::AF_IS_UNIX_CLIENT))
 			{
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
 				draiosproto::process* proc = prog->mutable_procinfo();
 
-				vector<int64_t>* pids = &it->second.m_procinfo->m_program_pids;
+				vector<int64_t>* pids = &procinfo->m_program_pids;
 				for(uint32_t jj = 0; jj < pids->size(); jj++)
 				{
 					prog->add_pids((*pids)[jj]);
@@ -473,7 +477,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				proc->set_pid(pid);
 
-				if((it->second.m_th_analysis_flags & sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO) ||
+				if((it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_INCLUDE_INFO_IN_PROTO) ||
 					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 				{
 					proc->mutable_details()->set_comm(it->second.m_comm);
@@ -484,31 +488,31 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->mutable_details()->add_args(*arg_it);
 					}
 
-					it->second.m_th_analysis_flags &= ~sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO;
+					it->second.m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::AF_INCLUDE_INFO_IN_PROTO;
 				}
 
-				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_SERVER)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_SERVER)
 				{
 					proc->set_is_ipv4_transaction_server(true);
 				}
-				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_SERVER)
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 				{
 					proc->set_is_unix_transaction_server(true);
 				}
 
-				if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_IPV4_CLIENT)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_CLIENT)
 				{
 					proc->set_is_ipv4_transaction_client(true);
 				}
-				else if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_IS_UNIX_CLIENT)
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 				{
 					proc->set_is_unix_transaction_client(true);
 				}
 
-				if(it->second.m_procinfo->m_cpuload != -1)
+				if(procinfo->m_cpuload != -1)
 				{
-					proc->mutable_resource_counters()->set_cpu_pct(it->second.m_procinfo->m_cpuload * 100);
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(it->second.m_procinfo->m_resident_memory_kb);
+					proc->mutable_resource_counters()->set_cpu_pct(procinfo->m_cpuload * 100);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
 				}
 				else
 				{
@@ -518,89 +522,88 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				if(tot.m_count != 0)
 				{
-					sinsp_delays_info* prog_delays = it->second.m_procinfo->m_transaction_delays;
-					m_delay_calculator->compute_program_delays(&it->second, it->second.m_procinfo->m_transaction_delays);
+					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+					m_delay_calculator->compute_program_delays(&it->second, prog_delays);
 
 					//
 					// Transaction-related metrics
 					//
 					if(prog_delays->m_local_processing_delay_ns != -1)
 					{
-						it->second.m_procinfo->m_proc_transaction_processing_delay_ns = prog_delays->m_local_processing_delay_ns;
+						procinfo->m_proc_transaction_processing_delay_ns = prog_delays->m_local_processing_delay_ns;
 					}
-					it->second.m_procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
-					it->second.m_procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
-					proc->set_transaction_processing_delay(it->second.m_procinfo->m_proc_transaction_processing_delay_ns);
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
+					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
+					proc->set_transaction_processing_delay(procinfo->m_proc_transaction_processing_delay_ns);
 
 					//
 					// Health-related metrics
 					//
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
 						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
 							prog_delays,
 #ifdef ANALYZER_EMITS_PROGRAMS
-							it->second.m_procinfo->m_program_pids.size(),
+							procinfo->m_program_pids.size(),
 #else
 							(uint32_t)it->second.m_nchilds,
 #endif
 							m_prev_flush_time_ns, sample_duration);
 
-							it->second.m_procinfo->m_capacity_score = scores.m_current_capacity;
-							it->second.m_procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
+							procinfo->m_capacity_score = scores.m_current_capacity;
+							procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
 					}
 					else
 					{
-						it->second.m_procinfo->m_capacity_score = -1;
-						it->second.m_procinfo->m_stolen_capacity_score = 0;
+						procinfo->m_capacity_score = -1;
+						procinfo->m_stolen_capacity_score = 0;
 					}
 
 					//
 					// Update the host capcity score
 					//
-					if(it->second.m_procinfo->m_capacity_score != -1)
+					if(procinfo->m_capacity_score != -1)
 					{
-						if(it->second.m_procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
+						if(procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
 						{
-							m_host_metrics.m_capacity_score = it->second.m_procinfo->m_capacity_score;
-							m_host_metrics.m_stolen_capacity_score = it->second.m_procinfo->m_stolen_capacity_score;
+							m_host_metrics.m_capacity_score = procinfo->m_capacity_score;
+							m_host_metrics.m_stolen_capacity_score = procinfo->m_stolen_capacity_score;
 						}
 					}
 
-					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(it->second.m_procinfo->m_capacity_score * 100));
-					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(it->second.m_procinfo->m_stolen_capacity_score * 100));
-					proc->mutable_resource_counters()->set_connection_queue_usage_pct(it->second.m_procinfo->m_connection_queue_usage_pct);
-					proc->mutable_resource_counters()->set_fd_usage_pct(it->second.m_procinfo->m_fd_usage_pct);
+					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
+					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
+					proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
+					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
 
 					//
 					// Error-related metrics
 					//
-					it->second.m_procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
+					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
 
 #if 1
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
-						uint64_t trtimein = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-						uint64_t trtimeout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-						uint32_t trcountin = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
-						uint32_t trcountout = it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+						uint64_t trtimein = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+						uint32_t trcountin = procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
+						uint32_t trcountout = procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
 							it->second.m_comm.c_str(),
 							it->second.m_tid,
 							it->second.m_nchilds + 1,
-							it->second.m_procinfo->m_capacity_score,
-							it->second.m_procinfo->m_stolen_capacity_score,
-//							(float)it->second.m_procinfo->get_tot_cputime() * 100 / (float)sample_duration,
-							(float)it->second.m_procinfo->m_cpuload,
-							it->second.m_procinfo->m_fd_usage_pct,
-							it->second.m_procinfo->m_connection_queue_usage_pct);
+							procinfo->m_capacity_score,
+							procinfo->m_stolen_capacity_score,
+							(float)procinfo->m_cpuload,
+							procinfo->m_fd_usage_pct,
+							procinfo->m_connection_queue_usage_pct);
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
-							it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+							procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
+							procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
 							trcountin? ((double)trtimein) / sample_duration : 0,
 							trcountout? ((double)trtimeout) / sample_duration : 0,
 							(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
@@ -609,20 +612,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
-							it->second.m_procinfo->m_proc_metrics.get_processing_percentage() * 100,
-							it->second.m_procinfo->m_proc_metrics.get_file_percentage() * 100,
-							(uint64_t)(it->second.m_procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + it->second.m_procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
-							it->second.m_procinfo->m_proc_metrics.get_net_percentage() * 100,
-							it->second.m_procinfo->m_proc_metrics.get_other_percentage() * 100);
+							procinfo->m_proc_metrics.get_processing_percentage() * 100,
+							procinfo->m_proc_metrics.get_file_percentage() * 100,
+							(uint64_t)(procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
+							procinfo->m_proc_metrics.get_net_percentage() * 100,
+							procinfo->m_proc_metrics.get_other_percentage() * 100);
 					}
 
 #endif
 
 #ifdef _DEBUG
-					double totpct = it->second.m_procinfo->m_proc_metrics.get_processing_percentage() +
-						it->second.m_procinfo->m_proc_metrics.get_file_percentage() + 
-						it->second.m_procinfo->m_proc_metrics.get_net_percentage() +
-						it->second.m_procinfo->m_proc_metrics.get_other_percentage();
+					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
+						procinfo->m_proc_metrics.get_file_percentage() + 
+						procinfo->m_proc_metrics.get_net_percentage() +
+						procinfo->m_proc_metrics.get_other_percentage();
 
 					ASSERT(totpct > 0.99);
 					ASSERT(totpct < 1.01);
@@ -633,11 +636,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// Update the host metrics with the info coming from this process
 				//
-				if(it->second.m_procinfo != NULL)
+				if(procinfo != NULL)
 				{
-					if(it->second.m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 					{
-						m_host_req_metrics.add(&it->second.m_procinfo->m_proc_metrics);
+						m_host_req_metrics.add(&procinfo->m_proc_metrics);
 					}
 
 					//
@@ -645,7 +648,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// That's because these are transaction time metrics, and therefore we don't 
 					// want to use processes that don't serve transactions.
 					//
-					m_host_metrics.add(it->second.m_procinfo);
+					m_host_metrics.add(procinfo);
 				}
 				else
 				{
@@ -657,7 +660,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
-		if(it->second.m_th_analysis_flags & sinsp_threadinfo::AF_CLOSED)
+		if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_CLOSED)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -665,7 +668,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
 			//       not actually remove the thread if it has childs.
 			//
-			it->second.clear_all_metrics();
+			it->second.m_ainfo->clear_all_metrics();
 
 			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
 			{
@@ -681,7 +684,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Clear the thread metrics, so we're ready for the next sample
 			//
-			it->second.clear_all_metrics();
+			it->second.m_ainfo->clear_all_metrics();
 			++it;
 		}
 	}
@@ -964,6 +967,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
+
+			if(m_prev_flush_time_ns - m_last_transaction_delays_update_time > TRANSACTION_DELAYS_INTERVAL_NS)
+			{
+				m_last_transaction_delays_update_time = m_prev_flush_time_ns;
+			}
 
 			//
 			// Reset the protobuffer
@@ -1262,11 +1270,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 //
 void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 {
-	int64_t wd = evt->m_tinfo->m_last_wait_duration_ns;
+	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
+	int64_t wd = evt->m_tinfo->m_ainfo->m_last_wait_duration_ns;
+
+	ASSERT(tainfo != NULL);
 
 	if(wd != 0)
 	{
-		uint64_t we = evt->m_tinfo->m_last_wait_end_time_ns;
+		uint64_t we = tainfo->m_last_wait_end_time_ns;
 
 		if(we >= m_prev_flush_time_ns)
 		{
@@ -1284,7 +1295,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 
 			delta = we - MAX(ws, m_prev_flush_time_ns);
 
-			sinsp_counters* metrics = &evt->m_tinfo->m_metrics;
+			sinsp_counters* metrics = &tainfo->m_metrics;
 
 			if(cat->m_category == EC_FILE)
 			{
@@ -1359,8 +1370,101 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 			}
 		}
 
-		evt->m_tinfo->m_last_wait_duration_ns = 0;
-		evt->m_tinfo->m_last_wait_end_time_ns = 0;
+		tainfo->m_last_wait_duration_ns = 0;
+		tainfo->m_last_wait_end_time_ns = 0;
+	}
+}
+
+void sinsp_analyzer::parse_accept_exit(sinsp_evt* evt)
+{
+	//
+	// Extract the request queue length 
+	//
+	sinsp_evt_param *parinfo = evt->get_param(2);
+	ASSERT(parinfo->m_len == sizeof(uint8_t));
+	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
+	ASSERT(queueratio <= 100);
+
+	if(queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
+	{
+		evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct = queueratio;
+	}
+
+	//
+	// If this comes after a wait, reset the last wait time, since we don't count 
+	// time waiting for an accept as I/O time
+	//
+	evt->m_tinfo->m_ainfo->m_last_wait_duration_ns = 0;
+}
+
+void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
+{
+	sinsp_evt_param *parinfo;
+	int64_t retval;
+	uint16_t etype = evt->get_type();
+
+	if(etype != evt->m_tinfo->m_lastevent_type + 1)
+	{
+		//
+		// Packet drop. Previuos event didn't have a chance to 
+		//
+		return;
+	}
+
+	//
+	// Extract the return value
+	//
+	parinfo = evt->get_param(0);
+	retval = *(int64_t *)parinfo->m_val;
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+
+	//
+	// Check if the syscall was successful
+	//
+	if(retval >= 0)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+		if(tinfo == NULL)
+		{
+			ASSERT(false);
+			return;
+		}
+
+		if(tinfo->is_lastevent_data_valid())
+		{
+			//
+			// We categorize this based on the next I/O operation only if the number of 
+			// FDs that were waited for is 1
+			//
+			if(retval == 0)
+			{
+				tinfo->m_ainfo->m_last_wait_duration_ns = 0;
+			}
+			else
+			{
+				//
+				// If this was a wait on a *single* fd, we can easily categorize it with certainty and
+				// we encode the delta as a positive number.
+				// If this was a wait on multiple FDs, we encode the delta as a negative number so
+				// the next steps will know that it needs to be handled with more care.
+				//
+				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
+				uint64_t ts = evt->get_ts();
+
+				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
+				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
+
+				if(retval == 1)
+				{
+					tinfo->m_ainfo->m_last_wait_duration_ns = ts - start_time_ns;
+				}
+				else
+				{
+					tinfo->m_ainfo->m_last_wait_duration_ns = start_time_ns - ts;
+				}
+			}
+		}
 	}
 }
 
@@ -1370,6 +1474,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	uint64_t delta;
 	sinsp_evt::category cat;
 	uint16_t etype;
+	thread_analyzer_info* tainfo;
 
 	//
 	// If there is no event, assume that this is an EOF and use the 
@@ -1384,6 +1489,15 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		{
 			m_sched_analyzer2->process_event(evt);
 			return;
+		}
+		else if(etype == PPME_SOCKET_ACCEPT_X || etype == PPME_SOCKET_ACCEPT4_X)
+		{
+			parse_accept_exit(evt);
+		}
+		else if(etype == PPME_SYSCALL_SELECT_X || etype == PPME_SYSCALL_POLL_X || 
+			etype == PPME_SYSCALL_EPOLLWAIT_X)
+		{
+			parse_select_poll_epollwait_exit(evt);
 		}
 	}
 	else
@@ -1413,13 +1527,15 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 		return;
 	}
 
+	tainfo = evt->m_tinfo->m_ainfo;
+
 	//
 	// Get the event category and type
 	//
 	evt->get_category(&cat);
 
 	//
-	// For pur purposes, accept() is wait, not networking
+	// For our purposes, accept() is wait, not networking
 	//
 	if(etype == PPME_SOCKET_ACCEPT_E || etype == PPME_SOCKET_ACCEPT_X)
 	{
@@ -1429,13 +1545,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	// Check if this is an event that goes across sample boundaries
 	//
-	if((evt->m_tinfo->m_th_analysis_flags & sinsp_threadinfo::AF_PARTIAL_METRIC) != 0)
+	if((tainfo->m_th_analysis_flags & thread_analyzer_info::AF_PARTIAL_METRIC) != 0)
 	{
 		//
 		// Part of this event has already been attributed to the previous sample, 
 		// we just include the remaining part
 		//
-		evt->m_tinfo->m_th_analysis_flags &= ~(sinsp_threadinfo::AF_PARTIAL_METRIC);
+		tainfo->m_th_analysis_flags &= ~(thread_analyzer_info::AF_PARTIAL_METRIC);
 
 		delta = ts - m_prev_flush_time_ns;
 	}
@@ -1494,7 +1610,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	//
 	bool do_inc_counter = (cat.m_category != EC_PROCESSING);
 
-	add_syscall_time(&evt->m_tinfo->m_metrics, 
+	add_syscall_time(&tainfo->m_metrics, 
 		&cat,
 		delta, 
 		evt->get_iosize(),
@@ -1519,8 +1635,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 #endif
 			if(parentinfo != NULL)
 			{
-				parentinfo->allocate_procinfo_if_not_present();
-				parentinfo->m_procinfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
+				parentinfo->m_ainfo->allocate_procinfo_if_not_present();
+				parentinfo->m_ainfo->m_procinfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			}
 			else
 			{

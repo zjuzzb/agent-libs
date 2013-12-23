@@ -185,12 +185,14 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 {
 	sinsp_score_info res(-1,  -1);
 	int32_t cpuid;
+
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
 	if(machine_info == NULL)
 	{
 		ASSERT(false);
 		throw sinsp_exception("no machine information. Scores calculator can't be initialized.");
 	}
+
 	int32_t num_cpus = machine_info->num_cpus;
 	ASSERT(num_cpus != 0);
 
@@ -259,9 +261,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 
 		if(program_info != NULL)
 		{
-			ASSERT(program_info->m_procinfo != NULL);
+			ASSERT(program_info->m_ainfo->m_procinfo != NULL);
 
-			int32_t nct = (int32_t)program_info->m_procinfo->m_cpu_time_ns.size();
+			int32_t nct = (int32_t)program_info->m_ainfo->m_procinfo->m_cpu_time_ns.size();
 
 			//
 			// This can happen when we drop or filter scheduler events
@@ -273,7 +275,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 
 			ASSERT(nct == num_cpus);
 
-			tr_cpu_time = program_info->m_procinfo->m_cpu_time_ns[cpuid];
+			tr_cpu_time = program_info->m_ainfo->m_procinfo->m_cpu_time_ns[cpuid];
 		}
 		else
 		{

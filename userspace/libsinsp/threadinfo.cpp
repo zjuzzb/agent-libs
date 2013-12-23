@@ -19,16 +19,6 @@ static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_procinfo::sinsp_procinfo()
-{
-	m_transaction_delays = new sinsp_delays_info();
-}
-
-sinsp_procinfo::~sinsp_procinfo()
-{
-	delete m_transaction_delays;
-}
-
 void sinsp_procinfo::clear()
 {
 	m_proc_metrics.clear();
@@ -80,6 +70,260 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// thread_analyzer_info implementation
+///////////////////////////////////////////////////////////////////////////////
+void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
+{
+	m_inspector = inspector;
+	m_tinfo = tinfo;
+	m_th_analysis_flags = AF_PARTIAL_METRIC | AF_INCLUDE_INFO_IN_PROTO;
+	m_procinfo = NULL;
+	m_fd_usage_pct = 0;
+	m_connection_queue_usage_pct = 0;
+	m_old_proc_jiffies = -1;
+	m_cpuload = 0;
+	m_resident_memory_kb = 0;
+	m_last_wait_duration_ns = 0;
+	m_last_wait_end_time_ns = 0;
+}
+
+void thread_analyzer_info::destroy()
+{
+	if(m_procinfo)
+	{
+		delete m_procinfo;
+	}
+}
+
+const sinsp_counters* thread_analyzer_info::get_metrics()
+{
+	return (const sinsp_counters*)&m_metrics;
+}
+
+void thread_analyzer_info::allocate_procinfo_if_not_present()
+{
+	if(m_procinfo == NULL)
+	{
+		m_procinfo = new sinsp_procinfo();
+		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
+		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
+		m_procinfo->clear();
+	}
+}
+
+void thread_analyzer_info::propagate_flag_bidirectional(analysis_flags flag, thread_analyzer_info* other)
+{
+	if(other->m_th_analysis_flags & flag)
+	{
+		m_th_analysis_flags |= flag;
+	}
+	else
+	{
+		if(m_th_analysis_flags & flag)
+		{
+			other->m_th_analysis_flags |= flag;
+		}
+	}
+}
+
+void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
+{
+	allocate_procinfo_if_not_present();
+
+	sinsp_counter_time ttot;
+	other->m_metrics.get_total(&ttot);
+
+	if(ttot.m_count != 0)
+	{
+		m_procinfo->m_proc_metrics.add(&other->m_metrics);
+		m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
+	}
+
+	if(other->m_fd_usage_pct > m_procinfo->m_fd_usage_pct)
+	{
+		m_procinfo->m_fd_usage_pct = other->m_fd_usage_pct;
+	}
+
+	if(other->m_connection_queue_usage_pct > m_procinfo->m_connection_queue_usage_pct)
+	{
+		m_procinfo->m_connection_queue_usage_pct = other->m_connection_queue_usage_pct;
+	}
+
+	m_procinfo->m_cpuload += other->m_cpuload;
+	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
+
+	//
+	// Propagate client-server flags
+	//
+	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_IPV4_SERVER, other);
+	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_UNIX_SERVER, other);
+	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_IPV4_CLIENT, other);
+	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_UNIX_CLIENT, other);
+
+	//
+	// Propagate the CPU times vector
+	//
+	uint32_t oc = other->m_cpu_time_ns.size();
+	if(oc != 0)
+	{
+		if(m_procinfo->m_cpu_time_ns.size() != oc)
+		{
+			ASSERT(m_procinfo->m_cpu_time_ns.size() == 0)
+			m_procinfo->m_cpu_time_ns.resize(oc);
+		}
+
+		for(uint32_t j = 0; j < oc; j++)
+		{
+			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
+		}
+	}
+
+	//
+	// If we are returning programs to the backend, add the child pid to the
+	// m_program_pids list
+	//
+#ifdef ANALYZER_EMITS_PROGRAMS
+	ASSERT(other->m_tinfo != NULL);
+
+	if(other->m_tinfo->is_main_thread())
+	{
+		m_procinfo->m_program_pids.push_back(other->m_tinfo->m_pid);
+	}
+#endif
+}
+
+void thread_analyzer_info::clear_all_metrics()
+{
+	ASSERT(m_tinfo != NULL);
+	ASSERT(m_inspector->m_thread_privatestate_manager.get_size() 
+		== m_tinfo->m_private_state.size());
+
+	if(m_procinfo != NULL)
+	{
+		ASSERT(m_tinfo->is_main_thread());
+		m_procinfo->clear();
+	}
+
+	m_metrics.clear();
+	m_transaction_metrics.clear();
+	m_external_transaction_metrics.clear();
+	m_fd_usage_pct = 0;
+	m_connection_queue_usage_pct = 0;
+	m_cpuload = 0;
+	m_resident_memory_kb = 0;
+
+	vector<uint64_t>::iterator it;
+	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
+	{
+		*it = 0;
+	}
+}
+
+//
+// Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
+//
+void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration)
+{
+	sinsp_fdtable* fdtable = m_tinfo->get_fd_table();
+
+	if(fdtable == &m_tinfo->m_fdtable)
+	{
+		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+
+		for(it = m_tinfo->m_fdtable.m_table.begin(); it != m_tinfo->m_fdtable.m_table.end(); it++)
+		{
+			uint64_t endtime = sample_end_time;
+
+			if((it->second.is_transaction()) && 
+				((it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN)))
+			{
+				if(it->second.m_transaction.m_end_time >= endtime)
+				{
+					//
+					// This happens when the sample-generating event is a read or write on a transaction FD.
+					// No big deal, we're sure that this transaction doesn't need to ble flushed yet
+					//
+					return;
+				}
+
+				if(endtime - it->second.m_transaction.m_end_time > TRANSACTION_TIMEOUT_NS)
+				{
+					sinsp_connection *connection;
+
+					if(it->second.is_ipv4_socket())
+					{
+						connection = m_inspector->get_connection(it->second.m_info.m_ipv4info, 
+							endtime);
+
+						ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
+					}
+					else if(it->second.is_unix_socket())
+					{
+						connection = m_inspector->get_connection(it->second.m_info.m_unixinfo, 
+							endtime);
+
+						ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
+					}
+					else
+					{
+						ASSERT(false);
+						return;
+					}
+
+					if(connection != NULL)
+					{
+						sinsp_partial_transaction *trinfo = &(it->second.m_transaction);
+
+						trinfo->update(m_inspector,
+							m_tinfo,
+							&it->second,
+							connection,
+							0, 
+							0,
+							-1,
+							sinsp_partial_transaction::DIR_CLOSE, 
+							0);
+
+						trinfo->m_incoming_bytes = 0;
+						trinfo->m_outgoing_bytes = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+//
+// Helper function to add a server transaction to the process list.
+// Makes sure that the process is allocated first.
+//
+void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal)
+{
+	allocate_procinfo_if_not_present();
+
+	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
+
+	m_procinfo->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
+}
+
+//
+// Helper function to add a client transaction to the process list.
+// Makes sure that the process is allocated first.
+//
+void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal)
+{
+	allocate_procinfo_if_not_present();
+
+	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
+
+	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
+		tr->m_prev_end_time, flags));
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_threadinfo implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_threadinfo::sinsp_threadinfo() :
@@ -106,41 +350,34 @@ void sinsp_threadinfo::init()
 	m_prevevent_ts = 0;
 	m_lastaccess_ts = 0;
 	m_lastevent_category.m_category = EC_UNKNOWN;
-	m_th_analysis_flags = AF_PARTIAL_METRIC | AF_INCLUDE_INFO_IN_PROTO;
 	m_flags = 0;
 	m_nchilds = 0;
-	m_procinfo = NULL;
 	m_fdlimit = -1;
-	m_fd_usage_pct = 0;
-	m_connection_queue_usage_pct = 0;
-	m_old_proc_jiffies = -1;
 	m_main_thread = NULL;
 	m_main_program_thread = NULL;
-	m_cpuload = 0;
-	m_resident_memory_kb = 0;
-	m_last_wait_duration_ns = 0;
-	m_last_wait_end_time_ns = 0;
 #ifdef HAS_FILTERING
 	m_last_latency_entertime = 0;
 	m_latency = 0;
 #endif
-
-	allocate_private_state();
+	m_ainfo = NULL;
 }
 
 sinsp_threadinfo::~sinsp_threadinfo()
 {
 	uint32_t j;
 
-	if(m_procinfo)
+	if(m_ainfo)
 	{
-		delete m_procinfo;
+		m_ainfo->destroy();
+		delete m_ainfo;
 	}
 
 	for(j = 0; j < m_private_state.size(); j++)
 	{
 		free(m_private_state[j]);
 	}
+
+	m_private_state.clear();
 }
 
 void sinsp_threadinfo::fix_sockets_coming_from_proc()
@@ -627,231 +864,6 @@ void sinsp_threadinfo::print_on(FILE* f)
 	fprintf(f,"\n");
 }
 
-const sinsp_counters* sinsp_threadinfo::get_metrics()
-{
-	return (const sinsp_counters*)&m_metrics;
-}
-
-void sinsp_threadinfo::allocate_procinfo_if_not_present()
-{
-	if(m_procinfo == NULL)
-	{
-		m_procinfo = new sinsp_procinfo();
-		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
-		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
-		m_procinfo->clear();
-	}
-}
-
-void sinsp_threadinfo::propagate_flag_bidirectional(analysis_flags flag, sinsp_threadinfo* other)
-{
-	if(other->m_th_analysis_flags & flag)
-	{
-		m_th_analysis_flags |= flag;
-	}
-	else
-	{
-		if(m_th_analysis_flags & flag)
-		{
-			other->m_th_analysis_flags |= flag;
-		}
-	}
-}
-
-void sinsp_threadinfo::add_all_metrics(sinsp_threadinfo* other)
-{
-	allocate_procinfo_if_not_present();
-
-	sinsp_counter_time ttot;
-	other->m_metrics.get_total(&ttot);
-
-	if(ttot.m_count != 0)
-	{
-		m_procinfo->m_proc_metrics.add(&other->m_metrics);
-		m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
-	}
-
-	if(other->m_fd_usage_pct > m_procinfo->m_fd_usage_pct)
-	{
-		m_procinfo->m_fd_usage_pct = other->m_fd_usage_pct;
-	}
-
-	if(other->m_connection_queue_usage_pct > m_procinfo->m_connection_queue_usage_pct)
-	{
-		m_procinfo->m_connection_queue_usage_pct = other->m_connection_queue_usage_pct;
-	}
-
-	m_procinfo->m_cpuload += other->m_cpuload;
-	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
-
-	//
-	// Propagate client-server flags
-	//
-	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_IPV4_SERVER, other);
-	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_UNIX_SERVER, other);
-	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_IPV4_CLIENT, other);
-	propagate_flag_bidirectional(sinsp_threadinfo::AF_IS_UNIX_CLIENT, other);
-
-	//
-	// Propagate the CPU times vector
-	//
-	uint32_t oc = other->m_cpu_time_ns.size();
-	if(oc != 0)
-	{
-		if(m_procinfo->m_cpu_time_ns.size() != oc)
-		{
-			ASSERT(m_procinfo->m_cpu_time_ns.size() == 0)
-			m_procinfo->m_cpu_time_ns.resize(oc);
-		}
-
-		for(uint32_t j = 0; j < oc; j++)
-		{
-			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
-		}
-	}
-
-	//
-	// If we are returning programs to the backend, add the child pid to the
-	// m_program_pids list
-	//
-#ifdef ANALYZER_EMITS_PROGRAMS
-	if(other->is_main_thread())
-	{
-		m_procinfo->m_program_pids.push_back(other->m_pid);
-	}
-#endif
-}
-
-void sinsp_threadinfo::clear_all_metrics()
-{
-	ASSERT(m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes.size() 
-		== m_private_state.size());
-
-	if(m_procinfo != NULL)
-	{
-		ASSERT(is_main_thread());
-		m_procinfo->clear();
-	}
-
-	m_metrics.clear();
-	m_transaction_metrics.clear();
-	m_external_transaction_metrics.clear();
-	m_fd_usage_pct = 0;
-	m_connection_queue_usage_pct = 0;
-	m_cpuload = 0;
-	m_resident_memory_kb = 0;
-
-	vector<uint64_t>::iterator it;
-	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
-	{
-		*it = 0;
-	}
-}
-
-//
-// Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
-//
-void sinsp_threadinfo::flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration)
-{
-	sinsp_fdtable* fdtable = get_fd_table();
-
-	if(fdtable == &m_fdtable)
-	{
-		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
-
-		for(it = m_fdtable.m_table.begin(); it != m_fdtable.m_table.end(); it++)
-		{
-			uint64_t endtime = sample_end_time;
-
-			if((it->second.is_transaction()) && 
-				((it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
-				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN)))
-			{
-				if(it->second.m_transaction.m_end_time >= endtime)
-				{
-					//
-					// This happens when the sample-generating event is a read or write on a transaction FD.
-					// No big deal, we're sure that this transaction doesn't need to ble flushed yet
-					//
-					return;
-				}
-
-				if(endtime - it->second.m_transaction.m_end_time > TRANSACTION_TIMEOUT_NS)
-				{
-					sinsp_connection *connection;
-
-					if(it->second.is_ipv4_socket())
-					{
-						connection = m_inspector->get_connection(it->second.m_info.m_ipv4info, 
-							endtime);
-
-						ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
-					}
-					else if(it->second.is_unix_socket())
-					{
-						connection = m_inspector->get_connection(it->second.m_info.m_unixinfo, 
-							endtime);
-
-						ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
-					}
-					else
-					{
-						ASSERT(false);
-						return;
-					}
-
-					if(connection != NULL)
-					{
-						sinsp_partial_transaction *trinfo = &(it->second.m_transaction);
-
-						trinfo->update(m_inspector,
-							this,
-							&it->second,
-							connection,
-							0, 
-							0,
-							-1,
-							sinsp_partial_transaction::DIR_CLOSE, 
-							0);
-
-						trinfo->m_incoming_bytes = 0;
-						trinfo->m_outgoing_bytes = 0;
-					}
-				}
-			}
-		}
-	}
-}
-
-//
-// Helper function to add a server transaction to the process list.
-// Makes sure that the process is allocated first.
-//
-void sinsp_threadinfo::add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal)
-{
-	allocate_procinfo_if_not_present();
-
-	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
-
-	m_procinfo->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
-		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
-}
-
-//
-// Helper function to add a client transaction to the process list.
-// Makes sure that the process is allocated first.
-//
-void sinsp_threadinfo::add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal)
-{
-	allocate_procinfo_if_not_present();
-
-	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
-
-	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
-		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
-		tr->m_prev_end_time, flags));
-}
-
 void sinsp_threadinfo::allocate_private_state()
 {
 	uint32_t j = 0;
@@ -860,7 +872,7 @@ void sinsp_threadinfo::allocate_private_state()
 	{
 		m_private_state.clear();
 
-		vector<uint32_t>* sizes = &m_inspector->m_thread_manager->m_thread_privatestate_manager.m_memory_sizes;
+		vector<uint32_t>* sizes = &m_inspector->m_thread_privatestate_manager.m_memory_sizes;
 	
 		for(j = 0; j < sizes->size(); j++)
 		{
@@ -1019,7 +1031,9 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 	}
 
 	sinsp_threadinfo& newentry = (m_threadtable[threadinfo.m_tid] = threadinfo);
-//	newentry.allocate_private_state();
+	newentry.allocate_private_state();
+	newentry.m_ainfo = new thread_analyzer_info();
+	newentry.m_ainfo->init(m_inspector, &newentry);
 }
 
 void sinsp_thread_manager::remove_thread(int64_t tid)

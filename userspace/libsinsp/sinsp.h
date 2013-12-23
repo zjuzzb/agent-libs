@@ -326,6 +326,7 @@ VISIBILITY_PRIVATE
 	scap_dumper_t* m_dumper;
 	const scap_machine_info* m_machine_info;
 	uint32_t m_num_cpus;
+	sinsp_thread_privatestate_manager m_thread_privatestate_manager;
 
 	sinsp_network_interfaces* m_network_interfaces;
 
@@ -359,5 +360,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
 	friend class sinsp_delays;
+	friend class thread_analyzer_info;
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

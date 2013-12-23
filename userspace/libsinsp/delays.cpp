@@ -173,13 +173,13 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	//
 	// Merge the server transactions
 	//
-	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(program_info->m_procinfo->m_server_transactions_per_cpu[cpuid]),
+	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[cpuid]),
 		&pd->m_last_server_transaction_union);
 
 	//
 	// Merge the client transactions
 	//
-	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_procinfo->m_client_transactions_per_cpu[cpuid]),
+	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid]),
 		&pd->m_last_server_transaction_union);
 
 	//
@@ -193,8 +193,8 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	//
 	vector<sinsp_trlist_entry>::iterator it;
 
-	for(it = program_info->m_procinfo->m_server_transactions_per_cpu[cpuid].begin();
-		it != program_info->m_procinfo->m_server_transactions_per_cpu[cpuid].end();
+	for(it = program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[cpuid].begin();
+		it != program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
 		ASSERT(m_analyzer != NULL);
@@ -205,8 +205,8 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 		}
 	}
 
-	for(it = program_info->m_procinfo->m_client_transactions_per_cpu[cpuid].begin();
-		it != program_info->m_procinfo->m_client_transactions_per_cpu[cpuid].end();
+	for(it = program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid].begin();
+		it != program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
 		ASSERT(m_analyzer != NULL);
@@ -222,12 +222,13 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 {
 	int32_t j;
 
-	if(program_info->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in == 0)
+	delays->m_local_processing_delay_ns = -1;
+
+	if(program_info->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in == 0)
 	{
 		//
 		// Not a server
 		//
-		delays->m_local_processing_delay_ns = -1;
 		return;
 	}
 
@@ -242,8 +243,8 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	//
 	// Prune the client connections
 	//
-	prune_client_transactions(&program_info->m_procinfo->m_client_transactions_per_cpu,
-		&program_info->m_procinfo->m_server_transactions_per_cpu);
+	prune_client_transactions(&program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu,
+		&program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu);
 
 	//
 	// Per CPU transaction merging
@@ -329,12 +330,13 @@ void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 {
 	int32_t j;
 
+	delays->m_local_processing_delay_ns = -1;
+
 	if(m_analyzer->m_host_transaction_counters.m_counter.m_count_in == 0)
 	{
 		//
 		// Not a server
 		//
-		delays->m_local_processing_delay_ns = -1;
 		return;
 	}
 
