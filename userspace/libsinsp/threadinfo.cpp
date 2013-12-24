@@ -76,7 +76,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
 	m_tinfo = tinfo;
-	m_th_analysis_flags = AF_PARTIAL_METRIC | AF_INCLUDE_INFO_IN_PROTO;
+	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	m_procinfo = NULL;
 	m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
@@ -350,7 +350,7 @@ void sinsp_threadinfo::init()
 	m_prevevent_ts = 0;
 	m_lastaccess_ts = 0;
 	m_lastevent_category.m_category = EC_UNKNOWN;
-	m_flags = 0;
+	m_flags = PPM_CL_NAME_CHANGED;
 	m_nchilds = 0;
 	m_fdlimit = -1;
 	m_main_thread = NULL;
@@ -365,12 +365,6 @@ void sinsp_threadinfo::init()
 sinsp_threadinfo::~sinsp_threadinfo()
 {
 	uint32_t j;
-
-	if(m_ainfo)
-	{
-		m_ainfo->destroy();
-		delete m_ainfo;
-	}
 
 	for(j = 0; j < m_private_state.size(); j++)
 	{
@@ -447,7 +441,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 	m_exe = pi->exe;
 	set_args(pi->args, pi->args_len);
 	set_cwd(pi->cwd, strlen(pi->cwd));
-	m_flags = pi->flags;
+	m_flags |= pi->flags;
 	m_fdtable.clear();
 	m_fdlimit = pi->fdlimit;
 	m_uid = pi->uid;
@@ -892,6 +886,7 @@ sinsp_thread_manager::sinsp_thread_manager(sinsp* inspector)
 	m_last_tinfo = NULL;
 	m_last_flush_time_ns = 0;
 	m_n_drops = 0;
+	m_listener = NULL;
 
 #ifdef GATHER_INTERNAL_STATS
 	m_failed_lookups = &m_inspector->m_stats.get_metrics_registry().register_counter(internal_metrics::metric_name("thread_failed_lookups","Failed thread lookups"));
@@ -902,6 +897,10 @@ sinsp_thread_manager::sinsp_thread_manager(sinsp* inspector)
 #endif
 }
 
+void sinsp_thread_manager::set_listener(sinsp_threadtable_listener* listener)
+{
+	m_listener = listener;
+}
 
 sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 {
@@ -1032,8 +1031,10 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 
 	sinsp_threadinfo& newentry = (m_threadtable[threadinfo.m_tid] = threadinfo);
 	newentry.allocate_private_state();
-	newentry.m_ainfo = new thread_analyzer_info();
-	newentry.m_ainfo->init(m_inspector, &newentry);
+	if(m_listener)
+	{
+		m_listener->on_thread_created(&newentry);
+	}
 }
 
 void sinsp_thread_manager::remove_thread(int64_t tid)
@@ -1119,6 +1120,12 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 #ifdef GATHER_INTERNAL_STATS
 		m_removed_threads->increment();
 #endif
+
+		if(m_listener)
+		{
+			m_listener->on_thread_destroyed(&it->second);
+		}
+
 		m_threadtable.erase(it);
 	}
 }
@@ -1148,6 +1155,12 @@ void sinsp_thread_manager::remove_inactive_threads()
 				m_last_tinfo = NULL;
 
 				m_removed_threads->increment();
+
+				if(m_listener)
+				{
+					m_listener->on_thread_destroyed(&it->second);
+				}
+
 				m_threadtable.erase(it++);
 			}
 			else

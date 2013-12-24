@@ -5,6 +5,7 @@ class sinsp_procfs_parser;
 class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
+class analyzer_threadtable_listener;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -153,6 +154,11 @@ VISIBILITY_PRIVATE
 	// The scheduler analyzer
 	//
 	sinsp_sched_analyzer2* m_sched_analyzer2;
+
+	//
+	// Thread-related state
+	//
+	analyzer_threadtable_listener* m_threadtable_listener;
 
 	//
 	// Transaction-related state

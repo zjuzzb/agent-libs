@@ -82,11 +82,12 @@ using namespace std;
 extern sinsp_logger g_logger;
 
 //
+// Prototype of the callback invoked by the thread table when a thread is 
+// created or destroyed
 //
-//
-class sinsp_capture_filter
+class sinsp_threadtable_listener
 {
 public:
-	string m_executable;
-	int64_t m_tid;
+	virtual void on_thread_created(sinsp_threadinfo* tinfo) = 0;
+	virtual void on_thread_destroyed(sinsp_threadinfo* tinfo) = 0;
 };

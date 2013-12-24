@@ -5,7 +5,7 @@
 #endif
 
 class sinsp_delays_info;
-
+class sinsp_threadtable_listener;
 
 typedef struct erase_fd_params
 {
@@ -118,8 +118,6 @@ public:
 	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
 	    AF_IS_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions.
 	    AF_IS_UNIX_CLIENT = (1 << 6), // set if this thread creates unix transactions.
-	    AF_INCLUDE_INFO_IN_PROTO = (1 << 7), // In order to minimize network bw uitilization, we emit process information in the protocol only when the process is
-											 // detected, and then at regular intervals. This flag controls that behavior.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -175,12 +173,6 @@ public:
 class SINSP_PUBLIC sinsp_threadinfo
 {
 public:
-	enum flags
-	{
-	    TF_NONE = 0,
-	    TF_NAME_CHANGED = (1 << 0),
-	};
-
 	sinsp_threadinfo();
 	void init();
 	//sinsp_threadinfo(const sinsp_threadinfo &orig);
@@ -214,7 +206,7 @@ public:
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // Full command name (e.g. "/bin/top")
 	vector<string> m_args; // Command line arguments (e.g. "-d1")
-	uint32_t m_flags; // The thread flags.
+	uint32_t m_flags; // The thread flags. See the PPM_CL_* declarations in ppm_events_public.h.
 	int64_t m_fdlimit;  // The maximum number of FDs this thread can open
 	uint32_t m_uid; // user id
 	uint32_t m_gid; // group id
@@ -317,6 +309,7 @@ class SINSP_PUBLIC sinsp_thread_manager
 public:
 	sinsp_thread_manager(sinsp* inspector);
 
+	void set_listener(sinsp_threadtable_listener* listener);
 	sinsp_threadinfo* get_thread(int64_t tid);
 	void add_thread(sinsp_threadinfo& threadinfo, bool from_scap_proctable=false);
 	void remove_thread(int64_t tid);
@@ -350,6 +343,8 @@ private:
 	sinsp_threadinfo* m_last_tinfo;
 	uint64_t m_last_flush_time_ns;
 	uint32_t m_n_drops;
+
+	sinsp_threadtable_listener* m_listener;
 
 	INTERNAL_COUNTER(m_failed_lookups);
 	INTERNAL_COUNTER(m_cached_lookups);

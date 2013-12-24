@@ -307,7 +307,6 @@ void sinsp::init()
 	// Allocations
 	//
 	m_parser = new sinsp_parser(this);
-	m_analyzer = new sinsp_analyzer(this);
 	if(m_analyzer_callback)
 	{
 		set_analyzer_callback(m_analyzer_callback);
@@ -318,6 +317,7 @@ void sinsp::init()
 	m_pipe_connections = new sinsp_pipe_connection_manager(this);
 	m_trans_table = new sinsp_transaction_table(this);
 	m_thread_manager = new sinsp_thread_manager(this);
+	m_analyzer = new sinsp_analyzer(this);
 
 	//
 	// Basic inits
