@@ -127,11 +127,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_EPOLLWAIT_E:
 		parse_select_poll_epollwait_enter(evt); 
 		break;	
-	case PPME_SYSCALL_SELECT_X:
-	case PPME_SYSCALL_POLL_X:
-	case PPME_SYSCALL_EPOLLWAIT_X:
-		parse_select_poll_epollwait_exit(evt); 
-		break;	
 	case PPME_CLONE_X:
 		parse_clone_exit(evt);
 		break;
@@ -322,7 +317,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 		if(evt->m_tinfo->m_last_latency_entertime != 0)
 		{
 			evt->m_tinfo->m_latency = evt->get_ts() - evt->m_tinfo->m_last_latency_entertime;
-			ASSERT((int64_t)evt->m_tinfo->m_latency > 0);
+			ASSERT((int64_t)evt->m_tinfo->m_latency >= 0);
 		}
 
 		if(etype == evt->m_tinfo->m_lastevent_type + 1)
@@ -415,9 +410,9 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				int64_t m_fd_usage_pct = fd * 100 / evt->m_tinfo->m_fdlimit;
 				ASSERT(m_fd_usage_pct <= 100);
 
-				if(m_fd_usage_pct > evt->m_tinfo->m_fd_usage_pct)
+				if(m_fd_usage_pct > evt->m_tinfo->m_ainfo->m_fd_usage_pct)
 				{
-					evt->m_tinfo->m_fd_usage_pct = (uint32_t)m_fd_usage_pct;
+					evt->m_tinfo->m_ainfo->m_fd_usage_pct = (uint32_t)m_fd_usage_pct;
 				}
 			}
 		}
@@ -792,7 +787,7 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	//
 	// This process' name changed, so we need to include it in the protocol again
 	//
-	evt->m_tinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_INCLUDE_INFO_IN_PROTO;
+	evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_INCLUDE_INFO_IN_PROTO;
 
 	//
 	// execve potentially breaks the program chain, and so we need to reflect it in our parents program count.
@@ -1324,12 +1319,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	}
 
 	//
-	// If this comes after a wait, reset the last wait time, since we don't count 
-	// time waiting for an accept as I/O time
-	//
-	evt->m_tinfo->m_last_wait_duration_ns = 0;
-
-	//
 	// Extract the fd
 	//
 	parinfo = evt->get_param(0);
@@ -1455,19 +1444,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	// Add the entry to the table
 	//
 	evt->m_tinfo->add_fd(fd, &fdi);
-
-	//
-	// Check the request queue length and 
-	//
-	parinfo = evt->get_param(2);
-	ASSERT(parinfo->m_len == sizeof(uint8_t));
-	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
-	ASSERT(queueratio <= 100);
-
-	if(queueratio > evt->m_tinfo->m_connection_queue_usage_pct)
-	{
-		evt->m_tinfo->m_connection_queue_usage_pct = queueratio;
-	}
 }
 
 void sinsp_parser::parse_close_enter(sinsp_evt *evt)
@@ -1771,7 +1747,7 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	if(evt->m_tinfo)
 	{
 #ifdef HAS_ANALYZER
-		evt->m_tinfo->m_th_analysis_flags |= sinsp_threadinfo::AF_CLOSED;
+		evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_CLOSED;
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();
 #endif
@@ -3041,73 +3017,3 @@ void sinsp_parser::parse_select_poll_epollwait_enter(sinsp_evt *evt)
 	*(uint64_t*)evt->m_tinfo->m_lastevent_data = evt->get_ts();
 }
 
-void sinsp_parser::parse_select_poll_epollwait_exit(sinsp_evt *evt)
-{
-	sinsp_evt_param *parinfo;
-	int64_t retval;
-	uint16_t etype = evt->get_type();
-
-	if(etype != evt->m_tinfo->m_lastevent_type + 1)
-	{
-		//
-		// Packet drop. Previuos event didn't have a chance to 
-		//
-		return;
-	}
-
-	//
-	// Extract the return value
-	//
-	parinfo = evt->get_param(0);
-	retval = *(int64_t *)parinfo->m_val;
-	ASSERT(parinfo->m_len == sizeof(int64_t));
-
-	//
-	// Check if the syscall was successful
-	//
-	if(retval >= 0)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-
-		if(tinfo == NULL)
-		{
-			ASSERT(false);
-			return;
-		}
-
-		if(tinfo->is_lastevent_data_valid())
-		{
-			//
-			// We categorize this based on the next I/O operation only if the number of 
-			// FDs that were waited for is 1
-			//
-			if(retval == 0)
-			{
-				tinfo->m_last_wait_duration_ns = 0;
-			}
-			else
-			{
-				//
-				// If this was a wait on a *single* fd, we can easily categorize it with certainty and
-				// we encode the delta as a positive number.
-				// If this was a wait on multiple FDs, we encode the delta as a negative number so
-				// the next steps will know that it needs to be handled with more care.
-				//
-				uint64_t sample_duration = m_inspector->m_configuration.get_analyzer_sample_length_ns();
-				uint64_t ts = evt->get_ts();
-
-				tinfo->m_last_wait_end_time_ns = ts;
-				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
-
-				if(retval == 1)
-				{
-					tinfo->m_last_wait_duration_ns = ts - start_time_ns;
-				}
-				else
-				{
-					tinfo->m_last_wait_duration_ns = start_time_ns - ts;
-				}
-			}
-		}
-	}
-}

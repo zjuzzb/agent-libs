@@ -35,7 +35,7 @@ public:
 		uint64_t sample_end_time, uint64_t sample_duration,
 		int64_t progid);
 
-	sinsp_score_info get_system_capacity_score_bycpu_4(sinsp_program_delays* delays, 
+	sinsp_score_info get_system_capacity_score_bycpu_4(sinsp_delays_info* delays, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration, 
 		sinsp_threadinfo* program_info);
@@ -53,12 +53,12 @@ public:
 		sinsp_threadinfo* mainthread_info);
 */
 	sinsp_score_info get_process_capacity_score(sinsp_threadinfo* mainthread_info,
-		sinsp_program_delays* delays, 
+		sinsp_delays_info* delays, 
 		uint32_t n_server_threads,
 		uint64_t sample_end_time, uint64_t sample_duration);
 
 private:
-	float calculate_score_4(float ntr, float ntrcpu, float nother);
+	float calculate_score_4(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
 
 	sinsp* m_inspector;
 	sinsp_sched_analyzer2* m_sched_analyzer2;

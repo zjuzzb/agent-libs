@@ -95,6 +95,9 @@ VISIBILITY_PRIVATE
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
+	void parse_accept_exit(sinsp_evt* evt);
+	void parse_select_poll_epollwait_exit(sinsp_evt *evt);
+
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
@@ -132,6 +135,8 @@ VISIBILITY_PRIVATE
 	vector<uint32_t> m_cpu_loads;
 	vector<uint32_t> m_cpu_idles;
 	vector<uint32_t> m_cpu_steals;
+	// Sum of the cpu usage of all the processes
+	uint32_t m_total_process_cpu;
 
 	//
 	// The table of aggreagted connections
@@ -152,15 +157,20 @@ VISIBILITY_PRIVATE
 	//
 	// Transaction-related state
 	//
-	sinsp_transaction_counters m_host_transaction_metrics; 
+	set<uint64_t> m_server_programs;
+	sinsp_transaction_counters m_host_transaction_counters; 
 	uint64_t m_client_tr_time_by_servers;
-	int64_t m_host_transaction_delay_ns;
+	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
+	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
 	// ratio between the the transaction delay introduced by this host and the delay 
-	// caused by the next tiers. Calculated by the score
-	float m_local_remote_ratio;
+	// caused by the next tiers.
+	//float m_local_remote_ratio;
 	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
+	sinsp_delays_info* m_host_transaction_delays;
+	// Timestamps the last time transaction delays
+	uint64_t m_last_transaction_delays_update_time;
 
 	//
 	// Support for delay calculation

@@ -489,6 +489,10 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 				ASSERT(parinfo->m_len == sizeof(int64_t));
 				res = *(int64_t *)parinfo->m_val;
 			}
+			else
+			{
+				res = 0;
+			}
 
 			if(m_field_id == IOBYTES)
 			{

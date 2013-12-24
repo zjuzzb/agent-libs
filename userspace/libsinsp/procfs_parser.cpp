@@ -276,7 +276,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 	char tmps[32];
 	uint32_t res = -1;
 	string path = string("/proc/") + to_string(pid) + "/stat";
-	uint64_t tval, val1, val2;
+	uint64_t tval, val1, val2, val3, val4;
 
 	if(!m_is_live_capture)
 	{
@@ -317,8 +317,8 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 		&tval,
 		&val1,
 		&val2,
-		&tval,
-		&tval,
+		&val3,
+		&val4,
 		&tval,
 		&tval,
 		&tval,
@@ -335,7 +335,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 	//
 	// Calculate the value
 	//
-	uint64_t proc_jiffies = val1 + val2;
+	uint64_t proc_jiffies = val1 + val2 + val3 + val4;
 
 	if(*old_proc_jiffies != (uint64_t)-1LL)
 	{
@@ -343,7 +343,7 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 
 		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus);
 
-		res = MIN(res, 100);
+		res = MIN(res, 100 * m_ncpus);
 	}
 
 	*old_proc_jiffies = proc_jiffies;

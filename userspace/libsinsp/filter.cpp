@@ -367,6 +367,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			}
 			else
 			{
+				return NULL;
 				ASSERT(false);
 			}
 

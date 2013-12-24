@@ -155,7 +155,7 @@ private:
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
-	friend class sinsp_threadinfo;
+	friend class thread_analyzer_info;
 };
 
 //

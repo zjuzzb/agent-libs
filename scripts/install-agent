@@ -27,6 +27,7 @@ function install_rpm {
 	yum -q -y install kernel-devel-$(uname -r)
 	echo "* Installing Draios agent"
 	yum -q -y install draios-agent
+	service dragent start
 }
 
 function install_deb {

@@ -676,7 +676,7 @@ void runtest_ipv4m(iotype iot,
 			state = 1;
 
 			sinsp_threadinfo* ti = evt->get_thread_info();
-			ASSERT_EQ(ntransactions, ti->m_transaction_metrics.m_counter.m_count_in);
+			ASSERT_EQ(ntransactions, ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
 
 		if(!(use_shutdown || exit_no_close))
@@ -686,14 +686,14 @@ void runtest_ipv4m(iotype iot,
 				if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
 					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
-					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out + ti->m_metrics.m_io_net.m_count_other));
+					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 
 					ti = param.m_inspector->get_thread(ctid, false);
-					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out + ti->m_metrics.m_io_net.m_count_other));
-					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_count);
-					//printf("****%d\n", (int)ti->m_metrics.m_io_net.m_bytes);
+					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
+					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_count);
+					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_bytes);
 				}
 			}
 		}		
@@ -788,7 +788,7 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts_
 		{
 			state = 1;
 			sinsp_threadinfo* ti = evt->get_thread_info();
-			ASSERT_EQ(1, (int)ti->m_transaction_metrics.m_counter.m_count_in);
+			ASSERT_EQ(1, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
 
 	};

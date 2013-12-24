@@ -773,10 +773,10 @@ void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* li
 
 uint32_t sinsp::reserve_thread_memory(uint32_t size)
 {
-	if(m_h != NULL)
+	if(m_h == NULL)
 	{
 		throw sinsp_exception("reserve_thread_memory can't be called after capture starts");
 	}
 
-	return m_thread_manager->m_thread_privatestate_manager.reserve(size);
+	return m_thread_privatestate_manager.reserve(size);
 }
