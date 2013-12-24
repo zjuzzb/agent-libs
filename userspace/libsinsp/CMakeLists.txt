@@ -5,6 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 
 add_library(sinsp STATIC
 	analyzer.cpp
+	analyzer_thread.cpp
 	connectinfo.cpp 
 	config.cpp
 	delays.cpp	
