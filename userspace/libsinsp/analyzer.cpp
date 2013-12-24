@@ -76,7 +76,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_host_transaction_delays = new sinsp_delays_info();
 
-	inspector->reserve_thread_memory(10);
+	inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
 }
 
 sinsp_analyzer::~sinsp_analyzer()

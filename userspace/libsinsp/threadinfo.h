@@ -99,13 +99,16 @@ public:
 	sinsp_delays_info m_transaction_delays;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// Thread-related analyzer state
+///////////////////////////////////////////////////////////////////////////////
 class thread_analyzer_info
 {
 public:
 	//
 	// thread flags
 	//
-	enum analysis_flags
+	enum flags
 	{
 	    AF_NONE = 0,
 	    AF_INVALID = (1 << 0),
@@ -123,7 +126,7 @@ public:
 	void destroy();
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
-	void propagate_flag_bidirectional(analysis_flags flag, thread_analyzer_info* other);
+	void propagate_flag_bidirectional(flags flag, thread_analyzer_info* other);
 	void add_all_metrics(thread_analyzer_info* other);
 	void clear_all_metrics();
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
@@ -172,6 +175,12 @@ public:
 class SINSP_PUBLIC sinsp_threadinfo
 {
 public:
+	enum flags
+	{
+	    TF_NONE = 0,
+	    TF_NAME_CHANGED = (1 << 0),
+	};
+
 	sinsp_threadinfo();
 	void init();
 	//sinsp_threadinfo(const sinsp_threadinfo &orig);

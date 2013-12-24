@@ -212,7 +212,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:hi:jlp:qr:s:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:hi:jlm:p:qr:s:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -268,6 +268,10 @@ int main(int argc, char **argv)
 			case 'l':
 				list_fields();
 				return EXIT_SUCCESS;
+			case 'm':
+				inspector.get_configuration()->set_emit_metrics_to_file(true);
+				inspector.get_configuration()->set_metrics_directory(optarg);
+				break;
 			case 'p':
 				if(string(optarg) == "p")
 				{

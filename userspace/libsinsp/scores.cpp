@@ -414,10 +414,10 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* main
 		sample_duration,
 		mainthread_info);
 
-	if(mainthread_info->m_ainfo->m_connection_queue_usage_pct > 50)
+	if(mainthread_info->m_ainfo->m_procinfo->m_connection_queue_usage_pct > 50)
 	{
 		res.m_current_capacity = MAX(res.m_current_capacity, 
-			mainthread_info->m_ainfo->m_connection_queue_usage_pct);
+			mainthread_info->m_ainfo->m_procinfo->m_connection_queue_usage_pct);
 	}
 
 	//if(res.m_current_capacity == -1)

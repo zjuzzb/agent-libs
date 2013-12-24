@@ -111,7 +111,7 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	}
 }
 
-void thread_analyzer_info::propagate_flag_bidirectional(analysis_flags flag, thread_analyzer_info* other)
+void thread_analyzer_info::propagate_flag_bidirectional(flags flag, thread_analyzer_info* other)
 {
 	if(other->m_th_analysis_flags & flag)
 	{
