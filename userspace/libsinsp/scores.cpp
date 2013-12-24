@@ -150,12 +150,14 @@ for(k = 0; k < trsize; k++)
 	return -1;
 }
 
-float sinsp_scores::calculate_score_4(float ntr, float ntrcpu, float nother)
+float sinsp_scores::calculate_score_4(float ntr, float ntrcpu, float nother, uint32_t n_server_programs)
 {
 	float score;
 	float fnintervals = (float)m_n_intervals_in_sample;
 
-	float maxcpu = MAX(fnintervals / 2, fnintervals - nother);
+	float maxcpu = MAX(fnintervals / (n_server_programs + 1), 
+//	float maxcpu = MAX(fnintervals / 2, 
+		fnintervals - nother);
 	float avail;
 	if(ntrcpu != 0)
 	{
@@ -315,7 +317,8 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 			// Perform score calculation *excluding steal time*.
 			// This gives us the *actual* resouce limit.
 			//
-			float score = calculate_score_4(ntr, ntrcpu, nother);
+			float score = calculate_score_4(ntr, ntrcpu, nother, 
+				m_inspector->m_analyzer->m_server_programs.size());
 
 			tot_score += score;
 			n_scores++;
@@ -350,7 +353,8 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 					idle1 = 0;
 				}
 
-				score1 = calculate_score_4(ntr1, ntrcpu1, nother1);
+				score1 = calculate_score_4(ntr1, ntrcpu1, nother1,
+					m_inspector->m_analyzer->m_server_programs.size());
 			}
 			else
 			{
@@ -409,6 +413,12 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* main
 		sample_end_time,
 		sample_duration,
 		mainthread_info);
+
+	if(mainthread_info->m_ainfo->m_connection_queue_usage_pct > 50)
+	{
+		res.m_current_capacity = MAX(res.m_current_capacity, 
+			mainthread_info->m_ainfo->m_connection_queue_usage_pct);
+	}
 
 	//if(res.m_current_capacity == -1)
 	//{

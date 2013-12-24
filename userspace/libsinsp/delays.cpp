@@ -180,7 +180,7 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	// Merge the client transactions
 	//
 	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid]),
-		&pd->m_last_server_transaction_union);
+		&pd->m_last_client_transaction_union);
 
 	//
 	// Add the just computed delays to the program ones
@@ -273,8 +273,11 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	else
 	{
 		delays->m_local_remote_ratio = 1;
-		ASSERT(delays->m_merged_server_delay == 0);
-		ASSERT(delays->m_merged_client_delay == 0);
+		if(delays->m_merged_server_delay != 0 || delays->m_merged_client_delay == 0)
+		{
+			ASSERT(false);
+			delays->m_local_processing_delay_ns = -1;
+		}
 	}
 
 	return;
@@ -293,8 +296,8 @@ void sinsp_delays::compute_host_percpu_delays(int32_t cpuid, sinsp_delays_info* 
 //int64_t tot = 0;
 //for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
 //{
-//	((*transactions)[cpuid])[k].m_stime -= 1387500785000000000;
-//	((*transactions)[cpuid])[k].m_etime -= 1387500785000000000;
+//	((*transactions)[cpuid])[k].m_stime -= 1387826258000000000;
+//	((*transactions)[cpuid])[k].m_etime -= 1387826258000000000;
 //	int64_t delta = ((*transactions)[cpuid])[k].m_etime - ((*transactions)[cpuid])[k].m_stime;
 //	v.push_back(delta);
 //	if(delta >= 0)
@@ -317,7 +320,7 @@ void sinsp_delays::compute_host_percpu_delays(int32_t cpuid, sinsp_delays_info* 
 	// Merge the client transactions
 	//
 	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(m_analyzer->m_host_client_transactions[cpuid]),
-		&pd->m_last_server_transaction_union);
+		&pd->m_last_client_transaction_union);
 
 	//
 	// Add the just computed delays to the program ones
@@ -362,7 +365,11 @@ void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 	delays->m_local_processing_delay_ns = 
 		(int64_t)(delays->m_merged_server_delay - delays->m_merged_client_delay);
 
-	ASSERT(delays->m_local_processing_delay_ns >= 0);
+	if(delays->m_local_processing_delay_ns < 0)
+	{
+//		ASSERT(false);
+		delays->m_local_processing_delay_ns = -1;
+	}
 
 	return;
 }

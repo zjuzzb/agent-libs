@@ -58,7 +58,7 @@ public:
 		uint64_t sample_end_time, uint64_t sample_duration);
 
 private:
-	float calculate_score_4(float ntr, float ntrcpu, float nother);
+	float calculate_score_4(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
 
 	sinsp* m_inspector;
 	sinsp_sched_analyzer2* m_sched_analyzer2;

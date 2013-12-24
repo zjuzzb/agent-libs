@@ -277,7 +277,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	uint64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
-	uint32_t n_server_threads = 0;
+	m_server_programs.clear();
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"thread table size:%d",
@@ -398,7 +398,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
 		{
-			n_server_threads++;
+			m_server_programs.insert(mtinfo->m_tid);
 			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.m_counter.m_time_ns_out;
 		}
 
@@ -511,6 +511,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				if(procinfo->m_cpuload != -1)
 				{
+					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
+					{
+						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
+					}
+
 					proc->mutable_resource_counters()->set_cpu_pct(procinfo->m_cpuload * 100);
 					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
 				}

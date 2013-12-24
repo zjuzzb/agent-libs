@@ -157,6 +157,7 @@ VISIBILITY_PRIVATE
 	//
 	// Transaction-related state
 	//
+	set<uint64_t> m_server_programs;
 	sinsp_transaction_counters m_host_transaction_counters; 
 	uint64_t m_client_tr_time_by_servers;
 	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
