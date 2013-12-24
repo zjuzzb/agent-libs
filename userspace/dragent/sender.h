@@ -44,8 +44,32 @@ public:
 		// 	throw sinsp_exception("Received SSL alert, terminating the connection");
 		// }
 
-		int32_t res = m_connection_manager->get_socket()->sendBytes(buffer, buflen);
-		ASSERT(res == (int32_t) buflen);
+		StreamSocket* socket = NULL;
+
+		try
+		{
+			socket = m_connection_manager->get_socket();
+
+			if(socket == NULL)
+			{
+				g_log->information("Reconnecting...");
+				m_connection_manager->connect();
+				socket = m_connection_manager->get_socket();
+			}
+
+			int32_t res = socket->sendBytes(buffer, buflen);
+			ASSERT(res == (int32_t) buflen);
+		}
+		catch(Poco::IOException& e)
+		{
+			g_log->error(e.displayText());
+			
+			if(socket != NULL)
+			{
+				g_log->error("Sender thread lost connection");
+				m_connection_manager->close();
+			}
+		}
 	}
 
 	Thread m_thread;

@@ -15,8 +15,16 @@ public:
 		while (!m_stop)
 		{
 			uint32_t size;
-			m_connection_manager->get_socket()->receiveBytes(&size, sizeof(size), MSG_WAITALL);
-			printf("\nhaha\n");
+
+			try
+			{
+				// m_connection_manager->get_socket()->receiveBytes(&size, sizeof(size), MSG_WAITALL);
+			}
+			catch(Poco::IOException& e)
+			{
+				g_log->error(e.displayText());
+				g_log->error("Receiver thread lost connection");
+			}
 		}
 	}
 

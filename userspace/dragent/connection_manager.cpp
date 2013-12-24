@@ -48,7 +48,7 @@ connection_manager::~connection_manager()
 
 StreamSocket* connection_manager::get_socket()
 {
-	ASSERT(m_socket);
+	// ASSERT(m_socket);
 	return m_socket;
 }
 
