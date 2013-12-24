@@ -591,7 +591,6 @@ protected:
 			// Connect to the server
 			//
 			m_connection_manager.init(&m_configuration);
-			m_connection_manager.connect();
 
 			sender_thread.m_thread.start(sender_thread);
 			receiver_thread.m_thread.start(receiver_thread);

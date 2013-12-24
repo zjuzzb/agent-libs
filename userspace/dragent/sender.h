@@ -12,15 +12,23 @@ public:
 
 	void run()
 	{
-		while (!m_stop)
+		while(!m_stop)
 		{
-			blocking_queue::item* item = m_queue->get();
-			transmit_buffer(item->m_buf, item->m_len);
-			delete item;
+			SharedPtr<blocking_queue::item> item = m_queue->get();
+
+			while(!m_stop)
+			{
+				if(transmit_buffer(item->m_buf, item->m_len))
+				{
+					break;
+				}
+
+				Thread::sleep(1000);
+			}
 		}
 	}
 
-	void transmit_buffer(char* buffer, uint32_t buflen)
+	bool transmit_buffer(char* buffer, uint32_t buflen)
 	{
 		//
 		// Do a fake read to make sure openssl reads the stream from
@@ -52,13 +60,17 @@ public:
 
 			if(socket == NULL)
 			{
-				g_log->information("Reconnecting...");
+				g_log->information("Connecting to collector...");
 				m_connection_manager->connect();
 				socket = m_connection_manager->get_socket();
 			}
 
 			int32_t res = socket->sendBytes(buffer, buflen);
 			ASSERT(res == (int32_t) buflen);
+
+			g_log->information("Sent " + Poco::NumberFormatter::format(buflen) + " to collector");
+
+			return true;
 		}
 		catch(Poco::IOException& e)
 		{
@@ -70,6 +82,8 @@ public:
 				m_connection_manager->close();
 			}
 		}
+
+		return false;
 	}
 
 	Thread m_thread;

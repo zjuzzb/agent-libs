@@ -58,6 +58,7 @@
 #include "Poco/Semaphore.h"
 #include "Poco/Runnable.h"
 #include "Poco/ErrorHandler.h"
+#include "Poco/SharedPtr.h"
 
 #include <sinsp.h>
 
@@ -95,6 +96,7 @@ using Poco::Environment;
 using Poco::Mutex;
 using Poco::Semaphore;
 using Poco::Runnable;
+using Poco::SharedPtr;
 
 #ifdef _DEBUG
 #define ASSERT(X) \

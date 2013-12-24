@@ -35,7 +35,7 @@ public:
 	{
 	}
 
-	void put(item* item)
+	void put(SharedPtr<item> item)
 	{
 		{
 			Mutex::ScopedLock lock(m_mutex);
@@ -45,14 +45,14 @@ public:
 		m_semaphore.set();
 	}
 
-	item* get()
+	SharedPtr<item> get()
 	{
 		m_semaphore.wait();
 
 		{
 			Mutex::ScopedLock lock(m_mutex);
 			ASSERT(!m_queue.empty());
-			item* item = m_queue.front();
+			SharedPtr<item> item = m_queue.front();
 			m_queue.pop();
 			return item;
 		}
@@ -61,7 +61,7 @@ public:
 private:
 	static const uint32_t BLOCKING_SIZE = 32;
 
-	queue<item*> m_queue;
+	queue<SharedPtr<item>> m_queue;
 	Mutex m_mutex;
 	Semaphore m_semaphore;
 };
