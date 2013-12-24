@@ -22,6 +22,9 @@
 using Poco::StringTokenizer;
 using Poco::NumberParser;
 
+#include "sinsp_int.h"
+#include "analyzer_thread.h"
+
 #define SERVER_PORT     3555
 #define SERVER_PORT_STR "3555"
 #define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"

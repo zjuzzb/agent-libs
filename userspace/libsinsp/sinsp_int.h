@@ -88,6 +88,9 @@ extern sinsp_logger g_logger;
 class sinsp_threadtable_listener
 {
 public:
+	virtual ~sinsp_threadtable_listener()
+	{
+	}
 	virtual void on_thread_created(sinsp_threadinfo* tinfo) = 0;
 	virtual void on_thread_destroyed(sinsp_threadinfo* tinfo) = 0;
 };

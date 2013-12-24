@@ -40,6 +40,7 @@
 #include "metrics.h"
 #include "analyzer.h"
 #include "delays.h"
+#include "analyzer_thread.h"
 
 using namespace std;
 

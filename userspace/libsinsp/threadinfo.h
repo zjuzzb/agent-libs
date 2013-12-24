@@ -6,6 +6,7 @@
 
 class sinsp_delays_info;
 class sinsp_threadtable_listener;
+class thread_analyzer_info;
 
 typedef struct erase_fd_params
 {

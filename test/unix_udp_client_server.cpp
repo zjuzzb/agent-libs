@@ -21,6 +21,9 @@
 using Poco::StringTokenizer;
 using Poco::NumberFormatter;
 
+#include "sinsp_int.h"
+#include "analyzer_thread.h"
+
 #define NAME "/tmp/python_unix_udp_sockets_example"
 #define PAYLOAD "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
 
