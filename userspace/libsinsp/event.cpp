@@ -134,7 +134,7 @@ sinsp_threadinfo* sinsp_evt::get_thread_info(bool query_os_if_not_found)
 	return m_inspector->get_thread(m_pevt->tid, query_os_if_not_found);
 }
 
-sinsp_fdinfo* sinsp_evt::get_fd_info()
+sinsp_fdinfo_t* sinsp_evt::get_fd_info()
 {
 	return m_fdinfo;
 }
@@ -354,7 +354,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 
 		if(fd >= 0)
 		{
-			sinsp_fdinfo *fdinfo = tinfo->get_fd(fd);
+			sinsp_fdinfo_t *fdinfo = tinfo->get_fd(fd);
 			if(fdinfo)
 			{
 				char tch = fdinfo->get_typechar();
@@ -764,7 +764,7 @@ const char* sinsp_evt::get_param_as_str(uint32_t id, OUT const char** resolved_s
 				char tch;
 				int64_t fd = *(int64_t *)(param->m_val + pos);
 
-				sinsp_fdinfo *fdinfo = tinfo->get_fd(fd);
+				sinsp_fdinfo_t *fdinfo = tinfo->get_fd(fd);
 				if(fdinfo)
 				{
 					tch = fdinfo->get_typechar();

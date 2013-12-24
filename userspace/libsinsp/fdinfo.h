@@ -9,6 +9,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // fd info
 ///////////////////////////////////////////////////////////////////////////////
+template<class T>
 class SINSP_PUBLIC sinsp_fdinfo
 {
 public:
@@ -104,19 +105,17 @@ public:
 
 	void set_is_transaction()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_TRANSACTION;
+		m_flags |= FLAGS_TRANSACTION;
 	}
 
 	void set_role_server()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_ROLE_SERVER;
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_SERVER;
+		m_flags |= FLAGS_ROLE_SERVER;
 	}
 
 	void set_role_client()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_ROLE_CLIENT;
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
+		m_flags |= FLAGS_ROLE_CLIENT;
 	}
 
 	void set_role_by_guessing(sinsp_partial_transaction::direction dir);
@@ -128,7 +127,7 @@ public:
 
 	void set_socketpipe()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_IS_SOCKET_PIPE;
+		m_flags |= FLAGS_IS_SOCKET_PIPE;
 	}
 
 	bool is_socketpipe()
@@ -151,7 +150,7 @@ public:
 private:
 	void add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen);
 
-	sinsp_partial_transaction m_transaction;
+	T m_usrstate;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
@@ -187,9 +186,9 @@ class sinsp_fdtable
 {
 public:
 	sinsp_fdtable(sinsp* inspector);
-	sinsp_fdinfo* find(int64_t fd);
+	sinsp_fdinfo_t* find(int64_t fd);
 	// If the key is already present, overwrite the existing value and return false.
-	void add(int64_t fd, sinsp_fdinfo* fdinfo);
+	void add(int64_t fd, sinsp_fdinfo_t* fdinfo);
 	// If the key is present, returns true, otherwise returns false.
 	void erase(int64_t fd);
 	void clear();
@@ -199,11 +198,11 @@ public:
 	void print_on(FILE* f);
 
 	sinsp* m_inspector;
-	unordered_map<int64_t, sinsp_fdinfo> m_table;
+	unordered_map<int64_t, sinsp_fdinfo_t> m_table;
 
 	//
 	// Simple fd cache
 	//
 	int64_t m_last_accessed_fd;
-	sinsp_fdinfo *m_last_accessed_fdinfo;
+	sinsp_fdinfo_t *m_last_accessed_fdinfo;
 };

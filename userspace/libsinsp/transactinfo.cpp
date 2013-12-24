@@ -9,6 +9,7 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer.h"
+#include "analyzer_thread.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transact_table implementation
@@ -38,7 +39,7 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 }
 
 void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
-								   sinsp_fdinfo* fdinfo,
+								   sinsp_fdinfo_t* fdinfo,
 								   sinsp_connection* pconn,
 								   sinsp_partial_transaction* tr,
 								   uint32_t len)
@@ -51,8 +52,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 	//
 	// Detect the side and and determine the trigger directions
 	//
-	ASSERT(tr->m_side != sinsp_partial_transaction::SIDE_UNKNOWN);
-	if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
+	ASSERT(fdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER	));
+	if(fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 	{
 		startdir = sinsp_partial_transaction::DIR_IN;
 		enddir = sinsp_partial_transaction::DIR_OUT;
@@ -97,7 +98,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		sinsp_threadinfo* proginfo = ptinfo->get_main_program_thread();
 		ASSERT(proginfo != NULL);
 
-		if(tr->m_side == sinsp_partial_transaction::SIDE_SERVER)
+		if(fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 		{
 			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;
@@ -496,7 +497,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 void sinsp_partial_transaction::update(sinsp* inspector, 
 	sinsp_threadinfo* ptinfo,
-	sinsp_fdinfo* fdinfo,
+	sinsp_fdinfo_t* fdinfo,
 	sinsp_connection* pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 

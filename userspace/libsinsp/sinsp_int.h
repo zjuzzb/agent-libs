@@ -88,6 +88,23 @@ extern sinsp_logger g_logger;
 class sinsp_threadtable_listener
 {
 public:
+	virtual ~sinsp_threadtable_listener()
+	{
+	}
 	virtual void on_thread_created(sinsp_threadinfo* tinfo) = 0;
 	virtual void on_thread_destroyed(sinsp_threadinfo* tinfo) = 0;
+};
+
+//
+// Prototype of the callback invoked by the thread table when a thread is 
+// created or destroyed
+//
+class sinsp_rw_listener
+{
+public:
+	virtual ~sinsp_rw_listener()
+	{
+	}
+	virtual void on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len) = 0;
+	virtual void on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len) = 0;
 };

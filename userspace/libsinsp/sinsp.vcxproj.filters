@@ -76,6 +76,9 @@
     <ClCompile Include="analyzer_thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="analyzer_fd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="analyzer.h">
@@ -175,6 +178,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="analyzer_thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="analyzer_fd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

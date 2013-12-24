@@ -33,6 +33,7 @@
 
 #include "sinsp_int.h"
 #include "connectinfo.h"
+#include "analyzer_thread.h"
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;

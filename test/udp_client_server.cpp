@@ -22,6 +22,9 @@
 using Poco::StringTokenizer;
 using Poco::NumberParser;
 
+#include "sinsp_int.h"
+#include "analyzer_thread.h"
+
 #define SERVER_PORT     3555
 #define SERVER_PORT_STR "3555"
 #define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -360,7 +363,7 @@ TEST_F(sys_call_test, udp_client_server)
 				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
 				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
@@ -416,7 +419,7 @@ TEST_F(sys_call_test, udp_client_server)
 				EXPECT_NE("0", dst[1]);
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
-				sinsp_fdinfo *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
 				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
 
 				state = 4;

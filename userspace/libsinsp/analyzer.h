@@ -6,6 +6,7 @@ class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
 class analyzer_threadtable_listener;
+class sinsp_analyzer_rw_listener;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -158,7 +159,13 @@ VISIBILITY_PRIVATE
 	//
 	// Thread-related state
 	//
+	uint32_t m_thread_memory_id;
 	analyzer_threadtable_listener* m_threadtable_listener;
+
+	//
+	// FD-related state
+	//
+	sinsp_analyzer_rw_listener* m_rw_listener;
 
 	//
 	// Transaction-related state
@@ -187,4 +194,5 @@ VISIBILITY_PRIVATE
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;
 	friend class sinsp_delays;
+	friend class analyzer_threadtable_listener;
 };

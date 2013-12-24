@@ -3,6 +3,8 @@
 ////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+class sinsp_rw_listener;
+
 class sinsp_parser
 {
 public:
@@ -62,9 +64,9 @@ private:
 	// XXX this function has way too many parameters. Fix it.
 	inline void handle_write(sinsp_evt* evt, int64_t tid, int64_t fd, char* data, uint32_t original_len, uint32_t len);
 	void update_fd(sinsp_evt *evt, sinsp_evt_param* parinfo);
-	void set_ipv4_addresses_and_ports(sinsp_fdinfo* fdinfo, uint8_t* packed_data);
-	void set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo* fdinfo, uint8_t* packed_data);
-	void set_unix_info(sinsp_fdinfo* fdinfo, uint8_t* packed_data);
+	void set_ipv4_addresses_and_ports(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data);
+	void set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data);
+	void set_unix_info(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data);
 
 	//
 	// Pointers to inspector context
@@ -77,6 +79,8 @@ private:
 	sinsp_http_parser m_http_parser;
 	// The transaction table. Key pair is <tid, fd>.
 //	unordered_map<pair<int64_t, int64_t>, sinsp_transactinfo> m_transactable;
+
+	sinsp_rw_listener* m_rw_listener;
 
 	friend class sinsp_analyzer;
 };

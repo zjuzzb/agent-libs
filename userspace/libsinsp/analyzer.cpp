@@ -31,6 +31,7 @@ using namespace google::protobuf::io;
 #include "sched_analyzer.h"
 #include "proto_header.h"
 #include "analyzer_thread.h"
+#include "analyzer_fd.h"
 
 #define DUMP_TO_DISK
 
@@ -77,11 +78,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_host_transaction_delays = new sinsp_delays_info();
 
-	inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
+	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
 
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
+	m_rw_listener = new sinsp_analyzer_rw_listener();
+	inspector->m_parser->m_rw_listener = m_rw_listener;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -119,6 +122,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_threadtable_listener)
 	{
 		delete(m_threadtable_listener);
+	}
+
+	if(m_rw_listener)
+	{
+		delete m_rw_listener;
 	}
 }
 
@@ -675,7 +683,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
-		if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_CLOSED)
+		if(it->second.m_flags & PPM_CL_CLOSED)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is

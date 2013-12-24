@@ -7,6 +7,7 @@ using namespace google::protobuf::io;
 #include "sinsp_int.h"
 #include "metrics.h"
 #include "draios.pb.h"
+#include "analyzer_thread.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time implementation

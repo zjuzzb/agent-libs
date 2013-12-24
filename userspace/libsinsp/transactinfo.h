@@ -2,7 +2,7 @@
 
 #include <stack>
 
-class sinsp_fdinfo;
+template<class T> class sinsp_fdinfo;
 class sinsp_transaction_manager;
 class sinsp_connection;
 
@@ -39,18 +39,11 @@ public:
 	    STATE_SWITCHED = (1 << 1),
 	};
 
-	enum side
-	{
-	    SIDE_UNKNOWN,
-	    SIDE_CLIENT,
-	    SIDE_SERVER,
-	};
-
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
 	void update(sinsp* inspector, 
 		sinsp_threadinfo* ptinfo,
-		sinsp_fdinfo* fdinfo,
+		sinsp_fdinfo_t* fdinfo,
 		sinsp_connection* pconn,
 		uint64_t enter_ts, 
 		uint64_t exit_ts, 
@@ -94,10 +87,10 @@ public:
 	uint64_t m_prev_prev_end_time;
 	uint64_t m_prev_prev_start_of_transaction_time;
 	family m_family;
-	side m_side;
 	uint32_t m_incoming_bytes;
 	uint32_t m_outgoing_bytes;
 	int32_t m_cpuid;
+	uint32_t m_flags;
 
 private:
 	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len);
@@ -170,7 +163,7 @@ public:
 	void clear();
 
 	void emit(sinsp_threadinfo* ptinfo, 
-		sinsp_fdinfo* fdinfo,
+		sinsp_fdinfo_t* fdinfo,
 		sinsp_connection* pconn,
 		sinsp_partial_transaction* tr,
 		uint32_t len);

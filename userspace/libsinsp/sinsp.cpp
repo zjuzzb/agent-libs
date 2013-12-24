@@ -307,10 +307,6 @@ void sinsp::init()
 	// Allocations
 	//
 	m_parser = new sinsp_parser(this);
-	if(m_analyzer_callback)
-	{
-		set_analyzer_callback(m_analyzer_callback);
-	}
 
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(this);
 	m_unix_connections = new sinsp_unix_connection_manager(this);
@@ -318,6 +314,10 @@ void sinsp::init()
 	m_trans_table = new sinsp_transaction_table(this);
 	m_thread_manager = new sinsp_thread_manager(this);
 	m_analyzer = new sinsp_analyzer(this);
+	if(m_analyzer_callback)
+	{
+		set_analyzer_callback(m_analyzer_callback);
+	}
 
 	//
 	// Basic inits
@@ -520,74 +520,6 @@ void sinsp::add_thread(const sinsp_threadinfo& ptinfo)
 void sinsp::remove_thread(int64_t tid)
 {
 	m_thread_manager->remove_thread(tid);
-}
-
-//
-// Push an fd operation into the fifo queue for a thread
-//
-void sinsp::push_fdop(int64_t tid, sinsp_fdinfo *fdinfo, sinsp_fdop &op)
-{
-	return;
-	/*
-	    unordered_map<int64_t, sinsp_threadinfo>::iterator it;
-	    sinsp_threadinfo* ptinfo;
-
-	    //
-	    // Skip events for the moment
-	    //
-	    if(fdinfo->m_type == SCAP_FD_EVENT)
-	    {
-	        return;
-	    }
-
-	    //
-	    // Find the thread info for this tid
-	    //
-	    it = m_proctable.find(tid);
-	    if(it == m_proctable.end())
-	    {
-	        //
-	        // Uh-Oh, can't find the thread. Ignore this event.
-	        //
-	        ASSERT(false);
-	        return;
-	    }
-
-	    sinsp_threadinfo& tinfo = it->second;
-
-	    //
-	    // Is this a child thread?
-	    //
-	    if((tinfo.m_pid == tid) || !(tinfo.m_flags & PPM_CL_CLONE_FILES))
-	    {
-	        //
-	        // No, this is either a single thread process or the root thread of a
-	        // multithread process, we can add the fd to it
-	        //
-	        ptinfo = &tinfo;
-	    }
-	    else
-	    {
-	        //
-	        // Yes, this is a thread. Find the process info for the process root
-	        // thread.
-	        //
-	        it = m_proctable.find(tinfo.m_pid);
-	        if(it == m_proctable.end())
-	        {
-	            //
-	            // Uh-Oh, can't find the pid thread. Ignore this event.
-	            //
-	            ASSERT(false);
-	            return;
-	        }
-
-	        sinsp_threadinfo& tginfo = it->second;
-	        ptinfo = &tginfo;
-	    }
-
-	    ptinfo->push_fdop(op);
-	*/
 }
 
 sinsp_transaction_table *sinsp::get_transactions()
