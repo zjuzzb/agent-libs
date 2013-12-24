@@ -588,6 +588,8 @@ protected:
 		//
 		try
 		{
+			m_configuration.m_machine_id = Environment::nodeId();
+
 			//
 			// Connect to the server
 			//
@@ -623,7 +625,7 @@ protected:
 			//
 			// The machine id is the MAC address of the first physical adapter
 			//
-			m_inspector.get_configuration()->set_machine_id(Environment::nodeId());
+			m_inspector.get_configuration()->set_machine_id(m_configuration.m_machine_id);
 
 			//
 			// The customer id is currently specified by the user

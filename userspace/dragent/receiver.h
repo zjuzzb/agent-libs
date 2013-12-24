@@ -87,13 +87,13 @@ private:
 		bool res = request.ParseFromZeroCopyStream(&gzstream);
 		ASSERT(res);
 
-		uint64_t timestamp_ns = request.timestamp_ns();
-		string machine_id = request.machine_id();
+		// uint64_t timestamp_ns = request.timestamp_ns();
+		// string machine_id = request.machine_id();
 		uint64_t duration_ns = request.duration_ns();
 
-		g_log->information("timestamp_ns " + NumberFormatter::format(timestamp_ns) +
-							" machine_id " + machine_id +
-							" duration_ns " + NumberFormatter::format(duration_ns));
+		// g_log->information("timestamp_ns " + NumberFormatter::format(timestamp_ns) +
+		// 					" machine_id " + machine_id +
+		// 					" duration_ns " + NumberFormatter::format(duration_ns));
 
 		dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns);
 		ThreadPool::defaultPool().start(*worker, "dumper_worker");
