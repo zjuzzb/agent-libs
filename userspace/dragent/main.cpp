@@ -24,7 +24,7 @@ dragent_logger* g_log = NULL;
 // Signal management
 //
 static bool g_terminate = false;
-static bool g_toggle_capture = false;
+bool g_toggle_capture = false;
 
 static void g_monitor_signal_callback(int sig)
 {
@@ -38,6 +38,7 @@ static void g_signal_callback(int sig)
 
 static void g_usr_signal_callback(int sig)
 {
+	g_log->information("Received SIGUSR1, toggling capture state"); 
 	g_toggle_capture = true;
 }
 
@@ -407,13 +408,13 @@ protected:
 
 				if(m_capturing)
 				{
-					g_log->information("Received SIGUSR1, Stopping dump");
+					g_log->information("Stopping dump");
 					m_capturing = false;
 					m_inspector.stop_dump();
 				}
 				else
 				{
-					g_log->information("Received SIGUSR1, Starting dump");
+					g_log->information("Starting dump");
 					m_capturing = true;
 					m_inspector.start_dump(m_configuration.m_dump_file);
 				}
