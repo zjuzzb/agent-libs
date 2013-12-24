@@ -229,7 +229,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 	if(fdtable == &m_tinfo->m_fdtable)
 	{
-		unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+		unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
 
 		for(it = m_tinfo->m_fdtable.m_table.begin(); it != m_tinfo->m_fdtable.m_table.end(); it++)
 		{

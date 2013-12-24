@@ -39,7 +39,7 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 }
 
 void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
-								   sinsp_fdinfo* fdinfo,
+								   sinsp_fdinfo_t* fdinfo,
 								   sinsp_connection* pconn,
 								   sinsp_partial_transaction* tr,
 								   uint32_t len)
@@ -497,7 +497,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 void sinsp_partial_transaction::update(sinsp* inspector, 
 	sinsp_threadinfo* ptinfo,
-	sinsp_fdinfo* fdinfo,
+	sinsp_fdinfo_t* fdinfo,
 	sinsp_connection* pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 

@@ -14,7 +14,7 @@ typedef struct erase_fd_params
 	sinsp* m_inspector;
 	int64_t m_fd;
 	sinsp_threadinfo* m_tinfo;
-	sinsp_fdinfo* m_fdinfo;
+	sinsp_fdinfo_t* m_fdinfo;
 	uint64_t m_ts;
 }erase_fd_params;
 
@@ -39,7 +39,7 @@ public:
 	void set_lastevent_data_validity(bool isvalid);
 	bool is_main_thread();
 	sinsp_threadinfo* get_main_thread();
-	sinsp_fdinfo *get_fd(int64_t fd);
+	sinsp_fdinfo_t *get_fd(int64_t fd);
 #ifdef HAS_ANALYZER
 	bool is_main_program_thread();
 	sinsp_threadinfo* get_main_program_thread();
@@ -94,7 +94,7 @@ public:
 
 VISIBILITY_PRIVATE
 	void fix_sockets_coming_from_proc();
-	void add_fd(int64_t fd, sinsp_fdinfo *fdinfo);
+	void add_fd(int64_t fd, sinsp_fdinfo_t *fdinfo);
 	void remove_fd(int64_t fd);
 	sinsp_fdtable* get_fd_table();
 	void set_cwd(const char *cwd, uint32_t cwdlen);

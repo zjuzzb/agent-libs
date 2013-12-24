@@ -8,18 +8,18 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_fdinfo inomlementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_fdinfo::sinsp_fdinfo()
+sinsp_fdinfo_t::sinsp_fdinfo()
 {
 	m_type = SCAP_FD_UNINITIALIZED;
 	m_flags = FLAGS_NONE;
 }
 
-string* sinsp_fdinfo::tostring()
+string* sinsp_fdinfo_t::tostring()
 {
 	return &m_name;
 }
 
-char sinsp_fdinfo::get_typechar()
+char sinsp_fdinfo_t::get_typechar()
 {
 	switch(m_type)
 	{
@@ -60,7 +60,7 @@ char sinsp_fdinfo::get_typechar()
 }
 
 
-void sinsp_fdinfo::add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen)
+void sinsp_fdinfo_t::add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen)
 {
 	char fullpath[SCAP_MAX_PATH_SIZE];
 
@@ -69,7 +69,7 @@ void sinsp_fdinfo::add_filename(const char* directory, uint32_t directorylen, co
 	m_name = fullpath;
 }
 
-void sinsp_fdinfo::print_on(FILE* f)
+void sinsp_fdinfo_t::print_on(FILE* f)
 {
 	if(is_unix_socket())
 	{
@@ -81,7 +81,7 @@ void sinsp_fdinfo::print_on(FILE* f)
 	}
 }
 
-void sinsp_fdinfo::set_role_by_guessing(sinsp_partial_transaction::direction dir)
+void sinsp_fdinfo_t::set_role_by_guessing(sinsp_partial_transaction::direction dir)
 {
 	if(m_flags & FLAGS_ROLE_CLIENT)
 	{
@@ -116,9 +116,9 @@ sinsp_fdtable::sinsp_fdtable(sinsp* inspector)
 	reset_cache();
 }
 
-sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
+sinsp_fdinfo_t* sinsp_fdtable::find(int64_t fd)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit = m_table.find(fd);
 
 	//
 	// Try looking up in our simple cache
@@ -154,9 +154,9 @@ sinsp_fdinfo* sinsp_fdtable::find(int64_t fd)
 	}
 }
 
-void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
+void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo_t* fdinfo)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit = m_table.find(fd);
 
 	//
 	// Look for the FD in the table
@@ -177,7 +177,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 		//
 		// the fd is already in the table.
 		//
-		if(fdit->second.m_flags & sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS)
+		if(fdit->second.m_flags & sinsp_fdinfo_t::FLAGS_CLOSE_IN_PROGRESS)
 		{
 			//
 			// Sometimes an FD-creating syscall can be called on an FD that is being closed (i.e
@@ -185,8 +185,8 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 			// If this is the case, mark the new entry so that the successive close exit won't
 			// destroy it.
 			//
-			fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
-			fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
+			fdinfo->m_flags &= ~sinsp_fdinfo_t::FLAGS_CLOSE_IN_PROGRESS;
+			fdinfo->m_flags |= sinsp_fdinfo_t::FLAGS_CLOSE_CANCELED;
 			
 			m_table[CANCELED_FD_NUMBER] = fdit->second;
 		}
@@ -214,7 +214,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo* fdinfo)
 
 void sinsp_fdtable::erase(int64_t fd)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit = m_table.find(fd);
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit = m_table.find(fd);
 
 	if(fd == m_last_accessed_fd)
 	{
@@ -256,7 +256,7 @@ size_t sinsp_fdtable::size()
 
 void sinsp_fdtable::print_on(FILE* f)
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
 
 	for(fdit = m_table.begin(); fdit != m_table.end(); fdit++)
 	{

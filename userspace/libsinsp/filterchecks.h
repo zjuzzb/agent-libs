@@ -52,14 +52,14 @@ public:
 	sinsp_filter_check* allocate_new();
 	int32_t parse_field_name(const char* str);
 	uint8_t* extract(sinsp_evt *evt, OUT uint32_t* len);
-	uint8_t* extract_fdtype(sinsp_fdinfo* fdinfo);
+	uint8_t* extract_fdtype(sinsp_fdinfo_t* fdinfo);
 	bool compare_ip(sinsp_evt *evt);
 	bool compare_port(sinsp_evt *evt);
 	bool compare(sinsp_evt *evt);
 	char* tostring(sinsp_evt* evt);
 
 	sinsp_threadinfo* m_tinfo;
-	sinsp_fdinfo* m_fdinfo;
+	sinsp_fdinfo_t* m_fdinfo;
 	fd_type m_fd_type;
 	string m_tstr;
 

@@ -70,7 +70,7 @@ sinsp_threadinfo::~sinsp_threadinfo()
 
 void sinsp_threadinfo::fix_sockets_coming_from_proc()
 {
-	unordered_map<int64_t, sinsp_fdinfo>::iterator it;
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
 
 	//
 	// Second pass: fix the sockets so that they are ordered by client->server
@@ -109,7 +109,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 {
 	scap_fdinfo *fdi;
 	scap_fdinfo *tfdi;
-	sinsp_fdinfo newfdi;
+	sinsp_fdinfo_t newfdi;
 	string tcomm(pi->comm);
 
 	init();
@@ -148,7 +148,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 		newfdi.m_type = fdi->type;
 		newfdi.m_openflags = fdi->flags;
 		newfdi.m_type = fdi->type;
-		newfdi.m_flags = sinsp_fdinfo::FLAGS_FROM_PROC;
+		newfdi.m_flags = sinsp_fdinfo_t::FLAGS_FROM_PROC;
 		newfdi.m_ino = fdi->ino;
 
 		switch(newfdi.m_type)
@@ -409,7 +409,7 @@ sinsp_fdtable* sinsp_threadinfo::get_fd_table()
 	return &(root->m_fdtable);
 }
 
-void sinsp_threadinfo::add_fd(int64_t fd, sinsp_fdinfo *fdinfo)
+void sinsp_threadinfo::add_fd(int64_t fd, sinsp_fdinfo_t *fdinfo)
 {
 	get_fd_table()->add(fd, fdinfo);
 
@@ -424,7 +424,7 @@ void sinsp_threadinfo::remove_fd(int64_t fd)
 	get_fd_table()->erase(fd);
 }
 
-sinsp_fdinfo *sinsp_threadinfo::get_fd(int64_t fd)
+sinsp_fdinfo_t *sinsp_threadinfo::get_fd(int64_t fd)
 {
 	if(fd < 0)
 	{
@@ -793,8 +793,8 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		//
 		if(it->second.m_pid == it->second.m_tid)
 		{
-			unordered_map<int64_t, sinsp_fdinfo> fdtable = it->second.get_fd_table()->m_table;
-			unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
+			unordered_map<int64_t, sinsp_fdinfo_t> fdtable = it->second.get_fd_table()->m_table;
+			unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
 
 			erase_fd_params eparams;
 			eparams.m_remove_from_table = false;

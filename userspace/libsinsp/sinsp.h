@@ -89,7 +89,6 @@ typedef union _unix_tuple
 
 template<typename OBJ> class simple_lifo_queue;
 class sinsp_partial_transaction;
-class sinsp_fdinfo;
 class sinsp_parser;
 class sinsp_analyzer;
 class sinsp_filter;
@@ -296,11 +295,6 @@ VISIBILITY_PRIVATE
 	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
 	void add_thread(const sinsp_threadinfo& ptinfo);
 	void remove_thread(int64_t tid);
-
-	//
-	// Push an fd operation into the fifo queue for a thread
-	//
-	void push_fdop(int64_t tid, sinsp_fdinfo* fdinfo, sinsp_fdop& op);
 
 	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
 	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);

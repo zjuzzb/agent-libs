@@ -360,7 +360,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			{
 				return false;
 			}
-			else if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)
+			else if(evt->m_fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_CLOSE_CANCELED)
 			{
 				//
 				// A close gets canceled when the same fd is created succesfully between
@@ -369,7 +369,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 				//
 				erase_fd_params eparams;
 
-				evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
+				evt->m_fdinfo->m_flags &= ~sinsp_fdinfo_t::FLAGS_CLOSE_CANCELED;
 				eparams.m_fd = CANCELED_FD_NUMBER;
 				eparams.m_fdinfo = evt->m_tinfo->get_fd(CANCELED_FD_NUMBER);
 
@@ -818,7 +818,7 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 	uint32_t namelen;
 	uint32_t flags;
 	//  uint32_t mode;
-	sinsp_fdinfo fdi;
+	sinsp_fdinfo_t fdi;
 	sinsp_evt *enter_evt = &m_tmp_evt;
 	string sdir;
 	string tdirstr;
@@ -957,7 +957,7 @@ void sinsp_parser::parse_open_openat_creat_exit(sinsp_evt *evt)
 //
 inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain, uint32_t type, uint32_t protocol)
 {
-	sinsp_fdinfo fdi;
+	sinsp_fdinfo_t fdi;
 
 	//
 	// Populate the new fdi
@@ -1117,7 +1117,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 	int64_t tid = evt->get_tid();
 	uint8_t *packed_data;
 	uint8_t family;
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
 	const char *parstr;
 	int64_t retval;
 
@@ -1303,8 +1303,8 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	int64_t tid = evt->get_tid();
 	int64_t fd;
 	uint8_t* packed_data;
-	unordered_map<int64_t, sinsp_fdinfo>::iterator fdit;
-	sinsp_fdinfo fdi;
+	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
+	sinsp_fdinfo_t fdi;
 	const char *parstr;
 
 	//
@@ -1457,7 +1457,7 @@ void sinsp_parser::parse_close_enter(sinsp_evt *evt)
 		return;
 	}
 
-	evt->m_fdinfo->m_flags |= sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
+	evt->m_fdinfo->m_flags |= sinsp_fdinfo_t::FLAGS_CLOSE_IN_PROGRESS;
 }
 
 //
@@ -1585,9 +1585,9 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		//
 		erase_fd_params eparams;
 
-		if(evt->m_fdinfo->m_flags & sinsp_fdinfo::FLAGS_CLOSE_CANCELED)
+		if(evt->m_fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_CLOSE_CANCELED)
 		{
-			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_CANCELED;
+			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo_t::FLAGS_CLOSE_CANCELED;
 			eparams.m_fd = CANCELED_FD_NUMBER;
 			eparams.m_fdinfo = evt->m_tinfo->get_fd(CANCELED_FD_NUMBER);
 		}
@@ -1613,7 +1613,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 	{
 		if(evt->m_fdinfo != NULL)
 		{
-			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo::FLAGS_CLOSE_IN_PROGRESS;
+			evt->m_fdinfo->m_flags &= ~sinsp_fdinfo_t::FLAGS_CLOSE_IN_PROGRESS;
 		}
 
 		//
@@ -1634,7 +1634,7 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 
 void sinsp_parser::add_pipe(sinsp_evt *evt, int64_t tid, int64_t fd, uint64_t ino)
 {
-	sinsp_fdinfo fdi;
+	sinsp_fdinfo_t fdi;
 
 	//
 	// lookup the thread info
@@ -1693,7 +1693,7 @@ void sinsp_parser::parse_socketpair_exit(sinsp_evt *evt)
 	ASSERT(parinfo->m_len == sizeof(uint64_t));
 	peer_address = *(uint64_t *)parinfo->m_val;
 
-	sinsp_fdinfo fdi;
+	sinsp_fdinfo_t fdi;
 	fdi.set_type_unix_socket();
 	fdi.m_info.m_unixinfo.m_fields.m_source = source_address;
 	fdi.m_info.m_unixinfo.m_fields.m_dest = peer_address;
@@ -2277,7 +2277,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 	}
 }
 
-void sinsp_parser::set_ipv4_addresses_and_ports(sinsp_fdinfo *fdinfo, uint8_t* packed_data)
+void sinsp_parser::set_ipv4_addresses_and_ports(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data)
 {
 	fdinfo->m_info.m_ipv4info.m_fields.m_sip = *(uint32_t *)(packed_data + 1);
 	fdinfo->m_info.m_ipv4info.m_fields.m_sport = *(uint16_t *)(packed_data + 5);
@@ -2285,7 +2285,7 @@ void sinsp_parser::set_ipv4_addresses_and_ports(sinsp_fdinfo *fdinfo, uint8_t* p
 	fdinfo->m_info.m_ipv4info.m_fields.m_dport = *(uint16_t *)(packed_data + 11);
 }
 
-void sinsp_parser::set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo* fdinfo, uint8_t* packed_data)
+void sinsp_parser::set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data)
 {
 	fdinfo->m_info.m_ipv4info.m_fields.m_sip = *(uint32_t *)(packed_data + 13);
 	fdinfo->m_info.m_ipv4info.m_fields.m_sport = *(uint16_t *)(packed_data + 17);
@@ -2293,7 +2293,7 @@ void sinsp_parser::set_ipv4_mapped_ipv6_addresses_and_ports(sinsp_fdinfo* fdinfo
 	fdinfo->m_info.m_ipv4info.m_fields.m_dport = *(uint16_t *)(packed_data + 35);
 }
 
-void sinsp_parser::set_unix_info(sinsp_fdinfo *fdinfo, uint8_t* packed_data)
+void sinsp_parser::set_unix_info(sinsp_fdinfo_t* fdinfo, uint8_t* packed_data)
 {
 	fdinfo->m_info.m_unixinfo.m_fields.m_source = *(uint64_t *)(packed_data + 1);
 	fdinfo->m_info.m_unixinfo.m_fields.m_dest = *(uint64_t *)(packed_data + 9);
@@ -2510,7 +2510,7 @@ void sinsp_parser::parse_eventfd_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
 	int64_t fd;
-	sinsp_fdinfo fdi;
+	sinsp_fdinfo_t fdi;
 
 	//
 	// lookup the thread info
@@ -2786,7 +2786,7 @@ void sinsp_parser::parse_signalfd_exit(sinsp_evt *evt)
 	//
 	if(retval >= 0)
 	{
-		sinsp_fdinfo fdi;
+		sinsp_fdinfo_t fdi;
 
 		//
 		// Populate the new fdi
@@ -2819,7 +2819,7 @@ void sinsp_parser::parse_timerfd_create_exit(sinsp_evt *evt)
 	//
 	if(retval >= 0)
 	{
-		sinsp_fdinfo fdi;
+		sinsp_fdinfo_t fdi;
 
 		//
 		// Populate the new fdi
@@ -2852,7 +2852,7 @@ void sinsp_parser::parse_inotify_init_exit(sinsp_evt *evt)
 	//
 	if(retval >= 0)
 	{
-		sinsp_fdinfo fdi;
+		sinsp_fdinfo_t fdi;
 
 		//
 		// Populate the new fdi

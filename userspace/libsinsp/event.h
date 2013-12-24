@@ -6,7 +6,6 @@
 
 typedef class sinsp sinsp;
 typedef class sinsp_threadinfo sinsp_threadinfo;
-typedef class sinsp_fdinfo sinsp_fdinfo;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Event arguments
@@ -105,7 +104,7 @@ public:
 	void set_iosize(uint32_t size);
 	uint32_t get_iosize();
 	sinsp_threadinfo* get_thread_info(bool query_os_if_not_found = false);
-	sinsp_fdinfo* get_fd_info();
+	sinsp_fdinfo_t* get_fd_info();
 	uint32_t get_num_params();
 	sinsp_evt_param* get_param(uint32_t id);
 	const char* get_param_name(uint32_t id);
@@ -139,7 +138,7 @@ VISIBILITY_PRIVATE
 	char m_getpropertystr_storage[32]; // This should be used for number only
 
 	sinsp_threadinfo* m_tinfo;
-	sinsp_fdinfo* m_fdinfo;
+	sinsp_fdinfo_t* m_fdinfo;
 	uint32_t m_iosize;
 	int32_t m_errorcode;
 #ifdef HAS_FILTERING

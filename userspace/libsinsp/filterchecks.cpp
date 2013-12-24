@@ -48,7 +48,7 @@ int32_t sinsp_filter_check_fd::parse_field_name(const char* str)
 	return sinsp_filter_check::parse_field_name(str);
 }
 
-uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo* fdinfo)
+uint8_t* sinsp_filter_check_fd::extract_fdtype(sinsp_fdinfo_t* fdinfo)
 {
 	switch(fdinfo->m_type)
 	{

@@ -156,3 +156,10 @@
 // 0.0.0.0 endpoint.
 //
 #define MAX_N_EXTERNAL_CLIENTS 30
+
+//
+// FD class customized with the storage we need
+//
+class sinsp_partial_transaction;
+template<class T> class sinsp_fdinfo;
+typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
