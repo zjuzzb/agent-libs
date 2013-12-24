@@ -2471,6 +2471,10 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+			if(m_rw_listener)
+			{
+				m_rw_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+			}
 		}
 	}
 }

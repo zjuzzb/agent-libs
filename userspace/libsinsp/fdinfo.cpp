@@ -8,18 +8,18 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_fdinfo inomlementation
 ///////////////////////////////////////////////////////////////////////////////
-template <> sinsp_fdinfo_t::sinsp_fdinfo()
+template<> sinsp_fdinfo_t::sinsp_fdinfo()
 {
 	m_type = SCAP_FD_UNINITIALIZED;
 	m_flags = FLAGS_NONE;
 }
 
-template <> string* sinsp_fdinfo_t::tostring()
+template<> string* sinsp_fdinfo_t::tostring()
 {
 	return &m_name;
 }
 
-template <> char sinsp_fdinfo_t::get_typechar()
+template<> char sinsp_fdinfo_t::get_typechar()
 {
 	switch(m_type)
 	{
@@ -60,7 +60,7 @@ template <> char sinsp_fdinfo_t::get_typechar()
 }
 
 
-template <> void sinsp_fdinfo_t::add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen)
+template<> void sinsp_fdinfo_t::add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen)
 {
 	char fullpath[SCAP_MAX_PATH_SIZE];
 
@@ -69,7 +69,7 @@ template <> void sinsp_fdinfo_t::add_filename(const char* directory, uint32_t di
 	m_name = fullpath;
 }
 
-template <> void sinsp_fdinfo_t::print_on(FILE* f)
+template<> void sinsp_fdinfo_t::print_on(FILE* f)
 {
 	if(is_unix_socket())
 	{
@@ -81,7 +81,7 @@ template <> void sinsp_fdinfo_t::print_on(FILE* f)
 	}
 }
 
-template <> void sinsp_fdinfo_t::set_role_by_guessing(sinsp_partial_transaction::direction dir)
+template<> void sinsp_fdinfo_t::set_role_by_guessing(sinsp_partial_transaction::direction dir)
 {
 	if(!(m_flags & (FLAGS_ROLE_CLIENT | FLAGS_ROLE_SERVER)))
 	{
