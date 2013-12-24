@@ -31,6 +31,7 @@ using namespace google::protobuf::io;
 #include "sched_analyzer.h"
 #include "proto_header.h"
 #include "analyzer_thread.h"
+#include "analyzer_fd.h"
 
 #define DUMP_TO_DISK
 
@@ -82,6 +83,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
+	m_rw_listener = new sinsp_analyzer_rw_listener();
+	inspector->m_parser->m_rw_listener = m_rw_listener;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -119,6 +122,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_threadtable_listener)
 	{
 		delete(m_threadtable_listener);
+	}
+
+	if(m_rw_listener)
+	{
+		delete m_rw_listener;
 	}
 }
 

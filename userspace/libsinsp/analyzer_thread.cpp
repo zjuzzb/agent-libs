@@ -236,10 +236,10 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 			uint64_t endtime = sample_end_time;
 
 			if((it->second.is_transaction()) && 
-				((it->second.is_role_server() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_OUT) ||
-				(it->second.is_role_client() && it->second.m_transaction.m_direction == sinsp_partial_transaction::DIR_IN)))
+				((it->second.is_role_server() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				(it->second.is_role_client() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_IN)))
 			{
-				if(it->second.m_transaction.m_end_time >= endtime)
+				if(it->second.m_usrstate.m_end_time >= endtime)
 				{
 					//
 					// This happens when the sample-generating event is a read or write on a transaction FD.
@@ -248,7 +248,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 					return;
 				}
 
-				if(endtime - it->second.m_transaction.m_end_time > TRANSACTION_TIMEOUT_NS)
+				if(endtime - it->second.m_usrstate.m_end_time > TRANSACTION_TIMEOUT_NS)
 				{
 					sinsp_connection *connection;
 
@@ -274,7 +274,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 					if(connection != NULL)
 					{
-						sinsp_partial_transaction *trinfo = &(it->second.m_transaction);
+						sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
 
 						trinfo->update(m_inspector,
 							m_tinfo,

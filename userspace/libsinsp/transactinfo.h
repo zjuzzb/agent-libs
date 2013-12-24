@@ -39,13 +39,6 @@ public:
 	    STATE_SWITCHED = (1 << 1),
 	};
 
-	enum side
-	{
-		SIDE_UNKNOWN,
-		SIDE_CLIENT,
-		SIDE_SERVER,
-	};
-
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
 	void update(sinsp* inspector, 
@@ -98,7 +91,6 @@ public:
 	uint32_t m_outgoing_bytes;
 	int32_t m_cpuid;
 	uint32_t m_flags;
-	side m_side;
 
 private:
 	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len);

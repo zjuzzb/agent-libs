@@ -27,6 +27,7 @@ sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
 {
 	m_inspector = inspector;
+	m_rw_listener = NULL;
 }
 
 sinsp_parser::~sinsp_parser()
@@ -1497,7 +1498,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_transaction())
 	{
 		sinsp_connection *connection;
-		bool do_remove_transaction = params->m_fdinfo->m_transaction.is_active();
+		bool do_remove_transaction = params->m_fdinfo->m_usrstate.is_active();
 
 		if(do_remove_transaction)
 		{
@@ -1520,7 +1521,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 
 		if(do_remove_transaction)
 		{
-			params->m_fdinfo->m_transaction.update(params->m_inspector,
+			params->m_fdinfo->m_usrstate.update(params->m_inspector,
 				params->m_tinfo,
 				params->m_fdinfo,
 				connection,
@@ -1531,7 +1532,7 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 				0);
 		}
 
-		params->m_fdinfo->m_transaction.mark_inactive();			
+		params->m_fdinfo->m_usrstate.mark_inactive();			
 	}
 
 	//
@@ -1948,7 +1949,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 			//
 			// See if there's already a transaction
 			//
- 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+ 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
 			{
 				//
@@ -1990,7 +1991,7 @@ void sinsp_parser::handle_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *da
 		//
 		// See if there's already a transaction
 		//
- 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+ 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 		if(!trinfo->is_active())
 		{
 			//
@@ -2236,7 +2237,7 @@ void sinsp_parser::handle_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *d
 		//
 		// See if there's already a transaction
 		//
- 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_transaction);
+ 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 		if(!trinfo->is_active())
 		{
 			//
@@ -2695,7 +2696,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 		//
 		// If this fd has an active transaction, update it and then mark it as unititialized
 		//
-		if(evt->m_fdinfo && evt->m_fdinfo->m_transaction.is_active())
+		if(evt->m_fdinfo && evt->m_fdinfo->m_usrstate.is_active())
 		{
 			sinsp_connection* connection;
 
@@ -2708,7 +2709,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
 			}
 
-			evt->m_fdinfo->m_transaction.update(m_inspector,
+			evt->m_fdinfo->m_usrstate.update(m_inspector,
 				evt->m_tinfo,
 				evt->m_fdinfo,
 				connection,
@@ -2718,7 +2719,7 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 				sinsp_partial_transaction::DIR_CLOSE, 
 				0);
 
-			evt->m_fdinfo->m_transaction.mark_inactive();
+			evt->m_fdinfo->m_usrstate.mark_inactive();
 		}
 	}
 }

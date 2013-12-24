@@ -83,15 +83,7 @@ void sinsp_fdinfo_t::print_on(FILE* f)
 
 void sinsp_fdinfo_t::set_role_by_guessing(sinsp_partial_transaction::direction dir)
 {
-	if(m_flags & FLAGS_ROLE_CLIENT)
-	{
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
-	}
-	else if(m_flags & FLAGS_ROLE_SERVER)
-	{
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_SERVER;
-	}
-	else
+	if(!(m_flags & (FLAGS_ROLE_CLIENT | FLAGS_ROLE_SERVER)))
 	{
 		//
 		// We just assume that a server usually starts with a read and a client with a write

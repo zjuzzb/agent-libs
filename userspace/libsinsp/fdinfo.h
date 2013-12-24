@@ -105,19 +105,17 @@ public:
 
 	void set_is_transaction()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_TRANSACTION;
+		m_flags |= FLAGS_TRANSACTION;
 	}
 
 	void set_role_server()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_ROLE_SERVER;
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_SERVER;
+		m_flags |= FLAGS_ROLE_SERVER;
 	}
 
 	void set_role_client()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_ROLE_CLIENT;
-		m_transaction.m_side = sinsp_partial_transaction::SIDE_CLIENT;
+		m_flags |= FLAGS_ROLE_CLIENT;
 	}
 
 	void set_role_by_guessing(sinsp_partial_transaction::direction dir);
@@ -129,7 +127,7 @@ public:
 
 	void set_socketpipe()
 	{
-		m_flags |= sinsp_fdinfo::FLAGS_IS_SOCKET_PIPE;
+		m_flags |= FLAGS_IS_SOCKET_PIPE;
 	}
 
 	bool is_socketpipe()
@@ -152,7 +150,6 @@ public:
 private:
 	void add_filename(const char* directory, uint32_t directorylen, const char* filename, uint32_t filenamelen);
 
-	sinsp_partial_transaction m_transaction;
 	T m_usrstate;
 
 	friend class sinsp_parser;
