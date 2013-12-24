@@ -3,6 +3,7 @@
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "sched_analyzer.h"
+#include "analyzer_thread.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // cpustate implementation

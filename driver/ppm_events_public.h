@@ -96,6 +96,7 @@
 										// the child process before than in the parent process. 
 #define PPM_CL_NAME_CHANGED (1 << 17)	// libsinsp-specific flag. Set when the thread name changes
 										// (for example because execve was called)
+#define PPM_CL_CLOSED (1 << 18)			// thread has been closed.
 
 //
 // Futex Operations

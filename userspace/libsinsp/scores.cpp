@@ -8,6 +8,7 @@
 #include "delays.h"
 #include "scores.h"
 #include "sched_analyzer.h"
+#include "analyzer_thread.h"
 
 sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyzer2)
 {

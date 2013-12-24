@@ -9,6 +9,7 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer.h"
+#include "analyzer_thread.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transact_table implementation

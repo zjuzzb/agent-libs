@@ -6,6 +6,7 @@
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "delays.h"
+#include "analyzer_thread.h"
 
 sinsp_delays::sinsp_delays(sinsp_analyzer* analyzer, uint32_t ncpus)
 {

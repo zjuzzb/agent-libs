@@ -403,16 +403,14 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 			ASSERT(evt->get_param_info(parnum)->type == PT_FD);
 			fd = *(int64_t *)parinfo->m_val;
 
-			sinsp_fdinfo* fdinfo = evt->m_tinfo->get_fd(evt->m_tinfo->m_lastevent_fd);
-
-			if(fdinfo == NULL && evt->m_tinfo->m_fdlimit != -1)
+			if(fd > 0 && evt->m_tinfo->m_fdlimit != -1)
 			{
 				int64_t m_fd_usage_pct = fd * 100 / evt->m_tinfo->m_fdlimit;
 				ASSERT(m_fd_usage_pct <= 100);
 
-				if(m_fd_usage_pct > evt->m_tinfo->m_ainfo->m_fd_usage_pct)
+				if(m_fd_usage_pct > evt->m_tinfo->m_fd_usage_pct)
 				{
-					evt->m_tinfo->m_ainfo->m_fd_usage_pct = (uint32_t)m_fd_usage_pct;
+					evt->m_tinfo->m_fd_usage_pct = (uint32_t)m_fd_usage_pct;
 				}
 			}
 		}
@@ -1747,7 +1745,7 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	if(evt->m_tinfo)
 	{
 #ifdef HAS_ANALYZER
-		evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_CLOSED;
+		evt->m_tinfo->m_flags |= PPM_CL_CLOSED;
 #else
 		m_inspector->m_tid_to_remove = evt->get_tid();
 #endif
