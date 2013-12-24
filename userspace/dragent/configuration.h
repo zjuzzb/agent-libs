@@ -33,6 +33,10 @@ public:
 	static Message::Priority string_to_priority(string priostr);
 	static bool get_aws_metadata(aws_metadata* metadata);
 
+	// Static so that the signal handler can reach it
+	static volatile bool m_dump_enabled;
+	static volatile bool m_terminate;
+
 	bool m_daemon;
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -49,4 +53,5 @@ public:
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
 	string m_dump_file;
+	Event m_dump_completed;
 };

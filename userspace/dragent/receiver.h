@@ -9,9 +9,10 @@
 class dragent_receiver : public Runnable
 {
 public:
-	dragent_receiver(blocking_queue* queue, connection_manager* connection_manager):
+	dragent_receiver(blocking_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
 		m_stop(false),
 		m_queue(queue),
+		m_configuration(configuration),
 		m_connection_manager(connection_manager)
 	{
 	}
@@ -94,7 +95,7 @@ private:
 							" machine_id " + machine_id +
 							" duration_ns " + NumberFormatter::format(duration_ns));
 
-		dumper_worker* worker = new dumper_worker(m_queue, duration_ns);
+		dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns);
 		ThreadPool::defaultPool().start(*worker, "dumper_worker");
 	}
 
@@ -102,5 +103,6 @@ private:
 
 	uint8_t m_buf[RECEIVER_BUFSIZE];
 	blocking_queue* m_queue;
+	dragent_configuration* m_configuration;
 	connection_manager* m_connection_manager;
 };

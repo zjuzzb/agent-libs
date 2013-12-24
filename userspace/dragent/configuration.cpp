@@ -8,6 +8,9 @@
 using namespace Poco;
 using namespace Poco::Net;
 
+volatile bool dragent_configuration::m_dump_enabled = false;
+volatile bool dragent_configuration::m_terminate = false;
+
 dragent_configuration::dragent_configuration()
 {
 	m_daemon = false;

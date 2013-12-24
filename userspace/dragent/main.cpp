@@ -20,12 +20,6 @@
 
 dragent_logger* g_log = NULL;
 
-//
-// Signal management
-//
-static bool g_terminate = false;
-bool g_toggle_capture = false;
-
 static void g_monitor_signal_callback(int sig)
 {
 	exit(EXIT_SUCCESS);
@@ -33,13 +27,13 @@ static void g_monitor_signal_callback(int sig)
 
 static void g_signal_callback(int sig)
 {
-	g_terminate = true;
+	dragent_configuration::m_terminate = true;
 }
 
 static void g_usr_signal_callback(int sig)
 {
 	g_log->information("Received SIGUSR1, toggling capture state"); 
-	g_toggle_capture = true;
+	dragent_configuration::m_dump_enabled = !dragent_configuration::m_dump_enabled;
 }
 
 #ifndef _WIN32
@@ -246,7 +240,7 @@ public:
 	dragent_app(): m_help_requested(false)
 	{
 		m_evtcnt = 0;
-		m_capturing = false;
+
 	}
 	
 	~dragent_app()
@@ -394,28 +388,34 @@ protected:
 		uint64_t ts;
 		uint64_t deltats = 0;
 		uint64_t firstts = 0;
+		bool capturing = false;
 
 		while(1)
 		{
-			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate || dragent_error_handler::m_exception)
+			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || 
+				dragent_configuration::m_terminate || 
+				dragent_error_handler::m_exception)
 			{
 				break;
 			}
 
-			if(g_toggle_capture)
+			if(capturing)
 			{
-				g_toggle_capture = false;
-
-				if(m_capturing)
+				if(!dragent_configuration::m_dump_enabled)
 				{
 					g_log->information("Stopping dump");
-					m_capturing = false;
+					capturing = false;
 					m_inspector.stop_dump();
+					m_configuration.m_dump_completed.set();
 				}
-				else
+			}
+			else
+			{
+				if(dragent_configuration::m_dump_enabled)
 				{
 					g_log->information("Starting dump");
-					m_capturing = true;
+					capturing = true;
+					m_configuration.m_dump_completed.reset();
 					m_inspector.start_dump(m_configuration.m_dump_file);
 				}
 			}
@@ -546,7 +546,7 @@ protected:
 		blocking_queue queue;
 		sinsp_data_handler sinsp_handler(&queue);
 		dragent_sender sender_thread(&queue, &m_connection_manager);
-		dragent_receiver receiver_thread(&queue, &m_connection_manager);
+		dragent_receiver receiver_thread(&queue, &m_configuration, &m_connection_manager);
 
 #if 0
 		if(m_configuration.m_daemon)
@@ -674,7 +674,7 @@ protected:
 			if(m_writefile != "")
 			{
 				m_inspector.start_dump(m_writefile);
-				m_capturing = true;
+				dragent_configuration::m_dump_enabled = true;
 			}
 
 			//
@@ -716,7 +716,6 @@ private:
 	string m_filename;
 	uint64_t m_evtcnt;
 	string m_writefile;
-	bool m_capturing;
 	string m_pidfile;
 	dragent_configuration m_configuration;
 };

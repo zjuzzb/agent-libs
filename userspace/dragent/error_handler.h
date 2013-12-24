@@ -27,5 +27,5 @@ public:
 		m_exception = true;
 	}
 
-	static bool m_exception;
+	static volatile bool m_exception;
 };

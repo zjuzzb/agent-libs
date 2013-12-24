@@ -60,6 +60,7 @@
 #include "Poco/ErrorHandler.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/ThreadPool.h"
+#include "Poco/Event.h"
 
 #include <sinsp.h>
 
@@ -99,6 +100,7 @@ using Poco::Semaphore;
 using Poco::Runnable;
 using Poco::SharedPtr;
 using Poco::ThreadPool;
+using Poco::Event;
 
 #ifdef _DEBUG
 #define ASSERT(X) \
@@ -174,4 +176,3 @@ private:
 };
 
 extern dragent_logger* g_log;
-extern bool g_toggle_capture;
