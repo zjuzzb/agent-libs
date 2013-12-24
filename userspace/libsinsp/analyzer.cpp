@@ -230,7 +230,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 
 		hdr->m_sample_len = buflen + sizeof(sinsp_sample_header);
 		hdr->m_version = PROTOCOL_VERSION_NUMBER;
-		hdr->m_messagetype = PROTOCOL_MESSAGE_TYPE_NUMBER;
+		hdr->m_messagetype = PROTOCOL_MESSAGE_TYPE_METRICS;
 
 		m_sample_callback->sinsp_analyzer_data_ready(ts, (char*)hdr);
 	}

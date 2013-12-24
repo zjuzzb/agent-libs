@@ -137,8 +137,10 @@
 //
 // Protocol header constants
 //
-#define PROTOCOL_VERSION_NUMBER 1
-#define PROTOCOL_MESSAGE_TYPE_NUMBER 1
+#define PROTOCOL_VERSION_NUMBER 			1
+#define PROTOCOL_MESSAGE_TYPE_METRICS 		1
+#define PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST 	2
+#define PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE 3
 
 //
 // Number of samples after which the process information *of every process* is included in the sample.
