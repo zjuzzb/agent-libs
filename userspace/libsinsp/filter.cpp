@@ -230,6 +230,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -248,6 +249,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -266,6 +268,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -288,6 +291,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -307,6 +311,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -326,6 +331,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -344,6 +350,7 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			else
 			{
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
@@ -367,8 +374,8 @@ char* sinsp_filter_check::rawval_to_string(uint8_t* rawval, const filtercheck_fi
 			}
 			else
 			{
-				return NULL;
 				ASSERT(false);
+				return NULL;
 			}
 
 			snprintf(m_getpropertystr_storage,
