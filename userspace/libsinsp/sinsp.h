@@ -355,5 +355,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_thread_manager;
 	friend class sinsp_delays;
 	friend class thread_analyzer_info;
+	friend class sinsp_analyzer_rw_listener;
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };
