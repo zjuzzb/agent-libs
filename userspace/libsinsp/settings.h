@@ -135,14 +135,6 @@
 #define MAX_N_ERROR_CODES_IN_PROTO 5
 
 //
-// Protocol header constants
-//
-#define PROTOCOL_VERSION_NUMBER 			1
-#define PROTOCOL_MESSAGE_TYPE_METRICS 		1
-#define PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST 	2
-#define PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE 3
-
-//
 // Number of samples after which the process information *of every process* is included in the sample.
 // Usually, the sample includes only process information for processes that have been created
 // during the sample or that did an execve during the sample.

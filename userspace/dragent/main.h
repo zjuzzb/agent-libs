@@ -61,6 +61,7 @@
 #include "Poco/SharedPtr.h"
 #include "Poco/ThreadPool.h"
 #include "Poco/Event.h"
+#include "Poco/Buffer.h"
 
 #include <sinsp.h>
 
@@ -101,6 +102,7 @@ using Poco::Runnable;
 using Poco::SharedPtr;
 using Poco::ThreadPool;
 using Poco::Event;
+using Poco::Buffer;
 
 #ifdef _DEBUG
 #define ASSERT(X) \

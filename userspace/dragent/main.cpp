@@ -543,7 +543,7 @@ protected:
 		m_configuration.print_configuration();
 
 		connection_manager m_connection_manager;
-		blocking_queue queue;
+		dragent_queue queue;
 		sinsp_data_handler sinsp_handler(&queue);
 		dragent_sender sender_thread(&queue, &m_connection_manager);
 		dragent_receiver receiver_thread(&queue, &m_configuration, &m_connection_manager);

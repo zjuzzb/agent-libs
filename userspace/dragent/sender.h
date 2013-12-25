@@ -1,9 +1,12 @@
 #pragma once
 
+#include "main.h"
+#include "protocol.h"
+
 class dragent_sender : public Runnable
 {
 public:
-	dragent_sender(blocking_queue* queue, connection_manager* connection_manager):
+	dragent_sender(dragent_queue* queue, connection_manager* connection_manager):
 		m_stop(false),
 		m_queue(queue),
 		m_connection_manager(connection_manager)
@@ -14,11 +17,11 @@ public:
 	{
 		while(!m_stop)
 		{
-			SharedPtr<blocking_queue::item> item = m_queue->get();
+			SharedPtr<dragent_queue_item> item = m_queue->get();
 
 			while(!m_stop)
 			{
-				if(transmit_buffer(item->m_buf, item->m_len))
+				if(transmit_buffer(item->begin(), item->size()))
 				{
 					break;
 				}
@@ -28,7 +31,7 @@ public:
 		}
 	}
 
-	bool transmit_buffer(char* buffer, uint32_t buflen)
+	bool transmit_buffer(unsigned char* buffer, uint32_t buflen)
 	{
 		//
 		// Do a fake read to make sure openssl reads the stream from
@@ -90,6 +93,6 @@ public:
 	bool m_stop;
 
 private:
-	blocking_queue *m_queue;
+	dragent_queue* m_queue;
 	connection_manager* m_connection_manager;
 };

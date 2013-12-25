@@ -5,11 +5,12 @@
 
 #include "draios.pb.h"
 #include "dumper_worker.h"
+#include "protocol.h"
 
 class dragent_receiver : public Runnable
 {
 public:
-	dragent_receiver(blocking_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
+	dragent_receiver(dragent_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
 		m_stop(false),
 		m_queue(queue),
 		m_configuration(configuration),
@@ -43,7 +44,7 @@ public:
 					res = socket->receiveBytes(m_buf, size, MSG_WAITALL);
 					ASSERT(res == (int32_t) size);
 
-					if(m_buf[0] != PROTOCOL_VERSION_NUMBER)
+					if(m_buf[0] != dragent_protocol::PROTOCOL_VERSION_NUMBER)
 					{
 						g_log->error("Received command for incompatible version protocol " + NumberFormatter::format(m_buf[0]));
 					}
@@ -52,7 +53,7 @@ public:
 
 					switch(m_buf[1])
 					{
-						case PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
+						case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
 							ASSERT(size > 2);
 							size -= 2;
 							handle_dump_request(&m_buf[2], size);
@@ -102,7 +103,7 @@ private:
 	static const uint32_t RECEIVER_BUFSIZE = 1024;
 
 	uint8_t m_buf[RECEIVER_BUFSIZE];
-	blocking_queue* m_queue;
+	dragent_queue* m_queue;
 	dragent_configuration* m_configuration;
 	connection_manager* m_connection_manager;
 };

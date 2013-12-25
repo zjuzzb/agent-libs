@@ -15,7 +15,6 @@
 #include "procfs_parser.h"
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
-#include "proto_header.h"
 #include "analyzer_fd.h"
 
 ///////////////////////////////////////////////////////////////////////////////

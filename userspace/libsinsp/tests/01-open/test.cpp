@@ -7,7 +7,6 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include "../libsinsp/proto_header.h"
 
 #ifdef _WIN32
 #pragma warning(disable: 4996)
@@ -74,7 +73,7 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 class sample_collector: public analyzer_callback_interface
 {
 public:
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 	{
 		int a = 0;
 		//sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
