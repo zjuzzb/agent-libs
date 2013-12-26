@@ -82,7 +82,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
-	m_rw_listener = new sinsp_analyzer_rw_listener();
+	m_rw_listener = new sinsp_analyzer_rw_listener(inspector, this);
 	inspector->m_parser->m_rw_listener = m_rw_listener;
 }
 
