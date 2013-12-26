@@ -56,12 +56,10 @@ sinsp::~sinsp()
 {
 	close();
 
-#ifdef HAS_ANALYZER
 	if(m_fds_to_remove)
 	{
 		delete m_fds_to_remove;
 	}
-#endif
 }
 
 void sinsp::open(uint32_t timeout_ms)
@@ -120,12 +118,6 @@ void sinsp::close()
 	}
 
 #ifdef HAS_ANALYZER
-	if(m_analyzer)
-	{
-		delete m_analyzer;
-		m_analyzer = NULL;
-	}
-
 	if(m_ipv4_connections)
 	{
 		delete m_ipv4_connections;
@@ -174,6 +166,14 @@ void sinsp::close()
 	if(m_filter != NULL)
 	{
 		delete m_filter;
+	}
+#endif
+
+#ifdef HAS_ANALYZER
+	if(m_analyzer)
+	{
+		delete m_analyzer;
+		m_analyzer = NULL;
 	}
 #endif
 }

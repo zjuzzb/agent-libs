@@ -95,6 +95,7 @@ void thread_analyzer_info::destroy()
 	if(m_procinfo)
 	{
 		delete m_procinfo;
+		m_procinfo = NULL;
 	}
 }
 

@@ -208,4 +208,5 @@ private:
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
 	friend class sinsp;
+	friend class sinsp_threadinfo;
 };

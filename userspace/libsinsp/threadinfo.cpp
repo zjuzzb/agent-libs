@@ -60,6 +60,13 @@ sinsp_threadinfo::~sinsp_threadinfo()
 {
 	uint32_t j;
 
+	if((m_inspector != NULL) && 
+		(m_inspector->m_thread_manager != NULL) &&
+		(m_inspector->m_thread_manager->m_listener != NULL))
+	{
+		m_inspector->m_thread_manager->m_listener->on_thread_destroyed(this);
+	}
+
 	for(j = 0; j < m_private_state.size(); j++)
 	{
 		free(m_private_state[j]);
@@ -829,11 +836,6 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		m_removed_threads->increment();
 #endif
 
-		if(m_listener)
-		{
-			m_listener->on_thread_destroyed(&it->second);
-		}
-
 		m_threadtable.erase(it);
 	}
 }
@@ -863,11 +865,6 @@ void sinsp_thread_manager::remove_inactive_threads()
 				m_last_tinfo = NULL;
 
 				m_removed_threads->increment();
-
-				if(m_listener)
-				{
-					m_listener->on_thread_destroyed(&it->second);
-				}
 
 				m_threadtable.erase(it++);
 			}

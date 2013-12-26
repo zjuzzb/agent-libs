@@ -96,6 +96,11 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_metrics;
 	}
 
+	if(m_serialization_buffer)
+	{
+		free(m_serialization_buffer);
+	}
+
 	if(m_score_calculator)
 	{
 		delete m_score_calculator;
