@@ -57,12 +57,14 @@ public:
 		delete this;
 	}
 
+private:
+
 	void send_file()
 	{
 		FileInputStream file(m_configuration->m_dump_file);
 		string sfile;
 
-		uint32_t nread = StreamCopier::copyToString(file, sfile);
+		uint32_t nread = copy_file(&file, &sfile);
 		
 		g_log->information(m_name + ": File size: " + NumberFormatter::format(nread));
 
@@ -91,7 +93,39 @@ public:
 		}
 	}
 
-private:
+	std::streamsize copy_file(FileInputStream* istr, std::string* str)
+	{
+		Buffer<char> buffer(8192);
+		std::streamsize len = 0;
+		
+		istr->read(buffer.begin(), buffer.size());
+		std::streamsize n = istr->gcount();
+
+		while(n > 0)
+		{
+			len += n;
+			str->append(buffer.begin(), static_cast<std::string::size_type>(n));
+
+			if(len > MAX_SERIALIZATION_BUF_SIZE_BYTES * 0.9)
+			{
+				g_log->information("File too big, truncating to " + NumberFormatter::format(len));
+				break;
+			}
+
+			if(istr)
+			{
+				istr->read(buffer.begin(), buffer.size());
+				n = istr->gcount();
+			}
+			else 
+			{
+				n = 0;
+			}
+		}
+
+		return len;
+	}
+
 	static const string m_name;
 
 	dragent_queue* m_queue;
