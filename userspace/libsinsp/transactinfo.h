@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 #pragma once
 
 #include <stack>
@@ -184,3 +186,4 @@ private:
 	friend class sinsp_partial_transaction;
 };
 
+#endif

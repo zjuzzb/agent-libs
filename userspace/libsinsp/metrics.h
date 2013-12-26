@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef HAS_ANALYZER
+
 //
 // Forward declarations
 //
@@ -234,3 +236,5 @@ public:
 	uint32_t m_fd_usage_pct;
 	sinsp_error_counters m_syscall_errors;
 };
+
+#endif // HAS_ANALYZER

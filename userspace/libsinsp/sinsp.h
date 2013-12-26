@@ -184,11 +184,6 @@ public:
 	uint64_t get_num_events();
 
 	//
-	// Get the transaction list
-	//
-	sinsp_transaction_table* get_transactions();
-
-	//
 	// Stop event capture
 	//
 	void set_snaplen(uint32_t snaplen);
@@ -216,17 +211,19 @@ public:
 	void set_filter(string filter);
 #endif
 
+#ifdef HAS_ANALYZER
 	//
 	// Set the callback that receives the analyzer output
 	//
 	void set_analyzer_callback(analyzer_callback_interface* cb);
 
+#ifdef GATHER_INTERNAL_STATS
 	//
 	// Get processing stats
 	//
-#ifdef GATHER_INTERNAL_STATS
 	sinsp_stats get_stats();
-#endif
+#endif // GATHER_INTERNAL_STATS
+#endif // HAS_ANALYZER
 
 	//
 	// Get the last error
@@ -285,10 +282,14 @@ public:
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
 
+#ifdef HAS_ANALYZER
+	sinsp_transaction_table* get_transactions();
+#endif
+
 VISIBILITY_PRIVATE
 
 	void init();
-	void import_proc_table();
+	void import_thread_table();
 	void import_ifaddr_list();
 	void import_user_list();
 
@@ -296,27 +297,17 @@ VISIBILITY_PRIVATE
 	void add_thread(const sinsp_threadinfo& ptinfo);
 	void remove_thread(int64_t tid);
 
-	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
-	void remove_expired_connections(uint64_t ts);
-
 	scap_t* m_h;
 	bool m_islive;
 	sinsp_evt m_evt;
 	string m_lasterr;
 	int64_t m_tid_to_remove;
-	vector<int64_t>* m_fds_to_remove;
 	int64_t m_tid_of_fd_to_remove;
+	vector<int64_t>* m_fds_to_remove;
 	uint64_t m_lastevent_ts;
 	// the parsing engine
 	sinsp_parser* m_parser;
 	// the statistics analysis engine
-	sinsp_analyzer* m_analyzer;
-	sinsp_transaction_table* m_trans_table;
-	sinsp_ipv4_connection_manager* m_ipv4_connections;
-	sinsp_unix_connection_manager* m_unix_connections;
-	sinsp_pipe_connection_manager* m_pipe_connections;
 	scap_dumper_t* m_dumper;
 	const scap_machine_info* m_machine_info;
 	uint32_t m_num_cpus;
@@ -324,13 +315,25 @@ VISIBILITY_PRIVATE
 
 	sinsp_network_interfaces* m_network_interfaces;
 
+	sinsp_thread_manager* m_thread_manager;
+	sinsp_configuration m_configuration;
+
+#ifdef HAS_ANALYZER
+	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
+	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
+	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
+	void remove_expired_connections(uint64_t ts);
+
+	sinsp_analyzer* m_analyzer;
+	sinsp_transaction_table* m_trans_table;
+	sinsp_ipv4_connection_manager* m_ipv4_connections;
+	sinsp_unix_connection_manager* m_unix_connections;
+	sinsp_pipe_connection_manager* m_pipe_connections;
+	analyzer_callback_interface* m_analyzer_callback;
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
 #endif
-
-	sinsp_thread_manager* m_thread_manager;
-	sinsp_configuration m_configuration;
-	analyzer_callback_interface* m_analyzer_callback;
+#endif 
 
 #ifdef HAS_FILTERING
 	uint64_t m_firstevent_ts;
@@ -355,6 +358,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_thread_manager;
 	friend class sinsp_delays;
 	friend class thread_analyzer_info;
-	friend class sinsp_analyzer_rw_listener;
+	friend class sinsp_analyzer_fd_listener;
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

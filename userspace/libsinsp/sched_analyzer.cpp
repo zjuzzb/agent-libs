@@ -1,5 +1,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "sched_analyzer.h"
@@ -431,3 +433,5 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 #endif
 	}
 }
+
+#endif

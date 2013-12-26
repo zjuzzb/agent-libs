@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 #pragma once
 
 //
@@ -22,3 +24,5 @@ VISIBILITY_PRIVATE
 	sinsp_analyzer* m_analyzer;
 	int32_t m_num_cpus;
 };
+
+#endif // HAS_ANALYZER

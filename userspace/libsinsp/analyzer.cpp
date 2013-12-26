@@ -19,6 +19,8 @@ using namespace google::protobuf::io;
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -82,8 +84,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
-	m_rw_listener = new sinsp_analyzer_rw_listener(inspector, this);
-	inspector->m_parser->m_rw_listener = m_rw_listener;
+	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
+	inspector->m_parser->m_fd_listener = m_fd_listener;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -123,9 +125,9 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete(m_threadtable_listener);
 	}
 
-	if(m_rw_listener)
+	if(m_fd_listener)
 	{
-		delete m_rw_listener;
+		delete m_fd_listener;
 	}
 }
 
@@ -1786,3 +1788,5 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 			ASSERT(false);
 	}
 }
+
+#endif // HAS_ANALYZER

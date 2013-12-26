@@ -27,18 +27,22 @@ sinsp::sinsp() :
 {
 	m_h = NULL;
 	m_parser = NULL;
+	m_dumper = NULL;
+	m_network_interfaces = NULL;
+	m_thread_manager = NULL;
+
+#ifdef HAS_ANALYZER
+#ifdef GATHER_INTERNAL_STATS
+	m_stats.clear();
+#endif
+	m_analyzer_callback = NULL;
 	m_analyzer = NULL;
 	m_ipv4_connections = NULL;
 	m_unix_connections = NULL;
 	m_pipe_connections = NULL;
 	m_trans_table = NULL;
-	m_dumper = NULL;
-	m_network_interfaces = NULL;
-#ifdef GATHER_INTERNAL_STATS
-	m_stats.clear();
 #endif
-	m_thread_manager = NULL;
-	m_analyzer_callback = NULL;
+
 #ifdef HAS_FILTERING
 	m_filter = NULL;
 	m_firstevent_ts = 0;
@@ -52,10 +56,12 @@ sinsp::~sinsp()
 {
 	close();
 
+#ifdef HAS_ANALYZER
 	if(m_fds_to_remove)
 	{
 		delete m_fds_to_remove;
 	}
+#endif
 }
 
 void sinsp::open(uint32_t timeout_ms)
@@ -113,6 +119,7 @@ void sinsp::close()
 		m_parser = NULL;
 	}
 
+#ifdef HAS_ANALYZER
 	if(m_analyzer)
 	{
 		delete m_analyzer;
@@ -142,6 +149,8 @@ void sinsp::close()
 		delete m_trans_table;
 		m_trans_table = NULL;
 	}
+
+#endif // HAS_ANALYZER
 
 	if(NULL != m_dumper)
 	{
@@ -225,7 +234,7 @@ void sinsp::set_configuration(const sinsp_configuration& configuration)
 	m_configuration = configuration;
 }
 
-void sinsp::import_proc_table()
+void sinsp::import_thread_table()
 {
 	scap_threadinfo *pi;
 	scap_threadinfo *tpi;
@@ -308,16 +317,19 @@ void sinsp::init()
 	//
 	m_parser = new sinsp_parser(this);
 
+	m_thread_manager = new sinsp_thread_manager(this);
+
+#ifdef HAS_ANALYZER
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(this);
 	m_unix_connections = new sinsp_unix_connection_manager(this);
 	m_pipe_connections = new sinsp_pipe_connection_manager(this);
 	m_trans_table = new sinsp_transaction_table(this);
-	m_thread_manager = new sinsp_thread_manager(this);
 	m_analyzer = new sinsp_analyzer(this);
 	if(m_analyzer_callback)
 	{
 		set_analyzer_callback(m_analyzer_callback);
 	}
+#endif
 
 	//
 	// Basic inits
@@ -326,25 +338,27 @@ void sinsp::init()
 	m_lastevent_ts = 0;
 
 	import_ifaddr_list();
-	import_proc_table();
+	import_thread_table();
 	import_user_list();
 
+#ifdef HAS_ANALYZER
 	//
 	// Notify the analyzer that we're starting
 	//
 	m_analyzer->on_capture_start();
+#endif
 }
 
+#ifdef HAS_ANALYZER
 void sinsp::remove_expired_connections(uint64_t ts)
 {
 	m_ipv4_connections->remove_expired_connections(ts);
 	m_unix_connections->remove_expired_connections(ts);
 }
+#endif
 
 int32_t sinsp::next(OUT sinsp_evt **evt)
 {
-	uint32_t j;
-
 	//
 	// Get the event from libscap
 	//
@@ -398,9 +412,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	// Run the periodic connection and thread table cleanup
 	//
-	remove_expired_connections(m_evt.get_ts());
 	m_thread_manager->remove_inactive_threads();
-#endif
+#else
+	remove_expired_connections(m_evt.get_ts());
+#endif // HAS_ANALYZER
 
 	//
 	// Deleayed removal of the fd, so that
@@ -417,7 +432,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 			return res;
 		}
 
-		for(j = 0; j < nfdr; j++)
+		for(uint32_t j = 0; j < nfdr; j++)
 		{
 			ptinfo->remove_fd(m_fds_to_remove->at(j));
 		}
@@ -522,10 +537,12 @@ void sinsp::remove_thread(int64_t tid)
 	m_thread_manager->remove_thread(tid);
 }
 
+#ifdef HAS_ANALYZER
 sinsp_transaction_table *sinsp::get_transactions()
 {
 	return m_trans_table;
 }
+#endif
 
 void sinsp::set_snaplen(uint32_t snaplen)
 {
@@ -580,6 +597,7 @@ void sinsp::set_filter(string filter)
 }
 #endif
 
+#ifdef HAS_ANALYZER
 #ifdef GATHER_INTERNAL_STATS
 sinsp_stats sinsp::get_stats()
 {
@@ -626,7 +644,7 @@ sinsp_stats sinsp::get_stats()
 
 	return m_stats;
 }
-#endif
+#endif // GATHER_INTERNAL_STATS
 
 sinsp_connection* sinsp::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
 {
@@ -676,6 +694,8 @@ void sinsp::set_analyzer_callback(analyzer_callback_interface* cb)
 		m_analyzer->set_sample_callback(cb);
 	}
 }
+
+#endif // HAS_ANALYZER
 
 const scap_machine_info* sinsp::get_machine_info()
 {

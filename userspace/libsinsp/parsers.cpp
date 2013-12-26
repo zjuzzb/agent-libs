@@ -27,7 +27,7 @@ sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
 {
 	m_inspector = inspector;
-	m_rw_listener = NULL;
+	m_fd_listener = NULL;
 }
 
 sinsp_parser::~sinsp_parser()
@@ -275,7 +275,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	{
 		if(etype == PPME_CLONE_X)
 		{
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 			m_inspector->m_thread_manager->m_failed_lookups->decrement();
 #endif
 		}
@@ -429,15 +429,15 @@ void sinsp_parser::store_event(sinsp_evt *evt)
 		// we won't be able to parse the correspoding exit event and we'll have
 		// to drop the information it carries.
 		//
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_inspector->m_stats.m_n_store_drops++;
-#endif
+#endif // HAS_ANALYZER
 		return;
 	}
 
 	evt->m_tinfo->store_event(evt);
 
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 	m_inspector->m_stats.m_n_stored_evts++;
 #endif
 }
@@ -461,7 +461,7 @@ bool sinsp_parser::retrieve_enter_event(sinsp_evt *enter_evt, sinsp_evt *exit_ev
 		// This happen especially at the beginning of trace files, where events
 		// can be truncated
 		//
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_inspector->m_stats.m_n_retrieve_drops++;
 #endif
 		return false;
@@ -477,13 +477,13 @@ bool sinsp_parser::retrieve_enter_event(sinsp_evt *enter_evt, sinsp_evt *exit_ev
 	{
 		ASSERT(false);
 		exit_evt->m_tinfo->set_lastevent_data_validity(false);
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_inspector->m_stats.m_n_retrieve_drops++;
 #endif
 		return false;
 	}
 
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 	m_inspector->m_stats.m_n_retrieved_evts++;
 #endif
 	return true;
@@ -970,7 +970,7 @@ inline void sinsp_parser::add_socket(sinsp_evt *evt, int64_t fd, uint32_t domain
 
 	if(domain == PPM_AF_UNIX)
 	{
-		fdi.set_type_unix_socket();
+		fdi.m_type = SCAP_FD_UNIX_SOCK;
 	}
 	else if(domain == PPM_AF_INET || domain == PPM_AF_INET6)
 	{
@@ -1102,11 +1102,6 @@ void sinsp_parser::parse_bind_exit(sinsp_evt *evt)
 	}
 
 	//
-	// Mark this fd as a server
-	//
-//	evt->m_fdinfo->set_role_server();
-
-	//
 	// Upfate the name of this socket
 	//
 	evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
@@ -1115,7 +1110,6 @@ void sinsp_parser::parse_bind_exit(sinsp_evt *evt)
 void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
-	int64_t tid = evt->get_tid();
 	uint8_t *packed_data;
 	uint8_t family;
 	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
@@ -1184,95 +1178,33 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		}
 
 		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
-		//
-		// Mark this fd as a transaction
-		//
-		evt->m_fdinfo->set_is_transaction();
-
-		//
 		// This should happen only in case of a bug in our code, because I'm assuming that the OS
 		// causes a connect with the wrong socket type to fail.
 		// Assert in debug mode and just keep going in release mode.
 		//
 		ASSERT(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK);
 
-		//
-		// Lookup the connection
-		//
-		sinsp_connection* conn = m_inspector->m_ipv4_connections->get_connection(
-			evt->m_fdinfo->m_info.m_ipv4info,
-			evt->get_ts());
-
-		//
-		// If a connection for this tuple is already there, drop it and replace it with a new one.
-		// Note that remove_connection just decreases the connection reference counter, since connections
-		// are destroyed by the analyzer at the end of the sample.
-		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
-		// the previous one.
-		//
-		if(conn)
-		{
-			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-				conn->reset();
-				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
-				conn->m_refcount = 1;
-			}
-
-			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
-		}
-
+#ifndef HAS_ANALYZER
 		//
 		// Update the FD with this tuple
 		//
 		if(family == PPM_AF_INET)
 		{
-			set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
+			m_inspector->m_parser->set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
 		}
 		else
 		{
-			set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
 		}
+#endif 
 
 		//
 		// Add the friendly name to the fd info
 		//
-
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
-
-		//
-		// Add the tuple to the connection table
-		//
-		string scomm = evt->m_tinfo->get_comm();
-
-		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts());
 	}
 	else
 	{
-		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
-		//
-		// Mark this fd as a transaction
-		//
-		evt->m_fdinfo->set_is_transaction();
-
 		if(!evt->m_fdinfo->is_unix_socket())
 		{
 			//
@@ -1283,25 +1215,28 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 			ASSERT(false);
 		}
 
-		set_unix_info(evt->m_fdinfo, packed_data);
-
-		string scomm = evt->m_tinfo->get_comm();
-		m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts());
-
+		//
+		// Add the friendly name to the fd info
+		//
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
+
+#ifndef HAS_ANALYZER
+		//
+		// Update the FD with this tuple
+		//
+		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
+#endif
+	}
+
+	if(m_fd_listener)
+	{
+		m_fd_listener->on_connect(evt, packed_data);
 	}
 }
 
 void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
-	int64_t tid = evt->get_tid();
 	int64_t fd;
 	uint8_t* packed_data;
 	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
@@ -1362,18 +1297,6 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 		fdi.m_type = SCAP_FD_IPV4_SOCK;
 		set_ipv4_addresses_and_ports(&fdi, packed_data);
 		fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
-
-		//
-		// Add the tuple to the connection table
-		//
-		string scomm = evt->m_tinfo->get_comm();
-		m_inspector->m_ipv4_connections->add_connection(fdi.m_info.m_ipv4info,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    fd,
-		    false,
-		    evt->get_ts());
 	}
 	else if(*packed_data == PPM_AF_INET6)
 	{
@@ -1390,32 +1313,12 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 
 			set_ipv4_mapped_ipv6_addresses_and_ports(&fdi, packed_data);
 			fdi.m_info.m_ipv4info.m_fields.m_l4proto = SCAP_L4_TCP;
-
-			//
-			// Add the tuple to the connection table
-			//
-			string scomm = evt->m_tinfo->get_comm();
-			m_inspector->m_ipv4_connections->add_connection(fdi.m_info.m_ipv4info,
-				&scomm,
-				evt->m_tinfo->m_pid,
-				tid,
-				fd,
-				false,
-				evt->get_ts());
 		}
 	}
 	else if(*packed_data == PPM_AF_UNIX)
 	{
-		fdi.set_type_unix_socket();
+		fdi.m_type = SCAP_FD_UNIX_SOCK;
 		set_unix_info(&fdi, packed_data);
-		string scomm = evt->m_tinfo->get_comm();
-		m_inspector->m_unix_connections->add_connection(fdi.m_info.m_unixinfo,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    fd,
-		    false,
-		    evt->get_ts());
 	}
 	else
 	{
@@ -1429,15 +1332,10 @@ void sinsp_parser::parse_accept_exit(sinsp_evt *evt)
 	fdi.m_create_time = evt->get_ts();
 	fdi.m_flags = 0;
 
-	//
-	// Mark this fd as a server
-	//
-	fdi.set_role_server();
-
-	//
-	// Mark this fd as a transaction
-	//
-	fdi.set_is_transaction();
+	if(m_fd_listener)
+	{
+		m_fd_listener->on_accept(evt, fd, packed_data, &fdi);
+	}
 
 	//
 	// Add the entry to the table
@@ -1492,69 +1390,9 @@ void sinsp_parser::erase_fd(erase_fd_params* params)
 		params->m_inspector->m_fds_to_remove->push_back(params->m_fd);
 	}
 
-	//
-	// If this fd has an active transaction transaction table, mark it as unititialized
-	//
-	if(params->m_fdinfo->is_transaction())
+	if(m_fd_listener)
 	{
-		sinsp_connection *connection;
-		bool do_remove_transaction = params->m_fdinfo->m_usrstate.is_active();
-
-		if(do_remove_transaction)
-		{
-			if(params->m_fdinfo->is_ipv4_socket())
-			{
-				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_ipv4info, 
-					params->m_ts);
-			}
-			else if(params->m_fdinfo->is_unix_socket())
-			{
-				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_unixinfo, 
-					params->m_ts);
-			}
-			else
-			{
-				ASSERT(false);
-				do_remove_transaction = false;
-			}
-		}
-
-		if(do_remove_transaction)
-		{
-			params->m_fdinfo->m_usrstate.update(params->m_inspector,
-				params->m_tinfo,
-				params->m_fdinfo,
-				connection,
-				params->m_ts, 
-				params->m_ts, 
-				-1,
-				sinsp_partial_transaction::DIR_CLOSE,
-				0);
-		}
-
-		params->m_fdinfo->m_usrstate.mark_inactive();			
-	}
-
-	//
-	// If the fd is in the connection table, schedule the connection for removal
-	//
-	if(params->m_fdinfo->is_ipv4_socket() && 
-		!params->m_fdinfo->has_no_role())
-	{
-#ifdef HAS_ANALYZER
-		params->m_inspector->m_ipv4_connections->remove_connection(params->m_fdinfo->m_info.m_ipv4info, false);
-#else
-		params->m_inspector->m_ipv4_connections->remove_connection(params->m_fdinfo->m_info.m_ipv4info);
-#endif
-	}
-	else if(params->m_fdinfo->is_unix_socket() && 
-		!params->m_fdinfo->has_no_role())
-	{
-#ifdef HAS_ANALYZER
-		params->m_inspector->m_unix_connections->remove_connection(params->m_fdinfo->m_info.m_unixinfo, false);
-#else
-		params->m_inspector->m_unix_connections->remove_connection(params->m_fdinfo->m_info.m_unixinfo);
-#endif
+		m_fd_listener->on_erase_fd(params);
 	}
 }
 
@@ -1621,12 +1459,12 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		// It is normal when a close fails that the fd lookup failed, so we revert the
 		// increment of m_n_failed_fd_lookups (for the enter event too if there's one).
 		//
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_inspector->m_stats.m_n_failed_fd_lookups--;
 #endif
 		if(evt->m_tinfo && evt->m_tinfo->is_lastevent_data_valid())
 		{
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 			m_inspector->m_stats.m_n_failed_fd_lookups--;
 #endif
 		}
@@ -1695,7 +1533,7 @@ void sinsp_parser::parse_socketpair_exit(sinsp_evt *evt)
 	peer_address = *(uint64_t *)parinfo->m_val;
 
 	sinsp_fdinfo_t fdi;
-	fdi.set_type_unix_socket();
+	fdi.m_type = SCAP_FD_UNIX_SOCK;
 	fdi.m_info.m_unixinfo.m_fields.m_source = source_address;
 	fdi.m_info.m_unixinfo.m_fields.m_dest = peer_address;
 	evt->m_tinfo->add_fd(fd1, &fdi);
@@ -1909,9 +1747,9 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 //			handle_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-			if(m_rw_listener)
+			if(m_fd_listener)
 			{
-				m_rw_listener->on_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+				m_fd_listener->on_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 			}
 		}
 		else
@@ -1950,9 +1788,9 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 //			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-			if(m_rw_listener)
+			if(m_fd_listener)
 			{
-				m_rw_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+				m_fd_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 			}
 		}
 	}
@@ -2176,33 +2014,9 @@ void sinsp_parser::parse_shutdown_exit(sinsp_evt *evt)
 			return;
 		}
 
-		//
-		// If this fd has an active transaction, update it and then mark it as unititialized
-		//
-		if(evt->m_fdinfo && evt->m_fdinfo->m_usrstate.is_active())
+		if(m_fd_listener)
 		{
-			sinsp_connection* connection;
-
-			if(evt->m_fdinfo->is_ipv4_socket())
-			{
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
-			}
-			else
-			{
-				connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
-			}
-
-			evt->m_fdinfo->m_usrstate.update(m_inspector,
-				evt->m_tinfo,
-				evt->m_fdinfo,
-				connection,
-				evt->get_ts(), 
-				evt->get_ts(), 
-				evt->get_cpuid(),
-				sinsp_partial_transaction::DIR_CLOSE, 
-				0);
-
-			evt->m_fdinfo->m_usrstate.mark_inactive();
+			m_fd_listener->on_socket_shutdown(evt);
 		}
 	}
 }

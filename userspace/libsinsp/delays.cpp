@@ -3,6 +3,8 @@
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "delays.h"
@@ -374,3 +376,5 @@ void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 
 	return;
 }
+
+#endif // HAS_ANALYZER

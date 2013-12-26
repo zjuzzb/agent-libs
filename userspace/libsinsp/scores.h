@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 #pragma once
 
 class sinsp_sched_analyzer;
@@ -66,3 +68,5 @@ private:
 	uint64_t m_sample_length_ns;
 	uint32_t m_n_intervals_in_sample;
 };
+
+#endif // HAS_ANALYZER

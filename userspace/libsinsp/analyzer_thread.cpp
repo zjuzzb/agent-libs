@@ -5,6 +5,8 @@
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -350,3 +352,5 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 		tinfo->m_ainfo->destroy();
 	}
 }
+
+#endif // HAS_ANALYZER

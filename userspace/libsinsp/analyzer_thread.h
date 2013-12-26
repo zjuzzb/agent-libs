@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 #pragma once
 
 //
@@ -161,3 +163,5 @@ private:
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
 };
+
+#endif // HAS_ANALYZER

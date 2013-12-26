@@ -7,6 +7,7 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
+#ifdef HAS_ANALYZER
 #include "connectinfo.h"
 #include "analyzer.h"
 #include "analyzer_thread.h"
@@ -535,3 +536,5 @@ void sinsp_partial_transaction::mark_inactive()
 {
 	m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
 }
+
+#endif

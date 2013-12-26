@@ -99,12 +99,16 @@ public:
 // Prototype of the callback invoked by the thread table when a thread is 
 // created or destroyed
 //
-class sinsp_rw_listener
+class sinsp_fd_listener
 {
 public:
-	virtual ~sinsp_rw_listener()
+	virtual ~sinsp_fd_listener()
 	{
 	}
 	virtual void on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len) = 0;
 	virtual void on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len) = 0;
+	virtual void on_connect(sinsp_evt *evt, uint8_t* packed_data) = 0;
+	virtual void on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo) = 0;
+	virtual void on_erase_fd(erase_fd_params* params) = 0;
+	virtual void on_socket_shutdown(sinsp_evt *evt) = 0;
 };
