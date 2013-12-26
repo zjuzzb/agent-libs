@@ -1,5 +1,7 @@
 #pragma once
 
+#include "draios.pb.h"
+
 #include "main.h"
 #include "blocking_queue.h"
 #include "configuration.h"
@@ -18,13 +20,40 @@ public:
 
 	void run()
 	{
-		g_log->information("Running dumper for " + NumberFormatter::format(m_duration_ms) + " ms");
+		g_log->information(m_name + ": Starting");
+
+		g_log->information(m_name + ": Running for " + NumberFormatter::format(m_duration_ms) + " ms");
 		dragent_configuration::m_dump_enabled = true;
-		Thread::sleep(m_duration_ms);
-		dragent_configuration::m_dump_enabled = false;
-		m_configuration->m_dump_completed.wait();
-		g_log->information("Capture completed, sending file");
-		send_file();
+
+		while(m_duration_ms && !dragent_configuration::m_terminate)
+		{
+			uint64_t sleep_time_ms;
+
+			if(m_duration_ms > 1000)
+			{
+				sleep_time_ms = 1000;
+			}
+			else
+			{
+				sleep_time_ms = m_duration_ms;
+			}
+
+			Thread::sleep(sleep_time_ms);
+			m_duration_ms -= sleep_time_ms;
+		}
+
+		if(!dragent_configuration::m_terminate)
+		{
+			dragent_configuration::m_dump_enabled = false;
+			m_configuration->m_dump_completed.wait();
+
+			g_log->information(m_name + ": Capture completed, sending file");
+
+			send_file();
+		}
+		
+		g_log->information(m_name + ": Terminating");
+
 		delete this;
 	}
 
@@ -35,7 +64,7 @@ public:
 
 		uint32_t nread = StreamCopier::copyToString(file, sfile);
 		
-		g_log->information("File size: " + NumberFormatter::format(nread));
+		g_log->information(m_name + ": File size: " + NumberFormatter::format(nread));
 
 		draiosproto::dump_response response;
 
@@ -50,6 +79,8 @@ public:
 	}
 
 private:
+	static const string m_name;
+
 	dragent_queue* m_queue;
 	dragent_configuration* m_configuration;
 	uint64_t m_duration_ms;

@@ -8,7 +8,6 @@ class dragent_sender : public Runnable
 {
 public:
 	dragent_sender(dragent_queue* queue, connection_manager* connection_manager):
-		m_stop(false),
 		m_queue(queue),
 		m_connection_manager(connection_manager)
 	{
@@ -18,7 +17,7 @@ public:
 	{
 		g_log->information(m_name + ": Starting");
 
-		while(!m_stop)
+		while(!dragent_configuration::m_terminate)
 		{
 			SharedPtr<dragent_queue_item> item;
 
@@ -31,7 +30,7 @@ public:
 				continue;
 			}
 
-			while(!m_stop)
+			while(!dragent_configuration::m_terminate)
 			{
 				if(transmit_buffer(item->data(), item->size()))
 				{
@@ -111,8 +110,6 @@ public:
 
 		return false;
 	}
-
-	bool m_stop;
 
 private:
 	static const string m_name;

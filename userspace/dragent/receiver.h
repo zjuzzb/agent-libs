@@ -11,7 +11,6 @@ class dragent_receiver : public Runnable
 {
 public:
 	dragent_receiver(dragent_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
-		m_stop(false),
 		m_queue(queue),
 		m_configuration(configuration),
 		m_connection_manager(connection_manager)
@@ -22,7 +21,7 @@ public:
 	{
 		g_log->information(m_name + ": Starting");
 
-		while(!m_stop)
+		while(!dragent_configuration::m_terminate)
 		{
 			uint32_t size;
 
@@ -81,8 +80,6 @@ public:
 
 		g_log->information(m_name + ": Terminating");
 	}
-
-	bool m_stop;
 
 private:
 	void handle_dump_request(uint8_t* buf, uint32_t size)

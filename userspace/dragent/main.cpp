@@ -710,9 +710,6 @@ protected:
 			exit_code = Application::EXIT_SOFTWARE;
 		}
 
-		m_sender.m_stop = true;
-		m_receiver.m_stop = true;
-
 		ThreadPool::defaultPool().joinAll();
 
 		g_log->information("Terminating");
