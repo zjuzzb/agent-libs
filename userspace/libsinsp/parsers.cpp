@@ -1115,7 +1115,6 @@ void sinsp_parser::parse_bind_exit(sinsp_evt *evt)
 void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 {
 	sinsp_evt_param *parinfo;
-	int64_t tid = evt->get_tid();
 	uint8_t *packed_data;
 	uint8_t family;
 	unordered_map<int64_t, sinsp_fdinfo_t>::iterator fdit;
