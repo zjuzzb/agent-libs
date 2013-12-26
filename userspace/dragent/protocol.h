@@ -62,15 +62,28 @@ public:
 		{
 	        google::protobuf::io::GzipOutputStream gzip_output(&string_output);
 	        bool res = message.SerializeToZeroCopyStream(&gzip_output);
-	        ASSERT(res);
+	        if(!res)
+	        {
+		        ASSERT(false);
+		        g_log->error("Error serializing buffer (1)");	        	
+	        }
+
 	        res = gzip_output.Close();
-	        ASSERT(res);
+	        if(!res)
+	        {
+		        ASSERT(false);
+		        g_log->error("Error serializing buffer (2)");	        	
+	        }
 		}
 		else
 		{
 			google::protobuf::io::StringOutputStream string_output(ptr);
 			bool res = message.SerializeToZeroCopyStream(&string_output);
-			ASSERT(res);
+	        if(!res)
+	        {
+		        ASSERT(false);
+		        g_log->error("Error serializing buffer (3)");	        	
+	        }
 		}
 
 		//

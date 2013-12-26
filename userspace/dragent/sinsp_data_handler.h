@@ -14,9 +14,20 @@ public:
 
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 	{
-		SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(dragent_protocol::PROTOCOL_MESSAGE_TYPE_METRICS, *metrics, m_configuration->m_compression_enabled);
+		SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(
+			dragent_protocol::PROTOCOL_MESSAGE_TYPE_METRICS, 
+			*metrics, 
+			m_configuration->m_compression_enabled);
 
-		g_log->information("serialization info: ts=%" + NumberFormatter::format(ts_ns / 1000000000) + ", len=%" + NumberFormatter::format(buffer->size()));
+		if(buffer.isNull())
+		{
+			g_log->error("NULL converting message to buffer");
+			return;
+		}
+
+		g_log->information("serialization info: ts=" 
+			+ NumberFormatter::format(ts_ns / 1000000000) 
+			+ ", len=" + NumberFormatter::format(buffer->size()));
 
 		if(!m_queue->put(buffer))
 		{
