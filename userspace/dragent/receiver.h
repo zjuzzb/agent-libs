@@ -20,7 +20,9 @@ public:
 
 	void run()
 	{
-		while (!m_stop)
+		g_log->information(m_name + ": Starting");
+
+		while(!m_stop)
 		{
 			uint32_t size;
 
@@ -46,10 +48,10 @@ public:
 
 					if(m_buf[0] != dragent_protocol::PROTOCOL_VERSION_NUMBER)
 					{
-						g_log->error("Received command for incompatible version protocol " + NumberFormatter::format(m_buf[0]));
+						g_log->error(m_name + ": Received command for incompatible version protocol " + NumberFormatter::format(m_buf[0]));
 					}
 
-					g_log->information("Received command " + NumberFormatter::format(m_buf[1]));
+					g_log->information(m_name + ": Received command " + NumberFormatter::format(m_buf[1]));
 
 					switch(m_buf[1])
 					{
@@ -70,12 +72,16 @@ public:
 			catch(Poco::IOException& e)
 			{
 				g_log->error(e.displayText());
-				g_log->error("Receiver thread lost connection");
+				g_log->error(m_name + ": Receiver thread lost connection");
+			}
+			catch(Poco::TimeoutException& e)
+			{
 			}
 		}
+
+		g_log->information(m_name + ": Terminating");
 	}
 
-	Thread m_thread;
 	bool m_stop;
 
 private:
@@ -88,19 +94,14 @@ private:
 		bool res = request.ParseFromZeroCopyStream(&gzstream);
 		ASSERT(res);
 
-		// uint64_t timestamp_ns = request.timestamp_ns();
-		// string machine_id = request.machine_id();
 		uint64_t duration_ns = request.duration_ns();
-
-		// g_log->information("timestamp_ns " + NumberFormatter::format(timestamp_ns) +
-		// 					" machine_id " + machine_id +
-		// 					" duration_ns " + NumberFormatter::format(duration_ns));
 
 		dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns);
 		ThreadPool::defaultPool().start(*worker, "dumper_worker");
 	}
 
 	static const uint32_t RECEIVER_BUFSIZE = 1024;
+	static const string m_name;
 
 	uint8_t m_buf[RECEIVER_BUFSIZE];
 	dragent_queue* m_queue;

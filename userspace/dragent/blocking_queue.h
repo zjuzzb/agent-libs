@@ -24,7 +24,7 @@ public:
 
 	T get()
 	{
-		m_semaphore.wait();
+		m_semaphore.wait(1000);
 
 		{
 			Mutex::ScopedLock lock(m_mutex);

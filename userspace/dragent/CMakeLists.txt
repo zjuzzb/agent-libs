@@ -9,7 +9,9 @@ add_executable(dragent
 	configuration.cpp 
 	connection_manager.cpp
 	error_handler.cpp
-	main.cpp)
+	main.cpp
+	receiver.cpp
+	sender.cpp)
 
 target_link_libraries(dragent
 	pthread

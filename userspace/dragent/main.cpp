@@ -237,7 +237,11 @@ public:
 class dragent_app: public Poco::Util::ServerApplication
 {
 public:
-	dragent_app(): m_help_requested(false)
+	dragent_app(): 
+		m_help_requested(false),
+		m_sinsp_handler(&m_queue, &m_configuration),
+		m_sender(&m_queue, &m_connection_manager),
+		m_receiver(&m_queue, &m_configuration, &m_connection_manager)
 	{
 		m_evtcnt = 0;
 
@@ -496,8 +500,7 @@ protected:
 		}
 #endif
 
-		dragent_error_handler error_handler;
-		Poco::ErrorHandler::set(&error_handler);
+		Poco::ErrorHandler::set(&m_error_handler);
 
 		m_configuration.init(this);
 
@@ -542,12 +545,6 @@ protected:
 
 		m_configuration.print_configuration();
 
-		connection_manager m_connection_manager;
-		dragent_queue queue;
-		sinsp_data_handler sinsp_handler(&queue, &m_configuration);
-		dragent_sender sender_thread(&queue, &m_connection_manager);
-		dragent_receiver receiver_thread(&queue, &m_configuration, &m_connection_manager);
-
 #if 0
 		if(m_configuration.m_daemon)
 		{
@@ -583,6 +580,8 @@ protected:
 		}
 #endif
 
+		ExitCode exit_code;
+
 		//
 		// From now on we can get exceptions
 		//
@@ -595,13 +594,13 @@ protected:
 			//
 			m_connection_manager.init(&m_configuration);
 
-			sender_thread.m_thread.start(sender_thread);
-			receiver_thread.m_thread.start(receiver_thread);
+			ThreadPool::defaultPool().start(m_sender, "sender");
+			ThreadPool::defaultPool().start(m_receiver, "receiver");
 
 			//
 			// Attach our transmit callback to the analyzer
 			//
-			m_inspector.set_analyzer_callback(&sinsp_handler);
+			m_inspector.set_analyzer_callback(&m_sinsp_handler);
 
 			//
 			// Plug the sinsp logger into our one
@@ -683,33 +682,41 @@ protected:
 			// Start consuming the captured events
 			//
 			do_inspect();
+
+			if(dragent_error_handler::m_exception)
+			{
+				g_log->error("Application::EXIT_SOFTWARE\n");
+				exit_code = Application::EXIT_SOFTWARE;
+			}
+			else
+			{
+				g_log->information("Application::EXIT_OK\n");
+				exit_code = Application::EXIT_OK;
+			}
 		}
 		catch(sinsp_exception& e)
 		{
 			g_log->error(e.what());
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 		catch(Poco::Exception& e)
 		{
 			g_log->error(e.displayText());
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 		catch(...)
 		{
 			g_log->error("Application::EXIT_SOFTWARE\n");
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 
-		if(dragent_error_handler::m_exception)
-		{
-			g_log->error("Application::EXIT_SOFTWARE\n");
-			return Application::EXIT_SOFTWARE;
-		}
-		else
-		{
-			g_log->information("Application::EXIT_OK\n");
-			return Application::EXIT_OK;
-		}
+		m_sender.m_stop = true;
+		m_receiver.m_stop = true;
+
+		ThreadPool::defaultPool().joinAll();
+
+		g_log->information("Terminating");
+		return exit_code;
 	}
 	
 private:
@@ -720,6 +727,12 @@ private:
 	string m_writefile;
 	string m_pidfile;
 	dragent_configuration m_configuration;
+	dragent_error_handler m_error_handler;
+	connection_manager m_connection_manager;
+	dragent_queue m_queue;
+	sinsp_data_handler m_sinsp_handler;
+	dragent_sender m_sender;
+	dragent_receiver m_receiver;
 };
 
 

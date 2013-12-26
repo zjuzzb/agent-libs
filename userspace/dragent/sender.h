@@ -2,6 +2,7 @@
 
 #include "main.h"
 #include "protocol.h"
+#include "connection_manager.h"
 
 class dragent_sender : public Runnable
 {
@@ -15,9 +16,20 @@ public:
 
 	void run()
 	{
+		g_log->information(m_name + ": Starting");
+
 		while(!m_stop)
 		{
-			SharedPtr<dragent_queue_item> item = m_queue->get();
+			SharedPtr<dragent_queue_item> item;
+
+			try
+			{
+				item = m_queue->get();
+			}
+			catch(Poco::TimeoutException& e)
+			{
+				continue;
+			}
 
 			while(!m_stop)
 			{
@@ -29,6 +41,8 @@ public:
 				Thread::sleep(1000);
 			}
 		}
+
+		g_log->information(m_name + ": Terminating");
 	}
 
 	bool transmit_buffer(const char* buffer, uint32_t buflen)
@@ -63,36 +77,46 @@ public:
 
 			if(socket == NULL)
 			{
-				g_log->information("Connecting to collector...");
+				g_log->information(m_name + ": Connecting to collector...");
 				m_connection_manager->connect();
 				socket = m_connection_manager->get_socket();
 			}
 
 			int32_t res = socket->sendBytes(buffer, buflen);
 			ASSERT(res == (int32_t) buflen);
+			if(res != (int32_t) buflen)
+			{
+				g_log->error(m_name + ": sendBytes sent just " + NumberFormatter::format(res) + ", expected " + NumberFormatter::format(buflen));	
+				m_connection_manager->close();
+				return false;
+			}
 
-			g_log->information("Sent " + Poco::NumberFormatter::format(buflen) + " to collector");
+			g_log->information(m_name + ": Sent " + Poco::NumberFormatter::format(buflen) + " to collector");
 
 			return true;
 		}
 		catch(Poco::IOException& e)
 		{
-			g_log->error(e.displayText());
+			g_log->error(m_name + ": " + e.displayText());
 			
 			if(socket != NULL)
 			{
-				g_log->error("Sender thread lost connection");
+				g_log->error(m_name + ": Lost connection");
 				m_connection_manager->close();
 			}
+		}
+		catch(Poco::TimeoutException& e)
+		{
 		}
 
 		return false;
 	}
 
-	Thread m_thread;
 	bool m_stop;
 
 private:
+	static const string m_name;
+
 	dragent_queue* m_queue;
 	connection_manager* m_connection_manager;
 };

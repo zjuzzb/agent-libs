@@ -1,5 +1,11 @@
 #pragma once
 
+#include "main.h"
+#include "blocking_queue.h"
+#include "configuration.h"
+#include "protocol.h"
+#include "connection_manager.h"
+
 class dumper_worker : public Runnable
 {
 public:

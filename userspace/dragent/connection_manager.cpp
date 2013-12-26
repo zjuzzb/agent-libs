@@ -106,6 +106,8 @@ void connection_manager::connect()
 	// Set the send buffer size for the socket
 	//
 	m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
+	m_socket->setSendTimeout(1000000);
+	m_socket->setReceiveTimeout(1000000);
 
 	g_log->information("Connected to collector");
 }

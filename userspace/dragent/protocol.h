@@ -1,6 +1,7 @@
 #pragma once
 
 #include "main.h"
+#include "blocking_queue.h"
 
 #include <google/protobuf/message_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
@@ -17,7 +18,7 @@ struct dragent_protocol_header
 	uint32_t m_sample_len; // length of the whole sample, including this header
 	uint8_t m_version; // protocol version
 	uint8_t m_messagetype;
-} sinsp_sample_header;
+};
 #pragma pack(pop)
 
 class dragent_protocol
