@@ -282,6 +282,10 @@ public:
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
 
+#ifdef HAS_ANALYZER
+	sinsp_transaction_table* get_transactions();
+#endif
+
 VISIBILITY_PRIVATE
 
 	void init();
@@ -330,7 +334,6 @@ VISIBILITY_PRIVATE
 	sinsp_unix_connection_manager* m_unix_connections;
 	sinsp_pipe_connection_manager* m_pipe_connections;
 	analyzer_callback_interface* m_analyzer_callback;
-	sinsp_transaction_table* get_transactions();
 #endif 
 
 #ifdef HAS_FILTERING
