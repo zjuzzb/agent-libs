@@ -24,12 +24,23 @@ public:
 
 	void send_file()
 	{
+		FileInputStream file(m_configuration->m_dump_file);
+		string sfile;
+
+		uint32_t nread = StreamCopier::copyToString(file, sfile);
+		
+		g_log->information("File size: " + NumberFormatter::format(nread));
+
 		draiosproto::dump_response response;
 
 		response.set_timestamp_ns(1234);
 		response.set_customer_id(m_configuration->m_customer_id);
 		response.set_machine_id(m_configuration->m_machine_id);
-		response.set_content("THIS IS THE FILE CONTENT");
+		response.set_content(sfile);
+
+		SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE, response, m_configuration->m_compression_enabled);
+
+		m_queue->put(buffer);
 	}
 
 private:

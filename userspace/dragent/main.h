@@ -62,6 +62,8 @@
 #include "Poco/ThreadPool.h"
 #include "Poco/Event.h"
 #include "Poco/Buffer.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/FileStream.h"
 
 #include <sinsp.h>
 
@@ -103,6 +105,8 @@ using Poco::SharedPtr;
 using Poco::ThreadPool;
 using Poco::Event;
 using Poco::Buffer;
+using Poco::StreamCopier;
+using Poco::FileInputStream;
 
 #ifdef _DEBUG
 #define ASSERT(X) \

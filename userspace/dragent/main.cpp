@@ -544,7 +544,7 @@ protected:
 
 		connection_manager m_connection_manager;
 		dragent_queue queue;
-		sinsp_data_handler sinsp_handler(&queue);
+		sinsp_data_handler sinsp_handler(&queue, &m_configuration);
 		dragent_sender sender_thread(&queue, &m_connection_manager);
 		dragent_receiver receiver_thread(&queue, &m_configuration, &m_connection_manager);
 

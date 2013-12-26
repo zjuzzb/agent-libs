@@ -34,7 +34,7 @@ public:
 		// Find out how many bytes we need for the serialization
 		//
 		uint32_t tlen = message.ByteSize();
-		
+
 	    //
 	    // We allocate 4 additional bytes for the buffer lenght
 	    //
@@ -49,39 +49,33 @@ public:
             return NULL;
         }
 
-        SharedPtr<dragent_queue_item> ptr(new dragent_queue_item(full_len));
+        SharedPtr<dragent_queue_item> ptr(new dragent_queue_item());
+        ptr->resize(sizeof(dragent_protocol_header));
+
+        google::protobuf::io::StringOutputStream string_output(ptr);
 
 		//
 		// Do the serialization
 		//
 		if(compressed)
 		{
-	        google::protobuf::io::ArrayOutputStream array_output(ptr->begin() + sizeof(dragent_protocol_header), tlen);
-	        google::protobuf::io::GzipOutputStream gzip_output(&array_output);
-
-	        message.SerializeToZeroCopyStream(&gzip_output);
-	        gzip_output.Close();
-
-	        uint32_t compressed_size = (uint32_t)array_output.ByteCount();
-	        if(compressed_size > tlen)
-	        {
-	            ASSERT(false);
-	            g_log->error("Unexpected serialization buffer size");
-	            return NULL;
-	        }
-
-	        ptr->resize(compressed_size + sizeof(dragent_protocol_header));
+	        google::protobuf::io::GzipOutputStream gzip_output(&string_output);
+	        bool res = message.SerializeToZeroCopyStream(&gzip_output);
+	        ASSERT(res);
+	        res = gzip_output.Close();
+	        ASSERT(res);
 		}
 		else
 		{
-			google::protobuf::io::ArrayOutputStream array_output(ptr->begin() + sizeof(dragent_protocol_header), tlen);
-			message.SerializeToZeroCopyStream(&array_output);
+			google::protobuf::io::StringOutputStream string_output(ptr);
+			bool res = message.SerializeToZeroCopyStream(&string_output);
+			ASSERT(res);
 		}
 
 		//
 		// Fill the protocol header part
 		//
-		dragent_protocol_header* hdr = (dragent_protocol_header*) ptr->begin();
+		dragent_protocol_header* hdr = (dragent_protocol_header*) ptr->data();
 		hdr->m_sample_len = htonl(ptr->size());
 		hdr->m_version = PROTOCOL_VERSION_NUMBER;
 		hdr->m_messagetype = message_type;

@@ -21,7 +21,7 @@ public:
 
 			while(!m_stop)
 			{
-				if(transmit_buffer(item->begin(), item->size()))
+				if(transmit_buffer(item->data(), item->size()))
 				{
 					break;
 				}
@@ -31,7 +31,7 @@ public:
 		}
 	}
 
-	bool transmit_buffer(unsigned char* buffer, uint32_t buflen)
+	bool transmit_buffer(const char* buffer, uint32_t buflen)
 	{
 		//
 		// Do a fake read to make sure openssl reads the stream from

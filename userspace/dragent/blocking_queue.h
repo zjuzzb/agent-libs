@@ -43,5 +43,5 @@ private:
 	Semaphore m_semaphore;
 };
 
-typedef Buffer<uint8_t> dragent_queue_item;
+typedef string dragent_queue_item;
 typedef blocking_queue<SharedPtr<dragent_queue_item>> dragent_queue;
