@@ -239,6 +239,7 @@ class dragent_app: public Poco::Util::ServerApplication
 public:
 	dragent_app(): 
 		m_help_requested(false),
+		m_connection_manager(&m_configuration),
 		m_sinsp_handler(&m_queue, &m_configuration),
 		m_sender(&m_queue, &m_connection_manager),
 		m_receiver(&m_queue, &m_configuration, &m_connection_manager)
@@ -592,7 +593,7 @@ protected:
 			//
 			// Connect to the server
 			//
-			m_connection_manager.init(&m_configuration);
+			m_connection_manager.init();
 
 			ThreadPool::defaultPool().start(m_sender, "sender");
 			ThreadPool::defaultPool().start(m_receiver, "receiver");

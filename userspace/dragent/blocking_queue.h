@@ -12,14 +12,21 @@ public:
 	{
 	}
 
-	void put(T item)
+	bool put(T item)
 	{
 		{
 			Mutex::ScopedLock lock(m_mutex);
+
+			if(m_queue.size() == BLOCKING_SIZE)
+			{
+				return false;
+			}
+
 			m_queue.push(item);
 		}
 
 		m_semaphore.set();
+		return true;
 	}
 
 	T get()

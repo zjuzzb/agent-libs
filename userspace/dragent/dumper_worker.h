@@ -51,7 +51,7 @@ public:
 
 			send_file();
 		}
-		
+
 		g_log->information(m_name + ": Terminating");
 
 		delete this;
@@ -75,7 +75,11 @@ public:
 
 		SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE, response, m_configuration->m_compression_enabled);
 
-		m_queue->put(buffer);
+		while(!m_queue->put(buffer) && !dragent_configuration::m_terminate)
+		{
+			g_log->error(m_name + ": Queue full, waiting");
+			Thread::sleep(1000);
+		}
 	}
 
 private:

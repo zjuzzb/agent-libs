@@ -6,10 +6,10 @@
 class connection_manager
 {
 public:
-	connection_manager();
+	connection_manager(dragent_configuration* configuration);
 	~connection_manager();
 
-	void init(dragent_configuration* configuration);
+	void init();
 	StreamSocket* get_socket();
 	void connect();
 	void close();

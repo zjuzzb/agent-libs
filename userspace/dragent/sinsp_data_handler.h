@@ -18,7 +18,10 @@ public:
 
 		g_log->information("serialization info: ts=%" + NumberFormatter::format(ts_ns / 1000000000) + ", len=%" + NumberFormatter::format(buffer->size()));
 
-		m_queue->put(buffer);
+		if(!m_queue->put(buffer))
+		{
+			g_log->error("Queue full, discarding sample");
+		}
 	}
 
 private:

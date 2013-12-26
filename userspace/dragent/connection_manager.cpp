@@ -22,9 +22,10 @@ static void g_ssl_callback(int write_p, int version, int content_type, const voi
 	}
 }
 
-connection_manager::connection_manager() :
+connection_manager::connection_manager(dragent_configuration* configuration) :
 	m_sa(NULL),
-	m_socket(NULL)
+	m_socket(NULL),
+	m_configuration(configuration)
 {
 	Poco::Net::initializeSSL();	
 }
@@ -52,10 +53,8 @@ StreamSocket* connection_manager::get_socket()
 	return m_socket;
 }
 
-void connection_manager::init(dragent_configuration* configuration)
+void connection_manager::init()
 {
-	m_configuration = configuration;
-
 	if(m_configuration->m_server_addr != "" && m_configuration->m_server_port != 0)
 	{
 		m_sa = new Poco::Net::SocketAddress(m_configuration->m_server_addr, m_configuration->m_server_port);
