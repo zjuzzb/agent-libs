@@ -554,9 +554,11 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t family, uint8_t* packed_data)
+void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
 {
 	int64_t tid = evt->get_tid();
+
+	uint8_t family = *packed_data;
 
 	if(family == PPM_AF_INET || family == PPM_AF_INET6)
 	{
@@ -650,8 +652,143 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t family, uint
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt)
+void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
 {
+	string scomm = evt->m_tinfo->get_comm();
+	int64_t tid = evt->get_tid();
+
+	if(new_fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+	{
+		//
+		// Add the tuple to the connection table
+		//
+		m_inspector->m_ipv4_connections->add_connection(new_fdinfo->m_info.m_ipv4info,
+			&scomm,
+			evt->m_tinfo->m_pid,
+		    tid,
+		    newfd,
+		    false,
+		    evt->get_ts());
+	}
+	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+	{
+		m_inspector->m_unix_connections->add_connection(new_fdinfo->m_info.m_unixinfo,
+			&scomm,
+			evt->m_tinfo->m_pid,
+		    tid,
+		    newfd,
+		    false,
+		    evt->get_ts());
+	}
+	else
+	{
+		//
+		// This should be checked by parse_accept_exit()
+		//
+		ASSERT(false);
+	}
+
+	//
+	// Mark this fd as a server
+	//
+	new_fdinfo->set_role_server();
+
+	//
+	// Mark this fd as a transaction
+	//
+	new_fdinfo->set_is_transaction();
+}
+
+void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
+{
+	//
+	// If this fd has an active transaction transaction table, mark it as unititialized
+	//
+	if(params->m_fdinfo->is_transaction())
+	{
+		sinsp_connection *connection;
+		bool do_remove_transaction = params->m_fdinfo->m_usrstate.is_active();
+
+		if(do_remove_transaction)
+		{
+			if(params->m_fdinfo->is_ipv4_socket())
+			{
+				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_ipv4info, 
+					params->m_ts);
+			}
+			else if(params->m_fdinfo->is_unix_socket())
+			{
+				connection = params->m_inspector->get_connection(params->m_fdinfo->m_info.m_unixinfo, 
+					params->m_ts);
+			}
+			else
+			{
+				ASSERT(false);
+				do_remove_transaction = false;
+			}
+		}
+
+		if(do_remove_transaction)
+		{
+			params->m_fdinfo->m_usrstate.update(params->m_inspector,
+				params->m_tinfo,
+				params->m_fdinfo,
+				connection,
+				params->m_ts, 
+				params->m_ts, 
+				-1,
+				sinsp_partial_transaction::DIR_CLOSE,
+				0);
+		}
+
+		params->m_fdinfo->m_usrstate.mark_inactive();			
+	}
+
+	//
+	// If the fd is in the connection table, schedule the connection for removal
+	//
+	if(params->m_fdinfo->is_ipv4_socket() && 
+		!params->m_fdinfo->has_no_role())
+	{
+		params->m_inspector->m_ipv4_connections->remove_connection(params->m_fdinfo->m_info.m_ipv4info, false);
+	}
+	else if(params->m_fdinfo->is_unix_socket() && 
+		!params->m_fdinfo->has_no_role())
+	{
+		params->m_inspector->m_unix_connections->remove_connection(params->m_fdinfo->m_info.m_unixinfo, false);
+	}
+}
+
+void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
+{
+	//
+	// If this fd has an active transaction, update it and then mark it as unititialized
+	//
+	if(evt->m_fdinfo->m_usrstate.is_active())
+	{
+		sinsp_connection* connection;
+
+		if(evt->m_fdinfo->is_ipv4_socket())
+		{
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_ipv4info, evt->get_ts());
+		}
+		else
+		{
+			connection = m_inspector->get_connection(evt->m_fdinfo->m_info.m_unixinfo, evt->get_ts());
+		}
+
+		evt->m_fdinfo->m_usrstate.update(m_inspector,
+			evt->m_tinfo,
+			evt->m_fdinfo,
+			connection,
+			evt->get_ts(), 
+			evt->get_ts(), 
+			evt->get_cpuid(),
+			sinsp_partial_transaction::DIR_CLOSE, 
+			0);
+
+		evt->m_fdinfo->m_usrstate.mark_inactive();
+	}
 }
 
 #endif // HAS_ANALYZER

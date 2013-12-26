@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef HAS_ANALYZER
+
 //
 // Connection information class
 //
@@ -339,3 +341,5 @@ public:
 		m_last_connection_removal_ts = 0;
 	}
 }; 
+
+#endif // HAS_ANALYZER

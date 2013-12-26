@@ -2,6 +2,8 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 
+#ifdef HAS_ANALYZER
+
 sinsp_connection::sinsp_connection()
 {
 	m_timestamp = 0;
@@ -57,3 +59,5 @@ bool sinsp_connection::is_active()
 
 	return (totops != 0);
 }
+
+#endif // HAS_ANALYZER

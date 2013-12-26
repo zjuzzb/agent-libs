@@ -135,11 +135,6 @@ public:
 		return (m_flags & FLAGS_IS_SOCKET_PIPE) == FLAGS_IS_SOCKET_PIPE; 
 	}
 
-	void set_type_unix_socket()
-	{
-		m_type = SCAP_FD_UNIX_SOCK;
-	}
-
 	bool has_no_role()
 	{
 		return !is_role_client() && !is_role_server();

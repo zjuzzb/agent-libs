@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
+#include "../../settings.h"
 #include <iostream>
 #include <time.h>
 #include <signal.h>
@@ -71,6 +72,7 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 }
 */
 
+#ifdef HAS_ANALYZER
 class sample_collector: public analyzer_callback_interface
 {
 public:
@@ -86,6 +88,8 @@ public:
 };
 
 sample_collector g_sample_collector;
+
+#endif // HAS_ANALYZER
 
 //
 // Event processing loop
@@ -163,12 +167,14 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		// Emit stats if needed
 		//
+#ifdef HAS_ANALYZER
 		if(statistics && ((ts - last_stat_ts) > emit_stats_every_x_sec * ONE_SECOND_IN_NS))
 		{
 			printf("\n\n*************************************************");
 			inspector->get_stats().emit(stderr);
 			last_stat_ts = ts;
 		}
+#endif
 
 		//
 		// When the quiet flag is specified, we don't do any kind of processing other
@@ -492,7 +498,9 @@ int main(int argc, char **argv)
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
 			
+#ifdef HAS_ANALYZER
 			inspector.set_analyzer_callback(&g_sample_collector);
+#endif
 
 			cinfo = do_inspect(&inspector, 
 				cnt, 
@@ -555,10 +563,12 @@ int main(int argc, char **argv)
 			cinfo.m_time % 1000000000,
 			(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
 
+#ifdef HAS_ANALYZER
 		if(get_stats)
 		{
 			inspector.get_stats().emit(stderr);
 		}
+#endif
 	}
 
 #ifdef _WIN32

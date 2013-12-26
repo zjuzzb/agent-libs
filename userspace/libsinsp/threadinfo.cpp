@@ -815,7 +815,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 				ASSERT(eparams.m_fd != CANCELED_FD_NUMBER);
 				eparams.m_fdinfo = &(fdit->second);
 
-				sinsp_parser::erase_fd(&eparams);
+				m_inspector->m_parser->erase_fd(&eparams);
 			}
 		}
 

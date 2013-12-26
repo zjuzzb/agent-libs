@@ -15,7 +15,7 @@ public:
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt);
-	static void erase_fd(erase_fd_params* params);
+	void erase_fd(erase_fd_params* params);
 
 private:
 	//
