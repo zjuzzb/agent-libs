@@ -315,6 +315,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_thread()
 	return m_main_thread;
 }
 
+#ifdef HAS_ANALYZER
 bool sinsp_threadinfo::is_main_program_thread()
 {
 	if(m_progid == -1)
@@ -387,6 +388,7 @@ sinsp_threadinfo* sinsp_threadinfo::get_main_program_thread()
 
 	return m_main_program_thread;
 }
+#endif // HAS_ANALYZER
 
 sinsp_fdtable* sinsp_threadinfo::get_fd_table()
 {

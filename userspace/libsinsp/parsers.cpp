@@ -27,7 +27,7 @@ sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
 {
 	m_inspector = inspector;
-	m_rw_listener = NULL;
+	m_fd_listener = NULL;
 }
 
 sinsp_parser::~sinsp_parser()
@@ -1184,95 +1184,33 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 		}
 
 		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
-		//
-		// Mark this fd as a transaction
-		//
-		evt->m_fdinfo->set_is_transaction();
-
-		//
 		// This should happen only in case of a bug in our code, because I'm assuming that the OS
 		// causes a connect with the wrong socket type to fail.
 		// Assert in debug mode and just keep going in release mode.
 		//
 		ASSERT(evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK);
 
-		//
-		// Lookup the connection
-		//
-		sinsp_connection* conn = m_inspector->m_ipv4_connections->get_connection(
-			evt->m_fdinfo->m_info.m_ipv4info,
-			evt->get_ts());
-
-		//
-		// If a connection for this tuple is already there, drop it and replace it with a new one.
-		// Note that remove_connection just decreases the connection reference counter, since connections
-		// are destroyed by the analyzer at the end of the sample.
-		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
-		// the previous one.
-		//
-		if(conn)
-		{
-			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-				conn->reset();
-				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
-				conn->m_refcount = 1;
-			}
-
-			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
-		}
-
+#ifndef HAS_ANALYZER
 		//
 		// Update the FD with this tuple
 		//
 		if(family == PPM_AF_INET)
 		{
-			set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
+			m_inspector->m_parser->set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
 		}
 		else
 		{
-			set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
 		}
+#endif 
 
 		//
 		// Add the friendly name to the fd info
 		//
-
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
-
-		//
-		// Add the tuple to the connection table
-		//
-		string scomm = evt->m_tinfo->get_comm();
-
-		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts());
 	}
 	else
 	{
-		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
-		//
-		// Mark this fd as a transaction
-		//
-		evt->m_fdinfo->set_is_transaction();
-
 		if(!evt->m_fdinfo->is_unix_socket())
 		{
 			//
@@ -1283,18 +1221,22 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 			ASSERT(false);
 		}
 
-		set_unix_info(evt->m_fdinfo, packed_data);
-
-		string scomm = evt->m_tinfo->get_comm();
-		m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts());
-
+		//
+		// Add the friendly name to the fd info
+		//
 		evt->m_fdinfo->m_name = evt->get_param_as_str(1, &parstr, sinsp_evt::PF_SIMPLE);
+
+#ifndef HAS_ANALYZER
+		//
+		// Update the FD with this tuple
+		//
+		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
+#endif
+	}
+
+	if(m_fd_listener)
+	{
+		m_fd_listener->on_connect(evt, family, packed_data);
 	}
 }
 
@@ -1909,9 +1851,9 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 //			handle_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-			if(m_rw_listener)
+			if(m_fd_listener)
 			{
-				m_rw_listener->on_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+				m_fd_listener->on_read(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 			}
 		}
 		else
@@ -1950,9 +1892,9 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 			data = parinfo->m_val;
 
 //			handle_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
-			if(m_rw_listener)
+			if(m_fd_listener)
 			{
-				m_rw_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
+				m_fd_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 			}
 		}
 	}

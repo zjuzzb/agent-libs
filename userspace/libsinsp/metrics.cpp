@@ -5,6 +5,8 @@ using namespace google::protobuf::io;
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "metrics.h"
 #include "draios.pb.h"
 #include "analyzer_thread.h"
@@ -640,3 +642,5 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 		m_fd_usage_pct = pinfo->m_fd_usage_pct;
 	}
 }
+
+#endif HAS_ANALYZER

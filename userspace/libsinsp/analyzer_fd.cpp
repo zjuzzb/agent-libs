@@ -5,6 +5,8 @@
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+
+#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -21,13 +23,13 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_percpu_delays implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_analyzer_rw_listener::sinsp_analyzer_rw_listener(sinsp* inspector, sinsp_analyzer* analyzer)
+sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer)
 {
 	m_inspector = inspector; 
 	m_analyzer = analyzer;
 }
 
-void sinsp_analyzer_rw_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
 
@@ -127,7 +129,7 @@ void sinsp_analyzer_rw_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				// Create a connection entry here and try to detect if this is the client or the server by lookig
 				// at the ports.
 				//
-				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
+				evt->m_fdinfo->set_role_by_guessing(true);
 
 				string scomm = evt->m_tinfo->get_comm();
 				
@@ -155,7 +157,7 @@ void sinsp_analyzer_rw_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
+					evt->m_fdinfo->set_role_by_guessing(true);
 				}
 				else
 				{
@@ -175,7 +177,7 @@ void sinsp_analyzer_rw_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_IN);
+						evt->m_fdinfo->set_role_by_guessing(true);
 					}
 				}
 
@@ -321,7 +323,7 @@ void sinsp_analyzer_rw_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 	}
 }
 
-void sinsp_analyzer_rw_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
 
@@ -421,7 +423,7 @@ void sinsp_analyzer_rw_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
-				evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
+				evt->m_fdinfo->set_role_by_guessing(false);
 				string scomm = evt->m_tinfo->get_comm();
 				connection = m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
 					&scomm,
@@ -446,7 +448,7 @@ void sinsp_analyzer_rw_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
+					evt->m_fdinfo->set_role_by_guessing(false);
 				}
 				else
 				{
@@ -466,7 +468,7 @@ void sinsp_analyzer_rw_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						//
 						connection->reset();
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_by_guessing(sinsp_partial_transaction::DIR_OUT);
+						evt->m_fdinfo->set_role_by_guessing(false);
 					}
 				}
 
@@ -551,3 +553,105 @@ void sinsp_analyzer_rw_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		}
 	}
 }
+
+void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t family, uint8_t* packed_data)
+{
+	int64_t tid = evt->get_tid();
+
+	if(family == PPM_AF_INET || family == PPM_AF_INET6)
+	{
+		//
+		// Mark this fd as a client
+		//
+		evt->m_fdinfo->set_role_client();
+
+		//
+		// Mark this fd as a transaction
+		//
+		evt->m_fdinfo->set_is_transaction();
+
+		//
+		// Lookup the connection
+		//
+		sinsp_connection* conn = m_inspector->m_ipv4_connections->get_connection(
+			evt->m_fdinfo->m_info.m_ipv4info,
+			evt->get_ts());
+
+		//
+		// If a connection for this tuple is already there, drop it and replace it with a new one.
+		// Note that remove_connection just decreases the connection reference counter, since connections
+		// are destroyed by the analyzer at the end of the sample.
+		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
+		// the previous one.
+		//
+		if(conn)
+		{
+			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
+			{
+				//
+				// There is a closed connection with the same key. We drop its content and reuse it.
+				// We also mark it as reused so that the analyzer is aware of it
+				//
+				conn->reset();
+				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
+				conn->m_refcount = 1;
+			}
+
+			m_inspector->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_info.m_ipv4info);
+		}
+
+		//
+		// Update the FD with this tuple
+		//
+		if(family == PPM_AF_INET)
+		{
+			m_inspector->m_parser->set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
+		}
+		else
+		{
+			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+		}
+
+		//
+		// Add the tuple to the connection table
+		//
+		string scomm = evt->m_tinfo->get_comm();
+
+		m_inspector->m_ipv4_connections->add_connection(evt->m_fdinfo->m_info.m_ipv4info,
+			&scomm,
+			evt->m_tinfo->m_pid,
+		    tid,
+		    evt->m_tinfo->m_lastevent_fd,
+		    true,
+		    evt->get_ts());
+	}
+	else
+	{
+		//
+		// Mark this fd as a client
+		//
+		evt->m_fdinfo->set_role_client();
+
+		//
+		// Mark this fd as a transaction
+		//
+		evt->m_fdinfo->set_is_transaction();
+
+		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
+
+		string scomm = evt->m_tinfo->get_comm();
+		m_inspector->m_unix_connections->add_connection(evt->m_fdinfo->m_info.m_unixinfo,
+			&scomm,
+			evt->m_tinfo->m_pid,
+		    tid,
+		    evt->m_tinfo->m_lastevent_fd,
+		    true,
+		    evt->get_ts());
+	}
+}
+
+void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt)
+{
+}
+
+#endif // HAS_ANALYZER

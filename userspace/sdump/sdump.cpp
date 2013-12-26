@@ -53,7 +53,6 @@ captureinfo do_inspect(sinsp* inspector,
 					   uint64_t cnt, 
 					   bool quiet, 
 					   bool absolute_times,
-					   uint64_t emit_stats_every_x_sec,
 					   string format)
 {
 	captureinfo retval;
@@ -197,7 +196,6 @@ int main(int argc, char **argv)
 	uint64_t cnt = -1;
 	bool emitjson = false;
 	bool quiet = false;
-	bool get_stats = false;
 	bool absolute_times = false;
 	double duration = 1;
 	captureinfo cinfo;
@@ -367,7 +365,6 @@ int main(int argc, char **argv)
 			cinfo = do_inspect(&inspector, 
 				cnt, 
 				quiet, 
-				get_stats, 
 				absolute_times,
 				output_format);
 
@@ -397,11 +394,6 @@ int main(int argc, char **argv)
 			cinfo.m_time / 1000000000,
 			cinfo.m_time % 1000000000,
 			(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
-
-		if(get_stats)
-		{
-			inspector.get_stats().emit(stderr);
-		}
 	}
 
 #ifdef _WIN32

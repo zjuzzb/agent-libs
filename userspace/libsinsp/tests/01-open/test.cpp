@@ -517,6 +517,7 @@ int main(int argc, char **argv)
 		{
 		}
 
+/*
 		//
 		// If specified on the command line, save the transactions
 		//
@@ -542,6 +543,7 @@ int main(int argc, char **argv)
 			{
 			}
 		}
+*/
 
 		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
 			duration,

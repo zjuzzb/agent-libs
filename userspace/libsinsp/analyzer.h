@@ -1,12 +1,14 @@
 #pragma once
 
+#ifdef HAS_ANALYZER
+
 class sinsp_scores;
 class sinsp_procfs_parser;
 class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
 class analyzer_threadtable_listener;
-class sinsp_analyzer_rw_listener;
+class sinsp_analyzer_fd_listener;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -165,7 +167,7 @@ VISIBILITY_PRIVATE
 	//
 	// FD-related state
 	//
-	sinsp_analyzer_rw_listener* m_rw_listener;
+	sinsp_analyzer_fd_listener* m_fd_listener;
 
 	//
 	// Transaction-related state
@@ -196,3 +198,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_delays;
 	friend class analyzer_threadtable_listener;
 };
+
+#endif // HAS_ANALYZER
+

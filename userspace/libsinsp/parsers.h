@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-class sinsp_rw_listener;
+class sinsp_fd_listener;
 
 class sinsp_parser
 {
@@ -76,7 +76,8 @@ private:
 	// The transaction table. Key pair is <tid, fd>.
 //	unordered_map<pair<int64_t, int64_t>, sinsp_transactinfo> m_transactable;
 
-	sinsp_rw_listener* m_rw_listener;
+	sinsp_fd_listener* m_fd_listener;
 
 	friend class sinsp_analyzer;
+	friend class sinsp_analyzer_fd_listener;
 };

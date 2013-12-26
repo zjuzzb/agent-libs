@@ -11,11 +11,6 @@
 #define SP_EVT_BUF_SIZE 4096
 
 //
-// If defined, the analyzer is compiled
-//
-#define HAS_ANALYZER
-
-//
 // If defined, the filtering system is compiled
 //
 //#ifdef _DEBUG
@@ -158,8 +153,18 @@
 #define MAX_N_EXTERNAL_CLIENTS 30
 
 //
+// If defined, the analyzer is compiled
+//
+#define HAS_ANALYZER
+
+//
 // FD class customized with the storage we need
 //
+#ifdef HAS_ANALYZER
 class sinsp_partial_transaction;
 template<class T> class sinsp_fdinfo;
 typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
+#else
+template<class T> class sinsp_fdinfo;
+typedef sinsp_fdinfo<int> sinsp_fdinfo_t;
+#endif // HAS_ANALYZER

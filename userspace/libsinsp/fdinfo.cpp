@@ -81,14 +81,14 @@ template<> void sinsp_fdinfo_t::print_on(FILE* f)
 	}
 }
 
-template<> void sinsp_fdinfo_t::set_role_by_guessing(sinsp_partial_transaction::direction dir)
+template<> void sinsp_fdinfo_t::set_role_by_guessing(bool incoming)
 {
 	if(!(m_flags & (FLAGS_ROLE_CLIENT | FLAGS_ROLE_SERVER)))
 	{
 		//
 		// We just assume that a server usually starts with a read and a client with a write
 		//
-		if(dir == sinsp_partial_transaction::DIR_IN)
+		if(incoming)
 		{
 			set_role_server();
 		}

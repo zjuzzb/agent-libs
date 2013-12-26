@@ -118,7 +118,7 @@ public:
 		m_flags |= FLAGS_ROLE_CLIENT;
 	}
 
-	void set_role_by_guessing(sinsp_partial_transaction::direction dir);
+	void set_role_by_guessing(bool incoming);
 
 	void reset_flags()
 	{
@@ -155,7 +155,7 @@ private:
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
 	friend class thread_analyzer_info;
-	friend class sinsp_analyzer_rw_listener;
+	friend class sinsp_analyzer_fd_listener;
 };
 
 //
