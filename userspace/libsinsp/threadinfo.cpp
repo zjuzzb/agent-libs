@@ -596,7 +596,7 @@ sinsp_thread_manager::sinsp_thread_manager(sinsp* inspector)
 	m_n_drops = 0;
 	m_listener = NULL;
 
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined (GATHER_INTERNAL_STATS)
 	m_failed_lookups = &m_inspector->m_stats.get_metrics_registry().register_counter(internal_metrics::metric_name("thread_failed_lookups","Failed thread lookups"));
 	m_cached_lookups = &m_inspector->m_stats.get_metrics_registry().register_counter(internal_metrics::metric_name("thread_cached_lookups","Cached thread lookups"));
 	m_non_cached_lookups = &m_inspector->m_stats.get_metrics_registry().register_counter(internal_metrics::metric_name("thread_non_cached_lookups","Non cached thread lookups"));
@@ -619,7 +619,7 @@ sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 	//
 	if(m_last_tinfo && tid == m_last_tid)
 	{
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_cached_lookups->increment();
 #endif
 		m_last_tinfo->m_lastaccess_ts = m_inspector->m_lastevent_ts;
@@ -633,7 +633,7 @@ sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 	
 	if(it != m_threadtable.end())
 	{
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_non_cached_lookups->increment();
 #endif
 		m_last_tid = tid;
@@ -643,7 +643,7 @@ sinsp_threadinfo* sinsp_thread_manager::get_thread(int64_t tid)
 	}
 	else
 	{
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_failed_lookups->increment();
 #endif
 		return NULL;
@@ -721,7 +721,7 @@ void sinsp_thread_manager::decrement_program_childcount(sinsp_threadinfo* thread
 
 void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_scap_proctable)
 {
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 	m_added_threads->increment();
 #endif
 
@@ -760,7 +760,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		// call that created this thread. The assertion will detect it, while in release mode we just
 		// keep going.
 		//
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_failed_lookups->increment();
 #endif
 		return;
@@ -825,7 +825,7 @@ void sinsp_thread_manager::remove_thread(threadinfo_map_iterator_t it)
 		m_last_tid = 0;
 		m_last_tinfo = NULL;
 
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
 		m_removed_threads->increment();
 #endif
 
@@ -892,7 +892,7 @@ void sinsp_thread_manager::fix_sockets_coming_from_proc()
 
 void sinsp_thread_manager::update_statistics()
 {
-#ifdef GATHER_INTERNAL_STATS
+#if defined(HAS_ANALYZER) && defined (GATHER_INTERNAL_STATS)
 	m_inspector->m_stats.m_n_threads = get_thread_count();
 
 	m_inspector->m_stats.m_n_fds = 0;

@@ -315,10 +315,6 @@ VISIBILITY_PRIVATE
 
 	sinsp_network_interfaces* m_network_interfaces;
 
-#ifdef GATHER_INTERNAL_STATS
-	sinsp_stats m_stats;
-#endif
-
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 
@@ -334,6 +330,9 @@ VISIBILITY_PRIVATE
 	sinsp_unix_connection_manager* m_unix_connections;
 	sinsp_pipe_connection_manager* m_pipe_connections;
 	analyzer_callback_interface* m_analyzer_callback;
+#ifdef GATHER_INTERNAL_STATS
+	sinsp_stats m_stats;
+#endif
 #endif 
 
 #ifdef HAS_FILTERING
