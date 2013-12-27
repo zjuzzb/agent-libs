@@ -1,5 +1,7 @@
 #include "protocol.h"
 
+#include "logger.h"
+
 SharedPtr<dragent_queue_item> dragent_protocol::message_to_buffer(uint8_t message_type, 
 	const google::protobuf::MessageLite& message, bool compressed)
 {

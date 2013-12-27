@@ -14,11 +14,10 @@
 #include "receiver.h"
 #include "error_handler.h"
 #include "sinsp_data_handler.h"
+#include "logger.h"
 
 #define AGENT_PRIORITY 19
 #define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
-
-dragent_logger* g_log = NULL;
 
 static void g_monitor_signal_callback(int sig)
 {

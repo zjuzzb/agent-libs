@@ -1,5 +1,7 @@
 #include "error_handler.h"
 
+#include "logger.h"
+
 volatile bool dragent_error_handler::m_exception = false;
 
 dragent_error_handler::dragent_error_handler()

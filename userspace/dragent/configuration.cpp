@@ -5,6 +5,8 @@
 #include "Poco/Net/HTTPResponse.h"
 #include "Poco/StreamCopier.h"
 
+#include "logger.h"
+
 using namespace Poco;
 using namespace Poco::Net;
 

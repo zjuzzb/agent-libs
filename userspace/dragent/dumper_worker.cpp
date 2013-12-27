@@ -1,5 +1,7 @@
 #include "dumper_worker.h"
 
+#include "logger.h"
+
 const string dumper_worker::m_name = "dumper_worker";
 
 dumper_worker::dumper_worker(dragent_queue* queue, dragent_configuration* configuration, uint64_t duration_ns):

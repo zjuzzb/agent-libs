@@ -1,5 +1,7 @@
 #include "sender.h"
 
+#include "logger.h"
+
 const string dragent_sender::m_name = "sender";
 
 dragent_sender::dragent_sender(dragent_queue* queue, connection_manager* connection_manager):

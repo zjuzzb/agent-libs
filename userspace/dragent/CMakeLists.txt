@@ -10,6 +10,7 @@ add_executable(dragent
 	connection_manager.cpp
 	dumper_worker.cpp
 	error_handler.cpp
+	logger.cpp
 	main.cpp
 	protocol.cpp
 	receiver.cpp

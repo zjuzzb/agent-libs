@@ -1,5 +1,7 @@
 #include "connection_manager.h"
 
+#include "logger.h"
+
 //
 // SSL callback: since the SSL is managed by ELB, he sends an encrypted alert type 21 when
 // no instances are available in the backend. Of course Poco is bugged and doesn't recognize

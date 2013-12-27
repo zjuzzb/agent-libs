@@ -1,5 +1,7 @@
 #include "receiver.h"
 
+#include "logger.h"
+
 const string dragent_receiver::m_name = "receiver";
 
 dragent_receiver::dragent_receiver(dragent_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
