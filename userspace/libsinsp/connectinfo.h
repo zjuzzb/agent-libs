@@ -124,10 +124,6 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	sinsp_connection& conn = m_connections[key];
 	if(conn.m_timestamp == 0)
 	{
-#ifdef GATHER_INTERNAL_STATS
-		m_inspector->m_stats.m_n_added_connections++;
-#endif
-
 		conn.m_timestamp = timestamp;
 		conn.m_refcount = 1;
 		conn.m_analysis_flags = 0;
@@ -238,9 +234,6 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 
 		if(cit->second.m_refcount <= 0)
 		{
-#ifdef GATHER_INTERNAL_STATS
-			m_inspector->m_stats.m_n_removed_connections++;
-#endif
 			if(now)
 			{
 				m_connections.erase(cit);
@@ -257,9 +250,6 @@ template<class TKey,class THash,class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::get_connection(const TKey& key, uint64_t timestamp)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
-#ifdef GATHER_INTERNAL_STATS
-	m_inspector->m_stats.m_n_connection_lookups++;
-#endif
 	cit = m_connections.find(key);
 	if(cit != m_connections.end())
 	{
@@ -268,9 +258,6 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::get_connection(
 	}
 	else
 	{
-#ifdef GATHER_INTERNAL_STATS
-		m_inspector->m_stats.m_n_failed_connection_lookups++;
-#endif
 		return NULL;
 	}
 };
@@ -298,9 +285,6 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 		if(cit->second.m_timestamp < ts)
 		{
 			cit = m_connections.erase(cit);
-#ifdef GATHER_INTERNAL_STATS
-			m_inspector->m_stats.m_n_expired_connections++;
-#endif
 		}
 		else
 		{

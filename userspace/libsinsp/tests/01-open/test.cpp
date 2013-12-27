@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
+#include <analyzer.h>
 #include "../../settings.h"
 #include <iostream>
 #include <time.h>
@@ -477,6 +478,10 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
+#ifdef HAS_ANALYZER
+		inspector.m_analyzer->set_sample_callback(&g_sample_collector);
+#endif
+
 		//
 		// Launch the inspeciotn
 		//
@@ -498,10 +503,6 @@ int main(int argc, char **argv)
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
 			
-#ifdef HAS_ANALYZER
-			inspector.set_analyzer_callback(&g_sample_collector);
-#endif
-
 			cinfo = do_inspect(&inspector, 
 				cnt, 
 				emitjson, 

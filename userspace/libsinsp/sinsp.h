@@ -130,19 +130,6 @@ public:
 	const filtercheck_field_info* m_fields;
 };
 
-#ifdef HAS_ANALYZER
-//
-// Prototype of the callback invoked by the analyzer when a sample is ready
-//
-class analyzer_callback_interface
-{
-public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer) = 0;
-};
-
-typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
-#endif
-
 //
 // The root system inspection class
 //
@@ -211,20 +198,6 @@ public:
 	void set_filter(string filter);
 #endif
 
-#ifdef HAS_ANALYZER
-	//
-	// Set the callback that receives the analyzer output
-	//
-	void set_analyzer_callback(analyzer_callback_interface* cb);
-
-#ifdef GATHER_INTERNAL_STATS
-	//
-	// Get processing stats
-	//
-	sinsp_stats get_stats();
-#endif // GATHER_INTERNAL_STATS
-#endif // HAS_ANALYZER
-
 	//
 	// Get the last error
 	//
@@ -282,8 +255,12 @@ public:
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
 
+#ifdef GATHER_INTERNAL_STATS
+	sinsp_stats get_stats();
+#endif
+
 #ifdef HAS_ANALYZER
-	sinsp_transaction_table* get_transactions();
+	sinsp_analyzer* m_analyzer;
 #endif
 
 VISIBILITY_PRIVATE
@@ -318,26 +295,16 @@ VISIBILITY_PRIVATE
 	sinsp_thread_manager* m_thread_manager;
 	sinsp_configuration m_configuration;
 
-#ifdef HAS_ANALYZER
-	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
-	void remove_expired_connections(uint64_t ts);
-
-	sinsp_analyzer* m_analyzer;
-	sinsp_transaction_table* m_trans_table;
-	sinsp_ipv4_connection_manager* m_ipv4_connections;
-	sinsp_unix_connection_manager* m_unix_connections;
-	sinsp_pipe_connection_manager* m_pipe_connections;
-	analyzer_callback_interface* m_analyzer_callback;
-#ifdef GATHER_INTERNAL_STATS
-	sinsp_stats m_stats;
-#endif
-#endif 
-
 #ifdef HAS_FILTERING
 	uint64_t m_firstevent_ts;
 	sinsp_filter* m_filter;
+#endif
+
+	//
+	// Internal stats
+	//
+#ifdef GATHER_INTERNAL_STATS
+	sinsp_stats m_stats;
 #endif
 
 	unordered_map<uint32_t, scap_userinfo*> m_userlist;
@@ -359,5 +326,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_delays;
 	friend class thread_analyzer_info;
 	friend class sinsp_analyzer_fd_listener;
+
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

@@ -117,6 +117,7 @@ public:
 
 	// Global state
 	sinsp *m_inspector;
+	sinsp_analyzer* m_analyzer;
 	sinsp_threadinfo* m_tinfo;
 
 	// Flags word used by the analysis engine.

@@ -43,7 +43,7 @@ public:
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
-	void update(sinsp* inspector, 
+	void update(sinsp_analyzer* analyzer, 
 		sinsp_threadinfo* ptinfo,
 		sinsp_fdinfo_t* fdinfo,
 		sinsp_connection* pconn,

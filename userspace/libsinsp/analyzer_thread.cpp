@@ -79,6 +79,7 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
+	m_analyzer = inspector->m_analyzer;
 	m_tinfo = tinfo;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	m_procinfo = NULL;
@@ -257,17 +258,17 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 					if(it->second.is_ipv4_socket())
 					{
-						connection = m_inspector->get_connection(it->second.m_info.m_ipv4info, 
+						connection = m_analyzer->get_connection(it->second.m_info.m_ipv4info, 
 							endtime);
 
-						ASSERT(connection || m_inspector->m_ipv4_connections->get_n_drops() != 0);
+						ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
 					}
 					else if(it->second.is_unix_socket())
 					{
-						connection = m_inspector->get_connection(it->second.m_info.m_unixinfo, 
+						connection = m_analyzer->get_connection(it->second.m_info.m_unixinfo, 
 							endtime);
 
-						ASSERT(connection || m_inspector->m_unix_connections->get_n_drops() != 0);
+						ASSERT(connection || m_analyzer->m_unix_connections->get_n_drops() != 0);
 					}
 					else
 					{
@@ -279,7 +280,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 					{
 						sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
 
-						trinfo->update(m_inspector,
+						trinfo->update(m_analyzer,
 							m_tinfo,
 							&it->second,
 							connection,

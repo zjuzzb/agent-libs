@@ -4,6 +4,7 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
+#include <analyzer.h>
 #include <iostream>
 #include <time.h>
 #include <signal.h>

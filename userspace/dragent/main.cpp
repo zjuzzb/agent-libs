@@ -923,7 +923,7 @@ protected:
 				//
 				// Attach our transmit callback to the analyzer
 				//
-				m_inspector.set_analyzer_callback(this);
+				m_inspector.m_analyzer->set_sample_callback(this);
 			}
 
 			//

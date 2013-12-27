@@ -161,6 +161,7 @@ class SINSP_PUBLIC sinsp_thread_manager
 {
 public:
 	sinsp_thread_manager(sinsp* inspector);
+	void clear();
 
 	void set_listener(sinsp_threadtable_listener* listener);
 	sinsp_threadinfo* get_thread(int64_t tid);

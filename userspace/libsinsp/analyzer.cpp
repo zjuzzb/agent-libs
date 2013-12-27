@@ -55,31 +55,26 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
-
-	//
-	// Initialize the CPU calculation counters
-	//
-	m_machine_info = m_inspector->get_machine_info();
-	if(m_machine_info == NULL)
-	{
-		ASSERT(false);
-		throw sinsp_exception("machine infor missing, analyzer can't start");
-	}
-
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, m_inspector->m_islive);
-	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
-
-	m_sched_analyzer2 = new sinsp_sched_analyzer2(inspector, m_machine_info->num_cpus);
-	m_score_calculator = new sinsp_scores(inspector, m_sched_analyzer2);
-	m_delay_calculator = new sinsp_delays(this, m_machine_info->num_cpus);
-
-	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
-	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_last_transaction_delays_update_time = 0;
 	m_total_process_cpu = 0;
 
 	m_host_transaction_delays = new sinsp_delays_info();
 
+	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
+
+	m_procfs_parser = NULL;
+	m_sched_analyzer2 = NULL;
+	m_score_calculator = NULL;
+	m_delay_calculator = NULL;
+
+	m_ipv4_connections = NULL;
+	m_unix_connections = NULL;
+	m_pipe_connections = NULL;
+	m_trans_table = NULL;
+
+	//
+	// Listeners
+	//
 	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
 
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
@@ -135,10 +130,72 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_fd_listener;
 	}
+
+	if(m_reduced_ipv4_connections)
+	{
+		delete m_reduced_ipv4_connections;
+	}
+
+	if(m_ipv4_connections)
+	{
+		delete m_ipv4_connections;
+	}
+
+	if(m_unix_connections)
+	{
+		delete m_unix_connections;
+	}
+
+	if(m_pipe_connections)
+	{
+		delete m_pipe_connections;
+	}
+
+	if(m_trans_table)
+	{
+		delete m_trans_table;
+	}
 }
 
 void sinsp_analyzer::on_capture_start()
 {
+	if(m_procfs_parser != NULL)
+	{
+		throw sinsp_exception("analyzer can be opened only once");
+	}
+
+	//
+	// Hardware-dependent inits
+	//
+	m_machine_info = m_inspector->get_machine_info();
+	if(m_machine_info == NULL)
+	{
+		ASSERT(false);
+		throw sinsp_exception("machine info missing, analyzer can't start");
+	}
+
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, m_inspector->m_islive);
+	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
+
+	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
+	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
+	m_delay_calculator = new sinsp_delays(this, m_machine_info->num_cpus);
+
+	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
+	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
+
+	//
+	// Allocations
+	//
+	ASSERT(m_ipv4_connections == NULL);
+	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	m_unix_connections = new sinsp_unix_connection_manager(m_inspector);
+	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
+	m_trans_table = new sinsp_transaction_table(m_inspector);
+
+	//
+	// Notify the scheduler analyzer
+	//
 	ASSERT(m_sched_analyzer2 != NULL);
 	m_sched_analyzer2->on_capture_start();
 }
@@ -148,6 +205,44 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	ASSERT(cb != NULL);
 	ASSERT(m_sample_callback == NULL);
 	m_sample_callback = cb;
+}
+
+void sinsp_analyzer::remove_expired_connections(uint64_t ts)
+{
+	m_ipv4_connections->remove_expired_connections(ts);
+	m_unix_connections->remove_expired_connections(ts);
+}
+
+sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
+{
+	sinsp_connection* connection = m_ipv4_connections->get_connection(tuple, timestamp);
+	if(NULL == connection)
+	{
+		// try to find the connection with source/destination reversed
+		ipv4tuple tuple_reversed;
+		tuple_reversed.m_fields.m_sip = tuple.m_fields.m_dip;
+		tuple_reversed.m_fields.m_dip = tuple.m_fields.m_sip;
+		tuple_reversed.m_fields.m_sport = tuple.m_fields.m_dport;
+		tuple_reversed.m_fields.m_dport = tuple.m_fields.m_sport;
+		tuple_reversed.m_fields.m_l4proto = tuple.m_fields.m_l4proto;
+		connection = m_ipv4_connections->get_connection(tuple_reversed, timestamp);
+		if(NULL != connection)
+		{
+			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
+		}
+	}
+
+	return connection;
+}
+
+sinsp_connection* sinsp_analyzer::get_connection(const unix_tuple& tuple, uint64_t timestamp)
+{
+	return m_unix_connections->get_connection(tuple, timestamp);
+}
+
+sinsp_connection* sinsp_analyzer::get_connection(const uint64_t ino, uint64_t timestamp)
+{
+	return m_pipe_connections->get_connection(ino, timestamp);
 }
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
@@ -308,13 +403,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		"thread table size:%d",
 		m_inspector->m_thread_manager->get_thread_count());
 
-	if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
+	if(m_ipv4_connections->get_n_drops() != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR, 
 			"IPv4 table size:%d",
-			m_inspector->m_ipv4_connections->m_connections.size());
+			m_ipv4_connections->m_connections.size());
 
-		m_inspector->m_ipv4_connections->clear_n_drops();
+		m_ipv4_connections->clear_n_drops();
 	}
 
 	//
@@ -729,13 +824,13 @@ void sinsp_analyzer::emit_aggregated_connections()
 	bool aggregate_external_clients = false;
 	set<uint32_t> unique_external_ips;
 
-	m_reduced_ipv4_connections.clear();
+	m_reduced_ipv4_connections->clear();
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
 	//
-	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-		cit != m_inspector->m_ipv4_connections->m_connections.end(); 
+	for(cit = m_ipv4_connections->m_connections.begin(); 
+		cit != m_ipv4_connections->m_connections.end(); 
 		++cit)
 	{
 		if(cit->second.is_server_only())
@@ -758,8 +853,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// Go through the list and perform the aggegation
 	//
-	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-		cit != m_inspector->m_ipv4_connections->m_connections.end();)
+	for(cit = m_ipv4_connections->m_connections.begin(); 
+		cit != m_ipv4_connections->m_connections.end();)
 	{
 		tuple.m_fields.m_spid = cit->second.m_spid;
 		tuple.m_fields.m_dpid = cit->second.m_dpid;
@@ -805,7 +900,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Look for the entry in the reduced connection table
 		//
-		sinsp_connection& conn = m_reduced_ipv4_connections[tuple];
+		sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
 
 		if(conn.m_timestamp == 0)
 		{
@@ -835,7 +930,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			//
 			// Yes, remove the connection from the table
 			//
-			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+			m_ipv4_connections->m_connections.erase(cit++);
 		}
 		else
 		{
@@ -851,8 +946,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = m_reduced_ipv4_connections.begin(); 
-		acit != m_reduced_ipv4_connections.end(); ++acit)
+	for(acit = m_reduced_ipv4_connections->begin(); 
+		acit != m_reduced_ipv4_connections->end(); ++acit)
 	{
 		//
 		// Skip connection that had no activity during the sample
@@ -893,8 +988,8 @@ void sinsp_analyzer::emit_full_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 
-	for(cit = m_inspector->m_ipv4_connections->m_connections.begin(); 
-		cit != m_inspector->m_ipv4_connections->m_connections.end();)
+	for(cit = m_ipv4_connections->m_connections.begin(); 
+		cit != m_ipv4_connections->m_connections.end();)
 	{
 		//
 		// We only include connections that had activity during the sample
@@ -945,7 +1040,7 @@ void sinsp_analyzer::emit_full_connections()
 			//
 			// Yes, remove the connection from the table
 			//
-			m_inspector->m_ipv4_connections->m_connections.erase(cit++);
+			m_ipv4_connections->m_connections.erase(cit++);
 		}
 		else
 		{
@@ -1024,15 +1119,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"IPv4 table size:%d",
-				m_inspector->m_ipv4_connections->m_connections.size());
+				m_ipv4_connections->m_connections.size());
 
-			if(m_inspector->m_ipv4_connections->get_n_drops() != 0)
+			if(m_ipv4_connections->get_n_drops() != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, 
 					"IPv4 table drops:%d",
-					m_inspector->m_ipv4_connections->get_n_drops());
+					m_ipv4_connections->get_n_drops());
 
-				m_inspector->m_ipv4_connections->clear_n_drops();
+				m_ipv4_connections->clear_n_drops();
 			}
 
 			//
@@ -1052,20 +1147,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"unix table size:%d",
-				m_inspector->m_unix_connections->m_connections.size());
+				m_unix_connections->m_connections.size());
 
-			if(m_inspector->m_unix_connections->get_n_drops() != 0)
+			if(m_unix_connections->get_n_drops() != 0)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, 
 					"IPv4 table size:%d",
-					m_inspector->m_unix_connections->m_connections.size());
+					m_unix_connections->m_connections.size());
 
-				m_inspector->m_unix_connections->clear_n_drops();
+				m_unix_connections->clear_n_drops();
 			}
 
 			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
-			for(ucit = m_inspector->m_unix_connections->m_connections.begin(); 
-				ucit != m_inspector->m_unix_connections->m_connections.end();)
+			for(ucit = m_unix_connections->m_connections.begin(); 
+				ucit != m_unix_connections->m_connections.end();)
 			{
 				//
 				// Has this connection been closed druring this sample?
@@ -1075,7 +1170,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					//
 					// Yes, remove the connection from the table
 					//
-					m_inspector->m_unix_connections->m_connections.erase(ucit++);
+					m_unix_connections->m_connections.erase(ucit++);
 				}
 				else
 				{
@@ -1088,11 +1183,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"pipe table size:%d",
-				m_inspector->m_pipe_connections->m_connections.size());
+				m_pipe_connections->m_connections.size());
 
 			unordered_map<uint64_t, sinsp_connection, hash<uint64_t>, equal_to<uint64_t>>::iterator pcit;
-			for(pcit = m_inspector->m_pipe_connections->m_connections.begin(); 
-				pcit != m_inspector->m_pipe_connections->m_connections.end();)
+			for(pcit = m_pipe_connections->m_connections.begin(); 
+				pcit != m_pipe_connections->m_connections.end();)
 			{
 				//
 				// Has this connection been closed druring this sample?
@@ -1102,7 +1197,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 					//
 					// Yes, remove the connection from the table
 					//
-					m_inspector->m_pipe_connections->m_connections.erase(pcit++);
+					m_pipe_connections->m_connections.erase(pcit++);
 				}
 				else
 				{
@@ -1260,13 +1355,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	//
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"# Client Transactions:%d",
-		m_inspector->get_transactions()->m_n_client_transactions);
+		m_trans_table->m_n_client_transactions);
 	g_logger.format(sinsp_logger::SEV_DEBUG, 
 		"# Server Transactions:%d",
-		m_inspector->get_transactions()->m_n_server_transactions);
+		m_trans_table->m_n_server_transactions);
 
-	m_inspector->get_transactions()->m_n_client_transactions = 0;
-	m_inspector->get_transactions()->m_n_server_transactions = 0;
+	m_trans_table->m_n_client_transactions = 0;
+	m_trans_table->m_n_server_transactions = 0;
 
 	m_host_transaction_counters.clear();
 	m_client_tr_time_by_servers = 0;
@@ -1285,7 +1380,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	//
 	// Run the periodic connection and thread table cleanup
 	//
-	m_inspector->remove_expired_connections(ts);
+	remove_expired_connections(ts);
 	m_inspector->m_thread_manager->remove_inactive_threads();
 
 	if(evt)

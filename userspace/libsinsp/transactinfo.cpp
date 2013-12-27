@@ -496,7 +496,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 	}
 }
 
-void sinsp_partial_transaction::update(sinsp* inspector, 
+void sinsp_partial_transaction::update(sinsp_analyzer* analyzer, 
 	sinsp_threadinfo* ptinfo,
 	sinsp_fdinfo_t* fdinfo,
 	sinsp_connection* pconn,
@@ -521,7 +521,7 @@ void sinsp_partial_transaction::update(sinsp* inspector,
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
-		inspector->m_trans_table->emit(ptinfo, fdinfo, pconn, this, datalen);
+		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this, datalen);
 	}
 }
 
