@@ -8,22 +8,22 @@ template<class T>
 class blocking_queue
 {
 public:
-	blocking_queue();
+	blocking_queue(uint32_t max_size);
 
 	bool put(T item);
 	T get();
 
 private:
-	static const uint32_t BLOCKING_SIZE = 32;
-
+	const uint32_t m_max_size;
 	queue<T> m_queue;
 	Mutex m_mutex;
 	Semaphore m_semaphore;
 };
 
 template<class T>
-blocking_queue<T>::blocking_queue() :
-	m_semaphore(0, BLOCKING_SIZE)
+blocking_queue<T>::blocking_queue(uint32_t max_size) :
+	m_max_size(max_size),
+	m_semaphore(0, max_size)
 {
 }
 
@@ -33,7 +33,7 @@ bool blocking_queue<T>::put(T item)
 	{
 		Mutex::ScopedLock lock(m_mutex);
 
-		if(m_queue.size() == BLOCKING_SIZE)
+		if(m_queue.size() == m_max_size)
 		{
 			return false;
 		}

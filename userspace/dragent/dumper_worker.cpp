@@ -13,6 +13,17 @@ dumper_worker::dumper_worker(dragent_queue* queue, dragent_configuration* config
 
 void dumper_worker::run()
 {
+	//
+	// A quick hack to automatically delete this object
+	//
+	SharedPtr<dumper_worker> ptr(this);
+	
+	if(m_configuration->m_dump_in_progress)
+	{
+		g_log->error("Another capture is already in progress");
+		return;
+	}
+
 	g_log->information(m_name + ": Starting");
 
 	g_log->information(m_name + ": Running for " + NumberFormatter::format(m_duration_ms) + " ms");
@@ -46,8 +57,6 @@ void dumper_worker::run()
 	}
 
 	g_log->information(m_name + ": Terminating");
-
-	delete this;
 }
 
 void dumper_worker::send_file()

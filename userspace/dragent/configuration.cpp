@@ -24,6 +24,7 @@ dragent_configuration::dragent_configuration()
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) 0;
 	m_min_console_priority = (Message::Priority) 0;
+	m_dump_in_progress = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(string priostr)

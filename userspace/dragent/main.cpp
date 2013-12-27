@@ -135,6 +135,7 @@ public:
 	dragent_app(): 
 		m_help_requested(false),
 		m_connection_manager(&m_configuration),
+		m_queue(MAX_SAMPLE_STORE_SIZE),
 		m_sinsp_handler(&m_queue, &m_configuration),
 		m_sender(&m_queue, &m_connection_manager),
 		m_receiver(&m_queue, &m_configuration, &m_connection_manager)
@@ -288,7 +289,6 @@ protected:
 		uint64_t ts;
 		uint64_t deltats = 0;
 		uint64_t firstts = 0;
-		bool capturing = false;
 
 		while(1)
 		{
@@ -299,12 +299,12 @@ protected:
 				break;
 			}
 
-			if(capturing)
+			if(m_configuration.m_dump_in_progress)
 			{
 				if(!dragent_configuration::m_dump_enabled)
 				{
 					g_log->information("Stopping dump");
-					capturing = false;
+					m_configuration.m_dump_in_progress = false;
 					m_inspector.stop_dump();
 					m_configuration.m_dump_completed.set();
 				}
@@ -314,7 +314,7 @@ protected:
 				if(dragent_configuration::m_dump_enabled)
 				{
 					g_log->information("Starting dump");
-					capturing = true;
+					m_configuration.m_dump_in_progress = true;
 					m_configuration.m_dump_completed.reset();
 					m_inspector.start_dump(m_configuration.m_dump_file);
 				}
