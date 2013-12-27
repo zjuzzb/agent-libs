@@ -11,8 +11,10 @@ add_executable(dragent
 	dumper_worker.cpp
 	error_handler.cpp
 	main.cpp
+	protocol.cpp
 	receiver.cpp
-	sender.cpp)
+	sender.cpp
+	sinsp_data_handler.cpp)
 
 target_link_libraries(dragent
 	pthread
