@@ -52,3 +52,29 @@ void dragent_logger::critical(const string& str)
 		m_console_log->critical(str);
 	}
 }
+
+void dragent_logger::sinsp_logger_callback(char* str, uint32_t sev)
+{
+	ASSERT(g_log != NULL);
+
+	switch(sev)
+	{
+	case sinsp_logger::SEV_DEBUG:
+		g_log->debug(str);
+		break;
+	case sinsp_logger::SEV_INFO:
+		g_log->information(str);
+		break;
+	case sinsp_logger::SEV_WARNING:
+		g_log->warning(str);
+		break;
+	case sinsp_logger::SEV_ERROR:
+		g_log->error(str);
+		break;
+	case sinsp_logger::SEV_CRITICAL:
+		g_log->critical(str);
+		break;
+	default:
+		ASSERT(false);
+	}
+}

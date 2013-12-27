@@ -39,14 +39,16 @@ SharedPtr<dragent_queue_item> dragent_protocol::message_to_buffer(uint8_t messag
         if(!res)
         {
 	        ASSERT(false);
-	        g_log->error("Error serializing buffer (1)");	        	
+	        g_log->error("Error serializing buffer (1)");	
+	        return NULL;        	
         }
 
         res = gzip_output.Close();
         if(!res)
         {
 	        ASSERT(false);
-	        g_log->error("Error serializing buffer (2)");	        	
+	        g_log->error("Error serializing buffer (2)");
+	        return NULL;	        	
         }
 	}
 	else
@@ -56,7 +58,8 @@ SharedPtr<dragent_queue_item> dragent_protocol::message_to_buffer(uint8_t messag
         if(!res)
         {
 	        ASSERT(false);
-	        g_log->error("Error serializing buffer (3)");	        	
+	        g_log->error("Error serializing buffer (3)");
+	        return NULL;	        	
         }
 	}
 

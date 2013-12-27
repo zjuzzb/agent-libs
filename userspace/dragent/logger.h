@@ -13,6 +13,8 @@ public:
 	void error(const string& str);
 	void critical(const string& str);
 
+	static void sinsp_logger_callback(char* str, uint32_t sev);
+
 private:
 	Logger* m_file_log;
 	Logger* m_console_log;

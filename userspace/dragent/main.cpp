@@ -1,12 +1,12 @@
 #include "main.h"
 #ifndef _WIN32
-#include <execinfo.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
 #include <fstream>
 
+#include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
 #include "blocking_queue.h"
@@ -36,80 +36,6 @@ static void g_usr_signal_callback(int sig)
 }
 
 #ifndef _WIN32
-static const int g_crash_signals[] = 
-{
-	SIGSEGV,
-	SIGABRT,
-	SIGFPE,
-	SIGILL,
-	SIGBUS
-};
-
-static void g_crash_handler(int sig)
-{
-	static int NUM_FRAMES = 10;
-
-	if(g_log)
-	{
-		g_log->error("Received signal " + NumberFormatter::format(sig));
-
-		void *array[NUM_FRAMES];
-
-		int frames = backtrace(array, NUM_FRAMES);
-		
-		char **strings = backtrace_symbols(array, frames);
-		
-		if(strings != NULL)
-		{
-			for(int32_t j = 0; j < frames; ++j)
-			{
-				g_log->error(strings[j]);
-			}
-
-			free(strings);
-		}
-	}
-
-	signal(sig, SIG_DFL);
-	raise(sig);
-}
-
-static bool initialize_crash_handler()
-{
-	stack_t stack;
-
-	memset(&stack, 0, sizeof(stack));
-	stack.ss_sp = malloc(SIGSTKSZ);
-	stack.ss_size = SIGSTKSZ;
-
-	if(sigaltstack(&stack, NULL) == -1)
-	{
-		free(stack.ss_sp);
-		return false;
-	}
-
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sigemptyset(&sa.sa_mask);
-
-	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
-	{
-		sigaddset(&sa.sa_mask, g_crash_signals[j]);
-	}
-
-	sa.sa_handler = g_crash_handler;
-	sa.sa_flags = SA_ONSTACK;
-
-	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
-	{
-		if(sigaction(g_crash_signals[j], &sa, NULL) != 0)
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
 
 static void run_monitor(const string& pidfile)
 {
@@ -183,36 +109,6 @@ static void run_monitor(const string& pidfile)
 	prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
 #endif
-
-///////////////////////////////////////////////////////////////////////////////
-// Log management
-///////////////////////////////////////////////////////////////////////////////
-
-void g_logger_callback(char* str, uint32_t sev)
-{
-	ASSERT(g_log != NULL);
-
-	switch(sev)
-	{
-	case sinsp_logger::SEV_DEBUG:
-		g_log->debug(str);
-		break;
-	case sinsp_logger::SEV_INFO:
-		g_log->information(str);
-		break;
-	case sinsp_logger::SEV_WARNING:
-		g_log->warning(str);
-		break;
-	case sinsp_logger::SEV_ERROR:
-		g_log->error(str);
-		break;
-	case sinsp_logger::SEV_CRITICAL:
-		g_log->critical(str);
-		break;
-	default:
-		ASSERT(false);
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Capture information class
@@ -494,7 +390,7 @@ protected:
 			ASSERT(false);
 		}
 
-		if(initialize_crash_handler() == false)
+		if(crash_handler::initialize() == false)
 		{
 			ASSERT(false);
 		}
@@ -605,7 +501,7 @@ protected:
 			//
 			// Plug the sinsp logger into our one
 			//
-			m_inspector.set_log_callback(g_logger_callback);
+			m_inspector.set_log_callback(dragent_logger::sinsp_logger_callback);
 			if(!m_configuration.m_metrics_dir.empty())
 			{
 				//

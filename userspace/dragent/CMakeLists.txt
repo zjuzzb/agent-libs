@@ -8,6 +8,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
 add_executable(dragent
 	configuration.cpp 
 	connection_manager.cpp
+	crash_handler.cpp
 	dumper_worker.cpp
 	error_handler.cpp
 	logger.cpp

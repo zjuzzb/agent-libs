@@ -110,7 +110,6 @@ void dragent_receiver::run()
 		catch(Poco::IOException& e)
 		{
 			g_log->error(m_name + ": " + e.displayText());
-			g_log->error(m_name + ": Lost connection (3)");
 			m_connection_manager->close();
 			Thread::sleep(1000);
 		}
