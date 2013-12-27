@@ -710,7 +710,7 @@ protected:
 			exit_code = Application::EXIT_SOFTWARE;
 		}
 
-		ThreadPool::defaultPool().joinAll();
+		ThreadPool::defaultPool().stopAll();
 
 		g_log->information("Terminating");
 		return exit_code;
