@@ -100,7 +100,7 @@ template<> void sinsp_fdinfo_t::set_role_by_guessing(bool incoming)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_fdtable inomlementation
+// sinsp_fdtable implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_fdtable::sinsp_fdtable(sinsp* inspector)
 {
@@ -117,7 +117,7 @@ sinsp_fdinfo_t* sinsp_fdtable::find(int64_t fd)
 	//
 	if(m_last_accessed_fd != -1 && fd == m_last_accessed_fd)
 	{
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_cached_fd_lookups++;
 #endif
 		return m_last_accessed_fdinfo;
@@ -130,14 +130,14 @@ sinsp_fdinfo_t* sinsp_fdtable::find(int64_t fd)
 
 	if(fdit == m_table.end())
 	{
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_failed_fd_lookups++;
 #endif
 		return NULL;
 	}
 	else
 	{
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_noncached_fd_lookups++;
 #endif
 		m_last_accessed_fd = fd;
@@ -160,7 +160,7 @@ void sinsp_fdtable::add(int64_t fd, sinsp_fdinfo_t* fdinfo)
 		//
 		m_table[fd] = *fdinfo;
 		m_last_accessed_fd = -1;
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_added_fds++;
 #endif
 	}
@@ -222,14 +222,14 @@ void sinsp_fdtable::erase(int64_t fd)
 		// keep going.
 		//
 		ASSERT(false);
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_failed_fd_lookups++;
 #endif
 	}
 	else
 	{
 		m_table.erase(fdit);
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_noncached_fd_lookups++;
 		m_inspector->m_stats.m_n_removed_fds++;
 #endif

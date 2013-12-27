@@ -505,7 +505,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Add this thread's counters to the process ones...
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		sinsp_threadinfo* mtinfo = it->second.get_main_program_thread();
+		sinsp_threadinfo* mtinfo = it->second.m_ainfo->get_main_program_thread();
 #else
 		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
 #endif
@@ -559,7 +559,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// section too
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		if(it->second.is_main_program_thread())
+		if(it->second.m_ainfo->is_main_program_thread())
 #else
 		if(it->second.is_main_thread())
 #endif
@@ -1754,7 +1754,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
 #ifdef ANALYZER_EMITS_PROGRAMS
-			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_program_thread();
+			sinsp_threadinfo* parentinfo = evt->m_tinfo->m_ainfo->get_main_program_thread();
 #else
 			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
 #endif

@@ -240,10 +240,8 @@ public:
 	//
 	// Return a thread's information given its tid
 	//
-	sinsp_threadinfo* get_thread(int64_t tid)
-	{
-		return get_thread(tid, false);
-	}
+	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
+	sinsp_threadinfo* get_thread(int64_t tid);
 
 	const unordered_map<uint32_t, scap_userinfo*>* get_userlist();
 	const unordered_map<uint32_t, scap_groupinfo*>* get_grouplist();
@@ -270,7 +268,6 @@ VISIBILITY_PRIVATE
 	void import_ifaddr_list();
 	void import_user_list();
 
-	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
 	void add_thread(const sinsp_threadinfo& ptinfo);
 	void remove_thread(int64_t tid);
 
@@ -324,8 +321,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
 	friend class sinsp_delays;
-	friend class thread_analyzer_info;
-	friend class sinsp_analyzer_fd_listener;
 
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

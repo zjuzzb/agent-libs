@@ -33,7 +33,7 @@ sinsp::sinsp() :
 	m_thread_manager = new sinsp_thread_manager(this);
 
 #ifdef HAS_ANALYZER
-	m_analyzer = new sinsp_analyzer(this);
+	m_analyzer = NULL;
 #endif
 
 #ifdef HAS_FILTERING
@@ -65,14 +65,6 @@ sinsp::~sinsp()
 		delete m_thread_manager;
 		m_thread_manager = NULL;
 	}
-
-#ifdef HAS_ANALYZER
-	if(m_analyzer)
-	{
-		delete m_analyzer;
-		m_analyzer = NULL;
-	}
-#endif
 }
 
 void sinsp::open(uint32_t timeout_ms)
@@ -301,7 +293,10 @@ void sinsp::init()
 	//
 	// Notify the analyzer that we're starting
 	//
-	m_analyzer->on_capture_start();
+	if(m_analyzer)
+	{
+		m_analyzer->on_capture_start();
+	}
 #endif
 }
 
@@ -320,7 +315,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		else if(res == SCAP_EOF)
 		{
 #ifdef HAS_ANALYZER
-			m_analyzer->process_event(NULL);
+			if(m_analyzer)
+			{
+				m_analyzer->process_event(NULL);
+			}
 #endif
 		}
 		else
@@ -362,7 +360,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_thread_manager->remove_inactive_threads();
 #else
-	m_analyzer->remove_expired_connections(m_evt.get_ts());
+	if(m_analyzer)
+	{
+		m_analyzer->remove_expired_connections(m_evt.get_ts());
+	}
 #endif // HAS_ANALYZER
 
 	//
@@ -416,7 +417,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Run the analysis engine
 	//
 #ifdef HAS_ANALYZER
-	m_analyzer->process_event(&m_evt);
+	if(m_analyzer)
+	{
+		m_analyzer->process_event(&m_evt);
+	}
 #endif
 
 	//
@@ -473,6 +477,11 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 	}
 
 	return sinsp_proc;
+}
+
+sinsp_threadinfo* sinsp::get_thread(int64_t tid)
+{
+	return get_thread(tid, false);
 }
 
 void sinsp::add_thread(const sinsp_threadinfo& ptinfo)

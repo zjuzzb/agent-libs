@@ -357,7 +357,9 @@ int main(int argc, char **argv)
 	string dumpfile;
 
 	{
-		sinsp inspector;
+		sinsp* inspector = new sinsp();
+		sinsp_analyzer* analyzer = new sinsp_analyzer(inspector);
+		inspector->m_analyzer = analyzer;
 
 		//
 		// Parse the args
@@ -374,14 +376,16 @@ int main(int argc, char **argv)
 				if(cnt <= 0)
 				{
 					fprintf(stderr, "invalid packet count %s\n", optarg);
+					delete inspector;
+					delete analyzer;
 					return -1;
 				}
 				break;
 			case 'C':
-				inspector.get_configuration()->set_customer_id(optarg);
+				inspector->get_configuration()->set_customer_id(optarg);
 				break;
 			case 'e':
-				inspector.get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
+				inspector->get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
 				break;
 			case 'j':
 				emitjson = true;
@@ -389,29 +393,31 @@ int main(int argc, char **argv)
 			case 'l':
 				if(string(optarg) == "stdout")
 				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
+					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
 				}
 				else if(string(optarg) == "stderr")
 				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
+					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
 				}
 				else if(string(optarg) == "file")
 				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
+					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
 				}
 				else
 				{
 					fprintf(stderr, "wrong -l option %s. Accepted values: stdout, sterr or file.", optarg);
+					delete inspector;
+					delete analyzer;
 					return -1;
 				}
 
 				break;
 			case 'm':
-				inspector.get_configuration()->set_emit_metrics_to_file(true);
-				inspector.get_configuration()->set_metrics_directory(optarg);
+				inspector->get_configuration()->set_emit_metrics_to_file(true);
+				inspector->get_configuration()->set_metrics_directory(optarg);
 				break;
 			case 'M':
-				inspector.get_configuration()->set_machine_id(optarg);
+				inspector->get_configuration()->set_machine_id(optarg);
 				break;
 			case 'r':
 				infile = optarg;
@@ -438,12 +444,14 @@ int main(int argc, char **argv)
 				break;
 			default:
 				usage(argv[0]);
+				delete inspector;
+				delete analyzer;
 				return 0;
 			}
 		}
 
-//inspector.get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
-//inspector.get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
+//inspector->get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
+//inspector->get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 		//
 		// the filter is specified at the end of the command line
@@ -462,9 +470,11 @@ int main(int argc, char **argv)
 				}
 			}
 
-			inspector.set_filter(filter);
+			inspector->set_filter(filter);
 #else
-			fprintf(stderr, "filtering not supported in release mode.\n");
+			fprintf(stderr, "filtering not supported.\n");
+			delete inspector;
+			delete analyzer;
 			return -1;				
 #endif
 		}
@@ -475,11 +485,13 @@ int main(int argc, char **argv)
 		if(signal(SIGINT, signal_callback) == SIG_ERR)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
+			delete inspector;
+			delete analyzer;
 			return EXIT_FAILURE;
 		}
 
 #ifdef HAS_ANALYZER
-		inspector.m_analyzer->set_sample_callback(&g_sample_collector);
+		analyzer->set_sample_callback(&g_sample_collector);
 #endif
 
 		//
@@ -489,21 +501,21 @@ int main(int argc, char **argv)
 		{
 			if(infile)
 			{
-				inspector.open(infile);
+				inspector->open(infile);
 			}
 			else
 			{
-				inspector.open("");
+				inspector->open("");
 			}
 
 			if(dumpfile != "")
 			{
-				inspector.start_dump(dumpfile);
+				inspector->start_dump(dumpfile);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
 			
-			cinfo = do_inspect(&inspector, 
+			cinfo = do_inspect(inspector, 
 				cnt, 
 				emitjson, 
 				quiet, 
@@ -526,34 +538,6 @@ int main(int argc, char **argv)
 		{
 		}
 
-/*
-		//
-		// If specified on the command line, save the transactions
-		//
-		if(transact_fname)
-		{
-			try
-			{
-				sinsp_transaction_table* ttable = inspector.get_transactions();
-				if(ttable)
-				{
-					ttable->save_json(transact_fname);
-				}
-				else
-				{
-					cerr << "error retrieving the transaction table" << endl;
-				}
-			}
-			catch(sinsp_exception e)
-			{
-				cerr << e.what() << endl;
-			}
-			catch(...)
-			{
-			}
-		}
-*/
-
 		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
 			duration,
 			cinfo.m_nevts,
@@ -564,12 +548,13 @@ int main(int argc, char **argv)
 			cinfo.m_time % 1000000000,
 			(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
 
-#ifdef HAS_ANALYZER
 		if(get_stats)
 		{
-			inspector.get_stats().emit(stderr);
+			inspector->get_stats().emit(stderr);
 		}
-#endif
+
+		delete inspector;
+		delete analyzer;
 	}
 
 #ifdef _WIN32

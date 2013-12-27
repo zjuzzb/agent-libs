@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+#define VISIBILITY_PRIVATE
+
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -603,7 +605,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		}
 
 		//
-		// Update the FD with this tuple
+		// Update the FD info with this tuple
 		//
 		if(family == PPM_AF_INET)
 		{

@@ -94,9 +94,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		ASSERT(tr->m_prev_end_time > tr->m_prev_prev_start_of_transaction_time);
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
-		sinsp_threadinfo* tinfo = ptinfo->get_main_program_thread();
+		sinsp_threadinfo* tinfo = ptinfo->m_ainfo->get_main_program_thread();
 		ASSERT(tinfo != NULL);
-		sinsp_threadinfo* proginfo = ptinfo->get_main_program_thread();
+		sinsp_threadinfo* proginfo = ptinfo->m_ainfo->get_main_program_thread();
 		ASSERT(proginfo != NULL);
 
 		if(fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)

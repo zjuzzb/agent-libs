@@ -110,8 +110,8 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
-		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
-		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->m_num_cpus);
+		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
+		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
 		m_procinfo->clear();
 	}
 }
@@ -200,8 +200,6 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 void thread_analyzer_info::clear_all_metrics()
 {
 	ASSERT(m_tinfo != NULL);
-	ASSERT(m_inspector->m_thread_privatestate_manager.get_size() 
-		== m_tinfo->m_private_state.size());
 
 	if(m_procinfo != NULL)
 	{
@@ -326,6 +324,79 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
+}
+
+bool thread_analyzer_info::is_main_program_thread()
+{
+	if(m_tinfo->m_progid == -1)
+	{
+		return m_tinfo->m_tid == m_tinfo->m_pid;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+sinsp_threadinfo* thread_analyzer_info::get_main_program_thread()
+{
+	if(m_tinfo->m_main_program_thread == NULL)
+	{
+		//
+		// Is this a sub-process?
+		//
+		if(m_tinfo->m_progid != -1)
+		{
+			//
+			// Yes, this is a child sub-process. Find the progrm root thread.
+			//
+			sinsp_threadinfo *ttinfo = m_inspector->get_thread(m_tinfo->m_progid, true);
+			if(NULL == ttinfo)
+			{
+				ASSERT(false);
+				return NULL;
+			}
+
+			sinsp_threadinfo *pptinfo = ttinfo->m_ainfo->get_main_program_thread();
+			m_tinfo->m_main_program_thread = pptinfo;
+		}
+		else
+		{
+			sinsp_threadinfo *mtinfo;
+
+			//
+			// Is this a child thread?
+			//
+			if(m_tinfo->m_pid == m_tinfo->m_tid)
+			{
+				//
+				// No, this is either a single thread process or the root thread of a
+				// multithread process.
+				// Note: we don't set m_main_thread because there are cases in which this is 
+				//       invoked for a threadinfo that is in the stack. Caching the this pointer
+				//       would cause future mess.
+				//
+				return m_tinfo;
+			}
+			else
+			{
+				//
+				// Yes, this is a child thread. Find the process root thread.
+				//
+				mtinfo = m_inspector->get_thread(m_tinfo->m_pid, true);
+				if(NULL == mtinfo)
+				{
+					ASSERT(false);
+					return NULL;
+				}
+			}
+
+			sinsp_threadinfo *pptinfo = mtinfo->m_ainfo->get_main_program_thread();
+			m_tinfo->m_main_program_thread = pptinfo;
+		}
+	}
+
+	return m_tinfo->m_main_program_thread;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
