@@ -11,6 +11,7 @@ class dragent_receiver : public Runnable
 {
 public:
 	dragent_receiver(dragent_queue* queue, dragent_configuration* configuration, connection_manager* connection_manager):
+		m_buffer(RECEIVER_BUFSIZE),
 		m_queue(queue),
 		m_configuration(configuration),
 		m_connection_manager(connection_manager)
@@ -23,43 +24,80 @@ public:
 
 		while(!dragent_configuration::m_terminate)
 		{
-			uint32_t size;
-
 			try
 			{
 				StreamSocket* socket = m_connection_manager->get_socket();
 
 				if(socket != NULL)
 				{
-					int32_t res = socket->receiveBytes(&size, sizeof(size), MSG_WAITALL);
-					ASSERT(res == (int32_t) sizeof(size));
-
-					size = ntohl(size);
-
-					ASSERT(size > sizeof(size));
-					ASSERT(size <= RECEIVER_BUFSIZE);
-					ASSERT(size >= sizeof(size) + 2);
-
-					size -= sizeof(size);
-
-					res = socket->receiveBytes(m_buf, size, MSG_WAITALL);
-					ASSERT(res == (int32_t) size);
-
-					if(m_buf[0] != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+					int32_t res = socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
+					if(res == 0)
 					{
-						g_log->error(m_name + ": Received command for incompatible version protocol " + NumberFormatter::format(m_buf[0]));
+						continue;
 					}
 
-					g_log->information(m_name + ": Received command " + NumberFormatter::format(m_buf[1]));
+					if(res != sizeof(dragent_protocol_header))
+					{
+						g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
+						ASSERT(false);
+						continue;
+					}
 
-					switch(m_buf[1])
+					dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
+					header->len = ntohl(header->len);
+
+					if(header->len > RECEIVER_BUFSIZE)
+					{
+						g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
+						ASSERT(false);
+						continue;						
+					}
+
+					if(header->len < sizeof(dragent_protocol_header))
+					{
+						g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
+						ASSERT(false);
+						continue;					
+					}
+
+					res = socket->receiveBytes(
+						m_buffer.begin() + sizeof(dragent_protocol_header), 
+						header->len - sizeof(dragent_protocol_header), 
+						MSG_WAITALL);
+
+					if(res == 0)
+					{
+						continue;
+					}
+
+					if(res != (int32_t) (header->len - sizeof(dragent_protocol_header)))
+					{
+						g_log->error(m_name + ": Protocol error (4): " + NumberFormatter::format(res));
+						ASSERT(false);
+						continue;											
+					}
+
+					if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+					{
+						g_log->error(m_name + ": Received command for incompatible version protocol " 
+							+ NumberFormatter::format(header->version));
+						ASSERT(false);
+						continue;
+					}
+
+					g_log->information(m_name + ": Received command " 
+						+ NumberFormatter::format(header->messagetype));
+
+					switch(header->messagetype)
 					{
 						case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
-							ASSERT(size > 2);
-							size -= 2;
-							handle_dump_request(&m_buf[2], size);
+							handle_dump_request(
+								m_buffer.begin() + sizeof(dragent_protocol_header), 
+								header->len - sizeof(dragent_protocol_header));
 							break;
 						default:
+							g_log->error(m_name + ": Unknown message type: " 
+								+ NumberFormatter::format(header->messagetype));
 							ASSERT(false);
 					}
 				}
@@ -97,10 +135,10 @@ private:
 		ThreadPool::defaultPool().start(*worker, "dumper_worker");
 	}
 
-	static const uint32_t RECEIVER_BUFSIZE = 1024;
+	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const string m_name;
 
-	uint8_t m_buf[RECEIVER_BUFSIZE];
+	Buffer<uint8_t> m_buffer;
 	dragent_queue* m_queue;
 	dragent_configuration* m_configuration;
 	connection_manager* m_connection_manager;

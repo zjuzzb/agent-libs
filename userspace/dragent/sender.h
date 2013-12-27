@@ -68,12 +68,10 @@ public:
 		// 	throw sinsp_exception("Received SSL alert, terminating the connection");
 		// }
 
-		StreamSocket* socket = NULL;
+		StreamSocket* socket = m_connection_manager->get_socket();
 
 		try
 		{
-			socket = m_connection_manager->get_socket();
-
 			if(socket == NULL)
 			{
 				g_log->information(m_name + ": Connecting to collector...");
@@ -82,15 +80,16 @@ public:
 			}
 
 			int32_t res = socket->sendBytes(buffer, buflen);
-			ASSERT(res == (int32_t) buflen);
 			if(res != (int32_t) buflen)
 			{
 				g_log->error(m_name + ": sendBytes sent just " + NumberFormatter::format(res) + ", expected " + NumberFormatter::format(buflen));	
 				m_connection_manager->close();
+				ASSERT(false);
 				return false;
 			}
 
-			g_log->information(m_name + ": Sent " + Poco::NumberFormatter::format(buflen) + " to collector");
+			g_log->information(m_name + ": Sent " 
+				+ Poco::NumberFormatter::format(buflen) + " to collector");
 
 			return true;
 		}

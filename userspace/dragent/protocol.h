@@ -15,9 +15,9 @@
 #endif
 struct dragent_protocol_header
 {
-	uint32_t m_sample_len; // length of the whole sample, including this header
-	uint8_t m_version; // protocol version
-	uint8_t m_messagetype;
+	uint32_t len; // length of the whole sample, including this header
+	uint8_t version; // protocol version
+	uint8_t messagetype;
 };
 #pragma pack(pop)
 
@@ -90,9 +90,9 @@ public:
 		// Fill the protocol header part
 		//
 		dragent_protocol_header* hdr = (dragent_protocol_header*) ptr->data();
-		hdr->m_sample_len = htonl(ptr->size());
-		hdr->m_version = PROTOCOL_VERSION_NUMBER;
-		hdr->m_messagetype = message_type;
+		hdr->len = htonl(ptr->size());
+		hdr->version = PROTOCOL_VERSION_NUMBER;
+		hdr->messagetype = message_type;
 
         return ptr;
 	}
