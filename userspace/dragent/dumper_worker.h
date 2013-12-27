@@ -86,10 +86,15 @@ private:
 			return;
 		}
 
-		while(!m_queue->put(buffer) && !dragent_configuration::m_terminate)
+		while(!m_queue->put(buffer))
 		{
 			g_log->error(m_name + ": Queue full, waiting");
 			Thread::sleep(1000);
+
+			if(dragent_configuration::m_terminate)
+			{
+				break;
+			}
 		}
 	}
 

@@ -24,92 +24,101 @@ public:
 
 		while(!dragent_configuration::m_terminate)
 		{
+			SharedPtr<StreamSocket> socket = m_connection_manager->get_socket();
+
 			try
 			{
-				StreamSocket* socket = m_connection_manager->get_socket();
-
-				if(socket != NULL)
+				if(socket.isNull())
 				{
-					int32_t res = socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
-					if(res == 0)
-					{
-						continue;
-					}
-
-					if(res != sizeof(dragent_protocol_header))
-					{
-						g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
-						ASSERT(false);
-						continue;
-					}
-
-					dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
-					header->len = ntohl(header->len);
-
-					if(header->len > RECEIVER_BUFSIZE)
-					{
-						g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
-						ASSERT(false);
-						continue;						
-					}
-
-					if(header->len < sizeof(dragent_protocol_header))
-					{
-						g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
-						ASSERT(false);
-						continue;					
-					}
-
-					res = socket->receiveBytes(
-						m_buffer.begin() + sizeof(dragent_protocol_header), 
-						header->len - sizeof(dragent_protocol_header), 
-						MSG_WAITALL);
-
-					if(res == 0)
-					{
-						continue;
-					}
-
-					if(res != (int32_t) (header->len - sizeof(dragent_protocol_header)))
-					{
-						g_log->error(m_name + ": Protocol error (4): " + NumberFormatter::format(res));
-						ASSERT(false);
-						continue;											
-					}
-
-					if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
-					{
-						g_log->error(m_name + ": Received command for incompatible version protocol " 
-							+ NumberFormatter::format(header->version));
-						ASSERT(false);
-						continue;
-					}
-
-					g_log->information(m_name + ": Received command " 
-						+ NumberFormatter::format(header->messagetype));
-
-					switch(header->messagetype)
-					{
-						case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
-							handle_dump_request(
-								m_buffer.begin() + sizeof(dragent_protocol_header), 
-								header->len - sizeof(dragent_protocol_header));
-							break;
-						default:
-							g_log->error(m_name + ": Unknown message type: " 
-								+ NumberFormatter::format(header->messagetype));
-							ASSERT(false);
-					}
+					m_connection_manager->connect();
+					socket = m_connection_manager->get_socket();
+					continue;
 				}
-				else
+
+				int32_t res = socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
+				if(res == 0)
 				{
-					Thread::sleep(1000);
+					g_log->error(m_name + ": Lost connection (1)");
+					m_connection_manager->close();
+					continue;
+				}
+
+				if(res != sizeof(dragent_protocol_header))
+				{
+					g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
+					ASSERT(false);
+					m_connection_manager->close();
+					continue;
+				}
+
+				dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
+				header->len = ntohl(header->len);
+
+				if(header->len > RECEIVER_BUFSIZE)
+				{
+					g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
+					ASSERT(false);
+					m_connection_manager->close();
+					continue;						
+				}
+
+				if(header->len < sizeof(dragent_protocol_header))
+				{
+					g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
+					ASSERT(false);
+					m_connection_manager->close();
+					continue;					
+				}
+
+				res = socket->receiveBytes(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header), 
+					MSG_WAITALL);
+
+				if(res == 0)
+				{
+					g_log->error(m_name + ": Lost connection (2)");
+					m_connection_manager->close();
+					continue;
+				}
+
+				if(res != (int32_t) (header->len - sizeof(dragent_protocol_header)))
+				{
+					g_log->error(m_name + ": Protocol error (4): " + NumberFormatter::format(res));
+					ASSERT(false);
+					continue;											
+				}
+
+				if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+				{
+					g_log->error(m_name + ": Received command for incompatible version protocol " 
+						+ NumberFormatter::format(header->version));
+					ASSERT(false);
+					continue;
+				}
+
+				g_log->information(m_name + ": Received command " 
+					+ NumberFormatter::format(header->messagetype));
+
+				switch(header->messagetype)
+				{
+					case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
+						handle_dump_request(
+							m_buffer.begin() + sizeof(dragent_protocol_header), 
+							header->len - sizeof(dragent_protocol_header));
+						break;
+					default:
+						g_log->error(m_name + ": Unknown message type: " 
+							+ NumberFormatter::format(header->messagetype));
+						ASSERT(false);
 				}
 			}
 			catch(Poco::IOException& e)
 			{
-				g_log->error(e.displayText());
-				g_log->error(m_name + ": Receiver thread lost connection");
+				g_log->error(m_name + ": " + e.displayText());
+				g_log->error(m_name + ": Lost connection (3)");
+				m_connection_manager->close();
+				Thread::sleep(1000);
 			}
 			catch(Poco::TimeoutException& e)
 			{
@@ -127,7 +136,12 @@ private:
 
 		draiosproto::dump_request request;
 		bool res = request.ParseFromZeroCopyStream(&gzstream);
-		ASSERT(res);
+		if(!res)
+		{
+			g_log->error(m_name + ": Error reading request");
+			ASSERT(false);
+			return;
+		}
 
 		uint64_t duration_ns = request.duration_ns();
 

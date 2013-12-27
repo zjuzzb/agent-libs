@@ -10,13 +10,13 @@ public:
 	~connection_manager();
 
 	void init();
-	StreamSocket* get_socket();
+	SharedPtr<StreamSocket> get_socket();
 	void connect();
 	void close();
 
 private:
 
-	SocketAddress* m_sa;
-	StreamSocket* m_socket;
+	SharedPtr<SocketAddress> m_sa;
+	SharedPtr<StreamSocket> m_socket;
 	const dragent_configuration* m_configuration;
 };

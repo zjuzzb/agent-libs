@@ -30,9 +30,9 @@ public:
 				continue;
 			}
 
-			while(!dragent_configuration::m_terminate)
+			while(!transmit_buffer(item->data(), item->size()))
 			{
-				if(transmit_buffer(item->data(), item->size()))
+				if(dragent_configuration::m_terminate)
 				{
 					break;
 				}
@@ -68,23 +68,22 @@ public:
 		// 	throw sinsp_exception("Received SSL alert, terminating the connection");
 		// }
 
-		StreamSocket* socket = m_connection_manager->get_socket();
+		SharedPtr<StreamSocket> socket = m_connection_manager->get_socket();
+		if(socket.isNull())
+		{
+			return false;
+		}
 
 		try
 		{
-			if(socket == NULL)
-			{
-				g_log->information(m_name + ": Connecting to collector...");
-				m_connection_manager->connect();
-				socket = m_connection_manager->get_socket();
-			}
-
 			int32_t res = socket->sendBytes(buffer, buflen);
 			if(res != (int32_t) buflen)
 			{
-				g_log->error(m_name + ": sendBytes sent just " + NumberFormatter::format(res) + ", expected " + NumberFormatter::format(buflen));	
-				m_connection_manager->close();
+				g_log->error(m_name + ": sendBytes sent just " 
+					+ NumberFormatter::format(res) 
+					+ ", expected " + NumberFormatter::format(buflen));	
 				ASSERT(false);
+				m_connection_manager->close();
 				return false;
 			}
 
@@ -95,16 +94,16 @@ public:
 		}
 		catch(Poco::IOException& e)
 		{
+			//
+			// Disconnected from backend, let the receiver thread reconnect
+			//
 			g_log->error(m_name + ": " + e.displayText());
-			
-			if(socket != NULL)
-			{
-				g_log->error(m_name + ": Lost connection");
-				m_connection_manager->close();
-			}
 		}
 		catch(Poco::TimeoutException& e)
 		{
+			//
+			// Timeout during send, needed to check if the thread must terminate
+			//
 		}
 
 		return false;

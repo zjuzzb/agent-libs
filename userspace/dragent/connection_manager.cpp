@@ -32,24 +32,11 @@ connection_manager::connection_manager(dragent_configuration* configuration) :
 
 connection_manager::~connection_manager()
 {
-	if(m_sa)
-	{
-		delete m_sa;
-		m_sa = NULL;
-	}
-
-	if(m_socket)
-	{
-		delete m_socket;
-		m_socket = NULL;
-	}
-
 	Poco::Net::uninitializeSSL();
 }
 
-StreamSocket* connection_manager::get_socket()
+SharedPtr<StreamSocket> connection_manager::get_socket()
 {
-	// ASSERT(m_socket);
 	return m_socket;
 }
 
@@ -86,13 +73,15 @@ void connection_manager::init()
 
 void connection_manager::connect()
 {
-	ASSERT(m_socket == NULL);
-	ASSERT(m_sa != NULL);
+	ASSERT(m_socket.isNull());
+	ASSERT(!m_sa.isNull());
+
+	g_log->information("Connecting to collector");
 
 	if(m_configuration->m_ssl_enabled)
 	{
 		m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration->m_server_addr);
-		((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
+		((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
 
 		g_log->information("SSL identity verified");
 	}
@@ -113,10 +102,5 @@ void connection_manager::connect()
 
 void connection_manager::close()
 {
-	ASSERT(m_socket != NULL);
-	if(m_socket != NULL)
-	{
-		delete m_socket;
-		m_socket = NULL;
-	}
+	m_socket = NULL;
 }
