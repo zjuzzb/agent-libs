@@ -96,4 +96,4 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	return res;
 }
 
-#endif HAS_ANALYZER
+#endif // HAS_ANALYZER

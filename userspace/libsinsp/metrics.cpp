@@ -643,4 +643,4 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	}
 }
 
-#endif HAS_ANALYZER
+#endif // HAS_ANALYZER

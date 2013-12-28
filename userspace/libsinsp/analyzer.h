@@ -241,12 +241,10 @@ VISIBILITY_PRIVATE
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;
 	friend class sinsp_delays;
-	friend class sinsp_scores;
 	friend class sinsp_evt;
 	friend class sinsp_threadinfo;
 	friend class sinsp_transaction_manager;
 	friend class sinsp_transactemitter_unbuffered;
-	friend class sinsp_transaction_table;
 	friend class sinsp_partial_transaction;
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;

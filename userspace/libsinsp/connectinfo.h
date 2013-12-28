@@ -2,6 +2,8 @@
 
 #ifdef HAS_ANALYZER
 
+class sinsp_analyzer;
+
 //
 // Connection information class
 //

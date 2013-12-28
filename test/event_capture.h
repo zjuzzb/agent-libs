@@ -7,6 +7,7 @@
 #include <Poco/RunnableAdapter.h>
 #include <unistd.h>
 #include <sinsp.h>
+#include <analyzer.h>
 #include <gtest.h>
 #include <inttypes.h>
 
@@ -158,6 +159,7 @@ private:
 	string m_dump_filename;
 	callback_param m_param;
 	sinsp* m_inspector;
+	sinsp_analyzer* m_analyzer;
 	analyzer_callback_interface* m_analyzer_callback;
 };
 

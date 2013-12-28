@@ -7,6 +7,7 @@
 template<class T> class sinsp_fdinfo;
 class sinsp_transaction_manager;
 class sinsp_connection;
+class sinsp_analyzer;
 
 //
 // Transaction information class

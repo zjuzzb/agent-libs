@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer.h"
 #include "connectinfo.h"
 #include "delays.h"
 

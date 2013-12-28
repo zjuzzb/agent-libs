@@ -2,8 +2,8 @@
 #include "sinsp_int.h"
 
 #ifdef HAS_ANALYZER
-#include "connectinfo.h"
 #include "analyzer.h"
+#include "connectinfo.h"
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
 

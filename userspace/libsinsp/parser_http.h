@@ -34,4 +34,4 @@ private:
 	uint32_t m_http_connect_intval;
 };
 
-#endif HAS_ANALYZER
+#endif // HAS_ANALYZER

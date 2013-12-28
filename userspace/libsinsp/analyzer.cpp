@@ -22,9 +22,9 @@ using namespace google::protobuf::io;
 
 #ifdef HAS_ANALYZER
 #include "parsers.h"
+#include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
-#include "analyzer.h"
 #include "draios.pb.h"
 #include "delays.h"
 #include "scores.h"

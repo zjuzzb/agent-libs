@@ -6,13 +6,15 @@
 
 void event_capture::capture()
 {
-	m_inspector = new sinsp;
+	m_inspector = new sinsp();
+	m_analyzer = new sinsp_analyzer(m_inspector);
+	m_inspector->m_analyzer = m_analyzer;
 	
-	m_inspector->set_configuration(m_configuration);
+	m_analyzer->set_configuration(m_configuration);
 	
 	if(m_analyzer_callback != NULL)
 	{
-		m_inspector->set_analyzer_callback(m_analyzer_callback);
+		m_analyzer->set_sample_callback(m_analyzer_callback);
 	}
 
 	m_param.m_inspector = m_inspector;
@@ -26,6 +28,7 @@ void event_capture::capture()
 		m_start_failure_message = "couldn't open inspector (maybe driver hasn't been loaded yet?)";
 		m_capture_started.set();
 		delete m_inspector;
+		delete m_analyzer;
 		return;
 	}
 
@@ -42,6 +45,7 @@ void event_capture::capture()
 		m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename;
 		m_capture_started.set();
 		delete m_inspector;
+		delete m_analyzer;
 		return;
 	}
 	bool signaled_start = false;
@@ -71,5 +75,6 @@ void event_capture::capture()
 		// just consume the events
 	}
 	delete m_inspector;
+	delete m_analyzer;
 	m_capture_stopped.set();
 }
