@@ -1,3 +1,5 @@
+#define VISIBILITY_PRIVATE
+
 #include "event_capture.h"
 #include <sinsp.h>
 #include <gtest.h>
@@ -11,6 +13,21 @@ void event_capture::capture()
 	m_inspector->m_analyzer = m_analyzer;
 	
 	m_analyzer->set_configuration(m_configuration);
+
+	if(m_max_thread_table_size != 0)
+	{
+		m_inspector->m_max_thread_table_size = m_max_thread_table_size;
+	}
+	
+	if(m_thread_timeout_ns != 0)
+	{
+		m_inspector->m_thread_timeout_ns = m_thread_timeout_ns;
+	}
+	
+	if(m_inactive_thread_scan_time_ns != 0)
+	{
+		m_inspector->m_inactive_thread_scan_time_ns = m_inactive_thread_scan_time_ns;
+	}
 	
 	if(m_analyzer_callback != NULL)
 	{

@@ -70,13 +70,19 @@ public:
 	    captured_event_callback_t captured_event_callback,
 	    event_filter_t filter,
 	    const sinsp_configuration& configuration,
-	    analyzer_callback_interface* analyzer_callback = NULL)
+	    analyzer_callback_interface* analyzer_callback = NULL,
+    	uint32_t max_thread_table_size = 0,
+		uint64_t thread_timeout_ns = 0,
+		uint64_t inactive_thread_scan_time_ns = 0)
 	{
 		event_capture capturing;
 		capturing.m_captured_event_callback = captured_event_callback;
 		capturing.m_filter = filter;
 		capturing.m_configuration = configuration;
 		capturing.m_analyzer_callback = analyzer_callback;
+		capturing.m_max_thread_table_size = max_thread_table_size;
+		capturing.m_thread_timeout_ns = thread_timeout_ns;
+		capturing.m_inactive_thread_scan_time_ns = inactive_thread_scan_time_ns;
 
 		Poco::RunnableAdapter<event_capture> runnable(capturing, &event_capture::capture);
 		Poco::Thread thread;
@@ -154,6 +160,9 @@ private:
 	event_filter_t m_filter;
 	captured_event_callback_t m_captured_event_callback;
 	sinsp_configuration m_configuration;
+	uint32_t m_max_thread_table_size;
+	uint64_t m_thread_timeout_ns;
+	uint64_t m_inactive_thread_scan_time_ns;
 	bool m_start_failed;
 	string m_start_failure_message;
 	string m_dump_filename;
