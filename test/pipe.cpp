@@ -2,6 +2,7 @@
 
 #include <sinsp.h>
 #include <sinsp_int.h>
+#include <analyzer.h>
 #include <connectinfo.h>
 #include "sys_call_test.h"
 #include <gtest.h>
@@ -110,8 +111,8 @@ TEST_F(sys_call_test, pipe)
 		{
 			return;
 		}
-		sinsp::sinsp_pipe_connection_manager::iterator_t it = param.m_inspector->m_pipe_connections->m_connections.begin();
-		sinsp::sinsp_pipe_connection_manager::iterator_t end = param.m_inspector->m_pipe_connections->m_connections.end();
+		sinsp::sinsp_pipe_connection_manager::iterator_t it = param.m_inspector->m_analyzer->m_pipe_connections->m_connections.begin();
+		sinsp::sinsp_pipe_connection_manager::iterator_t end = param.m_inspector->m_analyzer->m_pipe_connections->m_connections.end();
 		while(it != end)
 		{
 			if(it->second.m_stid == ctid && it->second.m_dtid == ptid)

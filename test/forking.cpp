@@ -286,8 +286,8 @@ TEST_F(sys_call_test, forking_process_expired)
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
-	configuration.set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
+//	configuration.set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
+//	configuration.set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 

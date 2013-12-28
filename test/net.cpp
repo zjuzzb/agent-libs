@@ -165,8 +165,8 @@ TEST_F(sys_call_test, net_web_requests)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
-					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
 					{
@@ -314,8 +314,8 @@ TEST_F(sys_call_test, net_double_udp_connect)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
-					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
 					{
@@ -404,8 +404,8 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
-					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					nconns++;
 				}
@@ -499,8 +499,8 @@ return;
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_ipv4_connections->m_connections.begin(); 
-					cit != param.m_inspector->m_ipv4_connections->m_connections.end(); ++cit)
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					nconns++;
 				}
