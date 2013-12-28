@@ -1,6 +1,8 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
+#ifdef HAS_ANALYZER
+
 sinsp_http_parser::sinsp_http_parser()
 {
 	m_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
@@ -93,3 +95,5 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 	return res;
 }
+
+#endif HAS_ANALYZER

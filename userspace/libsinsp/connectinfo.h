@@ -83,9 +83,9 @@ public:
 		m_connections.clear();
 	}
 
-	const sinsp_configuration& get_configuration()
+	const sinsp_configuration* get_configuration()
 	{
-		return m_inspector->m_configuration;
+		return &m_inspector->m_analyzer->m_configuration;
 	}
 
 	uint32_t get_n_drops()
@@ -112,7 +112,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	// First of all, make sure there's space for this connection in the table
 	//
-	if(m_connections.size() >= m_inspector->m_configuration.get_max_connection_table_size())
+	if(m_connections.size() >= m_inspector->m_analyzer->m_configuration.get_max_connection_table_size())
 	{
 		m_n_drops++;
 		return NULL;
@@ -274,7 +274,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 
 	uint64_t ts = current_ts - m_last_connection_removal_ts;
 	
-	if(ts <= get_configuration().get_connection_timeout_ns())
+	if(ts <= get_configuration()->get_connection_timeout_ns())
 	{
 		return;
 	}

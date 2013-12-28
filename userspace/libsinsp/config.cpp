@@ -1,11 +1,11 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
+#ifdef HAS_ANALYZER
+
 sinsp_configuration::sinsp_configuration()
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
-	set_thread_timeout_ns(DEFAULT_THREAD_TIMEOUT_SEC * ONE_SECOND_IN_NS);
-	set_inactive_thread_scan_time_ns(DEFAULT_INACTIVE_THREAD_SCAN_TIME * ONE_SECOND_IN_NS);
 	set_emit_metrics_to_file(false);
 	set_compress_metrics(false);
 	m_machine_id = "<NA>";
@@ -13,7 +13,6 @@ sinsp_configuration::sinsp_configuration()
 	m_analyzer_sample_length_ns = ANALYZER_SAMPLE_LENGTH_NS;
 	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
-	m_max_thread_table_size = MAX_THREAD_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
 }
@@ -72,26 +71,6 @@ void sinsp_configuration::set_metrics_directory(string metrics_directory)
 	}
 }
 
-uint64_t sinsp_configuration::get_thread_timeout_ns() const
-{
-	return m_thread_timeout_ns;
-}
-
-void sinsp_configuration::set_thread_timeout_ns(uint64_t thread_timeout_ns)
-{
-	m_thread_timeout_ns = thread_timeout_ns;
-}
-
-uint64_t sinsp_configuration::get_inactive_thread_scan_time_ns() const
-{
-	return m_inactive_thread_scan_time_ns;
-}
-
-void sinsp_configuration::set_inactive_thread_scan_time_ns(uint64_t inactive_thread_scan_time_ns)
-{
-	m_inactive_thread_scan_time_ns = inactive_thread_scan_time_ns;
-}
-
 sinsp_logger::output_type sinsp_configuration::get_log_output_type() const
 {
 	//
@@ -146,16 +125,6 @@ void sinsp_configuration::set_max_connection_table_size(uint32_t max_connection_
 	m_max_connection_table_size = max_connection_table_size;
 }
 
-uint32_t sinsp_configuration::get_max_thread_table_size() const
-{
-	return m_max_thread_table_size;
-}
-
-void sinsp_configuration::set_max_thread_table_size(uint32_t max_thread_table_size)
-{
-	m_max_thread_table_size = max_thread_table_size;
-}
-
 uint32_t sinsp_configuration::get_max_connections_in_proto() const
 {
 	return m_max_connections_in_proto;
@@ -175,3 +144,5 @@ void sinsp_configuration::set_aggregate_connections_in_proto(bool aggregate)
 {
 	m_aggregate_connections_in_proto = aggregate;
 }
+
+#endif // HAS_ANALYZER

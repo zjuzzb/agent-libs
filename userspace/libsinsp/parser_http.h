@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 //
 // A very rudimentary HTTP parser
 // XXX replace this with a real http parser.
@@ -31,3 +33,5 @@ private:
 	uint32_t m_http_trace_intval;
 	uint32_t m_http_connect_intval;
 };
+
+#endif HAS_ANALYZER

@@ -663,7 +663,7 @@ void sinsp_thread_manager::add_thread(sinsp_threadinfo& threadinfo, bool from_sc
 	m_added_threads->increment();
 #endif
 
-	if(m_threadtable.size() >= m_inspector->m_configuration.get_max_thread_table_size())
+	if(m_threadtable.size() >= m_inspector->m_max_thread_table_size)
 	{
 		m_n_drops++;
 		return;
@@ -779,7 +779,7 @@ void sinsp_thread_manager::remove_inactive_threads()
 	}
 
 	if(m_inspector->m_lastevent_ts > 
-		m_last_flush_time_ns + m_inspector->m_configuration.get_inactive_thread_scan_time_ns())
+		m_last_flush_time_ns + m_inspector->m_inactive_thread_scan_time_ns)
 	{
 		m_last_flush_time_ns = m_inspector->m_lastevent_ts;
 
@@ -787,7 +787,7 @@ void sinsp_thread_manager::remove_inactive_threads()
 		{
 			if(it->second.m_nchilds == 0 &&
 				m_inspector->m_lastevent_ts > 
-				it->second.m_lastaccess_ts + m_inspector->m_configuration.get_thread_timeout_ns())
+				it->second.m_lastaccess_ts + m_inspector->m_thread_timeout_ns)
 			{
 				//
 				// Reset the cache

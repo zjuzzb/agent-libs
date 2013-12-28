@@ -86,6 +86,12 @@ public:
 	void on_capture_start();
 
 	//
+	// Get and set the library configuration settings
+	//
+	sinsp_configuration* get_configuration();
+	void set_configuration(const sinsp_configuration& configuration);
+
+	//
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt);
@@ -115,6 +121,11 @@ public:
 	//
 	sinsp_stats get_stats();
 #endif // GATHER_INTERNAL_STATS
+
+	//
+	// The library configuration manager
+	//
+	sinsp_configuration m_configuration;
 
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
@@ -242,6 +253,7 @@ VISIBILITY_PRIVATE
 	friend class thread_analyzer_info;
 	friend class sinsp_analyzer_fd_listener;
 	friend class analyzer_threadtable_listener;
+	friend class sinsp_sched_analyzer;
 };
 
 #endif // HAS_ANALYZER

@@ -224,12 +224,6 @@ public:
 	//
 	static void get_filtercheck_fields_info(vector<const filter_check_info*>* list);
 
-	//
-	// Get and set the library configuration settings
-	//
-	sinsp_configuration* get_configuration();
-	void set_configuration(const sinsp_configuration& configuration);
-
 	bool has_metrics();
 
 	//
@@ -290,7 +284,6 @@ VISIBILITY_PRIVATE
 	sinsp_network_interfaces* m_network_interfaces;
 
 	sinsp_thread_manager* m_thread_manager;
-	sinsp_configuration m_configuration;
 
 #ifdef HAS_FILTERING
 	uint64_t m_firstevent_ts;
@@ -303,6 +296,13 @@ VISIBILITY_PRIVATE
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats m_stats;
 #endif
+
+	//
+	// Some thread table limits
+	//
+	uint32_t m_max_thread_table_size;
+	uint64_t m_thread_timeout_ns;
+	uint64_t m_inactive_thread_scan_time_ns;
 
 	unordered_map<uint32_t, scap_userinfo*> m_userlist;
 	unordered_map<uint32_t, scap_groupinfo*> m_grouplist;

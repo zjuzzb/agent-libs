@@ -950,8 +950,8 @@ protected:
 				//
 				File md(m_configuration.m_metrics_dir);
 				md.createDirectories();
-				m_inspector->get_configuration()->set_emit_metrics_to_file(true);
-				m_inspector->get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
+				m_analyzer->get_configuration()->set_emit_metrics_to_file(true);
+				m_analyzer->get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
 			}
 			else
 			{
@@ -961,7 +961,7 @@ protected:
 			//
 			// The machine id is the MAC address of the first physical adapter
 			//
-			m_inspector->get_configuration()->set_machine_id(Environment::nodeId());
+			m_analyzer->get_configuration()->set_machine_id(Environment::nodeId());
 
 			//
 			// The customer id is currently specified by the user
@@ -971,17 +971,17 @@ protected:
 				g_log->error("customerid not specified.");
 			}
 
-			m_inspector->get_configuration()->set_customer_id(m_configuration.m_customer_id);
+			m_analyzer->get_configuration()->set_customer_id(m_configuration.m_customer_id);
 
 			//
 			// Configure compression in the protocol
 			//
-			m_inspector->get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
+			m_analyzer->get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
 
 			//
 			// Configure connection aggregation
 			//
-			m_inspector->get_configuration()->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
+			m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
 
 			//
 			// Start the capture with sinsp

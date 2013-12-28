@@ -31,6 +31,9 @@ sinsp::sinsp() :
 	m_network_interfaces = NULL;
 	m_parser = new sinsp_parser(this);
 	m_thread_manager = new sinsp_thread_manager(this);
+	m_max_thread_table_size = MAX_THREAD_TABLE_SIZE;
+	m_thread_timeout_ns = DEFAULT_THREAD_TIMEOUT_SEC * ONE_SECOND_IN_NS;
+	m_inactive_thread_scan_time_ns = DEFAULT_INACTIVE_THREAD_SCAN_TIME * ONE_SECOND_IN_NS;
 
 #ifdef HAS_ANALYZER
 	m_analyzer = NULL;
@@ -162,34 +165,6 @@ void sinsp::stop_dump()
 		scap_dump_close(m_dumper);
 		m_dumper = NULL;
 	}
-}
-
-sinsp_configuration* sinsp::get_configuration()
-{
-	//
-	// The configuration can currently only be read or modified before the capture starts
-	//
-	if(m_h != NULL)
-	{
-		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
-	}
-
-	return &m_configuration;
-}
-
-void sinsp::set_configuration(const sinsp_configuration& configuration)
-{
-	//
-	// The configuration can currently only be read or modified before the capture starts
-	//
-	if(m_h != NULL)
-	{
-		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
-	}
-
-	m_configuration = configuration;
 }
 
 void sinsp::import_thread_table()

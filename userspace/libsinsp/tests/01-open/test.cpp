@@ -358,8 +358,10 @@ int main(int argc, char **argv)
 
 	{
 		sinsp* inspector = new sinsp();
+#ifdef HAS_ANALYZER
 		sinsp_analyzer* analyzer = new sinsp_analyzer(inspector);
 		inspector->m_analyzer = analyzer;
+#endif
 
 		//
 		// Parse the args
@@ -377,31 +379,38 @@ int main(int argc, char **argv)
 				{
 					fprintf(stderr, "invalid packet count %s\n", optarg);
 					delete inspector;
+#ifdef HAS_ANALYZER
 					delete analyzer;
+#endif
 					return -1;
 				}
 				break;
 			case 'C':
-				inspector->get_configuration()->set_customer_id(optarg);
+#ifdef HAS_ANALYZER
+				analyzer->get_configuration()->set_customer_id(optarg);
+#endif
 				break;
 			case 'e':
-				inspector->get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
+#ifdef HAS_ANALYZER
+				analyzer->get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
+#endif
 				break;
 			case 'j':
 				emitjson = true;
 				break;
 			case 'l':
+#ifdef HAS_ANALYZER
 				if(string(optarg) == "stdout")
 				{
-					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
+					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
 				}
 				else if(string(optarg) == "stderr")
 				{
-					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
+					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
 				}
 				else if(string(optarg) == "file")
 				{
-					inspector->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
+					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
 				}
 				else
 				{
@@ -410,14 +419,18 @@ int main(int argc, char **argv)
 					delete analyzer;
 					return -1;
 				}
-
+#endif
 				break;
 			case 'm':
-				inspector->get_configuration()->set_emit_metrics_to_file(true);
-				inspector->get_configuration()->set_metrics_directory(optarg);
+#ifdef HAS_ANALYZER
+				analyzer->get_configuration()->set_emit_metrics_to_file(true);
+				analyzer->get_configuration()->set_metrics_directory(optarg);
+#endif
 				break;
 			case 'M':
-				inspector->get_configuration()->set_machine_id(optarg);
+#ifdef HAS_ANALYZER
+				analyzer->get_configuration()->set_machine_id(optarg);
+#endif
 				break;
 			case 'r':
 				infile = optarg;
@@ -445,13 +458,15 @@ int main(int argc, char **argv)
 			default:
 				usage(argv[0]);
 				delete inspector;
+#ifdef HAS_ANALYZER
 				delete analyzer;
+#endif
 				return 0;
 			}
 		}
 
-//inspector->get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
-//inspector->get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
+//analyzer->get_configuration()->set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
+//analyzer->get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 		//
 		// the filter is specified at the end of the command line
@@ -486,7 +501,9 @@ int main(int argc, char **argv)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
 			delete inspector;
+#ifdef HAS_ANALYZER
 			delete analyzer;
+#endif
 			return EXIT_FAILURE;
 		}
 
@@ -554,7 +571,9 @@ int main(int argc, char **argv)
 		}
 
 		delete inspector;
+#ifdef HAS_ANALYZER
 		delete analyzer;
+#endif
 	}
 
 #ifdef _WIN32
