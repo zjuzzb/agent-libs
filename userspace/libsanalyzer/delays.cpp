@@ -5,6 +5,7 @@
 #include "sinsp_int.h"
 
 #ifdef HAS_ANALYZER
+#include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "delays.h"

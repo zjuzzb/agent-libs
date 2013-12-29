@@ -22,6 +22,7 @@ using namespace google::protobuf::io;
 
 #ifdef HAS_ANALYZER
 #include "parsers.h"
+#include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -71,6 +72,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_unix_connections = NULL;
 	m_pipe_connections = NULL;
 	m_trans_table = NULL;
+
+	m_configuration = new sinsp_configuration();
 
 	//
 	// Listeners
@@ -155,6 +158,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_trans_table;
 	}
+
+	if(m_configuration)
+	{
+		delete m_configuration;
+	}
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -218,7 +226,7 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
 	}
 
-	return &m_configuration;
+	return m_configuration;
 }
 
 void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
@@ -232,7 +240,7 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
 	}
 
-	m_configuration = configuration;
+	*m_configuration = configuration;
 }
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
@@ -357,7 +365,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	// Serialize to a memory buffer
 	//
 	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
-		m_configuration.get_compress_metrics());
+		m_configuration->get_compress_metrics());
 
 	g_logger.format(sinsp_logger::SEV_INFO,
 		"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
@@ -386,10 +394,10 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	// Write the data to file
 	//
-	if(m_configuration.get_emit_metrics_to_file())
+	if(m_configuration->get_emit_metrics_to_file())
 	{
 		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
-			m_configuration.get_metrics_directory().c_str(),
+			m_configuration->get_metrics_directory().c_str(),
 			ts / 1000000000);
 		FILE* fp = fopen(fname, "wb");
 
@@ -1089,7 +1097,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
-		uint64_t sample_duration = m_configuration.get_analyzer_sample_length_ns();
+		uint64_t sample_duration = m_configuration->get_analyzer_sample_length_ns();
 
 		if(m_next_flush_time_ns == 0)
 		{
@@ -1161,7 +1169,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Aggregate external connections and limit the number of entries in the connection table
 			//
-			if(m_configuration.get_aggregate_connections_in_proto())
+			if(m_configuration->get_aggregate_connections_in_proto())
 			{
 				emit_aggregated_connections();
 			}
@@ -1249,8 +1257,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// emit host stuff
 			////////////////////////////////////////////////////////////////////////////
-			m_metrics->set_machine_id(m_configuration.get_machine_id());
-			m_metrics->set_customer_id(m_configuration.get_customer_id());
+			m_metrics->set_machine_id(m_configuration->get_machine_id());
+			m_metrics->set_customer_id(m_configuration->get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
@@ -1602,7 +1610,7 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 				// If this was a wait on multiple FDs, we encode the delta as a negative number so
 				// the next steps will know that it needs to be handled with more care.
 				//
-				uint64_t sample_duration = m_configuration.get_analyzer_sample_length_ns();
+				uint64_t sample_duration = m_configuration->get_analyzer_sample_length_ns();
 				uint64_t ts = evt->get_ts();
 
 				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;

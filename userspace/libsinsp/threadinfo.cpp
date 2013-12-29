@@ -5,9 +5,6 @@
 #include <algorithm>
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "analyzer.h"
-#include "connectinfo.h"
-#include "delays.h"
 
 static void copy_ipv6_address(uint32_t* dest, uint32_t* src)
 {
@@ -796,8 +793,9 @@ void sinsp_thread_manager::remove_inactive_threads()
 				m_last_tid = 0;
 				m_last_tinfo = NULL;
 
+#ifdef GATHER_INTERNAL_STATS
 				m_removed_threads->increment();
-
+#endif
 				m_threadtable.erase(it++);
 			}
 			else

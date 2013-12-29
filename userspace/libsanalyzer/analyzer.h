@@ -1,5 +1,7 @@
 #pragma once
 
+#include <analyzer_int.h>
+
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -20,6 +22,8 @@ class sinsp_sched_analyzer2;
 class sinsp_delays;
 class analyzer_threadtable_listener;
 class sinsp_analyzer_fd_listener;
+class sinsp_configuration;
+class sinsp_counters;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -125,7 +129,7 @@ public:
 	//
 	// The library configuration manager
 	//
-	sinsp_configuration m_configuration;
+	sinsp_configuration* m_configuration;
 
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);

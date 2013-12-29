@@ -8,7 +8,7 @@
 #include <fstream>
 
 #include "configuration.h"
-#include "../libsinsp/proto_header.h"
+#include "../libsanalyzer/proto_header.h"
 
 #define AGENT_PRIORITY 19
 #define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)

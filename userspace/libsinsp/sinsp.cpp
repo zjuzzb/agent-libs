@@ -11,10 +11,12 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "analyzer.h"
 #include "filter.h"
 #include "filterchecks.h"
-
+#ifdef HAS_ANALYZER
+#include "analyzer_int.h"
+#include "analyzer.h"
+#endif
 //#include "drfilterParser.h"
 
 ///////////////////////////////////////////////////////////////////////////////

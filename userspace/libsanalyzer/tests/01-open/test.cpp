@@ -2,7 +2,8 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
-#include "../../settings.h"
+#include <analyzer.h>
+#include "../../../libsinsp/settings.h"
 #include <iostream>
 #include <time.h>
 #include <signal.h>
@@ -167,12 +168,14 @@ captureinfo do_inspect(sinsp* inspector,
 		// Emit stats if needed
 		//
 #ifdef HAS_ANALYZER
+#ifdef GATHER_INTERNAL_STATS
 		if(statistics && ((ts - last_stat_ts) > emit_stats_every_x_sec * ONE_SECOND_IN_NS))
 		{
 			printf("\n\n*************************************************");
 			inspector->get_stats().emit(stderr);
 			last_stat_ts = ts;
 		}
+#endif
 #endif
 
 		//

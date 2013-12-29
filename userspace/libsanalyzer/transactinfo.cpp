@@ -8,7 +8,9 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #ifdef HAS_ANALYZER
+#include "analyzer_int.h"
 #include "analyzer.h"
+#include "analyzer_int.h"
 #include "connectinfo.h"
 #include "analyzer_thread.h"
 
@@ -40,7 +42,7 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 }
 
 void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
-								   sinsp_fdinfo_t* fdinfo,
+								   void* fdinfo,
 								   sinsp_connection* pconn,
 								   sinsp_partial_transaction* tr,
 								   uint32_t len)
@@ -49,12 +51,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 	sinsp_partial_transaction::direction startdir;
 	sinsp_partial_transaction::direction enddir;
+	
+	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo; 
 
 	//
 	// Detect the side and and determine the trigger directions
 	//
-	ASSERT(fdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER	));
-	if(fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+	ASSERT(ffdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER	));
+	if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 	{
 		startdir = sinsp_partial_transaction::DIR_IN;
 		enddir = sinsp_partial_transaction::DIR_OUT;
@@ -99,16 +103,16 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		sinsp_threadinfo* proginfo = ptinfo->m_ainfo->get_main_program_thread();
 		ASSERT(proginfo != NULL);
 
-		if(fdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+		if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 		{
 			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;
 
-			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_IPV4_SERVER;
 			}
-			else if(fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_SERVER;
 			}
@@ -135,11 +139,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			bool isexternal = pconn->is_client_only();
 			m_n_client_transactions++;
 
-			if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_IPV4_CLIENT;
 			}
-			else if(fdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_CLIENT;
 			}
@@ -498,7 +502,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 void sinsp_partial_transaction::update(sinsp_analyzer* analyzer, 
 	sinsp_threadinfo* ptinfo,
-	sinsp_fdinfo_t* fdinfo,
+	void* fdinfo,
 	sinsp_connection* pconn,
 	uint64_t enter_ts, 
 	uint64_t exit_ts, 

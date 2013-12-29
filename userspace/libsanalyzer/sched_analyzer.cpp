@@ -2,6 +2,7 @@
 #include "sinsp_int.h"
 
 #ifdef HAS_ANALYZER
+#include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "sched_analyzer.h"
@@ -96,7 +97,7 @@ sinsp_sched_analyzer::sinsp_sched_analyzer(sinsp* inspector, uint32_t ncpus)
 void sinsp_sched_analyzer::on_capture_start()
 {
 	uint32_t j;
-	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration.get_analyzer_sample_length_ns();
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns();
 
 	for(j = 0; j < m_ncpus; j++)
 	{
@@ -277,7 +278,7 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
 
 void sinsp_sched_analyzer2::on_capture_start()
 {
-	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration.get_analyzer_sample_length_ns();
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns();
 }
 
 void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
@@ -316,7 +317,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	}
 
 	ASSERT(delta >= 0);
-	ASSERT(delta < (int64_t)m_inspector->m_analyzer->m_configuration.get_analyzer_sample_length_ns());
+	ASSERT(delta < (int64_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns());
 
 	//
 	// Attribute the delta to the proper thread

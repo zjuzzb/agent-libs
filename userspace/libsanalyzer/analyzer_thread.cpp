@@ -8,6 +8,7 @@
 
 #ifdef HAS_ANALYZER
 #include "parsers.h"
+#include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"

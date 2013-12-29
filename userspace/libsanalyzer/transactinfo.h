@@ -8,6 +8,8 @@ template<class T> class sinsp_fdinfo;
 class sinsp_transaction_manager;
 class sinsp_connection;
 class sinsp_analyzer;
+class sinsp_threadinfo;
+class sinsp;
 
 //
 // Transaction information class
@@ -46,7 +48,7 @@ public:
 	~sinsp_partial_transaction();
 	void update(sinsp_analyzer* analyzer, 
 		sinsp_threadinfo* ptinfo,
-		sinsp_fdinfo_t* fdinfo,
+		void* fdinfo,
 		sinsp_connection* pconn,
 		uint64_t enter_ts, 
 		uint64_t exit_ts, 
@@ -166,7 +168,7 @@ public:
 	void clear();
 
 	void emit(sinsp_threadinfo* ptinfo, 
-		sinsp_fdinfo_t* fdinfo,
+		void* fdinfo,
 		sinsp_connection* pconn,
 		sinsp_partial_transaction* tr,
 		uint32_t len);

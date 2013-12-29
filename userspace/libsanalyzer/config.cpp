@@ -1,5 +1,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer_int.h"
 
 #ifdef HAS_ANALYZER
 

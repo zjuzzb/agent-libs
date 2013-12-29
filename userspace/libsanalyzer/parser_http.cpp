@@ -1,5 +1,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer_int.h"
+#include "parser_http.h"
 
 #ifdef HAS_ANALYZER
 
