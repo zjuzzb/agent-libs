@@ -11,7 +11,7 @@ public:
 	blocking_queue(uint32_t max_size);
 
 	bool put(T item);
-	T get();
+	bool get(T* item, uint64_t timeout_ms);
 
 private:
 	const uint32_t m_max_size;
@@ -46,17 +46,20 @@ bool blocking_queue<T>::put(T item)
 }
 
 template<class T>
-T blocking_queue<T>::get()
+bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 {
-	m_semaphore.wait(1000);
+	bool res = m_semaphore.tryWait(timeout_ms);
 
+	if(res)
 	{
 		Mutex::ScopedLock lock(m_mutex);
 		ASSERT(!m_queue.empty());
-		T item = m_queue.front();
+		T p = m_queue.front();
 		m_queue.pop();
-		return item;
+		*item = p;
 	}
+
+	return res;
 }
 
 typedef string dragent_queue_item;

@@ -1,33 +1,18 @@
 #include "connection_manager.h"
 
 #include "logger.h"
+#include "protocol.h"
+#include "draios.pb.h"
+#include "dumper_worker.h"
 
-//
-// SSL callback: since the SSL is managed by ELB, he sends an encrypted alert type 21 when
-// no instances are available in the backend. Of course Poco is bugged and doesn't recognize
-// that, so we need to abort the connection ourselves otherwise we'll keep talking to noone:
-// https://forums.aws.amazon.com/message.jspa?messageID=453844
-//
-static bool g_ssl_alert_received = false;
+const string connection_manager::m_name = "connection_manager";
 
-static void g_ssl_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
-{
-	//
-	// Code borrowed from s_cb.c in openssl
-	//
-	if(write_p == 0 &&
-		content_type == 21 &&
-		len == 2 &&
-		((const unsigned char*)buf)[1] == 0)
-	{
-		g_ssl_alert_received = true;
-	}
-}
-
-connection_manager::connection_manager(dragent_configuration* configuration) :
+connection_manager::connection_manager(dragent_configuration* configuration, dragent_queue* queue) :
 	m_sa(NULL),
 	m_socket(NULL),
-	m_configuration(configuration)
+	m_buffer(RECEIVER_BUFSIZE),
+	m_configuration(configuration),
+	m_queue(queue)
 {
 	Poco::Net::initializeSSL();	
 }
@@ -35,11 +20,6 @@ connection_manager::connection_manager(dragent_configuration* configuration) :
 connection_manager::~connection_manager()
 {
 	Poco::Net::uninitializeSSL();
-}
-
-SharedPtr<StreamSocket> connection_manager::get_socket()
-{
-	return m_socket;
 }
 
 void connection_manager::init()
@@ -73,36 +53,270 @@ void connection_manager::init()
 	}
 }
 
-void connection_manager::connect()
+bool connection_manager::connect()
 {
-	ASSERT(m_socket.isNull());
-	ASSERT(!m_sa.isNull());
-
-	g_log->information("Connecting to collector");
-
-	if(m_configuration->m_ssl_enabled)
+	try
 	{
-		m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration->m_server_addr);
-		((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
+		ASSERT(m_socket.isNull());
+		ASSERT(!m_sa.isNull());
 
-		g_log->information("SSL identity verified");
+		g_log->information("Connecting to collector");
+
+		if(m_configuration->m_ssl_enabled)
+		{
+			m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration->m_server_addr);
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
+
+			g_log->information("SSL identity verified");
+		}
+		else
+		{
+			m_socket = new Poco::Net::StreamSocket(*m_sa);
+		}
+
+		//
+		// Set the send buffer size for the socket
+		//
+		m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
+		m_socket->setSendTimeout(100000);
+		m_socket->setReceiveTimeout(100000);
+
+		g_log->information("Connected to collector");
+		return true;
 	}
-	else
+	catch(Poco::IOException& e)
 	{
-		m_socket = new Poco::Net::StreamSocket(*m_sa);
+		g_log->error(m_name + ": " + e.displayText());
+		return false;
 	}
-
-	//
-	// Set the send buffer size for the socket
-	//
-	m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
-	m_socket->setSendTimeout(1000000);
-	m_socket->setReceiveTimeout(1000000);
-
-	g_log->information("Connected to collector");
 }
 
-void connection_manager::close()
+void connection_manager::disconnect()
 {
-	m_socket = NULL;
+	if(!m_socket.isNull())
+	{
+		m_socket->close();
+		m_socket = NULL;
+	}
+}
+
+void connection_manager::run()
+{
+	g_log->information(m_name + ": Starting");
+
+	SharedPtr<dragent_queue_item> item;
+
+	while(!dragent_configuration::m_terminate)
+	{
+		//
+		// Make sure we have a valid connection
+		//
+		if(m_socket.isNull())
+		{
+			if(!connect())
+			{
+				Thread::sleep(1000);
+				continue;
+			}
+		}
+
+		if(item.isNull())
+		{
+			//
+			// Wait 100ms to get a message from the queue
+			//
+			m_queue->get(&item, 100);
+		}
+
+		if(!item.isNull())
+		{
+			//
+			// Got a message, transmit it
+			//
+			if(transmit_buffer(item->data(), item->size()))
+			{
+				item = NULL;
+			}
+		}
+
+		//
+		// Check if we received a message
+		//
+		receive_message();
+	}
+
+	g_log->information(m_name + ": Terminating");
+}
+
+bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
+{
+	try
+	{
+		if(m_socket.isNull())
+		{
+			return false;
+		}
+
+		int32_t res = m_socket->sendBytes(buffer, buflen);
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		{
+			return false;
+		}
+
+		if(res != (int32_t) buflen)
+		{
+			g_log->error(m_name + ": sendBytes sent just " 
+				+ NumberFormatter::format(res) 
+				+ ", expected " + NumberFormatter::format(buflen));	
+
+			disconnect();
+
+			ASSERT(false);
+			return false;
+		}
+
+		g_log->information(m_name + ": Sent " 
+			+ Poco::NumberFormatter::format(buflen) + " to collector");
+
+		return true;
+	}
+	catch(Poco::IOException& e)
+	{
+		g_log->error(m_name + ": " + e.displayText());
+		disconnect();
+	}
+	catch(Poco::TimeoutException& e)
+	{
+	}
+
+	return false;
+}
+
+void connection_manager::receive_message()
+{
+	try
+	{
+		if(m_socket.isNull())
+		{
+			return;
+		}
+
+		int32_t res = m_socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		{
+			return;
+		}
+
+		if(res == 0)
+		{
+			g_log->error(m_name + ": Lost connection (1)");
+			disconnect();
+			return;
+		}
+
+		if(res != sizeof(dragent_protocol_header))
+		{
+			g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
+			ASSERT(false);
+			disconnect();
+			return;
+		}
+
+		dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
+		header->len = ntohl(header->len);
+
+		if(header->len > RECEIVER_BUFSIZE)
+		{
+			g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
+			ASSERT(false);
+			disconnect();
+			return;						
+		}
+
+		if(header->len < sizeof(dragent_protocol_header))
+		{
+			g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
+			ASSERT(false);
+			disconnect();
+			return;
+		}
+
+		res = m_socket->receiveBytes(
+			m_buffer.begin() + sizeof(dragent_protocol_header), 
+			header->len - sizeof(dragent_protocol_header), 
+			MSG_WAITALL);
+
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		{
+			return;
+		}
+
+		if(res == 0)
+		{
+			g_log->error(m_name + ": Lost connection (2)");
+			disconnect();
+			ASSERT(false);
+			return;
+		}
+
+		if(res != (int32_t) (header->len - sizeof(dragent_protocol_header)))
+		{
+			g_log->error(m_name + ": Protocol error (4): " + NumberFormatter::format(res));
+			disconnect();
+			ASSERT(false);
+			return;
+		}
+
+		if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+		{
+			g_log->error(m_name + ": Received command for incompatible version protocol " 
+				+ NumberFormatter::format(header->version));
+			ASSERT(false);
+			return;
+		}
+
+		g_log->information(m_name + ": Received command " 
+			+ NumberFormatter::format(header->messagetype));
+
+		switch(header->messagetype)
+		{
+			case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
+				handle_dump_request(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
+			default:
+				g_log->error(m_name + ": Unknown message type: " 
+					+ NumberFormatter::format(header->messagetype));
+				ASSERT(false);
+		}
+	}
+	catch(Poco::IOException& e)
+	{
+		g_log->error(m_name + ": " + e.displayText());
+		disconnect();
+	}
+	catch(Poco::TimeoutException& e)
+	{
+	}
+}
+
+void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
+{
+	google::protobuf::io::ArrayInputStream stream(buf, size);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
+
+	draiosproto::dump_request request;
+	bool res = request.ParseFromZeroCopyStream(&gzstream);
+	if(!res)
+	{
+		g_log->error(m_name + ": Error reading request");
+		ASSERT(false);
+		return;
+	}
+
+	uint64_t duration_ns = request.duration_ns();
+
+	dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns);
+	ThreadPool::defaultPool().start(*worker, "dumper_worker");
 }

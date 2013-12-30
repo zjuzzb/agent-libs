@@ -14,8 +14,6 @@ add_executable(dragent
 	logger.cpp
 	main.cpp
 	protocol.cpp
-	receiver.cpp
-	sender.cpp
 	sinsp_data_handler.cpp)
 
 target_link_libraries(dragent

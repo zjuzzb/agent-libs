@@ -10,14 +10,11 @@
 #include "configuration.h"
 #include "connection_manager.h"
 #include "blocking_queue.h"
-#include "sender.h"
-#include "receiver.h"
 #include "error_handler.h"
 #include "sinsp_data_handler.h"
 #include "logger.h"
 
 #define AGENT_PRIORITY 19
-#define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
 
 static void g_monitor_signal_callback(int sig)
 {
@@ -134,11 +131,9 @@ class dragent_app: public Poco::Util::ServerApplication
 public:
 	dragent_app(): 
 		m_help_requested(false),
-		m_connection_manager(&m_configuration),
 		m_queue(MAX_SAMPLE_STORE_SIZE),
-		m_sinsp_handler(&m_queue, &m_configuration),
-		m_sender(&m_queue, &m_connection_manager),
-		m_receiver(&m_queue, &m_configuration, &m_connection_manager)
+		m_connection_manager(&m_configuration, &m_queue),
+		m_sinsp_handler(&m_queue, &m_configuration)
 	{
 		m_evtcnt = 0;
 
@@ -490,8 +485,7 @@ protected:
 			//
 			m_connection_manager.init();
 
-			ThreadPool::defaultPool().start(m_sender, "sender");
-			ThreadPool::defaultPool().start(m_receiver, "receiver");
+			ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 
 			//
 			// Attach our transmit callback to the analyzer
@@ -621,11 +615,9 @@ private:
 	string m_pidfile;
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	connection_manager m_connection_manager;
 	dragent_queue m_queue;
+	connection_manager m_connection_manager;
 	sinsp_data_handler m_sinsp_handler;
-	dragent_sender m_sender;
-	dragent_receiver m_receiver;
 };
 
 
