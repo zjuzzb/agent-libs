@@ -30,8 +30,9 @@ public:
 
 	void init(Application* app);
 	void print_configuration();
-	static Message::Priority string_to_priority(string priostr);
+	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_aws_metadata(aws_metadata* metadata);
+	static uint64_t get_current_time_ns();
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_dump_enabled;

@@ -75,7 +75,7 @@ void dumper_worker::send_file()
 
 	draiosproto::dump_response response;
 
-	response.set_timestamp_ns(1234);
+	response.set_timestamp_ns(dragent_configuration::get_current_time_ns());
 	response.set_customer_id(m_configuration->m_customer_id);
 	response.set_machine_id(m_configuration->m_machine_id);
 	response.set_content(sfile);

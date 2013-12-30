@@ -27,7 +27,7 @@ dragent_configuration::dragent_configuration()
 	m_dump_in_progress = false;
 }
 
-Message::Priority dragent_configuration::string_to_priority(string priostr)
+Message::Priority dragent_configuration::string_to_priority(const string& priostr)
 {
 	if(priostr == "error")
 	{
@@ -190,4 +190,12 @@ bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
 		g_log->information("Cannot get AWS metadata: " + e.displayText());
 		return false;
 	}
+}
+
+uint64_t dragent_configuration::get_current_time_ns()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
 }
