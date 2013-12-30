@@ -26,6 +26,7 @@ add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/sdump)
 add_subdirectory(userspace/libscap)
 add_subdirectory(userspace/libsinsp)
+add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(test)
 
 set(CPACK_PACKAGE_NAME "${DRAIOS_PACKAGE_NAME}")

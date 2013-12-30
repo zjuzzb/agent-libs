@@ -14,7 +14,6 @@ public:
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
 #ifdef HAS_ANALYZER
-
 class sinsp_scores;
 class sinsp_procfs_parser;
 class sinsp_sched_analyzer;

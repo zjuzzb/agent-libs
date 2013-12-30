@@ -112,7 +112,9 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t firstts = 0;
 	uint64_t screents;
 	uint32_t j;
+#ifdef GATHER_INTERNAL_STATS
 	uint64_t last_stat_ts = 0;
+#endif
 
 	if(emitjson)
 	{
@@ -151,7 +153,9 @@ captureinfo do_inspect(sinsp* inspector,
 		if(firstts == 0)
 		{
 			firstts = ts;
+#ifdef GATHER_INTERNAL_STATS
 			last_stat_ts = ts;
+#endif			
 		}
 		deltats = ts - firstts;
 
@@ -167,7 +171,6 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		// Emit stats if needed
 		//
-#ifdef HAS_ANALYZER
 #ifdef GATHER_INTERNAL_STATS
 		if(statistics && ((ts - last_stat_ts) > emit_stats_every_x_sec * ONE_SECOND_IN_NS))
 		{
@@ -175,7 +178,6 @@ captureinfo do_inspect(sinsp* inspector,
 			inspector->get_stats().emit(stderr);
 			last_stat_ts = ts;
 		}
-#endif
 #endif
 
 		//
@@ -351,7 +353,6 @@ int main(int argc, char **argv)
 	bool quiet = false;
 	bool get_stats = false;
 	bool absolute_times = false;
-	char* transact_fname = NULL;
 	double duration = 1;
 	captureinfo cinfo;
 	uint64_t emit_stats_every_x_sec = 0;
@@ -367,7 +368,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:t:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:w:")) != -1)
 		{
 			switch (op)
 			{
@@ -435,9 +436,6 @@ int main(int argc, char **argv)
 				break;
 			case 'r':
 				infile = optarg;
-				break;
-			case 't':
-				transact_fname = optarg;
 				break;
 			case 'q':
 				quiet = true;

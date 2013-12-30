@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 				delete inspector;
 				return -1;
 			}
-#endif HAS_ANALYZER
+#endif // HAS_ANALYZER
 
 			break;
 		case 'l':

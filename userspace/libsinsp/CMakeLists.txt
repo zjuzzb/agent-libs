@@ -4,13 +4,6 @@ include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 
 add_library(sinsp STATIC
-	analyzer.cpp
-	analyzer_fd.cpp
-	analyzer_thread.cpp
-	connectinfo.cpp 
-	config.cpp
-	delays.cpp	
-	draios.pb.cc
 	event.cpp
 	eventformatter.cpp
 	fdinfo.cpp
@@ -19,23 +12,13 @@ add_library(sinsp STATIC
 	ifinfo.cpp
 	internal_metrics.cpp
 	logger.cpp
-	metrics.cpp
-	parser_http.cpp
 	parsers.cpp
-	procfs_parser.cpp
 	threadinfo.cpp
-	sched_analyzer.cpp
-	scores.cpp
 	sinsp.cpp
 	stats.cpp
-	transactinfo.cpp
 	utils.cpp)
 
 target_link_libraries(sinsp 
-	scap 
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
-	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a)
+	scap)
 
-add_subdirectory(tests/01-open)
-add_subdirectory(tests/02-stopcapture)
 	

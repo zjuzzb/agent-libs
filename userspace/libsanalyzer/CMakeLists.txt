@@ -2,8 +2,11 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+add_definitions( -DHAS_ANALYZER )
 
-add_library(sinsp STATIC
+add_library(sanalyzer STATIC
 	analyzer.cpp
 	analyzer_fd.cpp
 	analyzer_thread.cpp
@@ -11,27 +14,27 @@ add_library(sinsp STATIC
 	config.cpp
 	delays.cpp	
 	draios.pb.cc
-	event.cpp
-	eventformatter.cpp
-	fdinfo.cpp
-	filter.cpp
-	filterchecks.cpp
-	ifinfo.cpp
-	internal_metrics.cpp
-	logger.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/event.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/eventformatter.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/fdinfo.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/filter.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/filterchecks.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/ifinfo.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/internal_metrics.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/logger.cpp
 	metrics.cpp
 	parser_http.cpp
-	parsers.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
-	threadinfo.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/threadinfo.cpp
 	sched_analyzer.cpp
 	scores.cpp
-	sinsp.cpp
-	stats.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/sinsp.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
-	utils.cpp)
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/utils.cpp)
 
-target_link_libraries(sinsp 
+target_link_libraries(sanalyzer
 	scap 
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a)
