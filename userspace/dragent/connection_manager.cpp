@@ -22,7 +22,7 @@ connection_manager::~connection_manager()
 	Poco::Net::uninitializeSSL();
 }
 
-void connection_manager::init()
+bool connection_manager::init()
 {
 	if(m_configuration->m_server_addr != "" && m_configuration->m_server_port != 0)
 	{
@@ -44,6 +44,13 @@ void connection_manager::init()
 
 			Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
 		}
+
+		return true;
+	}
+	else
+	{
+		g_log->warning("Server address has not been specified");
+		return false;
 	}
 }
 

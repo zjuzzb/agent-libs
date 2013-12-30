@@ -495,10 +495,11 @@ protected:
 			//
 			// Connect to the server
 			//
-			m_connection_manager.init();
-
-			ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
-
+			if(m_connection_manager.init())
+			{
+				ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+			}
+			
 			//
 			// Attach our transmit callback to the analyzer
 			//

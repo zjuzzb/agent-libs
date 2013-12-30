@@ -10,7 +10,7 @@ public:
 	connection_manager(dragent_configuration* configuration, dragent_queue* queue);
 	~connection_manager();
 
-	void init();
+	bool init();
 	void run();
 
 private:
