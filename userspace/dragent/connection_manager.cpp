@@ -43,12 +43,6 @@ void connection_manager::init()
 				"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
 			Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
-
-			SSL_CTX* ssl_ctx = ptrContext->sslContext();
-			if(ssl_ctx)
-			{
-				SSL_CTX_set_msg_callback(ssl_ctx, g_ssl_callback);
-			}
 		}
 	}
 }
