@@ -30,7 +30,6 @@ using namespace std;
 #include "logger.h"
 #include "event.h"
 #include "stats.h"
-#include "config.h"
 #include "ifinfo.h"
 
 #ifndef VISIBILITY_PRIVATE
@@ -39,50 +38,8 @@ using namespace std;
 
 #define ONE_SECOND_IN_NS 1000000000LL
 
-//
-// An IPv4 tuple
-//
-typedef union _ipv4tuple
-{
-	struct 
-	{
-		uint32_t m_sip;
-		uint32_t m_dip;
-		uint16_t m_sport;
-		uint16_t m_dport;
-		uint8_t m_l4proto;
-	}m_fields;
-	uint8_t m_all[13];
-}ipv4tuple;
-
-typedef union _ipv6tuple
-{
-	struct
-	{
-		uint32_t m_sip[4];
-		uint32_t m_dip[4];
-		uint16_t m_sport;
-		uint16_t m_dport;
-		uint8_t m_l4proto;
-	} m_fields;
-} ipv6tuple;
-
-//
-// A Unix tuple
-//
-typedef union _unix_tuple
-{
-	struct
-	{
-		uint64_t m_source;
-		uint64_t m_dest;
-	} m_fields;
-	uint8_t m_all[16];
-} unix_tuple;
-
-#include "transactinfo.h"
+#include "tuples.h"
 #include "fdinfo.h"
-#include "metrics.h"
 #include "threadinfo.h"
 #include "ifinfo.h"
 #include "eventformatter.h"
@@ -129,19 +86,6 @@ public:
 	int32_t m_nfiedls;
 	const filtercheck_field_info* m_fields;
 };
-
-#ifdef HAS_ANALYZER
-//
-// Prototype of the callback invoked by the analyzer when a sample is ready
-//
-class analyzer_callback_interface
-{
-public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics) = 0;
-};
-
-typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
-#endif
 
 //
 // The root system inspection class
@@ -211,20 +155,6 @@ public:
 	void set_filter(string filter);
 #endif
 
-#ifdef HAS_ANALYZER
-	//
-	// Set the callback that receives the analyzer output
-	//
-	void set_analyzer_callback(analyzer_callback_interface* cb);
-
-#ifdef GATHER_INTERNAL_STATS
-	//
-	// Get processing stats
-	//
-	sinsp_stats get_stats();
-#endif // GATHER_INTERNAL_STATS
-#endif // HAS_ANALYZER
-
 	//
 	// Get the last error
 	//
@@ -251,12 +181,6 @@ public:
 	//
 	static void get_filtercheck_fields_info(vector<const filter_check_info*>* list);
 
-	//
-	// Get and set the library configuration settings
-	//
-	sinsp_configuration* get_configuration();
-	void set_configuration(const sinsp_configuration& configuration);
-
 	bool has_metrics();
 
 	//
@@ -267,10 +191,8 @@ public:
 	//
 	// Return a thread's information given its tid
 	//
-	sinsp_threadinfo* get_thread(int64_t tid)
-	{
-		return get_thread(tid, false);
-	}
+	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
+	sinsp_threadinfo* get_thread(int64_t tid);
 
 	const unordered_map<uint32_t, scap_userinfo*>* get_userlist();
 	const unordered_map<uint32_t, scap_groupinfo*>* get_grouplist();
@@ -282,8 +204,12 @@ public:
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
 
+#ifdef GATHER_INTERNAL_STATS
+	sinsp_stats get_stats();
+#endif
+
 #ifdef HAS_ANALYZER
-	sinsp_transaction_table* get_transactions();
+	sinsp_analyzer* m_analyzer;
 #endif
 
 VISIBILITY_PRIVATE
@@ -293,7 +219,6 @@ VISIBILITY_PRIVATE
 	void import_ifaddr_list();
 	void import_user_list();
 
-	sinsp_threadinfo* get_thread(int64_t tid, bool query_os_if_not_found);
 	void add_thread(const sinsp_threadinfo& ptinfo);
 	void remove_thread(int64_t tid);
 
@@ -316,29 +241,25 @@ VISIBILITY_PRIVATE
 	sinsp_network_interfaces* m_network_interfaces;
 
 	sinsp_thread_manager* m_thread_manager;
-	sinsp_configuration m_configuration;
-
-#ifdef HAS_ANALYZER
-	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
-	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
-	void remove_expired_connections(uint64_t ts);
-
-	sinsp_analyzer* m_analyzer;
-	sinsp_transaction_table* m_trans_table;
-	sinsp_ipv4_connection_manager* m_ipv4_connections;
-	sinsp_unix_connection_manager* m_unix_connections;
-	sinsp_pipe_connection_manager* m_pipe_connections;
-	analyzer_callback_interface* m_analyzer_callback;
-#ifdef GATHER_INTERNAL_STATS
-	sinsp_stats m_stats;
-#endif
-#endif 
 
 #ifdef HAS_FILTERING
 	uint64_t m_firstevent_ts;
 	sinsp_filter* m_filter;
 #endif
+
+	//
+	// Internal stats
+	//
+#ifdef GATHER_INTERNAL_STATS
+	sinsp_stats m_stats;
+#endif
+
+	//
+	// Some thread table limits
+	//
+	uint32_t m_max_thread_table_size;
+	uint64_t m_thread_timeout_ns;
+	uint64_t m_inactive_thread_scan_time_ns;
 
 	unordered_map<uint32_t, scap_userinfo*> m_userlist;
 	unordered_map<uint32_t, scap_groupinfo*> m_grouplist;
@@ -357,7 +278,6 @@ VISIBILITY_PRIVATE
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
 	friend class sinsp_delays;
-	friend class thread_analyzer_info;
-	friend class sinsp_analyzer_fd_listener;
+
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

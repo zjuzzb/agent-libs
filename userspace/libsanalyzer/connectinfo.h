@@ -2,6 +2,8 @@
 
 #ifdef HAS_ANALYZER
 
+class sinsp_analyzer;
+
 //
 // Connection information class
 //
@@ -83,9 +85,9 @@ public:
 		m_connections.clear();
 	}
 
-	const sinsp_configuration& get_configuration()
+	const sinsp_configuration* get_configuration()
 	{
-		return m_inspector->m_configuration;
+		return m_inspector->m_analyzer->m_configuration;
 	}
 
 	uint32_t get_n_drops()
@@ -112,7 +114,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	// First of all, make sure there's space for this connection in the table
 	//
-	if(m_connections.size() >= m_inspector->m_configuration.get_max_connection_table_size())
+	if(m_connections.size() >= m_inspector->m_analyzer->m_configuration->get_max_connection_table_size())
 	{
 		m_n_drops++;
 		return NULL;
@@ -124,10 +126,6 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	sinsp_connection& conn = m_connections[key];
 	if(conn.m_timestamp == 0)
 	{
-#ifdef GATHER_INTERNAL_STATS
-		m_inspector->m_stats.m_n_added_connections++;
-#endif
-
 		conn.m_timestamp = timestamp;
 		conn.m_refcount = 1;
 		conn.m_analysis_flags = 0;
@@ -238,9 +236,6 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 
 		if(cit->second.m_refcount <= 0)
 		{
-#ifdef GATHER_INTERNAL_STATS
-			m_inspector->m_stats.m_n_removed_connections++;
-#endif
 			if(now)
 			{
 				m_connections.erase(cit);
@@ -257,9 +252,6 @@ template<class TKey,class THash,class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::get_connection(const TKey& key, uint64_t timestamp)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
-#ifdef GATHER_INTERNAL_STATS
-	m_inspector->m_stats.m_n_connection_lookups++;
-#endif
 	cit = m_connections.find(key);
 	if(cit != m_connections.end())
 	{
@@ -268,9 +260,6 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::get_connection(
 	}
 	else
 	{
-#ifdef GATHER_INTERNAL_STATS
-		m_inspector->m_stats.m_n_failed_connection_lookups++;
-#endif
 		return NULL;
 	}
 };
@@ -287,7 +276,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 
 	uint64_t ts = current_ts - m_last_connection_removal_ts;
 	
-	if(ts <= get_configuration().get_connection_timeout_ns())
+	if(ts <= get_configuration()->get_connection_timeout_ns())
 	{
 		return;
 	}
@@ -298,9 +287,6 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 		if(cit->second.m_timestamp < ts)
 		{
 			cit = m_connections.erase(cit);
-#ifdef GATHER_INTERNAL_STATS
-			m_inspector->m_stats.m_n_expired_connections++;
-#endif
 		}
 		else
 		{

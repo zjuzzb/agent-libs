@@ -11,12 +11,12 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "connectinfo.h"
-#include "metrics.h"
-#include "analyzer.h"
 #include "filter.h"
 #include "filterchecks.h"
-
+#ifdef HAS_ANALYZER
+#include "analyzer_int.h"
+#include "analyzer.h"
+#endif
 //#include "drfilterParser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -29,18 +29,14 @@ sinsp::sinsp() :
 	m_parser = NULL;
 	m_dumper = NULL;
 	m_network_interfaces = NULL;
-	m_thread_manager = NULL;
+	m_parser = new sinsp_parser(this);
+	m_thread_manager = new sinsp_thread_manager(this);
+	m_max_thread_table_size = MAX_THREAD_TABLE_SIZE;
+	m_thread_timeout_ns = DEFAULT_THREAD_TIMEOUT_SEC * ONE_SECOND_IN_NS;
+	m_inactive_thread_scan_time_ns = DEFAULT_INACTIVE_THREAD_SCAN_TIME * ONE_SECOND_IN_NS;
 
 #ifdef HAS_ANALYZER
-#ifdef GATHER_INTERNAL_STATS
-	m_stats.clear();
-#endif
-	m_analyzer_callback = NULL;
 	m_analyzer = NULL;
-	m_ipv4_connections = NULL;
-	m_unix_connections = NULL;
-	m_pipe_connections = NULL;
-	m_trans_table = NULL;
 #endif
 
 #ifdef HAS_FILTERING
@@ -59,6 +55,18 @@ sinsp::~sinsp()
 	if(m_fds_to_remove)
 	{
 		delete m_fds_to_remove;
+	}
+
+	if(m_parser)
+	{
+		delete m_parser;
+		m_parser = NULL;
+	}
+
+	if(m_thread_manager)
+	{
+		delete m_thread_manager;
+		m_thread_manager = NULL;
 	}
 }
 
@@ -111,39 +119,6 @@ void sinsp::close()
 		m_h = NULL;
 	}
 
-	if(m_parser)
-	{
-		delete m_parser;
-		m_parser = NULL;
-	}
-
-#ifdef HAS_ANALYZER
-	if(m_ipv4_connections)
-	{
-		delete m_ipv4_connections;
-		m_ipv4_connections = NULL;
-	}
-
-	if(m_unix_connections)
-	{
-		delete m_unix_connections;
-		m_unix_connections = NULL;
-	}
-
-	if(m_pipe_connections)
-	{
-		delete m_pipe_connections;
-		m_pipe_connections = NULL;
-	}
-
-	if(m_trans_table)
-	{
-		delete m_trans_table;
-		m_trans_table = NULL;
-	}
-
-#endif // HAS_ANALYZER
-
 	if(NULL != m_dumper)
 	{
 		scap_dump_close(m_dumper);
@@ -156,24 +131,10 @@ void sinsp::close()
 		m_network_interfaces = NULL;
 	}
 
-	if(NULL != m_thread_manager)
-	{
-		delete m_thread_manager;
-		m_thread_manager = NULL;
-	}
-
 #ifdef HAS_FILTERING
 	if(m_filter != NULL)
 	{
 		delete m_filter;
-	}
-#endif
-
-#ifdef HAS_ANALYZER
-	if(m_analyzer)
-	{
-		delete m_analyzer;
-		m_analyzer = NULL;
 	}
 #endif
 }
@@ -204,34 +165,6 @@ void sinsp::stop_dump()
 		scap_dump_close(m_dumper);
 		m_dumper = NULL;
 	}
-}
-
-sinsp_configuration* sinsp::get_configuration()
-{
-	//
-	// The configuration can currently only be read or modified before the capture starts
-	//
-	if(m_h != NULL)
-	{
-		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
-	}
-
-	return &m_configuration;
-}
-
-void sinsp::set_configuration(const sinsp_configuration& configuration)
-{
-	//
-	// The configuration can currently only be read or modified before the capture starts
-	//
-	if(m_h != NULL)
-	{
-		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
-	}
-
-	m_configuration = configuration;
 }
 
 void sinsp::import_thread_table()
@@ -313,27 +246,17 @@ void sinsp::init()
 	}
 
 	//
-	// Allocations
+	// Reset the thread manager
 	//
-	m_parser = new sinsp_parser(this);
-
-	m_thread_manager = new sinsp_thread_manager(this);
-
-#ifdef HAS_ANALYZER
-	m_ipv4_connections = new sinsp_ipv4_connection_manager(this);
-	m_unix_connections = new sinsp_unix_connection_manager(this);
-	m_pipe_connections = new sinsp_pipe_connection_manager(this);
-	m_trans_table = new sinsp_transaction_table(this);
-	m_analyzer = new sinsp_analyzer(this);
-	if(m_analyzer_callback)
-	{
-		set_analyzer_callback(m_analyzer_callback);
-	}
-#endif
+	m_thread_manager->clear();
 
 	//
 	// Basic inits
 	//
+#ifdef GATHER_INTERNAL_STATS
+	m_stats.clear();
+#endif
+
 	m_tid_to_remove = -1;
 	m_lastevent_ts = 0;
 
@@ -345,17 +268,12 @@ void sinsp::init()
 	//
 	// Notify the analyzer that we're starting
 	//
-	m_analyzer->on_capture_start();
+	if(m_analyzer)
+	{
+		m_analyzer->on_capture_start();
+	}
 #endif
 }
-
-#ifdef HAS_ANALYZER
-void sinsp::remove_expired_connections(uint64_t ts)
-{
-	m_ipv4_connections->remove_expired_connections(ts);
-	m_unix_connections->remove_expired_connections(ts);
-}
-#endif
 
 int32_t sinsp::next(OUT sinsp_evt **evt)
 {
@@ -372,7 +290,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		else if(res == SCAP_EOF)
 		{
 #ifdef HAS_ANALYZER
-			m_analyzer->process_event(NULL);
+			if(m_analyzer)
+			{
+				m_analyzer->process_event(NULL);
+			}
 #endif
 		}
 		else
@@ -414,7 +335,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_thread_manager->remove_inactive_threads();
 #else
-	remove_expired_connections(m_evt.get_ts());
+	if(m_analyzer)
+	{
+		m_analyzer->remove_expired_connections(m_evt.get_ts());
+	}
 #endif // HAS_ANALYZER
 
 	//
@@ -468,7 +392,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Run the analysis engine
 	//
 #ifdef HAS_ANALYZER
-	m_analyzer->process_event(&m_evt);
+	if(m_analyzer)
+	{
+		m_analyzer->process_event(&m_evt);
+	}
 #endif
 
 	//
@@ -527,6 +454,11 @@ sinsp_threadinfo* sinsp::get_thread(int64_t tid, bool query_os_if_not_found)
 	return sinsp_proc;
 }
 
+sinsp_threadinfo* sinsp::get_thread(int64_t tid)
+{
+	return get_thread(tid, false);
+}
+
 void sinsp::add_thread(const sinsp_threadinfo& ptinfo)
 {
 	m_thread_manager->add_thread((sinsp_threadinfo&)ptinfo);
@@ -536,13 +468,6 @@ void sinsp::remove_thread(int64_t tid)
 {
 	m_thread_manager->remove_thread(tid);
 }
-
-#ifdef HAS_ANALYZER
-sinsp_transaction_table *sinsp::get_transactions()
-{
-	return m_trans_table;
-}
-#endif
 
 void sinsp::set_snaplen(uint32_t snaplen)
 {
@@ -597,7 +522,42 @@ void sinsp::set_filter(string filter)
 }
 #endif
 
-#ifdef HAS_ANALYZER
+const scap_machine_info* sinsp::get_machine_info()
+{
+	return m_machine_info;
+}
+
+const unordered_map<uint32_t, scap_userinfo*>* sinsp::get_userlist()
+{
+	return &m_userlist;
+}
+
+const unordered_map<uint32_t, scap_groupinfo*>* sinsp::get_grouplist()
+{
+	return &m_grouplist;
+}
+
+#ifdef HAS_FILTERING
+void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* list)
+{
+	sinsp_utils::get_filtercheck_fields_info(list);
+}
+#else
+void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* list)
+{
+}
+#endif
+
+uint32_t sinsp::reserve_thread_memory(uint32_t size)
+{
+	if(m_h != NULL)
+	{
+		throw sinsp_exception("reserve_thread_memory can't be called after capture starts");
+	}
+
+	return m_thread_privatestate_manager.reserve(size);
+}
+
 #ifdef GATHER_INTERNAL_STATS
 sinsp_stats sinsp::get_stats()
 {
@@ -631,14 +591,6 @@ sinsp_stats sinsp::get_stats()
 	}
 
 	//
-	// Count the number of transactions
-	//
-	if(m_trans_table)
-	{
-		m_stats.m_n_transactions = m_trans_table->get_size();
-	}
-
-	//
 	// Return the result
 	//
 
@@ -646,89 +598,7 @@ sinsp_stats sinsp::get_stats()
 }
 #endif // GATHER_INTERNAL_STATS
 
-sinsp_connection* sinsp::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
-{
-	sinsp_connection* connection = m_ipv4_connections->get_connection(tuple, timestamp);
-	if(NULL == connection)
-	{
-		// try to find the connection with source/destination reversed
-		ipv4tuple tuple_reversed;
-		tuple_reversed.m_fields.m_sip = tuple.m_fields.m_dip;
-		tuple_reversed.m_fields.m_dip = tuple.m_fields.m_sip;
-		tuple_reversed.m_fields.m_sport = tuple.m_fields.m_dport;
-		tuple_reversed.m_fields.m_dport = tuple.m_fields.m_sport;
-		tuple_reversed.m_fields.m_l4proto = tuple.m_fields.m_l4proto;
-		connection = m_ipv4_connections->get_connection(tuple_reversed, timestamp);
-		if(NULL != connection)
-		{
-			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
-		}
-	}
-
-	return connection;
-}
-
-sinsp_connection* sinsp::get_connection(const unix_tuple& tuple, uint64_t timestamp)
-{
-	return m_unix_connections->get_connection(tuple, timestamp);
-}
-
-sinsp_connection* sinsp::get_connection(const uint64_t ino, uint64_t timestamp)
-{
-	return m_pipe_connections->get_connection(ino, timestamp);
-}
-
 void sinsp::set_log_callback(sinsp_logger_callback cb)
 {
 	g_logger.add_callback_log(cb);
-}
-
-void sinsp::set_analyzer_callback(analyzer_callback_interface* cb)
-{
-	if(m_analyzer == NULL)
-	{
-		m_analyzer_callback = cb;
-	}
-	else
-	{
-		m_analyzer->set_sample_callback(cb);
-	}
-}
-
-#endif // HAS_ANALYZER
-
-const scap_machine_info* sinsp::get_machine_info()
-{
-	return m_machine_info;
-}
-
-const unordered_map<uint32_t, scap_userinfo*>* sinsp::get_userlist()
-{
-	return &m_userlist;
-}
-
-const unordered_map<uint32_t, scap_groupinfo*>* sinsp::get_grouplist()
-{
-	return &m_grouplist;
-}
-
-#ifdef HAS_FILTERING
-void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* list)
-{
-	sinsp_utils::get_filtercheck_fields_info(list);
-}
-#else
-void sinsp::get_filtercheck_fields_info(OUT vector<const filter_check_info*>* list)
-{
-}
-#endif
-
-uint32_t sinsp::reserve_thread_memory(uint32_t size)
-{
-	if(m_h == NULL)
-	{
-		throw sinsp_exception("reserve_thread_memory can't be called after capture starts");
-	}
-
-	return m_thread_privatestate_manager.reserve(size);
 }

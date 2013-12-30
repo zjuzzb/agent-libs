@@ -1,12 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="analyzer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="connectinfo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="event.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -19,16 +13,10 @@
     <ClCompile Include="internal_metrics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="parser_http.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="parsers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sinsp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="transactinfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="utils.cpp">
@@ -37,16 +25,7 @@
     <ClCompile Include="stats.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="draios.pb.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="config.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="logger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="metrics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="threadinfo.cpp">
@@ -55,38 +34,14 @@
     <ClCompile Include="filter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="scores.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="procfs_parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="filterchecks.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="sched_analyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="eventformatter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="delays.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="analyzer_thread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="analyzer_fd.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="analyzer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="connectinfo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="event.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -97,9 +52,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="internal_metrics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="parser_http.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parsers.h">
@@ -132,22 +84,10 @@
     <ClInclude Include="stats.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="transactinfo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="draios.pb.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="metrics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="threadinfo.h">
@@ -156,31 +96,10 @@
     <ClInclude Include="filter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scores.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="procfs_parser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="filterchecks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sched_analyzer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="eventformatter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="proto_header.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="delays.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="analyzer_thread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="analyzer_fd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

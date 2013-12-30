@@ -40,10 +40,6 @@ public:
 	bool is_main_thread();
 	sinsp_threadinfo* get_main_thread();
 	sinsp_fdinfo_t *get_fd(int64_t fd);
-#ifdef HAS_ANALYZER
-	bool is_main_program_thread();
-	sinsp_threadinfo* get_main_program_thread();
-#endif
 	void* get_private_state(uint32_t id);
 
 	void print_on(FILE *f);
@@ -161,6 +157,7 @@ class SINSP_PUBLIC sinsp_thread_manager
 {
 public:
 	sinsp_thread_manager(sinsp* inspector);
+	void clear();
 
 	void set_listener(sinsp_threadtable_listener* listener);
 	sinsp_threadinfo* get_thread(int64_t tid);

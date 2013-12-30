@@ -15,9 +15,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "parsers.h"
-#include "connectinfo.h"
-#include "metrics.h"
-#include "analyzer.h"
 #include "utils.h"
 #include "sinsp_errno.h"
 #include "filter.h"
@@ -275,7 +272,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	{
 		if(etype == PPME_CLONE_X)
 		{
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_thread_manager->m_failed_lookups->decrement();
 #endif
 		}
@@ -429,15 +426,15 @@ void sinsp_parser::store_event(sinsp_evt *evt)
 		// we won't be able to parse the correspoding exit event and we'll have
 		// to drop the information it carries.
 		//
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_store_drops++;
-#endif // HAS_ANALYZER
+#endif
 		return;
 	}
 
 	evt->m_tinfo->store_event(evt);
 
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 	m_inspector->m_stats.m_n_stored_evts++;
 #endif
 }
@@ -461,7 +458,7 @@ bool sinsp_parser::retrieve_enter_event(sinsp_evt *enter_evt, sinsp_evt *exit_ev
 		// This happen especially at the beginning of trace files, where events
 		// can be truncated
 		//
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_retrieve_drops++;
 #endif
 		return false;
@@ -477,13 +474,13 @@ bool sinsp_parser::retrieve_enter_event(sinsp_evt *enter_evt, sinsp_evt *exit_ev
 	{
 		ASSERT(false);
 		exit_evt->m_tinfo->set_lastevent_data_validity(false);
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_retrieve_drops++;
 #endif
 		return false;
 	}
 
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 	m_inspector->m_stats.m_n_retrieved_evts++;
 #endif
 	return true;
@@ -1186,7 +1183,7 @@ void sinsp_parser::parse_connect_exit(sinsp_evt *evt)
 
 #ifndef HAS_ANALYZER
 		//
-		// Update the FD with this tuple
+		// Update the FD info with this tuple
 		//
 		if(family == PPM_AF_INET)
 		{
@@ -1459,12 +1456,12 @@ void sinsp_parser::parse_close_exit(sinsp_evt *evt)
 		// It is normal when a close fails that the fd lookup failed, so we revert the
 		// increment of m_n_failed_fd_lookups (for the enter event too if there's one).
 		//
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 		m_inspector->m_stats.m_n_failed_fd_lookups--;
 #endif
 		if(evt->m_tinfo && evt->m_tinfo->is_lastevent_data_valid())
 		{
-#if defined(HAS_ANALYZER) && defined(GATHER_INTERNAL_STATS)
+#ifdef GATHER_INTERNAL_STATS
 			m_inspector->m_stats.m_n_failed_fd_lookups--;
 #endif
 		}
@@ -1583,11 +1580,8 @@ void sinsp_parser::parse_thread_exit(sinsp_evt *evt)
 	//
 	if(evt->m_tinfo)
 	{
-#ifdef HAS_ANALYZER
 		evt->m_tinfo->m_flags |= PPM_CL_CLOSED;
-#else
 		m_inspector->m_tid_to_remove = evt->get_tid();
-#endif
 	}
 }
 

@@ -136,7 +136,9 @@ public:
 		m_sinsp_handler(&m_queue, &m_configuration)
 	{
 		m_evtcnt = 0;
-
+		m_inspector = new sinsp();
+		m_analyzer = new sinsp_analyzer(m_inspector);
+		m_inspector->m_analyzer = m_analyzer;
 	}
 	
 	~dragent_app()
@@ -144,6 +146,16 @@ public:
 		if(g_log != NULL)
 		{
 			delete g_log;
+		}
+
+		if(m_inspector != NULL)
+		{
+			delete m_inspector;
+		}
+
+		if(m_analyzer != NULL)
+		{
+			delete m_analyzer;
 		}
 	}
 
@@ -300,7 +312,7 @@ protected:
 				{
 					g_log->information("Stopping dump");
 					m_configuration.m_dump_in_progress = false;
-					m_inspector.stop_dump();
+					m_inspector->stop_dump();
 					m_configuration.m_dump_completed.set();
 				}
 			}
@@ -311,11 +323,11 @@ protected:
 					g_log->information("Starting dump");
 					m_configuration.m_dump_in_progress = true;
 					m_configuration.m_dump_completed.reset();
-					m_inspector.start_dump(m_configuration.m_dump_file);
+					m_inspector->start_dump(m_configuration.m_dump_file);
 				}
 			}
 
-			res = m_inspector.next(&ev);
+			res = m_inspector->next(&ev);
 
 			if(res == SCAP_TIMEOUT)
 			{
@@ -328,7 +340,7 @@ protected:
 			else if(res != SCAP_SUCCESS)
 			{
 				cerr << "res = " << res << endl;
-				throw sinsp_exception(m_inspector.getlasterr().c_str());
+				throw sinsp_exception(m_inspector->getlasterr().c_str());
 			}
 
 			//
@@ -490,12 +502,12 @@ protected:
 			//
 			// Attach our transmit callback to the analyzer
 			//
-			m_inspector.set_analyzer_callback(&m_sinsp_handler);
+			m_inspector->m_analyzer->set_sample_callback(&m_sinsp_handler);
 
 			//
 			// Plug the sinsp logger into our one
 			//
-			m_inspector.set_log_callback(dragent_logger::sinsp_logger_callback);
+			m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
 			if(!m_configuration.m_metrics_dir.empty())
 			{
 				//
@@ -503,8 +515,8 @@ protected:
 				//
 				File md(m_configuration.m_metrics_dir);
 				md.createDirectories();
-				m_inspector.get_configuration()->set_emit_metrics_to_file(true);
-				m_inspector.get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
+				m_analyzer->get_configuration()->set_emit_metrics_to_file(true);
+				m_analyzer->get_configuration()->set_metrics_directory(m_configuration.m_metrics_dir);
 			}
 			else
 			{
@@ -514,7 +526,7 @@ protected:
 			//
 			// The machine id is the MAC address of the first physical adapter
 			//
-			m_inspector.get_configuration()->set_machine_id(m_configuration.m_machine_id);
+			m_analyzer->get_configuration()->set_machine_id(m_configuration.m_machine_id);
 
 			//
 			// The customer id is currently specified by the user
@@ -524,17 +536,17 @@ protected:
 				g_log->error("customerid not specified.");
 			}
 
-			m_inspector.get_configuration()->set_customer_id(m_configuration.m_customer_id);
+			m_analyzer->get_configuration()->set_customer_id(m_configuration.m_customer_id);
 
 			//
 			// Configure compression in the protocol
 			//
-			m_inspector.get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
+			m_analyzer->get_configuration()->set_compress_metrics(m_configuration.m_compression_enabled);
 
 			//
 			// Configure connection aggregation
 			//
-			m_inspector.get_configuration()->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
+			m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
 
 			//
 			// Start the capture with sinsp
@@ -542,29 +554,29 @@ protected:
 			g_log->information("Opening the capture source");
 			if(m_filename != "")
 			{
-				m_inspector.open(m_filename);
+				m_inspector->open(m_filename);
 			}
 			else
 			{
-				m_inspector.open("");
+				m_inspector->open("");
 			}
 
 			aws_metadata metadata;
 			if(m_configuration.get_aws_metadata(&metadata))
 			{
 				sinsp_ipv4_ifinfo aws_interface(metadata.m_public_ipv4, metadata.m_public_ipv4, metadata.m_public_ipv4, "aws");
-				m_inspector.import_ipv4_interface(aws_interface);
+				m_inspector->import_ipv4_interface(aws_interface);
 			}
 
 			if(m_configuration.m_dropping_mode)
 			{
 				g_log->information("Enabling dropping mode");
-				m_inspector.start_dropping_mode();
+				m_inspector->start_dropping_mode();
 			}
 
 			if(m_writefile != "")
 			{
-				m_inspector.start_dump(m_writefile);
+				m_inspector->start_dump(m_writefile);
 				dragent_configuration::m_dump_enabled = true;
 			}
 
@@ -608,7 +620,8 @@ protected:
 	
 private:
 	bool m_help_requested;
-	sinsp m_inspector;
+	sinsp* m_inspector;
+	sinsp_analyzer* m_analyzer;
 	string m_filename;
 	uint64_t m_evtcnt;
 	string m_writefile;

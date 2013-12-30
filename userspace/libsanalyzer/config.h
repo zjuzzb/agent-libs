@@ -1,3 +1,5 @@
+#ifdef HAS_ANALYZER
+
 #pragma once
 
 class SINSP_PUBLIC sinsp_configuration
@@ -14,10 +16,6 @@ public:
 	void set_compress_metrics(bool compress);
 	const string& get_metrics_directory() const;
 	void set_metrics_directory(string metrics_directory);
-	uint64_t get_thread_timeout_ns() const;
-	void set_thread_timeout_ns(uint64_t thread_timeout_ns);
-	uint64_t get_inactive_thread_scan_time_ns() const;
-	void set_inactive_thread_scan_time_ns(uint64_t inactive_thread_scan_time_ns);
 	sinsp_logger::output_type get_log_output_type() const;
 	void set_log_output_type(sinsp_logger::output_type log_output_type);
 	const string& get_machine_id() const;
@@ -39,14 +37,13 @@ private:
 	uint64_t m_connection_timeout_ns;
 	bool m_emit_metrics_to_file;
 	bool m_compress_metrics;
-	uint64_t m_thread_timeout_ns;
-	uint64_t m_inactive_thread_scan_time_ns;
 	string m_machine_id;
 	string m_customer_id;
 	uint64_t m_analyzer_sample_length_ns;
 	string m_metrics_directory;
 	uint32_t m_max_connection_table_size;
-	uint32_t m_max_thread_table_size;
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
 };
+
+#endif // HAS_ANALYZER

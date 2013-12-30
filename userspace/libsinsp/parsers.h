@@ -71,8 +71,6 @@ private:
 
 	// Temporary storage to avoid memory allocation
 	sinsp_evt m_tmp_evt;
-	// The support class for http parsing
-	sinsp_http_parser m_http_parser;
 	// The transaction table. Key pair is <tid, fd>.
 //	unordered_map<pair<int64_t, int64_t>, sinsp_transactinfo> m_transactable;
 

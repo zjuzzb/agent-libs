@@ -7,6 +7,7 @@ using namespace google::protobuf::io;
 #include "sinsp_int.h"
 
 #ifdef HAS_ANALYZER
+#include "analyzer_int.h"
 #include "metrics.h"
 #include "draios.pb.h"
 #include "analyzer_thread.h"
@@ -643,4 +644,4 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	}
 }
 
-#endif HAS_ANALYZER
+#endif // HAS_ANALYZER

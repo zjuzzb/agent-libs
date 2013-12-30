@@ -14,6 +14,7 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer_int.h"
 #include "procfs_parser.h"
 
 sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture)

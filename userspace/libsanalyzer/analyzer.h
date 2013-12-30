@@ -1,7 +1,19 @@
 #pragma once
 
-#ifdef HAS_ANALYZER
+#include <analyzer_int.h>
 
+//
+// Prototype of the callback invoked by the analyzer when a sample is ready
+//
+class analyzer_callback_interface
+{
+public:
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics) = 0;
+};
+
+typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
+
+#ifdef HAS_ANALYZER
 class sinsp_scores;
 class sinsp_procfs_parser;
 class sinsp_sched_analyzer;
@@ -9,6 +21,8 @@ class sinsp_sched_analyzer2;
 class sinsp_delays;
 class analyzer_threadtable_listener;
 class sinsp_analyzer_fd_listener;
+class sinsp_configuration;
+class sinsp_counters;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -59,7 +73,7 @@ struct process_tuple_cmp
 //
 // The main analyzer class
 //
-class sinsp_analyzer
+class SINSP_PUBLIC sinsp_analyzer
 {
 public:
 	sinsp_analyzer(sinsp* inspector);
@@ -73,6 +87,12 @@ public:
 	// the user's changes to the configuration.
 	//
 	void on_capture_start();
+
+	//
+	// Get and set the library configuration settings
+	//
+	sinsp_configuration* get_configuration();
+	void set_configuration(const sinsp_configuration& configuration);
 
 	//
 	// Processing entry point
@@ -89,6 +109,26 @@ public:
 	{
 		return m_next_flush_time_ns;
 	}
+
+	//
+	// Connection lookup
+	//
+	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
+	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
+	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
+	void remove_expired_connections(uint64_t ts);
+
+#ifdef GATHER_INTERNAL_STATS
+	//
+	// Get processing stats
+	//
+	sinsp_stats get_stats();
+#endif // GATHER_INTERNAL_STATS
+
+	//
+	// The library configuration manager
+	//
+	sinsp_configuration* m_configuration;
 
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
@@ -107,6 +147,14 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_time_ns;
 
 	uint64_t m_prev_sample_evtnum;
+
+	//
+	// Tables
+	//
+	sinsp_transaction_table* m_trans_table;
+	sinsp_ipv4_connection_manager* m_ipv4_connections;
+	sinsp_unix_connection_manager* m_unix_connections;
+	sinsp_pipe_connection_manager* m_pipe_connections;
 
 	//
 	// Pointer to context that we use frequently
@@ -145,7 +193,7 @@ VISIBILITY_PRIVATE
 	//
 	// The table of aggreagted connections
 	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> m_reduced_ipv4_connections;
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
 
 	//
 	// The aggreagted host metrics
@@ -196,7 +244,17 @@ VISIBILITY_PRIVATE
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;
 	friend class sinsp_delays;
+	friend class sinsp_evt;
+	friend class sinsp_threadinfo;
+	friend class sinsp_transaction_manager;
+	friend class sinsp_transactemitter_unbuffered;
+	friend class sinsp_partial_transaction;
+	friend class sinsp_fdtable;
+	friend class sinsp_thread_manager;
+	friend class thread_analyzer_info;
+	friend class sinsp_analyzer_fd_listener;
 	friend class analyzer_threadtable_listener;
+	friend class sinsp_sched_analyzer;
 };
 
 #endif // HAS_ANALYZER

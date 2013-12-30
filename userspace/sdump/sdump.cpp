@@ -2,6 +2,9 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
+#ifdef HAS_ANALYZER
+#include <analyzer.h>
+#endif
 #include <iostream>
 #include <time.h>
 #include <signal.h>
@@ -201,200 +204,243 @@ int main(int argc, char **argv)
 	captureinfo cinfo;
 	string output_format;
 	uint32_t snaplen = 0;
+#ifdef HAS_ANALYZER
+	sinsp_analyzer* analyzer = NULL;
+#endif
 
-	{
-		sinsp inspector;
-		output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
+	sinsp* inspector = new sinsp();
+#ifdef HAS_ANALYZER
+		analyzer = new sinsp_analyzer(inspector);
+		inspector->m_analyzer = analyzer;
+#endif
+
+	output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
 //		output_format = "%evt.num)%evt.type time:%latencyns";
 
-		//
-		// Parse the args
-		//
-		while((op = getopt(argc, argv, "ac:hi:jlm:p:qr:s:w:")) != -1)
+	//
+	// Parse the args
+	//
+	while((op = getopt(argc, argv, "ac:hi:jlm:p:qr:s:w:")) != -1)
+	{
+		switch (op)
 		{
-			switch (op)
+		case 'a':
+			absolute_times = true;
+			break;
+		case 'c':
+			cnt = atoi(optarg);
+			if(cnt <= 0)
 			{
-			case 'a':
-				absolute_times = true;
-				break;
-			case 'c':
-				cnt = atoi(optarg);
-				if(cnt <= 0)
-				{
-					fprintf(stderr, "invalid packet count %s\n", optarg);
-					return EXIT_FAILURE;
-				}
-				break;
-			case 'j':
-				emitjson = true;
-				break;
-			case 'h':
-				usage(argv[0]);
-				return EXIT_SUCCESS;
-			case 'i':
-				if(string(optarg) == "stdout")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
-				}
-				else if(string(optarg) == "stderr")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
-				}
-				else if(string(optarg) == "file")
-				{
-					inspector.get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
-				}
-				else if(string(optarg) == "stdout_nots")
-				{
-					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
-				}
-				else if(string(optarg) == "stderr_nots")
-				{
-					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
-				}
-				else if(string(optarg) == "file_nots")
-				{
-					inspector.get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
-				}
-				else
-				{
-					fprintf(stderr, "wrong -i option %s. Accepted values: stdout, sterr or file.", optarg);
-					return -1;
-				}
-
-				break;
-			case 'l':
-				list_fields();
-				return EXIT_SUCCESS;
-			case 'm':
-				inspector.get_configuration()->set_emit_metrics_to_file(true);
-				inspector.get_configuration()->set_metrics_directory(optarg);
-				break;
-			case 'p':
-				if(string(optarg) == "p")
-				{
-					//
-					// -ff shows the default output format, useful if the user wants to tweak it.
-					//
-					printf("%s\n", output_format.c_str());
-					return EXIT_SUCCESS;
-				}
-				else
-				{
-					output_format = optarg;
-				}
-
-				break;
-			case 'r':
-				infile = optarg;
-				break;
-			case 's':
-				snaplen = atoi(optarg);
-				break;
-			case 'q':
-				quiet = true;
-				break;
-			case 'w':
-				outfile = optarg;
-//				quiet = true;
-				break;
-			default:
-				break;
-			}
-		}
-
-		//
-		// the filter is specified at the end of the command line
-		//
-		if(optind < argc)
-		{
-#ifdef HAS_FILTERING
-			string filter;
-
-			for(int32_t j = optind; j < argc; j++)
-			{
-				filter += argv[j];
-				if(j < argc)
-				{
-					filter += " ";
-				}
-			}
-
-			inspector.set_filter(filter);
-#else
-			fprintf(stderr, "filtering not supported in release mode.\n");
-			return EXIT_FAILURE;				
+				fprintf(stderr, "invalid packet count %s\n", optarg);
+#ifdef HAS_ANALYZER
+				delete analyzer;
 #endif
-		}
-
-		//
-		// Set the CRTL+C signal
-		//
-		if(signal(SIGINT, signal_callback) == SIG_ERR)
-		{
-			fprintf(stderr, "An error occurred while setting a signal handler.\n");
-			return EXIT_FAILURE;
-		}
-
-		//
-		// Launch the inspeciotn
-		//
-		try
-		{
-			if(infile != "")
+				delete inspector;
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'j':
+			emitjson = true;
+			break;
+		case 'h':
+			usage(argv[0]);
+#ifdef HAS_ANALYZER
+			delete analyzer;
+#endif
+			delete inspector;
+			return EXIT_SUCCESS;
+		case 'i':
+#ifdef HAS_ANALYZER
+			if(string(optarg) == "stdout")
 			{
-				inspector.open(infile);
+				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
+			}
+			else if(string(optarg) == "stderr")
+			{
+				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
+			}
+			else if(string(optarg) == "file")
+			{
+				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
+			}
+			else if(string(optarg) == "stdout_nots")
+			{
+				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
+			}
+			else if(string(optarg) == "stderr_nots")
+			{
+				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
+			}
+			else if(string(optarg) == "file_nots")
+			{
+				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
 			}
 			else
 			{
-				inspector.open("");
+				fprintf(stderr, "wrong -i option %s. Accepted values: stdout, sterr or file.", optarg);
+#ifdef HAS_ANALYZER
+				delete analyzer;
+#endif
+				delete inspector;
+				return -1;
 			}
+#endif // HAS_ANALYZER
 
-			if(snaplen != 0)
+			break;
+		case 'l':
+			list_fields();
+#ifdef HAS_ANALYZER
+			delete analyzer;
+#endif
+			delete inspector;
+			return EXIT_SUCCESS;
+		case 'm':
+#ifdef HAS_ANALYZER
+			analyzer->get_configuration()->set_emit_metrics_to_file(true);
+			analyzer->get_configuration()->set_metrics_directory(optarg);
+#endif
+			break;
+		case 'p':
+			if(string(optarg) == "p")
 			{
-				inspector.set_snaplen(snaplen);
+				//
+				// -ff shows the default output format, useful if the user wants to tweak it.
+				//
+				printf("%s\n", output_format.c_str());
+#ifdef HAS_ANALYZER
+				delete analyzer;
+#endif
+				delete inspector;
+				return EXIT_SUCCESS;
 			}
-
-			if(outfile != "")
+			else
 			{
-				inspector.start_dump(outfile);
+				output_format = optarg;
 			}
 
-			duration = ((double)clock()) / CLOCKS_PER_SEC;
-			
-			cinfo = do_inspect(&inspector, 
-				cnt, 
-				quiet, 
-				absolute_times,
-				output_format);
-
-			duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+			break;
+		case 'r':
+			infile = optarg;
+			break;
+		case 's':
+			snaplen = atoi(optarg);
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'w':
+			outfile = optarg;
+//				quiet = true;
+			break;
+		default:
+			break;
 		}
-		catch(sinsp_exception e)
-		{
-			if(emitjson)
-			{
-				printf("]\n");
-			}
-
-			cerr << e.what() << endl;
-			res = EXIT_FAILURE;
-		}
-		catch(...)
-		{
-			res = EXIT_FAILURE;
-		}
-
-		//fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
-		//	duration,
-		//	cinfo.m_nevts,
-		//	(double)cinfo.m_nevts / duration);
-
-		fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
-			cinfo.m_time / 1000000000,
-			cinfo.m_time % 1000000000,
-			(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
 	}
+
+	//
+	// the filter is specified at the end of the command line
+	//
+	if(optind < argc)
+	{
+#ifdef HAS_FILTERING
+		string filter;
+
+		for(int32_t j = optind; j < argc; j++)
+		{
+			filter += argv[j];
+			if(j < argc)
+			{
+				filter += " ";
+			}
+		}
+
+		inspector->set_filter(filter);
+#else
+		fprintf(stderr, "filtering not supported in release mode.\n");
+#ifdef HAS_ANALYZER
+		delete analyzer;
+#endif
+		delete inspector;
+		return EXIT_FAILURE;				
+#endif
+	}
+
+	//
+	// Set the CRTL+C signal
+	//
+	if(signal(SIGINT, signal_callback) == SIG_ERR)
+	{
+		fprintf(stderr, "An error occurred while setting a signal handler.\n");
+#ifdef HAS_ANALYZER
+		delete analyzer;
+#endif
+		delete inspector;
+		return EXIT_FAILURE;
+	}
+
+	//
+	// Launch the inspeciotn
+	//
+	try
+	{
+		if(infile != "")
+		{
+			inspector->open(infile);
+		}
+		else
+		{
+			inspector->open("");
+		}
+
+		if(snaplen != 0)
+		{
+			inspector->set_snaplen(snaplen);
+		}
+
+		if(outfile != "")
+		{
+			inspector->start_dump(outfile);
+		}
+
+		duration = ((double)clock()) / CLOCKS_PER_SEC;
+			
+		cinfo = do_inspect(inspector, 
+			cnt, 
+			quiet, 
+			absolute_times,
+			output_format);
+
+		duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+	}
+	catch(sinsp_exception e)
+	{
+		if(emitjson)
+		{
+			printf("]\n");
+		}
+
+		cerr << e.what() << endl;
+		res = EXIT_FAILURE;
+	}
+	catch(...)
+	{
+		res = EXIT_FAILURE;
+	}
+
+	//fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
+	//	duration,
+	//	cinfo.m_nevts,
+	//	(double)cinfo.m_nevts / duration);
+
+	fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
+		cinfo.m_time / 1000000000,
+		cinfo.m_time % 1000000000,
+		(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
+
+	delete inspector;
+#ifdef HAS_ANALYZER
+	delete analyzer;
+#endif
 
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();

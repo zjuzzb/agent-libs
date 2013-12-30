@@ -24,11 +24,9 @@
 using namespace std;
 
 #include "../libscap/scap.h"
-#include "parser_http.h"
 #include "settings.h"
 #include "utils.h"
 #include "../libscap/scap.h"
-#include "transactinfo.h"
 #include "parsers.h"
 #include "ifinfo.h"
 #include "internal_metrics.h"

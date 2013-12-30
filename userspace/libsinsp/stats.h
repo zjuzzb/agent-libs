@@ -34,17 +34,6 @@ public:
 	uint64_t m_n_store_drops;
 	uint64_t m_n_retrieved_evts;
 	uint64_t m_n_retrieve_drops;
-	uint64_t m_n_transactions;
-	uint64_t m_n_added_transactions;
-	uint64_t m_n_removed_transactions;
-	uint64_t m_n_added_pending_transactions;
-	uint64_t m_n_removed_pending_transactions;
-	uint64_t m_n_connections;
-	uint64_t m_n_added_connections;
-	uint64_t m_n_removed_connections;
-	uint64_t m_n_expired_connections;
-	uint64_t m_n_connection_lookups;
-	uint64_t m_n_failed_connection_lookups;
 
 private:
 	internal_metrics::registry m_metrics_registry;

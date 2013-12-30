@@ -1,5 +1,9 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer_int.h"
+#include "parser_http.h"
+
+#ifdef HAS_ANALYZER
 
 sinsp_http_parser::sinsp_http_parser()
 {
@@ -93,3 +97,5 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 	return res;
 }
+
+#endif // HAS_ANALYZER

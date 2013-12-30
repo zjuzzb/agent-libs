@@ -114,9 +114,12 @@ public:
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
 	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
+	bool is_main_program_thread();
+	sinsp_threadinfo* get_main_program_thread();
 
 	// Global state
 	sinsp *m_inspector;
+	sinsp_analyzer* m_analyzer;
 	sinsp_threadinfo* m_tinfo;
 
 	// Flags word used by the analysis engine.
