@@ -691,11 +691,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if(prog_delays->m_local_processing_delay_ns != -1)
 					{
-						procinfo->m_proc_transaction_processing_delay_ns = prog_delays->m_local_processing_delay_ns;
+						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns);
+						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
 					}
 					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
 					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
-					proc->set_transaction_processing_delay(procinfo->m_proc_transaction_processing_delay_ns);
 
 					//
 					// Health-related metrics
@@ -1321,6 +1321,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns);
+				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays->m_merged_client_delay);
 			}
 
 			//
