@@ -49,11 +49,16 @@ void dumper_worker::run()
 	if(!dragent_configuration::m_terminate)
 	{
 		dragent_configuration::m_dump_enabled = false;
-		m_configuration->m_dump_completed.wait();
-
-		g_log->information(m_name + ": Capture completed, sending file");
-
-		send_file();
+	
+		if(m_configuration->m_dump_completed.tryWait(60000))
+		{
+			g_log->information(m_name + ": Capture completed, sending file");
+			send_file();
+		}
+		else
+		{
+			g_log->error("Timeout waiting for capture completed event");
+		}
 	}
 
 	g_log->information(m_name + ": Terminating");
