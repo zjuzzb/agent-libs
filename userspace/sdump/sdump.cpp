@@ -291,9 +291,7 @@ int main(int argc, char **argv)
 			else
 			{
 				fprintf(stderr, "wrong -i option %s. Accepted values: stdout, sterr or file.", optarg);
-#ifdef HAS_ANALYZER
 				delete analyzer;
-#endif
 				delete inspector;
 				return -1;
 			}

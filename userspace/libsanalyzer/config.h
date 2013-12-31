@@ -10,6 +10,8 @@ public:
 	uint64_t get_connection_timeout_ns() const;
 	uint64_t get_connection_timeout_sec() const;
 	void set_connection_timeout_in_sec(uint64_t timeout_sec);
+	uint64_t get_connection_pruning_interval_ns() const;
+	void set_connection_pruning_interval_ns(uint64_t interval_ns);
 	bool get_emit_metrics_to_file() const;
 	void set_emit_metrics_to_file(bool emit);
 	bool get_compress_metrics() const;
@@ -26,14 +28,13 @@ public:
 	void set_analyzer_sample_length_ns(uint64_t analyzer_sample_length_ns);
 	uint32_t get_max_connection_table_size() const;
 	void set_max_connection_table_size(uint32_t max_connection_table_size);
-	uint32_t get_max_thread_table_size() const;
-	void set_max_thread_table_size(uint32_t max_thread_table_size);
 	uint32_t get_max_connections_in_proto() const;
 	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
 	bool get_aggregate_connections_in_proto() const;
 	void set_aggregate_connections_in_proto(bool aggregate);
 
 private:
+	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
 	bool m_emit_metrics_to_file;
 	bool m_compress_metrics;

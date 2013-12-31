@@ -7,6 +7,7 @@
 sinsp_configuration::sinsp_configuration()
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
+	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
 	set_emit_metrics_to_file(false);
 	set_compress_metrics(false);
 	m_machine_id = "<NA>";
@@ -36,6 +37,16 @@ uint64_t sinsp_configuration::get_connection_timeout_sec() const
 void sinsp_configuration::set_connection_timeout_in_sec(uint64_t timeout_sec)
 {
 	m_connection_timeout_ns = timeout_sec * ONE_SECOND_IN_NS;
+}
+
+uint64_t sinsp_configuration::get_connection_pruning_interval_ns() const
+{
+	return m_connection_pruning_interval_ns;
+}
+
+void sinsp_configuration::set_connection_pruning_interval_ns(uint64_t interval_ns)
+{
+	m_connection_pruning_interval_ns = interval_ns;
 }
 
 bool sinsp_configuration::get_emit_metrics_to_file() const
