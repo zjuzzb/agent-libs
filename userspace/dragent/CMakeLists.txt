@@ -15,6 +15,7 @@ add_executable(dragent
 	error_handler.cpp
 	logger.cpp
 	main.cpp
+	monitor.cpp
 	protocol.cpp
 	sinsp_data_handler.cpp)
 

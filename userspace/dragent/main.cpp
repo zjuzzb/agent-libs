@@ -1,10 +1,7 @@
 #include "main.h"
 #ifndef _WIN32
 #include <sys/prctl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #endif
-#include <fstream>
 
 #include "crash_handler.h"
 #include "configuration.h"
@@ -13,13 +10,9 @@
 #include "error_handler.h"
 #include "sinsp_data_handler.h"
 #include "logger.h"
+#include "monitor.h"
 
 #define AGENT_PRIORITY 19
-
-static void g_monitor_signal_callback(int sig)
-{
-	exit(EXIT_SUCCESS);
-}
 
 static void g_signal_callback(int sig)
 {
@@ -31,81 +24,6 @@ static void g_usr_signal_callback(int sig)
 	g_log->information("Received SIGUSR1, toggling capture state"); 
 	dragent_configuration::m_dump_enabled = !dragent_configuration::m_dump_enabled;
 }
-
-#ifndef _WIN32
-
-static void run_monitor(const string& pidfile)
-{
-	signal(SIGINT, g_monitor_signal_callback);
-	signal(SIGTERM, g_monitor_signal_callback);
-	signal(SIGUSR1, SIG_IGN);
-
-	//
-	// Start the monitor process
-	// 
-	int result = fork();
-
-	if(result < 0)
-	{
-		exit(EXIT_FAILURE);
-	}
-
-	if(result)
-	{
-		//
-		// Father. It will be the monitor process
-		//
-		while(true)
-		{
-			int status = 0;
-
-			wait(&status);
-
-			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
-			{
-				//
-				// Since both child and father are run with --daemon option,
-				// Poco can get confused and can delete the pidfile even if
-				// the monitor doesn't die.
-				//
-				if(!pidfile.empty())
-				{
-					std::ofstream ostr(pidfile);
-					if(ostr.good())
-					{
-						ostr << Poco::Process::id() << std::endl;
-					}
-				}
-
-				//
-				// Sleep for a bit and run another dragent
-				//
-				sleep(1);
-
-				result = fork();
-				if(result == 0)
-				{
-					break;
-				}
-
-				if(result < 0)
-				{
-					exit(EXIT_FAILURE);
-				}
-			}
-			else
-			{
-				exit(EXIT_SUCCESS);
-			}
-		}
-	}
-
-	//
-	// We want to terminate when the monitor is killed by init
-	//
-	prctl(PR_SET_PDEATHSIG, SIGTERM);
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Capture information class
@@ -380,22 +298,17 @@ protected:
 		if(config().getBool("application.runAsDaemon", false))
 		{
 			run_monitor(m_pidfile);
+
+			//
+			// We want to terminate when the monitor is killed by init
+			//
+			prctl(PR_SET_PDEATHSIG, SIGTERM);
 		}
 
-		if(signal(SIGINT, g_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
-
-		if(signal(SIGTERM, g_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
-
-		if(signal(SIGUSR1, g_usr_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
+		signal(SIGINT, g_signal_callback);
+		signal(SIGQUIT, g_signal_callback);
+		signal(SIGTERM, g_signal_callback);
+		signal(SIGUSR1, g_usr_signal_callback);
 
 		if(crash_handler::initialize() == false)
 		{
