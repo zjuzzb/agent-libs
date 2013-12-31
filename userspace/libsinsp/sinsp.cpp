@@ -334,11 +334,6 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Run the periodic connection and thread table cleanup
 	//
 	m_thread_manager->remove_inactive_threads();
-#else
-	if(m_analyzer)
-	{
-		m_analyzer->remove_expired_connections(m_evt.get_ts());
-	}
 #endif // HAS_ANALYZER
 
 	//
