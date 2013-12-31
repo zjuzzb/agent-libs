@@ -29,6 +29,7 @@ using namespace std;
 #include "settings.h"
 #include "logger.h"
 #include "event.h"
+#include "filter.h"
 #include "stats.h"
 #include "ifinfo.h"
 

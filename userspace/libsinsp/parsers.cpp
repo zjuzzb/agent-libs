@@ -46,7 +46,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	//
 	// Filtering
 	//
-#ifdef HAS_FILTERING
+#if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 	bool do_filter_later = false;
 
 	if(m_inspector->m_filter)
@@ -205,7 +205,7 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	// With some state-changing events like clone, execve and open, we do the 
 	// filtering after having updated the state
 	//
-#ifdef HAS_FILTERING
+#if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 	if(do_filter_later)
 	{
 		if(m_inspector->m_filter)
