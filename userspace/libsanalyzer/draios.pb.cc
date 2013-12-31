@@ -3808,6 +3808,7 @@ const int host::kTcountersFieldNumber;
 const int host::kReqcountersFieldNumber;
 const int host::kTransactionCountersFieldNumber;
 const int host::kTransactionProcessingDelayFieldNumber;
+const int host::kNextTiersDelayFieldNumber;
 const int host::kResourceCountersFieldNumber;
 const int host::kSyscallErrorsFieldNumber;
 const int host::kExternalIoNetFieldNumber;
@@ -3872,6 +3873,7 @@ void host::SharedCtor() {
   reqcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+  next_tiers_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
   syscall_errors_ = NULL;
   external_io_net_ = NULL;
@@ -3941,6 +3943,7 @@ void host::Clear() {
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+    next_tiers_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
@@ -4147,6 +4150,22 @@ bool host::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(104)) goto parse_next_tiers_delay;
+        break;
+      }
+
+      // optional uint64 next_tiers_delay = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_next_tiers_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &next_tiers_delay_)));
+          set_has_next_tiers_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -4237,6 +4256,11 @@ void host::SerializeWithCachedSizes(
       12, this->reqcounters(), output);
   }
 
+  // optional uint64 next_tiers_delay = 13;
+  if (has_next_tiers_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(13, this->next_tiers_delay(), output);
+  }
+
 }
 
 int host::ByteSize() const {
@@ -4292,6 +4316,13 @@ int host::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->transaction_processing_delay());
+    }
+
+    // optional uint64 next_tiers_delay = 13;
+    if (has_next_tiers_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->next_tiers_delay());
     }
 
     // optional .draiosproto.resource_categories resource_counters = 8;
@@ -4375,6 +4406,9 @@ void host::MergeFrom(const host& from) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
+    if (from.has_next_tiers_delay()) {
+      set_next_tiers_delay(from.next_tiers_delay());
+    }
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
@@ -4425,6 +4459,7 @@ void host::Swap(host* other) {
     std::swap(reqcounters_, other->reqcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
+    std::swap(next_tiers_delay_, other->next_tiers_delay_);
     std::swap(resource_counters_, other->resource_counters_);
     std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(external_io_net_, other->external_io_net_);
@@ -4745,6 +4780,7 @@ const int process::kIsUnixTransactionClientFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
+const int process::kNextTiersDelayFieldNumber;
 const int process::kResourceCountersFieldNumber;
 const int process::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
@@ -4804,6 +4840,7 @@ void process::SharedCtor() {
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+  next_tiers_delay_ = GOOGLE_ULONGLONG(0);
   resource_counters_ = NULL;
   syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -4866,6 +4903,7 @@ void process::Clear() {
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+    next_tiers_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
@@ -5043,6 +5081,22 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(96)) goto parse_next_tiers_delay;
+        break;
+      }
+
+      // optional uint64 next_tiers_delay = 12;
+      case 12: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_next_tiers_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &next_tiers_delay_)));
+          set_has_next_tiers_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -5124,6 +5178,11 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(11, this->is_unix_transaction_client(), output);
   }
 
+  // optional uint64 next_tiers_delay = 12;
+  if (has_next_tiers_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(12, this->next_tiers_delay(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -5187,6 +5246,13 @@ int process::ByteSize() const {
           this->transaction_processing_delay());
     }
 
+    // optional uint64 next_tiers_delay = 12;
+    if (has_next_tiers_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->next_tiers_delay());
+    }
+
     // optional .draiosproto.resource_categories resource_counters = 8;
     if (has_resource_counters()) {
       total_size += 1 +
@@ -5245,6 +5311,9 @@ void process::MergeFrom(const process& from) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
+    if (from.has_next_tiers_delay()) {
+      set_next_tiers_delay(from.next_tiers_delay());
+    }
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
@@ -5289,6 +5358,7 @@ void process::Swap(process* other) {
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
+    std::swap(next_tiers_delay_, other->next_tiers_delay_);
     std::swap(resource_counters_, other->resource_counters_);
     std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);

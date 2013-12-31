@@ -661,7 +661,7 @@ bool sinsp_filter_expression::compare(sinsp_evt *evt)
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_filter implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
+sinsp_filter::sinsp_filter(sinsp* inspector, string fltstr)
 {
 //fltstr = "tid!=-1";
 //fltstr = "comm = pv";
@@ -670,11 +670,20 @@ sinsp_filter::sinsp_filter(string fltstr, sinsp* inspector)
 	m_scanpos = -1;
 	m_scansize = 0;
 	m_state = ST_NEED_EXPRESSION;
-	m_curexpr = &m_filter;
+	m_filter = new sinsp_filter_expression();
+	m_curexpr = m_filter;
 	m_last_boolop = BO_NONE;
 	m_nest_level = 0;
 
 	parse(fltstr);
+}
+
+sinsp_filter::~sinsp_filter()
+{
+	if(m_filter)
+	{
+		delete m_filter;
+	}
 }
 
 bool sinsp_filter::isblank(char c)
@@ -1013,7 +1022,7 @@ void sinsp_filter::parse(string fltstr)
 
 bool sinsp_filter::run(sinsp_evt *evt)
 {
-	return m_filter.compare(evt);
+	return m_filter->compare(evt);
 }
 
 #endif // HAS_FILTERING

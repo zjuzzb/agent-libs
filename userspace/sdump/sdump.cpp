@@ -56,12 +56,12 @@ captureinfo do_inspect(sinsp* inspector,
 					   uint64_t cnt, 
 					   bool quiet, 
 					   bool absolute_times,
-					   string format)
+					   string format,
+					   sinsp_filter* display_filter)
 {
 	captureinfo retval;
 	int32_t res;
 	sinsp_evt* ev;
-//	uint64_t n_printed_evts = 0;
 	uint64_t ts;
 	uint64_t deltats = 0;
 	uint64_t firstts = 0;
@@ -117,6 +117,14 @@ captureinfo do_inspect(sinsp* inspector,
 		//
 		if(!quiet)
 		{
+			if(display_filter)
+			{
+				if(!display_filter->run(ev))
+				{
+					continue;
+				}
+			}
+
 			if(formatter.tostring(ev, &line))
 			{
 				cout << line << endl;
@@ -200,6 +208,8 @@ int main(int argc, char **argv)
 	bool emitjson = false;
 	bool quiet = false;
 	bool absolute_times = false;
+	bool is_filter_display = false;
+	sinsp_filter* display_filter = NULL;
 	double duration = 1;
 	captureinfo cinfo;
 	string output_format;
@@ -220,7 +230,7 @@ int main(int argc, char **argv)
 	//
 	// Parse the args
 	//
-	while((op = getopt(argc, argv, "ac:hi:jlm:p:qr:s:w:")) != -1)
+	while((op = getopt(argc, argv, "ac:dhi:jlm:p:qr:s:w:")) != -1)
 	{
 		switch (op)
 		{
@@ -238,6 +248,9 @@ int main(int argc, char **argv)
 				delete inspector;
 				return EXIT_FAILURE;
 			}
+			break;
+		case 'd':
+			is_filter_display = true;
 			break;
 		case 'j':
 			emitjson = true;
@@ -354,9 +367,16 @@ int main(int argc, char **argv)
 			}
 		}
 
-		inspector->set_filter(filter);
+		if(is_filter_display)
+		{
+			display_filter = new sinsp_filter(inspector, filter);
+		}
+		else
+		{
+			inspector->set_filter(filter);
+		}
 #else
-		fprintf(stderr, "filtering not supported in release mode.\n");
+		fprintf(stderr, "filtering not compiled.\n");
 #ifdef HAS_ANALYZER
 		delete analyzer;
 #endif
@@ -408,7 +428,8 @@ int main(int argc, char **argv)
 			cnt, 
 			quiet, 
 			absolute_times,
-			output_format);
+			output_format,
+			display_filter);
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 	}

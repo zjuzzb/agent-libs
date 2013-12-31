@@ -1580,6 +1580,13 @@ class host : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
+  // optional uint64 next_tiers_delay = 13;
+  inline bool has_next_tiers_delay() const;
+  inline void clear_next_tiers_delay();
+  static const int kNextTiersDelayFieldNumber = 13;
+  inline ::google::protobuf::uint64 next_tiers_delay() const;
+  inline void set_next_tiers_delay(::google::protobuf::uint64 value);
+
   // optional .draiosproto.resource_categories resource_counters = 8;
   inline bool has_resource_counters() const;
   inline void clear_resource_counters();
@@ -1623,6 +1630,8 @@ class host : public ::google::protobuf::MessageLite {
   inline void clear_has_transaction_counters();
   inline void set_has_transaction_processing_delay();
   inline void clear_has_transaction_processing_delay();
+  inline void set_has_next_tiers_delay();
+  inline void clear_has_next_tiers_delay();
   inline void set_has_resource_counters();
   inline void clear_has_resource_counters();
   inline void set_has_syscall_errors();
@@ -1638,13 +1647,14 @@ class host : public ::google::protobuf::MessageLite {
   ::draiosproto::transaction_breakdown_categories* reqcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
+  ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -1898,6 +1908,13 @@ class process : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
+  // optional uint64 next_tiers_delay = 12;
+  inline bool has_next_tiers_delay() const;
+  inline void clear_next_tiers_delay();
+  static const int kNextTiersDelayFieldNumber = 12;
+  inline ::google::protobuf::uint64 next_tiers_delay() const;
+  inline void set_next_tiers_delay(::google::protobuf::uint64 value);
+
   // optional .draiosproto.resource_categories resource_counters = 8;
   inline bool has_resource_counters() const;
   inline void clear_resource_counters();
@@ -1936,6 +1953,8 @@ class process : public ::google::protobuf::MessageLite {
   inline void clear_has_transaction_counters();
   inline void set_has_transaction_processing_delay();
   inline void clear_has_transaction_processing_delay();
+  inline void set_has_next_tiers_delay();
+  inline void clear_has_next_tiers_delay();
   inline void set_has_resource_counters();
   inline void clear_has_resource_counters();
   inline void set_has_syscall_errors();
@@ -1946,6 +1965,7 @@ class process : public ::google::protobuf::MessageLite {
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
+  ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   bool is_ipv4_transaction_server_;
@@ -1954,7 +1974,7 @@ class process : public ::google::protobuf::MessageLite {
   bool is_unix_transaction_client_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -5142,15 +5162,37 @@ inline void host::set_transaction_processing_delay(::google::protobuf::uint64 va
   transaction_processing_delay_ = value;
 }
 
-// optional .draiosproto.resource_categories resource_counters = 8;
-inline bool host::has_resource_counters() const {
+// optional uint64 next_tiers_delay = 13;
+inline bool host::has_next_tiers_delay() const {
   return (_has_bits_[0] & 0x00000200u) != 0;
 }
-inline void host::set_has_resource_counters() {
+inline void host::set_has_next_tiers_delay() {
   _has_bits_[0] |= 0x00000200u;
 }
-inline void host::clear_has_resource_counters() {
+inline void host::clear_has_next_tiers_delay() {
   _has_bits_[0] &= ~0x00000200u;
+}
+inline void host::clear_next_tiers_delay() {
+  next_tiers_delay_ = GOOGLE_ULONGLONG(0);
+  clear_has_next_tiers_delay();
+}
+inline ::google::protobuf::uint64 host::next_tiers_delay() const {
+  return next_tiers_delay_;
+}
+inline void host::set_next_tiers_delay(::google::protobuf::uint64 value) {
+  set_has_next_tiers_delay();
+  next_tiers_delay_ = value;
+}
+
+// optional .draiosproto.resource_categories resource_counters = 8;
+inline bool host::has_resource_counters() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void host::set_has_resource_counters() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void host::clear_has_resource_counters() {
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void host::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -5186,13 +5228,13 @@ inline void host::set_allocated_resource_counters(::draiosproto::resource_catego
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool host::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void host::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void host::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void host::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -5228,13 +5270,13 @@ inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_er
 
 // optional .draiosproto.counter_time_bytes external_io_net = 10;
 inline bool host::has_external_io_net() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void host::set_has_external_io_net() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void host::clear_has_external_io_net() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void host::clear_external_io_net() {
   if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();
@@ -5662,15 +5704,37 @@ inline void process::set_transaction_processing_delay(::google::protobuf::uint64
   transaction_processing_delay_ = value;
 }
 
-// optional .draiosproto.resource_categories resource_counters = 8;
-inline bool process::has_resource_counters() const {
+// optional uint64 next_tiers_delay = 12;
+inline bool process::has_next_tiers_delay() const {
   return (_has_bits_[0] & 0x00000200u) != 0;
 }
-inline void process::set_has_resource_counters() {
+inline void process::set_has_next_tiers_delay() {
   _has_bits_[0] |= 0x00000200u;
 }
-inline void process::clear_has_resource_counters() {
+inline void process::clear_has_next_tiers_delay() {
   _has_bits_[0] &= ~0x00000200u;
+}
+inline void process::clear_next_tiers_delay() {
+  next_tiers_delay_ = GOOGLE_ULONGLONG(0);
+  clear_has_next_tiers_delay();
+}
+inline ::google::protobuf::uint64 process::next_tiers_delay() const {
+  return next_tiers_delay_;
+}
+inline void process::set_next_tiers_delay(::google::protobuf::uint64 value) {
+  set_has_next_tiers_delay();
+  next_tiers_delay_ = value;
+}
+
+// optional .draiosproto.resource_categories resource_counters = 8;
+inline bool process::has_resource_counters() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void process::set_has_resource_counters() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void process::clear_has_resource_counters() {
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void process::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -5706,13 +5770,13 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool process::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void process::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void process::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void process::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();

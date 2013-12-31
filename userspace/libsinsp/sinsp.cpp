@@ -518,7 +518,7 @@ void sinsp::set_filter(string filter)
 		throw sinsp_exception("filter can only be set once");
 	}
 
-	m_filter = new sinsp_filter(filter, this);
+	m_filter = new sinsp_filter(this, filter);
 }
 #endif
 

@@ -13,9 +13,8 @@
 //
 // If defined, the filtering system is compiled
 //
-//#ifdef _DEBUG
 #define HAS_FILTERING
-//#endif
+#define HAS_CAPTURE_FILTERING
 
 //
 // Controls if assertions break execution or if they are just printed to the

@@ -7,6 +7,7 @@
 #include "sinsp_errno.h"
 #include "sinsp_signal.h"
 #include "filter.h"
+#include "filterchecks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_initializer implementation
