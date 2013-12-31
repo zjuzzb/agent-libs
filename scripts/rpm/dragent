@@ -43,7 +43,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc $prog
+    killproc -p /var/run/dragent.pid
     retval=$?
     echo
     /sbin/rmmod ppm
