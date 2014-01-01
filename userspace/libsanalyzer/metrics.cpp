@@ -427,6 +427,9 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	m_tot_io_net.to_protobuf(protobuf_msg->mutable_io_net(), m_tot_relevant.m_time_ns);
 	m_processing.to_protobuf(protobuf_msg->mutable_processing(), m_tot_relevant.m_time_ns);
 
+	ASSERT(m_tot_io_file.m_bytes_other == 0);
+	ASSERT(m_tot_io_net.m_bytes_other == 0);
+
 #ifdef _DEBUG
 	sinsp_counter_time ttot;
 	ttot.add(&m_io_other);
