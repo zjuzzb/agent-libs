@@ -90,6 +90,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_resident_memory_kb = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
+	m_cpu_time_ns = new vector<uint64_t>();
 }
 
 void thread_analyzer_info::destroy()
@@ -99,6 +100,8 @@ void thread_analyzer_info::destroy()
 		delete m_procinfo;
 		m_procinfo = NULL;
 	}
+
+	delete m_cpu_time_ns;
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -169,7 +172,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	//
 	// Propagate the CPU times vector
 	//
-	uint32_t oc = other->m_cpu_time_ns.size();
+	uint32_t oc = other->m_cpu_time_ns->size();
 	if(oc != 0)
 	{
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
@@ -180,7 +183,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 		for(uint32_t j = 0; j < oc; j++)
 		{
-			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
+			m_procinfo->m_cpu_time_ns[j] += (*other->m_cpu_time_ns)[j];
 		}
 	}
 
@@ -217,7 +220,7 @@ void thread_analyzer_info::clear_all_metrics()
 	m_resident_memory_kb = 0;
 
 	vector<uint64_t>::iterator it;
-	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
+	for(it = m_cpu_time_ns->begin(); it != m_cpu_time_ns->end(); ++it)
 	{
 		*it = 0;
 	}

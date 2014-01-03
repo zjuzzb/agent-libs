@@ -335,13 +335,13 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	}
 	else
 	{
-		if(tinfo->m_ainfo->m_cpu_time_ns.size() != m_ncpus)
+		if(tinfo->m_ainfo->m_cpu_time_ns->size() != m_ncpus)
 		{
-			ASSERT(tinfo->m_ainfo->m_cpu_time_ns.size() == 0);
-			tinfo->m_ainfo->m_cpu_time_ns.resize(m_ncpus);
+			ASSERT(tinfo->m_ainfo->m_cpu_time_ns->size() == 0);
+			tinfo->m_ainfo->m_cpu_time_ns->resize(m_ncpus);
 		}
 
-		tinfo->m_ainfo->m_cpu_time_ns[cpu] += delta;
+		(*tinfo->m_ainfo->m_cpu_time_ns)[cpu] += delta;
 
 		//
 		// XXX
