@@ -407,8 +407,8 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 	}
 	else if(n_scores != 0 && n_server_threads == 1)
 	{
-		float nost = tot_score;
-		float st = tot_score1;
+		float nost = MIN(tot_score, 100);
+		float st = MIN(tot_score1, 100);;
 
 		res.m_current_capacity = st;
 		res.m_stolen_capacity = (nost - st) / nost * 100;
