@@ -704,11 +704,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
 							prog_delays,
-#ifdef ANALYZER_EMITS_PROGRAMS
-							procinfo->m_program_pids.size(),
-#else
-							(uint32_t)it->second.m_nchilds,
-#endif
+							(uint32_t)it->second.m_nchilds + 1,
 							m_prev_flush_time_ns, sample_duration);
 
 							procinfo->m_capacity_score = scores.m_current_capacity;

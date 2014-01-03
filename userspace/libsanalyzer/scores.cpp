@@ -338,7 +338,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 			}
 
 			//
-			// Perform
+			// Perform score calculation *including steal time*.
 			//
 			float score1;
 
