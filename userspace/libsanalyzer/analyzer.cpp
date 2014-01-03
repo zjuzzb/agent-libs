@@ -1455,6 +1455,16 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 
 			sinsp_counters* metrics = &tainfo->m_metrics;
 
+			//
+			// This can happen in case of event drops
+			//
+			if(delta > metrics->m_wait_other.m_time_ns)
+			{
+				tainfo->m_last_wait_duration_ns = 0;
+				tainfo->m_last_wait_end_time_ns = 0;
+				return;
+			}
+
 			if(cat->m_category == EC_FILE)
 			{
 				metrics->m_wait_file.add_other(1, delta);
