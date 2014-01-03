@@ -364,7 +364,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_parser->process_event(&m_evt);
 
-#ifdef _DEBUG
+#if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 	if(m_evt.m_filtered_out)
 	{
 		return SCAP_TIMEOUT;
