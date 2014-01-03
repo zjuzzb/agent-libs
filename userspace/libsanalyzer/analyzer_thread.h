@@ -80,6 +80,8 @@ public:
 	// Completed transactions lists
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	// Number of child threads or processes that served transactions
+	uint64_t m_n_transaction_threads;
 
 	sinsp_delays_info m_transaction_delays;
 };

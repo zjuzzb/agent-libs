@@ -35,6 +35,7 @@ void sinsp_procinfo::clear()
 	m_capacity_score = 0;
 	m_cpuload = 0;
 	m_resident_memory_kb = 0;
+	m_n_transaction_threads = 0;
 
 	vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
@@ -199,6 +200,11 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_program_pids.push_back(other->m_tinfo->m_pid);
 	}
 #endif
+
+	if(other->m_transaction_metrics.m_counter.m_count_in != 0)
+	{
+		m_procinfo->m_n_transaction_threads++;
+	}
 }
 
 void thread_analyzer_info::clear_all_metrics()
