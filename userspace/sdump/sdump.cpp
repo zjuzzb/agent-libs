@@ -10,7 +10,6 @@
 #include <assert.h>
 
 #ifdef _WIN32
-#pragma warning(disable: 4996)
 #include "win32/getopt.h"
 #include <io.h>
 #else
@@ -212,6 +211,24 @@ int main(int argc, char **argv)
 	captureinfo cinfo;
 	string output_format;
 	uint32_t snaplen = 0;
+	int long_index = 0;
+
+    static struct option long_options[] = 
+	{
+        {"abstimes", no_argument, 0, 'a' },
+        {"count", required_argument, 0, 'c' },
+        {"displayfilter", no_argument, 0, 'd' },
+        {"help", no_argument, 0, 'h' },
+        {"json", no_argument, 0, 'j' },
+        {"list", no_argument, 0, 'l' },
+        {"print", required_argument, 0, 'p' },
+        {"quiet", no_argument, 0, 'q' },
+        {"readfile", required_argument, 0, 'r' },
+        {"snaplen", required_argument, 0, 's' },
+        {"verbose", no_argument, 0, 'v' },
+        {"writefile", required_argument, 0, 'w' },
+        {0, 0, 0, 0}
+    };
 
 	output_format = "*%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
 //		output_format = "%evt.num)%evt.type time:%latencyns";
@@ -221,7 +238,7 @@ int main(int argc, char **argv)
 	//
 	// Parse the args
 	//
-	while((op = getopt(argc, argv, "ac:dh:jlp:qr:s:w:")) != -1)
+	while((op = getopt_long(argc, argv, "ac:dhjlp:qr:s:vw:", long_options, &long_index)) != -1)
 	{
 		switch (op)
 		{
@@ -242,6 +259,12 @@ int main(int argc, char **argv)
 			break;
 		case 'j':
 			emitjson = true;
+			{
+				ASSERT(false);
+				fprintf(stderr, "json option not yet implemented\n");
+				delete inspector;
+				return EXIT_FAILURE;
+			}
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -255,7 +278,7 @@ int main(int argc, char **argv)
 			if(string(optarg) == "p")
 			{
 				//
-				// -ff shows the default output format, useful if the user wants to tweak it.
+				// -pp shows the default output format, useful if the user wants to tweak it.
 				//
 				printf("%s\n", output_format.c_str());
 				delete inspector;
