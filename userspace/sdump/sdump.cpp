@@ -14,6 +14,7 @@
 #include <io.h>
 #else
 #include <unistd.h>
+#include <getopt.h>
 #endif
 
 //
