@@ -9,10 +9,10 @@ do
  echo "Processing $f"
 # echo "$SINSOPEN -r $f -lstderr_nots -m $DIRNAME/metrics_$f > $DIRNAME/$f.output 2> $DIRNAME/$f.log"
  mkdir $DIRNAME/pb_$f
- $SINSOPEN -r $f -lstderr_nots -m $DIRNAME/pb_$f > $DIRNAME/$f.output 2> $DIRNAME/$f.log
+ valgrind --tool=memcheck --leak-check=yes --error-exitcode=33 --log-file=vg.txt $SINSOPEN -r $f -lstderr_nots -m $DIRNAME/pb_$f > $DIRNAME/$f.output 2> $DIRNAME/$f.log
  RETVAL=$?
- [ $RETVAL -eq 0 ] && echo Success
- [ $RETVAL -ne 0 ] && echo Failure && rm -f $DIRNAME/$f.output && rm -f $DIRNAME/$f.log
+ [ $RETVAL -ne 33 ] && echo no leaks && rm -f vg.txt
+ [ $RETVAL -eq 33 ] && echo "MEMORY LEAK!!!" && cat vg.txt
 done
 
 echo
