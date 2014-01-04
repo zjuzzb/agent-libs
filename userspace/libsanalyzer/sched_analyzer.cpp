@@ -249,6 +249,11 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 ///////////////////////////////////////////////////////////////////////////////
 cpustate2::cpustate2()
 {
+	m_lastsample_idle_ns = 0;
+	m_lastsample_other_ns = 0;
+	m_lastsample_unknown_ns = 0;
+	m_lastsample_server_processes_ns = 0;
+
 	init();
 }
 
