@@ -28,6 +28,8 @@
 
 bool ctrl_c_pressed = false;
 
+static void usage();
+
 static void signal_callback(int signal)
 {
 	ctrl_c_pressed = true;
@@ -45,6 +47,112 @@ public:
 	uint64_t m_nevts;
 	uint64_t m_time;
 };
+
+//
+// Program help
+//
+static void usage()
+{
+    printf(
+"Usage: sdump [options] [-p <output_format>] [filter]\n\n"
+"Options:\n"
+" -a, --abstime      Show absolute event timestamps\n"
+" -c <num>, --count=<num>\n"
+"                    Stop capturing after <num> events\n"
+" -d, --displayflt   Make the given filter a dsiplay one\n"
+"                    Setting this option causes the events to be filtered\n" 
+"                    after being parsed by the state system. Events are\n"
+"                    normally filtered before being analyzed, which is more\n"
+"                    efficient, but can cause state (e.g. FD names) to be lost\n"
+" -h, --help         Print this page\n"
+" -j, --json         Emit output as json\n"
+" -l, --list         List the fields that can be used for filtering and output\n"
+"                    formatting\n"
+" -p <output_format>, --print=<output_format>\n"
+"                    Specify the format to be used when printing the events.\n"
+"                    See the examples section below for more info.\n"
+" -q, --quiet        Don't print events on the screen.\n"
+"                    Useful when dumping to disk.\n"
+" -r <readfile>, --read=<readfile>\n"
+"                    Read the events from <readfile>.\n"
+" -s <len>, --snaplen=<len>\n"
+"                    Capture the first <len> bytes of each I/O buffer.\n"
+"                    By default, the first 80 bytes are captured. Use this\n"
+"                    option with caution, it can generate huge trace files.\n"
+" -v, --verbose      Verbose output\n"
+" -w <writefile>, --write=<writefile>\n"
+"                    Write the captured events to <writefile>.\n"
+"\n"
+"Examples:\n\n"
+" Capture all the events from the live system and print them to screen\n"
+"   $ sdump\n\n"
+" Capture all the events from the live system and save them to disk\n"
+"   $ sdump -qw dumpfile.scap\n\n"
+" Read events from a file and print them to screen\n"
+"   $ sdump -r dumpfile.scap\n\n"
+" Print all the open system calls invoked by cat\n"
+"   $ sdump proc.name=cat and evt.type=open\n\n"
+" Print the name of the files opened by cat\n"
+"   $ ./sdump -p\"%%evt.arg.name\" proc.name=cat and evt.type=open\n\n"
+    );
+}
+
+//
+// Prints information about program fields
+//
+#define DESCRITION_TEXT_START 16
+#define CONSOLE_LINE_LEN 79
+
+static void list_fields()
+{
+	uint32_t j, l, m;
+	int32_t k;
+
+	vector<const filter_check_info*> fc_plugins;
+	sinsp::get_filtercheck_fields_info(&fc_plugins);
+
+	for(j = 0; j < fc_plugins.size(); j++)
+	{
+		const filter_check_info* fci = fc_plugins[j];
+
+		printf("\n----------------------\n");
+		printf("Field Class: %s\n\n", fci->m_name.c_str());
+
+		for(k = 0; k < fci->m_nfiedls; k++)
+		{
+			const filtercheck_field_info* fld = &fci->m_fields[k];
+
+			printf("%s", fld->m_name);
+			uint32_t namelen = strlen(fld->m_name);
+
+			ASSERT(namelen < DESCRITION_TEXT_START);
+
+			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
+			{
+				printf(" ");
+			}
+				
+			size_t desclen = strlen(fld->m_description);
+
+			for(l = 0; l < desclen; l++)
+			{
+				if(l % (CONSOLE_LINE_LEN - DESCRITION_TEXT_START) == 0 && l != 0)
+				{
+					printf("\n");
+
+					for(m = 0; m < DESCRITION_TEXT_START; m++)
+					{
+						printf(" ");
+					}
+				}
+
+				printf("%c", fld->m_description[l]);
+			}
+
+			printf("\n");
+		}
+	}
+}
 
 //
 // Event processing loop
@@ -133,65 +241,6 @@ captureinfo do_inspect(sinsp* inspector,
 	return retval;
 }
 
-static void usage(char *program_name)
-{
-	fprintf(stderr, "%s [ -r filename ]\n", program_name);
-}
-
-#define DESCRITION_TEXT_START 16
-#define CONSOLE_LINE_LEN 79
-
-static void list_fields()
-{
-	uint32_t j, l, m;
-	int32_t k;
-
-	vector<const filter_check_info*> fc_plugins;
-	sinsp::get_filtercheck_fields_info(&fc_plugins);
-
-	for(j = 0; j < fc_plugins.size(); j++)
-	{
-		const filter_check_info* fci = fc_plugins[j];
-
-		printf("\n----------------------\n");
-		printf("Field Class: %s\n\n", fci->m_name.c_str());
-
-		for(k = 0; k < fci->m_nfiedls; k++)
-		{
-			const filtercheck_field_info* fld = &fci->m_fields[k];
-
-			printf("%s", fld->m_name);
-			uint32_t namelen = strlen(fld->m_name);
-
-			ASSERT(namelen < DESCRITION_TEXT_START);
-
-			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
-			{
-				printf(" ");
-			}
-				
-			size_t desclen = strlen(fld->m_description);
-
-			for(l = 0; l < desclen; l++)
-			{
-				if(l % (CONSOLE_LINE_LEN - DESCRITION_TEXT_START) == 0 && l != 0)
-				{
-					printf("\n");
-
-					for(m = 0; m < DESCRITION_TEXT_START; m++)
-					{
-						printf(" ");
-					}
-				}
-
-				printf("%c", fld->m_description[l]);
-			}
-
-			printf("\n");
-		}
-	}
-}
-
 //
 // MAIN
 //
@@ -218,7 +267,7 @@ int main(int argc, char **argv)
 	{
         {"abstimes", no_argument, 0, 'a' },
         {"count", required_argument, 0, 'c' },
-        {"displayfilter", no_argument, 0, 'd' },
+        {"displayflt", no_argument, 0, 'd' },
         {"help", no_argument, 0, 'h' },
         {"json", no_argument, 0, 'j' },
         {"list", no_argument, 0, 'l' },
@@ -268,7 +317,7 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'h':
-			usage(argv[0]);
+			usage();
 			delete inspector;
 			return EXIT_SUCCESS;
 		case 'l':
