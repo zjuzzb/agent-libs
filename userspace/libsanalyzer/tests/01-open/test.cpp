@@ -346,6 +346,7 @@ static void usage(char *program_name)
 //
 int main(int argc, char **argv)
 {
+	int res = EXIT_SUCCESS;
 	char *infile = NULL;
 	int op;
 	uint64_t cnt = -1;
@@ -353,6 +354,7 @@ int main(int argc, char **argv)
 	bool quiet = false;
 	bool get_stats = false;
 	bool absolute_times = false;
+	bool verbose = false;
 	double duration = 1;
 	captureinfo cinfo;
 	uint64_t emit_stats_every_x_sec = 0;
@@ -368,7 +370,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:w:")) != -1)
+		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:vw:")) != -1)
 		{
 			switch (op)
 			{
@@ -384,7 +386,7 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 					delete analyzer;
 #endif
-					return -1;
+					return EXIT_FAILURE;
 				}
 				break;
 			case 'C':
@@ -414,12 +416,24 @@ int main(int argc, char **argv)
 				{
 					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
 				}
+				else if(string(optarg) == "stdout_nots")
+				{
+					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
+				}
+				else if(string(optarg) == "stderr_nots")
+				{
+					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
+				}
+				else if(string(optarg) == "file_nots")
+				{
+					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
+				}
 				else
 				{
 					fprintf(stderr, "wrong -l option %s. Accepted values: stdout, sterr or file.", optarg);
-					delete inspector;
 					delete analyzer;
-					return -1;
+					delete inspector;
+					return EXIT_FAILURE;
 				}
 #endif
 				break;
@@ -451,6 +465,9 @@ int main(int argc, char **argv)
 					emit_stats_every_x_sec = 360000;
 				}
 				break;
+			case 'v':
+				verbose = true;
+				break;
 			case 'w':
 				dumpfile = optarg;
 				break;
@@ -460,7 +477,7 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 				delete analyzer;
 #endif
-				return 0;
+				return EXIT_SUCCESS;
 			}
 		}
 
@@ -489,7 +506,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "filtering not supported.\n");
 			delete inspector;
 			delete analyzer;
-			return -1;				
+			return EXIT_FAILURE;				
 #endif
 		}
 
@@ -549,15 +566,20 @@ int main(int argc, char **argv)
 			}
 
 			cerr << e.what() << endl;
+			res = EXIT_FAILURE;
 		}
 		catch(...)
 		{
+			res = EXIT_FAILURE;
 		}
 
-		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
-			duration,
-			cinfo.m_nevts,
-			(double)cinfo.m_nevts / duration);
+		if(verbose)
+		{
+			fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
+				duration,
+				cinfo.m_nevts,
+				(double)cinfo.m_nevts / duration);
+		}
 
 		fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
 			cinfo.m_time / 1000000000,
@@ -580,6 +602,7 @@ int main(int argc, char **argv)
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
 #endif
+	return res;
 }
 
 static inline string clone_flags_to_str(uint32_t flags)

@@ -2,9 +2,6 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
-#ifdef HAS_ANALYZER
-#include <analyzer.h>
-#endif
 #include <iostream>
 #include <time.h>
 #include <signal.h>
@@ -209,28 +206,22 @@ int main(int argc, char **argv)
 	bool quiet = false;
 	bool absolute_times = false;
 	bool is_filter_display = false;
+	bool verbose = false;
 	sinsp_filter* display_filter = NULL;
 	double duration = 1;
 	captureinfo cinfo;
 	string output_format;
 	uint32_t snaplen = 0;
-#ifdef HAS_ANALYZER
-	sinsp_analyzer* analyzer = NULL;
-#endif
+
+	output_format = "*%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
+//		output_format = "%evt.num)%evt.type time:%latencyns";
 
 	sinsp* inspector = new sinsp();
-#ifdef HAS_ANALYZER
-		analyzer = new sinsp_analyzer(inspector);
-		inspector->m_analyzer = analyzer;
-#endif
-
-	output_format = "*%evt.num)%evt.time.s.%evt.time.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-//		output_format = "%evt.num)%evt.type time:%latencyns";
 
 	//
 	// Parse the args
 	//
-	while((op = getopt(argc, argv, "ac:dhi:jlm:p:qr:s:w:")) != -1)
+	while((op = getopt(argc, argv, "ac:dh:jlp:qr:s:w:")) != -1)
 	{
 		switch (op)
 		{
@@ -242,9 +233,6 @@ int main(int argc, char **argv)
 			if(cnt <= 0)
 			{
 				fprintf(stderr, "invalid packet count %s\n", optarg);
-#ifdef HAS_ANALYZER
-				delete analyzer;
-#endif
 				delete inspector;
 				return EXIT_FAILURE;
 			}
@@ -257,60 +245,12 @@ int main(int argc, char **argv)
 			break;
 		case 'h':
 			usage(argv[0]);
-#ifdef HAS_ANALYZER
-			delete analyzer;
-#endif
 			delete inspector;
 			return EXIT_SUCCESS;
-		case 'i':
-#ifdef HAS_ANALYZER
-			if(string(optarg) == "stdout")
-			{
-				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
-			}
-			else if(string(optarg) == "stderr")
-			{
-				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
-			}
-			else if(string(optarg) == "file")
-			{
-				analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
-			}
-			else if(string(optarg) == "stdout_nots")
-			{
-				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
-			}
-			else if(string(optarg) == "stderr_nots")
-			{
-				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
-			}
-			else if(string(optarg) == "file_nots")
-			{
-				analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
-			}
-			else
-			{
-				fprintf(stderr, "wrong -i option %s. Accepted values: stdout, sterr or file.", optarg);
-				delete analyzer;
-				delete inspector;
-				return -1;
-			}
-#endif // HAS_ANALYZER
-
-			break;
 		case 'l':
 			list_fields();
-#ifdef HAS_ANALYZER
-			delete analyzer;
-#endif
 			delete inspector;
 			return EXIT_SUCCESS;
-		case 'm':
-#ifdef HAS_ANALYZER
-			analyzer->get_configuration()->set_emit_metrics_to_file(true);
-			analyzer->get_configuration()->set_metrics_directory(optarg);
-#endif
-			break;
 		case 'p':
 			if(string(optarg) == "p")
 			{
@@ -318,9 +258,6 @@ int main(int argc, char **argv)
 				// -ff shows the default output format, useful if the user wants to tweak it.
 				//
 				printf("%s\n", output_format.c_str());
-#ifdef HAS_ANALYZER
-				delete analyzer;
-#endif
 				delete inspector;
 				return EXIT_SUCCESS;
 			}
@@ -338,6 +275,9 @@ int main(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'v':
+			verbose = true;
 			break;
 		case 'w':
 			outfile = optarg;
@@ -375,9 +315,6 @@ int main(int argc, char **argv)
 		}
 #else
 		fprintf(stderr, "filtering not compiled.\n");
-#ifdef HAS_ANALYZER
-		delete analyzer;
-#endif
 		delete inspector;
 		return EXIT_FAILURE;				
 #endif
@@ -389,9 +326,6 @@ int main(int argc, char **argv)
 	if(signal(SIGINT, signal_callback) == SIG_ERR)
 	{
 		fprintf(stderr, "An error occurred while setting a signal handler.\n");
-#ifdef HAS_ANALYZER
-		delete analyzer;
-#endif
 		delete inspector;
 		return EXIT_FAILURE;
 	}
@@ -446,10 +380,13 @@ int main(int argc, char **argv)
 		res = EXIT_FAILURE;
 	}
 
-	//fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
-	//	duration,
-	//	cinfo.m_nevts,
-	//	(double)cinfo.m_nevts / duration);
+	if(verbose)
+	{
+		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
+			duration,
+			cinfo.m_nevts,
+			(double)cinfo.m_nevts / duration);
+	}
 
 	fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
 		cinfo.m_time / 1000000000,
@@ -457,9 +394,6 @@ int main(int argc, char **argv)
 		(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
 
 	delete inspector;
-#ifdef HAS_ANALYZER
-	delete analyzer;
-#endif
 
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
