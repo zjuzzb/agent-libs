@@ -19,7 +19,7 @@ sinsp_dumper::~sinsp_dumper()
 
 void sinsp_dumper::open(string filename)
 {
-	if(m_inspector->m_h = NULL)
+	if(m_inspector->m_h == NULL)
 	{
 		throw sinsp_exception("can't start event dump, inspector not opened yet");
 	}

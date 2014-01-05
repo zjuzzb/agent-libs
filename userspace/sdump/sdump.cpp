@@ -1,13 +1,15 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
-#include <sinsp.h>
 #include <iostream>
 #include <time.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <assert.h>
+
+#include <sinsp.h>
+#include "chisel.h"
 
 #ifdef _WIN32
 #include "win32/getopt.h"
@@ -262,15 +264,18 @@ int main(int argc, char **argv)
 	string output_format;
 	uint32_t snaplen = 0;
 	int long_index = 0;
+	vector<string> chiselnames;
+	vector<chisel> chisels;
 
     static struct option long_options[] = 
 	{
         {"abstimes", no_argument, 0, 'a' },
-        {"count", required_argument, 0, 'c' },
+        {"chisel", required_argument, 0, 'c' },
         {"displayflt", no_argument, 0, 'd' },
         {"help", no_argument, 0, 'h' },
         {"json", no_argument, 0, 'j' },
         {"list", no_argument, 0, 'l' },
+        {"numevents", required_argument, 0, 'n' },
         {"print", required_argument, 0, 'p' },
         {"quiet", no_argument, 0, 'q' },
         {"readfile", required_argument, 0, 'r' },
@@ -288,7 +293,7 @@ int main(int argc, char **argv)
 	//
 	// Parse the args
 	//
-	while((op = getopt_long(argc, argv, "ac:dhjlp:qr:s:vw:", long_options, &long_index)) != -1)
+	while((op = getopt_long(argc, argv, "ac:dhjln:p:qr:s:vw:", long_options, &long_index)) != -1)
 	{
 		switch (op)
 		{
@@ -296,13 +301,7 @@ int main(int argc, char **argv)
 			absolute_times = true;
 			break;
 		case 'c':
-			cnt = atoi(optarg);
-			if(cnt <= 0)
-			{
-				fprintf(stderr, "invalid packet count %s\n", optarg);
-				delete inspector;
-				return EXIT_FAILURE;
-			}
+			chiselnames.push_back(optarg);
 			break;
 		case 'd':
 			is_filter_display = true;
@@ -324,6 +323,15 @@ int main(int argc, char **argv)
 			list_fields();
 			delete inspector;
 			return EXIT_SUCCESS;
+		case 'n':
+			cnt = atoi(optarg);
+			if(cnt <= 0)
+			{
+				fprintf(stderr, "invalid packet count %s\n", optarg);
+				delete inspector;
+				return EXIT_FAILURE;
+			}
+			break;
 		case 'p':
 			if(string(optarg) == "p")
 			{
@@ -425,6 +433,11 @@ int main(int argc, char **argv)
 		if(outfile != "")
 		{
 			inspector->autodump_start(outfile);
+		}
+
+		for(string& chiselname : chiselnames) 
+		{
+			chisels.push_back(chisel(inspector, chiselname));
 		}
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC;

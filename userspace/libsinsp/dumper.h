@@ -3,7 +3,7 @@
 class sinsp;
 class sinsp_evt;
 
-class sinsp_dumper
+class SINSP_PUBLIC sinsp_dumper
 {
 public:
 	sinsp_dumper(sinsp* inspector);

@@ -81,8 +81,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="chisel.cpp" />
     <ClCompile Include="sdump.cpp" />
     <ClCompile Include="win32\getopt.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="chisel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

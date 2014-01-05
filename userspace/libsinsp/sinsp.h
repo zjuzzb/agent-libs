@@ -30,6 +30,7 @@ using namespace std;
 #include "logger.h"
 #include "event.h"
 #include "filter.h"
+#include "dumper.h"
 #include "stats.h"
 #include "ifinfo.h"
 
