@@ -139,7 +139,7 @@ void sinsp::close()
 #endif
 }
 
-void sinsp::start_dump(const string& dump_filename)
+void sinsp::autodump_start(const string dump_filename)
 {
 	if(NULL == m_h)
 	{
@@ -153,7 +153,7 @@ void sinsp::start_dump(const string& dump_filename)
 	}
 }
 
-void sinsp::stop_dump()
+void sinsp::autodump_stop()
 {
 	if(NULL == m_h)
 	{

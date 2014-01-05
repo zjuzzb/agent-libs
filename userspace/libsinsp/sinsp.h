@@ -172,10 +172,10 @@ public:
 	void import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo);
 
 	//
-	// Start dumping events to a capture file
+	// Automatic event dump support
 	//
-	void start_dump(const string& dump_filename);
-	void stop_dump();
+	void autodump_start(const string dump_filename);
+	void autodump_stop();
 
 	//
 	// Populate the given vector with the full list of filter check fields
@@ -267,18 +267,11 @@ VISIBILITY_PRIVATE
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
-	friend class sinsp_sched_analyzer;
-	friend class sinsp_sched_analyzer2;
-	friend class sinsp_scores;
 	friend class sinsp_evt;
 	friend class sinsp_threadinfo;
-	friend class sinsp_transaction_manager;
-	friend class sinsp_transactemitter_unbuffered;
-	friend class sinsp_transaction_table;
-	friend class sinsp_partial_transaction;
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
-	friend class sinsp_delays;
+	friend class sinsp_dumper;
 
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

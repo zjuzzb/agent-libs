@@ -543,7 +543,7 @@ int main(int argc, char **argv)
 
 			if(dumpfile != "")
 			{
-				inspector->start_dump(dumpfile);
+				inspector->autodump_start(dumpfile);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;

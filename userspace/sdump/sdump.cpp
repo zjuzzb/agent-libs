@@ -100,7 +100,7 @@ static void usage()
 //
 // Prints information about program fields
 //
-#define DESCRITION_TEXT_START 16
+#define DESCRIPTION_TEXT_START 16
 #define CONSOLE_LINE_LEN 79
 
 static void list_fields()
@@ -125,9 +125,9 @@ static void list_fields()
 			printf("%s", fld->m_name);
 			uint32_t namelen = strlen(fld->m_name);
 
-			ASSERT(namelen < DESCRITION_TEXT_START);
+			ASSERT(namelen < DESCRIPTION_TEXT_START);
 
-			for(l = 0; l < DESCRITION_TEXT_START - namelen; l++)
+			for(l = 0; l < DESCRIPTION_TEXT_START - namelen; l++)
 			{
 				printf(" ");
 			}
@@ -136,11 +136,11 @@ static void list_fields()
 
 			for(l = 0; l < desclen; l++)
 			{
-				if(l % (CONSOLE_LINE_LEN - DESCRITION_TEXT_START) == 0 && l != 0)
+				if(l % (CONSOLE_LINE_LEN - DESCRIPTION_TEXT_START) == 0 && l != 0)
 				{
 					printf("\n");
 
-					for(m = 0; m < DESCRITION_TEXT_START; m++)
+					for(m = 0; m < DESCRIPTION_TEXT_START; m++)
 					{
 						printf(" ");
 					}
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
 
 		if(outfile != "")
 		{
-			inspector->start_dump(outfile);
+			inspector->autodump_start(outfile);
 		}
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC;

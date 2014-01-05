@@ -605,45 +605,6 @@ void scap_proc_free_table(scap_t* handle)
 	}
 }
 
-/*
-//
-// Given an event, get the info entry for the process that generated it
-//
-struct scap_threadinfo* scap_proc_get_from_event(scap_t* handle, scap_evt* pevent)
-{
-	struct scap_threadinfo* tinfo;
-	int64_t tid = scap_event_get_tid(pevent);
-
-	HASH_FIND_INT64(handle->m_proclist, &tid, tinfo);
-	if(tinfo == NULL)
-	{
-		ASSERT(false);
-		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "can't find process %"PRIu64, tid);
-		return NULL;
-	}
-
-	return tinfo;
-}
-
-//
-// Return the process info entry geiven a tid
-//
-struct scap_threadinfo* scap_proc_get_from_tid(scap_t* handle, int64_t tid)
-{
-	struct scap_threadinfo* tinfo;
-
-	HASH_FIND_INT64(handle->m_proclist, &tid, tinfo);
-	if(tinfo == NULL)
-	{
-		ASSERT(false);
-		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "can't find process %"PRIu64, tid);
-		return NULL;
-	}
-
-	return tinfo;
-}
-*/
-
 struct scap_threadinfo* scap_proc_get(scap_t* handle, int64_t tid)
 {
 #ifdef _WIN32

@@ -95,9 +95,6 @@ void scap_fd_print_fd_table(scap_fdinfo* fds);
 // NOTE: this is different from scap_event_getprocinfo() because it returns the full event information
 // struct scap_threadinfo* scap_proc_get_from_event(scap_t* handle, scap_evt* e);
 // Return the process info entry geiven a tid
-// struct scap_threadinfo* scap_proc_get_from_tid(scap_t* handle, int64_t tid);
-// Create the fd table
-// int32_t scap_fd_populate_tables(scap_t* handle);
 // Free an fd table and set it to NULL when done
 void scap_fd_free_table(scap_t* handle, scap_fdinfo** fds);
 // Free a process' fd table

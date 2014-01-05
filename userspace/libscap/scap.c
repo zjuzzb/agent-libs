@@ -144,17 +144,6 @@ scap_t* scap_open_live(char *error)
 	handle->m_fake_kernel_proc.args[0] = 0;
 
 	//
-	// Create the fd list
-	//
-	/*
-		if(scap_fd_populate_tables(handle) != SCAP_SUCCESS)
-		{
-			scap_close(handle);
-			snprintf(error, SCAP_LASTERR_SIZE, "%s", scap_getlasterr(handle));
-			return NULL;
-		}
-	*/
-	//
 	// Open and initialize all the devices
 	//
 	for(j = 0; j < handle->m_ndevs; j++)

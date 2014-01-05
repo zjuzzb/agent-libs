@@ -505,13 +505,13 @@ protected:
 				{
 					g_log->information("Received SIGUSR1, Stopping dump");
 					m_capturing = false;
-					m_inspector->stop_dump();
+					m_inspector->autodump_stop();
 				}
 				else
 				{
 					g_log->information("Received SIGUSR1, Starting dump");
 					m_capturing = true;
-					m_inspector->start_dump(m_configuration.m_dump_file);
+					m_inspector->autodump_start(m_configuration.m_dump_file);
 				}
 			}
 
@@ -1011,7 +1011,7 @@ protected:
 
 			if(m_writefile != "")
 			{
-				m_inspector->start_dump(m_writefile);
+				m_inspector->autodump_start(m_writefile);
 				m_capturing = true;
 			}
 

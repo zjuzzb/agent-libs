@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
 add_library(sinsp STATIC
 	event.cpp
 	eventformatter.cpp
+	dumper.cpp
 	fdinfo.cpp
 	filter.cpp
 	filterchecks.cpp
