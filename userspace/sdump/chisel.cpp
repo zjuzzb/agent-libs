@@ -14,25 +14,25 @@
 //
 // trim from start
 //
-static inline std::string &ltrim(std::string &s) 
+string &ltrim(string &s) 
 {
-	s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+	s.erase(s.begin(), find_if(s.begin(), s.end(), not1(ptr_fun<int, int>(isspace))));
 	return s;
 }
 
 //
 // trim from end
 //
-static inline std::string &rtrim(std::string &s) 
+string &rtrim(string &s) 
 {
-	s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+	s.erase(find_if(s.rbegin(), s.rend(), not1(ptr_fun<int, int>(isspace))).base(), s.end());
 	return s;
 }
 
 //
 // trim from both ends
 //
-static inline std::string &trim(std::string &s) 
+string &trim(string &s) 
 {
 	return ltrim(rtrim(s));
 }
@@ -77,7 +77,8 @@ void chisel::load(string filename)
 
 			if(line.compare(0, prefix.size(), prefix) == 0)
 			{
-				m_description = trim(line.substr(prefix.size(), string::npos));
+				string val = line.substr(prefix.size(), string::npos);
+				m_description = trim(val);
 			}
 		}
 
