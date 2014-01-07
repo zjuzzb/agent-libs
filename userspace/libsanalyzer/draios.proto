@@ -157,7 +157,11 @@ message process {
 
   optional process_details details = 2; // names and string constants relative to this process
   
-  optional networkrole netrole = 3;
+  optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
+  optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
+  optional bool is_ipv4_transaction_client = 10; // True if this process has been the client for at least one IPv4 transaction.
+  optional bool is_unix_transaction_client = 11; // True if this process has been the client for at least one unix transaction.
+  optional networkrole netrole = 13;
   
   optional time_categories tcounters = 5; // The time counters for this thread.
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.

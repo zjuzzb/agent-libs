@@ -4782,6 +4782,10 @@ void thread::Swap(thread* other) {
 #ifndef _MSC_VER
 const int process::kPidFieldNumber;
 const int process::kDetailsFieldNumber;
+const int process::kIsIpv4TransactionServerFieldNumber;
+const int process::kIsUnixTransactionServerFieldNumber;
+const int process::kIsIpv4TransactionClientFieldNumber;
+const int process::kIsUnixTransactionClientFieldNumber;
 const int process::kNetroleFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
@@ -4839,6 +4843,10 @@ void process::SharedCtor() {
   _cached_size_ = 0;
   pid_ = GOOGLE_ULONGLONG(0);
   details_ = NULL;
+  is_ipv4_transaction_server_ = false;
+  is_unix_transaction_server_ = false;
+  is_ipv4_transaction_client_ = false;
+  is_unix_transaction_client_ = false;
   netrole_ = 0;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
@@ -4893,10 +4901,16 @@ void process::Clear() {
     if (has_details()) {
       if (details_ != NULL) details_->::draiosproto::process_details::Clear();
     }
+    is_ipv4_transaction_server_ = false;
+    is_unix_transaction_server_ = false;
+    is_ipv4_transaction_client_ = false;
+    is_unix_transaction_client_ = false;
     netrole_ = 0;
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
@@ -4905,8 +4919,6 @@ void process::Clear() {
     if (has_resource_counters()) {
       if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_syscall_errors()) {
       if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
@@ -4945,22 +4957,35 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(24)) goto parse_netrole;
+        if (input->ExpectTag(24)) goto parse_is_ipv4_transaction_server;
         break;
       }
 
-      // optional .draiosproto.networkrole netrole = 3;
+      // optional bool is_ipv4_transaction_server = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_netrole:
-          int value;
+         parse_is_ipv4_transaction_server:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
-                 input, &value)));
-          if (::draiosproto::networkrole_IsValid(value)) {
-            set_netrole(static_cast< ::draiosproto::networkrole >(value));
-          }
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_ipv4_transaction_server_)));
+          set_has_is_ipv4_transaction_server();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(32)) goto parse_is_unix_transaction_server;
+        break;
+      }
+
+      // optional bool is_unix_transaction_server = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_unix_transaction_server:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_unix_transaction_server_)));
+          set_has_is_unix_transaction_server();
         } else {
           goto handle_uninterpreted;
         }
@@ -5036,6 +5061,38 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_is_ipv4_transaction_client;
+        break;
+      }
+
+      // optional bool is_ipv4_transaction_client = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_ipv4_transaction_client:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_ipv4_transaction_client_)));
+          set_has_is_ipv4_transaction_client();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_is_unix_transaction_client;
+        break;
+      }
+
+      // optional bool is_unix_transaction_client = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_unix_transaction_client:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_unix_transaction_client_)));
+          set_has_is_unix_transaction_client();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectTag(96)) goto parse_next_tiers_delay;
         break;
       }
@@ -5049,6 +5106,25 @@ bool process::MergePartialFromCodedStream(
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
                  input, &next_tiers_delay_)));
           set_has_next_tiers_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(104)) goto parse_netrole;
+        break;
+      }
+
+      // optional .draiosproto.networkrole netrole = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_netrole:
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::draiosproto::networkrole_IsValid(value)) {
+            set_netrole(static_cast< ::draiosproto::networkrole >(value));
+          }
         } else {
           goto handle_uninterpreted;
         }
@@ -5084,10 +5160,14 @@ void process::SerializeWithCachedSizes(
       2, this->details(), output);
   }
 
-  // optional .draiosproto.networkrole netrole = 3;
-  if (has_netrole()) {
-    ::google::protobuf::internal::WireFormatLite::WriteEnum(
-      3, this->netrole(), output);
+  // optional bool is_ipv4_transaction_server = 3;
+  if (has_is_ipv4_transaction_server()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(3, this->is_ipv4_transaction_server(), output);
+  }
+
+  // optional bool is_unix_transaction_server = 4;
+  if (has_is_unix_transaction_server()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(4, this->is_unix_transaction_server(), output);
   }
 
   // optional .draiosproto.time_categories tcounters = 5;
@@ -5119,9 +5199,25 @@ void process::SerializeWithCachedSizes(
       9, this->syscall_errors(), output);
   }
 
+  // optional bool is_ipv4_transaction_client = 10;
+  if (has_is_ipv4_transaction_client()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(10, this->is_ipv4_transaction_client(), output);
+  }
+
+  // optional bool is_unix_transaction_client = 11;
+  if (has_is_unix_transaction_client()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(11, this->is_unix_transaction_client(), output);
+  }
+
   // optional uint64 next_tiers_delay = 12;
   if (has_next_tiers_delay()) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(12, this->next_tiers_delay(), output);
+  }
+
+  // optional .draiosproto.networkrole netrole = 13;
+  if (has_netrole()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      13, this->netrole(), output);
   }
 
 }
@@ -5144,7 +5240,27 @@ int process::ByteSize() const {
           this->details());
     }
 
-    // optional .draiosproto.networkrole netrole = 3;
+    // optional bool is_ipv4_transaction_server = 3;
+    if (has_is_ipv4_transaction_server()) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_unix_transaction_server = 4;
+    if (has_is_unix_transaction_server()) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_ipv4_transaction_client = 10;
+    if (has_is_ipv4_transaction_client()) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_unix_transaction_client = 11;
+    if (has_is_unix_transaction_client()) {
+      total_size += 1 + 1;
+    }
+
+    // optional .draiosproto.networkrole netrole = 13;
     if (has_netrole()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->netrole());
@@ -5157,6 +5273,8 @@ int process::ByteSize() const {
           this->tcounters());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
     if (has_transaction_counters()) {
       total_size += 1 +
@@ -5185,8 +5303,6 @@ int process::ByteSize() const {
           this->resource_counters());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
     if (has_syscall_errors()) {
       total_size += 1 +
@@ -5215,12 +5331,26 @@ void process::MergeFrom(const process& from) {
     if (from.has_details()) {
       mutable_details()->::draiosproto::process_details::MergeFrom(from.details());
     }
+    if (from.has_is_ipv4_transaction_server()) {
+      set_is_ipv4_transaction_server(from.is_ipv4_transaction_server());
+    }
+    if (from.has_is_unix_transaction_server()) {
+      set_is_unix_transaction_server(from.is_unix_transaction_server());
+    }
+    if (from.has_is_ipv4_transaction_client()) {
+      set_is_ipv4_transaction_client(from.is_ipv4_transaction_client());
+    }
+    if (from.has_is_unix_transaction_client()) {
+      set_is_unix_transaction_client(from.is_unix_transaction_client());
+    }
     if (from.has_netrole()) {
       set_netrole(from.netrole());
     }
     if (from.has_tcounters()) {
       mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
@@ -5233,8 +5363,6 @@ void process::MergeFrom(const process& from) {
     if (from.has_resource_counters()) {
       mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_syscall_errors()) {
       mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
     }
@@ -5269,6 +5397,10 @@ void process::Swap(process* other) {
   if (other != this) {
     std::swap(pid_, other->pid_);
     std::swap(details_, other->details_);
+    std::swap(is_ipv4_transaction_server_, other->is_ipv4_transaction_server_);
+    std::swap(is_unix_transaction_server_, other->is_unix_transaction_server_);
+    std::swap(is_ipv4_transaction_client_, other->is_ipv4_transaction_client_);
+    std::swap(is_unix_transaction_client_, other->is_unix_transaction_client_);
     std::swap(netrole_, other->netrole_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
