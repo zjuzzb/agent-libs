@@ -612,8 +612,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			if(tot.m_count != 0 || procinfo->m_cpuload != 0 ||
-				it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_IPV4_SERVER | thread_analyzer_info::AF_IS_UNIX_SERVER | 
-				thread_analyzer_info::AF_IS_IPV4_CLIENT | thread_analyzer_info::AF_IS_UNIX_CLIENT))
+				it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+				thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT))
 			{
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
@@ -647,22 +647,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_SERVER)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 				{
-					proc->set_is_ipv4_transaction_server(true);
+					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_SERVER);
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+				{
+					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_SERVER);
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 				{
-					proc->set_is_unix_transaction_server(true);
+					proc->set_netrole(draiosproto::IS_UNIX_SERVER);
 				}
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_CLIENT)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 				{
-					proc->set_is_ipv4_transaction_client(true);
+					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_CLIENT);
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+				{
+					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_CLIENT);
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 				{
-					proc->set_is_unix_transaction_client(true);
+					proc->set_netrole(draiosproto::IS_UNIX_CLIENT);
 				}
 
 				if(procinfo->m_cpuload != -1)

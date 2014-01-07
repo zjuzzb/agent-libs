@@ -1,5 +1,7 @@
 #pragma once
 
+#include <json/json.h>
+
 class chisel
 {
 public:
@@ -10,6 +12,7 @@ public:
 private:
 	sinsp* m_inspector;
 	string m_description;
+	Json::Value m_root;
 	sinsp_filter* m_filter;
 	sinsp_dumper* m_dumper;
 };

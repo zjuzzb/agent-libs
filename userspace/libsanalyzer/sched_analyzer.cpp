@@ -353,7 +353,9 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 		// including AF_IS_UNIX_SERVER could catch a lot of noise from stuff like dbus-daemon.
 		// Don't really know how to address it.
 		//
-		if(tinfo->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_IPV4_SERVER | thread_analyzer_info::AF_IS_UNIX_SERVER))
+		if(tinfo->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+			thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER | 
+			thread_analyzer_info::AF_IS_UNIX_SERVER))
 		{
 			state.m_server_processes_ns += delta;
 		}

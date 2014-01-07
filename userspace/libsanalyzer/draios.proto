@@ -110,7 +110,7 @@ message host {
   optional time_categories tcounters = 5; // The time counters for this thread
   optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions. 
+  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
@@ -142,21 +142,28 @@ message thread {
 // NOTE: this is process info only, when emitting threads, the main thread of a process will have a 
 // separate thread message with tid=process pid.
 //
+enum networkrole {
+  NONE = 0; // set if this thread serves IPv4 transactions coming from the same machine.
+  IS_LOCAL_IPV4_SERVER = 1; // set if this thread serves IPv4 transactions coming from the same machine.
+  IS_REMOTE_IPV4_SERVER = 2; // set if this thread serves IPv4 transactions coming from another machine.
+  IS_UNIX_SERVER = 4; // set if this thread serves unix transactions.
+  IS_LOCAL_IPV4_CLIENT = 8; // set if this thread creates IPv4 transactions toward localhost.
+  IS_REMOTE_IPV4_CLIENT = 16; // set if this thread creates IPv4 transactions toward another host.
+  IS_UNIX_CLIENT = 32; // set if this thread creates unix transactions.
+}
+
 message process {
   required uint64 pid = 1; // The ID of process this thread belongs to
 
   optional process_details details = 2; // names and string constants relative to this process
   
-  optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
-  optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
-  optional bool is_ipv4_transaction_client = 10; // True if this process has been the client for at least one IPv4 transaction.
-  optional bool is_unix_transaction_client = 11; // True if this process has been the client for at least one unix transaction.
+  optional networkrole netrole = 3;
   
   optional time_categories tcounters = 5; // The time counters for this thread.
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional uint64 next_tiers_delay = 12;	// the delay introduced by this process' next tiers when processing transactions. 
+  optional uint64 next_tiers_delay = 12;	// the delay introduced by this process when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }

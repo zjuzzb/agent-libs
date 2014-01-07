@@ -731,6 +731,7 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 		return;
 	}
 
+	string prev_comm(evt->m_tinfo->m_comm);
 	string prev_exe(evt->m_tinfo->m_exe);
 
 	// Get the command name
@@ -788,7 +789,7 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	//
 	// execve potentially breaks the program chain, and so we need to reflect it in our parents program count.
 	//
-	if(prev_exe != evt->m_tinfo->m_exe)
+	if((prev_comm != evt->m_tinfo->m_comm) || (prev_exe != evt->m_tinfo->m_exe))
 	{
 		if(evt->m_tinfo->m_progid != -1LL)
 		{

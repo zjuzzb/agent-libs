@@ -110,7 +110,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
-				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_IPV4_SERVER;
+				if(pconn->is_client_and_server())
+				{
+					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
+				}
+				else
+				{
+					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
+				}
 			}
 			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
@@ -141,7 +148,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
-				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_IPV4_CLIENT;
+				if(pconn->is_client_and_server())
+				{
+					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
+				}
+				else
+				{
+					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
+				}
 			}
 			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{

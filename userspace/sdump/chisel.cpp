@@ -53,33 +53,35 @@ void chisel::load(string filename)
 
 	if(is.is_open())
 	{
-		while(getline(is, line))
+		uint32_t j;
+
+		//
+		// Bring the file into a string
+		//
+		string docstr((istreambuf_iterator<char>(is)),
+			istreambuf_iterator<char>());
+
+		//
+		// Parse the json
+		//
+		Json::Reader reader;
+		bool parsingSuccessful = reader.parse(docstr, m_root);
+		if(!parsingSuccessful)
 		{
-			string prefix;
+			throw sinsp_exception("Failed to parse configuration\n" + 
+				reader.getFormattedErrorMessages());
+		}
 
-			//
-			// Skip empty lines
-			//
-			if(line.size() == 0)
-			{
-				continue;
-			}
-
-			//
-			// Skip comments
-			//
-			if(line[0] == '#')
-			{
-				continue;
-			}
-
-			prefix = "description:";
-
-			if(line.compare(0, prefix.size(), prefix) == 0)
-			{
-				string val = line.substr(prefix.size(), string::npos);
-				m_description = trim(val);
-			}
+		//
+		// Extract the info
+		//
+		m_description = m_root["info"]["description"].asString();
+		const Json::Value args = m_root["info"]["arguments"];
+		
+		for(j = 0; j < args.size(); j++)
+		{
+			string s = args[j]["name"].asString();
+			int a= 0;
 		}
 
 		is.close();
