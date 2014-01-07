@@ -4,6 +4,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
 
 add_executable(sdump
 	chisel.cpp
+	jsoncpp.cpp
 	sdump.cpp)
 
 target_link_libraries(sdump
