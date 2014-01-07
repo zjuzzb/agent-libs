@@ -168,7 +168,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			//
 			if(conn.m_stid != 0)
 			{
-				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				if(conn.m_analysis_flags & (sinsp_connection::AF_CLOSED | sinsp_connection::AF_REUSED))
 				{
 					conn.m_refcount++;
 				}
@@ -197,7 +197,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			//
 			if(conn.m_dtid != 0)
 			{
-				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				if(conn.m_analysis_flags & (sinsp_connection::AF_CLOSED | sinsp_connection::AF_REUSED))
 				{
 					conn.m_refcount++;
 				}
