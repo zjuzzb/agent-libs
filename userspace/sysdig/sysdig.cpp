@@ -56,7 +56,7 @@ public:
 static void usage()
 {
     printf(
-"Usage: sdump [options] [-p <output_format>] [filter]\n\n"
+"Usage: sysdig [options] [-p <output_format>] [filter]\n\n"
 "Options:\n"
 " -a, --abstime      Show absolute event timestamps\n"
 " -c <num>, --count=<num>\n"
@@ -87,15 +87,15 @@ static void usage()
 "\n"
 "Examples:\n\n"
 " Capture all the events from the live system and print them to screen\n"
-"   $ sdump\n\n"
+"   $ sysdig\n\n"
 " Capture all the events from the live system and save them to disk\n"
-"   $ sdump -qw dumpfile.scap\n\n"
+"   $ sysdig -qw dumpfile.scap\n\n"
 " Read events from a file and print them to screen\n"
-"   $ sdump -r dumpfile.scap\n\n"
+"   $ sysdig -r dumpfile.scap\n\n"
 " Print all the open system calls invoked by cat\n"
-"   $ sdump proc.name=cat and evt.type=open\n\n"
+"   $ sysdig proc.name=cat and evt.type=open\n\n"
 " Print the name of the files opened by cat\n"
-"   $ ./sdump -p\"%%evt.arg.name\" proc.name=cat and evt.type=open\n\n"
+"   $ ./sysdig -p\"%%evt.arg.name\" proc.name=cat and evt.type=open\n\n"
     );
 }
 
