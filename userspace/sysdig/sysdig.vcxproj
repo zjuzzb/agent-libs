@@ -83,7 +83,7 @@
   <ItemGroup>
     <ClCompile Include="chisel.cpp" />
     <ClCompile Include="jsoncpp.cpp" />
-    <ClCompile Include="sdump.cpp" />
+    <ClCompile Include="sysdig.cpp" />
     <ClCompile Include="win32\getopt.c" />
   </ItemGroup>
   <ItemGroup>

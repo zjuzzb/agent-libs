@@ -6,7 +6,7 @@ include_directories(.)
 add_executable(sdump
 	chisel.cpp
 	jsoncpp.cpp
-	sdump.cpp)
+	sysdig.cpp)
 
 target_link_libraries(sdump
 	sinsp) 
