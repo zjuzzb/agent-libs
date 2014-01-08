@@ -6,6 +6,23 @@
 #define CANCELED_FD_NUMBER std::numeric_limits<int64_t>::max()
 #endif
 
+// fd type characters
+#define CHAR_FD_FILE			'f'
+#define CHAR_FD_IPV4_SOCK		'4'
+#define CHAR_FD_IPV6_SOCK		'6'
+#define CHAR_FD_DIRECTORY		'd'
+#define CHAR_FD_IPV4_SERVSOCK	'2'
+#define CHAR_FD_IPV6_SERVSOCK	'3'
+#define CHAR_FD_FIFO			'p'
+#define CHAR_FD_UNIX_SOCK		'u'
+#define CHAR_FD_EVENT			'e'
+#define CHAR_FD_UNKNOWN			'o'
+#define CHAR_FD_UNSUPPORTED		'X'
+#define CHAR_FD_SIGNAL			's'
+#define CHAR_FD_EVENTPOLL		'l'
+#define CHAR_FD_INOTIFY			'i'
+#define CHAR_FD_TIMERFD			't'
+
 ///////////////////////////////////////////////////////////////////////////////
 // fd info
 ///////////////////////////////////////////////////////////////////////////////

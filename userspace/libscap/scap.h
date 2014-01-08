@@ -1,11 +1,27 @@
-////////////////////////////////////////////////////////////////////////////
-// Public definitions for the scap library
-////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*!
+	\mainpage libscap exported interface documentation
+	
+	\section Introduction
+
+	This document describes the data structures and the functions exported by the CACE Technologies afdxcap library.
+	It includes the following sections:
+	- \ref scap_defs
+	- \ref scap_functs
+*/
+
+///////////////////////////////////////////////////////////////////////////////
+// Public structs and defines
+///////////////////////////////////////////////////////////////////////////////
+
+/** @defgroup scap_defs public definitions and structures
+ *  @{
+ */
 
 //
 // Core types
@@ -30,42 +46,32 @@ extern "C" {
 //
 #define SCAP_LASTERR_SIZE 256
 
-//
-// The open instance and event handles
-//
-typedef struct scap_addrlist scap_addrlist;
-typedef struct scap scap_t;
-typedef struct ppm_evt_hdr scap_evt;
-
-//
-// Capture stats
-//
+/*!
+  \brief Statisitcs about an in progress capture
+*/
 typedef struct scap_stats
 {
-	uint64_t n_evts;			// Total number of events that were received by the driver.
-	uint64_t n_drops;			// Number of dropped events.
-	uint64_t n_preemptions;		// Number of preemptions.
+	uint64_t n_evts; ///< Total number of events that were received by the driver.
+	uint64_t n_drops; ///< Number of dropped events.
+	uint64_t n_preemptions; ///< Number of preemptions.
 }scap_stats;
 
-//
-// An event parameter
-//
+/*!
+  \brief Information about the parameter of an event
+*/
 typedef struct evt_param_info
 {
-	const char* name;
-	uint32_t type;	// XXX
-	uint32_t len;
-	char* val;
+	const char* name; ///< The event name.
+	uint32_t type; ///< The event type. See the ppm_event_type enum in driver/ppm_events_public.h
+	uint32_t len; ///< The event total length.
+	char* val; ///< The event data.
 }evt_param_info;
 
-//
-// Process info
-//
 #define SCAP_MAX_PATH_SIZE 1024
 
-//
-// fd info
-//
+/*!
+  \brief File Descriptor type
+*/
 typedef enum scap_fd_type
 {
 	SCAP_FD_UNINITIALIZED = -1,
@@ -86,89 +92,66 @@ typedef enum scap_fd_type
 	SCAP_FD_TIMERFD = 14
 }scap_fd_type;
 
+/*!
+  \brief Socket type / transport protocol
+*/
 typedef enum scap_l4_proto
 {
-	SCAP_L4_UNKNOWN = 0,	// unknown protocol, likely caused by some parsing problem
-	SCAP_L4_NA = 1,			// protocol not available, because the fd is not a socket
+	SCAP_L4_UNKNOWN = 0, ///< unknown protocol, likely caused by some parsing problem
+	SCAP_L4_NA = 1, ///< protocol not available, because the fd is not a socket
 	SCAP_L4_TCP = 2,
 	SCAP_L4_UDP = 3,
 	SCAP_L4_ICMP = 4,
-	SCAP_L4_RAW = 5,
+	SCAP_L4_RAW = 5, ///< Raw socket
 }scap_l4_proto;
 
-typedef enum scap_l6_proto
-{
-	SCAP_L6_UNKNOWN = 0,	// unknown protocol, likely caused by some parsing problem
-	SCAP_L6_NA = 1,			// protocol not available, because the fd is not a socket
-	SCAP_L6_TCP = 2,
-	SCAP_L6_UDP = 3,
-	SCAP_L6_RAW = 5,
-}scap_l6_proto;
-
-// fd type characters
-#define CHAR_FD_FILE			'f'
-#define CHAR_FD_IPV4_SOCK		'4'
-#define CHAR_FD_IPV6_SOCK		'6'
-#define CHAR_FD_DIRECTORY		'd'
-#define CHAR_FD_IPV4_SERVSOCK	'2'
-#define CHAR_FD_IPV6_SERVSOCK	'3'
-#define CHAR_FD_FIFO			'p'
-#define CHAR_FD_UNIX_SOCK		'u'
-#define CHAR_FD_EVENT			'e'
-#define CHAR_FD_UNKNOWN			'o'
-#define CHAR_FD_UNSUPPORTED		'X'
-#define CHAR_FD_SIGNAL			's'
-#define CHAR_FD_EVENTPOLL		'l'
-#define CHAR_FD_INOTIFY			'i'
-#define CHAR_FD_TIMERFD			't'
-//
-// File descriptor information
-//
+/*!
+  \brief Information about a file descriptor
+*/
 typedef struct scap_fdinfo
 {
-	int64_t fd;
-	uint64_t ino;
-	scap_fd_type type;
-	uint32_t flags;
+	int64_t fd; ///< The FD number, which uniquely identifies this file descriptor.
+	uint64_t ino; ///< For unix sockets, the inode.
+	scap_fd_type type; ///< This file descriptor's type.
 	union
 	{
 		struct
 		{
-		  uint32_t sip;
-		  uint32_t dip;
-		  uint16_t sport;
-		  uint16_t dport;
-		  uint8_t l4proto;
-		} ipv4info;
+		  uint32_t sip; ///< Source IP
+		  uint32_t dip; ///< Destination IP
+		  uint16_t sport; ///< Source port
+		  uint16_t dport; ///< Destination port
+		  uint8_t l4proto; ///< Transport protocol. See \ref scap_l4_proto.
+		} ipv4info; ///< Information specific to IPv4 sockets
 		struct
 		{
-			uint32_t sip[4];
-			uint32_t dip[4];
-			uint16_t sport;
-			uint16_t dport;
-			uint8_t l4proto;
-		} ipv6info;
+			uint32_t sip[4]; ///< Source IP
+			uint32_t dip[4]; ///< Destination IP
+			uint16_t sport; ///< Source Port
+			uint16_t dport; ///< Destination Port
+			uint8_t l4proto; ///< Transport protocol. See \ref scap_l4_proto.
+		} ipv6info; ///< Information specific to IPv6 sockets
 		struct
 		{
-		  uint32_t ip;
-		  uint16_t port;
-		  uint8_t l4proto;
-		} ipv4serverinfo;
+		  uint32_t ip; ///< Local IP
+		  uint16_t port; ///< Local Port
+		  uint8_t l4proto; ///< Transport protocol. See \ref scap_l4_proto.
+		} ipv4serverinfo; ///< Information specific to IPv4 server sockets, e.g. sockets used for bind().
 		struct
 		{
-			uint32_t ip[4];
-			uint16_t port;
-			uint8_t l4proto;
-		} ipv6serverinfo;
+			uint32_t ip[4]; ///< Local IP
+			uint16_t port; ///< Local Port
+			uint8_t l4proto; ///< Transport protocol. See \ref scap_l4_proto.
+		} ipv6serverinfo; ///< Information specific to IPv6 server sockets, e.g. sockets used for bind().
 		struct
 		{
-			uint64_t source;
-		  	uint64_t destination;
-			char fname[SCAP_MAX_PATH_SIZE];
-		} unix_socket_info;
-		char fname[SCAP_MAX_PATH_SIZE]; // XXX this should be dynamically allocated to save space
+			uint64_t source; ///< Source socket endpoint
+		  	uint64_t destination; ///< Destination socket endpoint
+			char fname[SCAP_MAX_PATH_SIZE]; ///< Name associated to this unix socket
+		} unix_socket_info; ///< Information specific to unix sockets
+		char fname[SCAP_MAX_PATH_SIZE];  ///< The name for file system FDs
 	}info;
-	UT_hash_handle hh; 					// makes this structure hashable
+	UT_hash_handle hh; ///< makes this structure hashable
 }scap_fdinfo;
 
 //
@@ -292,9 +275,6 @@ typedef struct scap_userlist
 //
 // Misc definitions
 //
-#define IN
-#define OUT
-
 typedef enum scap_os_patform
 {
 	SCAP_PFORM_UNKNOWN = 0,
@@ -311,10 +291,29 @@ typedef enum event_direction
 }event_direction;
 
 typedef struct scap_dumper scap_dumper_t;
+/*@}*/
+
+///////////////////////////////////////////////////////////////////////////////
+// Structs and defines used internally
+///////////////////////////////////////////////////////////////////////////////
+
+#define IN
+#define OUT
 
 //
-// Public library functions
+// Forward declarations
 //
+typedef struct scap_addrlist scap_addrlist;
+typedef struct scap scap_t;
+typedef struct ppm_evt_hdr scap_evt;
+
+///////////////////////////////////////////////////////////////////////////////
+// API functions
+///////////////////////////////////////////////////////////////////////////////
+
+/** @defgroup scap_functs API Functions
+ *  @{
+ */
 
 // Open the live event source
 scap_t* scap_open_live(char *error);
@@ -381,8 +380,6 @@ int32_t scap_event_getparam(scap_evt* e, uint32_t paramid, OUT evt_param_info* p
 // Get the event table entry for the given event
 const struct ppm_event_info* scap_event_getinfo(scap_evt* e);
 
-int32_t scap_param_to_str(IN evt_param_info* param, OUT char* str, uint32_t strlen);
-
 // Get the information about a process.
 // The returned pointer must be freed via scap_proc_free by the caller.
 struct scap_threadinfo* scap_proc_get(scap_t* handle, int64_t tid);
@@ -437,6 +434,8 @@ const scap_machine_info* scap_get_machine_info(scap_t* handle);
 // Set the capture snaplen, i.e. the maximum size after which the driver starts 
 // truncating the string or byte buffer arguments
 int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

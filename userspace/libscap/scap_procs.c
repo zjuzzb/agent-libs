@@ -11,66 +11,8 @@
 #include "scap.h"
 
 #include "scap-int.h"
-//
-// When a process calls clone(), its child inherits its file descriptors. In order to take that
-// into account, we need to copy the fds of the parent into the child list.
-// This is what this function does.
-//
-/*int32_t scap_proc_copy_fd_table(scap_t* handle, scap_threadinfo* dst, scap_threadinfo* src)
-{
-	struct scap_fdinfo* fdi;
-	struct scap_fdinfo* tfdi;
-	struct scap_fdinfo* newfdi;
-	int32_t uth_status = SCAP_SUCCESS;
-
-	HASH_ITER(hh, src->fdlist, fdi, tfdi)
-	{
-		//
-		// Make sure this fd doesn't already exist in the child table
-		//
-		HASH_FIND_INT64(dst->fdlist, &fdi->fd, newfdi);
-		if(newfdi != NULL)
-		{
-			//
-			// This should really never happen, because we're just copying the parent list which
-			// can't have duplicates
-			//
-			ASSERT(false);
-			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "duplicate fd %"PRIu64"for process%"PRIu64, fdi->fd, dst->tid);
-			return SCAP_FAILURE;
-		}
-
-		newfdi = (scap_fdinfo*)malloc(sizeof(scap_fdinfo));
-		if(newfdi == NULL)
-		{
-			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "fd table allocation error (3)");
-			return SCAP_FAILURE;
-		}
-
-		//
-		// Structure-copy the parent's fd into the just allocated one.
-		// NOTE: this will definitely be faster if we copy field-by-field, but performance is not critical here
-		//       (we just did a malloc...)
-		//
-		*newfdi = *fdi;
-
-		//
-		// Add the new fd to the child's table
-		//
-		HASH_ADD_INT64(dst->fdlist, fd, newfdi);
-		if(uth_status != SCAP_SUCCESS)
-		{
-			snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "process table allocation error (2)");
-			return SCAP_FAILURE;
-		}
-	}
-
-	return SCAP_SUCCESS;
-}
-*/
 
 #ifndef _WIN32
-
 int32_t scap_proc_fill_cwd(char* procdirname, struct scap_threadinfo* tinfo)
 {
 	int target_res;
@@ -414,13 +356,6 @@ int32_t scap_proc_scan_proc_dir(scap_t* handle, char* procdirname, int parenttid
 			closedir(dir_p);
 			return SCAP_FAILURE;
 		}
-/*		if(SCAP_FAILURE == scap_fd_post_process_unix_sockets(handle,sockets))
-		{
-			closedir(dir_p);
-			scap_fd_free_table(handle, &sockets);
-			return SCAP_FAILURE;
-		}
-*/
 	}
 
 	if(tid_to_scan != -1)
@@ -512,49 +447,6 @@ int32_t scap_proc_scan_proc_dir(scap_t* handle, char* procdirname, int parenttid
 #endif // _WIN32
 
 //
-// Remove an entry from the process list by parsing a PPME_PROC_EXIT event
-//
-/*
-void scap_proc_schedule_removal(scap_t* handle, scap_evt* pevent)
-{
-	struct scap_threadinfo* tinfo;
-	uint64_t tid = scap_event_get_tid(pevent);
-
-	//
-	// We don't validate the event type (other than with an assertion) for performance reasons.
-	// We assume that the caller will do the right thing.
-	//
-	ASSERT(pevent->type == PPME_PROC_X);
-
-//printf("--- %u (tot:%u)\n", tid, HASH_COUNT(handle->m_proclist));
-
-	//
-	// Find the process
-	//
-	HASH_FIND_INT64(handle->m_proclist, &tid, tinfo);
-	if(tinfo != NULL)
-	{
-		//
-		// Process found, do the deletion
-		//
-		handle->m_proc_to_delete = tinfo;
-	}
-	else
-	{
-		//
-		// The process is not in the table??
-		// We have an assertion here to catch the problem in debug mode, but we don't want to treat this as an error,
-		// we will just keep going and nothing bad will happen.
-		//
-//fprintf(stderr, "--- %llu (tot:%u)\n", tid, HASH_COUNT(handle->m_proclist));
-		ASSERT(false);
-	}
-
-//printf("$$$ count:%u\n", HASH_COUNT(handle->m_proclist));
-}
-*/
-
-//
 // Delete a process entry
 //
 inline void scap_proc_delete(scap_t* handle, scap_threadinfo* proc)
@@ -574,22 +466,6 @@ inline void scap_proc_delete(scap_t* handle, scap_threadinfo* proc)
 	//
 	free(proc);
 }
-
-//
-// Remove the process that was scheduled for deletion for this handle
-//
-/*
-void scap_proc_remove_scheduled(scap_t* handle)
-{
-	//
-	// No validation, just assertion. We assume that the caller knows what he's doing.
-	//
-	ASSERT(handle->m_proc_to_delete != NULL);
-
-	scap_proc_delete(handle, handle->m_proc_to_delete);
-	handle->m_proc_to_delete = NULL;
-}
-*/
 
 //
 // Free the process table
