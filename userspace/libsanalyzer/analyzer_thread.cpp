@@ -121,11 +121,11 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	}
 }
 
-void thread_analyzer_info::propagate_flag(flags flag, thread_analyzer_info* other)
+void thread_analyzer_info::propagate_flag(flags flags, thread_analyzer_info* other)
 {
-	if(other->m_th_analysis_flags & flag)
+	if(other->m_th_analysis_flags & flags)
 	{
-		m_th_analysis_flags |= flag;
+		m_th_analysis_flags |= (other->m_th_analysis_flags & flags);
 	}
 }
 

@@ -112,7 +112,7 @@ public:
 	void destroy();
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
-	void propagate_flag(flags flag, thread_analyzer_info* other);
+	void propagate_flag(flags flags, thread_analyzer_info* other);
 	void propagate_flag_bidirectional(flags flag, thread_analyzer_info* other);
 	void add_all_metrics(thread_analyzer_info* other);
 	void clear_all_metrics();
