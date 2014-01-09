@@ -409,7 +409,7 @@ int32_t scap_start_capture(scap_t* handle);
 
 int32_t scap_stop_dropping_mode(scap_t* handle);
 
-int32_t scap_start_dropping_mode(scap_t* handle);
+int32_t scap_start_dropping_mode(scap_t* handle, uint32_t sampling_ratio);
 
 // Return the list of device addresses
 scap_addrlist* scap_get_ifaddr_list(scap_t* handle);

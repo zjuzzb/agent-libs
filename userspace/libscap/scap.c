@@ -787,14 +787,14 @@ int32_t scap_start_capture(scap_t* handle)
 #endif // _WIN32
 }
 
-static int32_t scap_set_dropping_mode(scap_t* handle, int request)
+static int32_t scap_set_dropping_mode(scap_t* handle, int request, uint32_t sampling_ratio)
 {
 #ifdef _WIN32
 	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
 	return SCAP_FAILURE;
 #else
 
-	//
+	//	
 	// Not supported for files
 	//
 	if(handle->m_file)
@@ -806,7 +806,7 @@ static int32_t scap_set_dropping_mode(scap_t* handle, int request)
 
 	if(handle->m_ndevs)
 	{
-		if(ioctl(handle->m_devs[0].m_fd, request))
+		if(ioctl(handle->m_devs[0].m_fd, request, sampling_ratio))
 		{
 			snprintf(handle->m_lasterr,	SCAP_LASTERR_SIZE, "%s failed", __FUNCTION__);
 			ASSERT(false);
@@ -824,17 +824,17 @@ int32_t scap_stop_dropping_mode(scap_t* handle)
 	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
 	return SCAP_FAILURE;
 #else
-	return scap_set_dropping_mode(handle, PPM_IOCTL_DISABLE_DROPPING_MODE);
+	return scap_set_dropping_mode(handle, PPM_IOCTL_DISABLE_DROPPING_MODE, 0);
 #endif
 }
 
-int32_t scap_start_dropping_mode(scap_t* handle)
+int32_t scap_start_dropping_mode(scap_t* handle, uint32_t sampling_ratio)
 {
 #ifdef _WIN32
 	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
 	return SCAP_FAILURE;
 #else
-	return scap_set_dropping_mode(handle, PPM_IOCTL_ENABLE_DROPPING_MODE);
+	return scap_set_dropping_mode(handle, PPM_IOCTL_ENABLE_DROPPING_MODE, sampling_ratio);
 #endif
 }
 
@@ -901,3 +901,4 @@ int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen)
 	return SCAP_SUCCESS;
 #endif
 }
+

@@ -26,11 +26,6 @@ MODULE_AUTHOR("Draios");
 
 #define PPM_DEVICE_NAME "ppm"
 
-//
-// Make sure to use a power of two constant
-//
-#define FD_SAMPLING_RATIO 4
-
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,35))
     #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2)
     #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2)
@@ -85,6 +80,7 @@ DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
 static atomic_t g_open_count;
 static int g_dropping_mode = 0;
 uint32_t g_snaplen = RW_SNAPLEN;
+uint32_t g_sampling_ratio = FD_SAMPLING_RATIO;
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -274,8 +270,26 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 	case PPM_IOCTL_ENABLE_DROPPING_MODE:
 	{
+		uint32_t new_sampling_ratio;
+
 		g_dropping_mode = 1;
 		printk(KERN_INFO "PPM: PPM_IOCTL_ENABLE_DROPPING_MODE\n");
+
+		new_sampling_ratio = (uint32_t)arg;
+
+		if(new_sampling_ratio != 2 &&
+			new_sampling_ratio != 4 &&
+			new_sampling_ratio != 8 &&
+			new_sampling_ratio != 16 &&
+			new_sampling_ratio != 32)
+		{
+			printk(KERN_INFO "PPM: invalid sampling ratio %u\n", new_sampling_ratio);
+			return -EINVAL;
+		}
+
+		g_sampling_ratio = new_sampling_ratio;
+
+		printk(KERN_INFO "PPM: new sampling ratio: %d\n", g_sampling_ratio);
 		return 0;
 	}
 	case PPM_IOCTL_SET_SNAPLEN:
@@ -283,12 +297,6 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		uint32_t new_snaplen;
 
 		printk(KERN_INFO "PPM: PPM_IOCTL_SET_SNAPLEN\n");
-/*
-		f(copy_from_user(&new_snaplen, (uint32_t*)arg, sizeof(uint32_t)))
-		{
-			return -EACCES;
-		}
-*/
 		new_snaplen = (uint32_t)arg;
 
 		if(new_snaplen > RW_MAX_SNAPLEN)
@@ -579,7 +587,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 		// fds, hoping we will generate a better pattern instead
 		// of just a random sampling
 		//
-		if(fd > 0 && (fd % FD_SAMPLING_RATIO))
+		if(fd > 0 && (fd % g_sampling_ratio))
 		{
 			return 1;
 		}

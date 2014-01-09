@@ -148,7 +148,7 @@ public:
 	// Drop mode control
 	//
 	void stop_dropping_mode();
-	void start_dropping_mode();
+	void start_dropping_mode(uint32_t sampling_ratio);
 	
 #ifdef HAS_FILTERING
 	//

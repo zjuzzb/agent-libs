@@ -450,6 +450,23 @@ int main(int argc, char **argv)
 			display_filter);
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+
+		scap_stats cstats;
+		inspector->get_capture_stats(&cstats);
+
+		fprintf(stderr, "Events:%" PRIu64 "\nDrops:%" PRIu64 "\n",
+			cstats.n_evts,
+			cstats.n_drops);
+
+		if(verbose)
+		{
+			fprintf(stderr, "Elapsed time: %.3lf, Events after filter: %" PRIu64 ", %.2lf eps\n",
+				duration,
+				cinfo.m_nevts,
+				(double)cinfo.m_nevts / duration);
+		}
+
+		delete inspector;
 	}
 	catch(sinsp_exception e)
 	{
@@ -465,21 +482,6 @@ int main(int argc, char **argv)
 	{
 		res = EXIT_FAILURE;
 	}
-
-	if(verbose)
-	{
-		fprintf(stderr, "Elapsed time: %.3lf, %" PRIu64 " events, %.2lf eps\n",
-			duration,
-			cinfo.m_nevts,
-			(double)cinfo.m_nevts / duration);
-	}
-
-	fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
-		cinfo.m_time / 1000000000,
-		cinfo.m_time % 1000000000,
-		(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
-
-	delete inspector;
 
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
