@@ -29,6 +29,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "01-open", "libsanalyzer\tes
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sysdig", "sysdig\sysdig.vcxproj", "{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A45C5520-F4BA-480A-A7D3-EB1E9DDFBE6C} = {A45C5520-F4BA-480A-A7D3-EB1E9DDFBE6C}
+		{A66E3CF6-4964-4361-9A80-DFCC1D32B5BF} = {A66E3CF6-4964-4361-9A80-DFCC1D32B5BF}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -204,76 +204,88 @@ typedef struct _scap_machine_info
 #define SCAP_IPV6_ADDR_LEN 16
 
 /*!
-  \brief IPv4 inerface address information
+  \brief IPv4 interface address information
 */
 typedef struct scap_ifinfo_ipv4
 {
-	uint16_t type;
+	uint16_t type; ///< Interface type
 	uint16_t ifnamelen;
-	uint32_t addr;
-	uint32_t netmask;
-	uint32_t bcast;
-	char ifname[SCAP_MAX_PATH_SIZE];		// interface name (e.g. "eth0")
+	uint32_t addr; ///< Interface address
+	uint32_t netmask; ///< Interface netmask
+	uint32_t bcast; ///< Interface broadcast address
+	char ifname[SCAP_MAX_PATH_SIZE]; ///< interface name (e.g. "eth0")
 }scap_ifinfo_ipv4;
 
 /*!
-  \brief IPv6 inerface address information
+  \brief IPv6 interface address information
 */
 typedef struct scap_ifinfo_ipv6
 {
 	uint16_t type;
 	uint16_t ifnamelen;
-	char addr[SCAP_IPV6_ADDR_LEN];
-	char netmask[SCAP_IPV6_ADDR_LEN];
-	char bcast[SCAP_IPV6_ADDR_LEN];
-	char ifname[SCAP_MAX_PATH_SIZE];		// interface name (e.g. "eth0")
+	char addr[SCAP_IPV6_ADDR_LEN]; ///< Interface address
+	char netmask[SCAP_IPV6_ADDR_LEN]; ///< Interface netmask
+	char bcast[SCAP_IPV6_ADDR_LEN]; ///< Interface broadcast address
+	char ifname[SCAP_MAX_PATH_SIZE]; ///< interface name (e.g. "eth0")
 }scap_ifinfo_ipv6;
 #pragma pack(pop)
 
-// Address list descriptor
-struct scap_addrlist
+/*!
+  \brief List of the machine network interfaces
+*/
+typedef struct scap_addrlist
 {
-	uint32_t n_v4_addrs;
-	uint32_t n_v6_addrs;
-	uint32_t totlen;
-	scap_ifinfo_ipv4* v4list;
-	scap_ifinfo_ipv6* v6list;
-};
+	uint32_t n_v4_addrs; ///< Number of IPv4 addresses
+	uint32_t n_v6_addrs; ///< Number of IPv6 addresses
+	uint32_t totlen; ///< For internal use
+	scap_ifinfo_ipv4* v4list; ///< List of IPv4 Addresses
+	scap_ifinfo_ipv6* v6list; ///< List of IPv6 Addresses
+}scap_addrlist;
 
-//
-// User and group info
-//
 #define MAX_CREDENTIALS_STR_LEN 256
 #define USERBLOCK_TYPE_USER 0
 #define USERBLOCK_TYPE_GROUP 1
 
+/*!
+  \brief Information about one of the machine users
+*/
 typedef struct scap_userinfo
 {
-	uint32_t uid;	// user ID
-	uint32_t gid;  // group ID
-	char name[MAX_CREDENTIALS_STR_LEN]; // username
-	char homedir[SCAP_MAX_PATH_SIZE]; // home directory
-	char shell[SCAP_MAX_PATH_SIZE]; // shell program
+	uint32_t uid; ///< User ID
+	uint32_t gid; ///< Group ID
+	char name[MAX_CREDENTIALS_STR_LEN]; ///< Username
+	char homedir[SCAP_MAX_PATH_SIZE]; ///< Home directory
+	char shell[SCAP_MAX_PATH_SIZE]; ///< Shell program
 }scap_userinfo;
 
+/*!
+  \brief Information about one of the machine user groups
+*/
 typedef struct scap_groupinfo
 {
-	uint32_t gid; // group ID
-	char name[MAX_CREDENTIALS_STR_LEN]; // group name
+	uint32_t gid; ///< Group ID
+	char name[MAX_CREDENTIALS_STR_LEN]; ///< Group name
 }scap_groupinfo;
 
+/*!
+  \brief List of the machine users and groups
+*/
 typedef struct scap_userlist
 {
-	uint32_t nusers;
-	uint32_t ngroups;
-	uint32_t totsavelen;
-	scap_userinfo* users;
-	scap_groupinfo* groups;
+	uint32_t nusers; ///< Number of users
+	uint32_t ngroups; ///< Number of groups
+	uint32_t totsavelen; ///< For internal use
+	scap_userinfo* users;  ///< User list
+	scap_groupinfo* groups; ///< Group list
 }scap_userlist;
 
 //
 // Misc definitions
 //
+
+/*!
+  \brief The OS on which the capture was made
+*/
 typedef enum scap_os_patform
 {
 	SCAP_PFORM_UNKNOWN = 0,
@@ -283,6 +295,9 @@ typedef enum scap_os_patform
 	SCAP_PFORM_WINDOWS_X64 = 4,
 }scap_os_patform;
 
+/*!
+  \brief Indicates if an event is an enter one or an exit one
+*/
 typedef enum event_direction
 {
 	SCAP_ED_IN = 0,
@@ -302,7 +317,6 @@ typedef struct scap_dumper scap_dumper_t;
 //
 // Forward declarations
 //
-typedef struct scap_addrlist scap_addrlist;
 typedef struct scap scap_t;
 typedef struct ppm_evt_hdr scap_evt;
 
@@ -314,37 +328,83 @@ typedef struct ppm_evt_hdr scap_evt;
  *  @{
  */
 
-// Open the live event source
+/*!
+  \brief Start a live event capture.
+
+  \param error Pointer to a buffer that will contain the error string in case the
+    function fails. The buffer must have size SCAP_LASTERR_SIZE.
+			
+  \return The capture instance handle in case of success. NULL in case of failure.
+*/
 scap_t* scap_open_live(char *error);
 
-// Open a capture file
+/*!
+  \brief Start an event capture from file.
+
+  \param fname The name of the file to open.
+  \param error Pointer to a buffer that will contain the error string in case the
+    function fails. The buffer must have size SCAP_LASTERR_SIZE.
+			
+  \return The capture instance handle in case of success. NULL in case of failure.
+*/
 scap_t* scap_open_offline(char* fname, char *error);
 
-// Close a capture handle
+/*!
+  \brief Close a capture handle.
+
+  \param handle Handle to the capture instance.
+*/
 void scap_close(scap_t* handle);
 
-// Retrieve the OS platform for the given capture handle. For live handles, the return value is the
-// actual OS that is returning the data. For offline handles, the return value indicates the OS where
-// the data was originally captured.
+/*!
+  \brief Retrieve the OS platform for the given capture handle.
+
+  \param handle Handle to the capture instance.
+			
+  \return The type of operating system on which the capture was made.
+
+  \note For live handles, the return value indicates the current local OS. 
+    For offline handles, the return value indicates the OS where the data was 
+	originally captured.
+*/
 scap_os_patform scap_get_os_platform(scap_t* handle);
 
-// Return the number of event capture devices that the library is handling. Each processor
-// has its own event capture device.
-uint32_t scap_get_ndevs(scap_t* handle);
-
-// Get the last error for the given handle
+/*!
+  \brief Return a string with the last error that happened on the given capture.
+*/
 char* scap_getlasterr(scap_t* handle);
 
-// Retrieve a buffer of events from one of the cpus
-extern int32_t scap_readbuf(scap_t* handle, uint32_t cpuid, bool blocking, OUT char** buf, OUT uint32_t* len);
+/*!
+  \brief Get the next event from the from the given capture instance
 
-// Get the next event from the source
+  \param handle Handle to the capture instance.
+  \param pevent User-provided event pointer that will be initialized with address of the event.
+  \param pcpuid User-provided event pointer that will be initialized with the ID if the CPU
+    where the event was captured.
+			
+  \return SCAP_SECCESS if the call is succesful and pevent and pcpuid contain valid data.
+   SCAP_TIMEOUT in case the read timeout expired and no event is available.
+   SCAP_EOF when the end of an offline capture is reached.
+   On Failure, SCAP_FAILURE is returned and scap_getlasterr() can be used to obtain the cause of the error. 
+*/
 int32_t scap_next(scap_t* handle, OUT scap_evt** pevent, OUT uint16_t* pcpuid);
 
-// Get the length of an event
+/*!
+  \brief Get the length of an event
+
+  \param e pointer to an event returned by \ref scap_next.
+			
+  \return The event length in bytes. 
+*/
 uint32_t scap_event_getlen(scap_evt* e);
 
-// Get the event timestamp
+/*!
+  \brief Get the timestamp of an event
+
+  \param e pointer to an event returned by \ref scap_next.
+			
+  \return The event timestamp, in nanoseconds since epoch. 
+*/
 uint64_t scap_event_get_ts(scap_evt* e);
 
 // Get the number of the last event captured from handle 
@@ -352,11 +412,6 @@ uint64_t scap_event_get_num(scap_t* handle);
 
 // Get the event type
 uint16_t scap_event_get_type(scap_evt* e);
-
-#ifdef PPM_ENABLE_SENTINEL
-// Get the sentinel at the beginning of the event
-uint32_t scap_event_get_sentinel_begin(scap_evt* e);
-#endif
 
 // Get the human readable event name
 const char* scap_event_get_name(scap_evt* e);
@@ -378,12 +433,6 @@ int32_t scap_event_getparam(scap_evt* e, uint32_t paramid, OUT evt_param_info* p
 
 // Get the event table entry for the given event
 const struct ppm_event_info* scap_event_getinfo(scap_evt* e);
-
-// Get the information about a process.
-// The returned pointer must be freed via scap_proc_free by the caller.
-struct scap_threadinfo* scap_proc_get(scap_t* handle, int64_t tid);
-
-void scap_proc_free(scap_t* handle, struct scap_threadinfo* procinfo);
 
 // Open a "savefile" for writing.
 scap_dumper_t* scap_dump_open(scap_t *handle, const char *fname);
@@ -435,6 +484,30 @@ const scap_machine_info* scap_get_machine_info(scap_t* handle);
 int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen);
 
 /*@}*/
+
+///////////////////////////////////////////////////////////////////////////////
+// Non public functions
+///////////////////////////////////////////////////////////////////////////////
+
+//
+// Return the number of event capture devices that the library is handling. Each processor
+// has its own event capture device.
+//
+uint32_t scap_get_ndevs(scap_t* handle);
+
+// Retrieve a buffer of events from one of the cpus
+extern int32_t scap_readbuf(scap_t* handle, uint32_t cpuid, bool blocking, OUT char** buf, OUT uint32_t* len);
+
+#ifdef PPM_ENABLE_SENTINEL
+// Get the sentinel at the beginning of the event
+uint32_t scap_event_get_sentinel_begin(scap_evt* e);
+#endif
+
+// Get the information about a process.
+// The returned pointer must be freed via scap_proc_free by the caller.
+struct scap_threadinfo* scap_proc_get(scap_t* handle, int64_t tid);
+
+void scap_proc_free(scap_t* handle, struct scap_threadinfo* procinfo);
 
 #ifdef __cplusplus
 }
