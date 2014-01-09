@@ -154,29 +154,29 @@ typedef struct scap_fdinfo
 	UT_hash_handle hh; ///< makes this structure hashable
 }scap_fdinfo;
 
-//
-// Process information
-//
+/*!
+  \brief Process information
+*/
 typedef struct scap_threadinfo
 {
-	uint64_t tid;						// The thread/task id.
-	uint64_t pid;						// The id of the process containing this thread. In single thread processes, this is equal to tid.
-	uint64_t ptid;						// The id of the thread that created this thread.
-	char comm[SCAP_MAX_PATH_SIZE];		// Command name (e.g. "top")
-	char exe[SCAP_MAX_PATH_SIZE];		// Full command name (e.g. "/bin/top")
-	char args[SCAP_MAX_PATH_SIZE];		// Command line arguments (e.g. "-d1")
-	uint16_t args_len;					// Command line arguments length
-	char cwd[SCAP_MAX_PATH_SIZE];		// The current working directory
-	int64_t fdlimit;					// The maximum number of files this thread is allowed to open
-	uint32_t flags;						// the process flags.
-	uint32_t uid;						// user id
-	uint32_t gid;						// group id
-	scap_fdinfo* fdlist;				// The fd table for this process
-	UT_hash_handle hh; 					// makes this structure hashable
+	uint64_t tid; ///< The thread/task id.
+	uint64_t pid; ///< The id of the process containing this thread. In single thread processes, this is equal to tid.
+	uint64_t ptid; ///< The id of the thread that created this thread.
+	char comm[SCAP_MAX_PATH_SIZE]; ///< Command name (e.g. "top")
+	char exe[SCAP_MAX_PATH_SIZE]; ///< Full command name (e.g. "/bin/top")
+	char args[SCAP_MAX_PATH_SIZE]; ///< Command line arguments (e.g. "-d1")
+	uint16_t args_len; ///< Command line arguments length
+	char cwd[SCAP_MAX_PATH_SIZE]; ///< The current working directory
+	int64_t fdlimit; ///< The maximum number of files this thread is allowed to open
+	uint32_t flags; ///< the process flags.
+	uint32_t uid; ///< user id
+	uint32_t gid; ///< group id
+	scap_fdinfo* fdlist; ///< The fd table for this process
+	UT_hash_handle hh; ///< makes this structure hashable
 }scap_threadinfo;
 
 //
-// Machine info. Byte aligned because we save it to disk.
+// The follwing stuff is byte aligned because we save it to disk.
 //
 #if defined _MSC_VER
 #pragma pack(push)
@@ -184,31 +184,28 @@ typedef struct scap_threadinfo
 #else
 #pragma pack(push, 1)
 #endif
+
+/*!
+  \brief Machine information
+*/
 typedef struct _scap_machine_info
 {
-	uint32_t num_cpus;	// Number of processors
-	uint64_t memory_size_bytes; // Physical memory size
-	uint64_t max_pid; // Highest PID number on this machine
-	char hostname[128];
-	uint64_t reserved1; // reserved for fututre use
-	uint64_t reserved2; // reserved for fututre use
-	uint64_t reserved3; // reserved for fututre use
-	uint64_t reserved4; // reserved for fututre use
+	uint32_t num_cpus;	///< Number of processors
+	uint64_t memory_size_bytes; ///< Physical memory size
+	uint64_t max_pid; ///< Highest PID number on this machine
+	char hostname[128]; ///< The machine hostname 
+	uint64_t reserved1; ///< reserved for fututre use
+	uint64_t reserved2; ///< reserved for fututre use
+	uint64_t reserved3; ///< reserved for fututre use
+	uint64_t reserved4; ///< reserved for fututre use
 }scap_machine_info;
-#pragma pack(pop)
 
-//
-// Interface address information
-//
+
 #define SCAP_IPV6_ADDR_LEN 16
 
-#if defined _MSC_VER
-#pragma pack(push)
-#pragma pack(1)
-#else
-#pragma pack(push, 1)
-#endif
-// IPv4 info
+/*!
+  \brief IPv4 inerface address information
+*/
 typedef struct scap_ifinfo_ipv4
 {
 	uint16_t type;
@@ -219,7 +216,9 @@ typedef struct scap_ifinfo_ipv4
 	char ifname[SCAP_MAX_PATH_SIZE];		// interface name (e.g. "eth0")
 }scap_ifinfo_ipv4;
 
-// IPv6 info
+/*!
+  \brief IPv6 inerface address information
+*/
 typedef struct scap_ifinfo_ipv6
 {
 	uint16_t type;

@@ -1006,7 +1006,7 @@ protected:
 			if(m_configuration.m_dropping_mode)
 			{
 				g_log->information("Enabling dropping mode");
-				m_inspector->start_dropping_mode();
+				m_inspector->start_dropping_mode(4);
 			}
 
 			if(m_writefile != "")
