@@ -368,6 +368,11 @@ void sinsp_analyzer::serialize(uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
+			ts / 1000000000,
+			buflen);
+
 		if(!buf)
 		{
 			return;
