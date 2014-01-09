@@ -206,6 +206,12 @@ public:
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
 
+	//
+	// Fill the given structure with live capture statistics
+	//
+	void get_capture_stats(scap_stats* stats);
+
+
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats get_stats();
 #endif

@@ -553,6 +553,14 @@ uint32_t sinsp::reserve_thread_memory(uint32_t size)
 	return m_thread_privatestate_manager.reserve(size);
 }
 
+void sinsp::get_capture_stats(scap_stats* stats)
+{
+	if(scap_get_stats(m_h, stats) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
+}
+
 #ifdef GATHER_INTERNAL_STATS
 sinsp_stats sinsp::get_stats()
 {
