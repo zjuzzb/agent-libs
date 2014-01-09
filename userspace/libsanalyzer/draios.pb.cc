@@ -7080,6 +7080,7 @@ const int dump_request::kTimestampNsFieldNumber;
 const int dump_request::kMachineIdFieldNumber;
 const int dump_request::kCustomerIdFieldNumber;
 const int dump_request::kDurationNsFieldNumber;
+const int dump_request::kFiltersFieldNumber;
 #endif  // !_MSC_VER
 
 dump_request::dump_request()
@@ -7102,6 +7103,7 @@ void dump_request::SharedCtor() {
   machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   duration_ns_ = GOOGLE_ULONGLONG(0);
+  filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -7115,6 +7117,9 @@ void dump_request::SharedDtor() {
   }
   if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
     delete customer_id_;
+  }
+  if (filters_ != &::google::protobuf::internal::kEmptyString) {
+    delete filters_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -7158,6 +7163,11 @@ void dump_request::Clear() {
       }
     }
     duration_ns_ = GOOGLE_ULONGLONG(0);
+    if (has_filters()) {
+      if (filters_ != &::google::protobuf::internal::kEmptyString) {
+        filters_->clear();
+      }
+    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -7223,6 +7233,20 @@ bool dump_request::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(42)) goto parse_filters;
+        break;
+      }
+
+      // optional string filters = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_filters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_filters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -7266,6 +7290,12 @@ void dump_request::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->duration_ns(), output);
   }
 
+  // optional string filters = 5;
+  if (has_filters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      5, this->filters(), output);
+  }
+
 }
 
 int dump_request::ByteSize() const {
@@ -7300,6 +7330,13 @@ int dump_request::ByteSize() const {
           this->duration_ns());
     }
 
+    // optional string filters = 5;
+    if (has_filters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->filters());
+    }
+
   }
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
@@ -7327,6 +7364,9 @@ void dump_request::MergeFrom(const dump_request& from) {
     if (from.has_duration_ns()) {
       set_duration_ns(from.duration_ns());
     }
+    if (from.has_filters()) {
+      set_filters(from.filters());
+    }
   }
 }
 
@@ -7348,6 +7388,7 @@ void dump_request::Swap(dump_request* other) {
     std::swap(machine_id_, other->machine_id_);
     std::swap(customer_id_, other->customer_id_);
     std::swap(duration_ns_, other->duration_ns_);
+    std::swap(filters_, other->filters_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
@@ -7365,6 +7406,7 @@ const int dump_response::kTimestampNsFieldNumber;
 const int dump_response::kMachineIdFieldNumber;
 const int dump_response::kCustomerIdFieldNumber;
 const int dump_response::kContentFieldNumber;
+const int dump_response::kErrorFieldNumber;
 #endif  // !_MSC_VER
 
 dump_response::dump_response()
@@ -7387,6 +7429,7 @@ void dump_response::SharedCtor() {
   machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -7403,6 +7446,9 @@ void dump_response::SharedDtor() {
   }
   if (content_ != &::google::protobuf::internal::kEmptyString) {
     delete content_;
+  }
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -7448,6 +7494,11 @@ void dump_response::Clear() {
     if (has_content()) {
       if (content_ != &::google::protobuf::internal::kEmptyString) {
         content_->clear();
+      }
+    }
+    if (has_error()) {
+      if (error_ != &::google::protobuf::internal::kEmptyString) {
+        error_->clear();
       }
     }
   }
@@ -7503,13 +7554,27 @@ bool dump_response::MergePartialFromCodedStream(
         break;
       }
 
-      // required bytes content = 4;
+      // optional bytes content = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_content:
           DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
                 input, this->mutable_content()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(42)) goto parse_error;
+        break;
+      }
+
+      // optional string error = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_error:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_error()));
         } else {
           goto handle_uninterpreted;
         }
@@ -7551,10 +7616,16 @@ void dump_response::SerializeWithCachedSizes(
       3, this->customer_id(), output);
   }
 
-  // required bytes content = 4;
+  // optional bytes content = 4;
   if (has_content()) {
     ::google::protobuf::internal::WireFormatLite::WriteBytes(
       4, this->content(), output);
+  }
+
+  // optional string error = 5;
+  if (has_error()) {
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      5, this->error(), output);
   }
 
 }
@@ -7584,11 +7655,18 @@ int dump_response::ByteSize() const {
           this->customer_id());
     }
 
-    // required bytes content = 4;
+    // optional bytes content = 4;
     if (has_content()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
           this->content());
+    }
+
+    // optional string error = 5;
+    if (has_error()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->error());
     }
 
   }
@@ -7618,6 +7696,9 @@ void dump_response::MergeFrom(const dump_response& from) {
     if (from.has_content()) {
       set_content(from.content());
     }
+    if (from.has_error()) {
+      set_error(from.error());
+    }
   }
 }
 
@@ -7628,7 +7709,7 @@ void dump_response::CopyFrom(const dump_response& from) {
 }
 
 bool dump_response::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   return true;
 }
@@ -7639,6 +7720,7 @@ void dump_response::Swap(dump_response* other) {
     std::swap(machine_id_, other->machine_id_);
     std::swap(customer_id_, other->customer_id_);
     std::swap(content_, other->content_);
+    std::swap(error_, other->error_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }

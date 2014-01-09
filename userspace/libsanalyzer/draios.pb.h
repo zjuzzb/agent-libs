@@ -2770,6 +2770,18 @@ class dump_request : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 duration_ns() const;
   inline void set_duration_ns(::google::protobuf::uint64 value);
 
+  // optional string filters = 5;
+  inline bool has_filters() const;
+  inline void clear_filters();
+  static const int kFiltersFieldNumber = 5;
+  inline const ::std::string& filters() const;
+  inline void set_filters(const ::std::string& value);
+  inline void set_filters(const char* value);
+  inline void set_filters(const char* value, size_t size);
+  inline ::std::string* mutable_filters();
+  inline ::std::string* release_filters();
+  inline void set_allocated_filters(::std::string* filters);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_request)
  private:
   inline void set_has_timestamp_ns();
@@ -2780,14 +2792,17 @@ class dump_request : public ::google::protobuf::MessageLite {
   inline void clear_has_customer_id();
   inline void set_has_duration_ns();
   inline void clear_has_duration_ns();
+  inline void set_has_filters();
+  inline void clear_has_filters();
 
   ::google::protobuf::uint64 timestamp_ns_;
   ::std::string* machine_id_;
   ::std::string* customer_id_;
   ::google::protobuf::uint64 duration_ns_;
+  ::std::string* filters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -2886,7 +2901,7 @@ class dump_response : public ::google::protobuf::MessageLite {
   inline ::std::string* release_customer_id();
   inline void set_allocated_customer_id(::std::string* customer_id);
 
-  // required bytes content = 4;
+  // optional bytes content = 4;
   inline bool has_content() const;
   inline void clear_content();
   static const int kContentFieldNumber = 4;
@@ -2898,6 +2913,18 @@ class dump_response : public ::google::protobuf::MessageLite {
   inline ::std::string* release_content();
   inline void set_allocated_content(::std::string* content);
 
+  // optional string error = 5;
+  inline bool has_error() const;
+  inline void clear_error();
+  static const int kErrorFieldNumber = 5;
+  inline const ::std::string& error() const;
+  inline void set_error(const ::std::string& value);
+  inline void set_error(const char* value);
+  inline void set_error(const char* value, size_t size);
+  inline ::std::string* mutable_error();
+  inline ::std::string* release_error();
+  inline void set_allocated_error(::std::string* error);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_response)
  private:
   inline void set_has_timestamp_ns();
@@ -2908,14 +2935,17 @@ class dump_response : public ::google::protobuf::MessageLite {
   inline void clear_has_customer_id();
   inline void set_has_content();
   inline void clear_has_content();
+  inline void set_has_error();
+  inline void clear_has_error();
 
   ::google::protobuf::uint64 timestamp_ns_;
   ::std::string* machine_id_;
   ::std::string* customer_id_;
   ::std::string* content_;
+  ::std::string* error_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_draios_2eproto_impl();
@@ -6879,6 +6909,76 @@ inline void dump_request::set_duration_ns(::google::protobuf::uint64 value) {
   duration_ns_ = value;
 }
 
+// optional string filters = 5;
+inline bool dump_request::has_filters() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void dump_request::set_has_filters() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void dump_request::clear_has_filters() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void dump_request::clear_filters() {
+  if (filters_ != &::google::protobuf::internal::kEmptyString) {
+    filters_->clear();
+  }
+  clear_has_filters();
+}
+inline const ::std::string& dump_request::filters() const {
+  return *filters_;
+}
+inline void dump_request::set_filters(const ::std::string& value) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(value);
+}
+inline void dump_request::set_filters(const char* value) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(value);
+}
+inline void dump_request::set_filters(const char* value, size_t size) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_request::mutable_filters() {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  return filters_;
+}
+inline ::std::string* dump_request::release_filters() {
+  clear_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = filters_;
+    filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_request::set_allocated_filters(::std::string* filters) {
+  if (filters_ != &::google::protobuf::internal::kEmptyString) {
+    delete filters_;
+  }
+  if (filters) {
+    set_has_filters();
+    filters_ = filters;
+  } else {
+    clear_has_filters();
+    filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 // -------------------------------------------------------------------
 
 // dump_response
@@ -7045,7 +7145,7 @@ inline void dump_response::set_allocated_customer_id(::std::string* customer_id)
   }
 }
 
-// required bytes content = 4;
+// optional bytes content = 4;
 inline bool dump_response::has_content() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -7112,6 +7212,76 @@ inline void dump_response::set_allocated_content(::std::string* content) {
   } else {
     clear_has_content();
     content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string error = 5;
+inline bool dump_response::has_error() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void dump_response::set_has_error() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void dump_response::clear_has_error() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void dump_response::clear_error() {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    error_->clear();
+  }
+  clear_has_error();
+}
+inline const ::std::string& dump_response::error() const {
+  return *error_;
+}
+inline void dump_response::set_error(const ::std::string& value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void dump_response::set_error(const char* value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void dump_response::set_error(const char* value, size_t size) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_error() {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  return error_;
+}
+inline ::std::string* dump_response::release_error() {
+  clear_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = error_;
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_error(::std::string* error) {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
+  }
+  if (error) {
+    set_has_error();
+    error_ = error;
+  } else {
+    clear_has_error();
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

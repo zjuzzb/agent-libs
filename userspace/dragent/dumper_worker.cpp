@@ -20,7 +20,12 @@ void dumper_worker::run()
 	
 	if(m_configuration->m_dump_in_progress)
 	{
-		g_log->error("Another capture is already in progress");
+		string error = "Another capture is already in progress";
+		g_log->error(error);
+		draiosproto::dump_response response;
+		prepare_response(&response);
+		response.set_error(error);
+		queue_response(response);
 		return;
 	}
 
@@ -57,7 +62,12 @@ void dumper_worker::run()
 		}
 		else
 		{
-			g_log->error("Timeout waiting for capture completed event");
+			string error = "Timeout waiting for capture completed event";
+			g_log->error(error);
+			draiosproto::dump_response response;
+			prepare_response(&response);
+			response.set_error(error);
+			queue_response(response);
 		}
 	}
 
@@ -74,12 +84,20 @@ void dumper_worker::send_file()
 	g_log->information(m_name + ": File size: " + NumberFormatter::format(nread));
 
 	draiosproto::dump_response response;
-
-	response.set_timestamp_ns(dragent_configuration::get_current_time_ns());
-	response.set_customer_id(m_configuration->m_customer_id);
-	response.set_machine_id(m_configuration->m_machine_id);
+	prepare_response(&response);
 	response.set_content(sfile);
+	queue_response(response);
+}
 
+void dumper_worker::prepare_response(draiosproto::dump_response* response)
+{
+	response->set_timestamp_ns(dragent_configuration::get_current_time_ns());
+	response->set_customer_id(m_configuration->m_customer_id);
+	response->set_machine_id(m_configuration->m_machine_id);
+}
+
+void dumper_worker::queue_response(const draiosproto::dump_response& response)
+{
 	SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(
 		dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE, 
 		response, 
