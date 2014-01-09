@@ -647,32 +647,42 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
+				//
+				// client-server role
+				//
+				uint32_t netrole = 0;
+
 				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 				{
-					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_SERVER);
+					netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
 				{
-					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_SERVER);
+					netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 				{
-					proc->set_netrole(draiosproto::IS_UNIX_SERVER);
+					netrole |= draiosproto::IS_UNIX_SERVER;
 				}
 
 				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 				{
-					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_CLIENT);
+					netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
 				{
-					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_CLIENT);
+					netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 				{
-					proc->set_netrole(draiosproto::IS_UNIX_CLIENT);
+					netrole |= draiosproto::IS_UNIX_CLIENT;
 				}
 
+				proc->set_netrole(netrole);
+
+				//
+				// CPU utilization
+				//
 				if(procinfo->m_cpuload != -1)
 				{
 					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))

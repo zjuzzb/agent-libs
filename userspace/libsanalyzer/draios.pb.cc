@@ -4847,7 +4847,7 @@ void process::SharedCtor() {
   is_unix_transaction_server_ = false;
   is_ipv4_transaction_client_ = false;
   is_unix_transaction_client_ = false;
-  netrole_ = 0;
+  netrole_ = 0u;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -4905,7 +4905,7 @@ void process::Clear() {
     is_unix_transaction_server_ = false;
     is_ipv4_transaction_client_ = false;
     is_unix_transaction_client_ = false;
-    netrole_ = 0;
+    netrole_ = 0u;
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
@@ -5113,18 +5113,15 @@ bool process::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .draiosproto.networkrole netrole = 13;
+      // optional uint32 netrole = 13;
       case 13: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_netrole:
-          int value;
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
-                 input, &value)));
-          if (::draiosproto::networkrole_IsValid(value)) {
-            set_netrole(static_cast< ::draiosproto::networkrole >(value));
-          }
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &netrole_)));
+          set_has_netrole();
         } else {
           goto handle_uninterpreted;
         }
@@ -5214,10 +5211,9 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(12, this->next_tiers_delay(), output);
   }
 
-  // optional .draiosproto.networkrole netrole = 13;
+  // optional uint32 netrole = 13;
   if (has_netrole()) {
-    ::google::protobuf::internal::WireFormatLite::WriteEnum(
-      13, this->netrole(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(13, this->netrole(), output);
   }
 
 }
@@ -5260,10 +5256,11 @@ int process::ByteSize() const {
       total_size += 1 + 1;
     }
 
-    // optional .draiosproto.networkrole netrole = 13;
+    // optional uint32 netrole = 13;
     if (has_netrole()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::EnumSize(this->netrole());
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->netrole());
     }
 
     // optional .draiosproto.time_categories tcounters = 5;
