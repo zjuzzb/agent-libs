@@ -9,7 +9,15 @@ add_definitions( -DHAS_ANALYZER )
 
 add_executable(dragent
 	configuration.cpp 
-	main.cpp)
+	connection_manager.cpp
+	crash_handler.cpp
+	dumper_worker.cpp
+	error_handler.cpp
+	logger.cpp
+	main.cpp
+	monitor.cpp
+	protocol.cpp
+	sinsp_data_handler.cpp)
 
 target_link_libraries(dragent
 	pthread

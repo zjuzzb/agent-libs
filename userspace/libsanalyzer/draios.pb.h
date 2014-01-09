@@ -52,6 +52,8 @@ class ipv4tuple;
 class ipv4_connection;
 class ipv4_network_interface;
 class metrics;
+class dump_request;
+class dump_response;
 
 enum networkrole {
   NONE = 0,
@@ -2668,6 +2670,285 @@ class metrics : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static metrics* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class dump_request : public ::google::protobuf::Message {
+ public:
+  dump_request();
+  virtual ~dump_request();
+
+  dump_request(const dump_request& from);
+
+  inline dump_request& operator=(const dump_request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const dump_request& default_instance();
+
+  void Swap(dump_request* other);
+
+  // implements Message ----------------------------------------------
+
+  dump_request* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const dump_request& from);
+  void MergeFrom(const dump_request& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // required uint64 duration_ns = 4;
+  inline bool has_duration_ns() const;
+  inline void clear_duration_ns();
+  static const int kDurationNsFieldNumber = 4;
+  inline ::google::protobuf::uint64 duration_ns() const;
+  inline void set_duration_ns(::google::protobuf::uint64 value);
+
+  // optional string filters = 5;
+  inline bool has_filters() const;
+  inline void clear_filters();
+  static const int kFiltersFieldNumber = 5;
+  inline const ::std::string& filters() const;
+  inline void set_filters(const ::std::string& value);
+  inline void set_filters(const char* value);
+  inline void set_filters(const char* value, size_t size);
+  inline ::std::string* mutable_filters();
+  inline ::std::string* release_filters();
+  inline void set_allocated_filters(::std::string* filters);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.dump_request)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+  inline void set_has_duration_ns();
+  inline void clear_has_duration_ns();
+  inline void set_has_filters();
+  inline void clear_has_filters();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+  ::google::protobuf::uint64 duration_ns_;
+  ::std::string* filters_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static dump_request* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class dump_response : public ::google::protobuf::Message {
+ public:
+  dump_response();
+  virtual ~dump_response();
+
+  dump_response(const dump_response& from);
+
+  inline dump_response& operator=(const dump_response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const dump_response& default_instance();
+
+  void Swap(dump_response* other);
+
+  // implements Message ----------------------------------------------
+
+  dump_response* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const dump_response& from);
+  void MergeFrom(const dump_response& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // optional bytes content = 4;
+  inline bool has_content() const;
+  inline void clear_content();
+  static const int kContentFieldNumber = 4;
+  inline const ::std::string& content() const;
+  inline void set_content(const ::std::string& value);
+  inline void set_content(const char* value);
+  inline void set_content(const void* value, size_t size);
+  inline ::std::string* mutable_content();
+  inline ::std::string* release_content();
+  inline void set_allocated_content(::std::string* content);
+
+  // optional string error = 5;
+  inline bool has_error() const;
+  inline void clear_error();
+  static const int kErrorFieldNumber = 5;
+  inline const ::std::string& error() const;
+  inline void set_error(const ::std::string& value);
+  inline void set_error(const char* value);
+  inline void set_error(const char* value, size_t size);
+  inline ::std::string* mutable_error();
+  inline ::std::string* release_error();
+  inline void set_allocated_error(::std::string* error);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.dump_response)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+  inline void set_has_content();
+  inline void clear_has_content();
+  inline void set_has_error();
+  inline void clear_has_error();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+  ::std::string* content_;
+  ::std::string* error_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static dump_response* default_instance_;
 };
 // ===================================================================
 
@@ -6265,6 +6546,570 @@ metrics::ipv4_network_interfaces() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface >*
 metrics::mutable_ipv4_network_interfaces() {
   return &ipv4_network_interfaces_;
+}
+
+// -------------------------------------------------------------------
+
+// dump_request
+
+// required uint64 timestamp_ns = 1;
+inline bool dump_request::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void dump_request::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void dump_request::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void dump_request::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 dump_request::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void dump_request::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool dump_request::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void dump_request::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void dump_request::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void dump_request::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& dump_request::machine_id() const {
+  return *machine_id_;
+}
+inline void dump_request::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void dump_request::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void dump_request::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_request::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* dump_request::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_request::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool dump_request::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void dump_request::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void dump_request::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void dump_request::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& dump_request::customer_id() const {
+  return *customer_id_;
+}
+inline void dump_request::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void dump_request::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void dump_request::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_request::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* dump_request::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_request::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint64 duration_ns = 4;
+inline bool dump_request::has_duration_ns() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void dump_request::set_has_duration_ns() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void dump_request::clear_has_duration_ns() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void dump_request::clear_duration_ns() {
+  duration_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_duration_ns();
+}
+inline ::google::protobuf::uint64 dump_request::duration_ns() const {
+  return duration_ns_;
+}
+inline void dump_request::set_duration_ns(::google::protobuf::uint64 value) {
+  set_has_duration_ns();
+  duration_ns_ = value;
+}
+
+// optional string filters = 5;
+inline bool dump_request::has_filters() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void dump_request::set_has_filters() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void dump_request::clear_has_filters() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void dump_request::clear_filters() {
+  if (filters_ != &::google::protobuf::internal::kEmptyString) {
+    filters_->clear();
+  }
+  clear_has_filters();
+}
+inline const ::std::string& dump_request::filters() const {
+  return *filters_;
+}
+inline void dump_request::set_filters(const ::std::string& value) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(value);
+}
+inline void dump_request::set_filters(const char* value) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(value);
+}
+inline void dump_request::set_filters(const char* value, size_t size) {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  filters_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_request::mutable_filters() {
+  set_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    filters_ = new ::std::string;
+  }
+  return filters_;
+}
+inline ::std::string* dump_request::release_filters() {
+  clear_has_filters();
+  if (filters_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = filters_;
+    filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_request::set_allocated_filters(::std::string* filters) {
+  if (filters_ != &::google::protobuf::internal::kEmptyString) {
+    delete filters_;
+  }
+  if (filters) {
+    set_has_filters();
+    filters_ = filters;
+  } else {
+    clear_has_filters();
+    filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// dump_response
+
+// required uint64 timestamp_ns = 1;
+inline bool dump_response::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void dump_response::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void dump_response::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void dump_response::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 dump_response::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void dump_response::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool dump_response::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void dump_response::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void dump_response::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void dump_response::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& dump_response::machine_id() const {
+  return *machine_id_;
+}
+inline void dump_response::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void dump_response::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void dump_response::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* dump_response::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool dump_response::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void dump_response::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void dump_response::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void dump_response::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& dump_response::customer_id() const {
+  return *customer_id_;
+}
+inline void dump_response::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void dump_response::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void dump_response::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* dump_response::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional bytes content = 4;
+inline bool dump_response::has_content() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void dump_response::set_has_content() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void dump_response::clear_has_content() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void dump_response::clear_content() {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    content_->clear();
+  }
+  clear_has_content();
+}
+inline const ::std::string& dump_response::content() const {
+  return *content_;
+}
+inline void dump_response::set_content(const ::std::string& value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void dump_response::set_content(const char* value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void dump_response::set_content(const void* value, size_t size) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_content() {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  return content_;
+}
+inline ::std::string* dump_response::release_content() {
+  clear_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = content_;
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_content(::std::string* content) {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    delete content_;
+  }
+  if (content) {
+    set_has_content();
+    content_ = content;
+  } else {
+    clear_has_content();
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string error = 5;
+inline bool dump_response::has_error() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void dump_response::set_has_error() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void dump_response::clear_has_error() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void dump_response::clear_error() {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    error_->clear();
+  }
+  clear_has_error();
+}
+inline const ::std::string& dump_response::error() const {
+  return *error_;
+}
+inline void dump_response::set_error(const ::std::string& value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void dump_response::set_error(const char* value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void dump_response::set_error(const char* value, size_t size) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_error() {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  return error_;
+}
+inline ::std::string* dump_response::release_error() {
+  clear_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = error_;
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_error(::std::string* error) {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
+  }
+  if (error) {
+    set_has_error();
+    error_ = error;
+  } else {
+    clear_has_error();
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 

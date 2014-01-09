@@ -32,7 +32,6 @@ using namespace google::protobuf::io;
 #include "procfs_parser.h"
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
-#include "proto_header.h"
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
 
@@ -286,17 +285,12 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	//
 	// Find out how many bytes we need for the serialization
 	//
-	uint32_t tlen = m_metrics->ByteSize();
-	
-    //
-    // We allocate 4 additional bytes for the buffer lenght
-    //
-    uint32_t full_len = tlen + sizeof(sinsp_sample_header);
-		
+	uint32_t full_len = m_metrics->ByteSize();
+			
     //
     // If the buffer is not big enough, expand it
     //
-    if(m_serialization_buffer_size < (full_len))
+    if(m_serialization_buffer_size < full_len)
     {
         if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
         {
@@ -325,14 +319,14 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		throw sinsp_exception("compression in agent protocol not implemented under windows");
 		return NULL;
 #else
-        ArrayOutputStream array_output(m_serialization_buffer + sizeof(sinsp_sample_header), tlen);
+        ArrayOutputStream array_output(m_serialization_buffer, full_len);
         GzipOutputStream gzip_output(&array_output);
 
         m_metrics->SerializeToZeroCopyStream(&gzip_output);
         gzip_output.Close();
 
-        uint32_t compressed_size = (uint32_t)array_output.ByteCount();
-        if(compressed_size > tlen)
+        uint32_t compressed_size = (uint32_t) array_output.ByteCount();
+        if(compressed_size > full_len)
         {
             ASSERT(false);
             char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
@@ -340,7 +334,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
         }
 
         *len = compressed_size;
-        return m_serialization_buffer + sizeof(sinsp_sample_header);
+        return m_serialization_buffer;
 #endif
 	}
 	else
@@ -348,60 +342,50 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		//
 		// Reserve 4 bytes at the beginning of the string for the length
 		//
-		ArrayOutputStream array_output(m_serialization_buffer + sizeof(sinsp_sample_header), tlen);
+		ArrayOutputStream array_output(m_serialization_buffer, full_len);
 		m_metrics->SerializeToZeroCopyStream(&array_output);
 
-        *len = tlen;
-        return m_serialization_buffer + sizeof(sinsp_sample_header);
+        *len = full_len;
+        return m_serialization_buffer;
 	}
 }
 
 void sinsp_analyzer::serialize(uint64_t ts)
 {
-	char fname[128];
-	uint32_t buflen;
-
-	//
-	// Serialize to a memory buffer
-	//
-	char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
-		m_configuration->get_compress_metrics());
-
-	g_logger.format(sinsp_logger::SEV_INFO,
-		"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
-		ts / 1000000000,
-		buflen);
-
-	if(!buf)
-	{
-		return;
-	}
-
-	//
-	// If we have a callback, invoke it with the data
-	//
 	if(m_sample_callback != NULL)
 	{
-		sinsp_sample_header* hdr = (sinsp_sample_header*)(buf - sizeof(sinsp_sample_header));
-
-		hdr->m_sample_len = buflen + sizeof(sinsp_sample_header);
-		hdr->m_version = PROTOCOL_VERSION_NUMBER;
-		hdr->m_messagetype = PROTOCOL_MESSAGE_TYPE_NUMBER;
-
-		m_sample_callback->sinsp_analyzer_data_ready(ts, (char*)hdr);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, m_metrics);
 	}
 
-	//
-	// Write the data to file
-	//
 	if(m_configuration->get_emit_metrics_to_file())
 	{
+		char fname[128];
+		uint32_t buflen;
 		FILE* fp;
 
-		//snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
-		//	m_configuration->get_metrics_directory().c_str(),
-		//	ts / 1000000000);
+		//
+		// Serialize the protobuf
+		//
+		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
+			m_configuration->get_compress_metrics());
 
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
+			ts / 1000000000,
+			buflen);
+
+		if(!buf)
+		{
+			return;
+		}
+
+		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
+			m_configuration->get_metrics_directory().c_str(),
+			ts / 1000000000);
+
+		//
+		// Write the data to file
+		//
 		//fp = fopen(fname, "wb");
 
 		//if(!fp)
@@ -410,7 +394,6 @@ void sinsp_analyzer::serialize(uint64_t ts)
 		//	throw sinsp_exception(estr);
 		//}
 
-		//// ..and then there's the actual data
 		//if(fwrite(buf, buflen, 1, fp) != 1)
 		//{
 		//	ASSERT(false);

@@ -30,8 +30,13 @@ public:
 
 	void init(Application* app);
 	void print_configuration();
-	static Message::Priority string_to_priority(string priostr);
+	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_aws_metadata(aws_metadata* metadata);
+	static uint64_t get_current_time_ns();
+
+	// Static so that the signal handler can reach it
+	static volatile bool m_dump_enabled;
+	static volatile bool m_terminate;
 
 	bool m_daemon;
 	Message::Priority m_min_console_priority;
@@ -40,6 +45,7 @@ public:
 	string m_metrics_dir;
 	string m_log_dir;
 	string m_customer_id;
+	string m_machine_id;
 	string m_server_addr;
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
@@ -49,4 +55,6 @@ public:
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
 	string m_dump_file;
+	Event m_dump_completed;
+	volatile bool m_dump_in_progress;
 };

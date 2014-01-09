@@ -1,242 +1,28 @@
 #include "main.h"
 #ifndef _WIN32
-#include <execinfo.h>
 #include <sys/prctl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #endif
-#include <fstream>
 
+#include "crash_handler.h"
 #include "configuration.h"
-#include "../libsanalyzer/proto_header.h"
+#include "connection_manager.h"
+#include "blocking_queue.h"
+#include "error_handler.h"
+#include "sinsp_data_handler.h"
+#include "logger.h"
+#include "monitor.h"
 
 #define AGENT_PRIORITY 19
-#define SOCKETBUFFER_STORAGE_SIZE (2 * 1024 * 1024)
-
-dragent_logger* g_log = NULL;
-
-//
-// Signal management
-//
-static bool g_terminate = false;
-static bool g_toggle_capture = false;
-
-static void g_monitor_signal_callback(int sig)
-{
-	exit(EXIT_SUCCESS);
-}
 
 static void g_signal_callback(int sig)
 {
-	g_terminate = true;
+	dragent_configuration::m_terminate = true;
 }
 
 static void g_usr_signal_callback(int sig)
 {
-	g_toggle_capture = true;
-}
-
-#ifndef _WIN32
-static const int g_crash_signals[] = 
-{
-	SIGSEGV,
-	SIGABRT,
-	SIGFPE,
-	SIGILL,
-	SIGBUS
-};
-
-static void g_crash_handler(int sig)
-{
-	static int NUM_FRAMES = 10;
-
-	if(g_log)
-	{
-		g_log->error("Received signal " + NumberFormatter::format(sig));
-
-		void *array[NUM_FRAMES];
-
-		int frames = backtrace(array, NUM_FRAMES);
-		
-		char **strings = backtrace_symbols(array, frames);
-		
-		if(strings != NULL)
-		{
-			for(int32_t j = 0; j < frames; ++j)
-			{
-				g_log->error(strings[j]);
-			}
-
-			free(strings);
-		}
-	}
-
-	signal(sig, SIG_DFL);
-	raise(sig);
-}
-
-static bool initialize_crash_handler()
-{
-	stack_t stack;
-
-	memset(&stack, 0, sizeof(stack));
-	stack.ss_sp = malloc(SIGSTKSZ);
-	stack.ss_size = SIGSTKSZ;
-
-	if(sigaltstack(&stack, NULL) == -1)
-	{
-		free(stack.ss_sp);
-		return false;
-	}
-
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sigemptyset(&sa.sa_mask);
-
-	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
-	{
-		sigaddset(&sa.sa_mask, g_crash_signals[j]);
-	}
-
-	sa.sa_handler = g_crash_handler;
-	sa.sa_flags = SA_ONSTACK;
-
-	for(uint32_t j = 0; j < sizeof(g_crash_signals) / sizeof(g_crash_signals[0]); ++j)
-	{
-		if(sigaction(g_crash_signals[j], &sa, NULL) != 0)
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
-static void run_monitor(const string& pidfile)
-{
-	signal(SIGINT, g_monitor_signal_callback);
-	signal(SIGTERM, g_monitor_signal_callback);
-	signal(SIGUSR1, SIG_IGN);
-
-	//
-	// Start the monitor process
-	// 
-	int result = fork();
-
-	if(result < 0)
-	{
-		exit(EXIT_FAILURE);
-	}
-
-	if(result)
-	{
-		//
-		// Father. It will be the monitor process
-		//
-		while(true)
-		{
-			int status = 0;
-
-			wait(&status);
-
-			if(!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0))
-			{
-				//
-				// Since both child and father are run with --daemon option,
-				// Poco can get confused and can delete the pidfile even if
-				// the monitor doesn't die.
-				//
-				if(!pidfile.empty())
-				{
-					std::ofstream ostr(pidfile);
-					if(ostr.good())
-					{
-						ostr << Poco::Process::id() << std::endl;
-					}
-				}
-
-				//
-				// Sleep for a bit and run another dragent
-				//
-				sleep(1);
-
-				result = fork();
-				if(result == 0)
-				{
-					break;
-				}
-
-				if(result < 0)
-				{
-					exit(EXIT_FAILURE);
-				}
-			}
-			else
-			{
-				exit(EXIT_SUCCESS);
-			}
-		}
-	}
-
-	//
-	// We want to terminate when the monitor is killed by init
-	//
-	prctl(PR_SET_PDEATHSIG, SIGTERM);
-}
-#endif
-
-//
-// SSL callback: since the SSL is managed by ELB, he sends an encrypted alert type 21 when
-// no instances are available in the backend. Of course Poco is bugged and doesn't recognize
-// that, so we need to abort the connection ourselves otherwise we'll keep talking to noone:
-// https://forums.aws.amazon.com/message.jspa?messageID=453844
-//
-static bool g_ssl_alert_received = false;
-
-#ifndef _WIN32
-static void g_ssl_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
-{
-	//
-	// Code borrowed from s_cb.c in openssl
-	//
-	if(write_p == 0 &&
-		content_type == 21 &&
-		len == 2 &&
-		((const unsigned char*)buf)[1] == 0)
-	{
-		g_ssl_alert_received = true;
-	}
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-// Log management
-///////////////////////////////////////////////////////////////////////////////
-
-void g_logger_callback(char* str, uint32_t sev)
-{
-	ASSERT(g_log != NULL);
-
-	switch(sev)
-	{
-	case sinsp_logger::SEV_DEBUG:
-		g_log->debug(str);
-		break;
-	case sinsp_logger::SEV_INFO:
-		g_log->information(str);
-		break;
-	case sinsp_logger::SEV_WARNING:
-		g_log->warning(str);
-		break;
-	case sinsp_logger::SEV_ERROR:
-		g_log->error(str);
-		break;
-	case sinsp_logger::SEV_CRITICAL:
-		g_log->critical(str);
-		break;
-	default:
-		ASSERT(false);
-	}
+	g_log->information("Received SIGUSR1, toggling capture state"); 
+	dragent_configuration::m_dump_enabled = !dragent_configuration::m_dump_enabled;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -256,86 +42,25 @@ public:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// A simple class to store an analyzer sample when the backend is not reachable
-///////////////////////////////////////////////////////////////////////////////
-class sample_store
-{
-public:
-	sample_store()
-	{
-		m_buf = NULL;
-		m_buflen = 0;
-	}
-
-	sample_store(char* buf, uint32_t buflen)
-	{
-		m_buf = new char[buflen];
-		memcpy(m_buf, buf, buflen);
-		m_buflen = buflen;
-	}
-
-	~sample_store()
-	{
-		if(m_buf)
-		{
-			delete [] m_buf;
-		}
-	}
-
-	char* m_buf;
-	uint32_t m_buflen;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
-class dragent_app: 
-	public Poco::Util::ServerApplication,
-	public analyzer_callback_interface
+class dragent_app: public Poco::Util::ServerApplication
 {
 public:
-	dragent_app(): m_help_requested(false)
+	dragent_app(): 
+		m_help_requested(false),
+		m_queue(MAX_SAMPLE_STORE_SIZE),
+		m_connection_manager(&m_configuration, &m_queue),
+		m_sinsp_handler(&m_queue, &m_configuration)
 	{
 		m_evtcnt = 0;
-		m_socket = NULL;
-		m_sa = NULL;
-		m_socketbufferptr = NULL;
-		m_socketbuflen = 0;
-		m_socketbuffer_storage = NULL;
-		m_capturing = false;
 		m_inspector = new sinsp();
 		m_analyzer = new sinsp_analyzer(m_inspector);
 		m_inspector->m_analyzer = m_analyzer;
-
-#ifndef _WIN32
-		Poco::Net::initializeSSL();
-#endif
 	}
 	
 	~dragent_app()
 	{
-		if(m_sa)
-		{
-			delete m_sa;
-			m_sa = NULL;
-		}
-
-		if(m_socket)
-		{
-			delete m_socket;
-			m_socket = NULL;
-		}
-
-		if(m_socketbuffer_storage)
-		{
-			delete [] m_socketbuffer_storage;
-			m_socketbuffer_storage = NULL;
-		}
-
-#ifndef _WIN32
-		Poco::Net::uninitializeSSL();
-#endif
-
 		if(g_log != NULL)
 		{
 			delete g_log;
@@ -492,25 +217,30 @@ protected:
 
 		while(1)
 		{
-			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || g_terminate)
+			if((m_evtcnt != 0 && retval.m_nevts == m_evtcnt) || 
+				dragent_configuration::m_terminate || 
+				dragent_error_handler::m_exception)
 			{
 				break;
 			}
 
-			if(g_toggle_capture)
+			if(m_configuration.m_dump_in_progress)
 			{
-				g_toggle_capture = false;
-
-				if(m_capturing)
+				if(!dragent_configuration::m_dump_enabled)
 				{
-					g_log->information("Received SIGUSR1, Stopping dump");
-					m_capturing = false;
+					g_log->information("Stopping dump");
+					m_configuration.m_dump_in_progress = false;
 					m_inspector->autodump_stop();
+					m_configuration.m_dump_completed.set();
 				}
-				else
+			}
+			else
+			{
+				if(dragent_configuration::m_dump_enabled)
 				{
-					g_log->information("Received SIGUSR1, Starting dump");
-					m_capturing = true;
+					g_log->information("Starting dump");
+					m_configuration.m_dump_in_progress = true;
+					m_configuration.m_dump_completed.reset();
 					m_inspector->autodump_start(m_configuration.m_dump_file);
 				}
 			}
@@ -553,227 +283,6 @@ protected:
 		return retval;
 	}
 
-	void transmit_buffer(char* buffer, uint32_t buflen)
-	{
-		m_socketbufferptr = buffer;
-		m_socketbuflen = buflen;
-
-		while(true)
-		{
-			//
-			// Do a fake read to make sure openssl reads the stream from
-			// the server and detects any pending alerts
-			//
-			try 
-			{
-				char buf;
-				m_socket->receiveBytes(&buf, 1);
-			}
-			catch(Poco::TimeoutException&)
-			{
-				//
-				// Poco signals a NONBLOCKING read that would block with
-				// an exception
-				//
-			}
-
-			if(g_ssl_alert_received)
-			{
-				throw sinsp_exception("Received SSL alert, terminating the connection");
-			}
-
-			int32_t res = m_socket->sendBytes(m_socketbufferptr, m_socketbuflen);
-			if(res == (int32_t) m_socketbuflen)
-			{
-				//
-				// Transmission finished
-				//
-				m_socketbuflen = 0;
-				break;
-			}
-			else if(res <= 0)
-			{
-				ASSERT(false); // sendBytes() throws exception, doesn't return < 0
-				//
-				// There's no way we can easily recover from this, at least when we're
-				// in the middle of a multi-segment send. We just die so the backend
-				// resets its state and doesn't expect the rest of the buffer.
-				//
-				throw sinsp_exception("socket transmission error");
-			}
-			else
-			{
-				m_socketbufferptr += res;
-				m_socketbuflen -= res;
-			}
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////
-	// This function is called every time the sinsp analyzer has a new sample ready
-	///////////////////////////////////////////////////////////////////////////
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
-	{
-		uint32_t j;
-
-		ASSERT(m_sa != NULL);
-		sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
-		uint32_t size = hdr->m_sample_len;
-		uint32_t* pbuflen = &hdr->m_sample_len;
-
-		//
-		// Turn the length into network byte order
-		//
-		*pbuflen = htonl(*pbuflen);
-
-		try
-		{
-			//
-			// First of all, check if there's a partially sent buffer and try
-			// to send it
-			//
-			if(m_socketbuflen != 0)
-			{
-				transmit_buffer(m_socketbufferptr, m_socketbuflen);
-			}
-
-			m_is_partial_buffer_stored = false;
-
-			//
-			// If the connection was lost, try to reconnect and send the unsent samples
-			//
-			uint32_t store_size = m_unsent_samples.size();
-
-			ASSERT(store_size < MAX_SAMPLE_STORE_SIZE);
-
-			if(store_size != 0)
-			{
-				ASSERT(m_socket == NULL);
-				ASSERT(m_socketbuflen == 0);
-
-				create_socket();
-
-				g_log->error(string("server connection recovered. Sending ") +
-					NumberFormatter::format(store_size) + " buffered samples");
-
-				for(j = 0; j < store_size; j++)
-				{
-					transmit_buffer(m_unsent_samples[j]->m_buf, m_unsent_samples[j]->m_buflen);
-					delete m_unsent_samples[j];
-				}
-			}
-
-			m_unsent_samples.clear();
-
-			//
-			// Send the current sample
-			//
-			transmit_buffer(buffer, size);
-		}
-		catch(Poco::IOException& e)
-		{
-			if(e.code() == POCO_EWOULDBLOCK)
-			{
-				//
-				// Send buffer full.
-				// Keeping processing the data in libsinsp to minimize event drops is
-				// more important than dropping the sample, therefore we don't block
-				// and keep going.
-				// 
-				
-				ASSERT(m_socketbuflen);
-
-				if(m_is_partial_buffer_stored == false)
-				{
-					//
-					// a buffer coming from sinsp could only be partially sent. We need to
-					// copy it so we can finsh sending it later.
-					//
-					if(m_socketbuflen > SOCKETBUFFER_STORAGE_SIZE)
-					{
-						//
-						// There's no way we can easily recover from this, at least when we're
-						// in the middle of a multi-segment send. We just die so the backend
-						// resets its state and doesn't expect the rest of the buffer.
-						//
-						throw sinsp_exception("transmit storage exhausted");
-					}
-
-					memcpy(m_socketbuffer_storage, 
-						m_socketbufferptr,
-						m_socketbuflen);
-
-					m_socketbufferptr = m_socketbuffer_storage;
-
-					m_is_partial_buffer_stored = true;
-				}
-				else
-				{
-					g_log->error(string("sample drop. TS:") + NumberFormatter::format(ts_ns) + 
-						", cause:socket buffer full, len:" + NumberFormatter::format(size));						
-				}
-
-				return;
-			}
-			else
-			{
-				//
-				// Looks like we lost the connection to the backend.
-				// If there's space, make a copy of this sample so we can try to send it later.
-				//
-				if(m_unsent_samples.size() == 0)
-				{
-					g_log->error("lost server connection");
-					if(m_socket != NULL)
-					{
-						m_socketbuflen = 0;
-						delete m_socket;
-						m_socket = NULL;
-					}
-					else
-					{
-						ASSERT(false);
-					}
-				}
-
-				if(m_unsent_samples.size() < MAX_SAMPLE_STORE_SIZE)
-				{
-					sample_store* sstore = new sample_store(buffer, size);
-					m_unsent_samples.push_back(sstore);
-				}
-
-				return;
-			}
-		}
-	}
-
-	void create_socket()
-	{
-#ifndef _WIN32
-		if(m_configuration.m_ssl_enabled)
-		{
-			m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration.m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket)->verifyPeerCertificate();
-
-			g_log->information("SSL identity verified");
-		}
-		else
-#endif
-		{
-			m_socket = new Poco::Net::StreamSocket(*m_sa);
-		}
-
-		//
-		// Set the send buffer size for the socket
-		//
-		m_socket->setSendBufferSize(m_configuration.m_transmitbuffer_size);
-
-		//
-		// Put the socket in nonblocking mode
-		//
-		m_socket->setBlocking(false);
-	}
-
 	///////////////////////////////////////////////////////////////////////////
 	// MAIN
 	///////////////////////////////////////////////////////////////////////////
@@ -789,28 +298,25 @@ protected:
 		if(config().getBool("application.runAsDaemon", false))
 		{
 			run_monitor(m_pidfile);
+
+			//
+			// We want to terminate when the monitor is killed by init
+			//
+			prctl(PR_SET_PDEATHSIG, SIGTERM);
 		}
 
-		if(signal(SIGINT, g_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
+		signal(SIGINT, g_signal_callback);
+		signal(SIGQUIT, g_signal_callback);
+		signal(SIGTERM, g_signal_callback);
+		signal(SIGUSR1, g_usr_signal_callback);
 
-		if(signal(SIGTERM, g_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
-
-		if(signal(SIGUSR1, g_usr_signal_callback) == SIG_ERR)
-		{
-			ASSERT(false);
-		}
-
-		if(initialize_crash_handler() == false)
+		if(crash_handler::initialize() == false)
 		{
 			ASSERT(false);
 		}
 #endif
+
+		Poco::ErrorHandler::set(&m_error_handler);
 
 		m_configuration.init(this);
 
@@ -889,60 +395,33 @@ protected:
 #endif
 		}
 #endif
-		//
-		// Allocate the buffer for partial socket sends
-		//
-		m_socketbuffer_storage = new char[SOCKETBUFFER_STORAGE_SIZE];
+
+		ExitCode exit_code;
 
 		//
 		// From now on we can get exceptions
 		//
 		try
 		{
+			m_configuration.m_machine_id = Environment::nodeId();
+
 			//
 			// Connect to the server
 			//
-			if(m_configuration.m_server_addr != "" && m_configuration.m_server_port != 0)
+			if(m_connection_manager.init())
 			{
-				m_sa = new Poco::Net::SocketAddress(m_configuration.m_server_addr, m_configuration.m_server_port);
-
-#ifndef _WIN32
-				if(m_configuration.m_ssl_enabled)
-				{
-					g_log->information("SSL enabled, initializing context");
-
-					Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
-						Poco::Net::Context::CLIENT_USE, 
-						"", 
-						"", 
-						m_configuration.m_ssl_ca_certificate, 
-						Poco::Net::Context::VERIFY_STRICT, 
-						9, 
-						false, 
-						"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-
-					Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
-
-					SSL_CTX* ssl_ctx = ptrContext->sslContext();
-					if(ssl_ctx)
-					{
-						SSL_CTX_set_msg_callback(ssl_ctx, g_ssl_callback);
-					}
-				}
-#endif				
-
-				create_socket();
-
-				//
-				// Attach our transmit callback to the analyzer
-				//
-				m_inspector->m_analyzer->set_sample_callback(this);
+				ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 			}
+			
+			//
+			// Attach our transmit callback to the analyzer
+			//
+			m_inspector->m_analyzer->set_sample_callback(&m_sinsp_handler);
 
 			//
 			// Plug the sinsp logger into our one
 			//
-			m_inspector->set_log_callback(g_logger_callback);
+			m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
 			if(!m_configuration.m_metrics_dir.empty())
 			{
 				//
@@ -961,7 +440,7 @@ protected:
 			//
 			// The machine id is the MAC address of the first physical adapter
 			//
-			m_analyzer->get_configuration()->set_machine_id(Environment::nodeId());
+			m_analyzer->get_configuration()->set_machine_id(m_configuration.m_machine_id);
 
 			//
 			// The customer id is currently specified by the user
@@ -1012,33 +491,45 @@ protected:
 			if(m_writefile != "")
 			{
 				m_inspector->autodump_start(m_writefile);
-				m_capturing = true;
+				dragent_configuration::m_dump_enabled = true;
 			}
 
 			//
 			// Start consuming the captured events
 			//
 			do_inspect();
+
+			if(dragent_error_handler::m_exception)
+			{
+				g_log->error("Application::EXIT_SOFTWARE\n");
+				exit_code = Application::EXIT_SOFTWARE;
+			}
+			else
+			{
+				g_log->information("Application::EXIT_OK\n");
+				exit_code = Application::EXIT_OK;
+			}
 		}
 		catch(sinsp_exception& e)
 		{
 			g_log->error(e.what());
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 		catch(Poco::Exception& e)
 		{
-
 			g_log->error(e.displayText());
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 		catch(...)
 		{
 			g_log->error("Application::EXIT_SOFTWARE\n");
-			return Application::EXIT_SOFTWARE;
+			exit_code = Application::EXIT_SOFTWARE;
 		}
 
-		g_log->information("Application::EXIT_OK\n");
-		return Application::EXIT_OK;
+		ThreadPool::defaultPool().stopAll();
+
+		g_log->information("Terminating");
+		return exit_code;
 	}
 	
 private:
@@ -1048,16 +539,12 @@ private:
 	string m_filename;
 	uint64_t m_evtcnt;
 	string m_writefile;
-	bool m_capturing;
 	string m_pidfile;
-	Poco::Net::SocketAddress* m_sa;
-	Poco::Net::StreamSocket* m_socket;
-	char* m_socketbufferptr;
-	char* m_socketbuffer_storage;
-	bool m_is_partial_buffer_stored;
-	uint32_t m_socketbuflen;
-	vector<sample_store*> m_unsent_samples;
 	dragent_configuration m_configuration;
+	dragent_error_handler m_error_handler;
+	dragent_queue m_queue;
+	connection_manager m_connection_manager;
+	sinsp_data_handler m_sinsp_handler;
 };
 
 

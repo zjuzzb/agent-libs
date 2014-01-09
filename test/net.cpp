@@ -431,7 +431,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 
 class analyzer_callback: public analyzer_callback_interface
 {
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, char* buffer)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 	{
 		printf("ciao\n");
 	}

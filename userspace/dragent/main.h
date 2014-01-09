@@ -6,6 +6,7 @@
 #include <sinsp.h>
 #include <analyzer.h>
 #include <iostream>
+#include <fstream>
 #include <time.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -48,6 +49,7 @@
 #include "Poco/PatternFormatter.h"
 #include "Poco/FormattingChannel.h"
 #include "Poco/Message.h"
+#include "Poco/Mutex.h"
 #include "Poco/Logger.h"
 #include "Poco/File.h"
 #include "Poco/NumberParser.h"
@@ -55,11 +57,21 @@
 #include "Poco/Path.h"
 #include "Poco/Environment.h"
 #include "Poco/Process.h"
+#include "Poco/Semaphore.h"
+#include "Poco/Runnable.h"
+#include "Poco/ErrorHandler.h"
+#include "Poco/SharedPtr.h"
+#include "Poco/ThreadPool.h"
+#include "Poco/Event.h"
+#include "Poco/Buffer.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/FileStream.h"
 
 #include <sinsp.h>
 
 using Poco::Net::SocketReactor;
 using Poco::Net::SocketAcceptor;
+using Poco::Net::SocketAddress;
 using Poco::Net::ReadableNotification;
 using Poco::Net::ShutdownNotification;
 using Poco::Net::ServerSocket;
@@ -88,6 +100,15 @@ using Poco::NumberParser;
 using Poco::NumberFormatter;
 using Poco::Path;
 using Poco::Environment;
+using Poco::Mutex;
+using Poco::Semaphore;
+using Poco::Runnable;
+using Poco::SharedPtr;
+using Poco::ThreadPool;
+using Poco::Event;
+using Poco::Buffer;
+using Poco::StreamCopier;
+using Poco::FileInputStream;
 
 #ifdef _DEBUG
 #define ASSERT(X) \
@@ -102,64 +123,3 @@ using Poco::Environment;
 #else // _DEBUG
 #define ASSERT(X)
 #endif // _DEBUG
-
-class dragent_logger
-{
-public:
-	dragent_logger(Logger* file_log, Logger* console_log)
-	{
-		m_file_log = file_log;
-		m_console_log = console_log;
-	}
-
-	void debug(string str)
-	{
-		m_file_log->debug(str);
-		if(m_console_log != NULL)
-		{
-			m_console_log->debug(str);
-		}
-	}
-
-	void information(string str)
-	{
-		m_file_log->information(str);
-		if(m_console_log != NULL)
-		{
-			m_console_log->information(str);
-		}
-	}
-
-	void warning(string str)
-	{
-		m_file_log->warning(str);
-		if(m_console_log != NULL)
-		{
-			m_console_log->warning(str);
-		}
-	}
-
-	void error(string str)
-	{
-		m_file_log->error(str);
-		if(m_console_log != NULL)
-		{
-			m_console_log->error(str);
-		}
-	}
-
-	void critical(string str)
-	{
-		m_file_log->critical(str);
-		if(m_console_log != NULL)
-		{
-			m_console_log->critical(str);
-		}
-	}
-
-private:
-	Logger* m_file_log;
-	Logger* m_console_log;
-};
-
-extern dragent_logger* g_log;
