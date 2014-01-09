@@ -15,15 +15,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "%s\n", error);
 		return -1;
 	}
-
-	if(argc == 2 && strcmp(argv[1], "--drop") == 0)
-	{
-		if(scap_start_dropping_mode(h) != SCAP_SUCCESS)
-		{
-			return -1;
-		}
-	}
-
+	
 	while(1)
 	{
 		res = scap_next(h, &ev, &cpuid);
