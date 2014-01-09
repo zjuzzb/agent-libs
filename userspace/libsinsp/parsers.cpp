@@ -38,6 +38,9 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 {
 	uint16_t etype = evt->get_type();
 
+#ifdef SIMULATE_DROP_MODE
+#endif
+
 	//
 	// Cleanup the event-related state
 	//
@@ -158,10 +161,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 		break;
 	case PPME_SYSCALL_CLOSE_X:
 		parse_close_exit(evt);
-		break;
-	case PPME_SYSCALL_FSTAT_X:
-	case PPME_SYSCALL_FSTAT64_X:
-		parse_fstat_exit(evt);
 		break;
 	case PPME_SYSCALL_EVENTFD_X :
 		parse_eventfd_exit(evt);
@@ -1788,38 +1787,6 @@ void sinsp_parser::parse_rw_exit(sinsp_evt *evt)
 				m_fd_listener->on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, data, (uint32_t)retval, datalen);
 			}
 		}
-	}
-}
-
-//
-// XXX this is not really implemented yet
-//
-void sinsp_parser::parse_fstat_exit(sinsp_evt *evt)
-{
-	sinsp_evt_param *parinfo;
-	int64_t retval;
-
-	//
-	// Extract the return value
-	//
-	parinfo = evt->get_param(0);
-	retval = *(int64_t *)parinfo->m_val;
-	ASSERT(parinfo->m_len == sizeof(int64_t));
-
-	//
-	// If the operation was successful, validate that the fd exists
-	//
-	if(retval >= 0)
-	{
-		if(!evt->m_fdinfo)
-		{
-			return;
-		}
-
-		//
-		// Add this operation to the recend fd operations fifo
-		//
-		//      m_inspector->push_fdop(tid, evt->m_fdinfo, sinsp_fdop(fd, evt->get_type()));
 	}
 }
 

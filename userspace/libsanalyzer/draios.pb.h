@@ -1897,12 +1897,12 @@ class process : public ::google::protobuf::MessageLite {
   inline bool is_unix_transaction_client() const;
   inline void set_is_unix_transaction_client(bool value);
 
-  // optional .draiosproto.networkrole netrole = 13;
+  // optional uint32 netrole = 13;
   inline bool has_netrole() const;
   inline void clear_netrole();
   static const int kNetroleFieldNumber = 13;
-  inline ::draiosproto::networkrole netrole() const;
-  inline void set_netrole(::draiosproto::networkrole value);
+  inline ::google::protobuf::uint32 netrole() const;
+  inline void set_netrole(::google::protobuf::uint32 value);
 
   // optional .draiosproto.time_categories tcounters = 5;
   inline bool has_tcounters() const;
@@ -1989,7 +1989,7 @@ class process : public ::google::protobuf::MessageLite {
   bool is_unix_transaction_server_;
   bool is_ipv4_transaction_client_;
   bool is_unix_transaction_client_;
-  int netrole_;
+  ::google::protobuf::uint32 netrole_;
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
@@ -5652,7 +5652,7 @@ inline void process::set_is_unix_transaction_client(bool value) {
   is_unix_transaction_client_ = value;
 }
 
-// optional .draiosproto.networkrole netrole = 13;
+// optional uint32 netrole = 13;
 inline bool process::has_netrole() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
@@ -5663,14 +5663,13 @@ inline void process::clear_has_netrole() {
   _has_bits_[0] &= ~0x00000040u;
 }
 inline void process::clear_netrole() {
-  netrole_ = 0;
+  netrole_ = 0u;
   clear_has_netrole();
 }
-inline ::draiosproto::networkrole process::netrole() const {
-  return static_cast< ::draiosproto::networkrole >(netrole_);
+inline ::google::protobuf::uint32 process::netrole() const {
+  return netrole_;
 }
-inline void process::set_netrole(::draiosproto::networkrole value) {
-  assert(::draiosproto::networkrole_IsValid(value));
+inline void process::set_netrole(::google::protobuf::uint32 value) {
   set_has_netrole();
   netrole_ = value;
 }
