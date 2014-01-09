@@ -34,6 +34,7 @@ void sinsp_procinfo::clear()
 	m_capacity_score = 0;
 	m_cpuload = 0;
 	m_resident_memory_kb = 0;
+	m_n_transaction_threads = 0;
 
 	vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
@@ -89,6 +90,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_resident_memory_kb = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
+	m_cpu_time_ns = new vector<uint64_t>();
 }
 
 void thread_analyzer_info::destroy()
@@ -98,6 +100,8 @@ void thread_analyzer_info::destroy()
 		delete m_procinfo;
 		m_procinfo = NULL;
 	}
+
+	delete m_cpu_time_ns;
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -113,6 +117,14 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
 		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
 		m_procinfo->clear();
+	}
+}
+
+void thread_analyzer_info::propagate_flag(flags flags, thread_analyzer_info* other)
+{
+	if(other->m_th_analysis_flags & flags)
+	{
+		m_th_analysis_flags |= (other->m_th_analysis_flags & flags);
 	}
 }
 
@@ -160,15 +172,17 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	//
 	// Propagate client-server flags
 	//
-	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_IPV4_SERVER, other);
-	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_UNIX_SERVER, other);
-	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_IPV4_CLIENT, other);
-	propagate_flag_bidirectional(thread_analyzer_info::AF_IS_UNIX_CLIENT, other);
+	propagate_flag((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | 
+		thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER | 
+		thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | 
+		thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT), other);
+	propagate_flag((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_UNIX_SERVER | 
+		thread_analyzer_info::AF_IS_UNIX_CLIENT), other);
 
 	//
 	// Propagate the CPU times vector
 	//
-	uint32_t oc = other->m_cpu_time_ns.size();
+	uint32_t oc = other->m_cpu_time_ns->size();
 	if(oc != 0)
 	{
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
@@ -179,7 +193,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 		for(uint32_t j = 0; j < oc; j++)
 		{
-			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
+			m_procinfo->m_cpu_time_ns[j] += (*other->m_cpu_time_ns)[j];
 		}
 	}
 
@@ -195,6 +209,11 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_program_pids.push_back(other->m_tinfo->m_pid);
 	}
 #endif
+
+	if(other->m_transaction_metrics.m_counter.m_count_in != 0)
+	{
+		m_procinfo->m_n_transaction_threads++;
+	}
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -216,7 +235,7 @@ void thread_analyzer_info::clear_all_metrics()
 	m_resident_memory_kb = 0;
 
 	vector<uint64_t>::iterator it;
-	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
+	for(it = m_cpu_time_ns->begin(); it != m_cpu_time_ns->end(); ++it)
 	{
 		*it = 0;
 	}

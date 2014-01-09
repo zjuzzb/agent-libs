@@ -230,7 +230,7 @@ protected:
 				{
 					g_log->information("Stopping dump");
 					m_configuration.m_dump_in_progress = false;
-					m_inspector->stop_dump();
+					m_inspector->autodump_stop();
 					m_configuration.m_dump_completed.set();
 				}
 			}
@@ -241,7 +241,7 @@ protected:
 					g_log->information("Starting dump");
 					m_configuration.m_dump_in_progress = true;
 					m_configuration.m_dump_completed.reset();
-					m_inspector->start_dump(m_configuration.m_dump_file);
+					m_inspector->autodump_start(m_configuration.m_dump_file);
 				}
 			}
 
@@ -485,12 +485,12 @@ protected:
 			if(m_configuration.m_dropping_mode)
 			{
 				g_log->information("Enabling dropping mode");
-				m_inspector->start_dropping_mode();
+				m_inspector->start_dropping_mode(4);
 			}
 
 			if(m_writefile != "")
 			{
-				m_inspector->start_dump(m_writefile);
+				m_inspector->autodump_start(m_writefile);
 				dragent_configuration::m_dump_enabled = true;
 			}
 

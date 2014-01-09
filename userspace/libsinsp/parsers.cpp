@@ -731,6 +731,7 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 		return;
 	}
 
+	string prev_comm(evt->m_tinfo->m_comm);
 	string prev_exe(evt->m_tinfo->m_exe);
 
 	// Get the command name
@@ -788,7 +789,7 @@ void sinsp_parser::parse_execve_exit(sinsp_evt *evt)
 	//
 	// execve potentially breaks the program chain, and so we need to reflect it in our parents program count.
 	//
-	if(prev_exe != evt->m_tinfo->m_exe)
+	if((prev_comm != evt->m_tinfo->m_comm) || (prev_exe != evt->m_tinfo->m_exe))
 	{
 		if(evt->m_tinfo->m_progid != -1LL)
 		{
@@ -1043,7 +1044,7 @@ void sinsp_parser::parse_socket_exit(sinsp_evt *evt)
 	sinsp_evt *enter_evt = &m_tmp_evt;
 
 	//
-	// NOTE: we don't check the return value of scap_event_getparam() because we know the arguments we need are there.
+	// NOTE: we don't check the return value of get_param() because we know the arguments we need are there.
 	// XXX this extraction would be much faster if we parsed the event mnaually to extract the
 	// parameters in one scan. We don't care too much because we assume that we get here
 	// seldom enough that saving few tens of CPU cycles is not important.

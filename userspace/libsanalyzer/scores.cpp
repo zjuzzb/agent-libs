@@ -338,7 +338,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 			}
 
 			//
-			// Perform
+			// Perform score calculation *including steal time*.
 			//
 			float score1;
 
@@ -387,6 +387,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 	//       have been serving transactions, it means that we have one or servers 
 	//       that are floating across CPUs. In that case, our number would not have 
 	//       sense and we return -1, so the global health score will be used.
+	//       The exception is when we have only *one* server thread. In that case, we 
+	//       can safely sum the scores because we know that they are mutually 
+	//       exclusive.
 	//
 	if(n_scores != 0 && n_scores <= n_server_threads)
 	{
@@ -396,9 +399,16 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 		//	max_score,
 		//	tot_score / n_scores,
 		//	n_scores);
-
 		float nost = tot_score / n_scores;
 		float st = tot_score1 / n_scores1;
+
+		res.m_current_capacity = st;
+		res.m_stolen_capacity = (nost - st) / nost * 100;
+	}
+	else if(n_scores != 0 && n_server_threads == 1)
+	{
+		float nost = MIN(tot_score, 100);
+		float st = MIN(tot_score1, 100);;
 
 		res.m_current_capacity = st;
 		res.m_stolen_capacity = (nost - st) / nost * 100;

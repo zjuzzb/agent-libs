@@ -14,6 +14,7 @@ add_library(sanalyzer STATIC
 	config.cpp
 	delays.cpp	
 	draios.pb.cc
+	${PROJECT_SOURCE_DIR}/userspace/libsinsp/dumper.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsinsp/event.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsinsp/eventformatter.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsinsp/fdinfo.cpp

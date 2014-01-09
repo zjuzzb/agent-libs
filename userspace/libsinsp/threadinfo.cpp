@@ -151,7 +151,7 @@ void sinsp_threadinfo::init(const scap_threadinfo* pi)
 		bool do_add = true;
 
 		newfdi.m_type = fdi->type;
-		newfdi.m_openflags = fdi->flags;
+		newfdi.m_openflags = 0;
 		newfdi.m_type = fdi->type;
 		newfdi.m_flags = sinsp_fdinfo_t::FLAGS_FROM_PROC;
 		newfdi.m_ino = fdi->ino;
@@ -615,7 +615,8 @@ void sinsp_thread_manager::increment_program_childcount(sinsp_threadinfo* thread
 
 		if(parent_thread)
 		{
-			if(parent_thread->m_exe == threadinfo->m_exe)
+			if((parent_thread->m_comm == threadinfo->m_comm) &&
+				(parent_thread->m_exe == threadinfo->m_exe))
 			{
 				threadinfo->m_progid = parent_thread->m_tid;
 				++parent_thread->m_nchilds;

@@ -80,6 +80,8 @@ public:
 	// Completed transactions lists
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	// Number of child threads or processes that served transactions
+	uint64_t m_n_transaction_threads;
 
 	sinsp_delays_info m_transaction_delays;
 };
@@ -98,16 +100,19 @@ public:
 	    AF_NONE = 0,
 	    AF_INVALID = (1 << 0),
 	    AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
-	    AF_IS_IPV4_SERVER = (1 << 2), // set if this thread serves IPv4 transactions.
-	    AF_IS_UNIX_SERVER = (1 << 3), // set if this thread serves unix transactions.
-	    AF_IS_IPV4_CLIENT = (1 << 4), // set if this thread creates IPv4 transactions.
-	    AF_IS_UNIX_CLIENT = (1 << 5), // set if this thread creates unix transactions.
+	    AF_IS_LOCAL_IPV4_SERVER = (1 << 2), // set if this thread serves IPv4 transactions coming from the same machine.
+	    AF_IS_REMOTE_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions coming from another machine.
+	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
+	    AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
+	    AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
+	    AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
 	void destroy();
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
+	void propagate_flag(flags flags, thread_analyzer_info* other);
 	void propagate_flag_bidirectional(flags flag, thread_analyzer_info* other);
 	void add_all_metrics(thread_analyzer_info* other);
 	void clear_all_metrics();
@@ -146,7 +151,7 @@ public:
 	// the process resident memory
 	int64_t m_resident_memory_kb;
 	// Time spent by this process on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
+	vector<uint64_t>* m_cpu_time_ns;
 	// Time and duration of the last select, poll or epoll
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;

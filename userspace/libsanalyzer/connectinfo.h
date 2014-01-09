@@ -168,7 +168,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			//
 			if(conn.m_stid != 0)
 			{
-				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				if(conn.m_analysis_flags & (sinsp_connection::AF_CLOSED | sinsp_connection::AF_REUSED))
 				{
 					conn.m_refcount++;
 				}
@@ -197,7 +197,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			//
 			if(conn.m_dtid != 0)
 			{
-				if(conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+				if(conn.m_analysis_flags & (sinsp_connection::AF_CLOSED | sinsp_connection::AF_REUSED))
 				{
 					conn.m_refcount++;
 				}
@@ -274,17 +274,19 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 		return;
 	}
 
-	uint64_t ts = current_ts - m_last_connection_removal_ts;
+	uint64_t deltats = current_ts - m_last_connection_removal_ts;
 	
-	if(ts <= get_configuration()->get_connection_timeout_ns())
+	if(deltats <= get_configuration()->get_connection_pruning_interval_ns())
 	{
 		return;
 	}
 
+	uint64_t connection_timeout_ns = get_configuration()->get_connection_timeout_ns();
+
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit = m_connections.begin();
 	while(cit != m_connections.end())
 	{
-		if(cit->second.m_timestamp < ts)
+		if(current_ts - cit->second.m_timestamp > connection_timeout_ns)
 		{
 			cit = m_connections.erase(cit);
 		}
@@ -294,7 +296,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 		}
 	}
 
-	m_last_connection_removal_ts = ts;
+	m_last_connection_removal_ts = current_ts;
 };
 
 

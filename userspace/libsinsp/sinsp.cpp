@@ -139,7 +139,7 @@ void sinsp::close()
 #endif
 }
 
-void sinsp::start_dump(const string& dump_filename)
+void sinsp::autodump_start(const string dump_filename)
 {
 	if(NULL == m_h)
 	{
@@ -153,7 +153,7 @@ void sinsp::start_dump(const string& dump_filename)
 	}
 }
 
-void sinsp::stop_dump()
+void sinsp::autodump_stop()
 {
 	if(NULL == m_h)
 	{
@@ -334,11 +334,6 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Run the periodic connection and thread table cleanup
 	//
 	m_thread_manager->remove_inactive_threads();
-#else
-	if(m_analyzer)
-	{
-		m_analyzer->remove_expired_connections(m_evt.get_ts());
-	}
 #endif // HAS_ANALYZER
 
 	//
@@ -369,7 +364,7 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	m_parser->process_event(&m_evt);
 
-#ifdef _DEBUG
+#if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 	if(m_evt.m_filtered_out)
 	{
 		return SCAP_TIMEOUT;
@@ -501,9 +496,9 @@ void sinsp::stop_dropping_mode()
 	}
 }
 
-void sinsp::start_dropping_mode()
+void sinsp::start_dropping_mode(uint32_t sampling_ratio)
 {
-	if(scap_start_dropping_mode(m_h) != SCAP_SUCCESS)
+	if(scap_start_dropping_mode(m_h, sampling_ratio) != SCAP_SUCCESS)
 	{
 		throw sinsp_exception(scap_getlasterr(m_h));
 	}
@@ -556,6 +551,14 @@ uint32_t sinsp::reserve_thread_memory(uint32_t size)
 	}
 
 	return m_thread_privatestate_manager.reserve(size);
+}
+
+void sinsp::get_capture_stats(scap_stats* stats)
+{
+	if(scap_get_stats(m_h, stats) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_h));
+	}
 }
 
 #ifdef GATHER_INTERNAL_STATS

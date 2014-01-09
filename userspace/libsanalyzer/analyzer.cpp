@@ -590,8 +590,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
 			if(tot.m_count != 0 || procinfo->m_cpuload != 0 ||
-				it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_IPV4_SERVER | thread_analyzer_info::AF_IS_UNIX_SERVER | 
-				thread_analyzer_info::AF_IS_IPV4_CLIENT | thread_analyzer_info::AF_IS_UNIX_CLIENT))
+				it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+				thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT))
 			{
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
@@ -625,22 +625,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_SERVER)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 				{
-					proc->set_is_ipv4_transaction_server(true);
+					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_SERVER);
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+				{
+					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_SERVER);
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 				{
-					proc->set_is_unix_transaction_server(true);
+					proc->set_netrole(draiosproto::IS_UNIX_SERVER);
 				}
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_IPV4_CLIENT)
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 				{
-					proc->set_is_ipv4_transaction_client(true);
+					proc->set_netrole(draiosproto::IS_REMOTE_IPV4_CLIENT);
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+				{
+					proc->set_netrole(draiosproto::IS_LOCAL_IPV4_CLIENT);
 				}
 				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 				{
-					proc->set_is_unix_transaction_client(true);
+					proc->set_netrole(draiosproto::IS_UNIX_CLIENT);
 				}
 
 				if(procinfo->m_cpuload != -1)
@@ -682,11 +690,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
 							prog_delays,
-#ifdef ANALYZER_EMITS_PROGRAMS
-							procinfo->m_program_pids.size(),
-#else
-							(uint32_t)it->second.m_nchilds,
-#endif
+							(uint32_t)it->second.m_ainfo->m_procinfo->m_n_transaction_threads,
 							m_prev_flush_time_ns, sample_duration);
 
 							procinfo->m_capacity_score = scores.m_current_capacity;
@@ -1436,6 +1440,16 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 			delta = we - MAX(ws, m_prev_flush_time_ns);
 
 			sinsp_counters* metrics = &tainfo->m_metrics;
+
+			//
+			// This can happen in case of event drops
+			//
+			if(delta > metrics->m_wait_other.m_time_ns)
+			{
+				tainfo->m_last_wait_duration_ns = 0;
+				tainfo->m_last_wait_end_time_ns = 0;
+				return;
+			}
 
 			if(cat->m_category == EC_FILE)
 			{

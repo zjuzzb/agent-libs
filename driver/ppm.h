@@ -41,6 +41,8 @@
 #define CAPTURE_CONTEXT_SWITCHES
 #define RW_SNAPLEN 80
 #define RW_MAX_SNAPLEN (256 * 1024 * 1024)
+// Make sure to use a power of two constant for this
+#define FD_SAMPLING_RATIO 4
 extern uint32_t g_snaplen;
 
 ///////////////////////////////////////////////////////////////////////

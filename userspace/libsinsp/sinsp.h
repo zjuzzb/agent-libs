@@ -30,6 +30,7 @@ using namespace std;
 #include "logger.h"
 #include "event.h"
 #include "filter.h"
+#include "dumper.h"
 #include "stats.h"
 #include "ifinfo.h"
 
@@ -147,7 +148,7 @@ public:
 	// Drop mode control
 	//
 	void stop_dropping_mode();
-	void start_dropping_mode();
+	void start_dropping_mode(uint32_t sampling_ratio);
 	
 #ifdef HAS_FILTERING
 	//
@@ -172,10 +173,10 @@ public:
 	void import_ipv4_interface(const sinsp_ipv4_ifinfo& ifinfo);
 
 	//
-	// Start dumping events to a capture file
+	// Automatic event dump support
 	//
-	void start_dump(const string& dump_filename);
-	void stop_dump();
+	void autodump_start(const string dump_filename);
+	void autodump_stop();
 
 	//
 	// Populate the given vector with the full list of filter check fields
@@ -204,6 +205,12 @@ public:
 	// Will fail if called after the capture starts.
 	//
 	uint32_t reserve_thread_memory(uint32_t size);
+
+	//
+	// Fill the given structure with live capture statistics
+	//
+	void get_capture_stats(scap_stats* stats);
+
 
 #ifdef GATHER_INTERNAL_STATS
 	sinsp_stats get_stats();
@@ -267,18 +274,11 @@ VISIBILITY_PRIVATE
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
-	friend class sinsp_sched_analyzer;
-	friend class sinsp_sched_analyzer2;
-	friend class sinsp_scores;
 	friend class sinsp_evt;
 	friend class sinsp_threadinfo;
-	friend class sinsp_transaction_manager;
-	friend class sinsp_transactemitter_unbuffered;
-	friend class sinsp_transaction_table;
-	friend class sinsp_partial_transaction;
 	friend class sinsp_fdtable;
 	friend class sinsp_thread_manager;
-	friend class sinsp_delays;
+	friend class sinsp_dumper;
 
 	template<class TKey,class THash,class TCompare> friend class sinsp_connection_manager;
 };

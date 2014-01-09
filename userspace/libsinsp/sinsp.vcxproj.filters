@@ -40,6 +40,9 @@
     <ClCompile Include="eventformatter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dumper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="event.h">
@@ -100,6 +103,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="eventformatter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dumper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

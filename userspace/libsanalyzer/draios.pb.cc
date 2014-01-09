@@ -106,6 +106,21 @@ struct StaticDescriptorInitializer_draios_2eproto {
   }
 } static_descriptor_initializer_draios_2eproto_;
 #endif
+bool networkrole_IsValid(int value) {
+  switch(value) {
+    case 0:
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+    case 16:
+    case 32:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -4777,6 +4792,7 @@ const int process::kIsIpv4TransactionServerFieldNumber;
 const int process::kIsUnixTransactionServerFieldNumber;
 const int process::kIsIpv4TransactionClientFieldNumber;
 const int process::kIsUnixTransactionClientFieldNumber;
+const int process::kNetroleFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
@@ -4837,6 +4853,7 @@ void process::SharedCtor() {
   is_unix_transaction_server_ = false;
   is_ipv4_transaction_client_ = false;
   is_unix_transaction_client_ = false;
+  netrole_ = 0;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -4894,14 +4911,15 @@ void process::Clear() {
     is_unix_transaction_server_ = false;
     is_ipv4_transaction_client_ = false;
     is_unix_transaction_client_ = false;
+    netrole_ = 0;
     if (has_tcounters()) {
       if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     next_tiers_delay_ = GOOGLE_ULONGLONG(0);
     if (has_resource_counters()) {
@@ -5097,6 +5115,25 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(104)) goto parse_netrole;
+        break;
+      }
+
+      // optional .draiosproto.networkrole netrole = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_netrole:
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::draiosproto::networkrole_IsValid(value)) {
+            set_netrole(static_cast< ::draiosproto::networkrole >(value));
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -5183,6 +5220,12 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(12, this->next_tiers_delay(), output);
   }
 
+  // optional .draiosproto.networkrole netrole = 13;
+  if (has_netrole()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      13, this->netrole(), output);
+  }
+
 }
 
 int process::ByteSize() const {
@@ -5223,6 +5266,12 @@ int process::ByteSize() const {
       total_size += 1 + 1;
     }
 
+    // optional .draiosproto.networkrole netrole = 13;
+    if (has_netrole()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->netrole());
+    }
+
     // optional .draiosproto.time_categories tcounters = 5;
     if (has_tcounters()) {
       total_size += 1 +
@@ -5230,6 +5279,8 @@ int process::ByteSize() const {
           this->tcounters());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
     if (has_transaction_counters()) {
       total_size += 1 +
@@ -5237,8 +5288,6 @@ int process::ByteSize() const {
           this->transaction_counters());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional uint64 transaction_processing_delay = 7;
     if (has_transaction_processing_delay()) {
       total_size += 1 +
@@ -5300,14 +5349,17 @@ void process::MergeFrom(const process& from) {
     if (from.has_is_unix_transaction_client()) {
       set_is_unix_transaction_client(from.is_unix_transaction_client());
     }
+    if (from.has_netrole()) {
+      set_netrole(from.netrole());
+    }
     if (from.has_tcounters()) {
       mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
@@ -5355,6 +5407,7 @@ void process::Swap(process* other) {
     std::swap(is_unix_transaction_server_, other->is_unix_transaction_server_);
     std::swap(is_ipv4_transaction_client_, other->is_ipv4_transaction_client_);
     std::swap(is_unix_transaction_client_, other->is_unix_transaction_client_);
+    std::swap(netrole_, other->netrole_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
