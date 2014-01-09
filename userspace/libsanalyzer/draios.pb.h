@@ -20,9 +20,11 @@
 #endif
 
 #include <google/protobuf/generated_message_util.h>
-#include <google/protobuf/message_lite.h>
+#include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
+#include <google/protobuf/generated_enum_reflection.h>
+#include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
 
 namespace draiosproto {
@@ -65,9 +67,19 @@ const networkrole networkrole_MIN = NONE;
 const networkrole networkrole_MAX = IS_UNIX_CLIENT;
 const int networkrole_ARRAYSIZE = networkrole_MAX + 1;
 
+const ::google::protobuf::EnumDescriptor* networkrole_descriptor();
+inline const ::std::string& networkrole_Name(networkrole value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    networkrole_descriptor(), value);
+}
+inline bool networkrole_Parse(
+    const ::std::string& name, networkrole* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<networkrole>(
+    networkrole_descriptor(), name, value);
+}
 // ===================================================================
 
-class counter_time : public ::google::protobuf::MessageLite {
+class counter_time : public ::google::protobuf::Message {
  public:
   counter_time();
   virtual ~counter_time();
@@ -79,24 +91,24 @@ class counter_time : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const counter_time& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const counter_time* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_time& default_instance();
 
   void Swap(counter_time* other);
 
   // implements Message ----------------------------------------------
 
   counter_time* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const counter_time& from);
   void MergeFrom(const counter_time& from);
   void Clear();
@@ -107,6 +119,7 @@ class counter_time : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -114,7 +127,7 @@ class counter_time : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -150,6 +163,8 @@ class counter_time : public ::google::protobuf::MessageLite {
   inline void set_has_time_percentage();
   inline void clear_has_time_percentage();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint64 time_ns_;
   ::google::protobuf::uint32 count_;
   ::google::protobuf::uint32 time_percentage_;
@@ -157,11 +172,7 @@ class counter_time : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -170,7 +181,7 @@ class counter_time : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class counter_time_bidirectional : public ::google::protobuf::MessageLite {
+class counter_time_bidirectional : public ::google::protobuf::Message {
  public:
   counter_time_bidirectional();
   virtual ~counter_time_bidirectional();
@@ -182,24 +193,24 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const counter_time_bidirectional& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const counter_time_bidirectional* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_time_bidirectional& default_instance();
 
   void Swap(counter_time_bidirectional* other);
 
   // implements Message ----------------------------------------------
 
   counter_time_bidirectional* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const counter_time_bidirectional& from);
   void MergeFrom(const counter_time_bidirectional& from);
   void Clear();
@@ -210,6 +221,7 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -217,7 +229,7 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -262,6 +274,8 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
   inline void set_has_time_ns_out();
   inline void clear_has_time_ns_out();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint32 count_in_;
   ::google::protobuf::uint32 count_out_;
   ::google::protobuf::uint64 time_ns_in_;
@@ -270,11 +284,7 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -283,7 +293,7 @@ class counter_time_bidirectional : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class counter_bytes : public ::google::protobuf::MessageLite {
+class counter_bytes : public ::google::protobuf::Message {
  public:
   counter_bytes();
   virtual ~counter_bytes();
@@ -295,24 +305,24 @@ class counter_bytes : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const counter_bytes& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const counter_bytes* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_bytes& default_instance();
 
   void Swap(counter_bytes* other);
 
   // implements Message ----------------------------------------------
 
   counter_bytes* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const counter_bytes& from);
   void MergeFrom(const counter_bytes& from);
   void Clear();
@@ -323,6 +333,7 @@ class counter_bytes : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -330,7 +341,7 @@ class counter_bytes : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -375,6 +386,8 @@ class counter_bytes : public ::google::protobuf::MessageLite {
   inline void set_has_bytes_out();
   inline void clear_has_bytes_out();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint32 count_in_;
   ::google::protobuf::uint32 count_out_;
   ::google::protobuf::uint32 bytes_in_;
@@ -383,11 +396,7 @@ class counter_bytes : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -396,7 +405,7 @@ class counter_bytes : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class counter_time_bytes : public ::google::protobuf::MessageLite {
+class counter_time_bytes : public ::google::protobuf::Message {
  public:
   counter_time_bytes();
   virtual ~counter_time_bytes();
@@ -408,24 +417,24 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const counter_time_bytes& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const counter_time_bytes* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_time_bytes& default_instance();
 
   void Swap(counter_time_bytes* other);
 
   // implements Message ----------------------------------------------
 
   counter_time_bytes* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const counter_time_bytes& from);
   void MergeFrom(const counter_time_bytes& from);
   void Clear();
@@ -436,6 +445,7 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -443,7 +453,7 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -560,6 +570,8 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   inline void set_has_time_percentage_other();
   inline void clear_has_time_percentage_other();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint64 time_ns_in_;
   ::google::protobuf::uint64 time_ns_out_;
   ::google::protobuf::uint64 time_ns_other_;
@@ -576,11 +588,7 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -589,7 +597,7 @@ class counter_time_bytes : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class time_categories : public ::google::protobuf::MessageLite {
+class time_categories : public ::google::protobuf::Message {
  public:
   time_categories();
   virtual ~time_categories();
@@ -601,24 +609,24 @@ class time_categories : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const time_categories& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const time_categories* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const time_categories& default_instance();
 
   void Swap(time_categories* other);
 
   // implements Message ----------------------------------------------
 
   time_categories* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const time_categories& from);
   void MergeFrom(const time_categories& from);
   void Clear();
@@ -629,6 +637,7 @@ class time_categories : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -636,7 +645,7 @@ class time_categories : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -832,6 +841,8 @@ class time_categories : public ::google::protobuf::MessageLite {
   inline void set_has_processing();
   inline void clear_has_processing();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::draiosproto::counter_time* unknown_;
   ::draiosproto::counter_time* other_;
   ::draiosproto::counter_time* file_;
@@ -853,11 +864,7 @@ class time_categories : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -866,7 +873,7 @@ class time_categories : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class transaction_breakdown_categories : public ::google::protobuf::MessageLite {
+class transaction_breakdown_categories : public ::google::protobuf::Message {
  public:
   transaction_breakdown_categories();
   virtual ~transaction_breakdown_categories();
@@ -878,24 +885,24 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
     return *this;
   }
 
-  static const transaction_breakdown_categories& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const transaction_breakdown_categories* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const transaction_breakdown_categories& default_instance();
 
   void Swap(transaction_breakdown_categories* other);
 
   // implements Message ----------------------------------------------
 
   transaction_breakdown_categories* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const transaction_breakdown_categories& from);
   void MergeFrom(const transaction_breakdown_categories& from);
   void Clear();
@@ -906,6 +913,7 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -913,7 +921,7 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -966,6 +974,8 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
   inline void set_has_processing();
   inline void clear_has_processing();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::draiosproto::counter_time* other_;
   ::draiosproto::counter_time_bytes* io_file_;
   ::draiosproto::counter_time_bytes* io_net_;
@@ -974,11 +984,7 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -987,7 +993,7 @@ class transaction_breakdown_categories : public ::google::protobuf::MessageLite 
 };
 // -------------------------------------------------------------------
 
-class counter_syscall_errors : public ::google::protobuf::MessageLite {
+class counter_syscall_errors : public ::google::protobuf::Message {
  public:
   counter_syscall_errors();
   virtual ~counter_syscall_errors();
@@ -999,24 +1005,24 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const counter_syscall_errors& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const counter_syscall_errors* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_syscall_errors& default_instance();
 
   void Swap(counter_syscall_errors* other);
 
   // implements Message ----------------------------------------------
 
   counter_syscall_errors* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const counter_syscall_errors& from);
   void MergeFrom(const counter_syscall_errors& from);
   void Clear();
@@ -1027,6 +1033,7 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1034,7 +1041,7 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1064,17 +1071,15 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
   inline void set_has_count();
   inline void clear_has_count();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > top_error_codes_;
   ::google::protobuf::uint32 count_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1083,7 +1088,7 @@ class counter_syscall_errors : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class resource_categories : public ::google::protobuf::MessageLite {
+class resource_categories : public ::google::protobuf::Message {
  public:
   resource_categories();
   virtual ~resource_categories();
@@ -1095,24 +1100,24 @@ class resource_categories : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const resource_categories& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const resource_categories* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const resource_categories& default_instance();
 
   void Swap(resource_categories* other);
 
   // implements Message ----------------------------------------------
 
   resource_categories* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const resource_categories& from);
   void MergeFrom(const resource_categories& from);
   void Clear();
@@ -1123,6 +1128,7 @@ class resource_categories : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1130,7 +1136,7 @@ class resource_categories : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1193,6 +1199,8 @@ class resource_categories : public ::google::protobuf::MessageLite {
   inline void set_has_resident_memory_usage_kb();
   inline void clear_has_resident_memory_usage_kb();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint32 capacity_score_;
   ::google::protobuf::uint32 stolen_capacity_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
@@ -1203,11 +1211,7 @@ class resource_categories : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1216,7 +1220,7 @@ class resource_categories : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class connection_categories : public ::google::protobuf::MessageLite {
+class connection_categories : public ::google::protobuf::Message {
  public:
   connection_categories();
   virtual ~connection_categories();
@@ -1228,24 +1232,24 @@ class connection_categories : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const connection_categories& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const connection_categories* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const connection_categories& default_instance();
 
   void Swap(connection_categories* other);
 
   // implements Message ----------------------------------------------
 
   connection_categories* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const connection_categories& from);
   void MergeFrom(const connection_categories& from);
   void Clear();
@@ -1256,6 +1260,7 @@ class connection_categories : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1263,7 +1268,7 @@ class connection_categories : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1314,6 +1319,8 @@ class connection_categories : public ::google::protobuf::MessageLite {
   inline void set_has_n_aggregated_connections();
   inline void clear_has_n_aggregated_connections();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::draiosproto::counter_bytes* server_;
   ::draiosproto::counter_bytes* client_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
@@ -1322,11 +1329,7 @@ class connection_categories : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1335,7 +1338,7 @@ class connection_categories : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class process_details : public ::google::protobuf::MessageLite {
+class process_details : public ::google::protobuf::Message {
  public:
   process_details();
   virtual ~process_details();
@@ -1347,24 +1350,24 @@ class process_details : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const process_details& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const process_details* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const process_details& default_instance();
 
   void Swap(process_details* other);
 
   // implements Message ----------------------------------------------
 
   process_details* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const process_details& from);
   void MergeFrom(const process_details& from);
   void Clear();
@@ -1375,6 +1378,7 @@ class process_details : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1382,7 +1386,7 @@ class process_details : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1435,6 +1439,8 @@ class process_details : public ::google::protobuf::MessageLite {
   inline void set_has_exe();
   inline void clear_has_exe();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::std::string* comm_;
   ::std::string* exe_;
   ::google::protobuf::RepeatedPtrField< ::std::string> args_;
@@ -1442,11 +1448,7 @@ class process_details : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1455,7 +1457,7 @@ class process_details : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class host : public ::google::protobuf::MessageLite {
+class host : public ::google::protobuf::Message {
  public:
   host();
   virtual ~host();
@@ -1467,24 +1469,24 @@ class host : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const host& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const host* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const host& default_instance();
 
   void Swap(host* other);
 
   // implements Message ----------------------------------------------
 
   host* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const host& from);
   void MergeFrom(const host& from);
   void Clear();
@@ -1495,6 +1497,7 @@ class host : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1502,7 +1505,7 @@ class host : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1651,6 +1654,8 @@ class host : public ::google::protobuf::MessageLite {
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::std::string* hostname_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_loads_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_steal_;
@@ -1668,11 +1673,7 @@ class host : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1681,7 +1682,7 @@ class host : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class thread : public ::google::protobuf::MessageLite {
+class thread : public ::google::protobuf::Message {
  public:
   thread();
   virtual ~thread();
@@ -1693,24 +1694,24 @@ class thread : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const thread& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const thread* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const thread& default_instance();
 
   void Swap(thread* other);
 
   // implements Message ----------------------------------------------
 
   thread* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const thread& from);
   void MergeFrom(const thread& from);
   void Clear();
@@ -1721,6 +1722,7 @@ class thread : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1728,7 +1730,7 @@ class thread : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1777,6 +1779,8 @@ class thread : public ::google::protobuf::MessageLite {
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint64 pid_;
   ::google::protobuf::uint64 tid_;
   ::draiosproto::time_categories* tcounters_;
@@ -1785,11 +1789,7 @@ class thread : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -1798,7 +1798,7 @@ class thread : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class process : public ::google::protobuf::MessageLite {
+class process : public ::google::protobuf::Message {
  public:
   process();
   virtual ~process();
@@ -1810,24 +1810,24 @@ class process : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const process& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const process* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const process& default_instance();
 
   void Swap(process* other);
 
   // implements Message ----------------------------------------------
 
   process* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const process& from);
   void MergeFrom(const process& from);
   void Clear();
@@ -1838,6 +1838,7 @@ class process : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -1845,7 +1846,7 @@ class process : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -1981,6 +1982,8 @@ class process : public ::google::protobuf::MessageLite {
   inline void set_has_syscall_errors();
   inline void clear_has_syscall_errors();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint64 pid_;
   ::draiosproto::process_details* details_;
   bool is_ipv4_transaction_server_;
@@ -1998,11 +2001,7 @@ class process : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -2011,7 +2010,7 @@ class process : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class program : public ::google::protobuf::MessageLite {
+class program : public ::google::protobuf::Message {
  public:
   program();
   virtual ~program();
@@ -2023,24 +2022,24 @@ class program : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const program& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const program* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const program& default_instance();
 
   void Swap(program* other);
 
   // implements Message ----------------------------------------------
 
   program* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const program& from);
   void MergeFrom(const program& from);
   void Clear();
@@ -2051,6 +2050,7 @@ class program : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -2058,7 +2058,7 @@ class program : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -2090,17 +2090,15 @@ class program : public ::google::protobuf::MessageLite {
   inline void set_has_procinfo();
   inline void clear_has_procinfo();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::draiosproto::process* procinfo_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint64 > pids_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -2109,7 +2107,7 @@ class program : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class ipv4tuple : public ::google::protobuf::MessageLite {
+class ipv4tuple : public ::google::protobuf::Message {
  public:
   ipv4tuple();
   virtual ~ipv4tuple();
@@ -2121,24 +2119,24 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const ipv4tuple& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const ipv4tuple* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ipv4tuple& default_instance();
 
   void Swap(ipv4tuple* other);
 
   // implements Message ----------------------------------------------
 
   ipv4tuple* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const ipv4tuple& from);
   void MergeFrom(const ipv4tuple& from);
   void Clear();
@@ -2149,6 +2147,7 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -2156,7 +2155,7 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -2210,6 +2209,8 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
   inline void set_has_l4proto();
   inline void clear_has_l4proto();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint32 sip_;
   ::google::protobuf::uint32 dip_;
   ::google::protobuf::uint32 sport_;
@@ -2219,11 +2220,7 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -2232,7 +2229,7 @@ class ipv4tuple : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class ipv4_connection : public ::google::protobuf::MessageLite {
+class ipv4_connection : public ::google::protobuf::Message {
  public:
   ipv4_connection();
   virtual ~ipv4_connection();
@@ -2244,24 +2241,24 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const ipv4_connection& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const ipv4_connection* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ipv4_connection& default_instance();
 
   void Swap(ipv4_connection* other);
 
   // implements Message ----------------------------------------------
 
   ipv4_connection* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const ipv4_connection& from);
   void MergeFrom(const ipv4_connection& from);
   void Clear();
@@ -2272,6 +2269,7 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -2279,7 +2277,7 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -2346,6 +2344,8 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   inline void set_has_counters();
   inline void clear_has_counters();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::draiosproto::ipv4tuple* tuple_;
   ::google::protobuf::uint64 spid_;
   ::google::protobuf::uint64 stid_;
@@ -2356,11 +2356,7 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -2369,7 +2365,7 @@ class ipv4_connection : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class ipv4_network_interface : public ::google::protobuf::MessageLite {
+class ipv4_network_interface : public ::google::protobuf::Message {
  public:
   ipv4_network_interface();
   virtual ~ipv4_network_interface();
@@ -2381,24 +2377,24 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const ipv4_network_interface& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const ipv4_network_interface* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ipv4_network_interface& default_instance();
 
   void Swap(ipv4_network_interface* other);
 
   // implements Message ----------------------------------------------
 
   ipv4_network_interface* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const ipv4_network_interface& from);
   void MergeFrom(const ipv4_network_interface& from);
   void Clear();
@@ -2409,6 +2405,7 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -2416,7 +2413,7 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -2466,6 +2463,8 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
   inline void set_has_bcast();
   inline void clear_has_bcast();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::std::string* name_;
   ::google::protobuf::uint32 addr_;
   ::google::protobuf::uint32 netmask_;
@@ -2474,11 +2473,7 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -2487,7 +2482,7 @@ class ipv4_network_interface : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
-class metrics : public ::google::protobuf::MessageLite {
+class metrics : public ::google::protobuf::Message {
  public:
   metrics();
   virtual ~metrics();
@@ -2499,24 +2494,24 @@ class metrics : public ::google::protobuf::MessageLite {
     return *this;
   }
 
-  static const metrics& default_instance();
-
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  // Returns the internal default instance pointer. This function can
-  // return NULL thus should not be used by the user. This is intended
-  // for Protobuf internal code. Please use default_instance() declared
-  // above instead.
-  static inline const metrics* internal_default_instance() {
-    return default_instance_;
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
   }
-  #endif
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const metrics& default_instance();
 
   void Swap(metrics* other);
 
   // implements Message ----------------------------------------------
 
   metrics* New() const;
-  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
   void CopyFrom(const metrics& from);
   void MergeFrom(const metrics& from);
   void Clear();
@@ -2527,6 +2522,7 @@ class metrics : public ::google::protobuf::MessageLite {
       ::google::protobuf::io::CodedInputStream* input);
   void SerializeWithCachedSizes(
       ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
   int GetCachedSize() const { return _cached_size_; }
   private:
   void SharedCtor();
@@ -2534,7 +2530,7 @@ class metrics : public ::google::protobuf::MessageLite {
   void SetCachedSize(int size) const;
   public:
 
-  ::std::string GetTypeName() const;
+  ::google::protobuf::Metadata GetMetadata() const;
 
   // nested types ----------------------------------------------------
 
@@ -2651,6 +2647,8 @@ class metrics : public ::google::protobuf::MessageLite {
   inline void set_has_hostinfo();
   inline void clear_has_hostinfo();
 
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
   ::google::protobuf::uint64 timestamp_ns_;
   ::std::string* machine_id_;
   ::std::string* customer_id_;
@@ -2664,11 +2662,7 @@ class metrics : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
-  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  friend void  protobuf_AddDesc_draios_2eproto_impl();
-  #else
   friend void  protobuf_AddDesc_draios_2eproto();
-  #endif
   friend void protobuf_AssignDesc_draios_2eproto();
   friend void protobuf_ShutdownFile_draios_2eproto();
 
@@ -3219,11 +3213,7 @@ inline void time_categories::clear_unknown() {
   clear_has_unknown();
 }
 inline const ::draiosproto::counter_time& time_categories::unknown() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return unknown_ != NULL ? *unknown_ : *default_instance().unknown_;
-#else
   return unknown_ != NULL ? *unknown_ : *default_instance_->unknown_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_unknown() {
   set_has_unknown();
@@ -3261,11 +3251,7 @@ inline void time_categories::clear_other() {
   clear_has_other();
 }
 inline const ::draiosproto::counter_time& time_categories::other() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return other_ != NULL ? *other_ : *default_instance().other_;
-#else
   return other_ != NULL ? *other_ : *default_instance_->other_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_other() {
   set_has_other();
@@ -3303,11 +3289,7 @@ inline void time_categories::clear_file() {
   clear_has_file();
 }
 inline const ::draiosproto::counter_time& time_categories::file() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return file_ != NULL ? *file_ : *default_instance().file_;
-#else
   return file_ != NULL ? *file_ : *default_instance_->file_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_file() {
   set_has_file();
@@ -3345,11 +3327,7 @@ inline void time_categories::clear_net() {
   clear_has_net();
 }
 inline const ::draiosproto::counter_time& time_categories::net() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return net_ != NULL ? *net_ : *default_instance().net_;
-#else
   return net_ != NULL ? *net_ : *default_instance_->net_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_net() {
   set_has_net();
@@ -3387,11 +3365,7 @@ inline void time_categories::clear_ipc() {
   clear_has_ipc();
 }
 inline const ::draiosproto::counter_time& time_categories::ipc() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return ipc_ != NULL ? *ipc_ : *default_instance().ipc_;
-#else
   return ipc_ != NULL ? *ipc_ : *default_instance_->ipc_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_ipc() {
   set_has_ipc();
@@ -3429,11 +3403,7 @@ inline void time_categories::clear_memory() {
   clear_has_memory();
 }
 inline const ::draiosproto::counter_time& time_categories::memory() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return memory_ != NULL ? *memory_ : *default_instance().memory_;
-#else
   return memory_ != NULL ? *memory_ : *default_instance_->memory_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_memory() {
   set_has_memory();
@@ -3471,11 +3441,7 @@ inline void time_categories::clear_process() {
   clear_has_process();
 }
 inline const ::draiosproto::counter_time& time_categories::process() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return process_ != NULL ? *process_ : *default_instance().process_;
-#else
   return process_ != NULL ? *process_ : *default_instance_->process_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_process() {
   set_has_process();
@@ -3513,11 +3479,7 @@ inline void time_categories::clear_sleep() {
   clear_has_sleep();
 }
 inline const ::draiosproto::counter_time& time_categories::sleep() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return sleep_ != NULL ? *sleep_ : *default_instance().sleep_;
-#else
   return sleep_ != NULL ? *sleep_ : *default_instance_->sleep_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_sleep() {
   set_has_sleep();
@@ -3555,11 +3517,7 @@ inline void time_categories::clear_system() {
   clear_has_system();
 }
 inline const ::draiosproto::counter_time& time_categories::system() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return system_ != NULL ? *system_ : *default_instance().system_;
-#else
   return system_ != NULL ? *system_ : *default_instance_->system_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_system() {
   set_has_system();
@@ -3597,11 +3555,7 @@ inline void time_categories::clear_signal() {
   clear_has_signal();
 }
 inline const ::draiosproto::counter_time& time_categories::signal() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return signal_ != NULL ? *signal_ : *default_instance().signal_;
-#else
   return signal_ != NULL ? *signal_ : *default_instance_->signal_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_signal() {
   set_has_signal();
@@ -3639,11 +3593,7 @@ inline void time_categories::clear_user() {
   clear_has_user();
 }
 inline const ::draiosproto::counter_time& time_categories::user() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return user_ != NULL ? *user_ : *default_instance().user_;
-#else
   return user_ != NULL ? *user_ : *default_instance_->user_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_user() {
   set_has_user();
@@ -3681,11 +3631,7 @@ inline void time_categories::clear_time() {
   clear_has_time();
 }
 inline const ::draiosproto::counter_time& time_categories::time() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return time_ != NULL ? *time_ : *default_instance().time_;
-#else
   return time_ != NULL ? *time_ : *default_instance_->time_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_time() {
   set_has_time();
@@ -3723,11 +3669,7 @@ inline void time_categories::clear_io_file() {
   clear_has_io_file();
 }
 inline const ::draiosproto::counter_time_bytes& time_categories::io_file() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_file_ != NULL ? *io_file_ : *default_instance().io_file_;
-#else
   return io_file_ != NULL ? *io_file_ : *default_instance_->io_file_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* time_categories::mutable_io_file() {
   set_has_io_file();
@@ -3765,11 +3707,7 @@ inline void time_categories::clear_io_net() {
   clear_has_io_net();
 }
 inline const ::draiosproto::counter_time_bytes& time_categories::io_net() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_net_ != NULL ? *io_net_ : *default_instance().io_net_;
-#else
   return io_net_ != NULL ? *io_net_ : *default_instance_->io_net_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* time_categories::mutable_io_net() {
   set_has_io_net();
@@ -3807,11 +3745,7 @@ inline void time_categories::clear_io_other() {
   clear_has_io_other();
 }
 inline const ::draiosproto::counter_time_bytes& time_categories::io_other() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_other_ != NULL ? *io_other_ : *default_instance().io_other_;
-#else
   return io_other_ != NULL ? *io_other_ : *default_instance_->io_other_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* time_categories::mutable_io_other() {
   set_has_io_other();
@@ -3849,11 +3783,7 @@ inline void time_categories::clear_wait() {
   clear_has_wait();
 }
 inline const ::draiosproto::counter_time& time_categories::wait() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return wait_ != NULL ? *wait_ : *default_instance().wait_;
-#else
   return wait_ != NULL ? *wait_ : *default_instance_->wait_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_wait() {
   set_has_wait();
@@ -3891,11 +3821,7 @@ inline void time_categories::clear_processing() {
   clear_has_processing();
 }
 inline const ::draiosproto::counter_time& time_categories::processing() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return processing_ != NULL ? *processing_ : *default_instance().processing_;
-#else
   return processing_ != NULL ? *processing_ : *default_instance_->processing_;
-#endif
 }
 inline ::draiosproto::counter_time* time_categories::mutable_processing() {
   set_has_processing();
@@ -3937,11 +3863,7 @@ inline void transaction_breakdown_categories::clear_other() {
   clear_has_other();
 }
 inline const ::draiosproto::counter_time& transaction_breakdown_categories::other() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return other_ != NULL ? *other_ : *default_instance().other_;
-#else
   return other_ != NULL ? *other_ : *default_instance_->other_;
-#endif
 }
 inline ::draiosproto::counter_time* transaction_breakdown_categories::mutable_other() {
   set_has_other();
@@ -3979,11 +3901,7 @@ inline void transaction_breakdown_categories::clear_io_file() {
   clear_has_io_file();
 }
 inline const ::draiosproto::counter_time_bytes& transaction_breakdown_categories::io_file() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_file_ != NULL ? *io_file_ : *default_instance().io_file_;
-#else
   return io_file_ != NULL ? *io_file_ : *default_instance_->io_file_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* transaction_breakdown_categories::mutable_io_file() {
   set_has_io_file();
@@ -4021,11 +3939,7 @@ inline void transaction_breakdown_categories::clear_io_net() {
   clear_has_io_net();
 }
 inline const ::draiosproto::counter_time_bytes& transaction_breakdown_categories::io_net() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return io_net_ != NULL ? *io_net_ : *default_instance().io_net_;
-#else
   return io_net_ != NULL ? *io_net_ : *default_instance_->io_net_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* transaction_breakdown_categories::mutable_io_net() {
   set_has_io_net();
@@ -4063,11 +3977,7 @@ inline void transaction_breakdown_categories::clear_processing() {
   clear_has_processing();
 }
 inline const ::draiosproto::counter_time& transaction_breakdown_categories::processing() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return processing_ != NULL ? *processing_ : *default_instance().processing_;
-#else
   return processing_ != NULL ? *processing_ : *default_instance_->processing_;
-#endif
 }
 inline ::draiosproto::counter_time* transaction_breakdown_categories::mutable_processing() {
   set_has_processing();
@@ -4296,11 +4206,7 @@ inline void connection_categories::clear_server() {
   clear_has_server();
 }
 inline const ::draiosproto::counter_bytes& connection_categories::server() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return server_ != NULL ? *server_ : *default_instance().server_;
-#else
   return server_ != NULL ? *server_ : *default_instance_->server_;
-#endif
 }
 inline ::draiosproto::counter_bytes* connection_categories::mutable_server() {
   set_has_server();
@@ -4338,11 +4244,7 @@ inline void connection_categories::clear_client() {
   clear_has_client();
 }
 inline const ::draiosproto::counter_bytes& connection_categories::client() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return client_ != NULL ? *client_ : *default_instance().client_;
-#else
   return client_ != NULL ? *client_ : *default_instance_->client_;
-#endif
 }
 inline ::draiosproto::counter_bytes* connection_categories::mutable_client() {
   set_has_client();
@@ -4380,11 +4282,7 @@ inline void connection_categories::clear_transaction_counters() {
   clear_has_transaction_counters();
 }
 inline const ::draiosproto::counter_time_bidirectional& connection_categories::transaction_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
-#else
   return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
-#endif
 }
 inline ::draiosproto::counter_time_bidirectional* connection_categories::mutable_transaction_counters() {
   set_has_transaction_counters();
@@ -4800,11 +4698,7 @@ inline void host::clear_tcounters() {
   clear_has_tcounters();
 }
 inline const ::draiosproto::time_categories& host::tcounters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return tcounters_ != NULL ? *tcounters_ : *default_instance().tcounters_;
-#else
   return tcounters_ != NULL ? *tcounters_ : *default_instance_->tcounters_;
-#endif
 }
 inline ::draiosproto::time_categories* host::mutable_tcounters() {
   set_has_tcounters();
@@ -4842,11 +4736,7 @@ inline void host::clear_reqcounters() {
   clear_has_reqcounters();
 }
 inline const ::draiosproto::transaction_breakdown_categories& host::reqcounters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return reqcounters_ != NULL ? *reqcounters_ : *default_instance().reqcounters_;
-#else
   return reqcounters_ != NULL ? *reqcounters_ : *default_instance_->reqcounters_;
-#endif
 }
 inline ::draiosproto::transaction_breakdown_categories* host::mutable_reqcounters() {
   set_has_reqcounters();
@@ -4884,11 +4774,7 @@ inline void host::clear_transaction_counters() {
   clear_has_transaction_counters();
 }
 inline const ::draiosproto::counter_time_bidirectional& host::transaction_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
-#else
   return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
-#endif
 }
 inline ::draiosproto::counter_time_bidirectional* host::mutable_transaction_counters() {
   set_has_transaction_counters();
@@ -4970,11 +4856,7 @@ inline void host::clear_resource_counters() {
   clear_has_resource_counters();
 }
 inline const ::draiosproto::resource_categories& host::resource_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return resource_counters_ != NULL ? *resource_counters_ : *default_instance().resource_counters_;
-#else
   return resource_counters_ != NULL ? *resource_counters_ : *default_instance_->resource_counters_;
-#endif
 }
 inline ::draiosproto::resource_categories* host::mutable_resource_counters() {
   set_has_resource_counters();
@@ -5012,11 +4894,7 @@ inline void host::clear_syscall_errors() {
   clear_has_syscall_errors();
 }
 inline const ::draiosproto::counter_syscall_errors& host::syscall_errors() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance().syscall_errors_;
-#else
   return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance_->syscall_errors_;
-#endif
 }
 inline ::draiosproto::counter_syscall_errors* host::mutable_syscall_errors() {
   set_has_syscall_errors();
@@ -5054,11 +4932,7 @@ inline void host::clear_external_io_net() {
   clear_has_external_io_net();
 }
 inline const ::draiosproto::counter_time_bytes& host::external_io_net() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return external_io_net_ != NULL ? *external_io_net_ : *default_instance().external_io_net_;
-#else
   return external_io_net_ != NULL ? *external_io_net_ : *default_instance_->external_io_net_;
-#endif
 }
 inline ::draiosproto::counter_time_bytes* host::mutable_external_io_net() {
   set_has_external_io_net();
@@ -5144,11 +5018,7 @@ inline void thread::clear_tcounters() {
   clear_has_tcounters();
 }
 inline const ::draiosproto::time_categories& thread::tcounters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return tcounters_ != NULL ? *tcounters_ : *default_instance().tcounters_;
-#else
   return tcounters_ != NULL ? *tcounters_ : *default_instance_->tcounters_;
-#endif
 }
 inline ::draiosproto::time_categories* thread::mutable_tcounters() {
   set_has_tcounters();
@@ -5186,11 +5056,7 @@ inline void thread::clear_transaction_counters() {
   clear_has_transaction_counters();
 }
 inline const ::draiosproto::counter_time_bidirectional& thread::transaction_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
-#else
   return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
-#endif
 }
 inline ::draiosproto::counter_time_bidirectional* thread::mutable_transaction_counters() {
   set_has_transaction_counters();
@@ -5254,11 +5120,7 @@ inline void process::clear_details() {
   clear_has_details();
 }
 inline const ::draiosproto::process_details& process::details() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return details_ != NULL ? *details_ : *default_instance().details_;
-#else
   return details_ != NULL ? *details_ : *default_instance_->details_;
-#endif
 }
 inline ::draiosproto::process_details* process::mutable_details() {
   set_has_details();
@@ -5406,11 +5268,7 @@ inline void process::clear_tcounters() {
   clear_has_tcounters();
 }
 inline const ::draiosproto::time_categories& process::tcounters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return tcounters_ != NULL ? *tcounters_ : *default_instance().tcounters_;
-#else
   return tcounters_ != NULL ? *tcounters_ : *default_instance_->tcounters_;
-#endif
 }
 inline ::draiosproto::time_categories* process::mutable_tcounters() {
   set_has_tcounters();
@@ -5448,11 +5306,7 @@ inline void process::clear_transaction_counters() {
   clear_has_transaction_counters();
 }
 inline const ::draiosproto::counter_time_bidirectional& process::transaction_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance().transaction_counters_;
-#else
   return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
-#endif
 }
 inline ::draiosproto::counter_time_bidirectional* process::mutable_transaction_counters() {
   set_has_transaction_counters();
@@ -5534,11 +5388,7 @@ inline void process::clear_resource_counters() {
   clear_has_resource_counters();
 }
 inline const ::draiosproto::resource_categories& process::resource_counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return resource_counters_ != NULL ? *resource_counters_ : *default_instance().resource_counters_;
-#else
   return resource_counters_ != NULL ? *resource_counters_ : *default_instance_->resource_counters_;
-#endif
 }
 inline ::draiosproto::resource_categories* process::mutable_resource_counters() {
   set_has_resource_counters();
@@ -5576,11 +5426,7 @@ inline void process::clear_syscall_errors() {
   clear_has_syscall_errors();
 }
 inline const ::draiosproto::counter_syscall_errors& process::syscall_errors() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance().syscall_errors_;
-#else
   return syscall_errors_ != NULL ? *syscall_errors_ : *default_instance_->syscall_errors_;
-#endif
 }
 inline ::draiosproto::counter_syscall_errors* process::mutable_syscall_errors() {
   set_has_syscall_errors();
@@ -5622,11 +5468,7 @@ inline void program::clear_procinfo() {
   clear_has_procinfo();
 }
 inline const ::draiosproto::process& program::procinfo() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return procinfo_ != NULL ? *procinfo_ : *default_instance().procinfo_;
-#else
   return procinfo_ != NULL ? *procinfo_ : *default_instance_->procinfo_;
-#endif
 }
 inline ::draiosproto::process* program::mutable_procinfo() {
   set_has_procinfo();
@@ -5807,11 +5649,7 @@ inline void ipv4_connection::clear_tuple() {
   clear_has_tuple();
 }
 inline const ::draiosproto::ipv4tuple& ipv4_connection::tuple() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return tuple_ != NULL ? *tuple_ : *default_instance().tuple_;
-#else
   return tuple_ != NULL ? *tuple_ : *default_instance_->tuple_;
-#endif
 }
 inline ::draiosproto::ipv4tuple* ipv4_connection::mutable_tuple() {
   set_has_tuple();
@@ -5937,11 +5775,7 @@ inline void ipv4_connection::clear_counters() {
   clear_has_counters();
 }
 inline const ::draiosproto::connection_categories& ipv4_connection::counters() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return counters_ != NULL ? *counters_ : *default_instance().counters_;
-#else
   return counters_ != NULL ? *counters_ : *default_instance_->counters_;
-#endif
 }
 inline ::draiosproto::connection_categories* ipv4_connection::mutable_counters() {
   set_has_counters();
@@ -6285,11 +6119,7 @@ inline void metrics::clear_hostinfo() {
   clear_has_hostinfo();
 }
 inline const ::draiosproto::host& metrics::hostinfo() const {
-#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
-  return hostinfo_ != NULL ? *hostinfo_ : *default_instance().hostinfo_;
-#else
   return hostinfo_ != NULL ? *hostinfo_ : *default_instance_->hostinfo_;
-#endif
 }
 inline ::draiosproto::host* metrics::mutable_hostinfo() {
   set_has_hostinfo();
@@ -6441,6 +6271,19 @@ metrics::mutable_ipv4_network_interfaces() {
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace draiosproto
+
+#ifndef SWIG
+namespace google {
+namespace protobuf {
+
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
+  return ::draiosproto::networkrole_descriptor();
+}
+
+}  // namespace google
+}  // namespace protobuf
+#endif  // SWIG
 
 // @@protoc_insertion_point(global_scope)
 

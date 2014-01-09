@@ -106,6 +106,7 @@
     <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="analyzer_fd.cpp" />
     <ClCompile Include="analyzer_thread.cpp" />
+    <ClCompile Include="analyzer_utils.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="connectinfo.cpp" />
     <ClCompile Include="delays.cpp" />
@@ -144,6 +145,7 @@
     <ClInclude Include="analyzer_int.h" />
     <ClInclude Include="analyzer_settings.h" />
     <ClInclude Include="analyzer_thread.h" />
+    <ClInclude Include="analyzer_utils.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="connectinfo.h" />
     <ClInclude Include="delays.h" />

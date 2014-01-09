@@ -396,28 +396,48 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	//
 	if(m_configuration->get_emit_metrics_to_file())
 	{
-		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
+		FILE* fp;
+
+		//snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
+		//	m_configuration->get_metrics_directory().c_str(),
+		//	ts / 1000000000);
+
+		//fp = fopen(fname, "wb");
+
+		//if(!fp)
+		//{
+		//	char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
+		//	throw sinsp_exception(estr);
+		//}
+
+		//// ..and then there's the actual data
+		//if(fwrite(buf, buflen, 1, fp) != 1)
+		//{
+		//	ASSERT(false);
+		//	char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
+		//	throw sinsp_exception(estr);
+		//}
+
+		//fclose(fp);
+
+		//
+		// Write the string version to file
+		//
+		string pippo = m_metrics->DebugString();
+
+		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dams",
 			m_configuration->get_metrics_directory().c_str(),
 			ts / 1000000000);
-		FILE* fp = fopen(fname, "wb");
+
+		fp = fopen(fname, "w");
 
 		if(!fp)
 		{
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
 			throw sinsp_exception(estr);
 		}
-/*
-		// first there's a 32bit frame length...
-		uint32_t nbo_frame_length = htonl(buflen);
-		if(fwrite(&nbo_frame_length, sizeof(nbo_frame_length), 1, fp) != 1)
-		{
-			ASSERT(false);
-			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write frame length to file %s", fname);
-			throw sinsp_exception(estr);
-		}
-*/
-		// ..and then there's the actual data
-		if(fwrite(buf, buflen, 1, fp) != 1)
+
+		if(fwrite(pippo.c_str(), pippo.length(), 1, fp) != 1)
 		{
 			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);

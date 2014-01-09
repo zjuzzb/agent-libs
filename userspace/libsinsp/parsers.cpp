@@ -15,10 +15,12 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "parsers.h"
-#include "utils.h"
 #include "sinsp_errno.h"
 #include "filter.h"
 #include "filterchecks.h"
+#ifdef SIMULATE_DROP_MODE
+bool should_drop(sinsp_evt *evt);
+#endif
 
 sinsp_parser::sinsp_parser(sinsp *inspector) :
 	m_tmp_evt(m_inspector)
@@ -37,9 +39,6 @@ sinsp_parser::~sinsp_parser()
 void sinsp_parser::process_event(sinsp_evt *evt)
 {
 	uint16_t etype = evt->get_type();
-
-#ifdef SIMULATE_DROP_MODE
-#endif
 
 	//
 	// Cleanup the event-related state
@@ -96,8 +95,6 @@ void sinsp_parser::process_event(sinsp_evt *evt)
 	case PPME_SYSCALL_GETRLIMIT_E:
 	case PPME_SYSCALL_SETRLIMIT_E:
 	case PPME_SYSCALL_PRLIMIT_E:
-		store_event(evt);
-		break;
 	case PPME_SOCKET_SENDTO_E:
 	case PPME_SOCKET_SENDMSG_E:
 		store_event(evt);
@@ -234,6 +231,13 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	// Before anything can happen, the event needs to be initialized
 	//
 	evt->init();
+
+#ifdef SIMULATE_DROP_MODE
+	if(should_drop(evt))
+	{
+		return false;
+	}
+#endif
 
 	ppm_event_flags eflags = evt->get_flags();
 	uint16_t etype = evt->get_type();

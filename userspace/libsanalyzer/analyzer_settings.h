@@ -112,3 +112,5 @@ template<class T> class sinsp_fdinfo;
 typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 
 #define HAS_CAPTURE_FILTERING
+
+#undef SIMULATE_DROP_MODE

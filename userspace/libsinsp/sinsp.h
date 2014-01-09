@@ -46,7 +46,6 @@ using namespace std;
 #include "ifinfo.h"
 #include "eventformatter.h"
 
-template<typename OBJ> class simple_lifo_queue;
 class sinsp_partial_transaction;
 class sinsp_parser;
 class sinsp_analyzer;

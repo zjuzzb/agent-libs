@@ -10,6 +10,7 @@ add_library(sanalyzer STATIC
 	analyzer.cpp
 	analyzer_fd.cpp
 	analyzer_thread.cpp
+	analyzer_utils.cpp
 	connectinfo.cpp 
 	config.cpp
 	delays.cpp	

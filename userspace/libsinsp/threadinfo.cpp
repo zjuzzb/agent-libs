@@ -47,6 +47,7 @@ void sinsp_threadinfo::init()
 	m_fd_usage_pct = 0;
 	m_main_thread = NULL;
 	m_main_program_thread = NULL;
+	m_lastevent_fd = 0;
 #ifdef HAS_FILTERING
 	m_last_latency_entertime = 0;
 	m_latency = 0;

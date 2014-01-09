@@ -1,6 +1,6 @@
 package draiosproto;
 
-option optimize_for = LITE_RUNTIME;
+option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 

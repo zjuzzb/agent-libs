@@ -38,8 +38,6 @@ sinsp_initializer::sinsp_initializer()
 	// Init the logger
 	//
 	g_logger.set_severity(sinsp_logger::SEV_DEBUG);
-//	g_logger.add_file_log("sisnsp.log");
-//	g_logger.log("library starting");
 
 	//
 	// Sockets initialization on windows
