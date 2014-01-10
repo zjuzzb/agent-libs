@@ -17,7 +17,8 @@ add_executable(dragent
 	main.cpp
 	monitor.cpp
 	protocol.cpp
-	sinsp_data_handler.cpp)
+	sinsp_data_handler.cpp
+	sinsp_worker.cpp)
 
 target_link_libraries(dragent
 	pthread

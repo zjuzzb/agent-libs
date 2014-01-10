@@ -25,6 +25,7 @@ dragent_configuration::dragent_configuration()
 	m_min_file_priority = (Message::Priority) 0;
 	m_min_console_priority = (Message::Priority) 0;
 	m_dump_in_progress = false;
+	m_evtcnt = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -132,7 +133,11 @@ void dragent_configuration::init(Application* app)
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
-	m_dump_file = config.getString("dumpfile", "/tmp/dump.scap");
+
+	if(m_dump_file.empty())
+	{
+		m_dump_file = config.getString("dumpfile", "/tmp/dump.scap");
+	}
 }
 
 void dragent_configuration::print_configuration()
@@ -156,7 +161,8 @@ void dragent_configuration::print_configuration()
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
 {
-	try {
+	try 
+	{
 		HTTPClientSession client("169.254.169.254", 80);
 		client.setTimeout(1000000);
 

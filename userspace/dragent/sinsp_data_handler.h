@@ -8,11 +8,11 @@
 class sinsp_data_handler : public analyzer_callback_interface
 {
 public:
-	sinsp_data_handler(dragent_queue* queue, dragent_configuration* configuration);
+	sinsp_data_handler(dragent_configuration* configuration, dragent_queue* queue);
 
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics);
 
 private:
-	dragent_queue* m_queue;
 	dragent_configuration* m_configuration;
+	dragent_queue* m_queue;
 };

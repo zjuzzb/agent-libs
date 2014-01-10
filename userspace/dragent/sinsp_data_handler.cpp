@@ -2,9 +2,9 @@
 
 #include "logger.h"
 
-sinsp_data_handler::sinsp_data_handler(dragent_queue* queue, dragent_configuration* configuration):
-	m_queue(queue),
-	m_configuration(configuration)
+sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, dragent_queue* queue):
+	m_configuration(configuration),
+	m_queue(queue)
 {
 }
 

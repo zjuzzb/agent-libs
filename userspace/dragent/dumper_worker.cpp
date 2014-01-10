@@ -4,10 +4,13 @@
 
 const string dumper_worker::m_name = "dumper_worker";
 
-dumper_worker::dumper_worker(dragent_queue* queue, dragent_configuration* configuration, uint64_t duration_ns):
+dumper_worker::dumper_worker(dragent_queue* queue, dragent_configuration* configuration, 
+	uint64_t duration_ns, const string& filter):
+	
 	m_queue(queue),
 	m_configuration(configuration),
-	m_duration_ms(duration_ns / 1000000)
+	m_duration_ms(duration_ns / 1000000),
+	m_filter(filter)
 {
 }
 
@@ -17,7 +20,9 @@ void dumper_worker::run()
 	// A quick hack to automatically delete this object
 	//
 	SharedPtr<dumper_worker> ptr(this);
-	
+
+	g_log->information(m_name + ": Starting");
+		
 	if(m_configuration->m_dump_in_progress)
 	{
 		string error = "Another capture is already in progress";
@@ -29,26 +34,14 @@ void dumper_worker::run()
 		return;
 	}
 
-	g_log->information(m_name + ": Starting");
-
 	g_log->information(m_name + ": Running for " + NumberFormatter::format(m_duration_ms) + " ms");
 	dragent_configuration::m_dump_enabled = true;
 
-	while(m_duration_ms && !dragent_configuration::m_terminate)
+	int64_t sleep_time_ms = m_duration_ms;
+	while(sleep_time_ms && !dragent_configuration::m_terminate)
 	{
-		uint64_t sleep_time_ms;
-
-		if(m_duration_ms > 1000)
-		{
-			sleep_time_ms = 1000;
-		}
-		else
-		{
-			sleep_time_ms = m_duration_ms;
-		}
-
-		Thread::sleep(sleep_time_ms);
-		m_duration_ms -= sleep_time_ms;
+		Thread::sleep(100);
+		m_duration_ms -= 100;
 	}
 
 	if(!dragent_configuration::m_terminate)

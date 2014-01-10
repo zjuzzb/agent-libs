@@ -11,7 +11,8 @@
 class dumper_worker : public Runnable
 {
 public:
-	dumper_worker(dragent_queue* queue, dragent_configuration* configuration, uint64_t duration_ns);
+	dumper_worker(dragent_queue* queue, dragent_configuration* configuration, 
+		uint64_t duration_ns, const string& filter);
 	
 	void run();
 
@@ -26,4 +27,5 @@ private:
 	dragent_queue* m_queue;
 	dragent_configuration* m_configuration;
 	uint64_t m_duration_ms;
+	string m_filter;
 };

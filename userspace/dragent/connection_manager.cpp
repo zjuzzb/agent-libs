@@ -318,6 +318,12 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 
 	uint64_t duration_ns = request.duration_ns();
 
-	dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns);
+	string filter;
+	if(request.has_filters())
+	{
+		filter = request.filters();
+	}
+
+	dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns, filter);
 	ThreadPool::defaultPool().start(*worker, "dumper_worker");
 }

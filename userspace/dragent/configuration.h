@@ -57,4 +57,6 @@ public:
 	string m_dump_file;
 	Event m_dump_completed;
 	volatile bool m_dump_in_progress;
+	string m_input_filename;
+	uint64_t m_evtcnt;	
 };
