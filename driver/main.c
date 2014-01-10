@@ -569,6 +569,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 			//
 			syscall_get_arguments(current, regs, 0,	1, &fd);
 		}
+/*
 		else if(g_event_info[event_type].flags & (EF_CREATES_FD))
 		{
 			//
@@ -577,6 +578,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 			//
 			fd = syscall_get_return_value(current, regs);
 		}
+*/		
 		else
 		{
 			return 0;
@@ -972,15 +974,6 @@ TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret)
 
 int __access_remote_vm(struct task_struct * t, struct mm_struct *mm, unsigned long addr,
                        void *buf, int len, int write);
-
-/*
-static void syscall_proceenter_probe(void *__data, struct pt_regs *regs, long ret)
-{
-	trace_enter();
-
-	record_event(PPME_PROC_START, regs, -1);
-}
-*/
 
 TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 {

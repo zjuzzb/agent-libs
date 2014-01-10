@@ -541,6 +541,7 @@ int main(int argc, char **argv)
 				inspector->open("");
 			}
 
+//inspector->start_dropping_mode(8);
 			if(dumpfile != "")
 			{
 				inspector->autodump_start(dumpfile);
