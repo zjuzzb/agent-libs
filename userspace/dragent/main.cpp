@@ -34,8 +34,8 @@ public:
 	dragent_app(): 
 		m_help_requested(false),
 		m_queue(MAX_SAMPLE_STORE_SIZE),
-		m_connection_manager(&m_configuration, &m_queue),
-		m_sinsp_worker(&m_configuration, &m_queue)
+		m_sinsp_worker(&m_configuration, &m_queue),
+		m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 	{
 	}
 	
@@ -348,8 +348,8 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	dragent_queue m_queue;
-	connection_manager m_connection_manager;
 	sinsp_worker m_sinsp_worker;
+	connection_manager m_connection_manager;
 };
 
 

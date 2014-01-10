@@ -8,7 +8,7 @@ class SINSP_PUBLIC sinsp_dumper
 public:
 	sinsp_dumper(sinsp* inspector);
 	~sinsp_dumper();
-	void open(string filename);
+	void open(const string& filename);
 	void dump(sinsp_evt* evt);
 
 private:

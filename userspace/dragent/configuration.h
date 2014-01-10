@@ -55,8 +55,6 @@ public:
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
 	string m_dump_file;
-	Event m_dump_completed;
-	volatile bool m_dump_in_progress;
 	string m_input_filename;
 	uint64_t m_evtcnt;	
 };

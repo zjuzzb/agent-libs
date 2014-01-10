@@ -20,15 +20,73 @@ public:
 class sinsp_worker
 {
 public:
+	class dump_job_request
+	{
+	public:
+		dump_job_request(uint64_t duration_ns, const string& filter):
+			m_duration_ns(duration_ns),
+			m_filter(filter)
+		{
+		}
+
+		uint64_t m_duration_ns;
+		string m_filter;
+	};
+
 	sinsp_worker(dragent_configuration* configuration, dragent_queue* queue);
 	~sinsp_worker();
 
 	void init();
 	captureinfo do_inspect();
+	void schedule_dump_job(SharedPtr<dump_job_request> job_request);
 
 private:
+	class dump_job_state
+	{
+	public:
+		dump_job_state():
+			m_dumper(NULL),
+			m_filter(NULL),
+			m_start_ns(0),
+			m_duration_ns(0)
+		{
+		}
+
+		~dump_job_state()
+		{			
+			if(m_dumper)
+			{
+				delete m_dumper;
+				m_dumper = NULL;
+			}
+
+			if(m_filter)
+			{
+				delete m_filter;
+				m_filter = NULL;
+			}
+		}
+
+		sinsp_dumper* m_dumper;
+		sinsp_filter* m_filter;
+		uint64_t m_start_ns;
+		uint64_t m_duration_ns;
+	};
+
+	void prepare_response(draiosproto::dump_response* response);
+	void queue_response(const draiosproto::dump_response& response);
+	void send_file();
+	static std::streamsize copy_file(FileInputStream* istr, std::string* str);
+	void run_dump_jobs(sinsp_evt* ev);
+	void start_new_jobs(uint64_t ts);
+
+	static const string m_name;
+
 	dragent_configuration* m_configuration;
+	dragent_queue* m_queue;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	sinsp_data_handler m_sinsp_handler;
+	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
+	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
 };
