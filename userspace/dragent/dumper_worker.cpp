@@ -38,10 +38,10 @@ void dumper_worker::run()
 	dragent_configuration::m_dump_enabled = true;
 
 	int64_t sleep_time_ms = m_duration_ms;
-	while(sleep_time_ms && !dragent_configuration::m_terminate)
+	while(sleep_time_ms > 0 && !dragent_configuration::m_terminate)
 	{
 		Thread::sleep(100);
-		m_duration_ms -= 100;
+		sleep_time_ms -= 100;
 	}
 
 	if(!dragent_configuration::m_terminate)
