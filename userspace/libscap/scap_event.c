@@ -67,11 +67,6 @@ uint64_t scap_event_get_ts(scap_evt* e)
 	return e->ts;
 }
 
-uint16_t scap_event_get_type(scap_evt* e)
-{
-	return e->type;
-}
-
 #ifdef PPM_ENABLE_SENTINEL
 uint32_t scap_event_get_sentinel_begin(scap_evt* e)
 {
@@ -79,63 +74,7 @@ uint32_t scap_event_get_sentinel_begin(scap_evt* e)
 }
 #endif
 
-const char* scap_event_get_name(scap_evt* e)
-{
-	return g_event_info[e->type].name;
-}
-
-ppm_event_category scap_event_get_category(scap_evt* e)
-{
-	return g_event_info[e->type].category;
-}
-
 const struct ppm_event_info* scap_event_getinfo(scap_evt* e)
 {
 	return &(g_event_info[e->type]);
-}
-
-event_direction scap_event_get_direction(scap_evt* e)
-{
-	return (event_direction)(e->type & PPME_DIRECTION_FLAG);
-}
-
-int64_t scap_event_get_tid(scap_evt* e)
-{
-	return e->tid;
-}
-
-uint32_t scap_event_getnumparams(scap_evt* e)
-{
-	ASSERT(e->type < PPM_EVENT_MAX);
-
-	return g_event_info[e->type].nparams;
-}
-
-int32_t scap_event_getparam(scap_evt* e, uint32_t paramid, OUT evt_param_info* param)
-{
-	ASSERT(e->type < PPM_EVENT_MAX);
-
-	if(paramid < g_event_info[e->type].nparams)
-	{
-		uint32_t j;
-		uint16_t* lens = (uint16_t*)((char*)e + sizeof(struct ppm_evt_hdr));
-		char* valptr = (char*)lens + g_event_info[e->type].nparams * sizeof(uint16_t);
-
-		param->name = g_event_info[e->type].params[paramid].name;
-		param->type = g_event_info[e->type].params[paramid].type;
-		param->len = lens[paramid];
-
-		for(j = 0; j < paramid; j++)
-		{
-			valptr += lens[j];
-		}
-
-		param->val = valptr;
-
-		return SCAP_SUCCESS;
-	}
-	else
-	{
-		return SCAP_ILLEGAL_INPUT;
-	}
 }
