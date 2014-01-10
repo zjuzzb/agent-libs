@@ -35,7 +35,7 @@ public:
 	static uint64_t get_current_time_ns();
 
 	// Static so that the signal handler can reach it
-	static volatile bool m_dump_enabled;
+	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
 
 	bool m_daemon;

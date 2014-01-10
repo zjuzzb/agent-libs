@@ -318,6 +318,23 @@ std::streamsize sinsp_worker::copy_file(FileInputStream* istr, std::string* str)
 
 void sinsp_worker::start_new_jobs(uint64_t ts)
 {
+	if(dragent_configuration::m_signal_dump)
+	{
+		dragent_configuration::m_signal_dump = false;
+		SharedPtr<dump_job_state> job_state(new dump_job_state());
+
+		job_state->m_dumper = new sinsp_dumper(m_inspector);
+		job_state->m_file = m_configuration->m_dump_dir + "dump.scap";
+		g_log->information("Starting dump job in " + job_state->m_file);
+		job_state->m_dumper->open(job_state->m_file);
+
+		job_state->m_duration_ns = 20000000000LL;
+		job_state->m_start_ns = ts;
+		job_state->m_delete_file_when_done = false;
+
+		m_running_dump_jobs.push_back(job_state);
+	}
+
 	SharedPtr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{

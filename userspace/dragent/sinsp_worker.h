@@ -48,7 +48,8 @@ private:
 			m_dumper(NULL),
 			m_filter(NULL),
 			m_start_ns(0),
-			m_duration_ns(0)
+			m_duration_ns(0),
+			m_delete_file_when_done(true)
 		{
 		}
 
@@ -66,7 +67,7 @@ private:
 				m_filter = NULL;
 			}
 
-			if(!m_file.empty())
+			if(m_delete_file_when_done && !m_file.empty())
 			{
 				File f(m_file);
 				if(f.exists())
@@ -81,6 +82,7 @@ private:
 		uint64_t m_start_ns;
 		uint64_t m_duration_ns;
 		string m_file;
+		bool m_delete_file_when_done;
 	};
 
 	void prepare_response(draiosproto::dump_response* response);
