@@ -147,7 +147,7 @@ protected:
 		else if(name == "writefile")
 		{
 			dragent_configuration::m_dump_enabled = true;
-			m_configuration.m_dump_file = value;
+			// m_configuration.m_dump_file = value;
 		}
 		else if(name == "srvaddr")
 		{

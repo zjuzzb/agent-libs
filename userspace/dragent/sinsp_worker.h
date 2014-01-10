@@ -65,18 +65,28 @@ private:
 				delete m_filter;
 				m_filter = NULL;
 			}
+
+			if(!m_file.empty())
+			{
+				File f(m_file);
+				if(f.exists())
+				{
+					f.remove();
+				}
+			}
 		}
 
 		sinsp_dumper* m_dumper;
 		sinsp_filter* m_filter;
 		uint64_t m_start_ns;
 		uint64_t m_duration_ns;
+		string m_file;
 	};
 
 	void prepare_response(draiosproto::dump_response* response);
 	void queue_response(const draiosproto::dump_response& response);
 	void send_error(const string& error);
-	void send_file();
+	void send_file(const string& filename);
 	static std::streamsize copy_file(FileInputStream* istr, std::string* str);
 	void run_dump_jobs(sinsp_evt* ev);
 	void start_new_jobs(uint64_t ts);

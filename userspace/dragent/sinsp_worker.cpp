@@ -240,7 +240,7 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			delete job->m_dumper;
 			job->m_dumper = NULL;
 
-			send_file();
+			send_file(job->m_file);
 		}
 		else
 		{
@@ -268,14 +268,14 @@ void sinsp_worker::send_error(const string& error)
 	queue_response(response);	
 }
 
-void sinsp_worker::send_file()
+void sinsp_worker::send_file(const string& filename)
 {
-	FileInputStream file(m_configuration->m_dump_file);
+	FileInputStream file(filename);
 	string sfile;
 
 	uint32_t nread = copy_file(&file, &sfile);
 	
-	g_log->information(m_name + ": File size: " + NumberFormatter::format(nread));
+	g_log->information(m_name + ": " + filename + ": File size: " + NumberFormatter::format(nread));
 
 	draiosproto::dump_response response;
 	prepare_response(&response);
@@ -321,7 +321,6 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 	SharedPtr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
-		g_log->information("Starting dump job");
 		SharedPtr<dump_job_state> job_state(new dump_job_state());
 
 		if(!request->m_filter.empty())
@@ -338,7 +337,9 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		}
 
 		job_state->m_dumper = new sinsp_dumper(m_inspector);
-		job_state->m_dumper->open(m_configuration->m_dump_file);
+		job_state->m_file = TemporaryFile::tempName(m_configuration->m_dump_dir) + ".scap";
+		g_log->information("Starting dump job in " + job_state->m_file);
+		job_state->m_dumper->open(job_state->m_file);
 
 		job_state->m_duration_ns = request->m_duration_ns;
 		job_state->m_start_ns = ts;

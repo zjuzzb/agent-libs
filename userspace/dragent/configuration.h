@@ -54,7 +54,7 @@ public:
 	string m_ssl_ca_certificate;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
-	string m_dump_file;
+	string m_dump_dir;
 	string m_input_filename;
 	uint64_t m_evtcnt;	
 };
