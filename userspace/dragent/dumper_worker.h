@@ -19,6 +19,7 @@ public:
 private:
 	void prepare_response(draiosproto::dump_response* response);
 	void queue_response(const draiosproto::dump_response& response);
+	void send_error(const string& error);
 	void send_file();
 	std::streamsize copy_file(FileInputStream* istr, std::string* str);
 

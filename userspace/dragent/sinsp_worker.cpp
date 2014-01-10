@@ -184,12 +184,7 @@ void sinsp_worker::schedule_dump_job(SharedPtr<dump_job_request> job_request)
 
 	if(!m_dump_job_requests.put(job_request))
 	{
-		string error = "Maximum number of dump jobs reached";
-		g_log->error(error);
-		draiosproto::dump_response response;
-		prepare_response(&response);
-		response.set_error(error);
-		queue_response(response);
+		send_error("Maximum number of dump jobs reached");
 	}
 }
 
@@ -264,6 +259,15 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 	}
 }
 
+void sinsp_worker::send_error(const string& error)
+{
+	g_log->error(error);
+	draiosproto::dump_response response;
+	prepare_response(&response);
+	response.set_error(error);
+	queue_response(response);	
+}
+
 void sinsp_worker::send_file()
 {
 	FileInputStream file(m_configuration->m_dump_file);
@@ -322,7 +326,15 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 
 		if(!request->m_filter.empty())
 		{
-			job_state->m_filter = new sinsp_filter(m_inspector, request->m_filter);
+			try
+			{
+				job_state->m_filter = new sinsp_filter(m_inspector, request->m_filter);
+			}
+			catch(sinsp_exception& e)
+			{
+				send_error(e.what());
+				return;
+			}
 		}
 
 		job_state->m_dumper = new sinsp_dumper(m_inspector);

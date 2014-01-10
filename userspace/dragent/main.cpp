@@ -336,6 +336,7 @@ protected:
 			exit_code = Application::EXIT_SOFTWARE;
 		}
 
+		dragent_configuration::m_terminate = true;
 		ThreadPool::defaultPool().stopAll();
 
 		g_log->information("Terminating");

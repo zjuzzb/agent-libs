@@ -26,11 +26,7 @@ void dumper_worker::run()
 	if(m_configuration->m_dump_in_progress)
 	{
 		string error = "Another capture is already in progress";
-		g_log->error(error);
-		draiosproto::dump_response response;
-		prepare_response(&response);
-		response.set_error(error);
-		queue_response(response);
+		send_error(error);
 		return;
 	}
 
@@ -56,15 +52,20 @@ void dumper_worker::run()
 		else
 		{
 			string error = "Timeout waiting for capture completed event";
-			g_log->error(error);
-			draiosproto::dump_response response;
-			prepare_response(&response);
-			response.set_error(error);
-			queue_response(response);
+			send_error(error);
 		}
 	}
 
 	g_log->information(m_name + ": Terminating");
+}
+
+void dumper_worker::send_error(const string& error)
+{
+	g_log->error(error);
+	draiosproto::dump_response response;
+	prepare_response(&response);
+	response.set_error(error);
+	queue_response(response);	
 }
 
 void dumper_worker::send_file()
