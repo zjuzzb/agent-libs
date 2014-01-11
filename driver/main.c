@@ -277,7 +277,8 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		new_sampling_ratio = (uint32_t)arg;
 
-		if(new_sampling_ratio != 2 &&
+		if(new_sampling_ratio != 1 &&
+			new_sampling_ratio != 2 &&
 			new_sampling_ratio != 4 &&
 			new_sampling_ratio != 8 &&
 			new_sampling_ratio != 16 &&
@@ -584,11 +585,6 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 			return 0;
 		}
 
-		//
-		// As a simple filter, we sample the events based on the
-		// fds, hoping we will generate a better pattern instead
-		// of just a random sampling
-		//
 		if(fd > 0 && (fd % g_sampling_ratio))
 		{
 			return 1;

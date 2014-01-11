@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 			inspector->open("");
 		}
 
-//inspector->start_dropping_mode(4);
+//inspector->start_dropping_mode(1);
 
 		if(snaplen != 0)
 		{
