@@ -110,7 +110,7 @@ message host {
   optional time_categories tcounters = 5; // The time counters for this thread
   optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
+  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
   optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
@@ -167,7 +167,7 @@ message process {
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional uint64 next_tiers_delay = 12;	// the delay introduced by this process when processing transactions. 
+  optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }
@@ -246,5 +246,24 @@ message dump_response {
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     optional bytes content = 4; // The bynary dump file
-    optional string error = 5; // Error, if something went wrong
+    optional string error = 5; // Dump errors
 }
+
+message exec_cmd_request {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
+    required string command_line = 5; // The comand line to execute
+}
+
+message exec_cmd_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
+    optional string std_out = 5; // The the content
+    optional string std_err = 6; // The the content
+    optional uint32 exit_val = 7; //identify the process exit value, if this field is present, then this is the last response packet
+}
+

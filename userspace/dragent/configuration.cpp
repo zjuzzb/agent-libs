@@ -10,7 +10,7 @@
 using namespace Poco;
 using namespace Poco::Net;
 
-volatile bool dragent_configuration::m_dump_enabled = false;
+volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
 
 dragent_configuration::dragent_configuration()
@@ -24,7 +24,6 @@ dragent_configuration::dragent_configuration()
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) 0;
 	m_min_console_priority = (Message::Priority) 0;
-	m_dump_in_progress = false;
 	m_evtcnt = 0;
 }
 
@@ -133,11 +132,7 @@ void dragent_configuration::init(Application* app)
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
-
-	if(m_dump_file.empty())
-	{
-		m_dump_file = config.getString("dumpfile", "/tmp/dump.scap");
-	}
+	m_dump_dir = config.getString("dumpdir", "/tmp/");
 }
 
 void dragent_configuration::print_configuration()
@@ -156,7 +151,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + (m_compression_enabled ? string("true") : string("false")));
 	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
-	g_log->information("dumpfile: " + m_dump_file);
+	g_log->information("dumpdir: " + m_dump_dir);
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

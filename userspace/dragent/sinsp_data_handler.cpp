@@ -2,7 +2,7 @@
 
 #include "logger.h"
 
-sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, dragent_queue* queue):
+sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue)
 {
@@ -10,7 +10,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, dra
 
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 {
-	SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(
+	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		dragent_protocol::PROTOCOL_MESSAGE_TYPE_METRICS, 
 		*metrics, 
 		m_configuration->m_compression_enabled);

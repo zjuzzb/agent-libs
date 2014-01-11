@@ -61,6 +61,3 @@ bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 
 	return res;
 }
-
-typedef string dragent_queue_item;
-typedef blocking_queue<SharedPtr<dragent_queue_item>> dragent_queue;

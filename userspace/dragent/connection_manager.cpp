@@ -3,16 +3,17 @@
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
-#include "dumper_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
 
-connection_manager::connection_manager(dragent_configuration* configuration, dragent_queue* queue) :
+connection_manager::connection_manager(dragent_configuration* configuration, 
+		protocol_queue* queue, sinsp_worker* sinsp_worker):
 	m_sa(NULL),
 	m_socket(NULL),
 	m_buffer(RECEIVER_BUFSIZE),
 	m_configuration(configuration),
-	m_queue(queue)
+	m_queue(queue),
+	m_sinsp_worker(sinsp_worker)
 {
 	Poco::Net::initializeSSL();	
 }
@@ -105,7 +106,7 @@ void connection_manager::run()
 {
 	g_log->information(m_name + ": Starting");
 
-	SharedPtr<dragent_queue_item> item;
+	SharedPtr<protocol_queue_item> item;
 
 	while(!dragent_configuration::m_terminate)
 	{
@@ -316,14 +317,14 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	uint64_t duration_ns = request.duration_ns();
-
 	string filter;
 	if(request.has_filters())
 	{
 		filter = request.filters();
 	}
 
-	dumper_worker* worker = new dumper_worker(m_queue, m_configuration, duration_ns, filter);
-	ThreadPool::defaultPool().start(*worker, "dumper_worker");
+	SharedPtr<sinsp_worker::dump_job_request> job_request(
+		new sinsp_worker::dump_job_request(request.duration_ns(), filter));
+	
+	m_sinsp_worker->schedule_dump_job(job_request);
 }

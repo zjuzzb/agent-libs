@@ -3,11 +3,13 @@
 #include "main.h"
 #include "configuration.h"
 #include "blocking_queue.h"
+#include "sinsp_worker.h"
 
 class connection_manager : public Runnable
 {
 public:
-	connection_manager(dragent_configuration* configuration, dragent_queue* queue);
+	connection_manager(dragent_configuration* configuration, 
+		protocol_queue* queue, sinsp_worker* sinsp_worker);
 	~connection_manager();
 
 	bool init();
@@ -27,5 +29,6 @@ private:
 	SharedPtr<StreamSocket> m_socket;
 	Buffer<uint8_t> m_buffer;
 	dragent_configuration* m_configuration;
-	dragent_queue* m_queue;
+	protocol_queue* m_queue;
+	sinsp_worker* m_sinsp_worker;
 };

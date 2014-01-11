@@ -17,7 +17,7 @@ sinsp_dumper::~sinsp_dumper()
 	}
 }
 
-void sinsp_dumper::open(string filename)
+void sinsp_dumper::open(const string& filename)
 {
 	if(m_inspector->m_h == NULL)
 	{

@@ -66,6 +66,7 @@
 #include "Poco/Buffer.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/FileStream.h"
+#include "Poco/TemporaryFile.h"
 
 #include <sinsp.h>
 
@@ -109,6 +110,7 @@ using Poco::Event;
 using Poco::Buffer;
 using Poco::StreamCopier;
 using Poco::FileInputStream;
+using Poco::TemporaryFile;
 
 #ifdef _DEBUG
 #define ASSERT(X) \

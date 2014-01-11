@@ -21,8 +21,8 @@ static void g_signal_callback(int sig)
 
 static void g_usr_signal_callback(int sig)
 {
-	g_log->information("Received SIGUSR1, toggling capture state"); 
-	dragent_configuration::m_dump_enabled = !dragent_configuration::m_dump_enabled;
+	g_log->information("Received SIGUSR1, starting dump"); 
+	dragent_configuration::m_signal_dump = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -34,8 +34,8 @@ public:
 	dragent_app(): 
 		m_help_requested(false),
 		m_queue(MAX_SAMPLE_STORE_SIZE),
-		m_connection_manager(&m_configuration, &m_queue),
-		m_sinsp_worker(&m_configuration, &m_queue)
+		m_sinsp_worker(&m_configuration, &m_queue),
+		m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 	{
 	}
 	
@@ -98,12 +98,6 @@ protected:
 				.argument("id"));
 
 		options.addOption(
-			Option("writefile", "w", "specify this flag to save all the capture events to the 'filename' file.")
-				.required(false)
-				.repeatable(false)
-				.argument("filename"));
-
-		options.addOption(
 			Option("srvaddr", "", "the address of the server to connect to.")
 				.required(false)
 				.repeatable(false)
@@ -143,11 +137,6 @@ protected:
 		else if(name == "customerid")
 		{
 			m_configuration.m_customer_id = value;
-		}
-		else if(name == "writefile")
-		{
-			dragent_configuration::m_dump_enabled = true;
-			m_configuration.m_dump_file = value;
 		}
 		else if(name == "srvaddr")
 		{
@@ -336,6 +325,7 @@ protected:
 			exit_code = Application::EXIT_SOFTWARE;
 		}
 
+		dragent_configuration::m_terminate = true;
 		ThreadPool::defaultPool().stopAll();
 
 		g_log->information("Terminating");
@@ -347,9 +337,9 @@ private:
 	string m_pidfile;
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	dragent_queue m_queue;
-	connection_manager m_connection_manager;
+	protocol_queue m_queue;
 	sinsp_worker m_sinsp_worker;
+	connection_manager m_connection_manager;
 };
 
 
