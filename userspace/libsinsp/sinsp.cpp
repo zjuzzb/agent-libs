@@ -375,7 +375,10 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	bool sd = false;
 	bool sw = false;
 
-	m_analyzer->m_configuration->set_analyzer_sample_len_ns(500000000);
+	if(m_analyzer)
+	{
+		m_analyzer->m_configuration->set_analyzer_sample_len_ns(500000000);
+	}
 
 	sd = should_drop(&m_evt, &st, &sw);
 #endif
@@ -419,27 +422,30 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	// Run the analysis engine
 	//
+	if(m_analyzer)
+	{
 #ifdef HAS_ANALYZER
 #ifdef SIMULATE_DROP_MODE
-	if(!sd || st || sw)
-	{
-		if(st)
+		if(!sd || st || sw)
 		{
-			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH);
+			if(st)
+			{
+				m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH);
+			}
+			else if(sw)
+			{
+				m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+			}
+			else
+			{
+				m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_NOFLUSH);
+			}
 		}
-		else if(sw)
-		{
-			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
-		}
-		else
-		{
-			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_NOFLUSH);
-		}
-	}
 #else
-	m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_NONE);
+		m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_NONE);
 #endif // SIMULATE_DROP_MODE
 #endif
+	}
 
 	//
 	// Update the last event time for this thread
