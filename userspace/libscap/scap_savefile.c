@@ -502,6 +502,20 @@ static scap_dumper_t *scap_setup_dump(scap_t *handle, FILE *f, const char *fname
 	}
 
 	//
+	// If we're dumping in live mode, refresh the process tables list
+	// so we don't lose information about processes created in the interval
+	// between opening the handle and starting the dump
+	//
+	if(handle->m_file == NULL)
+	{
+		scap_proc_free_table(handle);
+		if(scap_proc_scan_proc_dir(handle, "/proc", -1, -1, NULL, handle->m_lasterr) != SCAP_SUCCESS)
+		{
+			return NULL;
+		}
+	}
+
+	//
 	// Write the machine info
 	//
 	if(scap_write_machine_info(handle, f) != SCAP_SUCCESS)
