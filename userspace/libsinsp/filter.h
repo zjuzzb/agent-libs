@@ -28,7 +28,6 @@ public:
 	static bool is_special_char(char c);
 	static bool is_bracket(char c);
 
-
 private:
 	enum state
 	{
@@ -44,7 +43,8 @@ private:
 	void parse_check(sinsp_filter_expression* parent_expr, boolop op);
 	void push_expression(boolop op);
 	void pop_expression();
-	void parse(string fltstr);
+
+	void compile(string fltstr);
 
 	sinsp* m_inspector;
 

@@ -675,7 +675,20 @@ sinsp_filter::sinsp_filter(sinsp* inspector, string fltstr)
 	m_last_boolop = BO_NONE;
 	m_nest_level = 0;
 
-	parse(fltstr);
+	try
+	{
+		compile(fltstr);
+	}
+	catch(sinsp_exception& e)
+	{
+		delete m_filter;
+		throw e;
+	}
+	catch(...)
+	{
+		delete m_filter;
+		throw sinsp_exception("error parsing the filter string");
+	}
 }
 
 sinsp_filter::~sinsp_filter()
@@ -911,7 +924,7 @@ void sinsp_filter::pop_expression()
 	m_nest_level--;
 }
 
-void sinsp_filter::parse(string fltstr)
+void sinsp_filter::compile(string fltstr)
 {
 	m_fltstr = fltstr;
 	m_scansize = m_fltstr.size();
