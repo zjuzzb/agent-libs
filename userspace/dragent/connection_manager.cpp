@@ -7,7 +7,7 @@
 const string connection_manager::m_name = "connection_manager";
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
-		dragent_queue* queue, sinsp_worker* sinsp_worker):
+		protocol_queue* queue, sinsp_worker* sinsp_worker):
 	m_sa(NULL),
 	m_socket(NULL),
 	m_buffer(RECEIVER_BUFSIZE),
@@ -106,7 +106,7 @@ void connection_manager::run()
 {
 	g_log->information(m_name + ": Starting");
 
-	SharedPtr<dragent_queue_item> item;
+	SharedPtr<protocol_queue_item> item;
 
 	while(!dragent_configuration::m_terminate)
 	{

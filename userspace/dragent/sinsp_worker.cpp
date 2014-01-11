@@ -5,7 +5,7 @@
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
-sinsp_worker::sinsp_worker(dragent_configuration* configuration, dragent_queue* queue):
+sinsp_worker::sinsp_worker(dragent_configuration* configuration, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
@@ -197,7 +197,7 @@ void sinsp_worker::prepare_response(draiosproto::dump_response* response)
 
 void sinsp_worker::queue_response(const draiosproto::dump_response& response)
 {
-	SharedPtr<dragent_queue_item> buffer = dragent_protocol::message_to_buffer(
+	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE, 
 		response, 
 		m_configuration->m_compression_enabled);

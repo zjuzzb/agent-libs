@@ -33,7 +33,7 @@ public:
 		string m_filter;
 	};
 
-	sinsp_worker(dragent_configuration* configuration, dragent_queue* queue);
+	sinsp_worker(dragent_configuration* configuration, protocol_queue* queue);
 	~sinsp_worker();
 
 	void init();
@@ -96,7 +96,7 @@ private:
 	static const string m_name;
 
 	dragent_configuration* m_configuration;
-	dragent_queue* m_queue;
+	protocol_queue* m_queue;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	sinsp_data_handler m_sinsp_handler;

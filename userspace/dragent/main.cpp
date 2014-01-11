@@ -337,7 +337,7 @@ private:
 	string m_pidfile;
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	dragent_queue m_queue;
+	protocol_queue m_queue;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 };

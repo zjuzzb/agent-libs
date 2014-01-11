@@ -2,7 +2,7 @@
 
 #include "logger.h"
 
-SharedPtr<dragent_queue_item> dragent_protocol::message_to_buffer(uint8_t message_type, 
+SharedPtr<protocol_queue_item> dragent_protocol::message_to_buffer(uint8_t message_type, 
 	const google::protobuf::MessageLite& message, bool compressed)
 {
 	//
@@ -24,7 +24,7 @@ SharedPtr<dragent_queue_item> dragent_protocol::message_to_buffer(uint8_t messag
         return NULL;
     }
 
-    SharedPtr<dragent_queue_item> ptr(new dragent_queue_item());
+    SharedPtr<protocol_queue_item> ptr(new protocol_queue_item());
     ptr->resize(sizeof(dragent_protocol_header));
 
     google::protobuf::io::StringOutputStream string_output(ptr);
