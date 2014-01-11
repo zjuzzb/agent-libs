@@ -691,12 +691,10 @@ void sinsp_filter_check_event::ts_to_string(uint64_t ts, OUT string* res, bool f
 {
 	struct tm *tm;
 	time_t Time;
-	static unsigned b_sec;
-	static unsigned b_usec;
 	uint64_t sec = ts / ONE_SECOND_IN_NS;
 	uint64_t nsec = ts % ONE_SECOND_IN_NS;
 	int32_t thiszone = gmt2local(0);
-	int s = (sec + thiszone) % 86400;
+	int32_t s = (sec + thiszone) % 86400;
 	char buf[256];
 
 	if(full) 
