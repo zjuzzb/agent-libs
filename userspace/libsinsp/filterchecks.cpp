@@ -1,3 +1,4 @@
+#include <time.h>
 #ifndef _WIN32
 #include <algorithm>
 #endif
@@ -537,9 +538,10 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 const filtercheck_field_info sinsp_filter_check_event_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
-	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time", "absolute event timestamp, i.e. nanoseconds from epoch."},
-	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.time.s", "integer part of the event timestamp (e.g. seconds since epoch)."},
-	{PT_ABSTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.time.ns", "fractional part of the absolute event timestamp."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.time", "event timestamp as time string."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.rawtime", "absolute event timestamp, i.e. nanoseconds from epoch."},
+	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.rawtime.s", "integer part of the event timestamp (e.g. seconds since epoch)."},
+	{PT_ABSTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.rawtime.ns", "fractional part of the absolute event timestamp."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime", "number of nanoseconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_DEC, "evt.reltime.s", "number of seconds from the beginning of the capture."},
 	{PT_RELTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.reltime.ns", "fractional part (in ns) of the time from the beginning of the capture."},
@@ -658,16 +660,79 @@ void sinsp_filter_check_event::parse_filter_value(const char* str)
 	}
 }
 
+int32_t sinsp_filter_check_event::gmt2local(time_t t)
+{
+	register int dt, dir;
+	register struct tm *gmt, *loc;
+	struct tm sgmt;
+
+	if(t == 0)
+	{
+		t = time(NULL);
+	}
+
+	gmt = &sgmt;
+	*gmt = *gmtime(&t);
+	loc = localtime(&t);
+
+	dt = (loc->tm_hour - gmt->tm_hour) * 60 * 60 +
+	    (loc->tm_min - gmt->tm_min) * 60;
+
+	dir = loc->tm_year - gmt->tm_year;
+	if (dir == 0)
+		dir = loc->tm_yday - gmt->tm_yday;
+
+	dt += dir * 24 * 60 * 60;
+
+	return (dt);
+}
+
+void sinsp_filter_check_event::ts_to_string(uint64_t ts, OUT string* res, bool full)
+{
+	struct tm *tm;
+	time_t Time;
+	static unsigned b_sec;
+	static unsigned b_usec;
+	uint64_t sec = ts / ONE_SECOND_IN_NS;
+	uint64_t nsec = ts % ONE_SECOND_IN_NS;
+	int32_t thiszone = gmt2local(0);
+	int s = (sec + thiszone) % 86400;
+	char buf[256];
+
+	if(full) 
+	{
+		Time = (sec + thiszone) - s;
+		tm = gmtime (&Time);
+		if(!tm)
+		{
+			sprintf(buf, "<NA>");
+		}
+		else
+		{
+			sprintf(buf, "%04d-%02d-%02d ",
+				   tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday);
+		}
+	}
+
+	sprintf(buf, "%02d:%02d:%02d.%09u ",
+			s / 3600, (s % 3600) / 60, s % 60, (unsigned)nsec);
+
+	*res = buf;
+}
+
 uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	switch(m_field_id)
 	{
 	case TYPE_TS:
+		ts_to_string(evt->get_ts(), &m_strstorage, false);
+		return (uint8_t*)m_strstorage.c_str();
+	case TYPE_RAWTS:
 		return (uint8_t*)&evt->m_pevt->ts;
-	case TYPE_TS_S:
+	case TYPE_RAWTS_S:
 		m_u64val = evt->get_ts() / ONE_SECOND_IN_NS;
 		return (uint8_t*)&m_u64val;
-	case TYPE_TS_NS:
+	case TYPE_RAWTS_NS:
 		m_u64val = evt->get_ts() % ONE_SECOND_IN_NS;
 		return (uint8_t*)&m_u64val;
 	case TYPE_RELTS:

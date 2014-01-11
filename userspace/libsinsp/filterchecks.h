@@ -270,20 +270,21 @@ public:
 	{
 		TYPE_NUMBER = 0,
 		TYPE_TS = 1,
-		TYPE_TS_S = 2,
-		TYPE_TS_NS = 3,
-		TYPE_RELTS = 4,
-		TYPE_RELTS_S = 5,
-		TYPE_RELTS_NS = 6,
-		TYPE_LATENCY = 7,
-		TYPE_DIR = 8,
-		TYPE_NAME = 9,
-		TYPE_CPU = 10,
-		TYPE_ARGS = 11,
-		TYPE_ARGSTR = 12,
-		TYPE_ARGRAW = 13,
-		TYPE_RESSTR = 14,
-		TYPE_RESRAW = 15,
+		TYPE_RAWTS = 2,
+		TYPE_RAWTS_S = 3,
+		TYPE_RAWTS_NS = 4,
+		TYPE_RELTS = 5,
+		TYPE_RELTS_S = 6,
+		TYPE_RELTS_NS = 7,
+		TYPE_LATENCY = 8,
+		TYPE_DIR = 9,
+		TYPE_NAME = 10,
+		TYPE_CPU = 11,
+		TYPE_ARGS = 12,
+		TYPE_ARGSTR = 13,
+		TYPE_ARGRAW = 14,
+		TYPE_RESSTR = 15,
+		TYPE_RESRAW = 16,
 	};
 
 	sinsp_filter_check_event();
@@ -308,6 +309,8 @@ public:
 
 private:
 	int32_t extract_arg(string fldname, string val, OUT const struct ppm_param_info** parinfo);
+	int32_t gmt2local(time_t t);
+	void ts_to_string(uint64_t ts, OUT string* res, bool full);
 };
 
 //
