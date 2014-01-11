@@ -12,11 +12,28 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="configuration.cpp" />
+    <ClCompile Include="connection_manager.cpp" />
+    <ClCompile Include="crash_handler.cpp" />
+    <ClCompile Include="dumper_worker.cpp" />
+    <ClCompile Include="error_handler.cpp" />
+    <ClCompile Include="logger.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="monitor.cpp" />
+    <ClCompile Include="protocol.cpp" />
+    <ClCompile Include="sinsp_data_handler.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="blocking_queue.h" />
     <ClInclude Include="configuration.h" />
+    <ClInclude Include="connection_manager.h" />
+    <ClInclude Include="crash_handler.h" />
+    <ClInclude Include="dumper_worker.h" />
+    <ClInclude Include="error_handler.h" />
+    <ClInclude Include="logger.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="monitor.h" />
+    <ClInclude Include="protocol.h" />
+    <ClInclude Include="sinsp_data_handler.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B4A3F113-ACB2-4F94-AA40-6F28CFC92C14}</ProjectGuid>

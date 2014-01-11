@@ -48,6 +48,7 @@ chisel::chisel(sinsp* inspector, string filename)
 
 void chisel::load(string filename)
 {
+return;
 	string line;
 	ifstream is(filename);
 

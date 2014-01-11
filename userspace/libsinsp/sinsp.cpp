@@ -275,6 +275,8 @@ void sinsp::init()
 #endif
 }
 
+bool should_drop(sinsp_evt *evt, bool* stopped, bool* switched);
+
 int32_t sinsp::next(OUT sinsp_evt **evt)
 {
 	//
@@ -292,13 +294,22 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 #ifdef HAS_ANALYZER
 			if(m_analyzer)
 			{
-				m_analyzer->process_event(NULL);
+				m_analyzer->process_event(NULL, sinsp_analyzer::DF_NONE);
 			}
 #endif
 		}
 		else
 		{
 			throw sinsp_exception(scap_getlasterr(m_h));
+/*
+#ifdef HAS_ANALYZER
+			if(m_analyzer)
+			{
+				m_analyzer->process_event(NULL, sinsp_analyzer::DF_NONE);
+			}
+			return SCAP_EOF;
+#endif
+*/
 		}
 
 		return res;
@@ -359,10 +370,32 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		m_fds_to_remove->clear();
 	}
 
+#ifdef SIMULATE_DROP_MODE
+	bool st = false;
+	bool sd = false;
+	bool sw = false;
+
+	m_analyzer->m_configuration->set_analyzer_sample_len_ns(500000000);
+
+	sd = should_drop(&m_evt, &st, &sw);
+#endif
+
 	//
-	// Run the stateful parsing engine
+	// Run the state engine
 	//
+#ifdef SIMULATE_DROP_MODE
+	if(!sd || st)
+	{
+		m_parser->process_event(&m_evt);
+	}
+
+	if(sd && !st)
+	{
+		return SCAP_TIMEOUT;
+	}
+#else
 	m_parser->process_event(&m_evt);
+#endif
 
 #if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 	if(m_evt.m_filtered_out)
@@ -387,10 +420,25 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	// Run the analysis engine
 	//
 #ifdef HAS_ANALYZER
-	if(m_analyzer)
+#ifdef SIMULATE_DROP_MODE
+	if(!sd || st || sw)
 	{
-		m_analyzer->process_event(&m_evt);
+		if(st)
+		{
+			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH);
+		}
+		else if(sw)
+		{
+			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+		}
+		else
+		{
+			m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_NOFLUSH);
+		}
 	}
+#else
+	m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_NONE);
+#endif // SIMULATE_DROP_MODE
 #endif
 
 	//

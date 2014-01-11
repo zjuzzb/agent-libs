@@ -232,13 +232,6 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	//
 	evt->init();
 
-#ifdef SIMULATE_DROP_MODE
-	if(should_drop(evt))
-	{
-		return false;
-	}
-#endif
-
 	ppm_event_flags eflags = evt->get_flags();
 	uint16_t etype = evt->get_type();
 

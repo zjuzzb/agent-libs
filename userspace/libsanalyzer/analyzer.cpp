@@ -431,22 +431,28 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	}
 }
 
-void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof)
+void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	uint64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
 
-	g_logger.format(sinsp_logger::SEV_DEBUG, 
-		"thread table size:%d",
-		m_inspector->m_thread_manager->get_thread_count());
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, 
+			"thread table size:%d",
+			m_inspector->m_thread_manager->get_thread_count());
+	}
 
 	if(m_ipv4_connections->get_n_drops() != 0)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, 
-			"IPv4 table size:%d",
-			m_ipv4_connections->m_connections.size());
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, 
+				"IPv4 table size:%d",
+				m_ipv4_connections->m_connections.size());
+		}
 
 		m_ipv4_connections->clear_n_drops();
 	}
@@ -767,34 +773,37 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						uint32_t trcountin = procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
 						uint32_t trcountout = procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
 
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-							it->second.m_comm.c_str(),
-							it->second.m_tid,
-							it->second.m_nchilds + 1,
-							procinfo->m_capacity_score,
-							procinfo->m_stolen_capacity_score,
-							(float)procinfo->m_cpuload,
-							procinfo->m_fd_usage_pct,
-							procinfo->m_connection_queue_usage_pct);
+						if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
+								it->second.m_comm.c_str(),
+								it->second.m_tid,
+								it->second.m_nchilds + 1,
+								procinfo->m_capacity_score,
+								procinfo->m_stolen_capacity_score,
+								(float)procinfo->m_cpuload,
+								procinfo->m_fd_usage_pct,
+								procinfo->m_connection_queue_usage_pct);
 
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-							procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
-							procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
-							trcountin? ((double)trtimein) / sample_duration : 0,
-							trcountout? ((double)trtimeout) / sample_duration : 0,
-							(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
-							(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
-							(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+								trcountin? ((double)trtimein) / sample_duration : 0,
+								trcountout? ((double)trtimeout) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
 
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
-							procinfo->m_proc_metrics.get_processing_percentage() * 100,
-							procinfo->m_proc_metrics.get_file_percentage() * 100,
-							(uint64_t)(procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
-							procinfo->m_proc_metrics.get_net_percentage() * 100,
-							procinfo->m_proc_metrics.get_other_percentage() * 100);
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+								procinfo->m_proc_metrics.get_processing_percentage() * 100,
+								procinfo->m_proc_metrics.get_file_percentage() * 100,
+								(uint64_t)(procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
+								procinfo->m_proc_metrics.get_net_percentage() * 100,
+								procinfo->m_proc_metrics.get_other_percentage() * 100);
+						}
 					}
 
 #endif
@@ -1106,15 +1115,30 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
-void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
+int pippo = 0;
+
+void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	uint32_t j;
+
+	if(flshflags == DF_FORCE_NOFLUSH)
+	{
+		return;
+	}
 
 	m_n_flushes++;
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
-		uint64_t sample_duration = m_configuration->get_analyzer_sample_length_ns();
+		if(flshflags == DF_FORCE_FLUSH)
+		{
+			if(j > 0)
+			{
+				break;
+			}
+		}
+
+		uint64_t sample_duration = m_configuration->get_analyzer_sample_len_ns();
 
 		if(m_next_flush_time_ns == 0)
 		{
@@ -1144,7 +1168,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Flush the scheduler analyzer
 			//
-			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof);
+			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
 
 			if(m_prev_flush_time_ns - m_last_transaction_delays_update_time > TRANSACTION_DELAYS_INTERVAL_NS)
 			{
@@ -1165,22 +1189,25 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-			emit_processes(evt, sample_duration, is_eof);
+			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
 			////////////////////////////////////////////////////////////////////////////
-			g_logger.format(sinsp_logger::SEV_DEBUG, 
-				"IPv4 table size:%d",
-				m_ipv4_connections->m_connections.size());
-
-			if(m_ipv4_connections->get_n_drops() != 0)
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, 
-					"IPv4 table drops:%d",
-					m_ipv4_connections->get_n_drops());
+				g_logger.format(sinsp_logger::SEV_DEBUG, 
+					"IPv4 table size:%d",
+					m_ipv4_connections->m_connections.size());
 
-				m_ipv4_connections->clear_n_drops();
+				if(m_ipv4_connections->get_n_drops() != 0)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR, 
+						"IPv4 table drops:%d",
+						m_ipv4_connections->get_n_drops());
+
+					m_ipv4_connections->clear_n_drops();
+				}
 			}
 
 			//
@@ -1198,17 +1225,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
-			g_logger.format(sinsp_logger::SEV_DEBUG, 
-				"unix table size:%d",
-				m_unix_connections->m_connections.size());
-
-			if(m_unix_connections->get_n_drops() != 0)
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, 
-					"IPv4 table size:%d",
+				g_logger.format(sinsp_logger::SEV_DEBUG, 
+					"unix table size:%d",
 					m_unix_connections->m_connections.size());
 
-				m_unix_connections->clear_n_drops();
+				if(m_unix_connections->get_n_drops() != 0)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR, 
+						"IPv4 table size:%d",
+						m_unix_connections->m_connections.size());
+
+					m_unix_connections->clear_n_drops();
+				}
 			}
 
 			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
@@ -1234,9 +1264,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			//
 			// Go though the list of pipe connections and for the moment just clean it up
 			//
-			g_logger.format(sinsp_logger::SEV_DEBUG, 
-				"pipe table size:%d",
-				m_pipe_connections->m_connections.size());
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, 
+					"pipe table size:%d",
+					m_pipe_connections->m_connections.size());
+			}
 
 			unordered_map<uint64_t, sinsp_connection, hash<uint64_t>, equal_to<uint64_t>>::iterator pcit;
 			for(pcit = m_pipe_connections->m_connections.begin(); 
@@ -1315,7 +1348,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			if(m_cpu_loads.size() != 0)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
+				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
+				}
 			}		
 
 			//
@@ -1351,13 +1387,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				"host times: proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
-				m_host_metrics.m_metrics.get_processing_percentage() * 100,
-				m_host_metrics.m_metrics.get_file_percentage() * 100,
-				(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
-				m_host_metrics.m_metrics.get_net_percentage() * 100,
-				m_host_metrics.m_metrics.get_other_percentage() * 100);
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"host times: proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+					m_host_metrics.m_metrics.get_processing_percentage() * 100,
+					m_host_metrics.m_metrics.get_file_percentage() * 100,
+					(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
+					m_host_metrics.m_metrics.get_net_percentage() * 100,
+					m_host_metrics.m_metrics.get_other_percentage() * 100);
+			}
 
 #ifdef _DEBUG
 			double totpct = m_host_metrics.m_metrics.get_processing_percentage() +
@@ -1370,33 +1409,39 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 			if(m_host_transaction_counters.m_counter.m_count_in + m_host_transaction_counters.m_counter.m_count_out != 0)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					" host h:%.2f(s:%.2f)",
-					m_host_metrics.m_capacity_score,
-					m_host_metrics.m_stolen_capacity_score);
+				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						" host h:%.2f(s:%.2f)",
+						m_host_metrics.m_capacity_score,
+						m_host_metrics.m_stolen_capacity_score);
 
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-					m_host_transaction_counters.m_counter.m_count_in,
-					m_host_transaction_counters.m_counter.m_count_out,
-					(float)m_host_transaction_counters.m_counter.m_time_ns_in / 1000000000,
-					(float)m_client_tr_time_by_servers / 1000000000,
-					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
-					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,
-					(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_local_processing_delay_ns) / sample_duration : -1);
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
+						m_host_transaction_counters.m_counter.m_count_in,
+						m_host_transaction_counters.m_counter.m_count_out,
+						(float)m_host_transaction_counters.m_counter.m_time_ns_in / 1000000000,
+						(float)m_client_tr_time_by_servers / 1000000000,
+						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
+						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,
+						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_local_processing_delay_ns) / sample_duration : -1);
 
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"host transaction times: proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
-					m_host_req_metrics.get_processing_percentage() * 100,
-					m_host_req_metrics.get_file_percentage() * 100,
-					m_host_req_metrics.get_net_percentage() * 100,
-					m_host_req_metrics.get_other_percentage() * 100);
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"host transaction times: proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
+						m_host_req_metrics.get_processing_percentage() * 100,
+						m_host_req_metrics.get_file_percentage() * 100,
+						m_host_req_metrics.get_net_percentage() * 100,
+						m_host_req_metrics.get_other_percentage() * 100);
+				}
 			}
 
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
 			////////////////////////////////////////////////////////////////////////////
-			serialize(m_prev_flush_time_ns);
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				serialize(m_prev_flush_time_ns);
+			}
 		}
 	}
 
@@ -1407,13 +1452,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 	//
 	// Clear the transaction state
 	//
-	g_logger.format(sinsp_logger::SEV_DEBUG, 
-		"# Client Transactions:%d",
-		m_trans_table->m_n_client_transactions);
-	g_logger.format(sinsp_logger::SEV_DEBUG, 
-		"# Server Transactions:%d",
-		m_trans_table->m_n_server_transactions);
-
+	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, 
+			"# Client Transactions:%d",
+			m_trans_table->m_n_client_transactions);
+		g_logger.format(sinsp_logger::SEV_DEBUG, 
+			"# Server Transactions:%d",
+			m_trans_table->m_n_server_transactions);
+	}
+/*
+if(pippo != 0 && is_eof == false && m_trans_table->m_n_client_transactions != 0 && m_trans_table->m_n_server_transactions != 0)
+{
+	fprintf(stderr, "%lu\n%lu\n", m_trans_table->m_n_client_transactions, m_trans_table->m_n_server_transactions);
+}
+pippo++;
+*/
 	m_trans_table->m_n_client_transactions = 0;
 	m_trans_table->m_n_server_transactions = 0;
 
@@ -1439,7 +1493,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof)
 
 	if(evt)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
+		if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
+		}
 		m_prev_sample_evtnum = evt->get_num();
 	}
 }
@@ -1638,7 +1695,7 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 				// If this was a wait on multiple FDs, we encode the delta as a negative number so
 				// the next steps will know that it needs to be handled with more care.
 				//
-				uint64_t sample_duration = m_configuration->get_analyzer_sample_length_ns();
+				uint64_t sample_duration = m_configuration->get_analyzer_sample_len_ns();
 				uint64_t ts = evt->get_ts();
 
 				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
@@ -1657,7 +1714,7 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	}
 }
 
-void sinsp_analyzer::process_event(sinsp_evt* evt)
+void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 {
 	uint64_t ts;
 	uint64_t delta;
@@ -1692,16 +1749,16 @@ void sinsp_analyzer::process_event(sinsp_evt* evt)
 	else
 	{
 		ts = m_next_flush_time_ns;
-		flush(evt, ts, true);
+		flush(evt, ts, true, flshflags);
 		return;
 	}
 
 	//
 	// Check if it's time to flush
 	//
-	if(ts >= m_next_flush_time_ns)
+	if(ts >= m_next_flush_time_ns || flshflags == DF_FORCE_FLUSH)
 	{
-		flush(evt, ts, false);
+		flush(evt, ts, false, flshflags);
 	}
 
 	//

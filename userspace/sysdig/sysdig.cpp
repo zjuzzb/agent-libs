@@ -285,8 +285,8 @@ int main(int argc, char **argv)
         {0, 0, 0, 0}
     };
 
-	output_format = "*%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-//		output_format = "%evt.num)%evt.type time:%latencyns";
+//	output_format = "*%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
+	output_format = "*%evt.num)%evt.time %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
 
 	sinsp* inspector = new sinsp();
 
@@ -386,13 +386,21 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if(is_filter_display)
+		try
 		{
-			display_filter = new sinsp_filter(inspector, filter);
+			if(is_filter_display)
+			{
+				display_filter = new sinsp_filter(inspector, filter);
+			}
+			else
+			{
+				inspector->set_filter(filter);
+			}
 		}
-		else
+		catch(sinsp_exception e)
 		{
-			inspector->set_filter(filter);
+			cerr << e.what() << endl;
+			res = EXIT_FAILURE;
 		}
 #else
 		fprintf(stderr, "filtering not compiled.\n");
@@ -472,11 +480,6 @@ int main(int argc, char **argv)
 	}
 	catch(sinsp_exception e)
 	{
-		if(emitjson)
-		{
-			printf("]\n");
-		}
-
 		cerr << e.what() << endl;
 		res = EXIT_FAILURE;
 	}

@@ -97,7 +97,7 @@ sinsp_sched_analyzer::sinsp_sched_analyzer(sinsp* inspector, uint32_t ncpus)
 void sinsp_sched_analyzer::on_capture_start()
 {
 	uint32_t j;
-	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns();
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns();
 
 	for(j = 0; j < m_ncpus; j++)
 	{
@@ -200,6 +200,8 @@ void sinsp_sched_analyzer::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eo
 {
 	uint32_t j;
 
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns();
+
 	for(j = 0; j < m_ncpus; j++)
 	{
 		cpustate& state = m_cpu_states[j];
@@ -283,7 +285,7 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
 
 void sinsp_sched_analyzer2::on_capture_start()
 {
-	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns();
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns();
 }
 
 void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
@@ -388,9 +390,11 @@ void sinsp_sched_analyzer2::process_event(sinsp_evt* evt)
 	update(evt->get_thread_info(), ts, cpu, nexttid);
 }
 
-void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof)
+void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	uint32_t j;
+
+	m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns();
 
 	for(j = 0; j < m_ncpus; j++)
 	{
@@ -428,16 +432,19 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		state.m_last_effective_sample_start = utime;
 
 #if 1
-		g_logger.format(sinsp_logger::SEV_DEBUG, 
-			"***CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64 "(c:% " PRIu32 " i:%" PRIu32 " s:%" PRIu32 ")",
-			j,
-			state.m_lastsample_server_processes_ns,
-			state.m_lastsample_other_ns,
-			state.m_lastsample_unknown_ns,
-			state.m_lastsample_idle_ns,
-			(m_inspector->m_analyzer->m_cpu_loads.size() != 0)?m_inspector->m_analyzer->m_cpu_loads[j] : 0,
-			(m_inspector->m_analyzer->m_cpu_idles.size() != 0)?m_inspector->m_analyzer->m_cpu_idles[j] : 0,
-			(m_inspector->m_analyzer->m_cpu_steals.size() != 0)?m_inspector->m_analyzer->m_cpu_steals[j] : 0);
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, 
+				"CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64 "(c:% " PRIu32 " i:%" PRIu32 " s:%" PRIu32 ")",
+				j,
+				state.m_lastsample_server_processes_ns,
+				state.m_lastsample_other_ns,
+				state.m_lastsample_unknown_ns,
+				state.m_lastsample_idle_ns,
+				(m_inspector->m_analyzer->m_cpu_loads.size() != 0)?m_inspector->m_analyzer->m_cpu_loads[j] : 0,
+				(m_inspector->m_analyzer->m_cpu_idles.size() != 0)?m_inspector->m_analyzer->m_cpu_idles[j] : 0,
+				(m_inspector->m_analyzer->m_cpu_steals.size() != 0)?m_inspector->m_analyzer->m_cpu_steals[j] : 0);
+		}
 #endif
 	}
 }

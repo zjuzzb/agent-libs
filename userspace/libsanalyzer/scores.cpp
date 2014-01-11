@@ -204,7 +204,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 
 	if(m_sample_length_ns == 0)
 	{
-		m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns();
+		m_sample_length_ns = (size_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns();
 		m_n_intervals_in_sample = (uint32_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS;
 	}
 

@@ -76,6 +76,14 @@ struct process_tuple_cmp
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
+	enum flush_flags
+	{
+		DF_NONE = 0,
+		DF_FORCE_FLUSH,
+		DF_FORCE_NOFLUSH,
+		DF_FORCE_FLUSH_BUT_DONT_EMIT,
+	};
+
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
@@ -97,7 +105,7 @@ public:
 	//
 	// Processing entry point
 	//
-	void process_event(sinsp_evt* evt);
+	void process_event(sinsp_evt* evt, flush_flags flshflags);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat, 
@@ -133,10 +141,10 @@ public:
 VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
-	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof);
+	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof);
+	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
 	void parse_accept_exit(sinsp_evt* evt);

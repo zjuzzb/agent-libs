@@ -94,7 +94,7 @@ public:
 	//
 	// Called when the end of the sample is reached
 	//
-	void flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof);
+	void flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof, sinsp_analyzer::flush_flags flshflags);
 
 	//
 	// Called by the engine after opening the event source and before 

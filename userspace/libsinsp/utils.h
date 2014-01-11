@@ -76,16 +76,11 @@ struct g_invalidchar
 #ifdef _WIN32
 struct timezone2 
 {
-	__int32  tz_minuteswest;
+	int32_t  tz_minuteswest;
 	bool  tz_dsttime;
 };
 
-struct timeval2 {
-	__int32    tv_sec;
-	__int32    tv_usec;
-};
-
-int gettimeofday(struct timeval *tv, struct timezone2 *tz);
+SINSP_PUBLIC int gettimeofday(struct timeval *tv, struct timezone2 *tz);
 #endif // _WIN32
 
 ///////////////////////////////////////////////////////////////////////////////

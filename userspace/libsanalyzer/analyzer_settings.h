@@ -1,7 +1,7 @@
 //
 // The analyzer emit interval
 //
-#define ANALYZER_SAMPLE_LENGTH_NS 1000000000
+#define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000
 
 //
 // The transaction delays update interval
