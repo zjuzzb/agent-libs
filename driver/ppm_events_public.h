@@ -351,7 +351,9 @@ enum ppm_event_type
 	PPME_SYSCALL_PRLIMIT_X = 145,
 	PPME_SCHEDSWITCH_E = 146,
 	PPME_SCHEDSWITCH_X = 147,	// This should never be called
-	PPM_EVENT_MAX = 148,
+	PPME_DROP_START = 148,  // For internal use
+	PPME_DROP_END = 149,	// For internal use
+	PPM_EVENT_MAX = 150,
 };
 
 //
@@ -682,6 +684,7 @@ typedef enum ppm_event_category
 	EC_IO_OTHER = 34,// General I/O that is neither read not write (can be file, socket, IPC...)
 	EC_WAIT = 64,	// General wait (can be file, socket, IPC...)
 	EC_SCHEDULER = 128,	// General wait (can be file, socket, IPC...)
+	EC_INTERNAL = 256,	// Internal event that shouldn't be shown to the user
 }ppm_event_category;
 
 typedef enum ppm_event_flags

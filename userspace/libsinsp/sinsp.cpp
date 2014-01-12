@@ -422,9 +422,9 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	//
 	// Run the analysis engine
 	//
+#ifdef HAS_ANALYZER
 	if(m_analyzer)
 	{
-#ifdef HAS_ANALYZER
 #ifdef SIMULATE_DROP_MODE
 		if(!sd || st || sw)
 		{
@@ -441,11 +441,11 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 				m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_NOFLUSH);
 			}
 		}
-#else
+#else // SIMULATE_DROP_MODE
 		m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_NONE);
 #endif // SIMULATE_DROP_MODE
-#endif
 	}
+#endif
 
 	//
 	// Update the last event time for this thread
