@@ -86,7 +86,7 @@ DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
 static atomic_t g_open_count;
 static int g_dropping_mode = 0;
 uint32_t g_snaplen = RW_SNAPLEN;
-uint32_t g_sampling_ratio = FD_SAMPLING_RATIO;
+uint32_t g_sampling_interval = 0;
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -294,9 +294,9 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return -EINVAL;
 		}
 
-		g_sampling_ratio = new_sampling_ratio;
+		g_sampling_interval = 1000000000 / new_sampling_ratio;
 
-		printk(KERN_INFO "PPM: new sampling ratio: %d\n", g_sampling_ratio);
+		printk(KERN_INFO "PPM: new sampling interval: %d\n", g_sampling_interval);
 		return 0;
 	}
 	case PPM_IOCTL_SET_SNAPLEN:
@@ -563,15 +563,19 @@ static int g_is_droppping = 0;
 
 static inline int drop_event(enum ppm_event_type event_type, int never_drop, struct timespec* ts)
 {
+	if(never_drop)
+	{
+		return 0;
+	}
+
 	if(g_dropping_mode)
 	{
-		if(ts->tv_nsec >= 250000000)
+		if(ts->tv_nsec >= g_sampling_interval)
 		{
 			if(g_is_droppping == 0)
 			{
-printk(KERN_INFO "a %ld:%ld", ts->tv_sec, ts->tv_nsec);
 				g_is_droppping = 1;
-				record_event(PPME_DROP_START, NULL, -1, 1, NULL, NULL);
+				record_event(PPME_DROP_E, NULL, -1, 1, NULL, NULL);
 			}
 
 			return 1;
@@ -580,9 +584,8 @@ printk(KERN_INFO "a %ld:%ld", ts->tv_sec, ts->tv_nsec);
 		{
 			if(g_is_droppping == 1)
 			{
-printk(KERN_INFO "b %ld:%ld", ts->tv_sec, ts->tv_nsec);
 				g_is_droppping = 0;
-				record_event(PPME_DROP_END, NULL, -1, 1, NULL, NULL);
+				record_event(PPME_DROP_X, NULL, -1, 1, NULL, NULL);
 			}			
 		}
 	}
@@ -789,31 +792,7 @@ static void record_event(enum ppm_event_type event_type,
 	if(likely(!drop))
 	{
 		next = head + event_size;
-		/*
-				printk(KERN_INFO "%u) E:%u H:%x S:%x N:%x B:%p",
-						smp_processor_id(),
-						(uint32_t)event_type,
-						head,
-						event_size,
-						next,
-						args.buffer);
 
-				*(ring->buffer + head + 5) = 0x33;
-				*(ring->buffer + head + 6) = 0x44;
-
-				if(event_size >=8)
-				{
-					printk(KERN_INFO "%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x ",
-							(uint32_t)*(unsigned char*)(ring->buffer + head),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 1),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 2),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 3),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 4),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 5),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 6),
-							(uint32_t)*(unsigned char*)(ring->buffer + head + 7));
-				}
-		*/
 		if(unlikely(next >= RING_BUF_SIZE))
 		{
 			//

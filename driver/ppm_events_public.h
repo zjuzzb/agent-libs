@@ -351,8 +351,8 @@ enum ppm_event_type
 	PPME_SYSCALL_PRLIMIT_X = 145,
 	PPME_SCHEDSWITCH_E = 146,
 	PPME_SCHEDSWITCH_X = 147,	// This should never be called
-	PPME_DROP_START = 148,  // For internal use
-	PPME_DROP_END = 149,	// For internal use
+	PPME_DROP_E = 148,  // For internal use
+	PPME_DROP_X = 149,	// For internal use
 	PPM_EVENT_MAX = 150,
 };
 
