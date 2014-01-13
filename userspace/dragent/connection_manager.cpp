@@ -115,9 +115,10 @@ void connection_manager::run()
 		//
 		if(m_socket.isNull())
 		{
+			Thread::sleep(1000);
+			
 			if(!connect())
 			{
-				Thread::sleep(1000);
 				continue;
 			}
 		}
