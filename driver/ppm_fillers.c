@@ -221,6 +221,8 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 #ifdef CAPTURE_CONTEXT_SWITCHES
 	[PPME_SCHEDSWITCH_E] = {f_sched_switch_e},
 #endif	
+	[PPME_DROP_START] = {f_sys_empty},
+	[PPME_DROP_END] = {f_sys_empty},
 };
 
 //

@@ -553,7 +553,7 @@ static enum ppm_event_type parse_socketcall(struct event_filler_arguments* fille
 }
 #endif // __x86_64__
 
-static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *regs)
+static inline int drop_event(enum ppm_event_type event_type, int never_drop, struct timespec* ts)
 {
 	//
 	// Before even entering, check whether or not we are in dropping mode, and
@@ -561,31 +561,7 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 	//
 	if(g_dropping_mode)
 	{
-		long fd = 0;
-
-		if(g_event_info[event_type].flags & (EF_DESTROYS_FD | EF_USES_FD))
-		{
-			//
-			// The FD is always the first parameter
-			//
-			syscall_get_arguments(current, regs, 0,	1, &fd);
-		}
-/*
-		else if(g_event_info[event_type].flags & (EF_CREATES_FD))
-		{
-			//
-			// The FD is always the return value, except for socketpair()
-			// and pipe(), but we're confident they won't flood the system
-			//
-			fd = syscall_get_return_value(current, regs);
-		}
-*/		
-		else
-		{
-			return 0;
-		}
-
-		if(fd > 0 && (fd % g_sampling_ratio))
+		if(ts->tv_nsec >= 250000000)
 		{
 			return 1;
 		}
@@ -594,7 +570,12 @@ static inline int drop_event(enum ppm_event_type event_type, struct pt_regs *reg
 	return 0;
 }
 
-static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, long id, struct task_struct *sched_prev, struct task_struct *sched_next)
+static void record_event(enum ppm_event_type event_type, 
+	struct pt_regs *regs, 
+	long id,
+	int never_drop,
+	struct task_struct *sched_prev, 
+	struct task_struct *sched_next)
 {
 	size_t event_size;
 	int next;
@@ -610,13 +591,13 @@ static void record_event(enum ppm_event_type event_type, struct pt_regs *regs, l
 	struct timespec ts;
 
 	trace_enter();
+	
+	getnstimeofday(&ts);
 
-	if(regs && drop_event(event_type, regs))
+	if(drop_event(event_type, never_drop, &ts))
 	{
 		return;
 	}
-	
-	getnstimeofday(&ts);
 
 	ring = get_cpu_var(g_ring_buffers);
 	ring_info = ring->info;
@@ -904,24 +885,16 @@ TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id)
 
 	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
-		int used;
-
-		if(g_dropping_mode)
-		{
-			used = g_syscall_table[id].used & UF_DROPPING_MODE;
-		}
-		else
-		{
-			used = g_syscall_table[id].used & UF_NORMAL_MODE;
-		}
+		int used = g_syscall_table[id].flags & UF_USED;
+		int never_drop = g_syscall_table[id].flags & UF_NEVER_DROP;
 
 		if(used)
 		{
-			record_event(g_syscall_table[id].enter_event_type, regs, id, NULL, NULL);
+			record_event(g_syscall_table[id].enter_event_type, regs, id, never_drop, NULL, NULL);
 		}
-		else if(!g_dropping_mode)
+		else
 		{
-			record_event(PPME_GENERIC_E, regs, id, NULL, NULL);
+			record_event(PPME_GENERIC_E, regs, id, false, NULL, NULL);
 		}
 	}
 }
@@ -946,24 +919,16 @@ TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret)
 
 	if(likely(id >= 0 && id < SYSCALL_TABLE_SIZE))
 	{
-		int used;
-				
-		if(g_dropping_mode)
-		{
-			used = g_syscall_table[id].used & UF_DROPPING_MODE;
-		}
-		else
-		{
-			used = g_syscall_table[id].used & UF_NORMAL_MODE;
-		}
+		int used = g_syscall_table[id].flags & UF_USED;
+		int never_drop = g_syscall_table[id].flags & UF_NEVER_DROP;
 
 		if(used)
 		{
-			record_event(g_syscall_table[id].exit_event_type, regs, id, NULL, NULL);
+			record_event(g_syscall_table[id].exit_event_type, regs, id, never_drop, NULL, NULL);
 		}
-		else if(!g_dropping_mode)
+		else
 		{
-			record_event(PPME_GENERIC_X, regs, id, NULL, NULL);
+			record_event(PPME_GENERIC_X, regs, id, false, NULL, NULL);
 		}
 	}
 }
@@ -983,7 +948,7 @@ TRACEPOINT_PROBE(syscall_procexit_probe, struct task_struct *p)
 		return;
 	}
 	
-	record_event(PPME_PROCEXIT_E, NULL, -1, NULL, NULL);
+	record_event(PPME_PROCEXIT_E, NULL, -1, 1, NULL, NULL);
 }
 
 #include <linux/ip.h>
@@ -1000,6 +965,7 @@ TRACEPOINT_PROBE(sched_switch_probe, struct task_struct *prev, struct task_struc
 	record_event(PPME_SCHEDSWITCH_E, 
 		NULL, 
 		-1,
+		0,
 		prev,
 		next);
 }

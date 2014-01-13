@@ -55,11 +55,11 @@ typedef enum ppm_capture_state
 	CS_INACTIVE = 2,	// Not Capturing but active, returning the packets in the buffer to the user.
 }ppm_capture_state;
 
-enum syscall_used_flag
+enum syscall_flags
 {
 	UF_NONE = 0,
-	UF_NORMAL_MODE = (1 << 0),
-	UF_DROPPING_MODE = (1 << 1),
+	UF_USED = (1 << 0),
+	UF_NEVER_DROP = (1 << 1),
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ enum syscall_used_flag
 ///////////////////////////////////////////////////////////////////////
 struct syscall_evt_pair
 {
-	int used;
+	int flags;
 	enum ppm_event_type enter_event_type;
 	enum ppm_event_type exit_event_type;
 };
