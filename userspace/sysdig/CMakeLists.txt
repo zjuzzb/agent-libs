@@ -6,8 +6,7 @@ include_directories(.)
 add_executable(sysdig
 	chisel.cpp
 	jsoncpp.cpp
-	sysdig.cpp
-	utils.cpp)
+	sysdig.cpp)
 
 target_link_libraries(sysdig
 	sinsp) 

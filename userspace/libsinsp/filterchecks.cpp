@@ -538,7 +538,8 @@ uint8_t* sinsp_filter_check_thread::extract(sinsp_evt *evt, OUT uint32_t* len)
 const filtercheck_field_info sinsp_filter_check_event_fields[] =
 {
 	{PT_UINT64, EPF_NONE, PF_DEC, "evt.num", "event number."},
-	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.time", "event timestamp as time string."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.time", "event timestamp as a time string."},
+	{PT_CHARBUF, EPF_NONE, PF_NA, "evt.datetime", "event timestamp as a time string that inclused the date."},
 	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.rawtime", "absolute event timestamp, i.e. nanoseconds from epoch."},
 	{PT_ABSTIME, EPF_NONE, PF_DEC, "evt.rawtime.s", "integer part of the event timestamp (e.g. seconds since epoch)."},
 	{PT_ABSTIME, EPF_NONE, PF_10_PADDED_DEC, "evt.rawtime.ns", "fractional part of the absolute event timestamp."},
@@ -675,12 +676,13 @@ int32_t sinsp_filter_check_event::gmt2local(time_t t)
 	*gmt = *gmtime(&t);
 	loc = localtime(&t);
 
-	dt = (loc->tm_hour - gmt->tm_hour) * 60 * 60 +
-	    (loc->tm_min - gmt->tm_min) * 60;
+	dt = (loc->tm_hour - gmt->tm_hour) * 60 * 60 + (loc->tm_min - gmt->tm_min) * 60;
 
 	dir = loc->tm_year - gmt->tm_year;
-	if (dir == 0)
+	if(dir == 0)
+	{
 		dir = loc->tm_yday - gmt->tm_yday;
+	}
 
 	dt += dir * 24 * 60 * 60;
 
@@ -695,6 +697,7 @@ void sinsp_filter_check_event::ts_to_string(uint64_t ts, OUT string* res, bool f
 	uint64_t nsec = ts % ONE_SECOND_IN_NS;
 	int32_t thiszone = gmt2local(0);
 	int32_t s = (sec + thiszone) % 86400;
+	int32_t bufsize = 0;
 	char buf[256];
 
 	if(full) 
@@ -703,16 +706,16 @@ void sinsp_filter_check_event::ts_to_string(uint64_t ts, OUT string* res, bool f
 		tm = gmtime (&Time);
 		if(!tm)
 		{
-			sprintf(buf, "<NA>");
+			bufsize = sprintf(buf, "<date error> ");
 		}
 		else
 		{
-			sprintf(buf, "%04d-%02d-%02d ",
+			bufsize = sprintf(buf, "%04d-%02d-%02d ",
 				   tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday);
 		}
 	}
 
-	sprintf(buf, "%02d:%02d:%02d.%09u ",
+	sprintf(buf + bufsize, "%02d:%02d:%02d.%09u",
 			s / 3600, (s % 3600) / 60, s % 60, (unsigned)nsec);
 
 	*res = buf;
@@ -722,8 +725,11 @@ uint8_t* sinsp_filter_check_event::extract(sinsp_evt *evt, OUT uint32_t* len)
 {
 	switch(m_field_id)
 	{
-	case TYPE_TS:
+	case TYPE_TIME:
 		ts_to_string(evt->get_ts(), &m_strstorage, false);
+		return (uint8_t*)m_strstorage.c_str();
+	case TYPE_DATETIME:
+		ts_to_string(evt->get_ts(), &m_strstorage, true);
 		return (uint8_t*)m_strstorage.c_str();
 	case TYPE_RAWTS:
 		return (uint8_t*)&evt->m_pevt->ts;

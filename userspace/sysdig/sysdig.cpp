@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #include <sinsp.h>
+#include "sysdig.h"
 #include "chisel.h"
 
 #ifdef _WIN32
@@ -19,15 +20,6 @@
 #include <getopt.h>
 #endif
 
-//
-// ASSERT implementation
-//
-#ifdef _DEBUG
-#define ASSERT(X) assert(X)
-#else // _DEBUG
-#define ASSERT(X)
-#endif // _DEBUG
-
 bool ctrl_c_pressed = false;
 
 static void usage();
@@ -36,19 +28,6 @@ static void signal_callback(int signal)
 {
 	ctrl_c_pressed = true;
 }
-
-class captureinfo
-{
-public:
-	captureinfo()
-	{
-		m_nevts = 0;
-		m_time = 0;
-	}
-
-	uint64_t m_nevts;
-	uint64_t m_time;
-};
 
 //
 // Program help
@@ -85,6 +64,21 @@ static void usage()
 " -w <writefile>, --write=<writefile>\n"
 "                    Write the captured events to <writefile>.\n"
 "\n"
+"Output format:\n\n"
+"By default, sysdig prints the information for each event on a single line,\n"
+"with the following format:\n\n"
+"%%evt.time %%evt.cpu %%proc.name (%%thread.tid) %%evt.dir %%evt.type %%evt.args\n\n"
+"where:\n"
+" evt.time is the event timestamo\n"
+" evt.cpu is the CPU number where the event was captured\n"
+" proc.name is the name of the process that generated the event\n"
+" thread.tid id the TID that generated the event, which corresponds to the\n" 
+"   PID for single thread processes\n" 
+" evt.dir is the event direction, > for enter events and < for exit events\n" 
+" evt.type is the name of the event, e.g. 'open' or 'read'\n"
+" evt.args is the list of event arguments.\n\n"
+"The output format can be customized with the -p switch, use 'sysdig -l'\n"
+"to list the available fields.\n\n"
 "Examples:\n\n"
 " Capture all the events from the live system and print them to screen\n"
 "   $ sysdig\n\n"
@@ -164,7 +158,8 @@ captureinfo do_inspect(sinsp* inspector,
 					   bool quiet, 
 					   bool absolute_times,
 					   string format,
-					   sinsp_filter* display_filter)
+					   sinsp_filter* display_filter,
+					   vector<chisel*>* chisels)
 {
 	captureinfo retval;
 	int32_t res;
@@ -173,7 +168,7 @@ captureinfo do_inspect(sinsp* inspector,
 	uint64_t deltats = 0;
 	uint64_t firstts = 0;
 	string line;
-	sinsp_evt_formatter formatter(format, inspector);
+	sinsp_evt_formatter formatter(inspector, format);
 
 	//
 	// Loop through the events
@@ -211,19 +206,29 @@ captureinfo do_inspect(sinsp* inspector,
 		deltats = ts - firstts;
 
 		//
-		// When the quiet flag is specified, we don't do any kind of processing other
-		// than counting the events.
+		// If there are chisels to run, run them
 		//
-		if(quiet)
+		if(chisels->size() != 0)
 		{
-			continue;
+			for(chisel* ch : *chisels) 
+			{
+				ch->run(ev);
+			}
 		}
+		else
+		{		
+			//
+			// When the quiet flag is specified, we don't do any kind of processing other
+			// than counting the events.
+			//
+			if(quiet)
+			{
+				continue;
+			}
 
-		//
-		// Output the line
-		//
-		if(!quiet)
-		{
+			//
+			// Output the line
+			//
 			if(display_filter)
 			{
 				if(!display_filter->run(ev))
@@ -265,7 +270,7 @@ int main(int argc, char **argv)
 	uint32_t snaplen = 0;
 	int long_index = 0;
 	vector<string> chiselnames;
-	vector<chisel> chisels;
+	vector<chisel*> chisels;
 
     static struct option long_options[] = 
 	{
@@ -286,7 +291,7 @@ int main(int argc, char **argv)
     };
 
 //	output_format = "*%evt.num)%evt.reltime.s.%evt.reltime.ns %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
-	output_format = "*%evt.num)%evt.time %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.args";
+	output_format = DEFAULT_OUTPUT_STR;
 
 	sinsp* inspector = new sinsp();
 
@@ -295,7 +300,7 @@ int main(int argc, char **argv)
 	//
 	while((op = getopt_long(argc, argv, "ac:dhjln:p:qr:s:vw:", long_options, &long_index)) != -1)
 	{
-		switch (op)
+		switch(op)
 		{
 		case 'a':
 			absolute_times = true;
@@ -447,7 +452,8 @@ int main(int argc, char **argv)
 
 		for(string& chiselname : chiselnames) 
 		{
-			chisels.push_back(chisel(inspector, chiselname));
+			chisel* ch = new chisel(inspector, chiselname);
+			chisels.push_back(ch);
 		}
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC;
@@ -457,7 +463,8 @@ int main(int argc, char **argv)
 			quiet, 
 			absolute_times,
 			output_format,
-			display_filter);
+			display_filter,
+			&chisels);
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 
@@ -491,6 +498,14 @@ int main(int argc, char **argv)
 #ifdef _WIN32
 	_CrtDumpMemoryLeaks();
 #endif
+
+	//
+	// Free the chisels
+	//
+	for(chisel* ch : chisels) 
+	{
+		delete ch;
+	}
 
 	return res;
 }

@@ -2,17 +2,29 @@
 
 #include <json/json.h>
 
+class chiselinfo
+{
+public:
+	chiselinfo();
+	void init(sinsp* inspector, string filterstr, string formatterstr); 
+	~chiselinfo();
+	sinsp_filter* m_filter;
+	sinsp_evt_formatter* m_formatter;
+	sinsp_dumper* m_dumper;
+};
+
 class chisel
 {
 public:
 	chisel(sinsp* inspector, string filename);
-	void load(string filename);
+	~chisel();
+	void load(string cmdstr);
 	void run(sinsp_evt* evt);
 
 private:
 	sinsp* m_inspector;
 	string m_description;
 	Json::Value m_root;
-	sinsp_filter* m_filter;
-	sinsp_dumper* m_dumper;
+	vector<chiselinfo*> m_subchisels;
+	vector<string> m_argvals;
 };
