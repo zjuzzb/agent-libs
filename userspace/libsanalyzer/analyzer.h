@@ -149,6 +149,7 @@ VISIBILITY_PRIVATE
 
 	void parse_accept_exit(sinsp_evt* evt);
 	void parse_select_poll_epollwait_exit(sinsp_evt *evt);
+	void parse_drop(sinsp_evt* evt);
 
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
@@ -247,6 +248,12 @@ VISIBILITY_PRIVATE
 	// Support for delay calculation
 	//
 	sinsp_delays* m_delay_calculator;
+
+	//
+	// Subsampling-related stuff
+	//
+	uint32_t m_sampling_ratio;
+	uint32_t m_last_dropmode_switch_time;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

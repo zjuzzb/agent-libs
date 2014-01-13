@@ -241,7 +241,7 @@ bool sinsp_parser::reset(sinsp_evt *evt)
 	//
 	// Ignore scheduler events
 	//
-	if(etype == PPME_SCHEDSWITCH_E)
+	if(etype >= PPME_SCHEDSWITCH_E && etype <= PPME_DROP_X)
 	{
 		return false;
 	}

@@ -46,6 +46,7 @@ sinsp::sinsp() :
 
 	m_fds_to_remove = new vector<int64_t>;
 	m_machine_info = NULL;
+	m_isdropping = false;
 }
 
 sinsp::~sinsp()
@@ -371,7 +372,6 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	}
 
 #ifdef SIMULATE_DROP_MODE
-	bool st = false;
 	bool sd = false;
 	bool sw = false;
 
@@ -380,19 +380,19 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 		m_analyzer->m_configuration->set_analyzer_sample_len_ns(500000000);
 	}
 
-	sd = should_drop(&m_evt, &st, &sw);
+	sd = should_drop(&m_evt, &m_isdropping, &sw);
 #endif
 
 	//
 	// Run the state engine
 	//
 #ifdef SIMULATE_DROP_MODE
-	if(!sd || st)
+	if(!sd || m_isdropping)
 	{
 		m_parser->process_event(&m_evt);
 	}
 
-	if(sd && !st)
+	if(sd && !m_isdropping)
 	{
 		return SCAP_TIMEOUT;
 	}
@@ -426,9 +426,9 @@ int32_t sinsp::next(OUT sinsp_evt **evt)
 	if(m_analyzer)
 	{
 #ifdef SIMULATE_DROP_MODE
-		if(!sd || st || sw)
+		if(!sd || m_isdropping || sw)
 		{
-			if(st)
+			if(m_isdropping)
 			{
 				m_analyzer->process_event(&m_evt, sinsp_analyzer::DF_FORCE_FLUSH);
 			}

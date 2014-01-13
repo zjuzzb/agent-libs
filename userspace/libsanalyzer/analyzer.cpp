@@ -71,6 +71,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_unix_connections = NULL;
 	m_pipe_connections = NULL;
 	m_trans_table = NULL;
+	m_sampling_ratio = 1;
+	m_last_dropmode_switch_time = 0;
 
 	m_configuration = new sinsp_configuration();
 
@@ -1631,6 +1633,11 @@ void sinsp_analyzer::parse_accept_exit(sinsp_evt* evt)
 	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
 	ASSERT(queueratio <= 100);
 
+	if(evt->m_tinfo == NULL)
+	{
+		return;
+	}
+
 	if(queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
 	{
 		evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct = queueratio;
@@ -1648,6 +1655,11 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	sinsp_evt_param *parinfo;
 	int64_t retval;
 	uint16_t etype = evt->get_type();
+
+	if(evt->m_tinfo == NULL)
+	{
+		return;
+	}
 
 	if(etype != evt->m_tinfo->m_lastevent_type + 1)
 	{
@@ -1714,6 +1726,28 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	}
 }
 
+void sinsp_analyzer::parse_drop(sinsp_evt* evt)
+{
+	//
+	// If required, update the sample length
+	//
+	sinsp_evt_param *parinfo;
+	parinfo = evt->get_param(0);
+	ASSERT(parinfo->m_len == sizeof(int32_t));
+
+	if(*(int32_t*)parinfo->m_val != m_sampling_ratio)
+	{
+		m_sampling_ratio = *(int32_t*)parinfo->m_val;
+		g_logger.format(sinsp_logger::SEV_ERROR, "Switching sampling ratio to %" PRIu32, m_sampling_ratio);
+	}
+
+	uint64_t newsl =  ((uint64_t)ONE_SECOND_IN_NS) / m_sampling_ratio;
+	if(newsl != m_configuration->get_analyzer_sample_len_ns())
+	{
+		m_configuration->set_analyzer_sample_len_ns(newsl);
+	}
+}
+
 void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 {
 	uint64_t ts;
@@ -1745,18 +1779,51 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		{
 			parse_select_poll_epollwait_exit(evt);
 		}
+		else if(etype == PPME_DROP_E)
+		{
+			parse_drop(evt);
+
+			//
+			// Set dropping mode
+			//
+			m_inspector->m_isdropping = true;
+
+			flush(evt, ts, false, DF_FORCE_FLUSH);
+			
+			return;
+		}
+		else if(etype == PPME_DROP_X)
+		{
+			parse_drop(evt);
+
+			//
+			// Turn off dropping mode
+			//
+			m_inspector->m_isdropping = false;
+
+			flush(evt, ts, false, DF_FORCE_FLUSH_BUT_DONT_EMIT);
+
+			return;
+		}
 	}
 	else
 	{
-		ts = m_next_flush_time_ns;
-		flush(evt, ts, true, flshflags);
-		return;
+		if(m_sampling_ratio == 1)
+		{
+			ts = m_next_flush_time_ns;
+			flush(evt, ts, true, flshflags);
+			return;
+		}
+		else
+		{
+			return;
+		}
 	}
 
 	//
 	// Check if it's time to flush
 	//
-	if(ts >= m_next_flush_time_ns || flshflags == DF_FORCE_FLUSH)
+	if(ts >= m_next_flush_time_ns && m_sampling_ratio == 1)
 	{
 		flush(evt, ts, false, flshflags);
 	}

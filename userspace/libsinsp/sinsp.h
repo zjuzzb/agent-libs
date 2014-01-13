@@ -268,8 +268,16 @@ VISIBILITY_PRIVATE
 	uint64_t m_thread_timeout_ns;
 	uint64_t m_inactive_thread_scan_time_ns;
 
+	//
+	// User and group tables
+	//
 	unordered_map<uint32_t, scap_userinfo*> m_userlist;
 	unordered_map<uint32_t, scap_groupinfo*> m_grouplist;
+
+	//
+	// Some dropping infrastructure
+	//
+	bool m_isdropping;
 
 	friend class sinsp_parser;
 	friend class sinsp_analyzer;
