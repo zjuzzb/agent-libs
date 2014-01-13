@@ -69,6 +69,7 @@ static int32_t f_sys_prlimit_x(struct event_filler_arguments* args);
 #ifdef CAPTURE_CONTEXT_SWITCHES
 static int32_t f_sched_switch_e(struct event_filler_arguments* args);
 #endif
+static int32_t f_sched_drop(struct event_filler_arguments* args);
 
 //
 // Note, this is not part of g_event_info because we want to share g_event_info with userland.
@@ -221,9 +222,11 @@ const struct ppm_event_entry g_ppm_events[PPM_EVENT_MAX] =
 #ifdef CAPTURE_CONTEXT_SWITCHES
 	[PPME_SCHEDSWITCH_E] = {f_sched_switch_e},
 #endif	
-	[PPME_DROP_E] = {f_sys_empty},
-	[PPME_DROP_X] = {f_sys_empty},
+	[PPME_DROP_E] = {f_sched_drop},
+	[PPME_DROP_X] = {f_sched_drop},
 };
+
+extern uint32_t g_sampling_ratio;
 
 //
 // do-nothing implementation of compat_ptr for systems that are not compiled
@@ -3099,3 +3102,20 @@ static int32_t f_sched_switch_e(struct event_filler_arguments* args)
 	return add_sentinel(args);
 }
 #endif // CAPTURE_CONTEXT_SWITCHES
+
+static int32_t f_sched_drop(struct event_filler_arguments* args)
+{
+	int32_t res;
+
+	//
+	// next
+	//
+	res = val_to_ring(args, g_sampling_ratio, 0, false);
+	if(unlikely(res != PPM_SUCCESS))
+	{
+		return res;
+	}
+
+	return add_sentinel(args);
+}
+

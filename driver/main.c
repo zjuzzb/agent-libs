@@ -86,6 +86,7 @@ DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
 static atomic_t g_open_count;
 static int g_dropping_mode = 0;
 uint32_t g_snaplen = RW_SNAPLEN;
+uint32_t g_sampling_ratio = 1;
 uint32_t g_sampling_interval = 0;
 
 ///////////////////////////////////////////////////////////////////////
@@ -295,8 +296,9 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		g_sampling_interval = 1000000000 / new_sampling_ratio;
+		g_sampling_ratio = new_sampling_ratio;
 
-		printk(KERN_INFO "PPM: new sampling interval: %d\n", g_sampling_interval);
+		printk(KERN_INFO "PPM: new sampling ratio: %d\n", new_sampling_ratio);
 		return 0;
 	}
 	case PPM_IOCTL_SET_SNAPLEN:
