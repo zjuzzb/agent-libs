@@ -287,6 +287,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case dragent_protocol::PROTOCOL_MESSAGE_TYPE_EXEC_COMMAND_REQUEST:
+				handle_command_request(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: " 
 					+ NumberFormatter::format(header->messagetype));
@@ -327,4 +332,19 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 		new sinsp_worker::dump_job_request(request.duration_ns(), filter));
 	
 	m_sinsp_worker->schedule_dump_job(job_request);
+}
+
+void connection_manager::handle_command_request(uint8_t* buf, uint32_t size)
+{
+	google::protobuf::io::ArrayInputStream stream(buf, size);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
+
+	draiosproto::exec_cmd_request request;
+	bool res = request.ParseFromZeroCopyStream(&gzstream);
+	if(!res)
+	{
+		g_log->error(m_name + ": Error reading request");
+		ASSERT(false);
+		return;
+	}
 }
