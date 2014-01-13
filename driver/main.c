@@ -45,6 +45,12 @@ static int ppm_open(struct inode *inode, struct file *filp);
 static int ppm_release(struct inode *inode, struct file *filp);
 static long ppm_ioctl(struct file *f, unsigned int cmd, unsigned long arg);
 static int ppm_mmap(struct file *filp, struct vm_area_struct *vma);
+static void record_event(enum ppm_event_type event_type, 
+	struct pt_regs *regs, 
+	long id,
+	int never_drop,
+	struct task_struct *sched_prev, 
+	struct task_struct *sched_next);
 
 TRACEPOINT_PROBE(syscall_enter_probe, struct pt_regs *regs, long id);
 TRACEPOINT_PROBE(syscall_exit_probe, struct pt_regs *regs, long ret);
@@ -553,17 +559,31 @@ static enum ppm_event_type parse_socketcall(struct event_filler_arguments* fille
 }
 #endif // __x86_64__
 
+static int g_is_droppping = 0;
+
 static inline int drop_event(enum ppm_event_type event_type, int never_drop, struct timespec* ts)
 {
-	//
-	// Before even entering, check whether or not we are in dropping mode, and
-	// if yes sample the system calls that use FDs
-	//
 	if(g_dropping_mode)
 	{
 		if(ts->tv_nsec >= 250000000)
 		{
+			if(g_is_droppping == 0)
+			{
+printk(KERN_INFO "a %ld:%ld", ts->tv_sec, ts->tv_nsec);
+				g_is_droppping = 1;
+				record_event(PPME_DROP_START, NULL, -1, 1, NULL, NULL);
+			}
+
 			return 1;
+		}
+		else
+		{
+			if(g_is_droppping == 1)
+			{
+printk(KERN_INFO "b %ld:%ld", ts->tv_sec, ts->tv_nsec);
+				g_is_droppping = 0;
+				record_event(PPME_DROP_END, NULL, -1, 1, NULL, NULL);
+			}			
 		}
 	}
 
