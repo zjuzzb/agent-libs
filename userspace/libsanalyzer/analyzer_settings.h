@@ -97,9 +97,9 @@
 #define MAX_N_EXTERNAL_CLIENTS 30
 
 //
-// define this to enable drop mode support
+// Set this to true to enable drop mode support
 //
-#undef DROP_MODE_ENABLED
+#define DROP_MODE_ENABLED true
 
 //
 // Maximum numeber of events per CPU that the analyzer sees before it starts putting

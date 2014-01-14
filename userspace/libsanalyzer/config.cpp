@@ -17,6 +17,10 @@ sinsp_configuration::sinsp_configuration()
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
+	m_drop_mode_enabled = DROP_MODE_ENABLED;
+	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
+	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
+	m_drop_lower_threshold = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -155,6 +159,46 @@ bool sinsp_configuration::get_aggregate_connections_in_proto() const
 void sinsp_configuration::set_aggregate_connections_in_proto(bool aggregate)
 {
 	m_aggregate_connections_in_proto = aggregate;
+}
+
+bool sinsp_configuration::get_drop_mode_enabled() const
+{
+	return m_drop_mode_enabled;
+}
+
+void sinsp_configuration::set_drop_mode_enabled(bool enabled)
+{
+	m_drop_mode_enabled = enabled;
+}
+
+uint32_t sinsp_configuration::get_drop_upper_threshold() const
+{
+	return m_drop_upper_threshold;
+}
+
+void sinsp_configuration::set_drop_upper_threshold(uint32_t drop_upper_threshold)
+{
+	m_drop_upper_threshold = drop_upper_threshold;
+}
+
+uint32_t sinsp_configuration::get_drop_lower_threshold() const
+{
+	return m_drop_lower_threshold;
+}
+
+void sinsp_configuration::set_drop_lower_threshold(uint32_t drop_lower_threshold)
+{
+	m_drop_lower_threshold = drop_lower_threshold;
+}
+
+uint32_t sinsp_configuration::get_drop_treshold_consecutive_seconds() const
+{
+	return m_drop_treshold_consecutive_seconds;
+}
+
+void sinsp_configuration::set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds)
+{
+	m_drop_treshold_consecutive_seconds = drop_treshold_consecutive_seconds;
 }
 
 #endif // HAS_ANALYZER
