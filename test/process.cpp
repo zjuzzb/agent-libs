@@ -1014,4 +1014,5 @@ TEST_F(sys_call_test, program_child_with_threads)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 //	EXPECT_EQ(2, callnum);
+	sleep(2);
 }
