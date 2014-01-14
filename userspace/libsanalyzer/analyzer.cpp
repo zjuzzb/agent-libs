@@ -73,6 +73,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_trans_table = NULL;
 	m_sampling_ratio = 1;
 	m_last_dropmode_switch_time = 0;
+	m_seconds_above_thresholds = 0;
+	m_seconds_below_thresholds = 0;
 
 	m_configuration = new sinsp_configuration();
 
@@ -1491,10 +1493,59 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	if(evt)
 	{
+		uint64_t nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
+
 		if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", evt->get_num() - m_prev_sample_evtnum);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
 		}
+
+		//
+		// Drop mode logic:
+		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
+		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
+		//
+		if(nevts_in_last_sample > DROP_UPPER_THRESHOLD * m_machine_info->num_cpus)
+		{
+			m_seconds_above_thresholds++;
+		}
+		else
+		{
+			m_seconds_above_thresholds = 0;
+		}
+
+		if(m_seconds_above_thresholds >= DROP_THRESHOLD_CONSECUTIVE_SECONDS)
+		{
+			m_seconds_above_thresholds = 0;
+
+			if(m_sampling_ratio <= 32)
+			{
+				m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+				g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
+			}
+		}
+
+		if(nevts_in_last_sample < DROP_LOWER_THRESHOLD * m_machine_info->num_cpus)
+		{
+			m_seconds_below_thresholds++;
+		}
+		else
+		{
+			m_seconds_below_thresholds = 0;
+		}
+
+		if(m_seconds_below_thresholds >= DROP_THRESHOLD_CONSECUTIVE_SECONDS &&
+			m_sampling_ratio > 1)
+		{
+			m_seconds_below_thresholds = 0;
+			m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+			g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
+		}
+
 		m_prev_sample_evtnum = evt->get_num();
 	}
 }

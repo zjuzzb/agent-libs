@@ -552,9 +552,12 @@ void sinsp::stop_dropping_mode()
 
 void sinsp::start_dropping_mode(uint32_t sampling_ratio)
 {
-	if(scap_start_dropping_mode(m_h, sampling_ratio) != SCAP_SUCCESS)
+	if(m_islive)
 	{
-		throw sinsp_exception(scap_getlasterr(m_h));
+		if(scap_start_dropping_mode(m_h, sampling_ratio) != SCAP_SUCCESS)
+		{
+			throw sinsp_exception(scap_getlasterr(m_h));
+		}
 	}
 }
 

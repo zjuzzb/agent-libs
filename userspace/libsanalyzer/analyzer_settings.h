@@ -97,6 +97,19 @@
 #define MAX_N_EXTERNAL_CLIENTS 30
 
 //
+// Maximum numeber of events per CPU that the analyzer sees before it starts putting
+// the driver in drop mode.
+//
+#define DROP_UPPER_THRESHOLD 40000
+#define DROP_LOWER_THRESHOLD 20000
+
+//
+// Number of consecutive seconds the number of events must be beyond DROP_THRESHOLD
+// before dropping mode is activated.
+//
+#define DROP_THRESHOLD_CONSECUTIVE_SECONDS 2
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

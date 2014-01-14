@@ -254,6 +254,8 @@ VISIBILITY_PRIVATE
 	//
 	uint32_t m_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
+	uint32_t m_seconds_above_thresholds;
+	uint32_t m_seconds_below_thresholds;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
