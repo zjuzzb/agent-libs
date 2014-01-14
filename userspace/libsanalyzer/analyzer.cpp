@@ -1559,9 +1559,8 @@ printf("--\n");
 
 				g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 			}
-	#endif // DROP_MODE_ENABLED
 		}
-
+#endif // DROP_MODE_ENABLED
 
 		m_prev_sample_evtnum = evt->get_num();
 	}
