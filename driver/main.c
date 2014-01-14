@@ -88,6 +88,7 @@ static int g_dropping_mode = 0;
 uint32_t g_snaplen = RW_SNAPLEN;
 uint32_t g_sampling_ratio = 1;
 uint32_t g_sampling_interval = 0;
+static int g_is_dropping = 0;
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -273,6 +274,8 @@ static long ppm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		g_dropping_mode = 0;
 		printk(KERN_INFO "PPM: PPM_IOCTL_DISABLE_DROPPING_MODE\n");
+		g_sampling_interval = 1000000000;
+		g_sampling_ratio = 1;
 		return 0;
 	}
 	case PPM_IOCTL_ENABLE_DROPPING_MODE:
@@ -561,8 +564,6 @@ static enum ppm_event_type parse_socketcall(struct event_filler_arguments* fille
 }
 #endif // __x86_64__
 
-static int g_is_droppping = 0;
-
 static inline int drop_event(enum ppm_event_type event_type, int never_drop, struct timespec* ts)
 {
 	if(never_drop)
@@ -574,9 +575,9 @@ static inline int drop_event(enum ppm_event_type event_type, int never_drop, str
 	{
 		if(ts->tv_nsec >= g_sampling_interval)
 		{
-			if(g_is_droppping == 0)
+			if(g_is_dropping == 0)
 			{
-				g_is_droppping = 1;
+				g_is_dropping = 1;
 				record_event(PPME_DROP_E, NULL, -1, 1, NULL, NULL);
 			}
 
@@ -584,9 +585,9 @@ static inline int drop_event(enum ppm_event_type event_type, int never_drop, str
 		}
 		else
 		{
-			if(g_is_droppping == 1)
+			if(g_is_dropping == 1)
 			{
-				g_is_droppping = 0;
+				g_is_dropping = 0;
 				record_event(PPME_DROP_X, NULL, -1, 1, NULL, NULL);
 			}			
 		}
