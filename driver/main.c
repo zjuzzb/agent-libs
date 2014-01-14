@@ -112,6 +112,9 @@ static int ppm_open(struct inode *inode, struct file *filp)
 	}
 
 	g_snaplen = RW_SNAPLEN;
+	g_sampling_ratio = 1;
+	g_sampling_interval = 0;
+	g_is_dropping = 0;
 	ring->info->head = 0;
 	ring->info->tail = 0;
 	ring->nevents = 0;
