@@ -408,7 +408,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 		//
 		// Write the string version to file
 		//
-		string pippo = m_metrics->DebugString();
+		string pbstr = m_metrics->DebugString();
 
 		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dams",
 			m_configuration->get_metrics_directory().c_str(),
@@ -422,7 +422,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 			throw sinsp_exception(estr);
 		}
 
-		if(fwrite(pippo.c_str(), pippo.length(), 1, fp) != 1)
+		if(fwrite(pbstr.c_str(), pbstr.length(), 1, fp) != 1)
 		{
 			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
@@ -1117,8 +1117,6 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
-int pippo = 0;
-
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	uint32_t j;
@@ -1132,7 +1130,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
-		if(flshflags == DF_FORCE_FLUSH)
+		if(flshflags == DF_FORCE_FLUSH ||
+			flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			if(j > 0)
 			{
@@ -1463,13 +1462,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			"# Server Transactions:%d",
 			m_trans_table->m_n_server_transactions);
 	}
-/*
-if(pippo != 0 && is_eof == false && m_trans_table->m_n_client_transactions != 0 && m_trans_table->m_n_server_transactions != 0)
-{
-	fprintf(stderr, "%lu\n%lu\n", m_trans_table->m_n_client_transactions, m_trans_table->m_n_server_transactions);
-}
-pippo++;
-*/
+
 	m_trans_table->m_n_client_transactions = 0;
 	m_trans_table->m_n_server_transactions = 0;
 
