@@ -84,8 +84,8 @@ static struct file_operations g_ppm_fops =
 
 DEFINE_PER_CPU(struct ppm_ring_buffer_context*, g_ring_buffers);
 static atomic_t g_open_count;
-static int g_dropping_mode = 0;
 uint32_t g_snaplen = RW_SNAPLEN;
+static int g_dropping_mode = 0;
 uint32_t g_sampling_ratio = 1;
 uint32_t g_sampling_interval = 0;
 static int g_is_dropping = 0;
@@ -111,6 +111,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 		return -EBUSY;
 	}
 
+	g_dropping_mode = 0;
 	g_snaplen = RW_SNAPLEN;
 	g_sampling_ratio = 1;
 	g_sampling_interval = 0;
