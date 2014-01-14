@@ -307,19 +307,28 @@ int main(int argc, char **argv)
 			break;
 		case 'c':
 			{
-				chisel* ch = new chisel(inspector, optarg);
-				uint32_t nargs = ch->get_n_args();
-				vector<string> args;
-
-				for(uint32_t j = 0; j < nargs; j++)
+				try
 				{
-					args.push_back(argv[optind + j]);
-					n_filterargs++;
+					chisel* ch = new chisel(inspector, optarg);
+					uint32_t nargs = ch->get_n_args();
+					vector<string> args;
+
+					for(uint32_t j = 0; j < nargs; j++)
+					{
+						args.push_back(argv[optind + j]);
+						n_filterargs++;
+					}
+
+					ch->set_args(&args);
+
+					chisels.push_back(ch);
 				}
-
-				ch->set_args(&args);
-
-				chisels.push_back(ch);
+				catch(sinsp_exception e)
+				{
+					cerr << e.what() << endl;
+					res = EXIT_FAILURE;
+					goto exit;
+				}
 			}
 			break;
 		case 'd':
@@ -330,8 +339,8 @@ int main(int argc, char **argv)
 			{
 				ASSERT(false);
 				fprintf(stderr, "json option not yet implemented\n");
-				delete inspector;
-				return EXIT_FAILURE;
+				res = EXIT_FAILURE;
+				goto exit;
 			}
 			break;
 		case 'h':
@@ -347,8 +356,8 @@ int main(int argc, char **argv)
 			if(cnt <= 0)
 			{
 				fprintf(stderr, "invalid packet count %s\n", optarg);
-				delete inspector;
-				return EXIT_FAILURE;
+				res = EXIT_FAILURE;
+				goto exit;
 			}
 			break;
 		case 'p':
@@ -358,8 +367,8 @@ int main(int argc, char **argv)
 				// -pp shows the default output format, useful if the user wants to tweak it.
 				//
 				printf("%s\n", output_format.c_str());
-				delete inspector;
-				return EXIT_SUCCESS;
+				res = EXIT_FAILURE;
+				goto exit;
 			}
 			else
 			{
@@ -423,8 +432,8 @@ int main(int argc, char **argv)
 		}
 #else
 		fprintf(stderr, "filtering not compiled.\n");
-		delete inspector;
-		return EXIT_FAILURE;				
+		res = EXIT_FAILURE;
+		goto exit;
 #endif
 	}
 
@@ -434,8 +443,8 @@ int main(int argc, char **argv)
 	if(signal(SIGINT, signal_callback) == SIG_ERR)
 	{
 		fprintf(stderr, "An error occurred while setting a signal handler.\n");
-		delete inspector;
-		return EXIT_FAILURE;
+		res = EXIT_FAILURE;
+		goto exit;
 	}
 
 	//
@@ -490,8 +499,6 @@ int main(int argc, char **argv)
 				cinfo.m_nevts,
 				(double)cinfo.m_nevts / duration);
 		}
-
-		delete inspector;
 	}
 	catch(sinsp_exception e)
 	{
@@ -507,12 +514,24 @@ int main(int argc, char **argv)
 	_CrtDumpMemoryLeaks();
 #endif
 
+exit:
+
 	//
 	// Free the chisels
 	//
 	for(chisel* ch : chisels) 
 	{
 		delete ch;
+	}
+
+	if(inspector)
+	{
+		delete inspector;
+	}
+
+	if(display_filter)
+	{
+		delete display_filter;
 	}
 
 	return res;
