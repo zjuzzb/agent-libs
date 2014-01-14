@@ -159,7 +159,7 @@ void exec_worker::prepare_response(draiosproto::exec_cmd_response* response)
 void exec_worker::queue_response(const draiosproto::exec_cmd_response& response)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		dragent_protocol::PROTOCOL_MESSAGE_TYPE_EXEC_COMMAND_RESPONSE, 
+		draiosproto::message_type::EXEC_COMMAND_RESPONSE, 
 		response, 
 		m_configuration->m_compression_enabled);
 

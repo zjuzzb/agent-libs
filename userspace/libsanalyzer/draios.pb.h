@@ -81,6 +81,28 @@ inline bool networkrole_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<networkrole>(
     networkrole_descriptor(), name, value);
 }
+enum message_type {
+  METRICS = 1,
+  DUMP_REQUEST = 2,
+  DUMP_RESPONSE = 3,
+  EXEC_COMMAND_REQUEST = 4,
+  EXEC_COMMAND_RESPONSE = 5
+};
+bool message_type_IsValid(int value);
+const message_type message_type_MIN = METRICS;
+const message_type message_type_MAX = EXEC_COMMAND_RESPONSE;
+const int message_type_ARRAYSIZE = message_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* message_type_descriptor();
+inline const ::std::string& message_type_Name(message_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    message_type_descriptor(), value);
+}
+inline bool message_type_Parse(
+    const ::std::string& name, message_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<message_type>(
+    message_type_descriptor(), name, value);
+}
 // ===================================================================
 
 class counter_time : public ::google::protobuf::Message {
@@ -8139,6 +8161,10 @@ namespace protobuf {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
   return ::draiosproto::networkrole_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
+  return ::draiosproto::message_type_descriptor();
 }
 
 }  // namespace google

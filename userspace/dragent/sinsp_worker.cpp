@@ -198,7 +198,7 @@ void sinsp_worker::prepare_response(draiosproto::dump_response* response)
 void sinsp_worker::queue_response(const draiosproto::dump_response& response)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE, 
+		draiosproto::message_type::DUMP_RESPONSE, 
 		response, 
 		m_configuration->m_compression_enabled);
 
