@@ -1505,6 +1505,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
 		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
 		//
+#define DROP_MODE_ENABLED
 		if(nevts_in_last_sample > DROP_UPPER_THRESHOLD * m_machine_info->num_cpus)
 		{
 			m_seconds_above_thresholds++;
@@ -1542,9 +1543,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_sampling_ratio > 1)
 		{
 			m_seconds_below_thresholds = 0;
-			m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+			m_inspector->start_dropping_mode(m_sampling_ratio / 2);
 			g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 		}
+#endif // DROP_MODE_ENABLED
 
 		m_prev_sample_evtnum = evt->get_num();
 	}

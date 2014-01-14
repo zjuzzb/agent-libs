@@ -97,6 +97,11 @@
 #define MAX_N_EXTERNAL_CLIENTS 30
 
 //
+// define this to enable drop mode support
+//
+#define DROP_MODE_ENABLED
+
+//
 // Maximum numeber of events per CPU that the analyzer sees before it starts putting
 // the driver in drop mode.
 //
