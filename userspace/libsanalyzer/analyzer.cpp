@@ -1130,15 +1130,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; ts >= m_next_flush_time_ns; j++)
 	{
-		if(flshflags == DF_FORCE_FLUSH ||
-			flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
-		{
-			if(j > 0)
-			{
-				break;
-			}
-		}
-
 		uint64_t sample_duration = m_configuration->get_analyzer_sample_len_ns();
 
 		if(m_next_flush_time_ns == 0)
@@ -1159,6 +1150,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			ASSERT(m_next_flush_time_ns / sample_duration * sample_duration == m_next_flush_time_ns);
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
+
+			//
+			// Make sure we don't generate too many samples in case of subsampling
+			//
+			if(flshflags == DF_FORCE_FLUSH ||
+				flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				if(j > 0)
+				{
+					break;
+				}
+			}
 
 			//
 			// Calculate CPU load
@@ -1721,6 +1724,8 @@ void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 
 void sinsp_analyzer::parse_drop(sinsp_evt* evt)
 {
+	m_last_dropmode_switch_time = evt->get_ts();
+
 	//
 	// If required, update the sample length
 	//
@@ -1728,7 +1733,7 @@ void sinsp_analyzer::parse_drop(sinsp_evt* evt)
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 
-	if(*(int32_t*)parinfo->m_val != m_sampling_ratio)
+	if(*(uint32_t*)parinfo->m_val != m_sampling_ratio)
 	{
 		m_sampling_ratio = *(int32_t*)parinfo->m_val;
 		g_logger.format(sinsp_logger::SEV_ERROR, "Switching sampling ratio to %" PRIu32, m_sampling_ratio);
@@ -1816,9 +1821,29 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	// Check if it's time to flush
 	//
-	if(ts >= m_next_flush_time_ns && m_sampling_ratio == 1)
+	if(ts >= m_next_flush_time_ns)
 	{
-		flush(evt, ts, false, flshflags);
+		bool do_flush = true;
+
+		if(m_sampling_ratio != 1)
+		{
+			if(ts < m_last_dropmode_switch_time || 
+				ts - m_last_dropmode_switch_time < m_configuration->get_analyzer_sample_len_ns() * m_sampling_ratio)
+			{
+				do_flush = false;
+			}
+			else
+			{
+				m_sampling_ratio = 1;
+				uint64_t original_sample_len = m_configuration->get_analyzer_sample_len_ns() * m_sampling_ratio;
+				m_configuration->set_analyzer_sample_len_ns(original_sample_len);
+			}
+		}
+
+		if(do_flush)
+		{
+			flush(evt, ts, false, flshflags);
+		}
 	}
 
 	//

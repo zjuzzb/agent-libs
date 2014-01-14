@@ -25,7 +25,7 @@ char* scap_getlasterr(scap_t* handle)
 scap_t* scap_open_live(char *error)
 {
 #ifdef _WIN32
-	snprintf(error, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(error, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return NULL;
 #else
 	uint32_t j;
@@ -711,7 +711,7 @@ int32_t scap_get_stats(scap_t* handle, OUT scap_stats* stats)
 int32_t scap_stop_capture(scap_t* handle)
 {
 #ifdef _WIN32
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return SCAP_FAILURE;
 #else
 	uint32_t j;
@@ -790,7 +790,7 @@ int32_t scap_start_capture(scap_t* handle)
 static int32_t scap_set_dropping_mode(scap_t* handle, int request, uint32_t sampling_ratio)
 {
 #ifdef _WIN32
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return SCAP_FAILURE;
 #else
 
@@ -821,7 +821,7 @@ static int32_t scap_set_dropping_mode(scap_t* handle, int request, uint32_t samp
 int32_t scap_stop_dropping_mode(scap_t* handle)
 {
 #ifdef _WIN32
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return SCAP_FAILURE;
 #else
 	return scap_set_dropping_mode(handle, PPM_IOCTL_DISABLE_DROPPING_MODE, 0);
@@ -831,7 +831,7 @@ int32_t scap_stop_dropping_mode(scap_t* handle)
 int32_t scap_start_dropping_mode(scap_t* handle, uint32_t sampling_ratio)
 {
 #ifdef _WIN32
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return SCAP_FAILURE;
 #else
 	return scap_set_dropping_mode(handle, PPM_IOCTL_ENABLE_DROPPING_MODE, sampling_ratio);
@@ -885,7 +885,7 @@ int32_t scap_set_snaplen(scap_t* handle, uint32_t snaplen)
 	}
 
 #ifdef _WIN32
-	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture non supported on windows");
+	snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "live capture not supported on windows");
 	return SCAP_FAILURE;
 #else
 	//

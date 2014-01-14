@@ -253,7 +253,7 @@ VISIBILITY_PRIVATE
 	// Subsampling-related stuff
 	//
 	uint32_t m_sampling_ratio;
-	uint32_t m_last_dropmode_switch_time;
+	uint64_t m_last_dropmode_switch_time;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
