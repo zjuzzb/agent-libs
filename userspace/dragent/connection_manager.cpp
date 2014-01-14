@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
+#include "exec_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
 
@@ -348,4 +349,7 @@ void connection_manager::handle_command_request(uint8_t* buf, uint32_t size)
 		ASSERT(false);
 		return;
 	}
+
+	exec_worker* worker = new exec_worker(m_configuration, m_queue, request.token(), request.command_line());
+	ThreadPool::defaultPool().start(*worker, "exec_worker");
 }

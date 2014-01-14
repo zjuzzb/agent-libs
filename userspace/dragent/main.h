@@ -69,6 +69,7 @@
 #include "Poco/TemporaryFile.h"
 #include "Poco/Process.h"
 #include "Poco/Pipe.h"
+#include "Poco/PipeStream.h"
 
 #include <sinsp.h>
 
@@ -116,6 +117,7 @@ using Poco::TemporaryFile;
 using Poco::Process;
 using Poco::ProcessHandle;
 using Poco::Pipe;
+using Poco::PipeInputStream;
 
 #ifdef _DEBUG
 #define ASSERT(X) \
