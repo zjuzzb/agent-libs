@@ -70,6 +70,7 @@
 #include "Poco/Process.h"
 #include "Poco/Pipe.h"
 #include "Poco/PipeStream.h"
+#include "Poco/StringTokenizer.h"
 
 #include <sinsp.h>
 
@@ -118,6 +119,7 @@ using Poco::Process;
 using Poco::ProcessHandle;
 using Poco::Pipe;
 using Poco::PipeInputStream;
+using Poco::StringTokenizer;
 
 #ifdef _DEBUG
 #define ASSERT(X) \

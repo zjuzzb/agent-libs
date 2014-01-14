@@ -1,5 +1,8 @@
 #include "exec_worker.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 const string exec_worker::m_name = "exec_worker";
 
 exec_worker::exec_worker(dragent_configuration* configuration, protocol_queue* queue,
@@ -19,63 +22,116 @@ void exec_worker::run()
 	//
 	SharedPtr<exec_worker> ptr(this);
 
-	g_log->information(m_name + ": Starting");	
 	g_log->information(m_name + ": Running command '" + m_command_line + "', token " + m_token);
 
+	string command;
 	vector<string> args;
+
+	StringTokenizer tokenizer(m_command_line, " ", StringTokenizer::TOK_TRIM);
+	for(StringTokenizer::Iterator it = tokenizer.begin(); it != tokenizer.end(); ++it)
+	{
+		if(command.empty())
+		{
+			command = *it;
+		}
+		else
+		{
+			args.push_back(*it);
+		}
+	}
+
 	Pipe out_pipe;
 	Pipe err_pipe;
-	ProcessHandle process = Process::launch(m_command_line, args, NULL, &out_pipe, &err_pipe);
-	int exit_code = process.wait();
 
-	PipeInputStream out_istr(out_pipe);
-	string std_out;
-	int c = out_istr.get();
-	while(c != -1) 
+	if(fcntl(out_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
 	{
-		std_out += (char) c;
-		c = out_istr.get();
+		send_error("Error setting non blocking mode on out_pipe");
+		return;
 	}
 
-	PipeInputStream err_istr(err_pipe);
-	string std_err;
-	c = err_istr.get();
-	while(c != -1) 
+	if(fcntl(err_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
 	{
-		std_err += (char) c;
-		c = err_istr.get();
+		send_error("Error setting non blocking mode on out_pipe");
+		return;
 	}
 
-	printf("exit %d std_out '%s' std_err '%s'\n", exit_code, std_out.c_str(), std_err.c_str());
+	ProcessHandle process = Process::launch(command, args, NULL, &out_pipe, &err_pipe);
 
-	draiosproto::exec_cmd_response response;
-	prepare_response(&response);
-	response.set_exit_val(exit_code);
-	response.set_std_out(std_out);
-	response.set_std_err(std_err);
-	queue_response(response);
+	ProcessHandle::PID pid = process.id();
 
-// 	int64_t sleep_time_ms = m_duration_ms;
-// 	while(sleep_time_ms > 0 && !dragent_configuration::m_terminate)
-// 	{
-// 		Thread::sleep(100);
-// 		sleep_time_ms -= 100;
-// 	}
+	while(!dragent_configuration::m_terminate)
+	{
+		int status;
+		pid_t res = waitpid(pid, &status, WNOHANG);
 
-// 	if(!dragent_configuration::m_terminate)
-// 	{
-// 		dragent_configuration::m_dump_enabled = false;
-	
-// 		if(m_configuration->m_dump_completed.tryWait(60000))
-// 		{
-// 			g_log->information(m_name + ": Capture completed, sending file");
-// 			send_file();
-// 		}
-// 		else
-// 		{
-// 			string error = "Timeout waiting for capture completed event";
-// 			send_error(error);
-// 		}
+		if(res == -1)
+		{
+			send_error("Error waiting for process termination");
+			break;
+		}
+
+		if(res == 0)
+		{
+			string std_out;
+			read_from_pipe(&out_pipe, &std_out);
+			string std_err;
+			read_from_pipe(&err_pipe, &std_err);
+
+			if(std_out.size() || std_err.size())
+			{
+				//
+				// Report the partial output
+				//
+				draiosproto::exec_cmd_response response;
+				prepare_response(&response);
+
+				if(std_out.size())
+				{
+					response.set_std_out(std_out);
+				}
+
+				if(std_err.size())
+				{
+					response.set_std_err(std_err);
+				}
+
+				g_log->information("Process not terminated, sending partial std_out (" 
+					+ NumberFormatter::format(std_out.size()) + "), std_err (" 
+					+ NumberFormatter::format(std_err.size()) + ")");
+
+				queue_response(response);
+			}
+
+			Thread::sleep(1000);
+			continue;
+		}
+
+		g_log->information("Process terminated");
+
+		string std_out;
+		read_from_pipe(&out_pipe, &std_out);
+		string std_err;
+		read_from_pipe(&err_pipe, &std_err);
+
+		draiosproto::exec_cmd_response response;
+		prepare_response(&response);
+
+		if(std_out.size())
+		{
+			response.set_std_out(std_out);
+		}
+
+		if(std_err.size())
+		{
+			response.set_std_err(std_err);
+		}
+
+		response.set_exit_val(WEXITSTATUS(status));
+
+		queue_response(response);
+
+		break;
+	}
 
 	g_log->information(m_name + ": Terminating");
 }
@@ -117,6 +173,32 @@ void exec_worker::queue_response(const draiosproto::exec_cmd_response& response)
 
 		if(dragent_configuration::m_terminate)
 		{
+			break;
+		}
+	}
+}
+
+void exec_worker::read_from_pipe(Pipe* pipe, string* output)
+{
+	char pipe_buffer[8192];
+
+	while(true)
+	{
+		try
+		{
+			int n = pipe->readBytes(pipe_buffer, sizeof(pipe_buffer));
+			if(n == 0)
+			{
+				break;
+			}
+
+			output->append(pipe_buffer, n);
+		}
+		catch(Poco::ReadFileException& e)
+		{
+			//
+			// All good, probably just nothing to read
+			//
 			break;
 		}
 	}
