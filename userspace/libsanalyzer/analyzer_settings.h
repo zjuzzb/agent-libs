@@ -112,7 +112,7 @@
 // Number of consecutive seconds the number of events must be beyond DROP_THRESHOLD
 // before dropping mode is activated.
 //
-#define DROP_THRESHOLD_CONSECUTIVE_SECONDS 2
+#define DROP_THRESHOLD_CONSECUTIVE_SECONDS 5
 
 //
 // FD class customized with the storage we need
