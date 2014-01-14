@@ -1505,7 +1505,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
 		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
 		//
-#define DROP_MODE_ENABLED
+#ifdef DROP_MODE_ENABLED
 		if(nevts_in_last_sample > DROP_UPPER_THRESHOLD * m_machine_info->num_cpus)
 		{
 			m_seconds_above_thresholds++;
