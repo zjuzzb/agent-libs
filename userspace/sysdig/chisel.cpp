@@ -125,43 +125,13 @@ chisel::~chisel()
 
 void chisel::load(string cmdstr)
 {
-	string filename;
+	m_filename = cmdstr;
 	trim(cmdstr);
 
-	if(cmdstr[cmdstr.size() - 1] == ')')
-	{
-		if(cmdstr.find('(') == string::npos)
-		{
-			throw sinsp_exception("invalid chisel invoke syntax " + cmdstr);
-		}
-
-		filename = cmdstr.substr(0, cmdstr.find('('));
-		trim(filename);
-
-		string args = cmdstr.substr(cmdstr.find('('), string::npos);
-		args = args.substr(1, string::npos);
-		args = args.substr(0, args.size() - 1);
-
-		char *tok = strtok((char*)args.c_str(), ",");
-		while(tok) 
-		{
-			string tokstr(tok);
-			trim(tokstr);
-			m_argvals.push_back(tokstr);
-			tok = strtok(NULL, ",");
-		}	
-	}
-	else
-	{
-		filename = cmdstr;
-	}
-
-	ifstream is(filename);
+	ifstream is(m_filename);
 
 	if(is.is_open())
 	{
-		uint32_t j, k;
-
 		//
 		// Bring the file into a string
 		//
@@ -175,7 +145,7 @@ void chisel::load(string cmdstr)
 		bool parsingSuccessful = reader.parse(docstr, m_root);
 		if(!parsingSuccessful)
 		{
-			throw sinsp_exception("Failed to parse chisel " + filename + ":" + 
+			throw sinsp_exception("Failed to parse chisel " + m_filename + ":" + 
 				reader.getFormattedErrorMessages());
 		}
 
@@ -183,49 +153,61 @@ void chisel::load(string cmdstr)
 		// Extract the info
 		//
 		m_description = m_root["info"]["description"].asString();
-		const Json::Value args = m_root["info"]["arguments"];
 		
-		//
-		// Validate the arguments
-		//
-		if(m_argvals.size() != args.size())
-		{
-			throw sinsp_exception("wrong number of parameters for chisel " + filename);
-		}
-
-		//
-		// Extract the info
-		//
-		const Json::Value clst = m_root["chisels"];
-		
-		for(j = 0; j < clst.size(); j++)
-		{
-			string filter = clst[j]["filter"].asString();
-			for(k = 0; k < args.size(); k++)
-			{
-				replace_in_place(filter, 
-					string("$") + args[k]["name"].asString(), 
-					string(m_argvals[k]));
-			}
-
-			string formatter = clst[j]["format"].asString();
-			for(k = 0; k < args.size(); k++)
-			{
-				replace_in_place(formatter, 
-					string("$") + args[k]["name"].asString(), 
-					string(m_argvals[k]));
-			}
-
-			chiselinfo* ci = new chiselinfo();
-			ci->init(m_inspector, filter, formatter);
-			m_subchisels.push_back(ci);
-		}
-
 		is.close();
 	}
 	else
 	{
-		throw sinsp_exception("can't open file " + filename);
+		throw sinsp_exception("can't open file " + m_filename);
+	}
+}
+
+uint32_t chisel::get_n_args()
+{
+	return m_root["info"]["arguments"].size();
+}
+
+void chisel::set_args(vector<string>* argvals)
+{
+	uint32_t j, k;
+	const Json::Value args = m_root["info"]["arguments"];
+
+	m_argvals = *argvals;
+
+	//
+	// Validate the arguments
+	//
+	if(m_argvals.size() != args.size())
+	{
+		throw sinsp_exception("wrong number of parameters for chisel " + m_filename);
+	}
+
+	//
+	// Apply the arguments
+	//
+	const Json::Value clst = m_root["chisels"];
+		
+	for(j = 0; j < clst.size(); j++)
+	{
+		string filter = clst[j]["filter"].asString();
+		for(k = 0; k < args.size(); k++)
+		{
+			replace_in_place(filter, 
+				string("$") + args[k]["name"].asString(), 
+				string(m_argvals[k]));
+		}
+
+		string formatter = clst[j]["format"].asString();
+		for(k = 0; k < args.size(); k++)
+		{
+			replace_in_place(formatter, 
+				string("$") + args[k]["name"].asString(), 
+				string(m_argvals[k]));
+		}
+
+		chiselinfo* ci = new chiselinfo();
+		ci->init(m_inspector, filter, formatter);
+		m_subchisels.push_back(ci);
 	}
 }
 

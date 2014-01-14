@@ -269,8 +269,8 @@ int main(int argc, char **argv)
 	string output_format;
 	uint32_t snaplen = 0;
 	int long_index = 0;
-	vector<string> chiselnames;
 	vector<chisel*> chisels;
+	int32_t n_filterargs = 0;
 
     static struct option long_options[] = 
 	{
@@ -306,7 +306,21 @@ int main(int argc, char **argv)
 			absolute_times = true;
 			break;
 		case 'c':
-			chiselnames.push_back(optarg);
+			{
+				chisel* ch = new chisel(inspector, optarg);
+				uint32_t nargs = ch->get_n_args();
+				vector<string> args;
+
+				for(uint32_t j = 0; j < nargs; j++)
+				{
+					args.push_back(argv[optind + j]);
+					n_filterargs++;
+				}
+
+				ch->set_args(&args);
+
+				chisels.push_back(ch);
+			}
 			break;
 		case 'd':
 			is_filter_display = true;
@@ -377,12 +391,12 @@ int main(int argc, char **argv)
 	//
 	// the filter is specified at the end of the command line
 	//
-	if(optind < argc)
+	if(optind + n_filterargs < argc)
 	{
 #ifdef HAS_FILTERING
 		string filter;
 
-		for(int32_t j = optind; j < argc; j++)
+		for(int32_t j = optind + n_filterargs; j < argc; j++)
 		{
 			filter += argv[j];
 			if(j < argc)
@@ -448,12 +462,6 @@ int main(int argc, char **argv)
 		if(outfile != "")
 		{
 			inspector->autodump_start(outfile);
-		}
-
-		for(string& chiselname : chiselnames) 
-		{
-			chisel* ch = new chisel(inspector, chiselname);
-			chisels.push_back(ch);
 		}
 
 		duration = ((double)clock()) / CLOCKS_PER_SEC;

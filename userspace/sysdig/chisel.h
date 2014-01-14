@@ -19,6 +19,8 @@ public:
 	chisel(sinsp* inspector, string filename);
 	~chisel();
 	void load(string cmdstr);
+	uint32_t get_n_args();
+	void set_args(vector<string>* argvals);
 	void run(sinsp_evt* evt);
 
 private:
@@ -27,4 +29,5 @@ private:
 	Json::Value m_root;
 	vector<chiselinfo*> m_subchisels;
 	vector<string> m_argvals;
+	string m_filename;
 };
