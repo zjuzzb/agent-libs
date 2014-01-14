@@ -51,7 +51,7 @@ void exec_worker::run()
 
 	if(fcntl(err_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
 	{
-		send_error("Error setting non blocking mode on out_pipe");
+		send_error("Error setting non blocking mode on err_pipe");
 		return;
 	}
 
@@ -72,6 +72,9 @@ void exec_worker::run()
 
 		if(res == 0)
 		{
+			//
+			// Process not terminated, check the outputs
+			//
 			string std_out;
 			read_from_pipe(&out_pipe, &std_out);
 			string std_err;
