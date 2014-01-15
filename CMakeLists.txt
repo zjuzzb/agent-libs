@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.6)
 
 project(draios) 
 
@@ -21,11 +21,10 @@ endif()
 set(DRAIOS_BIN_PREFIX "/opt/draios")
 set(DRAIOS_SRC_PREFIX "/usr/src/draios-${DRAIOS_VERSION}")
 
-add_subdirectory(driver)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libbscap)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp ${PROJECT_BINARY_DIR}/libsinsp)
 add_subdirectory(userspace/dragent)
-add_subdirectory(userspace/sysdig)
-add_subdirectory(userspace/libscap)
-add_subdirectory(userspace/libsinsp)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(test)
 

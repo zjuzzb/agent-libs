@@ -28,11 +28,6 @@ class dragent_protocol
 {
 public:
 	static const uint8_t PROTOCOL_VERSION_NUMBER = 1;
-	static const uint8_t PROTOCOL_MESSAGE_TYPE_METRICS = 1;
-	static const uint8_t PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST = 2;
-	static const uint8_t PROTOCOL_MESSAGE_TYPE_DUMP_RESPONSE = 3;
-	static const uint8_t PROTOCOL_MESSAGE_TYPE_EXEC_COMMAND_REQUEST = 4;
-	static const uint8_t PROTOCOL_MESSAGE_TYPE_EXEC_COMMAND_RESPONSE = 5;
 
 	static SharedPtr<protocol_queue_item> message_to_buffer(uint8_t message_type, 
 		const google::protobuf::MessageLite& message, bool compressed);

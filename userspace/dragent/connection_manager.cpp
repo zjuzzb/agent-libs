@@ -284,12 +284,12 @@ void connection_manager::receive_message()
 
 		switch(header->messagetype)
 		{
-			case dragent_protocol::PROTOCOL_MESSAGE_TYPE_DUMP_REQUEST:
+			case draiosproto::message_type::DUMP_REQUEST:
 				handle_dump_request(
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
-			case dragent_protocol::PROTOCOL_MESSAGE_TYPE_EXEC_COMMAND_REQUEST:
+			case draiosproto::message_type::EXEC_COMMAND_REQUEST:
 				handle_command_request(
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));

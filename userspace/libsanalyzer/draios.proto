@@ -219,6 +219,17 @@ message ipv4_network_interface {
 }
 
 //
+// MESSAGE TYPES
+//
+enum message_type {
+  METRICS = 1;
+  DUMP_REQUEST = 2;
+  DUMP_RESPONSE = 3;
+  EXEC_COMMAND_REQUEST = 4;
+  EXEC_COMMAND_RESPONSE = 5;  
+}
+
+//
 // ENTRY POINT MESSAGE
 //
 message metrics {

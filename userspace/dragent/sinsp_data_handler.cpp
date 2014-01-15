@@ -11,7 +11,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, pro
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		dragent_protocol::PROTOCOL_MESSAGE_TYPE_METRICS, 
+		draiosproto::message_type::METRICS, 
 		*metrics, 
 		m_configuration->m_compression_enabled);
 

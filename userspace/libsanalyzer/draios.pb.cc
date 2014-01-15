@@ -87,6 +87,7 @@ const ::google::protobuf::Descriptor* exec_cmd_response_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   exec_cmd_response_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* networkrole_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* message_type_descriptor_ = NULL;
 
 }  // namespace
 
@@ -543,6 +544,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(exec_cmd_response));
   networkrole_descriptor_ = file->enum_type(0);
+  message_type_descriptor_ = file->enum_type(1);
 }
 
 namespace {
@@ -776,8 +778,11 @@ void protobuf_AddDesc_draios_2eproto() {
     "\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_"
     "REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004"
     "\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_"
-    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 B$\n\031com"
-    ".draios.model.protobufB\005AgentH\001", 4831);
+    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *u\n\014mes"
+    "sage_type\022\013\n\007METRICS\020\001\022\020\n\014DUMP_REQUEST\020\002"
+    "\022\021\n\rDUMP_RESPONSE\020\003\022\030\n\024EXEC_COMMAND_REQU"
+    "EST\020\004\022\031\n\025EXEC_COMMAND_RESPONSE\020\005B$\n\031com."
+    "draios.model.protobufB\005AgentH\001", 4950);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -846,6 +851,23 @@ bool networkrole_IsValid(int value) {
     case 8:
     case 16:
     case 32:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::google::protobuf::EnumDescriptor* message_type_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return message_type_descriptor_;
+}
+bool message_type_IsValid(int value) {
+  switch(value) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
       return true;
     default:
       return false;

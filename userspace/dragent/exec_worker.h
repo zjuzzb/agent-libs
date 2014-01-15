@@ -17,6 +17,7 @@ private:
 	void send_error(const string& error);
 	void prepare_response(draiosproto::exec_cmd_response* response);
 	void queue_response(const draiosproto::exec_cmd_response& response);
+	void read_from_pipe(Pipe* pipe, string* output);
 
 	static const string m_name;
 

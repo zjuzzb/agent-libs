@@ -6,7 +6,7 @@
 #include <list>
 #include <gtest.h>
 #include <tuple>
-#include "../driver/ppm_events_public.h"
+#include "ppm_events_public.h"
 
 #ifndef SYS_CALL_TEST_H
 #define	SYS_CALL_TEST_H
