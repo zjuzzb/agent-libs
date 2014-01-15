@@ -20,7 +20,7 @@ rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
 #
 # Install various crap
 #
-yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect git glibc-static java-1.7.0-openjdk kernel-devel-$(uname -r) python-pip rpm-build unzip wget 
+yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect gcc gcc-c++ git glibc-static java-1.7.0-openjdk kernel-devel-$(uname -r) make python-pip rpm-build unzip wget cmake 
 
 pip install awscli
 
