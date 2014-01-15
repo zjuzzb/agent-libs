@@ -10,6 +10,73 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\dumper.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\event.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\eventformatter.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\fdinfo.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\filter.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\filterchecks.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\ifinfo.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\internal_metrics.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\logger.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\parsers.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\sinsp.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\stats.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\threadinfo.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\utils.cpp" />
+    <ClCompile Include="analyzer.cpp" />
+    <ClCompile Include="analyzer_fd.cpp" />
+    <ClCompile Include="analyzer_thread.cpp" />
+    <ClCompile Include="analyzer_utils.cpp" />
+    <ClCompile Include="config.cpp" />
+    <ClCompile Include="connectinfo.cpp" />
+    <ClCompile Include="delays.cpp" />
+    <ClCompile Include="draios.pb.cc" />
+    <ClCompile Include="metrics.cpp" />
+    <ClCompile Include="parser_http.cpp" />
+    <ClCompile Include="procfs_parser.cpp" />
+    <ClCompile Include="sched_analyzer.cpp" />
+    <ClCompile Include="scores.cpp" />
+    <ClCompile Include="transactinfo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\event.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\eventformatter.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\fdinfo.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\filter.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\filterchecks.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\ifinfo.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\internal_metrics.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\logger.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\parsers.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\settings.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp_errno.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp_int.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp_signal.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\stats.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\threadinfo.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\tuples.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\utils.h" />
+    <ClInclude Include="analyzer.h" />
+    <ClInclude Include="analyzer_fd.h" />
+    <ClInclude Include="analyzer_int.h" />
+    <ClInclude Include="analyzer_settings.h" />
+    <ClInclude Include="analyzer_thread.h" />
+    <ClInclude Include="analyzer_utils.h" />
+    <ClInclude Include="config.h" />
+    <ClInclude Include="connectinfo.h" />
+    <ClInclude Include="delays.h" />
+    <ClInclude Include="draios.pb.h" />
+    <ClInclude Include="metrics.h" />
+    <ClInclude Include="parser_http.h" />
+    <ClInclude Include="procfs_parser.h" />
+    <ClInclude Include="sched_analyzer.h" />
+    <ClInclude Include="scores.h" />
+    <ClInclude Include="transactinfo.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A66E3CF6-4964-4361-9A80-DFCC1D32B5BF}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -54,7 +121,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../common;../libscap;../libsinsp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -63,7 +130,7 @@
       <ImportLibrary>$(ProjectDir)\..\Debug\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../Debug/scap.lib;../../../draios_win32_deps/libantlr3c-3.4/Debug/antlr3cd.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../sysdig/userspace/Debug/scap.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Debug\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -73,7 +140,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>../../common;../libscap;../libsinsp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -84,80 +151,10 @@
       <ImportLibrary>$(ProjectDir)\..\Release\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../Release/scap.lib;%(AdditionalDependencies);;../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib;../../../draios_win32_deps/libantlr3c-3.4/Release/antlr3c.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../../../sysdig/userspace/Release/scap.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Release\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\libsinsp\dumper.cpp" />
-    <ClCompile Include="..\libsinsp\event.cpp" />
-    <ClCompile Include="..\libsinsp\eventformatter.cpp" />
-    <ClCompile Include="..\libsinsp\fdinfo.cpp" />
-    <ClCompile Include="..\libsinsp\filter.cpp" />
-    <ClCompile Include="..\libsinsp\filterchecks.cpp" />
-    <ClCompile Include="..\libsinsp\ifinfo.cpp" />
-    <ClCompile Include="..\libsinsp\internal_metrics.cpp" />
-    <ClCompile Include="..\libsinsp\logger.cpp" />
-    <ClCompile Include="..\libsinsp\parsers.cpp" />
-    <ClCompile Include="..\libsinsp\sinsp.cpp" />
-    <ClCompile Include="..\libsinsp\stats.cpp" />
-    <ClCompile Include="..\libsinsp\threadinfo.cpp" />
-    <ClCompile Include="..\libsinsp\utils.cpp" />
-    <ClCompile Include="analyzer.cpp" />
-    <ClCompile Include="analyzer_fd.cpp" />
-    <ClCompile Include="analyzer_thread.cpp" />
-    <ClCompile Include="analyzer_utils.cpp" />
-    <ClCompile Include="config.cpp" />
-    <ClCompile Include="connectinfo.cpp" />
-    <ClCompile Include="delays.cpp" />
-    <ClCompile Include="draios.pb.cc" />
-    <ClCompile Include="procfs_parser.cpp" />
-    <ClCompile Include="sched_analyzer.cpp" />
-    <ClCompile Include="scores.cpp" />
-    <ClCompile Include="parser_http.cpp" />
-    <ClCompile Include="metrics.cpp" />
-    <ClCompile Include="transactinfo.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\driver\ppm_events_public.h" />
-    <ClInclude Include="..\..\driver\ppm_ringbuffer.h" />
-    <ClInclude Include="..\..\driver\ppm_types.h" />
-    <ClInclude Include="..\libsinsp\dumper.h" />
-    <ClInclude Include="..\libsinsp\event.h" />
-    <ClInclude Include="..\libsinsp\eventformatter.h" />
-    <ClInclude Include="..\libsinsp\fdinfo.h" />
-    <ClInclude Include="..\libsinsp\filter.h" />
-    <ClInclude Include="..\libsinsp\filterchecks.h" />
-    <ClInclude Include="..\libsinsp\ifinfo.h" />
-    <ClInclude Include="..\libsinsp\internal_metrics.h" />
-    <ClInclude Include="..\libsinsp\logger.h" />
-    <ClInclude Include="..\libsinsp\parsers.h" />
-    <ClInclude Include="..\libsinsp\settings.h" />
-    <ClInclude Include="..\libsinsp\sinsp.h" />
-    <ClInclude Include="..\libsinsp\sinsp_errno.h" />
-    <ClInclude Include="..\libsinsp\sinsp_int.h" />
-    <ClInclude Include="..\libsinsp\sinsp_signal.h" />
-    <ClInclude Include="..\libsinsp\stats.h" />
-    <ClInclude Include="..\libsinsp\threadinfo.h" />
-    <ClInclude Include="..\libsinsp\utils.h" />
-    <ClInclude Include="analyzer.h" />
-    <ClInclude Include="analyzer_fd.h" />
-    <ClInclude Include="analyzer_int.h" />
-    <ClInclude Include="analyzer_settings.h" />
-    <ClInclude Include="analyzer_thread.h" />
-    <ClInclude Include="analyzer_utils.h" />
-    <ClInclude Include="config.h" />
-    <ClInclude Include="connectinfo.h" />
-    <ClInclude Include="delays.h" />
-    <ClInclude Include="draios.pb.h" />
-    <ClInclude Include="metrics.h" />
-    <ClInclude Include="parser_http.h" />
-    <ClInclude Include="procfs_parser.h" />
-    <ClInclude Include="proto_header.h" />
-    <ClInclude Include="sched_analyzer.h" />
-    <ClInclude Include="scores.h" />
-    <ClInclude Include="transactinfo.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

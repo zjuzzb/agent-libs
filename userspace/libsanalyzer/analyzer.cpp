@@ -1518,7 +1518,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_seconds_above_thresholds = 0;
 				}
 
-				if(m_seconds_above_thresholds >= DROP_THRESHOLD_CONSECUTIVE_SECONDS)
+				if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
 				{
 					m_seconds_above_thresholds = 0;
 
@@ -1542,7 +1542,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_seconds_below_thresholds = 0;
 				}
 
-				if(m_seconds_below_thresholds >= m_configuration-> &&
+				if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
 					m_sampling_ratio > 1)
 				{
 					m_seconds_below_thresholds = 0;
