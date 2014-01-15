@@ -5,14 +5,14 @@ rmmod ppm || true
 ./setup-dependencies
 
 make -C build/debug
-insmod driver/ppm.ko
+insmod ../sysdig/driver/ppm.ko
 cd build/debug/test
 ./test
 rmmod ppm
 cd -
 
 make -C build/release
-insmod driver/ppm.ko
+insmod ../sysdig/driver/ppm.ko
 cd build/release/test
 ./test
 rmmod ppm
