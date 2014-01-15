@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <sinsp.h>
 #include <analyzer.h>
-#include "../../../libsinsp/settings.h"
+#include "settings.h"
 #include <iostream>
 #include <time.h>
 #include <signal.h>
