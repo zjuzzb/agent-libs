@@ -1,8 +1,8 @@
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/libscap)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/libsinsp)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 add_definitions( -DHAS_ANALYZER )
 
@@ -15,26 +15,26 @@ add_library(sanalyzer STATIC
 	config.cpp
 	delays.cpp	
 	draios.pb.cc
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/dumper.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/event.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/eventformatter.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/fdinfo.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/filter.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/filterchecks.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/ifinfo.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/internal_metrics.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/logger.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/event.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/eventformatter.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	metrics.cpp
 	parser_http.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/parsers.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/threadinfo.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp
 	sched_analyzer.cpp
 	scores.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/sinsp.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/stats.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsinsp/utils.cpp)
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp)
 
 target_link_libraries(sanalyzer
 	scap 
