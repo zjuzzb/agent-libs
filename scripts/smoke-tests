@@ -1,6 +1,8 @@
 #!/bin/bash
 set -exu
 
+REPOSITORY=$1
+
 function smoke_tests {
 	killall -9 test || true
 
@@ -75,45 +77,34 @@ function smoke_tests {
 	rmmod ppm
 }
 
-function install_rpm {
-	yum -y erase draios-tests draios-debug-agent draios-debug-tests
-	yum -y install draios-tests
+function install_tests {
+	if [ -f /etc/debian_version ]; then
+	    apt-get -y install draios-tests
+	elif [ -f /etc/system-release-cpe ]; then
+	    yum -y install draios-tests
+	else
+	    echo "Unable to detect operating system."
+	    exit 1
+	fi
 }
 
-function install_deb {
-	apt-get -y purge draios-tests draios-debug-agent draios-debug-tests || true
-	apt-get -y install draios-tests
+function uninstall {
+	if [ -f /etc/debian_version ]; then
+		apt-get -y purge draios-tests draios-agent sysdig || true
+	elif [ -f /etc/system-release-cpe ]; then
+		yum -y erase draios-tests draios-agent sysdig
+	else
+	    echo "Unable to detect operating system."
+	    exit 1
+	fi	
 }
 
-function install_debug_rpm {
-	yum -y erase draios-agent draios-tests draios-debug-agent draios-debug-tests
-	yum -y install draios-debug-agent draios-debug-tests
-}
-
-function install_debug_deb {
-	apt-get -y purge draios-agent draios-tests draios-debug-agent draios-debug-tests || true
-	apt-get -y install draios-debug-agent draios-debug-tests
-}
-
-if [ -f /etc/debian_version ]; then
-    install_deb
-elif [ -f /etc/system-release-cpe ]; then
-    install_rpm
-else
-    echo "Unable to detect operating system."
-    exit 1
-fi
-
+uninstall
+curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s access_key
+install_tests
 smoke_tests
 
-if [ -f /etc/debian_version ]; then
-    install_debug_deb
-elif [ -f /etc/system-release-cpe ]; then
-    install_debug_rpm
-else
-    echo "Unable to detect operating system."
-    exit 1
-fi
-
-service dragent start
+uninstall
+curl -s http://download.draios.com/$REPOSITORY-debug/install-agent | bash -s access_key
+install_tests
 smoke_tests
