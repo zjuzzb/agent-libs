@@ -1,9 +1,18 @@
 #!/bin/bash
 set -exu
 
+SCRIPT=$(readlink -f $0)
+TOP=$(dirname $SCRIPT)
+
 RELEASE_TYPE=$1
 
+cd $TOP/..
 ./setup-dependencies
+make -C build/debug package
+make -C build/release package
+
+cd $TOP/../../sysdig
+./bootstrap
 make -C build/debug package
 make -C build/release package
 
@@ -12,10 +21,12 @@ mkdir /tmp/packages
 
 case "$RELEASE_TYPE" in
 	internal)
-		cp build/{debug,release}/*{deb,rpm} /tmp/packages
+		cp $TOP/../build/{debug,release}/*{deb,rpm} /tmp/packages
+		cp $TOP/../../sysdig/build/{debug,release}/*{deb,rpm} /tmp/packages
 		;;
 	public)
-		cp build/release/*agent*{deb,rpm} /tmp/packages
+		cp $TOP/../build/release/*agent*{deb,rpm} /tmp/packages
+		cp $TOP/../../sysdig/build/release/*{deb,rpm} /tmp/packages
 		;;
 	*) 
 		false
