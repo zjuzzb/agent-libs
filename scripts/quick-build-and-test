@@ -16,7 +16,7 @@ cd -
 make -C agent/build/release
 make -C sysdig/build/release
 insmod sysdig/driver/ppm.ko
-cd build/release/test
+cd agent/build/release/test
 ./test
 rmmod ppm
 cd -
