@@ -75,11 +75,11 @@ if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
 	unzip simpleopt-3.6.zip
 fi
 
-CMAKE_DIR=$DEPENDENCIES/cmake-2.8.11.2
+CMAKE_DIR=$DEPENDENCIES/cmake-2.8.12.1
 if [ ! -d "$CMAKE_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/draios-dependencies/cmake-2.8.11.2.tar.gz
-	tar -xzf cmake-2.8.11.2.tar.gz
+	wget https://s3.amazonaws.com/draios-dependencies/cmake-2.8.12.1.tar.gz
+	tar -xzf cmake-2.8.12.1.tar.gz
 	cd $CMAKE_DIR
 	patch -p1 < $TOP/patches/0001-Make-deb-package-options-configurable-per-component.patch
 	./bootstrap
