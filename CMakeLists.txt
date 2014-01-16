@@ -44,5 +44,9 @@ set(CPACK_RPM_PACKAGE_REQUIRES "sysdig >= ${AGENT_VERSION}, gcc, make, kernel-de
 set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
+	/etc/rc.d
+	/etc/rc.d/init.d
+	/opt)
 
 include(CPack)
