@@ -21,8 +21,10 @@ mkdir /tmp/packages
 
 case "$RELEASE_TYPE" in
 	internal)
-		cp $TOP/../build/{debug,release}/*{deb,rpm} /tmp/packages
-		cp $TOP/../../sysdig/build/{debug,release}/*{deb,rpm} /tmp/packages
+		# cp $TOP/../build/{debug,release}/*{deb,rpm} /tmp/packages
+		# cp $TOP/../../sysdig/build/{debug,release}/*{deb,rpm} /tmp/packages
+		cp $TOP/../build/release/*{deb,rpm} /tmp/packages
+		cp $TOP/../../sysdig/build/release/*{deb,rpm} /tmp/packages
 		;;
 	public)
 		cp $TOP/../build/release/*agent*{deb,rpm} /tmp/packages
