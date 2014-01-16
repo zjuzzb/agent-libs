@@ -418,7 +418,7 @@ void sinsp_counters::calculate_totals()
 	m_tot_relevant.add(&m_processing);
 }
 
-void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns)
+void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg)
 {
 	calculate_totals();
 
@@ -445,7 +445,7 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 #endif
 }
 
-void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint64_t sample_length_ns)
+void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg)
 {
 	calculate_totals();
 

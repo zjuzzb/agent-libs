@@ -116,7 +116,7 @@ public:
 	void propagate_flag_bidirectional(flags flag, thread_analyzer_info* other);
 	void add_all_metrics(thread_analyzer_info* other);
 	void clear_all_metrics();
-	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration);
+	void flush_inactive_transactions(uint64_t sample_end_time);
 	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	bool is_main_program_thread();

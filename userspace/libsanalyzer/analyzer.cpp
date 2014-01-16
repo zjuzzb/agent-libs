@@ -530,7 +530,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Go through the FD list to flush the transactions that haven't been active for a while
 		//
-		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, sample_duration);
+		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns);
 
 		//
 		// If this is a process, compute CPU load and memory usage
@@ -725,7 +725,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns);
 						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
 					}
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), sample_duration);
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
 					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
 
 					//
@@ -792,8 +792,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-								procinfo->m_proc_transaction_metrics.m_counter.m_count_in,
-								procinfo->m_proc_transaction_metrics.m_counter.m_count_out,
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_in * m_sampling_ratio,
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_out * m_sampling_ratio,
 								trcountin? ((double)trtimein) / sample_duration : 0,
 								trcountout? ((double)trtimeout) / sample_duration : 0,
 								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
@@ -1386,9 +1386,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Time splits
 			//
-			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters(), sample_duration);
+			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters());
 
-			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), sample_duration);
+			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters());
 
 			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
@@ -1424,10 +1424,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-						m_host_transaction_counters.m_counter.m_count_in,
-						m_host_transaction_counters.m_counter.m_count_out,
-						(float)m_host_transaction_counters.m_counter.m_time_ns_in / 1000000000,
-						(float)m_client_tr_time_by_servers / 1000000000,
+						m_host_transaction_counters.m_counter.m_count_in * m_sampling_ratio,
+						m_host_transaction_counters.m_counter.m_count_out * m_sampling_ratio,
+						(float)m_host_transaction_counters.m_counter.m_time_ns_in / sample_duration,
+						(float)m_client_tr_time_by_servers / sample_duration,
 						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
 						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,
 						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_local_processing_delay_ns) / sample_duration : -1);
@@ -1462,10 +1462,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
 			"# Client Transactions:%d",
-			m_trans_table->m_n_client_transactions);
+			m_trans_table->m_n_client_transactions * m_sampling_ratio);
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
 			"# Server Transactions:%d",
-			m_trans_table->m_n_server_transactions);
+			m_trans_table->m_n_server_transactions * m_sampling_ratio);
 	}
 
 	m_trans_table->m_n_client_transactions = 0;

@@ -244,7 +244,7 @@ void thread_analyzer_info::clear_all_metrics()
 //
 // Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
 //
-void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time, uint64_t sample_duration)
+void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time)
 {
 	sinsp_fdtable* fdtable = m_tinfo->get_fd_table();
 

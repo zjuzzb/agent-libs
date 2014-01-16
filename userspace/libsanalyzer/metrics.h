@@ -155,8 +155,8 @@ public:
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
 	void calculate_totals();
-	void to_protobuf(draiosproto::time_categories* protobuf_msg, uint64_t sample_length_ns);
-	void to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint64_t sample_length_ns);
+	void to_protobuf(draiosproto::time_categories* protobuf_msg);
+	void to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg);
 
 	uint64_t get_total_other_time();
 	uint64_t get_total_wait_time();

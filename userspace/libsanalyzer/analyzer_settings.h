@@ -99,7 +99,7 @@
 //
 // Set this to true to enable drop mode support
 //
-#define DROP_MODE_ENABLED true
+#define DROP_MODE_ENABLED false
 
 //
 // Maximum numeber of events per CPU that the analyzer sees before it starts putting
