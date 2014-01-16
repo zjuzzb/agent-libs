@@ -8,12 +8,12 @@ RELEASE_TYPE=$1
 
 cd $TOP/..
 ./setup-dependencies
-make -C build/debug package
+# make -C build/debug package
 make -C build/release package
 
 cd $TOP/../../sysdig
 ./bootstrap
-make -C build/debug package
+# make -C build/debug package
 make -C build/release package
 
 rm -rf /tmp/packages
