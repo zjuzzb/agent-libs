@@ -586,8 +586,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			thread->set_tid(it->second.m_tid);
 			// CWD is currently disabed in the protocol
 			//thread->set_cwd(it->second.m_cwd);
-			it->second.m_metrics.to_protobuf(thread->mutable_tcounters());
-			it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters());
+			it->second.m_metrics.to_protobuf(thread->mutable_tcounters(), m_sampling_ratio);
+			it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters(), m_sampling_ratio);
 		}
 #endif
 	}
@@ -725,8 +725,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns);
 						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
 					}
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters());
-					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters());
+
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
 
 					//
 					// Health-related metrics
@@ -767,7 +768,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Error-related metrics
 					//
-					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors());
+					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
 
 #if 1
 					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
@@ -1040,8 +1041,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		conn->set_dpid(acit->second.m_dpid);
 		conn->set_dtid(acit->second.m_dtid);
 
-		acit->second.m_metrics.to_protobuf(conn->mutable_counters());
-		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(), m_sampling_ratio);
 		
 		//
 		// The timestamp field is used to count the number of sub-connections
@@ -1076,8 +1077,8 @@ void sinsp_analyzer::emit_full_connections()
 			conn->set_dpid(cit->second.m_dpid);
 			conn->set_dtid(cit->second.m_dtid);
 
-			cit->second.m_metrics.to_protobuf(conn->mutable_counters());
-			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters());
+			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(), m_sampling_ratio);
 		}
 
 		//
@@ -1169,7 +1170,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Calculate CPU load
 			//
 			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
-			m_total_process_cpu = 0; // this will be calculated when scannin the processes
+			m_total_process_cpu = 0; // this will be calculated when scanning the processes
 
 			//
 			// Flush the scheduler analyzer
@@ -1216,15 +1217,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			//
-			// Aggregate external connections and limit the number of entries in the connection table
-			//
 			if(m_configuration->get_aggregate_connections_in_proto())
 			{
+				//
+				// Aggregate external connections and limit the number of entries in the connection table
+				//
 				emit_aggregated_connections();
 			}
 			else
 			{
+				//
+				// Emit all the connections
+				//
 				emit_full_connections();
 			}
 
@@ -1298,7 +1302,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			////////////////////////////////////////////////////////////////////////////
-			// EMIT INTERFACES
+			// EMIT THE LIST OF INTERFACES
 			////////////////////////////////////////////////////////////////////////////
 			vector<sinsp_ipv4_ifinfo>* v4iflist = m_inspector->m_network_interfaces->get_ipv4_list();
 			for(uint32_t k = 0; k < v4iflist->size(); k++)
@@ -1346,12 +1350,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				totcpuload = m_total_process_cpu;
 			}
 
-			if(totcpuload != 0)
-			{
-				//ASSERT(totcpuload + 10 >= m_total_process_cpu);
-				//ASSERT(m_total_process_cpu <= totcpuload + 10);
-			}
-
 			if(m_cpu_loads.size() != 0)
 			{
 				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -1368,14 +1366,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
-			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors());
+			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 
 			//
 			// Transactions
 			//
 			m_delay_calculator->compute_host_delays(m_host_transaction_delays);
 
-			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters());
+			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(), m_sampling_ratio);
 
 			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
@@ -1386,11 +1384,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Time splits
 			//
-			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters());
+			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters(), m_sampling_ratio);
 
-			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters());
+			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 
-			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1);
+			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
