@@ -33,7 +33,7 @@ start() {
     [ -x $exec ] || exit 5
     # [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    /sbin/modprobe ppm || return $?
+    /sbin/modprobe sysdig-probe || return $?
     daemon $exec --daemon --pidfile=/var/run/dragent.pid
     retval=$?
     echo
@@ -46,7 +46,7 @@ stop() {
     killproc -p /var/run/dragent.pid
     retval=$?
     echo
-    /sbin/rmmod ppm
+    /sbin/rmmod sysdig-probe
     [ $retval -eq 0 ] && rm -f $lockfile
     return $retval
 }

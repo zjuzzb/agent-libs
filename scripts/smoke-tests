@@ -72,9 +72,9 @@ function smoke_tests {
 	rm -rf /opt/draios/bin/dragent.properties
 	mv /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
 	
-	modprobe ppm
+	modprobe sysdig-probe
 	sh -c "cd /opt/draios/test; ./test"
-	rmmod ppm
+	rmmod sysdig-probe
 }
 
 function install_tests {

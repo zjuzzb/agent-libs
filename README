@@ -6,7 +6,7 @@ SHORT DRIVER+LIBSCAP+LIBSINSP TUTORIAL
 2. Compile and install the driver:
     cd driver
     make
-    insmod ppm.ko
+    insmod sysdig-probe.ko
 3. compile libscap
     cd ../userspace/libscap/
     make
