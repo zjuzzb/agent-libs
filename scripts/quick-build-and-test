@@ -18,6 +18,5 @@ make -C sysdig/build/release
 insmod sysdig/driver/sysdig-probe.ko
 cd agent/build/release/test
 ./test
-sysdig -n 50
 rmmod sysdig-probe
 cd -
