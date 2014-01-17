@@ -18,13 +18,13 @@ dragent_configuration::dragent_configuration()
 	m_daemon = false;
 	m_server_port = 0;
 	m_transmitbuffer_size = 0;
-	m_dropping_mode = false;
 	m_ssl_enabled = false;
 	m_compression_enabled = false;
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) 0;
 	m_min_console_priority = (Message::Priority) 0;
 	m_evtcnt = 0;
+	m_subsampling_ratio = 1;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -127,12 +127,12 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
-	m_dropping_mode = config.getBool("droppingmode.enabled", false);
 	m_ssl_enabled = config.getBool("ssl.enabled", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
 	m_compression_enabled = config.getBool("compression.enabled", true);
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
 	m_dump_dir = config.getString("dumpdir", "/tmp/");
+	m_subsampling_ratio = config.getInt("subsampling.ratio", 1);
 }
 
 void dragent_configuration::print_configuration()
@@ -146,12 +146,12 @@ void dragent_configuration::print_configuration()
 	g_log->information("logpriority.file: " + NumberFormatter::format(m_min_file_priority));
 	g_log->information("logpriority.console: " + NumberFormatter::format(m_min_console_priority));
 	g_log->information("transmitbuffer.size: " + NumberFormatter::format(m_transmitbuffer_size));
-	g_log->information("droppingmode.enabled: " + (m_dropping_mode ? string("true") : string("false")));	
 	g_log->information("ssl.enabled: " + (m_ssl_enabled ? string("true") : string("false")));	
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + (m_compression_enabled ? string("true") : string("false")));
 	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
 	g_log->information("dumpdir: " + m_dump_dir);
+	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

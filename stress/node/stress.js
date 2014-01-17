@@ -6,7 +6,7 @@ var cnt = 0;
 var options = {
   host: '127.0.0.1',
   path: '/',
-  port: 1234,
+  port: 80,
   agent:false
 };
 
@@ -33,7 +33,7 @@ function req_loop()
   j++;
   options.path = '/' + j.toString();
   http.request(options, callback).end();
-  setTimeout(req_loop, 0);
+  setTimeout(req_loop, 100);
 }
 
 http.globalAgent.maxSockets = 20;
