@@ -10,8 +10,6 @@ cd $TOP/../..
 agent/setup-dependencies
 make -C agent/build/debug package
 make -C agent/build/release package
-
-sysdig/bootstrap
 make -C sysdig/build/debug package
 make -C sysdig/build/release package
 
