@@ -1047,7 +1047,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
+		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp * m_sampling_ratio);
 	}
 }
 
@@ -1377,8 +1377,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns);
-				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays->m_merged_client_delay);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns * m_sampling_ratio);
+				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays->m_merged_client_delay * m_sampling_ratio);
 			}
 
 			//
