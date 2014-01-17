@@ -703,7 +703,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
 					}
 
-					proc->mutable_resource_counters()->set_cpu_pct(procinfo->m_cpuload * 100);
+					if(procinfo->m_cpuload < 0)
+					{
+						ASSERT(false);
+						procinfo->m_cpuload = 0;
+					}
+
+					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
 					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
 				}
 				else
@@ -937,7 +943,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			{
 				//
 				// If external client aggregation is enabled, this is a server connection, and 
-				// the client address is outside the subnet, mask it so it get aggregated
+				// the client address is outside the subnet, mask it so it gets aggregated
 				//
 				if(aggregate_external_clients)
 				{
@@ -1047,7 +1053,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp * m_sampling_ratio);
+		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
 	}
 }
 
@@ -1329,14 +1335,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
 			string cpustr;
 
-			uint32_t totcpuload = 0;
-			uint32_t totcpusteal = 0;
+			double totcpuload = 0;
+			double totcpusteal = 0;
 
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
 				cpustr += to_string(m_cpu_loads[j]) + "(" + to_string(m_cpu_steals[j]) + ") ";
-				m_metrics->mutable_hostinfo()->add_cpu_loads(m_cpu_loads[j] * 100);
-				m_metrics->mutable_hostinfo()->add_cpu_steal(m_cpu_steals[j] * 100);
+				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_cpu_loads[j] * 100));
+				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_cpu_steals[j] * 100));
 
 				totcpuload += m_cpu_loads[j];
 				totcpusteal += m_cpu_steals[j];

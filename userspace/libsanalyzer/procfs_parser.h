@@ -4,14 +4,14 @@ class sinsp_procfs_parser
 {
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
-	uint32_t get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
-	void get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<uint32_t>* idles, OUT vector<uint32_t>* steals);
+	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
+	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
 	int64_t get_global_mem_usage_kb();
 
 	//
 	// must call get_total_cpu_load to update the system time before calling this
 	//
-	uint32_t get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb);
+	double get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb);
 
 private:
 //	uint64_t m_last_read_time;

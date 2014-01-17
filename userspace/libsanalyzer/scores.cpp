@@ -344,7 +344,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 
 			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
 			{
-				uint32_t steal = m_inspector->m_analyzer->m_cpu_steals[cpuid];
+				float steal = (float)(m_inspector->m_analyzer->m_cpu_steals[cpuid]);
 
 				float ntr1 = ntr * (100 - steal) / 100;
 				float nother1 = nother * (100 - steal) / 100;

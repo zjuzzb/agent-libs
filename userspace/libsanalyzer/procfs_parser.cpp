@@ -30,9 +30,9 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 #endif
 }
 
-uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
+double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
 {
-	uint32_t res = -1;
+	double res = -1;
 	char line[512];
 	char tmps[32];
 
@@ -91,7 +91,7 @@ uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jif
 		delta_work_jiffies = work_jiffies - m_old_global_work_jiffies;
 		delta_total_jiffies = total_jiffies - m_old_global_total_jiffies;
 
-		res = (uint32_t)((double)delta_work_jiffies * 100 / delta_total_jiffies);
+		res = (double)delta_work_jiffies * 100 / delta_total_jiffies;
 
 		m_old_global_total_jiffies = total_jiffies;
 		m_old_global_work_jiffies = work_jiffies;
@@ -116,7 +116,7 @@ uint32_t sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jif
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
-void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<uint32_t>* idles, OUT vector<uint32_t>* steals)
+void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals)
 {
 	char line[512];
 	char tmps[32];
@@ -203,13 +203,13 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<uint32_t>* loads, OUT vector<
 			delta_steal_jiffies = steal_jiffies - m_old_steal_jiffies[j];
 			delta_total_jiffies = total_jiffies - m_old_total_jiffies[j];
 
-			uint32_t load = (uint32_t)((double)delta_work_jiffies * 100 / delta_total_jiffies);
+			double load = (double)delta_work_jiffies * 100 / delta_total_jiffies;
 			loads->push_back(load);
 
-			uint32_t idle = (uint32_t)((double)delta_idle_jiffies * 100 / delta_total_jiffies);
+			double idle = (double)delta_idle_jiffies * 100 / delta_total_jiffies;
 			idles->push_back(idle);
 
-			uint32_t steal = (uint32_t)((double)delta_steal_jiffies * 100 / (delta_steal_jiffies + delta_total_jiffies));
+			double steal = (double)delta_steal_jiffies * 100 / (delta_steal_jiffies + delta_total_jiffies);
 			steals->push_back(steal);
 
 			m_old_total_jiffies[j] = total_jiffies;
@@ -271,11 +271,11 @@ int64_t sinsp_procfs_parser::get_global_mem_usage_kb()
 	return res;
 }
 
-uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb)
+double sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies, OUT int64_t* resident_memory_kb)
 {
 	char line[512];
 	char tmps[32];
-	uint32_t res = -1;
+	double res = -1;
 	string path = string("/proc/") + to_string(pid) + "/stat";
 	uint64_t tval, val1, val2, val3, val4;
 
@@ -342,9 +342,9 @@ uint32_t sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_
 	{
 		uint64_t delta_proc_jiffies = proc_jiffies - *old_proc_jiffies;
 
-		res = (uint32_t)(((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus);
+		res = ((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus;
 
-		res = MIN(res, 100 * m_ncpus);
+		res = MIN(res, double(100 * m_ncpus));
 	}
 
 	*old_proc_jiffies = proc_jiffies;

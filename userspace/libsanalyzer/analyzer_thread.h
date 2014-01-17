@@ -68,7 +68,7 @@ public:
 	// the process capacity stolen by CPU steal time, calculated with our secret sauce algorithms
 	float m_stolen_capacity_score;
 	// the process CPU load
-	int32_t m_cpuload;
+	double m_cpuload;
 	// the process resident memory
 	int64_t m_resident_memory_kb;
 	// Time spent by this thread on each of the CPUs
@@ -147,7 +147,7 @@ public:
 	// This is used for CPU load calculation
 	uint64_t m_old_proc_jiffies;
 	// the process CPU load
-	int32_t m_cpuload;
+	double m_cpuload;
 	// the process resident memory
 	int64_t m_resident_memory_kb;
 	// Time spent by this process on each of the CPUs
