@@ -696,17 +696,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// CPU utilization
 				//
-				if(procinfo->m_cpuload != -1)
+				if(procinfo->m_cpuload >= 0)
 				{
 					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
 					{
 						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
-					}
-
-					if(procinfo->m_cpuload < 0)
-					{
-						ASSERT(false);
-						procinfo->m_cpuload = 0;
 					}
 
 					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
