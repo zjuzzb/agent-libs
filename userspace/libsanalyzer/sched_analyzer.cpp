@@ -324,7 +324,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 	}
 
 	ASSERT(delta >= 0);
-	ASSERT(delta < (int64_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_length_ns());
+	ASSERT(delta < (int64_t)m_inspector->m_analyzer->m_configuration->get_analyzer_sample_len_ns());
 
 	//
 	// Attribute the delta to the proper thread
