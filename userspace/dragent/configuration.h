@@ -57,4 +57,7 @@ public:
 	string m_input_filename;
 	uint64_t m_evtcnt;
 	uint32_t m_subsampling_ratio;
+	bool m_autodrop_enabled;
+	uint32_t m_drop_upper_treshold;
+	uint32_t m_drop_lower_treshold;
 };
