@@ -32,8 +32,8 @@ public:
 	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
 	bool get_aggregate_connections_in_proto() const;
 	void set_aggregate_connections_in_proto(bool aggregate);
-	bool get_drop_mode_enabled() const;
-	void set_drop_mode_enabled(bool enabled);
+	bool get_autodrop_enabled() const;
+	void set_autodrop_enabled(bool enabled);
 	uint32_t get_drop_upper_threshold() const;
 	void set_drop_upper_threshold(uint32_t drop_upper_threshold);
 	uint32_t get_drop_lower_threshold() const;
@@ -53,7 +53,7 @@ private:
 	uint32_t m_max_connection_table_size;
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
-	bool m_drop_mode_enabled;
+	bool m_autodrop_enabled;
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
 	uint32_t m_drop_treshold_consecutive_seconds;
