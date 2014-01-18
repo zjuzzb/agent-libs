@@ -25,6 +25,9 @@ dragent_configuration::dragent_configuration()
 	m_min_console_priority = (Message::Priority) 0;
 	m_evtcnt = 0;
 	m_subsampling_ratio = 1;
+	m_autodrop_enabled = false;
+	m_drop_upper_treshold = 0;
+	m_drop_lower_treshold = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -133,6 +136,9 @@ void dragent_configuration::init(Application* app)
 	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
 	m_dump_dir = config.getString("dumpdir", "/tmp/");
 	m_subsampling_ratio = config.getInt("subsampling.ratio", 1);
+	m_autodrop_enabled = config.getBool("autodrop.enabled", true);
+	m_drop_upper_treshold = config.getInt("autodrop.treshold.upper", 0);
+	m_drop_lower_treshold = config.getInt("autodrop.treshold.lower", 0);
 }
 
 void dragent_configuration::print_configuration()

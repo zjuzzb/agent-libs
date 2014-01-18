@@ -645,9 +645,9 @@ TEST_F(sys_call_test, process_prlimit)
 
 TEST_F(sys_call_test, procfs_cpuload)
 {
-	vector<uint32_t> loads;
-	vector<uint32_t> idles;
-	vector<uint32_t> steals;
+	vector<double> loads;
+	vector<double> idles;
+	vector<double> steals;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -665,8 +665,8 @@ TEST_F(sys_call_test, procfs_cpuload)
 
 		for(k = 0; k < loads.size(); k++)
 		{
-			EXPECT_LE((uint32_t)0, loads[k]);
-			EXPECT_GT((uint32_t)105, loads[k]);
+			EXPECT_LE((double)0, loads[k]);
+			EXPECT_GT((double)105, loads[k]);
 		}
 
 		sleep(1);
@@ -675,9 +675,9 @@ TEST_F(sys_call_test, procfs_cpuload)
 
 TEST_F(sys_call_test, procfs_cpuload_longinterval)
 {
-	vector<uint32_t> loads;
-	vector<uint32_t> idles;
-	vector<uint32_t> steals;
+	vector<double> loads;
+	vector<double> idles;
+	vector<double> steals;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -695,8 +695,8 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 
 		for(k = 0; k < loads.size(); k++)
 		{
-			EXPECT_LE((uint32_t)0, loads[k]);
-			EXPECT_GE((uint32_t)100, loads[k]);
+			EXPECT_LE((double)0, loads[k]);
+			EXPECT_GE((double)100, loads[k]);
 		}
 
 		sleep(3);
@@ -705,7 +705,7 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 
 TEST_F(sys_call_test, procfs_globalcpuload)
 {
-	uint32_t load;
+	double load;
 	uint32_t j;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -719,16 +719,16 @@ TEST_F(sys_call_test, procfs_globalcpuload)
 	for(j = 0; j < 5; j++)
 	{
 		load = pparser.get_global_cpu_load();
-		EXPECT_NE((int32_t)-1, (int32_t)load);
-		EXPECT_LE((uint32_t)0, load);
-		EXPECT_GE((uint32_t)100, load);
+		EXPECT_NE((double)-1, (int32_t)load);
+		EXPECT_LE((double)0, load);
+		EXPECT_GE((double)100, load);
 		sleep(1);
 	}
 }
 
 TEST_F(sys_call_test, procfs_processcpuload)
 {
-	uint32_t load;
+	double load;
 	uint32_t j, k;
 	uint32_t t = 1;
 	int pid = getpid();
@@ -746,7 +746,7 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	
 	sleep(1);
 
-	EXPECT_EQ((int32_t)-1, (int32_t)load);
+	EXPECT_EQ((double)-1, load);
 
 	for(j = 20; j > 10; j--)
 	{
@@ -759,9 +759,9 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
 		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
 
-		EXPECT_NE((int32_t)-1, (int32_t)load);
-		EXPECT_LE((uint32_t)0, load);
-		EXPECT_GE((uint32_t)100, load);
+		EXPECT_NE((double)-1, load);
+		EXPECT_LE((double)0, load);
+		EXPECT_GE((double)100, load);
 		old_global_total_jiffies = cur_global_total_jiffies;
 	}
 }
@@ -803,7 +803,7 @@ public:
 
 TEST_F(sys_call_test, procfs_processchild_cpuload)
 {
-	uint32_t load;
+	double load;
 	uint32_t j;
 	int pid = getpid();
 	uint64_t old_global_total_jiffies;
@@ -832,7 +832,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	sleep(1);
 
-	EXPECT_EQ((int32_t)-1, (int32_t)load);
+	EXPECT_EQ((double)-1, load);
 
 	for(j = 0; j < 3; j++)
 	{
@@ -846,8 +846,8 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 		if(j > 0)
 		{
-			EXPECT_LE(m * 100 - 15, load);
-			EXPECT_GE(m * 100 + 15, load);
+			EXPECT_LE((double)m * 100 - 15, load);
+			EXPECT_GE((double)m * 100 + 15, load);
 		}
 	}
 
