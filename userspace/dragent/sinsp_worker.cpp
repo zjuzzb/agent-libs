@@ -103,10 +103,10 @@ void sinsp_worker::init()
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
 
-	if(m_configuration->m_dropping_mode)
+	if(m_configuration->m_subsampling_ratio != 1)
 	{
-		g_log->information("Enabling dropping mode");
-		m_inspector->start_dropping_mode(4);
+		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
+		m_inspector->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 }
 

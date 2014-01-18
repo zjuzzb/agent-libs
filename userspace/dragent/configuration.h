@@ -49,12 +49,12 @@ public:
 	string m_server_addr;
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
-	bool m_dropping_mode;
 	bool m_ssl_enabled;
 	string m_ssl_ca_certificate;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
 	string m_dump_dir;
 	string m_input_filename;
-	uint64_t m_evtcnt;	
+	uint64_t m_evtcnt;
+	uint32_t m_subsampling_ratio;
 };
