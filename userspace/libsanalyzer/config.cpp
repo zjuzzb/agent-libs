@@ -17,7 +17,7 @@ sinsp_configuration::sinsp_configuration()
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
-	m_drop_mode_enabled = AUTODROP_ENABLED;
+	m_autodrop_enabled = AUTODROP_ENABLED;
 	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_lower_threshold = DROP_THRESHOLD_CONSECUTIVE_SECONDS;

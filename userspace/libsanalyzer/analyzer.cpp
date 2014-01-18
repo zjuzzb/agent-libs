@@ -1509,7 +1509,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
 		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
 		//
-		if(m_configuration->get_drop_mode_enabled())
+		if(m_configuration->get_autodrop_enabled())
 		{
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
