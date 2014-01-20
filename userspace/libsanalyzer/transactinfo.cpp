@@ -384,6 +384,11 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
+	reset();
+}
+
+void sinsp_partial_transaction::reset()
+{
 	m_type = TYPE_UNKNOWN;
 	m_direction = DIR_UNKNOWN;
 	m_start_time = 0;
