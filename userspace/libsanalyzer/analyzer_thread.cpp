@@ -242,9 +242,9 @@ void thread_analyzer_info::clear_all_metrics()
 }
 
 //
-// Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
+// Emit all the transactions that are still inactive after timeout_ns nanoseconds
 //
-void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time)
+void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time, uint64_t timeout_ns)
 {
 	sinsp_fdtable* fdtable = m_tinfo->get_fd_table();
 
@@ -269,7 +269,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time)
 					return;
 				}
 
-				if(endtime - it->second.m_usrstate.m_end_time > TRANSACTION_TIMEOUT_NS)
+				if(endtime - it->second.m_usrstate.m_end_time > timeout_ns)
 				{
 					sinsp_connection *connection;
 

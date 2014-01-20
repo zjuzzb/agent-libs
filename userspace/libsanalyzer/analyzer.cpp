@@ -530,7 +530,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Go through the FD list to flush the transactions that haven't been active for a while
 		//
-		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns);
+		uint64_t trtimeout = (flshflags == sinsp_analyzer::DF_NONE)?
+			TRANSACTION_TIMEOUT_NS : TRANSACTION_TIMEOUT_SUBSAMPLING_NS;
+
+		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout);
 
 		//
 		// If this is a process, compute CPU load and memory usage
