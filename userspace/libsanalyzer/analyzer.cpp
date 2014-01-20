@@ -437,7 +437,7 @@ void sinsp_analyzer::serialize(uint64_t ts)
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
-	uint64_t delta;
+	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
@@ -490,7 +490,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			delta = m_prev_flush_time_ns - it->second.m_lastevent_ts;
 			it->second.m_lastevent_ts = m_prev_flush_time_ns;
 
-			if(delta > sample_duration)
+			if(delta > (int64_t)sample_duration)
 			{
 				delta = sample_duration;
 			}
@@ -1131,8 +1131,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	m_n_flushes++;
 
-	for(j = 0; ts >= m_next_flush_time_ns; j++)
+	for(j = 0; ; j++)
 	{
+		if(flshflags == DF_FORCE_FLUSH ||
+			flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			//
+			// Make sure we don't generate too many samples in case of subsampling
+			//
+			if(j > 0)
+			{
+				break;
+			}
+		}
+		else
+		{
+			if(m_next_flush_time_ns > ts)
+			{
+				break;
+			}
+		}
+
 		uint64_t sample_duration = m_configuration->get_analyzer_sample_len_ns();
 
 		if(m_next_flush_time_ns == 0)
@@ -1148,23 +1167,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Update the times
 			//
-			m_prev_flush_time_ns = m_next_flush_time_ns;
+			m_prev_flush_time_ns = ts - ts % sample_duration;
+//			m_prev_flush_time_ns = m_next_flush_time_ns;
 			m_next_flush_time_ns += sample_duration;
 
 			ASSERT(m_next_flush_time_ns / sample_duration * sample_duration == m_next_flush_time_ns);
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
-
-			//
-			// Make sure we don't generate too many samples in case of subsampling
-			//
-			if(flshflags == DF_FORCE_FLUSH ||
-				flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
-			{
-				if(j > 0)
-				{
-					break;
-				}
-			}
 
 			//
 			// Calculate CPU load
