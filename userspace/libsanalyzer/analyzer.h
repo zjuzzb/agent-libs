@@ -24,6 +24,11 @@ class sinsp_analyzer_fd_listener;
 class sinsp_configuration;
 class sinsp_counters;
 
+typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
+typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
+typedef class sinsp_pipe_connection_manager sinsp_pipe_connection_manager;
+typedef class sinsp_connection sinsp_connection;
+
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
