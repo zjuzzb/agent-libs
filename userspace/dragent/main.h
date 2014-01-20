@@ -73,6 +73,7 @@
 #include "Poco/StringTokenizer.h"
 
 #include <sinsp.h>
+#include "config.h"
 
 using Poco::Net::SocketReactor;
 using Poco::Net::SocketAcceptor;

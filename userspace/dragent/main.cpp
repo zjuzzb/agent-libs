@@ -235,7 +235,7 @@ protected:
 			g_log = new dragent_logger(&loggerf, NULL);
 		}
 
-		g_log->information("Agent starting");
+		g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 		m_configuration.print_configuration();
 

@@ -1,3 +1,4 @@
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
@@ -48,3 +49,5 @@ install(TARGETS dragent
 install(FILES root.cert 
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
+
+configure_file(config.h.in config.h)

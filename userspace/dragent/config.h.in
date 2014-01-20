@@ -1,0 +1,3 @@
+#pragma once
+
+#define AGENT_VERSION "${AGENT_VERSION}"
