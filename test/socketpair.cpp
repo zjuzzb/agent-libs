@@ -116,8 +116,8 @@ TEST_F(sys_call_test, socketpair)
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		sinsp::sinsp_unix_connection_manager::iterator_t it = param.m_inspector->m_analyzer->m_unix_connections->m_connections.begin();
-		sinsp::sinsp_unix_connection_manager::iterator_t end = param.m_inspector->m_analyzer->m_unix_connections->m_connections.end();
+		sinsp_unix_connection_manager::iterator_t it = param.m_inspector->m_analyzer->m_unix_connections->m_connections.begin();
+		sinsp_unix_connection_manager::iterator_t end = param.m_inspector->m_analyzer->m_unix_connections->m_connections.end();
 		while(it != end)
 		{
 			if(it->second.m_dtid == ptid && it->second.m_stid == ctid)
