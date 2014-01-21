@@ -232,21 +232,6 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 		float ntrcpu = 0;
 		float idle;
 
-//vector<int64_t>v;
-//int64_t tot = 0;
-//for(uint32_t k = 0; k < ((*transactions)[cpuid]).size(); k++)
-//{
-//	int64_t delta = ((*transactions)[cpuid])[k].m_etime - ((*transactions)[cpuid])[k].m_stime;
-//	v.push_back(delta);
-//	if(delta >= 0)
-//	{
-//		tot += delta;
-//	}
-//	else
-//	{
-//		int a = 0;
-//	}
-//}
 		//
 		// Find the union of the time intervals and use it to calculate the time 
 		// spent serving transactions

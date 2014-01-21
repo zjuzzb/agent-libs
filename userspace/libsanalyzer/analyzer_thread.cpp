@@ -242,9 +242,9 @@ void thread_analyzer_info::clear_all_metrics()
 }
 
 //
-// Emit all the transactions that are still inactive after TRANSACTION_TIMEOUT_NS nanoseconds
+// Emit all the transactions that are still inactive after timeout_ns nanoseconds
 //
-void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time)
+void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time, uint64_t timeout_ns, bool is_subsampling)
 {
 	sinsp_fdtable* fdtable = m_tinfo->get_fd_table();
 
@@ -256,60 +256,68 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time)
 		{
 			uint64_t endtime = sample_end_time;
 
-			if((it->second.is_transaction()) && 
-				((it->second.is_role_server() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_OUT) ||
-				(it->second.is_role_client() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_IN)))
+			if(it->second.is_transaction())
 			{
-				if(it->second.m_usrstate.m_end_time >= endtime)
+				if((it->second.is_role_server() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_OUT) ||
+					(it->second.is_role_client() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_IN))
 				{
-					//
-					// This happens when the sample-generating event is a read or write on a transaction FD.
-					// No big deal, we're sure that this transaction doesn't need to ble flushed yet
-					//
-					return;
-				}
-
-				if(endtime - it->second.m_usrstate.m_end_time > TRANSACTION_TIMEOUT_NS)
-				{
-					sinsp_connection *connection;
-
-					if(it->second.is_ipv4_socket())
+					if(it->second.m_usrstate.m_end_time >= endtime)
 					{
-						connection = m_analyzer->get_connection(it->second.m_info.m_ipv4info, 
-							endtime);
-
-						ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
-					}
-					else if(it->second.is_unix_socket())
-					{
-						connection = m_analyzer->get_connection(it->second.m_info.m_unixinfo, 
-							endtime);
-
-						ASSERT(connection || m_analyzer->m_unix_connections->get_n_drops() != 0);
-					}
-					else
-					{
-						ASSERT(false);
+						//
+						// This happens when the sample-generating event is a read or write on a transaction FD.
+						// No big deal, we're sure that this transaction doesn't need to be flushed yet
+						//
 						return;
 					}
 
-					if(connection != NULL)
+					if(endtime - it->second.m_usrstate.m_end_time > timeout_ns)
 					{
-						sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
+						sinsp_connection *connection;
 
-						trinfo->update(m_analyzer,
-							m_tinfo,
-							&it->second,
-							connection,
-							0, 
-							0,
-							-1,
-							sinsp_partial_transaction::DIR_CLOSE, 
-							0);
+						if(it->second.is_ipv4_socket())
+						{
+							connection = m_analyzer->get_connection(it->second.m_info.m_ipv4info, 
+								endtime);
 
-						trinfo->m_incoming_bytes = 0;
-						trinfo->m_outgoing_bytes = 0;
+							ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
+						}
+						else if(it->second.is_unix_socket())
+						{
+							connection = m_analyzer->get_connection(it->second.m_info.m_unixinfo, 
+								endtime);
+
+							ASSERT(connection || m_analyzer->m_unix_connections->get_n_drops() != 0);
+						}
+						else
+						{
+							ASSERT(false);
+							return;
+						}
+
+						if(connection != NULL)
+						{
+							sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
+
+							trinfo->update(m_analyzer,
+								m_tinfo,
+								&it->second,
+								connection,
+								0, 
+								0,
+								-1,
+								sinsp_partial_transaction::DIR_CLOSE, 
+								0);
+
+							trinfo->m_incoming_bytes = 0;
+							trinfo->m_outgoing_bytes = 0;
+						}
 					}
+				}
+
+				if(is_subsampling)
+				{
+					sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
+					trinfo->reset();
 				}
 			}
 		}

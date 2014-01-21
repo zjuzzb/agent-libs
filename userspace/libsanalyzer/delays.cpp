@@ -227,45 +227,43 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	int32_t j;
 
 	delays->m_local_processing_delay_ns = -1;
-/*
-vector<sinsp_trlist_entry>* transactions = &program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[0];
-vector<int64_t>v;
-int64_t tot = 0;
-for(uint32_t k = 0; k < transactions->size(); k++)
-{
-	((*transactions))[k].m_stime -= 1388964447000000000;
-	((*transactions))[k].m_etime -= 1388964447000000000;
-	int64_t delta = ((*transactions))[k].m_etime - ((*transactions))[k].m_stime;
-	v.push_back(delta);
-	if(delta >= 0)
-	{
-		tot += delta;
-	}
-	else
-	{
-		int a = 0;
-	}
-}
-
-vector<sinsp_trlist_entry>* transactions1 = &program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[0];
-vector<int64_t>v1;
-int64_t tot1 = 0;
-for(uint32_t k = 0; k < transactions1->size(); k++)
-{
-	((*transactions1))[k].m_stime -= 1388964447000000000;
-	((*transactions1))[k].m_etime -= 1388964447000000000;
-	int64_t delta = ((*transactions1))[k].m_etime - ((*transactions1))[k].m_stime;
-	v1.push_back(delta);
-	if(delta >= 0)
-	{
-		tot1 += delta;
-	}
-	else
-	{
-		int a = 0;
-	}
-}
-*/
+//vector<sinsp_trlist_entry>* transactions = &program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[0];
+//vector<int64_t>v;
+//int64_t tot = 0;
+//for(uint32_t k = 0; k < transactions->size(); k++)
+//{
+//	((*transactions))[k].m_stime -= 1388964447000000000;
+//	((*transactions))[k].m_etime -= 1388964447000000000;
+//	int64_t delta = ((*transactions))[k].m_etime - ((*transactions))[k].m_stime;
+//	v.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+//
+//vector<sinsp_trlist_entry>* transactions1 = &program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[0];
+//vector<int64_t>v1;
+//int64_t tot1 = 0;
+//for(uint32_t k = 0; k < transactions1->size(); k++)
+//{
+//	((*transactions1))[k].m_stime -= 1388964447000000000;
+//	((*transactions1))[k].m_etime -= 1388964447000000000;
+//	int64_t delta = ((*transactions1))[k].m_etime - ((*transactions1))[k].m_stime;
+//	v1.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot1 += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
 	if(program_info->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in == 0)
 	{
 		//

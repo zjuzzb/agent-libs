@@ -46,6 +46,7 @@ public:
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
+	void reset();
 	void update(sinsp_analyzer* analyzer, 
 		sinsp_threadinfo* ptinfo,
 		void* fdinfo,
