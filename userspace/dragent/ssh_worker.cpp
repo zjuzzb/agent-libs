@@ -64,7 +64,13 @@ void ssh_worker::run()
 			return;
 		}
 
-		g_log->information("Temporary saving key to ");
+		if(chmod(file.path().c_str(), S_IRUSR) == -1)
+		{
+			send_error("Cannot set SSH key permissions");
+			return;			
+		}
+
+		g_log->information("Temporary saving key to " + file.path());
 
 		ofstream key_file;
 		key_file.open(file.path());
@@ -87,11 +93,11 @@ void ssh_worker::run()
 	Pipe out_pipe;
 	Pipe err_pipe;
 
-	if(fcntl(in_pipe.writeHandle(), F_SETFL, O_NONBLOCK) == -1)
-	{
-		send_error("Error setting non blocking mode on in_pipe");
-		return;
-	}
+	// if(fcntl(in_pipe.writeHandle(), F_SETFL, O_NONBLOCK) == -1)
+	// {
+	// 	send_error("Error setting non blocking mode on in_pipe");
+	// 	return;
+	// }
 
 	if(fcntl(out_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
 	{
@@ -116,7 +122,7 @@ void ssh_worker::run()
 
 		if(res == -1)
 		{
-			send_error("Error waiting for process termination");
+			send_error("Error waiting for SSH termination");
 			break;
 		}
 
@@ -183,7 +189,7 @@ void ssh_worker::run()
 
 		// response.set_exit_val(WEXITSTATUS(status));
 
-		// queue_response(response);
+		queue_response(response);
 
 		break;
 	}
@@ -262,21 +268,15 @@ void ssh_worker::read_from_pipe(Pipe* pipe, string* output)
 void ssh_worker::write_to_pipe(Pipe* pipe, const string& input)
 {
 	int n = 0;
-	while(true)
+	while(n != (int) input.size())
 	{
 		try
 		{
 			n += pipe->writeBytes(input.data() + n, input.size() - n);
-			if(n == (int) input.size())
-			{
-				break;
-			}
 		}
 		catch(Poco::WriteFileException& e)
 		{
-			//
-			// All good, probably just nothing to read
-			//
+			ASSERT(false);
 			break;
 		}
 	}
