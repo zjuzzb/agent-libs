@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "draios.pb.h"
 #include "exec_worker.h"
+#include "ssh_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
 
@@ -294,6 +295,16 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::SSH_OPEN_CHANNEL:
+				handle_ssh_open_channel(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::SSH_DATA:
+				handle_ssh_data(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: " 
 					+ NumberFormatter::format(header->messagetype));
@@ -352,4 +363,59 @@ void connection_manager::handle_command_request(uint8_t* buf, uint32_t size)
 
 	exec_worker* worker = new exec_worker(m_configuration, m_queue, request.token(), request.command_line());
 	ThreadPool::defaultPool().start(*worker, "exec_worker");
+}
+
+void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
+{
+	google::protobuf::io::ArrayInputStream stream(buf, size);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
+
+	draiosproto::ssh_open_channel request;
+	bool res = request.ParseFromZeroCopyStream(&gzstream);
+	if(!res)
+	{
+		g_log->error(m_name + ": Error reading request");
+		ASSERT(false);
+		return;
+	}
+
+	ssh_settings settings;
+
+	if(request.has_user())
+	{
+		settings.m_user = request.user();
+	}
+
+	if(request.has_password())
+	{
+		settings.m_password = request.password();
+	}
+
+	if(request.has_key())
+	{
+		settings.m_key = request.key();
+	}
+
+	if(request.has_port())
+	{
+		settings.m_port = request.port();
+	}
+
+	ssh_worker* worker = new ssh_worker(m_configuration, m_queue, request.token(), settings);
+	ThreadPool::defaultPool().start(*worker, "ssh_worker");
+}
+
+void connection_manager::handle_ssh_data(uint8_t* buf, uint32_t size)
+{
+	google::protobuf::io::ArrayInputStream stream(buf, size);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
+
+	draiosproto::ssh_data request;
+	bool res = request.ParseFromZeroCopyStream(&gzstream);
+	if(!res)
+	{
+		g_log->error(m_name + ": Error reading request");
+		ASSERT(false);
+		return;
+	}
 }

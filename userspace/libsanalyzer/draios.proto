@@ -297,7 +297,8 @@ message ssh_data {
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required string token = 4; // The token associated with the request
-    required bytes data = 5; // Std input/output/error according to where this is sent from
+    optional bytes data = 5; // Std input/output/error according to where this is sent from
+    optional string error = 6;
 }
 
 message ssh_close_channel {

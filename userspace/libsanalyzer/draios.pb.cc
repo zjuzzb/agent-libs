@@ -575,12 +575,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_open_channel));
   ssh_data_descriptor_ = file->message_type(23);
-  static const int ssh_data_offsets_[5] = {
+  static const int ssh_data_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, customer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, token_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, data_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, error_),
   };
   ssh_data_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -858,22 +859,22 @@ void protobuf_AddDesc_draios_2eproto() {
     "el\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002"
     " \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t"
     "\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030"
-    "\007 \001(\t\022\014\n\004port\030\010 \001(\r\"f\n\010ssh_data\022\024\n\014times"
+    "\007 \001(\t\022\014\n\004port\030\010 \001(\r\"u\n\010ssh_data\022\024\n\014times"
     "tamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cus"
     "tomer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 "
-    "\002(\014\"a\n\021ssh_close_channel\022\024\n\014timestamp_ns"
-    "\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_i"
-    "d\030\003 \001(\t\022\r\n\005token\030\004 \002(\t*\251\001\n\013networkrole\022\010"
-    "\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS"
-    "_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020"
-    "\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE"
-    "_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\260\001\n\014m"
-    "essage_type\022\013\n\007METRICS\020\001\022\020\n\014DUMP_REQUEST"
-    "\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\030\n\024EXEC_COMMAND_RE"
-    "QUEST\020\004\022\031\n\025EXEC_COMMAND_RESPONSE\020\005\022\024\n\020SS"
-    "H_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022"
-    "\014\n\010SSH_DATA\020\010B$\n\031com.draios.model.protob"
-    "ufB\005AgentH\001", 5371);
+    "\002(\014\022\r\n\005error\030\006 \001(\t\"a\n\021ssh_close_channel\022"
+    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
+    "\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t*\251\001"
+    "\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4"
+    "_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016"
+    "IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT"
+    "\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX"
+    "_CLIENT\020 *\260\001\n\014message_type\022\013\n\007METRICS\020\001\022"
+    "\020\n\014DUMP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\030\n\024"
+    "EXEC_COMMAND_REQUEST\020\004\022\031\n\025EXEC_COMMAND_R"
+    "ESPONSE\020\005\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
+    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010B$\n\031com.drai"
+    "os.model.protobufB\005AgentH\001", 5386);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -11532,6 +11533,7 @@ const int ssh_data::kMachineIdFieldNumber;
 const int ssh_data::kCustomerIdFieldNumber;
 const int ssh_data::kTokenFieldNumber;
 const int ssh_data::kDataFieldNumber;
+const int ssh_data::kErrorFieldNumber;
 #endif  // !_MSC_VER
 
 ssh_data::ssh_data()
@@ -11555,6 +11557,7 @@ void ssh_data::SharedCtor() {
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -11574,6 +11577,9 @@ void ssh_data::SharedDtor() {
   }
   if (data_ != &::google::protobuf::internal::kEmptyString) {
     delete data_;
+  }
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
   }
   if (this != default_instance_) {
   }
@@ -11621,6 +11627,11 @@ void ssh_data::Clear() {
     if (has_data()) {
       if (data_ != &::google::protobuf::internal::kEmptyString) {
         data_->clear();
+      }
+    }
+    if (has_error()) {
+      if (error_ != &::google::protobuf::internal::kEmptyString) {
+        error_->clear();
       }
     }
   }
@@ -11710,6 +11721,23 @@ bool ssh_data::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_error;
+        break;
+      }
+
+      // optional string error = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_error:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_error()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->error().data(), this->error().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -11770,6 +11798,15 @@ void ssh_data::SerializeWithCachedSizes(
       5, this->data(), output);
   }
 
+  // optional string error = 6;
+  if (has_error()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->error().data(), this->error().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      6, this->error(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -11820,6 +11857,16 @@ void ssh_data::SerializeWithCachedSizes(
         5, this->data(), target);
   }
 
+  // optional string error = 6;
+  if (has_error()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->error().data(), this->error().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        6, this->error(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -11866,6 +11913,13 @@ int ssh_data::ByteSize() const {
           this->data());
     }
 
+    // optional string error = 6;
+    if (has_error()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->error());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -11908,6 +11962,9 @@ void ssh_data::MergeFrom(const ssh_data& from) {
     if (from.has_data()) {
       set_data(from.data());
     }
+    if (from.has_error()) {
+      set_error(from.error());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -11937,6 +11994,7 @@ void ssh_data::Swap(ssh_data* other) {
     std::swap(customer_id_, other->customer_id_);
     std::swap(token_, other->token_);
     std::swap(data_, other->data_);
+    std::swap(error_, other->error_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

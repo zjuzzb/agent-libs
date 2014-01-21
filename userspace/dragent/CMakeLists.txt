@@ -19,7 +19,8 @@ add_executable(dragent
 	monitor.cpp
 	protocol.cpp
 	sinsp_data_handler.cpp
-	sinsp_worker.cpp)
+	sinsp_worker.cpp
+	ssh_worker.cpp)
 
 target_link_libraries(dragent
 	pthread

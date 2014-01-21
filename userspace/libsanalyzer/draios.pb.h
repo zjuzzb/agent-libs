@@ -3582,6 +3582,18 @@ class ssh_data : public ::google::protobuf::Message {
   inline ::std::string* release_data();
   inline void set_allocated_data(::std::string* data);
 
+  // optional string error = 6;
+  inline bool has_error() const;
+  inline void clear_error();
+  static const int kErrorFieldNumber = 6;
+  inline const ::std::string& error() const;
+  inline void set_error(const ::std::string& value);
+  inline void set_error(const char* value);
+  inline void set_error(const char* value, size_t size);
+  inline ::std::string* mutable_error();
+  inline ::std::string* release_error();
+  inline void set_allocated_error(::std::string* error);
+
   // @@protoc_insertion_point(class_scope:draiosproto.ssh_data)
  private:
   inline void set_has_timestamp_ns();
@@ -3594,6 +3606,8 @@ class ssh_data : public ::google::protobuf::Message {
   inline void clear_has_token();
   inline void set_has_data();
   inline void clear_has_data();
+  inline void set_has_error();
+  inline void clear_has_error();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3602,9 +3616,10 @@ class ssh_data : public ::google::protobuf::Message {
   ::std::string* customer_id_;
   ::std::string* token_;
   ::std::string* data_;
+  ::std::string* error_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -9377,6 +9392,76 @@ inline void ssh_data::set_allocated_data(::std::string* data) {
   } else {
     clear_has_data();
     data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string error = 6;
+inline bool ssh_data::has_error() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void ssh_data::set_has_error() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void ssh_data::clear_has_error() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void ssh_data::clear_error() {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    error_->clear();
+  }
+  clear_has_error();
+}
+inline const ::std::string& ssh_data::error() const {
+  return *error_;
+}
+inline void ssh_data::set_error(const ::std::string& value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void ssh_data::set_error(const char* value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void ssh_data::set_error(const char* value, size_t size) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_error() {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  return error_;
+}
+inline ::std::string* ssh_data::release_error() {
+  clear_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = error_;
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_error(::std::string* error) {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
+  }
+  if (error) {
+    set_has_error();
+    error_ = error;
+  } else {
+    clear_has_error();
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
