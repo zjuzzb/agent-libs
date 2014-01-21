@@ -31,4 +31,24 @@ public:
 
 	static SharedPtr<protocol_queue_item> message_to_buffer(uint8_t message_type, 
 		const google::protobuf::MessageLite& message, bool compressed);
+
+	template<class T>
+	static bool buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message);
 };
+
+template<class T>
+bool dragent_protocol::buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message)
+{
+	google::protobuf::io::ArrayInputStream stream(buf, size);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
+
+	bool res = message->ParseFromZeroCopyStream(&gzstream);
+	if(!res)
+	{
+		g_log->error("Error reading request");
+		ASSERT(false);
+		return false;
+	}
+
+	return true;
+}
