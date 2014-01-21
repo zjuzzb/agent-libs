@@ -732,6 +732,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					m_delay_calculator->compute_program_delays(&it->second, prog_delays);
 
 					//
+					// Main metrics
+					//
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+					//
 					// Transaction-related metrics
 					//
 					if(prog_delays->m_local_processing_delay_ns != -1)
@@ -740,7 +745,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
 					}
 
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
 					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
 
 					//
