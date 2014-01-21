@@ -355,15 +355,9 @@ void connection_manager::handle_command_request(uint8_t* buf, uint32_t size)
 
 void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
 {
-	google::protobuf::io::ArrayInputStream stream(buf, size);
-	google::protobuf::io::GzipInputStream gzstream(&stream);
-
 	draiosproto::ssh_open_channel request;
-	bool res = request.ParseFromZeroCopyStream(&gzstream);
-	if(!res)
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
 	{
-		g_log->error(m_name + ": Error reading request");
-		ASSERT(false);
 		return;
 	}
 
@@ -395,15 +389,9 @@ void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
 
 void connection_manager::handle_ssh_data(uint8_t* buf, uint32_t size)
 {
-	google::protobuf::io::ArrayInputStream stream(buf, size);
-	google::protobuf::io::GzipInputStream gzstream(&stream);
-
 	draiosproto::ssh_data request;
-	bool res = request.ParseFromZeroCopyStream(&gzstream);
-	if(!res)
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
 	{
-		g_log->error(m_name + ": Error reading request");
-		ASSERT(false);
 		return;
 	}
 }
