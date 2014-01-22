@@ -820,10 +820,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
 
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
 								procinfo->m_proc_metrics.get_processing_percentage() * 100,
 								procinfo->m_proc_metrics.get_file_percentage() * 100,
-								(uint64_t)(procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
 								procinfo->m_proc_metrics.get_net_percentage() * 100,
 								procinfo->m_proc_metrics.get_other_percentage() * 100);
 						}
@@ -1420,10 +1423,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"host times: proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+					"host times: %.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
 					m_host_metrics.m_metrics.get_processing_percentage() * 100,
 					m_host_metrics.m_metrics.get_file_percentage() * 100,
-					(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
+					m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in,
+					m_host_metrics.m_metrics.m_tot_io_file.m_count_in,
+					m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out,
+					m_host_metrics.m_metrics.m_tot_io_file.m_count_out,
 					m_host_metrics.m_metrics.get_net_percentage() * 100,
 					m_host_metrics.m_metrics.get_other_percentage() * 100);
 			}
