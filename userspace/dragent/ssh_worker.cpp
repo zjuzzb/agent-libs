@@ -20,11 +20,7 @@ ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* que
 
 ssh_worker::~ssh_worker()
 {
-	Poco::Mutex::ScopedLock lock(m_sessions_lock);
-
-	g_log->information("Erasing session " + m_token);
-
-	m_sessions.erase(m_token);
+	delete_session(m_token);
 }
 
 void ssh_worker::run()
@@ -34,6 +30,9 @@ void ssh_worker::run()
 	//
 	SharedPtr<ssh_worker> ptr(this);
 
+	ssh_session session;
+	add_session(m_token, session);
+	
 	g_log->information(m_name + ": Opening SSH session, token " + m_token);
 
 	string command = "ssh";
@@ -309,3 +308,18 @@ void ssh_worker::send_input(const string& token, const string& input)
 		it->second.m_pending_input.append(input);
 	}
 }
+
+void ssh_worker::add_session(const string& token, const ssh_session& session)
+{
+	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+
+	m_sessions.insert(pair<string, ssh_session>(token, session));
+}
+
+void ssh_worker::delete_session(const string& token)
+{
+	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+
+	m_sessions.erase(token);
+}
+

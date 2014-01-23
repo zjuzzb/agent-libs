@@ -43,6 +43,8 @@ private:
 	void read_from_pipe(Pipe* pipe, string* output);
 	void write_to_pipe(Pipe* pipe, const string& output);
 
+	static void add_session(const string& token, const ssh_session& session);
+	static void delete_session(const string& token);
 	static string get_input(const string& token);
 
 	static const string m_name;
