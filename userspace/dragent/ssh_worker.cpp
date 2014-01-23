@@ -45,9 +45,10 @@ void ssh_worker::run()
 		args.push_back(NumberFormatter::format(m_ssh_settings.m_port));
 	}
 
+	Poco::TemporaryFile file;
+
 	if(!m_ssh_settings.m_key.empty())
 	{
-		Poco::TemporaryFile file;
 		bool created = false;
 
 		try
@@ -87,6 +88,10 @@ void ssh_worker::run()
 		return;
 	}
 
+	args.push_back("-t");
+	args.push_back("-t");
+	args.push_back("-o");
+	args.push_back("StrictHostKeyChecking no");
 	args.push_back(m_ssh_settings.m_user + "@localhost");
 
 	Pipe in_pipe;
@@ -138,7 +143,9 @@ void ssh_worker::run()
 			string std_err;
 			read_from_pipe(&err_pipe, &std_err);
 
-			if(std_out.size() || std_err.size())
+			std_out.append(std_err);
+
+			if(std_out.size())
 			{
 				//
 				// Report the partial output
@@ -150,11 +157,6 @@ void ssh_worker::run()
 				{
 					response.set_data(std_out);
 				}
-
-		// 		if(std_err.size())
-		// 		{
-		// 			response.set_std_err(std_err);
-		// 		}
 
 				g_log->information("Process not terminated, sending partial std_out (" 
 					+ NumberFormatter::format(std_out.size()) + "), std_err (" 
@@ -177,15 +179,12 @@ void ssh_worker::run()
 		draiosproto::ssh_data response;
 		prepare_response(&response);
 
+		std_out.append(std_err);
+
 		if(std_out.size())
 		{
 			response.set_data(std_out);
 		}
-
-		// if(std_err.size())
-		// {
-		// 	response.set_std_err(std_err);
-		// }
 
 		// response.set_exit_val(WEXITSTATUS(status));
 
