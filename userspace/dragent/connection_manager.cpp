@@ -394,4 +394,9 @@ void connection_manager::handle_ssh_data(uint8_t* buf, uint32_t size)
 	{
 		return;
 	}
+
+	if(request.has_data())
+	{
+		ssh_worker::send_input(request.token(), request.data());
+	}
 }
