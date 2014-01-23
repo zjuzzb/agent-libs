@@ -256,6 +256,8 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 		}
 		else
 		{
+			++it;
+			
 			if(job->m_filter)
 			{
 				if(!job->m_filter->run(ev))
@@ -265,8 +267,6 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			}
 
 			job->m_dumper->dump(ev);
-
-			++it;
 		}
 	}
 }
