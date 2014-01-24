@@ -556,16 +556,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		it->second.m_ainfo->m_cpuload = 0;
 
-		if(it->second.is_main_thread())
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			if(m_inspector->m_islive)
+			if(it->second.is_main_thread() || it->first == m_mypid)
 			{
-				it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
-					&it->second.m_ainfo->m_old_proc_jiffies, 
-					cur_global_total_jiffies - m_old_global_total_jiffies,
-					&it->second.m_ainfo->m_resident_memory_kb);
+				if(m_inspector->m_islive)
+				{
+					it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+						&it->second.m_ainfo->m_old_proc_jiffies, 
+						cur_global_total_jiffies - m_old_global_total_jiffies,
+						&it->second.m_ainfo->m_resident_memory_kb);
 
-				m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+					m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+				}
 			}
 		}
 
