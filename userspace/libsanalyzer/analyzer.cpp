@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #ifdef _WIN32
 #include <winsock2.h>
+#include <process.h>
+#define getpid _getpid
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -75,8 +77,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
+	m_my_cpuload = -1;
 
 	m_configuration = new sinsp_configuration();
+
+	m_mypid = getpid();
 
 	//
 	// Listeners
@@ -583,6 +588,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			m_server_programs.insert(mtinfo->m_tid);
 			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.m_counter.m_time_ns_out;
+		}
+
+		if(m_inspector->m_islive)
+		{
+			if(it->first == m_mypid)
+			{
+				m_my_cpuload = mtinfo->m_ainfo->m_cpuload;
+			}
 		}
 
 #ifdef ANALYZER_EMITS_THREADS
@@ -1447,6 +1460,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"sinsp cpu: %lf", m_my_cpuload);
+
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						" host h:%.2f(s:%.2f)",
 						m_host_metrics.m_capacity_score,

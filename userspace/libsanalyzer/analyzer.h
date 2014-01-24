@@ -261,6 +261,8 @@ VISIBILITY_PRIVATE
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
+	int m_mypid;
+	double m_my_cpuload;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
