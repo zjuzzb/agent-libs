@@ -1172,12 +1172,13 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	//
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(treshold_metric >= m_configuration->get_drop_upper_threshold())
+		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold())
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold secs: %" PRIu32 ":%" PRIu32, 
-				m_seconds_above_thresholds, m_configuration->get_drop_treshold_consecutive_seconds());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+				(int)m_configuration->get_drop_upper_threshold(), m_seconds_above_thresholds, 
+				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
 		else
 		{
@@ -1199,14 +1200,15 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			}
 		}
 
-		if(treshold_metric <= m_configuration->get_drop_lower_threshold())
+		if(treshold_metric <= (double)m_configuration->get_drop_lower_threshold())
 		{
 			m_seconds_below_thresholds++;
 	
 			if(m_sampling_ratio > 1)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp below drop treshold secs: %" PRIu32 ":%" PRIu32, 
-					m_seconds_below_thresholds, m_configuration->get_drop_treshold_consecutive_seconds());				
+				g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
+					(int)m_configuration->get_drop_lower_threshold(), m_seconds_below_thresholds, 
+					m_configuration->get_drop_treshold_consecutive_seconds());				
 			}
 		}
 		else
