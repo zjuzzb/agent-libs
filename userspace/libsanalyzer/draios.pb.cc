@@ -553,7 +553,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(exec_cmd_response));
   ssh_open_channel_descriptor_ = file->message_type(22);
-  static const int ssh_open_channel_offsets_[8] = {
+  static const int ssh_open_channel_offsets_[9] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, customer_id_),
@@ -561,6 +561,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, user_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, password_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, key_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, passphrase_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, port_),
   };
   ssh_open_channel_reflection_ =
@@ -855,26 +856,27 @@ void protobuf_AddDesc_draios_2eproto() {
     "md_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
     "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005to"
     "ken\030\004 \002(\t\022\017\n\007std_out\030\005 \001(\t\022\017\n\007std_err\030\006 "
-    "\001(\t\022\020\n\010exit_val\030\007 \001(\r\"\233\001\n\020ssh_open_chann"
+    "\001(\t\022\020\n\010exit_val\030\007 \001(\r\"\257\001\n\020ssh_open_chann"
     "el\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002"
     " \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t"
     "\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030"
-    "\007 \001(\t\022\014\n\004port\030\010 \001(\r\"u\n\010ssh_data\022\024\n\014times"
-    "tamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cus"
-    "tomer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 "
-    "\002(\014\022\r\n\005error\030\006 \001(\t\"a\n\021ssh_close_channel\022"
-    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
-    "\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t*\251\001"
-    "\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4"
-    "_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016"
-    "IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT"
-    "\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX"
-    "_CLIENT\020 *\260\001\n\014message_type\022\013\n\007METRICS\020\001\022"
-    "\020\n\014DUMP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\030\n\024"
-    "EXEC_COMMAND_REQUEST\020\004\022\031\n\025EXEC_COMMAND_R"
-    "ESPONSE\020\005\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
-    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010B$\n\031com.drai"
-    "os.model.protobufB\005AgentH\001", 5386);
+    "\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\""
+    "u\n\010ssh_data\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
+    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005to"
+    "ken\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\"a"
+    "\n\021ssh_close_channel\022\024\n\014timestamp_ns\030\001 \002("
+    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
+    "(\t\022\r\n\005token\030\004 \002(\t*\251\001\n\013networkrole\022\010\n\004NON"
+    "E\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMO"
+    "TE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024"
+    "IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4"
+    "_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\260\001\n\014messag"
+    "e_type\022\013\n\007METRICS\020\001\022\020\n\014DUMP_REQUEST\020\002\022\021\n"
+    "\rDUMP_RESPONSE\020\003\022\030\n\024EXEC_COMMAND_REQUEST"
+    "\020\004\022\031\n\025EXEC_COMMAND_RESPONSE\020\005\022\024\n\020SSH_OPE"
+    "N_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SS"
+    "H_DATA\020\010B$\n\031com.draios.model.protobufB\005A"
+    "gentH\001", 5406);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -10944,6 +10946,7 @@ const int ssh_open_channel::kTokenFieldNumber;
 const int ssh_open_channel::kUserFieldNumber;
 const int ssh_open_channel::kPasswordFieldNumber;
 const int ssh_open_channel::kKeyFieldNumber;
+const int ssh_open_channel::kPassphraseFieldNumber;
 const int ssh_open_channel::kPortFieldNumber;
 #endif  // !_MSC_VER
 
@@ -10970,6 +10973,7 @@ void ssh_open_channel::SharedCtor() {
   user_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   password_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  passphrase_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   port_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -10996,6 +11000,9 @@ void ssh_open_channel::SharedDtor() {
   }
   if (key_ != &::google::protobuf::internal::kEmptyString) {
     delete key_;
+  }
+  if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+    delete passphrase_;
   }
   if (this != default_instance_) {
   }
@@ -11055,6 +11062,13 @@ void ssh_open_channel::Clear() {
         key_->clear();
       }
     }
+    if (has_passphrase()) {
+      if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+        passphrase_->clear();
+      }
+    }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     port_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -11180,12 +11194,29 @@ bool ssh_open_channel::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(64)) goto parse_port;
+        if (input->ExpectTag(66)) goto parse_passphrase;
         break;
       }
 
-      // optional uint32 port = 8;
+      // optional string passphrase = 8;
       case 8: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_passphrase:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_passphrase()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->passphrase().data(), this->passphrase().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(72)) goto parse_port;
+        break;
+      }
+
+      // optional uint32 port = 9;
+      case 9: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_port:
@@ -11277,9 +11308,18 @@ void ssh_open_channel::SerializeWithCachedSizes(
       7, this->key(), output);
   }
 
-  // optional uint32 port = 8;
+  // optional string passphrase = 8;
+  if (has_passphrase()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->passphrase().data(), this->passphrase().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      8, this->passphrase(), output);
+  }
+
+  // optional uint32 port = 9;
   if (has_port()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(8, this->port(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(9, this->port(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -11355,9 +11395,19 @@ void ssh_open_channel::SerializeWithCachedSizes(
         7, this->key(), target);
   }
 
-  // optional uint32 port = 8;
+  // optional string passphrase = 8;
+  if (has_passphrase()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->passphrase().data(), this->passphrase().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        8, this->passphrase(), target);
+  }
+
+  // optional uint32 port = 9;
   if (has_port()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(8, this->port(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(9, this->port(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -11420,7 +11470,16 @@ int ssh_open_channel::ByteSize() const {
           this->key());
     }
 
-    // optional uint32 port = 8;
+    // optional string passphrase = 8;
+    if (has_passphrase()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->passphrase());
+    }
+
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional uint32 port = 9;
     if (has_port()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
@@ -11475,6 +11534,11 @@ void ssh_open_channel::MergeFrom(const ssh_open_channel& from) {
     if (from.has_key()) {
       set_key(from.key());
     }
+    if (from.has_passphrase()) {
+      set_passphrase(from.passphrase());
+    }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_port()) {
       set_port(from.port());
     }
@@ -11509,6 +11573,7 @@ void ssh_open_channel::Swap(ssh_open_channel* other) {
     std::swap(user_, other->user_);
     std::swap(password_, other->password_);
     std::swap(key_, other->key_);
+    std::swap(passphrase_, other->passphrase_);
     std::swap(port_, other->port_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
@@ -11711,7 +11776,7 @@ bool ssh_data::MergePartialFromCodedStream(
         break;
       }
 
-      // required bytes data = 5;
+      // optional bytes data = 5;
       case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -11792,7 +11857,7 @@ void ssh_data::SerializeWithCachedSizes(
       4, this->token(), output);
   }
 
-  // required bytes data = 5;
+  // optional bytes data = 5;
   if (has_data()) {
     ::google::protobuf::internal::WireFormatLite::WriteBytes(
       5, this->data(), output);
@@ -11850,7 +11915,7 @@ void ssh_data::SerializeWithCachedSizes(
         4, this->token(), target);
   }
 
-  // required bytes data = 5;
+  // optional bytes data = 5;
   if (has_data()) {
     target =
       ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
@@ -11906,7 +11971,7 @@ int ssh_data::ByteSize() const {
           this->token());
     }
 
-    // required bytes data = 5;
+    // optional bytes data = 5;
     if (has_data()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
@@ -11982,7 +12047,7 @@ void ssh_data::CopyFrom(const ssh_data& from) {
 }
 
 bool ssh_data::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000001b) != 0x0000001b) return false;
+  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
 
   return true;
 }

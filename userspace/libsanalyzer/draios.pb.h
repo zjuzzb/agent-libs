@@ -3424,10 +3424,22 @@ class ssh_open_channel : public ::google::protobuf::Message {
   inline ::std::string* release_key();
   inline void set_allocated_key(::std::string* key);
 
-  // optional uint32 port = 8;
+  // optional string passphrase = 8;
+  inline bool has_passphrase() const;
+  inline void clear_passphrase();
+  static const int kPassphraseFieldNumber = 8;
+  inline const ::std::string& passphrase() const;
+  inline void set_passphrase(const ::std::string& value);
+  inline void set_passphrase(const char* value);
+  inline void set_passphrase(const char* value, size_t size);
+  inline ::std::string* mutable_passphrase();
+  inline ::std::string* release_passphrase();
+  inline void set_allocated_passphrase(::std::string* passphrase);
+
+  // optional uint32 port = 9;
   inline bool has_port() const;
   inline void clear_port();
-  static const int kPortFieldNumber = 8;
+  static const int kPortFieldNumber = 9;
   inline ::google::protobuf::uint32 port() const;
   inline void set_port(::google::protobuf::uint32 value);
 
@@ -3447,6 +3459,8 @@ class ssh_open_channel : public ::google::protobuf::Message {
   inline void clear_has_password();
   inline void set_has_key();
   inline void clear_has_key();
+  inline void set_has_passphrase();
+  inline void clear_has_passphrase();
   inline void set_has_port();
   inline void clear_has_port();
 
@@ -3459,10 +3473,11 @@ class ssh_open_channel : public ::google::protobuf::Message {
   ::std::string* user_;
   ::std::string* password_;
   ::std::string* key_;
+  ::std::string* passphrase_;
   ::google::protobuf::uint32 port_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -3570,7 +3585,7 @@ class ssh_data : public ::google::protobuf::Message {
   inline ::std::string* release_token();
   inline void set_allocated_token(::std::string* token);
 
-  // required bytes data = 5;
+  // optional bytes data = 5;
   inline bool has_data() const;
   inline void clear_data();
   static const int kDataFieldNumber = 5;
@@ -9067,15 +9082,85 @@ inline void ssh_open_channel::set_allocated_key(::std::string* key) {
   }
 }
 
-// optional uint32 port = 8;
-inline bool ssh_open_channel::has_port() const {
+// optional string passphrase = 8;
+inline bool ssh_open_channel::has_passphrase() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
-inline void ssh_open_channel::set_has_port() {
+inline void ssh_open_channel::set_has_passphrase() {
   _has_bits_[0] |= 0x00000080u;
 }
-inline void ssh_open_channel::clear_has_port() {
+inline void ssh_open_channel::clear_has_passphrase() {
   _has_bits_[0] &= ~0x00000080u;
+}
+inline void ssh_open_channel::clear_passphrase() {
+  if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+    passphrase_->clear();
+  }
+  clear_has_passphrase();
+}
+inline const ::std::string& ssh_open_channel::passphrase() const {
+  return *passphrase_;
+}
+inline void ssh_open_channel::set_passphrase(const ::std::string& value) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(value);
+}
+inline void ssh_open_channel::set_passphrase(const char* value) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(value);
+}
+inline void ssh_open_channel::set_passphrase(const char* value, size_t size) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_passphrase() {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  return passphrase_;
+}
+inline ::std::string* ssh_open_channel::release_passphrase() {
+  clear_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = passphrase_;
+    passphrase_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_passphrase(::std::string* passphrase) {
+  if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+    delete passphrase_;
+  }
+  if (passphrase) {
+    set_has_passphrase();
+    passphrase_ = passphrase;
+  } else {
+    clear_has_passphrase();
+    passphrase_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 port = 9;
+inline bool ssh_open_channel::has_port() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void ssh_open_channel::set_has_port() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void ssh_open_channel::clear_has_port() {
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void ssh_open_channel::clear_port() {
   port_ = 0u;
@@ -9325,7 +9410,7 @@ inline void ssh_data::set_allocated_token(::std::string* token) {
   }
 }
 
-// required bytes data = 5;
+// optional bytes data = 5;
 inline bool ssh_data::has_data() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
