@@ -1172,7 +1172,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_met
 	//
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(treshold_metric > m_configuration->get_drop_upper_threshold())
+		if(treshold_metric >= m_configuration->get_drop_upper_threshold())
 		{
 			m_seconds_above_thresholds++;
 		}
@@ -1196,7 +1196,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_met
 			}
 		}
 
-		if(treshold_metric < m_configuration->get_drop_lower_threshold())
+		if(treshold_metric <= m_configuration->get_drop_lower_threshold())
 		{
 			m_seconds_below_thresholds++;
 		}
