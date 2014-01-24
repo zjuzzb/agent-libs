@@ -1163,7 +1163,7 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
-void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t nevts_in_last_sample)
+void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_metric)
 {
 	//
 	// Drop mode logic:
@@ -1172,7 +1172,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t nevts_in_las
 	//
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(nevts_in_last_sample > m_configuration->get_drop_upper_threshold() * m_machine_info->num_cpus)
+		if(treshold_metric > m_configuration->get_drop_upper_threshold())
 		{
 			m_seconds_above_thresholds++;
 		}
@@ -1196,7 +1196,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t nevts_in_las
 			}
 		}
 
-		if(nevts_in_last_sample < m_configuration->get_drop_lower_threshold() * m_machine_info->num_cpus)
+		if(treshold_metric < m_configuration->get_drop_lower_threshold())
 		{
 			m_seconds_below_thresholds++;
 		}
@@ -1209,6 +1209,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t nevts_in_las
 			m_sampling_ratio > 1)
 		{
 			m_seconds_below_thresholds = 0;
+
 			if(m_sampling_ratio > 2)
 			{
 				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
@@ -1617,7 +1618,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 		if(m_configuration->get_autodrop_enabled())
 		{
-			tune_drop_mode(flshflags, nevts_in_last_sample);
+//			tune_drop_mode(flshflags, nevts_in_last_sample * m_machine_info->num_cpus);
+			tune_drop_mode(flshflags, m_my_cpuload);
 		}
 
 		m_prev_sample_evtnum = evt->get_num();
