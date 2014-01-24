@@ -1433,6 +1433,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"sinsp cpu: %lf", m_my_cpuload);
+
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -1460,9 +1463,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"sinsp cpu: %lf", m_my_cpuload);
-
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						" host h:%.2f(s:%.2f)",
 						m_host_metrics.m_capacity_score,
