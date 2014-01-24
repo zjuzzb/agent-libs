@@ -32,13 +32,13 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1e
+OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.0l
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/draios-dependencies/openssl-1.0.1e.tar.gz
-	tar -xzf openssl-1.0.1e.tar.gz
+	wget https://s3.amazonaws.com/draios-dependencies/openssl-1.0.0l.tar.gz
+	tar -xzf openssl-1.0.0l.tar.gz
 	cd $OPENSSL_DIR
-	./config --prefix=$OPENSSL_DIR/target no-shared no-dso
+	./config --prefix=$OPENSSL_DIR/target
 	make install
 	cd ..
 fi
@@ -82,6 +82,19 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	patch -p1 < $TOP/patches/0001-Make-deb-package-options-configurable-per-component.patch
 	./bootstrap
 	make
+fi
+
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.0
+if [ ! -d "$LIBSSH_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://s3.amazonaws.com/draios-dependencies/libssh-0.6.0.tar.xz
+	tar -xf libssh-0.6.0.tar.xz
+	cd $LIBSSH_DIR
+	mkdir build
+	cd build
+	$CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DOPENSSL_LIBRARIES=$OPENSSL_DIR/target/lib -DOPENSSL_INCLUDE_DIRS=$OPENSSL_DIR/target/include -DWITH_STATIC_LIB=ON ..
+	make -C src install
+	make -C include install
 fi
 
 if [ -z "$BUILD_NUMBER" ]; then

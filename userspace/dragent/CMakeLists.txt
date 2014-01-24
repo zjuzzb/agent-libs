@@ -4,8 +4,10 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.0l/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.0/target/include)
+
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(dragent
@@ -31,8 +33,10 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1e/target/lib/libcrypto.a)
+	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.0/target/lib/libssh.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.0l/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.0l/target/lib/libcrypto.a
+	dl)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
