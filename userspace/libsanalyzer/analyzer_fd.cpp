@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#define VISIBILITY_PRIVATE
-
 #include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"

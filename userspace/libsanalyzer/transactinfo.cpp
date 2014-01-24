@@ -5,6 +5,8 @@
 #include <inttypes.h>
 #endif
 
+#define VISIBILITY_PRIVATE
+
 #include "sinsp.h"
 #include "sinsp_int.h"
 #ifdef HAS_ANALYZER
