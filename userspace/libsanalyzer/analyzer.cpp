@@ -1154,6 +1154,66 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
+void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t nevts_in_last_sample)
+{
+	//
+	// Drop mode logic:
+	// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
+	// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
+	//
+	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		if(nevts_in_last_sample > m_configuration->get_drop_upper_threshold() * m_machine_info->num_cpus)
+		{
+			m_seconds_above_thresholds++;
+		}
+		else
+		{
+			m_seconds_above_thresholds = 0;
+		}
+
+		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
+		{
+			m_seconds_above_thresholds = 0;
+
+			if(m_sampling_ratio <= 32)
+			{
+				m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+				g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
+			}
+		}
+
+		if(nevts_in_last_sample < m_configuration->get_drop_lower_threshold() * m_machine_info->num_cpus)
+		{
+			m_seconds_below_thresholds++;
+		}
+		else
+		{
+			m_seconds_below_thresholds = 0;
+		}
+
+		if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
+			m_sampling_ratio > 1)
+		{
+			m_seconds_below_thresholds = 0;
+			if(m_sampling_ratio > 2)
+			{
+				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+			}
+			else
+			{
+				m_inspector->stop_dropping_mode();
+			}
+
+			g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
+		}
+	}
+}
+
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	uint32_t j;
@@ -1433,11 +1493,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				"sinsp cpu: %lf", m_my_cpuload);
-
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"sinsp cpu: %lf", m_my_cpuload);
+
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"host times: %.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
 					m_host_metrics.m_metrics.get_processing_percentage() * 100,
@@ -1546,64 +1606,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
 		}
 
-		//
-		// Drop mode logic:
-		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
-		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
-		//
 		if(m_configuration->get_autodrop_enabled())
 		{
-			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
-			{
-				if(nevts_in_last_sample > m_configuration->get_drop_upper_threshold() * m_machine_info->num_cpus)
-				{
-					m_seconds_above_thresholds++;
-				}
-				else
-				{
-					m_seconds_above_thresholds = 0;
-				}
-
-				if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
-				{
-					m_seconds_above_thresholds = 0;
-
-					if(m_sampling_ratio <= 32)
-					{
-						m_inspector->start_dropping_mode(m_sampling_ratio * 2);
-						g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
-					}
-					else
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
-					}
-				}
-
-				if(nevts_in_last_sample < m_configuration->get_drop_lower_threshold() * m_machine_info->num_cpus)
-				{
-					m_seconds_below_thresholds++;
-				}
-				else
-				{
-					m_seconds_below_thresholds = 0;
-				}
-
-				if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
-					m_sampling_ratio > 1)
-				{
-					m_seconds_below_thresholds = 0;
-					if(m_sampling_ratio > 2)
-					{
-						m_inspector->start_dropping_mode(m_sampling_ratio / 2);
-					}
-					else
-					{
-						m_inspector->stop_dropping_mode();
-					}
-
-					g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-				}
-			}
+			tune_drop_mode(flshflags, nevts_in_last_sample);
 		}
 
 		m_prev_sample_evtnum = evt->get_num();
