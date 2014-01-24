@@ -108,6 +108,18 @@ void sinsp_worker::init()
 		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
 		m_inspector->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
+
+	if(m_configuration->m_drop_upper_treshold != 0)
+	{
+		g_log->information("Drop upper treshold=" + NumberFormatter::format(m_configuration->m_drop_upper_treshold));
+		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_treshold);
+	}
+
+	if(m_configuration->m_drop_lower_treshold != 0)
+	{
+		g_log->information("Drop lower treshold=" + NumberFormatter::format(m_configuration->m_drop_lower_treshold));
+		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_treshold);
+	}
 }
 
 captureinfo sinsp_worker::do_inspect()
@@ -244,6 +256,8 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 		}
 		else
 		{
+			++it;
+			
 			if(job->m_filter)
 			{
 				if(!job->m_filter->run(ev))
@@ -253,8 +267,6 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			}
 
 			job->m_dumper->dump(ev);
-
-			++it;
 		}
 	}
 }

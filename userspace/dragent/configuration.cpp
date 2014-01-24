@@ -158,6 +158,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
 	g_log->information("dumpdir: " + m_dump_dir);
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
+	g_log->information("autodrop.treshold.upper: " + NumberFormatter::format(m_drop_upper_treshold));
+	g_log->information("autodrop.treshold.lower: " + NumberFormatter::format(m_drop_lower_treshold));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

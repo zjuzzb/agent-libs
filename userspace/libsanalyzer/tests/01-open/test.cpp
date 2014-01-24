@@ -359,6 +359,7 @@ int main(int argc, char **argv)
 	captureinfo cinfo;
 	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
+	uint32_t drop_ratio = 0;
 
 	{
 		sinsp* inspector = new sinsp();
@@ -370,10 +371,13 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "ac:C:e:f:jl:m:M:qr:s:vw:")) != -1)
+		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:qr:s:vw:")) != -1)
 		{
 			switch (op)
 			{
+			case 'A':
+				analyzer->get_configuration()->set_autodrop_enabled(true);
+				break;
 			case 'a':
 				absolute_times = true;
 				break;
@@ -393,6 +397,9 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_customer_id(optarg);
 #endif
+				break;
+			case 'd':
+				drop_ratio = atoi(optarg);
 				break;
 			case 'e':
 #ifdef HAS_ANALYZER
@@ -541,7 +548,11 @@ int main(int argc, char **argv)
 				inspector->open("");
 			}
 
-//inspector->start_dropping_mode(8);
+			if(drop_ratio != 0)
+			{
+				inspector->start_dropping_mode(drop_ratio);
+			}
+
 			if(dumpfile != "")
 			{
 				inspector->autodump_start(dumpfile);

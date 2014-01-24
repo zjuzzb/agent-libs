@@ -149,6 +149,7 @@ VISIBILITY_PRIVATE
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	void tune_drop_mode(flush_flags flshflags, uint64_t treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
@@ -261,6 +262,8 @@ VISIBILITY_PRIVATE
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
+	int m_mypid;
+	double m_my_cpuload;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #ifdef _WIN32
 #include <winsock2.h>
+#include <process.h>
+#define getpid _getpid
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -75,8 +77,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
+	m_my_cpuload = -1;
 
 	m_configuration = new sinsp_configuration();
+
+	m_mypid = getpid();
 
 	//
 	// Listeners
@@ -467,7 +472,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	uint64_t cur_global_total_jiffies;
 	if(m_inspector->m_islive)
 	{
-		m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+		}
 	}
 	else
 	{
@@ -551,16 +559,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		it->second.m_ainfo->m_cpuload = 0;
 
-		if(it->second.is_main_thread())
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			if(m_inspector->m_islive)
+			if(it->second.is_main_thread() || it->first == m_mypid)
 			{
-				it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
-					&it->second.m_ainfo->m_old_proc_jiffies, 
-					cur_global_total_jiffies - m_old_global_total_jiffies,
-					&it->second.m_ainfo->m_resident_memory_kb);
+				if(m_inspector->m_islive)
+				{
+					it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+						&it->second.m_ainfo->m_old_proc_jiffies, 
+						cur_global_total_jiffies - m_old_global_total_jiffies,
+						&it->second.m_ainfo->m_resident_memory_kb);
 
-				m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+					m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+				}
 			}
 		}
 
@@ -583,6 +594,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			m_server_programs.insert(mtinfo->m_tid);
 			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.m_counter.m_time_ns_out;
+		}
+
+		if(m_inspector->m_islive)
+		{
+			if(it->first == m_mypid)
+			{
+				m_my_cpuload = mtinfo->m_ainfo->m_cpuload;
+			}
 		}
 
 #ifdef ANALYZER_EMITS_THREADS
@@ -732,6 +751,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					m_delay_calculator->compute_program_delays(&it->second, prog_delays);
 
 					//
+					// Main metrics
+					//
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+					//
 					// Transaction-related metrics
 					//
 					if(prog_delays->m_local_processing_delay_ns != -1)
@@ -740,7 +764,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
 					}
 
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
 					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
 
 					//
@@ -816,10 +839,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
 
 							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  time)proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
 								procinfo->m_proc_metrics.get_processing_percentage() * 100,
 								procinfo->m_proc_metrics.get_file_percentage() * 100,
-								(uint64_t)(procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in + procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out),
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
 								procinfo->m_proc_metrics.get_net_percentage() * 100,
 								procinfo->m_proc_metrics.get_other_percentage() * 100);
 						}
@@ -895,7 +921,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	m_old_global_total_jiffies = cur_global_total_jiffies;
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		m_old_global_total_jiffies = cur_global_total_jiffies;
+	}
 }
 
 void sinsp_analyzer::emit_aggregated_connections()
@@ -1130,6 +1159,67 @@ void sinsp_analyzer::emit_full_connections()
 			//
 			cit->second.clear();
 			++cit;
+		}
+	}
+}
+
+void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_metric)
+{
+	//
+	// Drop mode logic:
+	// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
+	// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
+	//
+	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		if(treshold_metric >= m_configuration->get_drop_upper_threshold())
+		{
+			m_seconds_above_thresholds++;
+		}
+		else
+		{
+			m_seconds_above_thresholds = 0;
+		}
+
+		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
+		{
+			m_seconds_above_thresholds = 0;
+
+			if(m_sampling_ratio <= 32)
+			{
+				m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+				g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
+			}
+		}
+
+		if(treshold_metric <= m_configuration->get_drop_lower_threshold())
+		{
+			m_seconds_below_thresholds++;
+		}
+		else
+		{
+			m_seconds_below_thresholds = 0;
+		}
+
+		if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
+			m_sampling_ratio > 1)
+		{
+			m_seconds_below_thresholds = 0;
+
+			if(m_sampling_ratio > 2)
+			{
+				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+			}
+			else
+			{
+				m_inspector->stop_dropping_mode();
+			}
+
+			g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 		}
 	}
 }
@@ -1416,10 +1506,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"host times: proc:%.2lf%% file:%.2lf%%(%" PRIu64 "b) net:%.2lf%% other:%.2lf%%",
+					"sinsp cpu: %lf", m_my_cpuload);
+
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"host times: %.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
 					m_host_metrics.m_metrics.get_processing_percentage() * 100,
 					m_host_metrics.m_metrics.get_file_percentage() * 100,
-					(uint64_t)(m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in + m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out),
+					m_host_metrics.m_metrics.m_tot_io_file.m_bytes_in,
+					m_host_metrics.m_metrics.m_tot_io_file.m_count_in,
+					m_host_metrics.m_metrics.m_tot_io_file.m_bytes_out,
+					m_host_metrics.m_metrics.m_tot_io_file.m_count_out,
 					m_host_metrics.m_metrics.get_net_percentage() * 100,
 					m_host_metrics.m_metrics.get_other_percentage() * 100);
 			}
@@ -1520,64 +1616,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
 		}
 
-		//
-		// Drop mode logic:
-		// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
-		// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
-		//
 		if(m_configuration->get_autodrop_enabled())
 		{
-			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
-			{
-				if(nevts_in_last_sample > m_configuration->get_drop_upper_threshold() * m_machine_info->num_cpus)
-				{
-					m_seconds_above_thresholds++;
-				}
-				else
-				{
-					m_seconds_above_thresholds = 0;
-				}
-
-				if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
-				{
-					m_seconds_above_thresholds = 0;
-
-					if(m_sampling_ratio <= 32)
-					{
-						m_inspector->start_dropping_mode(m_sampling_ratio * 2);
-						g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
-					}
-					else
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
-					}
-				}
-
-				if(nevts_in_last_sample < m_configuration->get_drop_lower_threshold() * m_machine_info->num_cpus)
-				{
-					m_seconds_below_thresholds++;
-				}
-				else
-				{
-					m_seconds_below_thresholds = 0;
-				}
-
-				if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
-					m_sampling_ratio > 1)
-				{
-					m_seconds_below_thresholds = 0;
-					if(m_sampling_ratio > 2)
-					{
-						m_inspector->start_dropping_mode(m_sampling_ratio / 2);
-					}
-					else
-					{
-						m_inspector->stop_dropping_mode();
-					}
-
-					g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-				}
-			}
+//			tune_drop_mode(flshflags, nevts_in_last_sample * m_machine_info->num_cpus);
+			tune_drop_mode(flshflags, m_my_cpuload);
 		}
 
 		m_prev_sample_evtnum = evt->get_num();
