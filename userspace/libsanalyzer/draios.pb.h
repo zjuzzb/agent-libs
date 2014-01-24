@@ -56,6 +56,9 @@ class dump_request;
 class dump_response;
 class exec_cmd_request;
 class exec_cmd_response;
+class ssh_open_channel;
+class ssh_data;
+class ssh_close_channel;
 
 enum networkrole {
   NONE = 0,
@@ -86,11 +89,14 @@ enum message_type {
   DUMP_REQUEST = 2,
   DUMP_RESPONSE = 3,
   EXEC_COMMAND_REQUEST = 4,
-  EXEC_COMMAND_RESPONSE = 5
+  EXEC_COMMAND_RESPONSE = 5,
+  SSH_OPEN_CHANNEL = 6,
+  SSH_CLOSE_CHANNEL = 7,
+  SSH_DATA = 8
 };
 bool message_type_IsValid(int value);
 const message_type message_type_MIN = METRICS;
-const message_type message_type_MAX = EXEC_COMMAND_RESPONSE;
+const message_type message_type_MAX = SSH_DATA;
 const int message_type_ARRAYSIZE = message_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* message_type_descriptor();
@@ -3282,6 +3288,487 @@ class exec_cmd_response : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static exec_cmd_response* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class ssh_open_channel : public ::google::protobuf::Message {
+ public:
+  ssh_open_channel();
+  virtual ~ssh_open_channel();
+
+  ssh_open_channel(const ssh_open_channel& from);
+
+  inline ssh_open_channel& operator=(const ssh_open_channel& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ssh_open_channel& default_instance();
+
+  void Swap(ssh_open_channel* other);
+
+  // implements Message ----------------------------------------------
+
+  ssh_open_channel* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const ssh_open_channel& from);
+  void MergeFrom(const ssh_open_channel& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // required string token = 4;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 4;
+  inline const ::std::string& token() const;
+  inline void set_token(const ::std::string& value);
+  inline void set_token(const char* value);
+  inline void set_token(const char* value, size_t size);
+  inline ::std::string* mutable_token();
+  inline ::std::string* release_token();
+  inline void set_allocated_token(::std::string* token);
+
+  // required string user = 5;
+  inline bool has_user() const;
+  inline void clear_user();
+  static const int kUserFieldNumber = 5;
+  inline const ::std::string& user() const;
+  inline void set_user(const ::std::string& value);
+  inline void set_user(const char* value);
+  inline void set_user(const char* value, size_t size);
+  inline ::std::string* mutable_user();
+  inline ::std::string* release_user();
+  inline void set_allocated_user(::std::string* user);
+
+  // optional string password = 6;
+  inline bool has_password() const;
+  inline void clear_password();
+  static const int kPasswordFieldNumber = 6;
+  inline const ::std::string& password() const;
+  inline void set_password(const ::std::string& value);
+  inline void set_password(const char* value);
+  inline void set_password(const char* value, size_t size);
+  inline ::std::string* mutable_password();
+  inline ::std::string* release_password();
+  inline void set_allocated_password(::std::string* password);
+
+  // optional string key = 7;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 7;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // optional string passphrase = 8;
+  inline bool has_passphrase() const;
+  inline void clear_passphrase();
+  static const int kPassphraseFieldNumber = 8;
+  inline const ::std::string& passphrase() const;
+  inline void set_passphrase(const ::std::string& value);
+  inline void set_passphrase(const char* value);
+  inline void set_passphrase(const char* value, size_t size);
+  inline ::std::string* mutable_passphrase();
+  inline ::std::string* release_passphrase();
+  inline void set_allocated_passphrase(::std::string* passphrase);
+
+  // optional uint32 port = 9;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 9;
+  inline ::google::protobuf::uint32 port() const;
+  inline void set_port(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.ssh_open_channel)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+  inline void set_has_token();
+  inline void clear_has_token();
+  inline void set_has_user();
+  inline void clear_has_user();
+  inline void set_has_password();
+  inline void clear_has_password();
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_passphrase();
+  inline void clear_has_passphrase();
+  inline void set_has_port();
+  inline void clear_has_port();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+  ::std::string* token_;
+  ::std::string* user_;
+  ::std::string* password_;
+  ::std::string* key_;
+  ::std::string* passphrase_;
+  ::google::protobuf::uint32 port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static ssh_open_channel* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class ssh_data : public ::google::protobuf::Message {
+ public:
+  ssh_data();
+  virtual ~ssh_data();
+
+  ssh_data(const ssh_data& from);
+
+  inline ssh_data& operator=(const ssh_data& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ssh_data& default_instance();
+
+  void Swap(ssh_data* other);
+
+  // implements Message ----------------------------------------------
+
+  ssh_data* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const ssh_data& from);
+  void MergeFrom(const ssh_data& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // required string token = 4;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 4;
+  inline const ::std::string& token() const;
+  inline void set_token(const ::std::string& value);
+  inline void set_token(const char* value);
+  inline void set_token(const char* value, size_t size);
+  inline ::std::string* mutable_token();
+  inline ::std::string* release_token();
+  inline void set_allocated_token(::std::string* token);
+
+  // optional bytes data = 5;
+  inline bool has_data() const;
+  inline void clear_data();
+  static const int kDataFieldNumber = 5;
+  inline const ::std::string& data() const;
+  inline void set_data(const ::std::string& value);
+  inline void set_data(const char* value);
+  inline void set_data(const void* value, size_t size);
+  inline ::std::string* mutable_data();
+  inline ::std::string* release_data();
+  inline void set_allocated_data(::std::string* data);
+
+  // optional string error = 6;
+  inline bool has_error() const;
+  inline void clear_error();
+  static const int kErrorFieldNumber = 6;
+  inline const ::std::string& error() const;
+  inline void set_error(const ::std::string& value);
+  inline void set_error(const char* value);
+  inline void set_error(const char* value, size_t size);
+  inline ::std::string* mutable_error();
+  inline ::std::string* release_error();
+  inline void set_allocated_error(::std::string* error);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.ssh_data)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+  inline void set_has_token();
+  inline void clear_has_token();
+  inline void set_has_data();
+  inline void clear_has_data();
+  inline void set_has_error();
+  inline void clear_has_error();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+  ::std::string* token_;
+  ::std::string* data_;
+  ::std::string* error_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static ssh_data* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class ssh_close_channel : public ::google::protobuf::Message {
+ public:
+  ssh_close_channel();
+  virtual ~ssh_close_channel();
+
+  ssh_close_channel(const ssh_close_channel& from);
+
+  inline ssh_close_channel& operator=(const ssh_close_channel& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ssh_close_channel& default_instance();
+
+  void Swap(ssh_close_channel* other);
+
+  // implements Message ----------------------------------------------
+
+  ssh_close_channel* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const ssh_close_channel& from);
+  void MergeFrom(const ssh_close_channel& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // required string token = 4;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 4;
+  inline const ::std::string& token() const;
+  inline void set_token(const ::std::string& value);
+  inline void set_token(const char* value);
+  inline void set_token(const char* value, size_t size);
+  inline ::std::string* mutable_token();
+  inline ::std::string* release_token();
+  inline void set_allocated_token(::std::string* token);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.ssh_close_channel)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+  inline void set_has_token();
+  inline void clear_has_token();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+  ::std::string* token_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static ssh_close_channel* default_instance_;
 };
 // ===================================================================
 
@@ -8147,6 +8634,1156 @@ inline ::google::protobuf::uint32 exec_cmd_response::exit_val() const {
 inline void exec_cmd_response::set_exit_val(::google::protobuf::uint32 value) {
   set_has_exit_val();
   exit_val_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// ssh_open_channel
+
+// required uint64 timestamp_ns = 1;
+inline bool ssh_open_channel::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void ssh_open_channel::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void ssh_open_channel::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void ssh_open_channel::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 ssh_open_channel::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void ssh_open_channel::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool ssh_open_channel::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void ssh_open_channel::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void ssh_open_channel::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void ssh_open_channel::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& ssh_open_channel::machine_id() const {
+  return *machine_id_;
+}
+inline void ssh_open_channel::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_open_channel::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_open_channel::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* ssh_open_channel::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool ssh_open_channel::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void ssh_open_channel::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void ssh_open_channel::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void ssh_open_channel::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& ssh_open_channel::customer_id() const {
+  return *customer_id_;
+}
+inline void ssh_open_channel::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_open_channel::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_open_channel::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* ssh_open_channel::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string token = 4;
+inline bool ssh_open_channel::has_token() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void ssh_open_channel::set_has_token() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void ssh_open_channel::clear_has_token() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void ssh_open_channel::clear_token() {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    token_->clear();
+  }
+  clear_has_token();
+}
+inline const ::std::string& ssh_open_channel::token() const {
+  return *token_;
+}
+inline void ssh_open_channel::set_token(const ::std::string& value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_open_channel::set_token(const char* value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_open_channel::set_token(const char* value, size_t size) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_token() {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  return token_;
+}
+inline ::std::string* ssh_open_channel::release_token() {
+  clear_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = token_;
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_token(::std::string* token) {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
+  }
+  if (token) {
+    set_has_token();
+    token_ = token;
+  } else {
+    clear_has_token();
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string user = 5;
+inline bool ssh_open_channel::has_user() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void ssh_open_channel::set_has_user() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void ssh_open_channel::clear_has_user() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void ssh_open_channel::clear_user() {
+  if (user_ != &::google::protobuf::internal::kEmptyString) {
+    user_->clear();
+  }
+  clear_has_user();
+}
+inline const ::std::string& ssh_open_channel::user() const {
+  return *user_;
+}
+inline void ssh_open_channel::set_user(const ::std::string& value) {
+  set_has_user();
+  if (user_ == &::google::protobuf::internal::kEmptyString) {
+    user_ = new ::std::string;
+  }
+  user_->assign(value);
+}
+inline void ssh_open_channel::set_user(const char* value) {
+  set_has_user();
+  if (user_ == &::google::protobuf::internal::kEmptyString) {
+    user_ = new ::std::string;
+  }
+  user_->assign(value);
+}
+inline void ssh_open_channel::set_user(const char* value, size_t size) {
+  set_has_user();
+  if (user_ == &::google::protobuf::internal::kEmptyString) {
+    user_ = new ::std::string;
+  }
+  user_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_user() {
+  set_has_user();
+  if (user_ == &::google::protobuf::internal::kEmptyString) {
+    user_ = new ::std::string;
+  }
+  return user_;
+}
+inline ::std::string* ssh_open_channel::release_user() {
+  clear_has_user();
+  if (user_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_;
+    user_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_user(::std::string* user) {
+  if (user_ != &::google::protobuf::internal::kEmptyString) {
+    delete user_;
+  }
+  if (user) {
+    set_has_user();
+    user_ = user;
+  } else {
+    clear_has_user();
+    user_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string password = 6;
+inline bool ssh_open_channel::has_password() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void ssh_open_channel::set_has_password() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void ssh_open_channel::clear_has_password() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void ssh_open_channel::clear_password() {
+  if (password_ != &::google::protobuf::internal::kEmptyString) {
+    password_->clear();
+  }
+  clear_has_password();
+}
+inline const ::std::string& ssh_open_channel::password() const {
+  return *password_;
+}
+inline void ssh_open_channel::set_password(const ::std::string& value) {
+  set_has_password();
+  if (password_ == &::google::protobuf::internal::kEmptyString) {
+    password_ = new ::std::string;
+  }
+  password_->assign(value);
+}
+inline void ssh_open_channel::set_password(const char* value) {
+  set_has_password();
+  if (password_ == &::google::protobuf::internal::kEmptyString) {
+    password_ = new ::std::string;
+  }
+  password_->assign(value);
+}
+inline void ssh_open_channel::set_password(const char* value, size_t size) {
+  set_has_password();
+  if (password_ == &::google::protobuf::internal::kEmptyString) {
+    password_ = new ::std::string;
+  }
+  password_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_password() {
+  set_has_password();
+  if (password_ == &::google::protobuf::internal::kEmptyString) {
+    password_ = new ::std::string;
+  }
+  return password_;
+}
+inline ::std::string* ssh_open_channel::release_password() {
+  clear_has_password();
+  if (password_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = password_;
+    password_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_password(::std::string* password) {
+  if (password_ != &::google::protobuf::internal::kEmptyString) {
+    delete password_;
+  }
+  if (password) {
+    set_has_password();
+    password_ = password;
+  } else {
+    clear_has_password();
+    password_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string key = 7;
+inline bool ssh_open_channel::has_key() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ssh_open_channel::set_has_key() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ssh_open_channel::clear_has_key() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void ssh_open_channel::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& ssh_open_channel::key() const {
+  return *key_;
+}
+inline void ssh_open_channel::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void ssh_open_channel::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void ssh_open_channel::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* ssh_open_channel::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string passphrase = 8;
+inline bool ssh_open_channel::has_passphrase() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void ssh_open_channel::set_has_passphrase() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void ssh_open_channel::clear_has_passphrase() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void ssh_open_channel::clear_passphrase() {
+  if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+    passphrase_->clear();
+  }
+  clear_has_passphrase();
+}
+inline const ::std::string& ssh_open_channel::passphrase() const {
+  return *passphrase_;
+}
+inline void ssh_open_channel::set_passphrase(const ::std::string& value) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(value);
+}
+inline void ssh_open_channel::set_passphrase(const char* value) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(value);
+}
+inline void ssh_open_channel::set_passphrase(const char* value, size_t size) {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  passphrase_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_open_channel::mutable_passphrase() {
+  set_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    passphrase_ = new ::std::string;
+  }
+  return passphrase_;
+}
+inline ::std::string* ssh_open_channel::release_passphrase() {
+  clear_has_passphrase();
+  if (passphrase_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = passphrase_;
+    passphrase_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_open_channel::set_allocated_passphrase(::std::string* passphrase) {
+  if (passphrase_ != &::google::protobuf::internal::kEmptyString) {
+    delete passphrase_;
+  }
+  if (passphrase) {
+    set_has_passphrase();
+    passphrase_ = passphrase;
+  } else {
+    clear_has_passphrase();
+    passphrase_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 port = 9;
+inline bool ssh_open_channel::has_port() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void ssh_open_channel::set_has_port() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void ssh_open_channel::clear_has_port() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void ssh_open_channel::clear_port() {
+  port_ = 0u;
+  clear_has_port();
+}
+inline ::google::protobuf::uint32 ssh_open_channel::port() const {
+  return port_;
+}
+inline void ssh_open_channel::set_port(::google::protobuf::uint32 value) {
+  set_has_port();
+  port_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// ssh_data
+
+// required uint64 timestamp_ns = 1;
+inline bool ssh_data::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void ssh_data::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void ssh_data::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void ssh_data::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 ssh_data::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void ssh_data::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool ssh_data::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void ssh_data::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void ssh_data::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void ssh_data::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& ssh_data::machine_id() const {
+  return *machine_id_;
+}
+inline void ssh_data::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_data::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_data::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* ssh_data::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool ssh_data::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void ssh_data::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void ssh_data::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void ssh_data::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& ssh_data::customer_id() const {
+  return *customer_id_;
+}
+inline void ssh_data::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_data::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_data::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* ssh_data::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string token = 4;
+inline bool ssh_data::has_token() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void ssh_data::set_has_token() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void ssh_data::clear_has_token() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void ssh_data::clear_token() {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    token_->clear();
+  }
+  clear_has_token();
+}
+inline const ::std::string& ssh_data::token() const {
+  return *token_;
+}
+inline void ssh_data::set_token(const ::std::string& value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_data::set_token(const char* value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_data::set_token(const char* value, size_t size) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_token() {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  return token_;
+}
+inline ::std::string* ssh_data::release_token() {
+  clear_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = token_;
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_token(::std::string* token) {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
+  }
+  if (token) {
+    set_has_token();
+    token_ = token;
+  } else {
+    clear_has_token();
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional bytes data = 5;
+inline bool ssh_data::has_data() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void ssh_data::set_has_data() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void ssh_data::clear_has_data() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void ssh_data::clear_data() {
+  if (data_ != &::google::protobuf::internal::kEmptyString) {
+    data_->clear();
+  }
+  clear_has_data();
+}
+inline const ::std::string& ssh_data::data() const {
+  return *data_;
+}
+inline void ssh_data::set_data(const ::std::string& value) {
+  set_has_data();
+  if (data_ == &::google::protobuf::internal::kEmptyString) {
+    data_ = new ::std::string;
+  }
+  data_->assign(value);
+}
+inline void ssh_data::set_data(const char* value) {
+  set_has_data();
+  if (data_ == &::google::protobuf::internal::kEmptyString) {
+    data_ = new ::std::string;
+  }
+  data_->assign(value);
+}
+inline void ssh_data::set_data(const void* value, size_t size) {
+  set_has_data();
+  if (data_ == &::google::protobuf::internal::kEmptyString) {
+    data_ = new ::std::string;
+  }
+  data_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_data() {
+  set_has_data();
+  if (data_ == &::google::protobuf::internal::kEmptyString) {
+    data_ = new ::std::string;
+  }
+  return data_;
+}
+inline ::std::string* ssh_data::release_data() {
+  clear_has_data();
+  if (data_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = data_;
+    data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_data(::std::string* data) {
+  if (data_ != &::google::protobuf::internal::kEmptyString) {
+    delete data_;
+  }
+  if (data) {
+    set_has_data();
+    data_ = data;
+  } else {
+    clear_has_data();
+    data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string error = 6;
+inline bool ssh_data::has_error() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void ssh_data::set_has_error() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void ssh_data::clear_has_error() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void ssh_data::clear_error() {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    error_->clear();
+  }
+  clear_has_error();
+}
+inline const ::std::string& ssh_data::error() const {
+  return *error_;
+}
+inline void ssh_data::set_error(const ::std::string& value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void ssh_data::set_error(const char* value) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(value);
+}
+inline void ssh_data::set_error(const char* value, size_t size) {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  error_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_data::mutable_error() {
+  set_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    error_ = new ::std::string;
+  }
+  return error_;
+}
+inline ::std::string* ssh_data::release_error() {
+  clear_has_error();
+  if (error_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = error_;
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_data::set_allocated_error(::std::string* error) {
+  if (error_ != &::google::protobuf::internal::kEmptyString) {
+    delete error_;
+  }
+  if (error) {
+    set_has_error();
+    error_ = error;
+  } else {
+    clear_has_error();
+    error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// ssh_close_channel
+
+// required uint64 timestamp_ns = 1;
+inline bool ssh_close_channel::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void ssh_close_channel::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void ssh_close_channel::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void ssh_close_channel::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 ssh_close_channel::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void ssh_close_channel::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool ssh_close_channel::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void ssh_close_channel::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void ssh_close_channel::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void ssh_close_channel::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& ssh_close_channel::machine_id() const {
+  return *machine_id_;
+}
+inline void ssh_close_channel::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_close_channel::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void ssh_close_channel::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_close_channel::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* ssh_close_channel::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_close_channel::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool ssh_close_channel::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void ssh_close_channel::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void ssh_close_channel::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void ssh_close_channel::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& ssh_close_channel::customer_id() const {
+  return *customer_id_;
+}
+inline void ssh_close_channel::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_close_channel::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void ssh_close_channel::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_close_channel::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* ssh_close_channel::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_close_channel::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string token = 4;
+inline bool ssh_close_channel::has_token() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void ssh_close_channel::set_has_token() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void ssh_close_channel::clear_has_token() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void ssh_close_channel::clear_token() {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    token_->clear();
+  }
+  clear_has_token();
+}
+inline const ::std::string& ssh_close_channel::token() const {
+  return *token_;
+}
+inline void ssh_close_channel::set_token(const ::std::string& value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_close_channel::set_token(const char* value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void ssh_close_channel::set_token(const char* value, size_t size) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ssh_close_channel::mutable_token() {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  return token_;
+}
+inline ::std::string* ssh_close_channel::release_token() {
+  clear_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = token_;
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ssh_close_channel::set_allocated_token(::std::string* token) {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
+  }
+  if (token) {
+    set_has_token();
+    token_ = token;
+  } else {
+    clear_has_token();
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 

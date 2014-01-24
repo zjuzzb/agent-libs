@@ -227,6 +227,9 @@ enum message_type {
   DUMP_RESPONSE = 3;
   EXEC_COMMAND_REQUEST = 4;
   EXEC_COMMAND_RESPONSE = 5;  
+  SSH_OPEN_CHANNEL = 6;
+  SSH_CLOSE_CHANNEL = 7;
+  SSH_DATA = 8;  
 }
 
 //
@@ -278,3 +281,30 @@ message exec_cmd_response {
     optional uint32 exit_val = 7; //identify the process exit value, if this field is present, then this is the last response packet
 }
 
+message ssh_open_channel {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
+    required string user = 5;
+    optional string password = 6;
+    optional string key = 7;
+    optional string passphrase = 8;
+    optional uint32 port = 9;
+}
+
+message ssh_data {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
+    optional bytes data = 5; // Std input/output/error according to where this is sent from
+    optional string error = 6;
+}
+
+message ssh_close_channel {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
+}
