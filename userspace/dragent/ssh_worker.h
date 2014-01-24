@@ -23,22 +23,29 @@ public:
 	uint32_t m_port;
 };
 
-class ssh_worker_session
-{
-public:
-	string m_pending_input;
-};
-
 class ssh_worker : public Runnable
 {
 public:
+	class pending_message
+	{
+	public:
+		pending_message():
+			m_close(false)
+		{
+		}
+
+		string m_input;
+		bool m_close;
+	};
+
 	ssh_worker(dragent_configuration* configuration, protocol_queue* queue, 
 		const string& token, const ssh_settings& settings);
 	~ssh_worker();
 	
 	void run();
 
-	static void send_input(const string& token, const string& input);
+	static void request_input(const string& token, const string& input);
+	static void request_close(const string& token);
 
 private:
 	void send_error(const string& error);
@@ -47,13 +54,13 @@ private:
 	void read_from_channel(string* output, bool std_err);
 	void write_to_channel(const string& input);
 
-	static void add_session(const string& token, const ssh_worker_session& session);
-	static void delete_session(const string& token);
-	static string get_input(const string& token);
+	static void add_pending_messages(const string& token);
+	static void delete_pending_messages(const string& token);
+	static bool get_pending_messages(const string& token, pending_message* message);
 
 	static const string m_name;
-	static Mutex m_sessions_lock;
-	static map<string, ssh_worker_session> m_sessions;
+	static Mutex m_pending_messages_lock;
+	static map<string, pending_message> m_pending_messages;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

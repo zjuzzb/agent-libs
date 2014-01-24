@@ -305,6 +305,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::SSH_CLOSE_CHANNEL:
+				handle_ssh_close_channel(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: " 
 					+ NumberFormatter::format(header->messagetype));
@@ -397,6 +402,17 @@ void connection_manager::handle_ssh_data(uint8_t* buf, uint32_t size)
 
 	if(request.has_data())
 	{
-		ssh_worker::send_input(request.token(), request.data());
+		ssh_worker::request_input(request.token(), request.data());
 	}
+}
+
+void connection_manager::handle_ssh_close_channel(uint8_t* buf, uint32_t size)
+{
+	draiosproto::ssh_close_channel request;
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
+	{
+		return;
+	}
+
+	ssh_worker::request_close(request.token());
 }

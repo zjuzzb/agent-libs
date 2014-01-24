@@ -5,8 +5,8 @@
 
 const string ssh_worker::m_name = "ssh_worker";
 
-Mutex ssh_worker::m_sessions_lock;
-map<string, ssh_worker_session> ssh_worker::m_sessions;
+Mutex ssh_worker::m_pending_messages_lock;
+map<string, ssh_worker::pending_message> ssh_worker::m_pending_messages;
 
 ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* queue,
 		const string& token, const ssh_settings& settings):
@@ -23,7 +23,7 @@ ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* que
 
 ssh_worker::~ssh_worker()
 {
-	delete_session(m_token);
+	delete_pending_messages(m_token);
 
 	if(m_libssh_key)
 	{
@@ -51,8 +51,7 @@ void ssh_worker::run()
 	//
 	SharedPtr<ssh_worker> ptr(this);
 
-	ssh_worker_session session;
-	add_session(m_token, session);
+	add_pending_messages(m_token);
 	
 	g_log->information(m_name + ": Opening SSH session, token " + m_token);
 
@@ -153,8 +152,21 @@ void ssh_worker::run()
 		ssh_channel_is_open(m_libssh_channel) &&
 		!ssh_channel_is_eof(m_libssh_channel))
 	{
-		string input = get_input(m_token);
-		write_to_channel(input);
+		pending_message message;
+		if(get_pending_messages(m_token, &message))
+		{
+			if(message.m_close)
+			{
+				g_log->information("Received SSH close message, aborting session");
+				break;
+			}
+
+			if(!message.m_input.empty())
+			{
+				write_to_channel(message.m_input);
+			}
+		}
+
 		string output;
 		read_from_channel(&output, false);
 		read_from_channel(&output, true);
@@ -263,46 +275,55 @@ void ssh_worker::write_to_channel(const string& input)
 	}
 }
 
-string ssh_worker::get_input(const string& token)
+bool ssh_worker::get_pending_messages(const string& token, pending_message *message)
 {
-	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
 
-	string input;
-
-	map<string, ssh_worker_session>::iterator it = m_sessions.find(token);
-	if(it != m_sessions.end())
+	map<string, pending_message>::iterator it = m_pending_messages.find(token);
+	if(it != m_pending_messages.end())
 	{
-		input = it->second.m_pending_input;
-		it->second.m_pending_input.clear();
+		*message = it->second;
+		it->second.m_input.clear();
+		return true;
 	}
 
-	return input;
+	return false;
 }
 
-void ssh_worker::send_input(const string& token, const string& input)
+void ssh_worker::request_input(const string& token, const string& input)
 {
-	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
 
 	g_log->information("Adding new input to session " + token);
 
-	map<string, ssh_worker_session>::iterator it = m_sessions.find(token);
-	if(it != m_sessions.end())
+	map<string, pending_message>::iterator it = m_pending_messages.find(token);
+	if(it != m_pending_messages.end())
 	{
-		it->second.m_pending_input.append(input);
+		it->second.m_input.append(input);
 	}
 }
 
-void ssh_worker::add_session(const string& token, const ssh_worker_session& session)
+void ssh_worker::add_pending_messages(const string& token)
 {
-	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
 
-	m_sessions.insert(pair<string, ssh_worker_session>(token, session));
+	m_pending_messages.insert(pair<string, pending_message>(token, pending_message()));
 }
 
-void ssh_worker::delete_session(const string& token)
+void ssh_worker::delete_pending_messages(const string& token)
 {
-	Poco::Mutex::ScopedLock lock(m_sessions_lock);
+	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
 
-	m_sessions.erase(token);
+	m_pending_messages.erase(token);
 }
 
+void ssh_worker::request_close(const string& token)
+{
+	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
+
+	map<string, pending_message>::iterator it = m_pending_messages.find(token);
+	if(it != m_pending_messages.end())
+	{
+		it->second.m_close = true;
+	}
+}
