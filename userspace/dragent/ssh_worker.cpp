@@ -156,7 +156,8 @@ void ssh_worker::run()
 		string input = get_input(m_token);
 		write_to_channel(input);
 		string output;
-		read_from_channel(&output);
+		read_from_channel(&output, false);
+		read_from_channel(&output, true);
 
 		if(output.size())
 		{
@@ -178,25 +179,6 @@ void ssh_worker::run()
 	}
 
 	g_log->information("SSH session terminated");
-
-	// string std_out;
-	// read_from_pipe(&out_pipe, &std_out);
-	// string std_err;
-	// read_from_pipe(&err_pipe, &std_err);
-
-	// draiosproto::ssh_data response;
-	// prepare_response(&response);
-
-	// std_out.append(std_err);
-
-	// if(std_out.size())
-	// {
-	// 	response.set_data(std_out);
-	// }
-
-	// response.set_exit_val(WEXITSTATUS(status));
-
-	// queue_response(response);
 
 	ssh_disconnect(m_libssh_session);
 
@@ -245,13 +227,13 @@ void ssh_worker::queue_response(const draiosproto::ssh_data& response)
 	}
 }
 
-void ssh_worker::read_from_channel(string* output)
+void ssh_worker::read_from_channel(string* output, bool std_err)
 {
 	char buffer[8192];
 
 	while(true)
 	{
-		int res = ssh_channel_read_nonblocking(m_libssh_channel, buffer, sizeof(buffer), 0);
+		int res = ssh_channel_read_nonblocking(m_libssh_channel, buffer, sizeof(buffer), std_err);
 		if(res == SSH_ERROR)
 		{
 			ASSERT(false);

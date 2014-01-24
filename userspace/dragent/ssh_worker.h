@@ -44,7 +44,7 @@ private:
 	void send_error(const string& error);
 	void prepare_response(draiosproto::ssh_data* response);
 	void queue_response(const draiosproto::ssh_data& response);
-	void read_from_channel(string* output);
+	void read_from_channel(string* output, bool std_err);
 	void write_to_channel(const string& input);
 
 	static void add_session(const string& token, const ssh_worker_session& session);
