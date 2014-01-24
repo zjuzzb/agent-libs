@@ -472,7 +472,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	uint64_t cur_global_total_jiffies;
 	if(m_inspector->m_islive)
 	{
-		m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		{
+			m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
+		}
 	}
 	else
 	{
@@ -918,7 +921,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	m_old_global_total_jiffies = cur_global_total_jiffies;
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		m_old_global_total_jiffies = cur_global_total_jiffies;
+	}
 }
 
 void sinsp_analyzer::emit_aggregated_connections()
