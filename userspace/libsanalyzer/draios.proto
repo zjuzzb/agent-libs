@@ -289,7 +289,8 @@ message ssh_open_channel {
     required string user = 5;
     optional string password = 6;
     optional string key = 7;
-    optional uint32 port = 8;
+    optional string passphrase = 8;
+    optional uint32 port = 9;
 }
 
 message ssh_data {

@@ -5,6 +5,9 @@
 #include "draios.pb.h"
 #include "configuration.h"
 
+#define LIBSSH_STATIC 1
+#include <libssh/libssh.h> 
+
 class ssh_settings
 {
 public:
@@ -16,10 +19,11 @@ public:
 	string m_user;
 	string m_password;
 	string m_key;
+	string m_passphrase;
 	uint32_t m_port;
 };
 
-class ssh_session
+class ssh_worker_session
 {
 public:
 	string m_pending_input;
@@ -40,19 +44,22 @@ private:
 	void send_error(const string& error);
 	void prepare_response(draiosproto::ssh_data* response);
 	void queue_response(const draiosproto::ssh_data& response);
-	void read_from_pipe(Pipe* pipe, string* output);
-	void write_to_pipe(Pipe* pipe, const string& output);
+	void read_from_channel(string* output);
+	void write_to_channel(const string& input);
 
-	static void add_session(const string& token, const ssh_session& session);
+	static void add_session(const string& token, const ssh_worker_session& session);
 	static void delete_session(const string& token);
 	static string get_input(const string& token);
 
 	static const string m_name;
 	static Mutex m_sessions_lock;
-	static map<string, ssh_session> m_sessions;
+	static map<string, ssh_worker_session> m_sessions;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	string m_token;
 	ssh_settings m_ssh_settings;
+	ssh_session m_libssh_session;
+	ssh_key m_libssh_key;
+	ssh_channel m_libssh_channel;
 };

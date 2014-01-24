@@ -6,7 +6,7 @@
 const string ssh_worker::m_name = "ssh_worker";
 
 Mutex ssh_worker::m_sessions_lock;
-map<string, ssh_session> ssh_worker::m_sessions;
+map<string, ssh_worker_session> ssh_worker::m_sessions;
 
 ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* queue,
 		const string& token, const ssh_settings& settings):
@@ -14,13 +14,34 @@ ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* que
 	m_configuration(configuration),
 	m_queue(queue),
 	m_token(token),
-	m_ssh_settings(settings)
+	m_ssh_settings(settings),
+	m_libssh_session(NULL),
+	m_libssh_key(NULL),
+	m_libssh_channel(NULL)
 {
 }
 
 ssh_worker::~ssh_worker()
 {
 	delete_session(m_token);
+
+	if(m_libssh_session)
+	{
+		ssh_free(m_libssh_session);
+		m_libssh_session = NULL;
+	}
+
+	if(m_libssh_key)
+	{
+		ssh_key_free(m_libssh_key);
+		m_libssh_key = NULL;
+	}
+
+	if(m_libssh_channel)
+	{
+		ssh_channel_free(m_libssh_channel);
+		m_libssh_channel = NULL;
+	}
 }
 
 void ssh_worker::run()
@@ -30,167 +51,154 @@ void ssh_worker::run()
 	//
 	SharedPtr<ssh_worker> ptr(this);
 
-	ssh_session session;
+	ssh_worker_session session;
 	add_session(m_token, session);
 	
 	g_log->information(m_name + ": Opening SSH session, token " + m_token);
 
-	string command = "ssh";
-	vector<string> args;
+	m_libssh_session = ssh_new();
+	if(m_libssh_session == NULL)
+	{
+		send_error("Error creating libssh session");
+		return;
+	}
+
+	ssh_options_set(m_libssh_session, SSH_OPTIONS_HOST, "localhost");
+	ssh_options_set(m_libssh_session, SSH_OPTIONS_USER, m_ssh_settings.m_user.c_str());
 
 	if(m_ssh_settings.m_port)
 	{
-		args.push_back("-p");
-		args.push_back(NumberFormatter::format(m_ssh_settings.m_port));
+		ssh_options_set(m_libssh_session, SSH_OPTIONS_PORT, &m_ssh_settings.m_port);
 	}
 
-	Poco::TemporaryFile file;
-
-	if(!m_ssh_settings.m_key.empty())
+	if(ssh_connect(m_libssh_session) != SSH_OK)
 	{
-		bool created = false;
+		send_error(string("ssh_connect: ") + ssh_get_error(m_libssh_session));
+		return;
+	}
 
-		try
+	if(!m_ssh_settings.m_password.empty())
+	{
+		if(ssh_userauth_password(m_libssh_session, NULL, m_ssh_settings.m_password.c_str()) != SSH_AUTH_SUCCESS)
 		{
-			created = file.createFile();
+			send_error(string("ssh_userauth_password: ") + ssh_get_error(m_libssh_session));
+			return;
 		}
-		catch(Poco::Exception& e)
+	}
+	else if(!m_ssh_settings.m_key.empty())
+	{
+		m_libssh_key = ssh_key_new();
+		if(m_libssh_key == NULL)
 		{
-		}
-
-		if(!created)
-		{
-			send_error("Cannot create temporary file for SSH key");
+			send_error("Error creating ssh key");
 			return;
 		}
 
-		if(chmod(file.path().c_str(), S_IRUSR) == -1)
+		const char* passphrase = NULL;
+		if(!m_ssh_settings.m_passphrase.empty())
 		{
-			send_error("Cannot set SSH key permissions");
-			return;			
+			passphrase = m_ssh_settings.m_passphrase.c_str();
 		}
 
-		g_log->information("Temporary saving key to " + file.path());
+		if(ssh_pki_import_privkey_base64(m_ssh_settings.m_key.c_str(), passphrase, NULL, NULL, &m_libssh_key) != SSH_OK)
+		{
+			send_error("Error importing ssh key");
+			return;
+		}
 
-		ofstream key_file;
-		key_file.open(file.path());
-		key_file << m_ssh_settings.m_key;
-		key_file.close();
-
-		args.push_back("-i");
-		args.push_back(file.path());
+		if(ssh_userauth_publickey(m_libssh_session, NULL, m_libssh_key) != SSH_AUTH_SUCCESS)
+		{
+			send_error(string("ssh_userauth_publickey: ") + ssh_get_error(m_libssh_session));
+			return;
+		}
+	}
+	else
+	{
+		send_error("No password or key specified");
+		return;		
 	}
 
-	if(m_ssh_settings.m_user.empty())
+	m_libssh_channel = ssh_channel_new(m_libssh_session);
+	if(m_libssh_channel)
 	{
-		send_error("User not specified");
+		send_error("Error opening ssh channel");
 		return;
 	}
 
-	args.push_back("-t");
-	args.push_back("-t");
-	args.push_back("-o");
-	args.push_back("StrictHostKeyChecking no");
-	args.push_back(m_ssh_settings.m_user + "@localhost");
+	if(ssh_channel_open_session(m_libssh_channel) != SSH_OK)
+	{
+		send_error(string("ssh_channel_open_session: ") + ssh_get_error(m_libssh_session));
+		return;
+	}
 
-	Pipe in_pipe;
-	Pipe out_pipe;
-	Pipe err_pipe;
+	if(ssh_channel_request_pty(m_libssh_channel) != SSH_OK)
+	{
+		send_error(string("ssh_channel_request_pty: ") + ssh_get_error(m_libssh_session));
+		return;
+	}
 
-	// if(fcntl(in_pipe.writeHandle(), F_SETFL, O_NONBLOCK) == -1)
+	if(ssh_channel_change_pty_size(m_libssh_channel, 80, 24) != SSH_OK)
+	{
+		send_error(string("ssh_channel_change_pty_size: ") + ssh_get_error(m_libssh_session));
+		return;
+	}
+
+	if(ssh_channel_request_shell(m_libssh_channel) != SSH_OK)
+	{
+		send_error(string("ssh_channel_request_shell: ") + ssh_get_error(m_libssh_session));
+		return;
+	}
+
+	while(!dragent_configuration::m_terminate &&
+		ssh_channel_is_open(m_libssh_channel) &&
+		!ssh_channel_is_eof(m_libssh_channel))
+	{
+		string input = get_input(m_token);
+		write_to_channel(input);
+		string output;
+		read_from_channel(&output);
+
+		if(output.size())
+		{
+			//
+			// Report the partial output
+			//
+			draiosproto::ssh_data response;
+			prepare_response(&response);
+			response.set_data(output);
+
+			g_log->information("Sending partial output (" 
+				+ NumberFormatter::format(output.size()) + ")");
+
+			queue_response(response);
+		}
+
+		Thread::sleep(100);
+		continue;
+	}
+
+	g_log->information("SSH session terminated");
+
+	// string std_out;
+	// read_from_pipe(&out_pipe, &std_out);
+	// string std_err;
+	// read_from_pipe(&err_pipe, &std_err);
+
+	// draiosproto::ssh_data response;
+	// prepare_response(&response);
+
+	// std_out.append(std_err);
+
+	// if(std_out.size())
 	// {
-	// 	send_error("Error setting non blocking mode on in_pipe");
-	// 	return;
+	// 	response.set_data(std_out);
 	// }
 
-	if(fcntl(out_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
-	{
-		send_error("Error setting non blocking mode on out_pipe");
-		return;
-	}
+	// response.set_exit_val(WEXITSTATUS(status));
 
-	if(fcntl(err_pipe.readHandle(), F_SETFL, O_NONBLOCK) == -1)
-	{
-		send_error("Error setting non blocking mode on err_pipe");
-		return;
-	}
+	// queue_response(response);
 
-	ProcessHandle process = Process::launch(command, args, &in_pipe, &out_pipe, &err_pipe);
-
-	ProcessHandle::PID pid = process.id();
-
-	while(!dragent_configuration::m_terminate)
-	{
-		int status;
-		pid_t res = waitpid(pid, &status, WNOHANG);
-
-		if(res == -1)
-		{
-			send_error("Error waiting for SSH termination");
-			break;
-		}
-
-		if(res == 0)
-		{
-			//
-			// Process not terminated, check the outputs and the inputs
-			//
-			string std_in = get_input(m_token);
-			write_to_pipe(&in_pipe, std_in);
-			string std_out;
-			read_from_pipe(&out_pipe, &std_out);
-			string std_err;
-			read_from_pipe(&err_pipe, &std_err);
-
-			std_out.append(std_err);
-
-			if(std_out.size())
-			{
-				//
-				// Report the partial output
-				//
-				draiosproto::ssh_data response;
-				prepare_response(&response);
-
-				if(std_out.size())
-				{
-					response.set_data(std_out);
-				}
-
-				g_log->information("Process not terminated, sending partial std_out (" 
-					+ NumberFormatter::format(std_out.size()) + "), std_err (" 
-					+ NumberFormatter::format(std_err.size()) + ")");
-
-				queue_response(response);
-			}
-
-			Thread::sleep(100);
-			continue;
-		}
-
-		g_log->information("SSH session terminated");
-
-		string std_out;
-		read_from_pipe(&out_pipe, &std_out);
-		string std_err;
-		read_from_pipe(&err_pipe, &std_err);
-
-		draiosproto::ssh_data response;
-		prepare_response(&response);
-
-		std_out.append(std_err);
-
-		if(std_out.size())
-		{
-			response.set_data(std_out);
-		}
-
-		// response.set_exit_val(WEXITSTATUS(status));
-
-		queue_response(response);
-
-		break;
-	}
+	ssh_disconnect(m_libssh_session);
 
 	g_log->information(m_name + ": Terminating");
 }
@@ -237,46 +245,39 @@ void ssh_worker::queue_response(const draiosproto::ssh_data& response)
 	}
 }
 
-void ssh_worker::read_from_pipe(Pipe* pipe, string* output)
+void ssh_worker::read_from_channel(string* output)
 {
-	char pipe_buffer[8192];
+	char buffer[8192];
 
 	while(true)
 	{
-		try
+		int res = ssh_channel_read(m_libssh_channel, buffer, sizeof(buffer), 0);
+		if(res == SSH_ERROR)
 		{
-			int n = pipe->readBytes(pipe_buffer, sizeof(pipe_buffer));
-			if(n == 0)
-			{
-				break;
-			}
-
-			output->append(pipe_buffer, n);
+			ASSERT(false);
 		}
-		catch(Poco::ReadFileException& e)
+
+		if(res == 0)
 		{
-			//
-			// All good, probably just nothing to read
-			//
 			break;
 		}
+
+		output->append(buffer, res);
 	}
 }
 
-void ssh_worker::write_to_pipe(Pipe* pipe, const string& input)
+void ssh_worker::write_to_channel(const string& input)
 {
 	int n = 0;
 	while(n != (int) input.size())
 	{
-		try
-		{
-			n += pipe->writeBytes(input.data() + n, input.size() - n);
-		}
-		catch(Poco::WriteFileException& e)
+		int res = ssh_channel_write(m_libssh_channel, input.data() + n, input.size() - n);
+		if(res == SSH_ERROR)
 		{
 			ASSERT(false);
-			break;
 		}
+
+		n += res;
 	}
 }
 
@@ -286,7 +287,7 @@ string ssh_worker::get_input(const string& token)
 
 	string input;
 
-	map<string, ssh_session>::iterator it = m_sessions.find(token);
+	map<string, ssh_worker_session>::iterator it = m_sessions.find(token);
 	if(it != m_sessions.end())
 	{
 		input = it->second.m_pending_input;
@@ -302,18 +303,18 @@ void ssh_worker::send_input(const string& token, const string& input)
 
 	g_log->information("Adding new input to session " + token);
 
-	map<string, ssh_session>::iterator it = m_sessions.find(token);
+	map<string, ssh_worker_session>::iterator it = m_sessions.find(token);
 	if(it != m_sessions.end())
 	{
 		it->second.m_pending_input.append(input);
 	}
 }
 
-void ssh_worker::add_session(const string& token, const ssh_session& session)
+void ssh_worker::add_session(const string& token, const ssh_worker_session& session)
 {
 	Poco::Mutex::ScopedLock lock(m_sessions_lock);
 
-	m_sessions.insert(pair<string, ssh_session>(token, session));
+	m_sessions.insert(pair<string, ssh_worker_session>(token, session));
 }
 
 void ssh_worker::delete_session(const string& token)
