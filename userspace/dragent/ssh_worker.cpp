@@ -25,12 +25,6 @@ ssh_worker::~ssh_worker()
 {
 	delete_session(m_token);
 
-	if(m_libssh_session)
-	{
-		ssh_free(m_libssh_session);
-		m_libssh_session = NULL;
-	}
-
 	if(m_libssh_key)
 	{
 		ssh_key_free(m_libssh_key);
@@ -41,6 +35,12 @@ ssh_worker::~ssh_worker()
 	{
 		ssh_channel_free(m_libssh_channel);
 		m_libssh_channel = NULL;
+	}
+
+	if(m_libssh_session)
+	{
+		ssh_free(m_libssh_session);
+		m_libssh_session = NULL;
 	}
 }
 
@@ -119,7 +119,7 @@ void ssh_worker::run()
 	}
 
 	m_libssh_channel = ssh_channel_new(m_libssh_session);
-	if(m_libssh_channel)
+	if(m_libssh_channel == NULL)
 	{
 		send_error("Error opening ssh channel");
 		return;
@@ -251,7 +251,7 @@ void ssh_worker::read_from_channel(string* output)
 
 	while(true)
 	{
-		int res = ssh_channel_read(m_libssh_channel, buffer, sizeof(buffer), 0);
+		int res = ssh_channel_read_nonblocking(m_libssh_channel, buffer, sizeof(buffer), 0);
 		if(res == SSH_ERROR)
 		{
 			ASSERT(false);
