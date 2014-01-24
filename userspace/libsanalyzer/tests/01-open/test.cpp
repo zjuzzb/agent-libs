@@ -360,7 +360,6 @@ int main(int argc, char **argv)
 	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
 	uint32_t drop_ratio = 0;
-	bool autodrop = false;
 
 	{
 		sinsp* inspector = new sinsp();
@@ -377,7 +376,7 @@ int main(int argc, char **argv)
 			switch (op)
 			{
 			case 'A':
-				autodrop = true;
+				analyzer->get_configuration()->set_autodrop_enabled(true);
 				break;
 			case 'a':
 				absolute_times = true;
@@ -552,11 +551,6 @@ int main(int argc, char **argv)
 			if(drop_ratio != 0)
 			{
 				inspector->start_dropping_mode(drop_ratio);
-			}
-
-			if(autodrop)
-			{
-				analyzer->get_configuration()->set_autodrop_enabled(true);
 			}
 
 			if(dumpfile != "")
