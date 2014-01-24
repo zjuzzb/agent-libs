@@ -36,7 +36,8 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.0/target/lib/libssh.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.0l/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.0l/target/lib/libcrypto.a
-	dl)
+	dl
+	rt)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
