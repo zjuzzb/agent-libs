@@ -106,7 +106,7 @@
 // Maximum numeber of events per CPU that the analyzer sees before it starts putting
 // the driver in drop mode.
 //
-#define DROP_UPPER_THRESHOLD 8
+#define DROP_UPPER_THRESHOLD 5
 #define DROP_LOWER_THRESHOLD 3
 
 //

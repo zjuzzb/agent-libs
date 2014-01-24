@@ -1163,7 +1163,7 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
-void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_metric)
+void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metric)
 {
 	//
 	// Drop mode logic:
@@ -1175,6 +1175,9 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_met
 		if(treshold_metric >= m_configuration->get_drop_upper_threshold())
 		{
 			m_seconds_above_thresholds++;
+
+			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold secs: %" PRIu32 ":%" PRIu32, 
+				m_seconds_above_thresholds, m_configuration->get_drop_treshold_consecutive_seconds());
 		}
 		else
 		{
@@ -1185,20 +1188,26 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_met
 		{
 			m_seconds_above_thresholds = 0;
 
-			if(m_sampling_ratio <= 32)
+			if(m_sampling_ratio < 128)
 			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp ++ Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
 				m_inspector->start_dropping_mode(m_sampling_ratio * 2);
-				g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "Reached maximum sampling ratio and still too high");
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Reached maximum sampling ratio and still too high");
 			}
 		}
 
 		if(treshold_metric <= m_configuration->get_drop_lower_threshold())
 		{
 			m_seconds_below_thresholds++;
+	
+			if(m_sampling_ratio > 1)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp below drop treshold secs: %" PRIu32 ":%" PRIu32, 
+					m_seconds_below_thresholds, m_configuration->get_drop_treshold_consecutive_seconds());				
+			}
 		}
 		else
 		{
@@ -1212,14 +1221,14 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, uint64_t treshold_met
 
 			if(m_sampling_ratio > 2)
 			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
 			}
 			else
 			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- stopping dropping mode");
 				m_inspector->stop_dropping_mode();
 			}
-
-			g_logger.format(sinsp_logger::SEV_ERROR, "Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 		}
 	}
 }
@@ -1273,7 +1282,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_prev_flush_time_ns = ts - ts % sample_duration;
 //			m_prev_flush_time_ns = m_next_flush_time_ns;
-			m_next_flush_time_ns += sample_duration;
+			m_next_flush_time_ns = m_prev_flush_time_ns + sample_duration;
 
 			ASSERT(m_next_flush_time_ns / sample_duration * sample_duration == m_next_flush_time_ns);
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
@@ -1863,7 +1872,7 @@ void sinsp_analyzer::parse_drop(sinsp_evt* evt)
 	if(*(uint32_t*)parinfo->m_val != m_sampling_ratio)
 	{
 		m_sampling_ratio = *(int32_t*)parinfo->m_val;
-		g_logger.format(sinsp_logger::SEV_ERROR, "Switching sampling ratio to %" PRIu32, m_sampling_ratio);
+		g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Switching sampling ratio to %" PRIu32, m_sampling_ratio);
 	}
 
 	uint64_t newsl =  ((uint64_t)ONE_SECOND_IN_NS) / m_sampling_ratio;
@@ -1961,8 +1970,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			}
 			else
 			{
-				m_sampling_ratio = 1;
 				uint64_t original_sample_len = m_configuration->get_analyzer_sample_len_ns() * m_sampling_ratio;
+				m_sampling_ratio = 1;
 				m_configuration->set_analyzer_sample_len_ns(original_sample_len);
 			}
 		}
