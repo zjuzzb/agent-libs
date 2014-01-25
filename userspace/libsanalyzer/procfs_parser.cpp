@@ -187,7 +187,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 		}
 
 		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7;
-		work_jiffies = val1 + val2 + val3;
+		work_jiffies = val1 + val2 + val3 + val5 + val6 + val7;
 
 		if(old_array_size == 0)
 		{
