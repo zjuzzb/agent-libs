@@ -364,7 +364,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
-				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+				EXPECT_EQ(server_ip_address, fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 
@@ -420,7 +420,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
-				EXPECT_EQ(server_ip_address, fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+				EXPECT_EQ(server_ip_address, fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
 
 				state = 4;
 			}
@@ -574,7 +574,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 
 			EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 
-			EXPECT_EQ(server_ip_address, e->m_fdinfo->m_info.m_ipv4info.m_fields.m_sip);
+			EXPECT_EQ(server_ip_address, e->m_fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
 		}
 		else if(type == PPME_SOCKET_SENDMSG_E)
 		{
