@@ -173,9 +173,6 @@ void ssh_worker::run()
 
 		if(output.size())
 		{
-			//
-			// Report the partial output
-			//
 			draiosproto::ssh_data response;
 			prepare_response(&response);
 			response.set_data(output);
@@ -190,7 +187,13 @@ void ssh_worker::run()
 		continue;
 	}
 
-	g_log->information("SSH session terminated");
+	int exit_status = ssh_channel_get_exit_status(m_libssh_channel);
+
+	g_log->information("SSH session terminated, exit code " + NumberFormatter::format(exit_status));
+
+	draiosproto::ssh_data response;
+	prepare_response(&response);
+	response.set_exit_status(exit_status);
 
 	ssh_disconnect(m_libssh_session);
 
@@ -249,9 +252,10 @@ void ssh_worker::read_from_channel(string* output, bool std_err)
 		if(res == SSH_ERROR)
 		{
 			ASSERT(false);
+			break;
 		}
 
-		if(res == 0)
+		if(res == 0 || res == SSH_EOF)
 		{
 			break;
 		}
@@ -269,6 +273,11 @@ void ssh_worker::write_to_channel(const string& input)
 		if(res == SSH_ERROR)
 		{
 			ASSERT(false);
+		}
+
+		if(res == SSH_EOF)
+		{
+			break;
 		}
 
 		n += res;

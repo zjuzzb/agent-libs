@@ -303,7 +303,7 @@ message ssh_data {
     required string token = 4; // The token associated with the request
     optional bytes data = 5; // Std input/output/error according to where this is sent from
     optional string error = 6;
-    optional int32 exit_val = 7;
+    optional int32 exit_status = 7;
 }
 
 message ssh_close_channel {
