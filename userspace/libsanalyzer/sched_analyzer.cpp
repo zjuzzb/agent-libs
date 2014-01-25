@@ -435,7 +435,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
-				"CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64 "(c:% " PRIu32 " i:%" PRIu32 " s:%" PRIu32 ")",
+				"CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64 "(c:%lf i:%lf s:%lf)",
 				j,
 				state.m_lastsample_server_processes_ns,
 				state.m_lastsample_other_ns,
