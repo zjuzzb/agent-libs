@@ -285,7 +285,7 @@ message exec_cmd_response {
     required string token = 4; // The token associated with the request
     optional string std_out = 5; // The the content
     optional string std_err = 6; // The the content
-    optional uint32 exit_status = 7; //identify the process exit value, if this field is present, then this is the last response packet
+    optional uint32 exit_val = 7; //identify the process exit value, if this field is present, then this is the last response packet
 }
 
 message ssh_open_channel {
@@ -307,7 +307,7 @@ message ssh_data {
     required string token = 4; // The token associated with the request
     optional bytes data = 5; // Std input/output/error according to where this is sent from
     optional string error = 6;
-    optional int32 exit_val = 7;
+    optional int32 exit_status = 7;
 }
 
 message ssh_close_channel {

@@ -3330,12 +3330,12 @@ class exec_cmd_response : public ::google::protobuf::Message {
   inline ::std::string* release_std_err();
   inline void set_allocated_std_err(::std::string* std_err);
 
-  // optional uint32 exit_status = 7;
-  inline bool has_exit_status() const;
-  inline void clear_exit_status();
-  static const int kExitStatusFieldNumber = 7;
-  inline ::google::protobuf::uint32 exit_status() const;
-  inline void set_exit_status(::google::protobuf::uint32 value);
+  // optional uint32 exit_val = 7;
+  inline bool has_exit_val() const;
+  inline void clear_exit_val();
+  static const int kExitValFieldNumber = 7;
+  inline ::google::protobuf::uint32 exit_val() const;
+  inline void set_exit_val(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.exec_cmd_response)
  private:
@@ -3351,8 +3351,8 @@ class exec_cmd_response : public ::google::protobuf::Message {
   inline void clear_has_std_out();
   inline void set_has_std_err();
   inline void clear_has_std_err();
-  inline void set_has_exit_status();
-  inline void clear_has_exit_status();
+  inline void set_has_exit_val();
+  inline void clear_has_exit_val();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3362,7 +3362,7 @@ class exec_cmd_response : public ::google::protobuf::Message {
   ::std::string* token_;
   ::std::string* std_out_;
   ::std::string* std_err_;
-  ::google::protobuf::uint32 exit_status_;
+  ::google::protobuf::uint32 exit_val_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
@@ -3694,12 +3694,12 @@ class ssh_data : public ::google::protobuf::Message {
   inline ::std::string* release_error();
   inline void set_allocated_error(::std::string* error);
 
-  // optional int32 exit_val = 7;
-  inline bool has_exit_val() const;
-  inline void clear_exit_val();
-  static const int kExitValFieldNumber = 7;
-  inline ::google::protobuf::int32 exit_val() const;
-  inline void set_exit_val(::google::protobuf::int32 value);
+  // optional int32 exit_status = 7;
+  inline bool has_exit_status() const;
+  inline void clear_exit_status();
+  static const int kExitStatusFieldNumber = 7;
+  inline ::google::protobuf::int32 exit_status() const;
+  inline void set_exit_status(::google::protobuf::int32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.ssh_data)
  private:
@@ -3715,8 +3715,8 @@ class ssh_data : public ::google::protobuf::Message {
   inline void clear_has_data();
   inline void set_has_error();
   inline void clear_has_error();
-  inline void set_has_exit_val();
-  inline void clear_has_exit_val();
+  inline void set_has_exit_status();
+  inline void clear_has_exit_status();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3726,7 +3726,7 @@ class ssh_data : public ::google::protobuf::Message {
   ::std::string* token_;
   ::std::string* data_;
   ::std::string* error_;
-  ::google::protobuf::int32 exit_val_;
+  ::google::protobuf::int32 exit_status_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
@@ -9007,26 +9007,26 @@ inline void exec_cmd_response::set_allocated_std_err(::std::string* std_err) {
   }
 }
 
-// optional uint32 exit_status = 7;
-inline bool exec_cmd_response::has_exit_status() const {
+// optional uint32 exit_val = 7;
+inline bool exec_cmd_response::has_exit_val() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void exec_cmd_response::set_has_exit_status() {
+inline void exec_cmd_response::set_has_exit_val() {
   _has_bits_[0] |= 0x00000040u;
 }
-inline void exec_cmd_response::clear_has_exit_status() {
+inline void exec_cmd_response::clear_has_exit_val() {
   _has_bits_[0] &= ~0x00000040u;
 }
-inline void exec_cmd_response::clear_exit_status() {
-  exit_status_ = 0u;
-  clear_has_exit_status();
+inline void exec_cmd_response::clear_exit_val() {
+  exit_val_ = 0u;
+  clear_has_exit_val();
 }
-inline ::google::protobuf::uint32 exec_cmd_response::exit_status() const {
-  return exit_status_;
+inline ::google::protobuf::uint32 exec_cmd_response::exit_val() const {
+  return exit_val_;
 }
-inline void exec_cmd_response::set_exit_status(::google::protobuf::uint32 value) {
-  set_has_exit_status();
-  exit_status_ = value;
+inline void exec_cmd_response::set_exit_val(::google::protobuf::uint32 value) {
+  set_has_exit_val();
+  exit_val_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -9943,26 +9943,26 @@ inline void ssh_data::set_allocated_error(::std::string* error) {
   }
 }
 
-// optional int32 exit_val = 7;
-inline bool ssh_data::has_exit_val() const {
+// optional int32 exit_status = 7;
+inline bool ssh_data::has_exit_status() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void ssh_data::set_has_exit_val() {
+inline void ssh_data::set_has_exit_status() {
   _has_bits_[0] |= 0x00000040u;
 }
-inline void ssh_data::clear_has_exit_val() {
+inline void ssh_data::clear_has_exit_status() {
   _has_bits_[0] &= ~0x00000040u;
 }
-inline void ssh_data::clear_exit_val() {
-  exit_val_ = 0;
-  clear_has_exit_val();
+inline void ssh_data::clear_exit_status() {
+  exit_status_ = 0;
+  clear_has_exit_status();
 }
-inline ::google::protobuf::int32 ssh_data::exit_val() const {
-  return exit_val_;
+inline ::google::protobuf::int32 ssh_data::exit_status() const {
+  return exit_status_;
 }
-inline void ssh_data::set_exit_val(::google::protobuf::int32 value) {
-  set_has_exit_val();
-  exit_val_ = value;
+inline void ssh_data::set_exit_status(::google::protobuf::int32 value) {
+  set_has_exit_status();
+  exit_status_ = value;
 }
 
 // -------------------------------------------------------------------

@@ -546,7 +546,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(exec_cmd_response, token_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(exec_cmd_response, std_out_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(exec_cmd_response, std_err_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(exec_cmd_response, exit_status_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(exec_cmd_response, exit_val_),
   };
   exec_cmd_response_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -590,7 +590,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, token_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, data_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, error_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, exit_val_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, exit_status_),
   };
   ssh_data_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -865,18 +865,18 @@ void protobuf_AddDesc_draios_2eproto() {
     "\r\n\005error\030\005 \001(\t\"v\n\020exec_cmd_request\022\024\n\014ti"
     "mestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013"
     "customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\024\n\014comm"
-    "and_line\030\005 \002(\t\"\230\001\n\021exec_cmd_response\022\024\n\014"
+    "and_line\030\005 \002(\t\"\225\001\n\021exec_cmd_response\022\024\n\014"
     "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
     "\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\017\n\007st"
-    "d_out\030\005 \001(\t\022\017\n\007std_err\030\006 \001(\t\022\023\n\013exit_sta"
-    "tus\030\007 \001(\r\"\257\001\n\020ssh_open_channel\022\024\n\014timest"
-    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
-    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002"
-    "(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npas"
-    "sphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\207\001\n\010ssh_data"
-    "\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002"
-    "(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014"
-    "\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\020\n\010exit_val\030"
+    "d_out\030\005 \001(\t\022\017\n\007std_err\030\006 \001(\t\022\020\n\010exit_val"
+    "\030\007 \001(\r\"\257\001\n\020ssh_open_channel\022\024\n\014timestamp"
+    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
+    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022"
+    "\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassph"
+    "rase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n"
+    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
+    "\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004d"
+    "ata\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status\030"
     "\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestamp_"
     "ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer"
     "_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t*\251\001\n\013networkrole"
@@ -10759,7 +10759,7 @@ const int exec_cmd_response::kCustomerIdFieldNumber;
 const int exec_cmd_response::kTokenFieldNumber;
 const int exec_cmd_response::kStdOutFieldNumber;
 const int exec_cmd_response::kStdErrFieldNumber;
-const int exec_cmd_response::kExitStatusFieldNumber;
+const int exec_cmd_response::kExitValFieldNumber;
 #endif  // !_MSC_VER
 
 exec_cmd_response::exec_cmd_response()
@@ -10784,7 +10784,7 @@ void exec_cmd_response::SharedCtor() {
   token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   std_out_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   std_err_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  exit_status_ = 0u;
+  exit_val_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -10861,7 +10861,7 @@ void exec_cmd_response::Clear() {
         std_err_->clear();
       }
     }
-    exit_status_ = 0u;
+    exit_val_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -10969,19 +10969,19 @@ bool exec_cmd_response::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(56)) goto parse_exit_status;
+        if (input->ExpectTag(56)) goto parse_exit_val;
         break;
       }
 
-      // optional uint32 exit_status = 7;
+      // optional uint32 exit_val = 7;
       case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_exit_status:
+         parse_exit_val:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &exit_status_)));
-          set_has_exit_status();
+                 input, &exit_val_)));
+          set_has_exit_val();
         } else {
           goto handle_uninterpreted;
         }
@@ -11057,9 +11057,9 @@ void exec_cmd_response::SerializeWithCachedSizes(
       6, this->std_err(), output);
   }
 
-  // optional uint32 exit_status = 7;
-  if (has_exit_status()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(7, this->exit_status(), output);
+  // optional uint32 exit_val = 7;
+  if (has_exit_val()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(7, this->exit_val(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -11125,9 +11125,9 @@ void exec_cmd_response::SerializeWithCachedSizes(
         6, this->std_err(), target);
   }
 
-  // optional uint32 exit_status = 7;
-  if (has_exit_status()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(7, this->exit_status(), target);
+  // optional uint32 exit_val = 7;
+  if (has_exit_val()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(7, this->exit_val(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -11183,11 +11183,11 @@ int exec_cmd_response::ByteSize() const {
           this->std_err());
     }
 
-    // optional uint32 exit_status = 7;
-    if (has_exit_status()) {
+    // optional uint32 exit_val = 7;
+    if (has_exit_val()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->exit_status());
+          this->exit_val());
     }
 
   }
@@ -11235,8 +11235,8 @@ void exec_cmd_response::MergeFrom(const exec_cmd_response& from) {
     if (from.has_std_err()) {
       set_std_err(from.std_err());
     }
-    if (from.has_exit_status()) {
-      set_exit_status(from.exit_status());
+    if (from.has_exit_val()) {
+      set_exit_val(from.exit_val());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -11268,7 +11268,7 @@ void exec_cmd_response::Swap(exec_cmd_response* other) {
     std::swap(token_, other->token_);
     std::swap(std_out_, other->std_out_);
     std::swap(std_err_, other->std_err_);
-    std::swap(exit_status_, other->exit_status_);
+    std::swap(exit_val_, other->exit_val_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -11947,7 +11947,7 @@ const int ssh_data::kCustomerIdFieldNumber;
 const int ssh_data::kTokenFieldNumber;
 const int ssh_data::kDataFieldNumber;
 const int ssh_data::kErrorFieldNumber;
-const int ssh_data::kExitValFieldNumber;
+const int ssh_data::kExitStatusFieldNumber;
 #endif  // !_MSC_VER
 
 ssh_data::ssh_data()
@@ -11972,7 +11972,7 @@ void ssh_data::SharedCtor() {
   token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  exit_val_ = 0;
+  exit_status_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -12049,7 +12049,7 @@ void ssh_data::Clear() {
         error_->clear();
       }
     }
-    exit_val_ = 0;
+    exit_status_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -12154,19 +12154,19 @@ bool ssh_data::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(56)) goto parse_exit_val;
+        if (input->ExpectTag(56)) goto parse_exit_status;
         break;
       }
 
-      // optional int32 exit_val = 7;
+      // optional int32 exit_status = 7;
       case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_exit_val:
+         parse_exit_status:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 input, &exit_val_)));
-          set_has_exit_val();
+                 input, &exit_status_)));
+          set_has_exit_status();
         } else {
           goto handle_uninterpreted;
         }
@@ -12239,9 +12239,9 @@ void ssh_data::SerializeWithCachedSizes(
       6, this->error(), output);
   }
 
-  // optional int32 exit_val = 7;
-  if (has_exit_val()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(7, this->exit_val(), output);
+  // optional int32 exit_status = 7;
+  if (has_exit_status()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(7, this->exit_status(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -12304,9 +12304,9 @@ void ssh_data::SerializeWithCachedSizes(
         6, this->error(), target);
   }
 
-  // optional int32 exit_val = 7;
-  if (has_exit_val()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(7, this->exit_val(), target);
+  // optional int32 exit_status = 7;
+  if (has_exit_status()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(7, this->exit_status(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -12362,11 +12362,11 @@ int ssh_data::ByteSize() const {
           this->error());
     }
 
-    // optional int32 exit_val = 7;
-    if (has_exit_val()) {
+    // optional int32 exit_status = 7;
+    if (has_exit_status()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int32Size(
-          this->exit_val());
+          this->exit_status());
     }
 
   }
@@ -12414,8 +12414,8 @@ void ssh_data::MergeFrom(const ssh_data& from) {
     if (from.has_error()) {
       set_error(from.error());
     }
-    if (from.has_exit_val()) {
-      set_exit_val(from.exit_val());
+    if (from.has_exit_status()) {
+      set_exit_status(from.exit_status());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -12447,7 +12447,7 @@ void ssh_data::Swap(ssh_data* other) {
     std::swap(token_, other->token_);
     std::swap(data_, other->data_);
     std::swap(error_, other->error_);
-    std::swap(exit_val_, other->exit_val_);
+    std::swap(exit_status_, other->exit_status_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
