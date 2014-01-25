@@ -1245,8 +1245,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		return;
 	}
 
-	m_n_flushes++;
-
 	for(j = 0; ; j++)
 	{
 		if(flshflags == DF_FORCE_FLUSH ||
@@ -1280,6 +1278,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		}
 		else
 		{
+			m_n_flushes++;
+
 			//
 			// Update the times
 			//
@@ -1456,6 +1456,33 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(m_inspector->m_machine_info->memory_size_bytes);
+
+			//
+			// Map customizations coming from the analyzer.
+			// We send them in the first sample only.
+			//
+			if(m_n_flushes == 1)
+			{
+				if(m_configuration->get_host_custom_name() != "")
+				{
+					m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
+				}
+
+				if(m_configuration->get_host_custom_group() != "")
+				{
+					m_metrics->set_host_custom_group(m_configuration->get_host_custom_group());
+				}
+
+				if(m_configuration->get_host_hidden())
+				{
+					m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
+				}
+
+				if(m_configuration->get_hidden_processes() != "")
+				{
+					m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
+				}
+			}
 
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());

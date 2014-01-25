@@ -248,6 +248,10 @@ message metrics {
   repeated ipv4_connection ipv4_connections = 7; // The list of threads
   repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
   optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
+  optional string host_custom_name = 11; // This machines's user-set custom name for the draios map. 
+  optional string host_custom_group = 12; // This machines's user-set custom group for the draios map. 
+  optional bool is_host_hidden = 13; // This machines's user-set visibility flag for the draios map. 
+  optional string hidden_processes = 14; // Comma-sparated list of process names that the user wants to hide in the draios map. 
 }
 
 message dump_request {
@@ -303,7 +307,7 @@ message ssh_data {
     required string token = 4; // The token associated with the request
     optional bytes data = 5; // Std input/output/error according to where this is sent from
     optional string error = 6;
-    optional int32 exit_status = 7;
+    optional int32 exit_val = 7;
 }
 
 message ssh_close_channel {

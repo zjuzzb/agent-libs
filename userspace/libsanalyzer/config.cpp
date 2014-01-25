@@ -201,4 +201,44 @@ void sinsp_configuration::set_drop_treshold_consecutive_seconds(uint32_t drop_tr
 	m_drop_treshold_consecutive_seconds = drop_treshold_consecutive_seconds;
 }
 
+const string& sinsp_configuration::get_host_custom_name() const
+{
+	return m_host_custom_name;
+}
+
+void sinsp_configuration::set_host_custom_name(string host_custom_name)
+{
+	m_host_custom_name = host_custom_name;
+}
+
+const string& sinsp_configuration::get_host_custom_group() const
+{
+	return m_host_custom_group;
+}
+
+void sinsp_configuration::set_host_custom_group(string host_custom_group)
+{
+	m_host_custom_group = host_custom_group;
+}
+
+const bool sinsp_configuration::get_host_hidden() const
+{
+	return m_host_hidden;
+}
+
+void sinsp_configuration::set_host_hidden(bool machine_hidden)
+{
+	m_host_hidden = machine_hidden;
+}
+
+const string& sinsp_configuration::get_hidden_processes() const
+{
+	return m_hidden_processes;
+}
+
+void sinsp_configuration::set_hidden_processes(string hidden_processes)
+{
+	m_hidden_processes = hidden_processes;
+}
+
 #endif // HAS_ANALYZER

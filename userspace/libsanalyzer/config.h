@@ -40,6 +40,14 @@ public:
 	void set_drop_lower_threshold(uint32_t drop_lower_threshold);
 	uint32_t get_drop_treshold_consecutive_seconds() const;
 	void set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds);
+	const string& get_host_custom_name() const;
+	void set_host_custom_name(string host_custom_name);
+	const string& get_host_custom_group() const;
+	void set_host_custom_group(string host_custom_group);
+	const bool get_host_hidden() const;
+	void set_host_hidden(bool machine_hidden);
+	const string& get_hidden_processes() const;
+	void set_hidden_processes(string hidden_processes);
 
 private:
 	uint64_t m_connection_pruning_interval_ns;
@@ -57,6 +65,10 @@ private:
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
 	uint32_t m_drop_treshold_consecutive_seconds;
+	string m_host_custom_name;
+	string m_host_custom_group;
+	bool m_host_hidden;
+	string m_hidden_processes;
 };
 
 #endif // HAS_ANALYZER

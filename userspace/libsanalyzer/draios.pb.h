@@ -2695,6 +2695,49 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 sampling_ratio() const;
   inline void set_sampling_ratio(::google::protobuf::uint32 value);
 
+  // optional string host_custom_name = 11;
+  inline bool has_host_custom_name() const;
+  inline void clear_host_custom_name();
+  static const int kHostCustomNameFieldNumber = 11;
+  inline const ::std::string& host_custom_name() const;
+  inline void set_host_custom_name(const ::std::string& value);
+  inline void set_host_custom_name(const char* value);
+  inline void set_host_custom_name(const char* value, size_t size);
+  inline ::std::string* mutable_host_custom_name();
+  inline ::std::string* release_host_custom_name();
+  inline void set_allocated_host_custom_name(::std::string* host_custom_name);
+
+  // optional string host_custom_group = 12;
+  inline bool has_host_custom_group() const;
+  inline void clear_host_custom_group();
+  static const int kHostCustomGroupFieldNumber = 12;
+  inline const ::std::string& host_custom_group() const;
+  inline void set_host_custom_group(const ::std::string& value);
+  inline void set_host_custom_group(const char* value);
+  inline void set_host_custom_group(const char* value, size_t size);
+  inline ::std::string* mutable_host_custom_group();
+  inline ::std::string* release_host_custom_group();
+  inline void set_allocated_host_custom_group(::std::string* host_custom_group);
+
+  // optional bool is_host_hidden = 13;
+  inline bool has_is_host_hidden() const;
+  inline void clear_is_host_hidden();
+  static const int kIsHostHiddenFieldNumber = 13;
+  inline bool is_host_hidden() const;
+  inline void set_is_host_hidden(bool value);
+
+  // optional string hidden_processes = 14;
+  inline bool has_hidden_processes() const;
+  inline void clear_hidden_processes();
+  static const int kHiddenProcessesFieldNumber = 14;
+  inline const ::std::string& hidden_processes() const;
+  inline void set_hidden_processes(const ::std::string& value);
+  inline void set_hidden_processes(const char* value);
+  inline void set_hidden_processes(const char* value, size_t size);
+  inline ::std::string* mutable_hidden_processes();
+  inline ::std::string* release_hidden_processes();
+  inline void set_allocated_hidden_processes(::std::string* hidden_processes);
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -2707,6 +2750,14 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_hostinfo();
   inline void set_has_sampling_ratio();
   inline void clear_has_sampling_ratio();
+  inline void set_has_host_custom_name();
+  inline void clear_has_host_custom_name();
+  inline void set_has_host_custom_group();
+  inline void clear_has_host_custom_group();
+  inline void set_has_is_host_hidden();
+  inline void clear_has_is_host_hidden();
+  inline void set_has_hidden_processes();
+  inline void clear_has_hidden_processes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2719,10 +2770,14 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::thread > threads_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
+  ::std::string* host_custom_name_;
   ::google::protobuf::uint32 sampling_ratio_;
+  bool is_host_hidden_;
+  ::std::string* host_custom_group_;
+  ::std::string* hidden_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -3639,12 +3694,12 @@ class ssh_data : public ::google::protobuf::Message {
   inline ::std::string* release_error();
   inline void set_allocated_error(::std::string* error);
 
-  // optional int32 exit_status = 7;
-  inline bool has_exit_status() const;
-  inline void clear_exit_status();
-  static const int kExitStatusFieldNumber = 7;
-  inline ::google::protobuf::int32 exit_status() const;
-  inline void set_exit_status(::google::protobuf::int32 value);
+  // optional int32 exit_val = 7;
+  inline bool has_exit_val() const;
+  inline void clear_exit_val();
+  static const int kExitValFieldNumber = 7;
+  inline ::google::protobuf::int32 exit_val() const;
+  inline void set_exit_val(::google::protobuf::int32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.ssh_data)
  private:
@@ -3660,8 +3715,8 @@ class ssh_data : public ::google::protobuf::Message {
   inline void clear_has_data();
   inline void set_has_error();
   inline void clear_has_error();
-  inline void set_has_exit_status();
-  inline void clear_has_exit_status();
+  inline void set_has_exit_val();
+  inline void clear_has_exit_val();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3671,7 +3726,7 @@ class ssh_data : public ::google::protobuf::Message {
   ::std::string* token_;
   ::std::string* data_;
   ::std::string* error_;
-  ::google::protobuf::int32 exit_status_;
+  ::google::protobuf::int32 exit_val_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
@@ -7474,6 +7529,238 @@ inline void metrics::set_sampling_ratio(::google::protobuf::uint32 value) {
   sampling_ratio_ = value;
 }
 
+// optional string host_custom_name = 11;
+inline bool metrics::has_host_custom_name() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void metrics::set_has_host_custom_name() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void metrics::clear_has_host_custom_name() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void metrics::clear_host_custom_name() {
+  if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
+    host_custom_name_->clear();
+  }
+  clear_has_host_custom_name();
+}
+inline const ::std::string& metrics::host_custom_name() const {
+  return *host_custom_name_;
+}
+inline void metrics::set_host_custom_name(const ::std::string& value) {
+  set_has_host_custom_name();
+  if (host_custom_name_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_name_ = new ::std::string;
+  }
+  host_custom_name_->assign(value);
+}
+inline void metrics::set_host_custom_name(const char* value) {
+  set_has_host_custom_name();
+  if (host_custom_name_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_name_ = new ::std::string;
+  }
+  host_custom_name_->assign(value);
+}
+inline void metrics::set_host_custom_name(const char* value, size_t size) {
+  set_has_host_custom_name();
+  if (host_custom_name_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_name_ = new ::std::string;
+  }
+  host_custom_name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_host_custom_name() {
+  set_has_host_custom_name();
+  if (host_custom_name_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_name_ = new ::std::string;
+  }
+  return host_custom_name_;
+}
+inline ::std::string* metrics::release_host_custom_name() {
+  clear_has_host_custom_name();
+  if (host_custom_name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = host_custom_name_;
+    host_custom_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_host_custom_name(::std::string* host_custom_name) {
+  if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete host_custom_name_;
+  }
+  if (host_custom_name) {
+    set_has_host_custom_name();
+    host_custom_name_ = host_custom_name;
+  } else {
+    clear_has_host_custom_name();
+    host_custom_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string host_custom_group = 12;
+inline bool metrics::has_host_custom_group() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void metrics::set_has_host_custom_group() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void metrics::clear_has_host_custom_group() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void metrics::clear_host_custom_group() {
+  if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
+    host_custom_group_->clear();
+  }
+  clear_has_host_custom_group();
+}
+inline const ::std::string& metrics::host_custom_group() const {
+  return *host_custom_group_;
+}
+inline void metrics::set_host_custom_group(const ::std::string& value) {
+  set_has_host_custom_group();
+  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_group_ = new ::std::string;
+  }
+  host_custom_group_->assign(value);
+}
+inline void metrics::set_host_custom_group(const char* value) {
+  set_has_host_custom_group();
+  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_group_ = new ::std::string;
+  }
+  host_custom_group_->assign(value);
+}
+inline void metrics::set_host_custom_group(const char* value, size_t size) {
+  set_has_host_custom_group();
+  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_group_ = new ::std::string;
+  }
+  host_custom_group_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_host_custom_group() {
+  set_has_host_custom_group();
+  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_group_ = new ::std::string;
+  }
+  return host_custom_group_;
+}
+inline ::std::string* metrics::release_host_custom_group() {
+  clear_has_host_custom_group();
+  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = host_custom_group_;
+    host_custom_group_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_host_custom_group(::std::string* host_custom_group) {
+  if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
+    delete host_custom_group_;
+  }
+  if (host_custom_group) {
+    set_has_host_custom_group();
+    host_custom_group_ = host_custom_group;
+  } else {
+    clear_has_host_custom_group();
+    host_custom_group_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional bool is_host_hidden = 13;
+inline bool metrics::has_is_host_hidden() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void metrics::set_has_is_host_hidden() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void metrics::clear_has_is_host_hidden() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void metrics::clear_is_host_hidden() {
+  is_host_hidden_ = false;
+  clear_has_is_host_hidden();
+}
+inline bool metrics::is_host_hidden() const {
+  return is_host_hidden_;
+}
+inline void metrics::set_is_host_hidden(bool value) {
+  set_has_is_host_hidden();
+  is_host_hidden_ = value;
+}
+
+// optional string hidden_processes = 14;
+inline bool metrics::has_hidden_processes() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void metrics::set_has_hidden_processes() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void metrics::clear_has_hidden_processes() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void metrics::clear_hidden_processes() {
+  if (hidden_processes_ != &::google::protobuf::internal::kEmptyString) {
+    hidden_processes_->clear();
+  }
+  clear_has_hidden_processes();
+}
+inline const ::std::string& metrics::hidden_processes() const {
+  return *hidden_processes_;
+}
+inline void metrics::set_hidden_processes(const ::std::string& value) {
+  set_has_hidden_processes();
+  if (hidden_processes_ == &::google::protobuf::internal::kEmptyString) {
+    hidden_processes_ = new ::std::string;
+  }
+  hidden_processes_->assign(value);
+}
+inline void metrics::set_hidden_processes(const char* value) {
+  set_has_hidden_processes();
+  if (hidden_processes_ == &::google::protobuf::internal::kEmptyString) {
+    hidden_processes_ = new ::std::string;
+  }
+  hidden_processes_->assign(value);
+}
+inline void metrics::set_hidden_processes(const char* value, size_t size) {
+  set_has_hidden_processes();
+  if (hidden_processes_ == &::google::protobuf::internal::kEmptyString) {
+    hidden_processes_ = new ::std::string;
+  }
+  hidden_processes_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_hidden_processes() {
+  set_has_hidden_processes();
+  if (hidden_processes_ == &::google::protobuf::internal::kEmptyString) {
+    hidden_processes_ = new ::std::string;
+  }
+  return hidden_processes_;
+}
+inline ::std::string* metrics::release_hidden_processes() {
+  clear_has_hidden_processes();
+  if (hidden_processes_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = hidden_processes_;
+    hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_hidden_processes(::std::string* hidden_processes) {
+  if (hidden_processes_ != &::google::protobuf::internal::kEmptyString) {
+    delete hidden_processes_;
+  }
+  if (hidden_processes) {
+    set_has_hidden_processes();
+    hidden_processes_ = hidden_processes;
+  } else {
+    clear_has_hidden_processes();
+    hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 // -------------------------------------------------------------------
 
 // dump_request
@@ -9656,26 +9943,26 @@ inline void ssh_data::set_allocated_error(::std::string* error) {
   }
 }
 
-// optional int32 exit_status = 7;
-inline bool ssh_data::has_exit_status() const {
+// optional int32 exit_val = 7;
+inline bool ssh_data::has_exit_val() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void ssh_data::set_has_exit_status() {
+inline void ssh_data::set_has_exit_val() {
   _has_bits_[0] |= 0x00000040u;
 }
-inline void ssh_data::clear_has_exit_status() {
+inline void ssh_data::clear_has_exit_val() {
   _has_bits_[0] &= ~0x00000040u;
 }
-inline void ssh_data::clear_exit_status() {
-  exit_status_ = 0;
-  clear_has_exit_status();
+inline void ssh_data::clear_exit_val() {
+  exit_val_ = 0;
+  clear_has_exit_val();
 }
-inline ::google::protobuf::int32 ssh_data::exit_status() const {
-  return exit_status_;
+inline ::google::protobuf::int32 ssh_data::exit_val() const {
+  return exit_val_;
 }
-inline void ssh_data::set_exit_status(::google::protobuf::int32 value) {
-  set_has_exit_status();
-  exit_status_ = value;
+inline void ssh_data::set_exit_val(::google::protobuf::int32 value) {
+  set_has_exit_val();
+  exit_val_ = value;
 }
 
 // -------------------------------------------------------------------
