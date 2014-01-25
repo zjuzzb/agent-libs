@@ -276,14 +276,14 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 						if(it->second.is_ipv4_socket())
 						{
-							connection = m_analyzer->get_connection(it->second.m_info.m_ipv4info, 
+							connection = m_analyzer->get_connection(it->second.m_sockinfo.m_ipv4info, 
 								endtime);
 
 							ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
 						}
 						else if(it->second.is_unix_socket())
 						{
-							connection = m_analyzer->get_connection(it->second.m_info.m_unixinfo, 
+							connection = m_analyzer->get_connection(it->second.m_sockinfo.m_unixinfo, 
 								endtime);
 
 							ASSERT(connection || m_analyzer->m_unix_connections->get_n_drops() != 0);
