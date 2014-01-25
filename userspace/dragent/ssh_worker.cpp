@@ -42,6 +42,12 @@ ssh_worker::~ssh_worker()
 		ssh_free(m_libssh_session);
 		m_libssh_session = NULL;
 	}
+
+	if(m_libssh_key)
+	{
+		ssh_key_free(m_libssh_key);
+		m_libssh_key = NULL;
+	}
 }
 
 void ssh_worker::run()
@@ -185,6 +191,11 @@ void ssh_worker::run()
 
 		Thread::sleep(100);
 		continue;
+	}
+
+	if(ssh_channel_is_open(m_libssh_channel))
+	{
+		ssh_channel_close(m_libssh_channel);
 	}
 
 	int exit_status = ssh_channel_get_exit_status(m_libssh_channel);
