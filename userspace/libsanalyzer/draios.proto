@@ -112,6 +112,7 @@ message host {
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
+  optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 
   optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
@@ -167,6 +168,7 @@ message process {
   optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
   optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
 													// It's calculated by subtracting outgoing connection time from incoming connection time. 
+  optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 
   optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions. 
   optional resource_categories resource_counters = 8; // The resource counters for this process
   optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
@@ -245,6 +247,7 @@ message metrics {
   repeated thread threads = 6; // The list of threads
   repeated ipv4_connection ipv4_connections = 7; // The list of threads
   repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
+  optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
 }
 
 message dump_request {

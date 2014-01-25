@@ -1627,6 +1627,13 @@ class host : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
+  // optional uint64 merged_server_delay = 14;
+  inline bool has_merged_server_delay() const;
+  inline void clear_merged_server_delay();
+  static const int kMergedServerDelayFieldNumber = 14;
+  inline ::google::protobuf::uint64 merged_server_delay() const;
+  inline void set_merged_server_delay(::google::protobuf::uint64 value);
+
   // optional uint64 next_tiers_delay = 13;
   inline bool has_next_tiers_delay() const;
   inline void clear_next_tiers_delay();
@@ -1677,6 +1684,8 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_transaction_counters();
   inline void set_has_transaction_processing_delay();
   inline void clear_has_transaction_processing_delay();
+  inline void set_has_merged_server_delay();
+  inline void clear_has_merged_server_delay();
   inline void set_has_next_tiers_delay();
   inline void clear_has_next_tiers_delay();
   inline void set_has_resource_counters();
@@ -1696,6 +1705,7 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::transaction_breakdown_categories* reqcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
+  ::google::protobuf::uint64 merged_server_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
@@ -1703,7 +1713,7 @@ class host : public ::google::protobuf::Message {
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -1960,6 +1970,13 @@ class process : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
+  // optional uint64 merged_server_delay = 14;
+  inline bool has_merged_server_delay() const;
+  inline void clear_merged_server_delay();
+  static const int kMergedServerDelayFieldNumber = 14;
+  inline ::google::protobuf::uint64 merged_server_delay() const;
+  inline void set_merged_server_delay(::google::protobuf::uint64 value);
+
   // optional uint64 next_tiers_delay = 12;
   inline bool has_next_tiers_delay() const;
   inline void clear_next_tiers_delay();
@@ -2007,6 +2024,8 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_transaction_counters();
   inline void set_has_transaction_processing_delay();
   inline void clear_has_transaction_processing_delay();
+  inline void set_has_merged_server_delay();
+  inline void clear_has_merged_server_delay();
   inline void set_has_next_tiers_delay();
   inline void clear_has_next_tiers_delay();
   inline void set_has_resource_counters();
@@ -2026,12 +2045,13 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
+  ::google::protobuf::uint64 merged_server_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2668,6 +2688,13 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface >*
       mutable_ipv4_network_interfaces();
 
+  // optional uint32 sampling_ratio = 10;
+  inline bool has_sampling_ratio() const;
+  inline void clear_sampling_ratio();
+  static const int kSamplingRatioFieldNumber = 10;
+  inline ::google::protobuf::uint32 sampling_ratio() const;
+  inline void set_sampling_ratio(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -2678,6 +2705,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_customer_id();
   inline void set_has_hostinfo();
   inline void clear_has_hostinfo();
+  inline void set_has_sampling_ratio();
+  inline void clear_has_sampling_ratio();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2690,9 +2719,10 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::thread > threads_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
+  ::google::protobuf::uint32 sampling_ratio_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -3609,6 +3639,13 @@ class ssh_data : public ::google::protobuf::Message {
   inline ::std::string* release_error();
   inline void set_allocated_error(::std::string* error);
 
+  // optional int32 exit_val = 7;
+  inline bool has_exit_val() const;
+  inline void clear_exit_val();
+  static const int kExitValFieldNumber = 7;
+  inline ::google::protobuf::int32 exit_val() const;
+  inline void set_exit_val(::google::protobuf::int32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.ssh_data)
  private:
   inline void set_has_timestamp_ns();
@@ -3623,6 +3660,8 @@ class ssh_data : public ::google::protobuf::Message {
   inline void clear_has_data();
   inline void set_has_error();
   inline void clear_has_error();
+  inline void set_has_exit_val();
+  inline void clear_has_exit_val();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3632,9 +3671,10 @@ class ssh_data : public ::google::protobuf::Message {
   ::std::string* token_;
   ::std::string* data_;
   ::std::string* error_;
+  ::google::protobuf::int32 exit_val_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5920,15 +5960,37 @@ inline void host::set_transaction_processing_delay(::google::protobuf::uint64 va
   transaction_processing_delay_ = value;
 }
 
-// optional uint64 next_tiers_delay = 13;
-inline bool host::has_next_tiers_delay() const {
+// optional uint64 merged_server_delay = 14;
+inline bool host::has_merged_server_delay() const {
   return (_has_bits_[0] & 0x00000200u) != 0;
 }
-inline void host::set_has_next_tiers_delay() {
+inline void host::set_has_merged_server_delay() {
   _has_bits_[0] |= 0x00000200u;
 }
-inline void host::clear_has_next_tiers_delay() {
+inline void host::clear_has_merged_server_delay() {
   _has_bits_[0] &= ~0x00000200u;
+}
+inline void host::clear_merged_server_delay() {
+  merged_server_delay_ = GOOGLE_ULONGLONG(0);
+  clear_has_merged_server_delay();
+}
+inline ::google::protobuf::uint64 host::merged_server_delay() const {
+  return merged_server_delay_;
+}
+inline void host::set_merged_server_delay(::google::protobuf::uint64 value) {
+  set_has_merged_server_delay();
+  merged_server_delay_ = value;
+}
+
+// optional uint64 next_tiers_delay = 13;
+inline bool host::has_next_tiers_delay() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void host::set_has_next_tiers_delay() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void host::clear_has_next_tiers_delay() {
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void host::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -5944,13 +6006,13 @@ inline void host::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool host::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void host::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void host::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void host::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -5982,13 +6044,13 @@ inline void host::set_allocated_resource_counters(::draiosproto::resource_catego
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool host::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void host::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void host::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void host::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -6020,13 +6082,13 @@ inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_er
 
 // optional .draiosproto.counter_time_bytes external_io_net = 10;
 inline bool host::has_external_io_net() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void host::set_has_external_io_net() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void host::clear_has_external_io_net() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void host::clear_external_io_net() {
   if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();
@@ -6452,15 +6514,37 @@ inline void process::set_transaction_processing_delay(::google::protobuf::uint64
   transaction_processing_delay_ = value;
 }
 
-// optional uint64 next_tiers_delay = 12;
-inline bool process::has_next_tiers_delay() const {
+// optional uint64 merged_server_delay = 14;
+inline bool process::has_merged_server_delay() const {
   return (_has_bits_[0] & 0x00000400u) != 0;
 }
-inline void process::set_has_next_tiers_delay() {
+inline void process::set_has_merged_server_delay() {
   _has_bits_[0] |= 0x00000400u;
 }
-inline void process::clear_has_next_tiers_delay() {
+inline void process::clear_has_merged_server_delay() {
   _has_bits_[0] &= ~0x00000400u;
+}
+inline void process::clear_merged_server_delay() {
+  merged_server_delay_ = GOOGLE_ULONGLONG(0);
+  clear_has_merged_server_delay();
+}
+inline ::google::protobuf::uint64 process::merged_server_delay() const {
+  return merged_server_delay_;
+}
+inline void process::set_merged_server_delay(::google::protobuf::uint64 value) {
+  set_has_merged_server_delay();
+  merged_server_delay_ = value;
+}
+
+// optional uint64 next_tiers_delay = 12;
+inline bool process::has_next_tiers_delay() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void process::set_has_next_tiers_delay() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void process::clear_has_next_tiers_delay() {
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void process::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -6476,13 +6560,13 @@ inline void process::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool process::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void process::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void process::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void process::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -6514,13 +6598,13 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool process::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void process::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void process::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void process::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -7366,6 +7450,28 @@ metrics::ipv4_network_interfaces() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface >*
 metrics::mutable_ipv4_network_interfaces() {
   return &ipv4_network_interfaces_;
+}
+
+// optional uint32 sampling_ratio = 10;
+inline bool metrics::has_sampling_ratio() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void metrics::set_has_sampling_ratio() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void metrics::clear_has_sampling_ratio() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void metrics::clear_sampling_ratio() {
+  sampling_ratio_ = 0u;
+  clear_has_sampling_ratio();
+}
+inline ::google::protobuf::uint32 metrics::sampling_ratio() const {
+  return sampling_ratio_;
+}
+inline void metrics::set_sampling_ratio(::google::protobuf::uint32 value) {
+  set_has_sampling_ratio();
+  sampling_ratio_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -9548,6 +9654,28 @@ inline void ssh_data::set_allocated_error(::std::string* error) {
     clear_has_error();
     error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// optional int32 exit_val = 7;
+inline bool ssh_data::has_exit_val() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ssh_data::set_has_exit_val() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ssh_data::clear_has_exit_val() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void ssh_data::clear_exit_val() {
+  exit_val_ = 0;
+  clear_has_exit_val();
+}
+inline ::google::protobuf::int32 ssh_data::exit_val() const {
+  return exit_val_;
+}
+inline void ssh_data::set_exit_val(::google::protobuf::int32 value) {
+  set_has_exit_val();
+  exit_val_ = value;
 }
 
 // -------------------------------------------------------------------

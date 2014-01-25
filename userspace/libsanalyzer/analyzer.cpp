@@ -760,8 +760,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if(prog_delays->m_local_processing_delay_ns != -1)
 					{
-						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns);
-						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay);
+						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
+						proc->set_merged_server_delay(prog_delays->m_merged_server_delay * m_sampling_ratio);
+						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
 					}
 
 					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
@@ -1292,7 +1293,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Calculate CPU load
 			//
-			m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
+			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
+			}
+
 			m_total_process_cpu = 0; // this will be calculated when scanning the processes
 
 			//
@@ -1443,6 +1448,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->set_machine_id(m_configuration->get_machine_id());
 			m_metrics->set_customer_id(m_configuration->get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
+			if(m_sampling_ratio != 1)
+			{
+				m_metrics->set_sampling_ratio(m_sampling_ratio);
+			}
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
@@ -1501,6 +1510,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns * m_sampling_ratio);
+				m_metrics->mutable_hostinfo()->set_merged_server_delay(m_host_transaction_delays->m_merged_server_delay * m_sampling_ratio);
 				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays->m_merged_client_delay * m_sampling_ratio);
 			}
 
