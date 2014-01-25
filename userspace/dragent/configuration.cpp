@@ -139,6 +139,12 @@ void dragent_configuration::init(Application* app)
 	m_autodrop_enabled = config.getBool("autodrop.enabled", true);
 	m_drop_upper_treshold = config.getInt("autodrop.treshold.upper", 0);
 	m_drop_lower_treshold = config.getInt("autodrop.treshold.lower", 0);
+
+
+	m_host_custom_name = config.getString("ui.customname", "");
+	m_host_custom_group = config.getString("ui.customgroup", "");
+	m_host_hidden = config.getBool("ui.is_hidden", false);
+	m_hidden_processes = config.getString("ui.hidden_processes", "");
 }
 
 void dragent_configuration::print_configuration()
@@ -160,6 +166,10 @@ void dragent_configuration::print_configuration()
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.treshold.upper: " + NumberFormatter::format(m_drop_upper_treshold));
 	g_log->information("autodrop.treshold.lower: " + NumberFormatter::format(m_drop_lower_treshold));
+	g_log->information("ui.customname: " + m_host_custom_name);
+	g_log->information("ui.customgroup: " + m_host_custom_group);
+	g_log->information("ui.is_hidden: " + m_host_hidden);
+	g_log->information("ui.hidden_processes: " + m_hidden_processes);
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

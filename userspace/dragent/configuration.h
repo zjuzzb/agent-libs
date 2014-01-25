@@ -60,4 +60,8 @@ public:
 	bool m_autodrop_enabled;
 	uint32_t m_drop_upper_treshold;
 	uint32_t m_drop_lower_treshold;
+	string m_host_custom_name;
+	string m_host_custom_group;
+	bool m_host_hidden;
+	string m_hidden_processes;	
 };

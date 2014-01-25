@@ -120,6 +120,30 @@ void sinsp_worker::init()
 		g_log->information("Drop lower treshold=" + NumberFormatter::format(m_configuration->m_drop_lower_treshold));
 		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_treshold);
 	}
+
+	if(m_configuration->m_host_custom_name != "")
+	{
+		g_log->information("Setting custom name=" + m_configuration->m_host_custom_name);
+		m_analyzer->get_configuration()->set_host_custom_name(m_configuration->m_host_custom_name);
+	}
+
+	if(m_configuration->m_host_custom_group != "")
+	{
+		g_log->information("Setting custom group=" + m_configuration->m_host_custom_group);
+		m_analyzer->get_configuration()->set_host_custom_group(m_configuration->m_host_custom_group);
+	}
+
+	if(m_configuration->m_hidden_processes != "")
+	{
+		g_log->information("Setting hidden processes=" + m_configuration->m_hidden_processes);
+		m_analyzer->get_configuration()->set_hidden_processes(m_configuration->m_hidden_processes);
+	}
+
+	if(m_configuration->m_host_hidden)
+	{
+		g_log->information("Setting host hidden");
+		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
+	}
 }
 
 captureinfo sinsp_worker::do_inspect()
