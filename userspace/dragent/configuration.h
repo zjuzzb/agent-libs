@@ -62,6 +62,7 @@ public:
 	uint32_t m_drop_lower_treshold;
 	string m_host_custom_name;
 	string m_host_custom_group;
+	string m_host_custom_map;
 	bool m_host_hidden;
 	string m_hidden_processes;	
 };

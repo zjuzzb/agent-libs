@@ -143,6 +143,7 @@ void dragent_configuration::init(Application* app)
 
 	m_host_custom_name = config.getString("ui.customname", "");
 	m_host_custom_group = config.getString("ui.customgroup", "");
+	m_host_custom_map = config.getString("ui.custommap", "");
 	m_host_hidden = config.getBool("ui.is_hidden", false);
 	m_hidden_processes = config.getString("ui.hidden_processes", "");
 }
@@ -168,6 +169,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("autodrop.treshold.lower: " + NumberFormatter::format(m_drop_lower_treshold));
 	g_log->information("ui.customname: " + m_host_custom_name);
 	g_log->information("ui.customgroup: " + m_host_custom_group);
+	g_log->information("ui.custommap: " + m_host_custom_map);
 	g_log->information("ui.is_hidden: " + m_host_hidden);
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
 }

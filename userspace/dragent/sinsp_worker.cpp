@@ -133,6 +133,12 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_host_custom_group(m_configuration->m_host_custom_group);
 	}
 
+	if(m_configuration->m_host_custom_map != "")
+	{
+		g_log->information("Setting custom map=" + m_configuration->m_host_custom_map);
+		m_analyzer->get_configuration()->set_host_custom_map(m_configuration->m_host_custom_map);
+	}
+
 	if(m_configuration->m_hidden_processes != "")
 	{
 		g_log->information("Setting hidden processes=" + m_configuration->m_hidden_processes);
