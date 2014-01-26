@@ -250,8 +250,9 @@ message metrics {
   optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
   optional string host_custom_name = 11; // This machines's user-set custom name for the draios map. 
   optional string host_custom_group = 12; // This machines's user-set custom group for the draios map. 
-  optional bool is_host_hidden = 13; // This machines's user-set visibility flag for the draios map. 
-  optional string hidden_processes = 14; // Comma-sparated list of process names that the user wants to hide in the draios map. 
+  optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
+  optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
+  optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
 }
 
 message dump_request {

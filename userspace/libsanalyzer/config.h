@@ -48,6 +48,8 @@ public:
 	void set_host_hidden(bool machine_hidden);
 	const string& get_hidden_processes() const;
 	void set_hidden_processes(string hidden_processes);
+	const string& get_host_custom_map() const;
+	void set_host_custom_map(string host_custom_map);
 
 private:
 	uint64_t m_connection_pruning_interval_ns;
@@ -69,6 +71,7 @@ private:
 	string m_host_custom_group;
 	bool m_host_hidden;
 	string m_hidden_processes;
+	string m_host_custom_map;
 };
 
 #endif // HAS_ANALYZER

@@ -2719,17 +2719,29 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* release_host_custom_group();
   inline void set_allocated_host_custom_group(::std::string* host_custom_group);
 
-  // optional bool is_host_hidden = 13;
+  // optional string host_custom_map = 13;
+  inline bool has_host_custom_map() const;
+  inline void clear_host_custom_map();
+  static const int kHostCustomMapFieldNumber = 13;
+  inline const ::std::string& host_custom_map() const;
+  inline void set_host_custom_map(const ::std::string& value);
+  inline void set_host_custom_map(const char* value);
+  inline void set_host_custom_map(const char* value, size_t size);
+  inline ::std::string* mutable_host_custom_map();
+  inline ::std::string* release_host_custom_map();
+  inline void set_allocated_host_custom_map(::std::string* host_custom_map);
+
+  // optional bool is_host_hidden = 14;
   inline bool has_is_host_hidden() const;
   inline void clear_is_host_hidden();
-  static const int kIsHostHiddenFieldNumber = 13;
+  static const int kIsHostHiddenFieldNumber = 14;
   inline bool is_host_hidden() const;
   inline void set_is_host_hidden(bool value);
 
-  // optional string hidden_processes = 14;
+  // optional string hidden_processes = 15;
   inline bool has_hidden_processes() const;
   inline void clear_hidden_processes();
-  static const int kHiddenProcessesFieldNumber = 14;
+  static const int kHiddenProcessesFieldNumber = 15;
   inline const ::std::string& hidden_processes() const;
   inline void set_hidden_processes(const ::std::string& value);
   inline void set_hidden_processes(const char* value);
@@ -2754,6 +2766,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_host_custom_name();
   inline void set_has_host_custom_group();
   inline void clear_has_host_custom_group();
+  inline void set_has_host_custom_map();
+  inline void clear_has_host_custom_map();
   inline void set_has_is_host_hidden();
   inline void clear_has_is_host_hidden();
   inline void set_has_hidden_processes();
@@ -2771,13 +2785,14 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
+  ::std::string* host_custom_group_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
-  ::std::string* host_custom_group_;
+  ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7669,15 +7684,85 @@ inline void metrics::set_allocated_host_custom_group(::std::string* host_custom_
   }
 }
 
-// optional bool is_host_hidden = 13;
-inline bool metrics::has_is_host_hidden() const {
+// optional string host_custom_map = 13;
+inline bool metrics::has_host_custom_map() const {
   return (_has_bits_[0] & 0x00001000u) != 0;
 }
-inline void metrics::set_has_is_host_hidden() {
+inline void metrics::set_has_host_custom_map() {
   _has_bits_[0] |= 0x00001000u;
 }
-inline void metrics::clear_has_is_host_hidden() {
+inline void metrics::clear_has_host_custom_map() {
   _has_bits_[0] &= ~0x00001000u;
+}
+inline void metrics::clear_host_custom_map() {
+  if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
+    host_custom_map_->clear();
+  }
+  clear_has_host_custom_map();
+}
+inline const ::std::string& metrics::host_custom_map() const {
+  return *host_custom_map_;
+}
+inline void metrics::set_host_custom_map(const ::std::string& value) {
+  set_has_host_custom_map();
+  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_map_ = new ::std::string;
+  }
+  host_custom_map_->assign(value);
+}
+inline void metrics::set_host_custom_map(const char* value) {
+  set_has_host_custom_map();
+  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_map_ = new ::std::string;
+  }
+  host_custom_map_->assign(value);
+}
+inline void metrics::set_host_custom_map(const char* value, size_t size) {
+  set_has_host_custom_map();
+  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_map_ = new ::std::string;
+  }
+  host_custom_map_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_host_custom_map() {
+  set_has_host_custom_map();
+  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
+    host_custom_map_ = new ::std::string;
+  }
+  return host_custom_map_;
+}
+inline ::std::string* metrics::release_host_custom_map() {
+  clear_has_host_custom_map();
+  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = host_custom_map_;
+    host_custom_map_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_host_custom_map(::std::string* host_custom_map) {
+  if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
+    delete host_custom_map_;
+  }
+  if (host_custom_map) {
+    set_has_host_custom_map();
+    host_custom_map_ = host_custom_map;
+  } else {
+    clear_has_host_custom_map();
+    host_custom_map_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional bool is_host_hidden = 14;
+inline bool metrics::has_is_host_hidden() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void metrics::set_has_is_host_hidden() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void metrics::clear_has_is_host_hidden() {
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void metrics::clear_is_host_hidden() {
   is_host_hidden_ = false;
@@ -7691,15 +7776,15 @@ inline void metrics::set_is_host_hidden(bool value) {
   is_host_hidden_ = value;
 }
 
-// optional string hidden_processes = 14;
+// optional string hidden_processes = 15;
 inline bool metrics::has_hidden_processes() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void metrics::set_has_hidden_processes() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void metrics::clear_has_hidden_processes() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void metrics::clear_hidden_processes() {
   if (hidden_processes_ != &::google::protobuf::internal::kEmptyString) {
