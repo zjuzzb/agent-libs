@@ -88,13 +88,6 @@ void ssh_worker::run()
 	}
 	else if(!m_ssh_settings.m_key.empty())
 	{
-		m_libssh_key = ssh_key_new();
-		if(m_libssh_key == NULL)
-		{
-			send_error("Error creating ssh key");
-			return;
-		}
-
 		const char* passphrase = NULL;
 		if(!m_ssh_settings.m_passphrase.empty())
 		{
