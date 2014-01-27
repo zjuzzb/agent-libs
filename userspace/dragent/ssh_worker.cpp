@@ -25,20 +25,16 @@ ssh_worker::~ssh_worker()
 {
 	delete_pending_messages(m_token);
 
-	if(m_libssh_key)
-	{
-		ssh_key_free(m_libssh_key);
-		m_libssh_key = NULL;
-	}
-
 	if(m_libssh_channel)
 	{
+		ssh_channel_close(m_libssh_channel);
 		ssh_channel_free(m_libssh_channel);
 		m_libssh_channel = NULL;
 	}
 
 	if(m_libssh_session)
 	{
+		ssh_disconnect(m_libssh_session);
 		ssh_free(m_libssh_session);
 		m_libssh_session = NULL;
 	}
@@ -205,8 +201,6 @@ void ssh_worker::run()
 	draiosproto::ssh_data response;
 	prepare_response(&response);
 	response.set_exit_status(exit_status);
-
-	ssh_disconnect(m_libssh_session);
 
 	g_log->information(m_name + ": Terminating");
 }
