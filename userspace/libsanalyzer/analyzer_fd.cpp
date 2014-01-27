@@ -173,9 +173,22 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					{
 						//
 						// FDs don't match but the connection has not been closed yet.
-						// This can happen in case of event drops.
+						// This can happen in case of event drops, or when a commection
+						// is accepted by a process and served by another one.
 						//
-						connection->reset();
+						if(evt->m_fdinfo->is_role_server())
+						{
+							connection->reset_server();
+						}
+						else if(evt->m_fdinfo->is_role_client())
+						{
+							connection->reset_client();
+						}
+						else
+						{
+							connection->reset();
+						}
+
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 						evt->m_fdinfo->set_role_by_guessing(true);
 					}
@@ -464,9 +477,22 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					{
 						//
 						// FDs don't match but the connection has not been closed yet.
-						// This can happen in case of event drops.
+						// This can happen in case of event drops, or when a commection
+						// is accepted by a process and served by another one.
 						//
-						connection->reset();
+						if(evt->m_fdinfo->is_role_server())
+						{
+							connection->reset_server();
+						}
+						else if(evt->m_fdinfo->is_role_client())
+						{
+							connection->reset_client();
+						}
+						else
+						{
+							connection->reset();
+						}
+
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 						evt->m_fdinfo->set_role_by_guessing(false);
 					}

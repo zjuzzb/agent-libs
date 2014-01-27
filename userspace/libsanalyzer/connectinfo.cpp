@@ -33,6 +33,26 @@ void sinsp_connection::reset()
 	m_analysis_flags = 0;
 }
 
+void sinsp_connection::reset_server()
+{
+	m_dpid = 0;
+	m_dtid = 0;
+	m_dfd = 0;
+	m_dcomm = "";
+
+	m_refcount = 1;
+}
+
+void sinsp_connection::reset_client()
+{
+	m_spid = 0;
+	m_stid = 0;
+	m_sfd = 0;
+	m_scomm = "";
+
+	m_refcount = 1;
+}
+
 bool sinsp_connection::is_client_only()
 {
 	return 0 != m_stid && 0 == m_dtid;
