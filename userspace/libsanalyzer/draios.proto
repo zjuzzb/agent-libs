@@ -227,8 +227,6 @@ enum message_type {
   METRICS = 1;
   DUMP_REQUEST = 2;
   DUMP_RESPONSE = 3;
-  EXEC_COMMAND_REQUEST = 4;
-  EXEC_COMMAND_RESPONSE = 5;  
   SSH_OPEN_CHANNEL = 6;
   SSH_CLOSE_CHANNEL = 7;
   SSH_DATA = 8;  
@@ -269,24 +267,6 @@ message dump_response {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     optional bytes content = 4; // The bynary dump file
     optional string error = 5; // Dump errors
-}
-
-message exec_cmd_request {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required string token = 4; // The token associated with the request
-    required string command_line = 5; // The comand line to execute
-}
-
-message exec_cmd_response {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required string token = 4; // The token associated with the request
-    optional string std_out = 5; // The the content
-    optional string std_err = 6; // The the content
-    optional uint32 exit_val = 7; //identify the process exit value, if this field is present, then this is the last response packet
 }
 
 message ssh_open_channel {

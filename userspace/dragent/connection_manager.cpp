@@ -3,7 +3,6 @@
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
-#include "exec_worker.h"
 #include "ssh_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
@@ -290,11 +289,6 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
-			case draiosproto::message_type::EXEC_COMMAND_REQUEST:
-				handle_command_request(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
-					header->len - sizeof(dragent_protocol_header));
-				break;
 			case draiosproto::message_type::SSH_OPEN_CHANNEL:
 				handle_ssh_open_channel(
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
@@ -344,18 +338,6 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 		new sinsp_worker::dump_job_request(request.duration_ns(), filter));
 	
 	m_sinsp_worker->schedule_dump_job(job_request);
-}
-
-void connection_manager::handle_command_request(uint8_t* buf, uint32_t size)
-{
-	draiosproto::exec_cmd_request request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	exec_worker* worker = new exec_worker(m_configuration, m_queue, request.token(), request.command_line());
-	ThreadPool::defaultPool().start(*worker, "exec_worker");
 }
 
 void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
