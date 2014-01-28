@@ -5,95 +5,95 @@ option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
 message counter_time {
-  required uint32 count = 1;
-  required uint64 time_ns = 2;
-  optional uint32 time_percentage = 3;
+    required uint32 count = 1;
+    required uint64 time_ns = 2;
+    optional uint32 time_percentage = 3;
 }
 
 message counter_time_bidirectional {
-  required uint32 count_in = 1;
-  required uint32 count_out = 2;
-  required uint64 time_ns_in = 3;
-  required uint64 time_ns_out = 4;
+    required uint32 count_in = 1;
+    required uint32 count_out = 2;
+    required uint64 time_ns_in = 3;
+    required uint64 time_ns_out = 4;
 }
 
 message counter_bytes {
-  required uint32 count_in = 1;
-  required uint32 count_out = 2;
-  required uint32 bytes_in = 3;
-  required uint32 bytes_out = 4;
+    required uint32 count_in = 1;
+    required uint32 count_out = 2;
+    required uint32 bytes_in = 3;
+    required uint32 bytes_out = 4;
 }
 
 message counter_time_bytes {
-  required uint64 time_ns_in = 1;
-  required uint64 time_ns_out = 2;
-  required uint64 time_ns_other = 3;
-  required uint32 count_in = 4;
-  required uint32 count_out = 5;
-  required uint32 count_other = 6;
-  required uint32 bytes_in = 7;
-  required uint32 bytes_out = 8;
-  required uint32 bytes_other = 9;
-  optional uint32 time_percentage_in = 10;
-  optional uint32 time_percentage_out = 11;
-  optional uint32 time_percentage_other = 12;
+    required uint64 time_ns_in = 1;
+    required uint64 time_ns_out = 2;
+    required uint64 time_ns_other = 3;
+    required uint32 count_in = 4;
+    required uint32 count_out = 5;
+    required uint32 count_other = 6;
+    required uint32 bytes_in = 7;
+    required uint32 bytes_out = 8;
+    required uint32 bytes_other = 9;
+    optional uint32 time_percentage_in = 10;
+    optional uint32 time_percentage_out = 11;
+    optional uint32 time_percentage_other = 12;
 }
 
 message time_categories {
-	optional counter_time unknown = 1;
-	optional counter_time other = 2;
-	optional counter_time file = 3;
-	optional counter_time net = 4;
-	optional counter_time ipc = 5;
-	optional counter_time memory = 6;
-	optional counter_time process = 7;
-	optional counter_time sleep = 8;
-	optional counter_time system = 9;
-	optional counter_time signal = 10;
-	optional counter_time user = 11;
-	optional counter_time time = 12;
-	optional counter_time_bytes io_file = 13;
-	optional counter_time_bytes io_net = 14;
-	optional counter_time_bytes io_other = 15;
-	optional counter_time wait = 16;
-	optional counter_time processing = 17;
+    optional counter_time unknown = 1;
+    optional counter_time other = 2;
+    optional counter_time file = 3;
+    optional counter_time net = 4;
+    optional counter_time ipc = 5;
+    optional counter_time memory = 6;
+    optional counter_time process = 7;
+    optional counter_time sleep = 8;
+    optional counter_time system = 9;
+    optional counter_time signal = 10;
+    optional counter_time user = 11;
+    optional counter_time time = 12;
+    optional counter_time_bytes io_file = 13;
+    optional counter_time_bytes io_net = 14;
+    optional counter_time_bytes io_other = 15;
+    optional counter_time wait = 16;
+    optional counter_time processing = 17;
 }
 
 //
 // Stores how time is spent serving requests by the host
 //
 message transaction_breakdown_categories {
-	optional counter_time other = 2;
-	optional counter_time_bytes io_file = 13;
-	optional counter_time_bytes io_net = 14;
-	optional counter_time processing = 17;
+    optional counter_time other = 2;
+    optional counter_time_bytes io_file = 13;
+    optional counter_time_bytes io_net = 14;
+    optional counter_time processing = 17;
 }
 
 message counter_syscall_errors {
-  required uint32 count = 1;	// Syscall errors count
-  repeated uint32 top_error_codes = 2; // Error codes that were generated the most
+    required uint32 count = 1;	// Syscall errors count
+    repeated uint32 top_error_codes = 2; // Error codes that were generated the most
 }
 
 message resource_categories {
-  optional uint32 capacity_score = 1; // the request capacity score for this process or host. 0 means all the capacity is available, 10000 means that the entity (host or process) has reached the maximum mumber of requests it can serve.
-  optional uint32 stolen_capacity_score = 6; // the percentage of request capacity that is not available because of CPU steal. 0 means there was no CPU steal during the sample. 100 means that all the capacity was stolen and the machine essentially couldn't run.
-  optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
-  optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
-  optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
-  optional uint64 resident_memory_usage_kb = 5; // Resident (Physical) Memory usage in kb
+    optional uint32 capacity_score = 1; // the request capacity score for this process or host. 0 means all the capacity is available, 10000 means that the entity (host or process) has reached the maximum mumber of requests it can serve.
+    optional uint32 stolen_capacity_score = 6; // the percentage of request capacity that is not available because of CPU steal. 0 means there was no CPU steal during the sample. 100 means that all the capacity was stolen and the machine essentially couldn't run.
+    optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
+    optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
+    optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
+    optional uint64 resident_memory_usage_kb = 5; // Resident (Physical) Memory usage in kb
 }
 
 message connection_categories {
-  optional counter_bytes server = 1; // client-side metrics
-  optional counter_bytes client = 2; // server-side metrics
-  optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
-  optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
+    optional counter_bytes server = 1; // client-side metrics
+    optional counter_bytes client = 2; // server-side metrics
+    optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
+    optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
 }
 
 message process_details {
-  required string comm = 1;	// Command name (e.g. "top")
-  required string exe = 2; // Full command name (e.g. "/bin/top")
-  repeated string args = 3; // Command line arguments (e.g. "-d1")
+    required string comm = 1;	// Command name (e.g. "top")
+    required string exe = 2; // Full command name (e.g. "/bin/top")
+    repeated string args = 3; // Command line arguments (e.g. "-d1")
 }
 
 //
@@ -101,23 +101,23 @@ message process_details {
 // global host info.
 //
 message host {
-  optional string hostname = 1; // The name of the host sending the data
-  optional uint32 num_cpus = 2;	// Number of CPUs in the system
-  repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
-  repeated uint32 cpu_steal = 11;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the 
-  required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
+    optional string hostname = 1; // The name of the host sending the data
+    optional uint32 num_cpus = 2;	// Number of CPUs in the system
+    repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    repeated uint32 cpu_steal = 11;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
 
-  optional time_categories tcounters = 5; // The time counters for this thread
-  optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
-  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions. 
-													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 
-  optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions. 
-  optional resource_categories resource_counters = 8; // The resource counters for this process
-  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
-  
-  optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
+    optional time_categories tcounters = 5; // The time counters for this thread
+    optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
+    optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
+    optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions.
+    // It's calculated by subtracting outgoing connection time from incoming connection time.
+    optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests.
+    optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions.
+    optional resource_categories resource_counters = 8; // The resource counters for this process
+    optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
+
+    optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
 }
 
 //
@@ -125,53 +125,53 @@ message host {
 // This contains all the operational info (counters, etc.) for one of the threads.
 //
 message thread {
-  required uint64 pid = 1; // The ID of process this thread belongs to
-  required uint64 tid = 2; // The thread ID. If tid=pid, this is the main thread for this process.
-  optional time_categories tcounters = 3; // The time counters for this thread
+    required uint64 pid = 1; // The ID of process this thread belongs to
+    required uint64 tid = 2; // The thread ID. If tid=pid, this is the main thread for this process.
+    optional time_categories tcounters = 3; // The time counters for this thread
 
-  // XXX Do we need this?
-  //optional string cwd = 4; // Current working directory. This is set only if this thread has its 
-                             // own working directory, which happens for main threads and threads 
-							 // started with the CLONE_FS flag
+    // XXX Do we need this?
+    //optional string cwd = 4; // Current working directory. This is set only if this thread has its
+    // own working directory, which happens for main threads and threads
+    // started with the CLONE_FS flag
 
-  optional counter_time_bidirectional transaction_counters = 5; // The transaction counters for this thread
+    optional counter_time_bidirectional transaction_counters = 5; // The transaction counters for this thread
 }
 
 //
 // PROCESS
 // info for a process, i.e. a collection of threads.
-// NOTE: this is process info only, when emitting threads, the main thread of a process will have a 
+// NOTE: this is process info only, when emitting threads, the main thread of a process will have a
 // separate thread message with tid=process pid.
 //
 enum networkrole {
-  NONE = 0; // set if this thread serves IPv4 transactions coming from the same machine.
-  IS_LOCAL_IPV4_SERVER = 1; // set if this thread serves IPv4 transactions coming from the same machine.
-  IS_REMOTE_IPV4_SERVER = 2; // set if this thread serves IPv4 transactions coming from another machine.
-  IS_UNIX_SERVER = 4; // set if this thread serves unix transactions.
-  IS_LOCAL_IPV4_CLIENT = 8; // set if this thread creates IPv4 transactions toward localhost.
-  IS_REMOTE_IPV4_CLIENT = 16; // set if this thread creates IPv4 transactions toward another host.
-  IS_UNIX_CLIENT = 32; // set if this thread creates unix transactions.
+    NONE = 0; // set if this thread serves IPv4 transactions coming from the same machine.
+    IS_LOCAL_IPV4_SERVER = 1; // set if this thread serves IPv4 transactions coming from the same machine.
+    IS_REMOTE_IPV4_SERVER = 2; // set if this thread serves IPv4 transactions coming from another machine.
+    IS_UNIX_SERVER = 4; // set if this thread serves unix transactions.
+    IS_LOCAL_IPV4_CLIENT = 8; // set if this thread creates IPv4 transactions toward localhost.
+    IS_REMOTE_IPV4_CLIENT = 16; // set if this thread creates IPv4 transactions toward another host.
+    IS_UNIX_CLIENT = 32; // set if this thread creates unix transactions.
 }
 
 message process {
-  required uint64 pid = 1; // The ID of process this thread belongs to
+    required uint64 pid = 1; // The ID of process this thread belongs to
 
-  optional process_details details = 2; // names and string constants relative to this process
-  
-  optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
-  optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
-  optional bool is_ipv4_transaction_client = 10; // True if this process has been the client for at least one IPv4 transaction.
-  optional bool is_unix_transaction_client = 11; // True if this process has been the client for at least one unix transaction.
-  optional uint32 netrole = 13;
-  
-  optional time_categories tcounters = 5; // The time counters for this thread.
-  optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
-  optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions. 
-													// It's calculated by subtracting outgoing connection time from incoming connection time. 
-  optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 
-  optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions. 
-  optional resource_categories resource_counters = 8; // The resource counters for this process
-  optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
+    optional process_details details = 2; // names and string constants relative to this process
+
+    optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
+    optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
+    optional bool is_ipv4_transaction_client = 10; // True if this process has been the client for at least one IPv4 transaction.
+    optional bool is_unix_transaction_client = 11; // True if this process has been the client for at least one unix transaction.
+    optional uint32 netrole = 13;
+
+    optional time_categories tcounters = 5; // The time counters for this thread.
+    optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
+    optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions.
+    // It's calculated by subtracting outgoing connection time from incoming connection time.
+    optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 
+    optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions.
+    optional resource_categories resource_counters = 8; // The resource counters for this process
+    optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 }
 
 //
@@ -179,78 +179,78 @@ message process {
 // info for a program, i.e. a collection of processes with the same name and the same creator.
 //
 message program {
-  required process procinfo = 1; // Inofrmation about this program
-  repeated uint64 pids = 2; // The list of processes that are part of this program
+    required process procinfo = 1; // Inofrmation about this program
+    repeated uint64 pids = 2; // The list of processes that are part of this program
 }
 
 //
 // IPv4 CONNECTION
 //
 message ipv4tuple {
-  required uint32 sip = 1;
-  required uint32 dip = 2;
-  required uint32 sport = 3;
-  required uint32 dport = 4;
-  required uint32 l4proto = 5;
+    required uint32 sip = 1;
+    required uint32 dip = 2;
+    required uint32 sport = 3;
+    required uint32 dport = 4;
+    required uint32 l4proto = 5;
 }
 
 message ipv4_connection {
-  required ipv4tuple tuple = 1;
+    required ipv4tuple tuple = 1;
 
-  optional uint64 spid = 2; // The pid of the client
-  optional uint64 stid = 3; // The tid of the client
-  // XXX is this required?
-  //optional uint64 sfd = 4; // The fd number of the client
+    optional uint64 spid = 2; // The pid of the client
+    optional uint64 stid = 3; // The tid of the client
+    // XXX is this required?
+    //optional uint64 sfd = 4; // The fd number of the client
 
-  optional uint64 dpid = 5; // The pid of the server
-  optional uint64 dtid = 6; // The tid of the server
-  // XXX is this required?
-  //optional uint64 dfd = 7; // The fd number of the server
+    optional uint64 dpid = 5; // The pid of the server
+    optional uint64 dtid = 6; // The tid of the server
+    // XXX is this required?
+    //optional uint64 dfd = 7; // The fd number of the server
 
-  required connection_categories counters = 8; // the metrics for this connection
+    required connection_categories counters = 8; // the metrics for this connection
 }
 
 //
 // NETWORK INTERFACE
 //
 message ipv4_network_interface {
-  required string name = 1; // ifconfig entry name, e.g. eth0
-  required uint32 addr = 2; // IP address
-  required uint32 netmask = 3; // netmask
-  optional uint32 bcast = 4; // broadcast address
+    required string name = 1; // ifconfig entry name, e.g. eth0
+    required uint32 addr = 2; // IP address
+    required uint32 netmask = 3; // netmask
+    optional uint32 bcast = 4; // broadcast address
 }
 
 //
 // MESSAGE TYPES
 //
 enum message_type {
-  METRICS = 1;
-  DUMP_REQUEST = 2;
-  DUMP_RESPONSE = 3;
-  SSH_OPEN_CHANNEL = 6;
-  SSH_CLOSE_CHANNEL = 7;
-  SSH_DATA = 8;  
+    METRICS = 1;
+    DUMP_REQUEST = 2;
+    DUMP_RESPONSE = 3;
+    SSH_OPEN_CHANNEL = 6;
+    SSH_CLOSE_CHANNEL = 7;
+    SSH_DATA = 8;  
 }
 
 //
 // ENTRY POINT MESSAGE
 //
 message metrics {
-  required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-  required string machine_id = 2; // The unique ID of the machine that is sending this data
-  optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-  required host hostinfo = 4; // The list of processes
-  repeated program programs = 9; // The list of programs
-  repeated process processes = 5; // The list of processes
-  repeated thread threads = 6; // The list of threads
-  repeated ipv4_connection ipv4_connections = 7; // The list of threads
-  repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-  optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
-  optional string host_custom_name = 11; // This machines's user-set custom name for the draios map. 
-  optional string host_custom_group = 12; // This machines's user-set custom group for the draios map. 
-  optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
-  optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
-  optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required host hostinfo = 4; // The list of processes
+    repeated program programs = 9; // The list of programs
+    repeated process processes = 5; // The list of processes
+    repeated thread threads = 6; // The list of threads
+    repeated ipv4_connection ipv4_connections = 7; // The list of threads
+    repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
+    optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
+    optional string host_custom_name = 11; // This machines's user-set custom name for the draios map. 
+    optional string host_custom_group = 12; // This machines's user-set custom group for the draios map. 
+    optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
+    optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
+    optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
 }
 
 message dump_request {
