@@ -83,26 +83,6 @@ void sinsp_worker::init()
 	//
 	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);
 
-	//
-	// Start the capture with sinsp
-	//
-	g_log->information("Opening the capture source");
-	if(m_configuration->m_input_filename != "")
-	{
-		m_inspector->open(m_configuration->m_input_filename);
-	}
-	else
-	{
-		m_inspector->open("");
-	}
-
-	aws_metadata metadata;
-	if(m_configuration->get_aws_metadata(&metadata))
-	{
-		sinsp_ipv4_ifinfo aws_interface(metadata.m_public_ipv4, metadata.m_public_ipv4, metadata.m_public_ipv4, "aws");
-		m_inspector->import_ipv4_interface(aws_interface);
-	}
-
 	if(m_configuration->m_subsampling_ratio != 1)
 	{
 		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
@@ -149,6 +129,26 @@ void sinsp_worker::init()
 	{
 		g_log->information("Setting host hidden");
 		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
+	}
+	
+	//
+	// Start the capture with sinsp
+	//
+	g_log->information("Opening the capture source");
+	if(m_configuration->m_input_filename != "")
+	{
+		m_inspector->open(m_configuration->m_input_filename);
+	}
+	else
+	{
+		m_inspector->open("");
+	}
+
+	aws_metadata metadata;
+	if(m_configuration->get_aws_metadata(&metadata))
+	{
+		sinsp_ipv4_ifinfo aws_interface(metadata.m_public_ipv4, metadata.m_public_ipv4, metadata.m_public_ipv4, "aws");
+		m_inspector->import_ipv4_interface(aws_interface);
 	}
 }
 
