@@ -15,6 +15,7 @@ ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* que
 	m_queue(queue),
 	m_token(token),
 	m_ssh_settings(settings),
+	m_last_activity_ns(0),
 	m_libssh_session(NULL),
 	m_libssh_key(NULL),
 	m_libssh_channel(NULL)
@@ -143,10 +144,19 @@ void ssh_worker::run()
 		return;
 	}
 
+	m_last_activity_ns = dragent_configuration::get_current_time_ns();
+
 	while(!dragent_configuration::m_terminate &&
 		ssh_channel_is_open(m_libssh_channel) &&
 		!ssh_channel_is_eof(m_libssh_channel))
 	{
+		if(dragent_configuration::get_current_time_ns() > 
+			m_last_activity_ns + m_session_timeout_ns)
+		{
+			g_log->warning(m_name + ": SSH session timeout");
+			break;
+		}
+
 		pending_message message;
 		if(get_pending_messages(m_token, &message))
 		{
@@ -158,6 +168,7 @@ void ssh_worker::run()
 
 			if(!message.m_input.empty())
 			{
+				m_last_activity_ns = dragent_configuration::get_current_time_ns();
 				write_to_channel(message.m_input);
 			}
 		}
@@ -172,7 +183,7 @@ void ssh_worker::run()
 			prepare_response(&response);
 			response.set_data(output);
 
-			g_log->information("Sending partial output (" 
+			g_log->information(m_name + ": Sending partial output (" 
 				+ NumberFormatter::format(output.size()) + ")");
 
 			queue_response(response);
