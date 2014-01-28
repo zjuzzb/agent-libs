@@ -102,7 +102,19 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						// just on of the endpoints has been closed.
 						// Jusr recycle the connection.
 						//
-						connection->reset();
+						if(evt->m_fdinfo->is_role_server())
+						{
+							connection->reset_server();
+						}
+						else if(evt->m_fdinfo->is_role_client())
+						{
+							connection->reset_client();
+						}
+						else
+						{
+							connection->reset();
+						}
+
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 						evt->m_fdinfo->set_role_server();
 					}
@@ -408,7 +420,19 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						// just on of the endpoints has been closed.
 						// Jusr recycle the connection.
 						//
-						connection->reset();
+						if(evt->m_fdinfo->is_role_server())
+						{
+							connection->reset_server();
+						}
+						else if(evt->m_fdinfo->is_role_client())
+						{
+							connection->reset_client();
+						}
+						else
+						{
+							connection->reset();
+						}
+
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 						evt->m_fdinfo->set_role_client();
 					}

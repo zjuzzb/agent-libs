@@ -25,6 +25,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_procinfo::clear()
 {
+	m_exclude_from_sample = false;
 	m_proc_metrics.clear();
 	m_proc_transaction_metrics.clear();
 	m_proc_transaction_processing_delay_ns = 0;
@@ -452,6 +453,53 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 	{
 		tinfo->m_ainfo->destroy();
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Support for thread sorting
+///////////////////////////////////////////////////////////////////////////////
+bool threadinfo_cmp_cpu(sinsp_threadinfo* src , sinsp_threadinfo* dst)
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	return (src->m_ainfo->m_procinfo->m_cpuload > 
+		dst->m_ainfo->m_procinfo->m_cpuload); 
+}
+
+bool threadinfo_cmp_memory(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	return (src->m_ainfo->m_procinfo->m_resident_memory_kb > 
+		dst->m_ainfo->m_procinfo->m_resident_memory_kb); 
+}
+
+bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	return (src->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 
+		dst->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes()); 
+}
+
+bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	return (src->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() > 
+		dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count()); 
 }
 
 #endif // HAS_ANALYZER

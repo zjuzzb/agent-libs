@@ -21,6 +21,8 @@ sinsp_configuration::sinsp_configuration()
 	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
+	m_host_hidden = false;
+
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -226,9 +228,9 @@ const bool sinsp_configuration::get_host_hidden() const
 	return m_host_hidden;
 }
 
-void sinsp_configuration::set_host_hidden(bool machine_hidden)
+void sinsp_configuration::set_host_hidden(bool host_hidden)
 {
-	m_host_hidden = machine_hidden;
+	m_host_hidden = host_hidden;
 }
 
 const string& sinsp_configuration::get_hidden_processes() const

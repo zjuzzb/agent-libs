@@ -144,6 +144,7 @@ public:
 	sinsp_configuration* m_configuration;
 
 VISIBILITY_PRIVATE
+	void filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progtable);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);

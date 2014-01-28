@@ -148,6 +148,11 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	// NOTE: other is not included because we don't need it in the sample, just for internal use
 }
 
+uint32_t sinsp_counter_time_bidirectional::get_tot_count()
+{
+	return m_count_in + m_count_out + m_count_other;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_bytes implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -299,6 +304,11 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
 	protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
 	protobuf_msg->set_bytes_other(m_bytes_other * sampling_ratio);
+}
+
+uint64_t sinsp_counter_time_bytes::get_tot_bytes()
+{
+	return m_bytes_in + m_bytes_out;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

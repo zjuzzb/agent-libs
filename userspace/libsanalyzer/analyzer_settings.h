@@ -116,6 +116,11 @@
 #define DROP_THRESHOLD_CONSECUTIVE_SECONDS 5
 
 //
+//	Max number of processes that can go in a sample
+//
+#define TOP_PROCESSES_IN_SAMPLE 30
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

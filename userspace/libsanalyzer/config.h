@@ -45,7 +45,7 @@ public:
 	const string& get_host_custom_group() const;
 	void set_host_custom_group(string host_custom_group);
 	const bool get_host_hidden() const;
-	void set_host_hidden(bool machine_hidden);
+	void set_host_hidden(bool host_hidden);
 	const string& get_hidden_processes() const;
 	void set_hidden_processes(string hidden_processes);
 	const string& get_host_custom_map() const;

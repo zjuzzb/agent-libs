@@ -46,6 +46,8 @@ public:
 	void clear();
 	uint64_t get_tot_cputime();
 
+	// True if this process is outside the top list that goes in the sample.
+	bool m_exclude_from_sample;
 	// Aggreaged metrics for the process.
 	// This field is allocated only for process main threads.
 	sinsp_counters m_proc_metrics; 
@@ -171,5 +173,13 @@ private:
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// Support for thread sorting
+///////////////////////////////////////////////////////////////////////////////
+bool threadinfo_cmp_cpu(sinsp_threadinfo* src , sinsp_threadinfo* dst); 
+bool threadinfo_cmp_memory(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 
 #endif // HAS_ANALYZER
