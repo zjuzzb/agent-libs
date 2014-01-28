@@ -749,7 +749,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
-	if(m_inspector->m_islive)
+//	if(m_inspector->m_islive)
+	if(false)
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
