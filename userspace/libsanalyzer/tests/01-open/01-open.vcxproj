@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{BD7F8F60-0014-4800-A6B3-ABD9A5A458FD}</ProjectGuid>
+    <ProjectGuid>{36625D68-D619-4A1C-B531-7D315D26EBBA}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -48,7 +48,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>HAS_ANALYZER;WIN32;_DEBUG;_CONSOLE;_NO_DEBUG_HEAP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libsanalyzer;../libsinsp;../libscap;../../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../;../../../../../sysdig/userspace/libsinsp;../../../../../sysdig/userspace/libscap;../../../../common;../../../../../draios_win32_deps/protobuf-2.5.0/src;../../../../../draios_win32_deps/zlib-1.2.8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -58,14 +58,14 @@
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;..\Debug\scap.lib;%(AdditionalDependencies);..\Debug\sanalyzer.lib</AdditionalDependencies>
-      <OutputFile>..\Debug\sysdig.exe</OutputFile>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../../../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../../../draios_win32_deps/zlib-1.2.8/contrib/vstudio/vc9/x86/ZlibStatReleaseWithoutAsm/zlibstat.lib;%(AdditionalDependencies);..\..\..\Debug\sanalyzer.lib</AdditionalDependencies>
+      <OutputFile>..\..\..\Debug\01-open.exe</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>HAS_ANALYZER;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libsanalyzer;../libsinsp;../libscap;../../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../;../../../../../sysdig/userspace/libsinsp;../../../../../sysdig/userspace/libscap;../../../../common;../../../../../draios_win32_deps/protobuf-2.5.0/src;../../../../../draios_win32_deps/zlib-1.2.8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -76,19 +76,13 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;..\Release\scap.lib;..\Release\sanalyzer.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\Release\sysdig.exe</OutputFile>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../../../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib;../../../../../draios_win32_deps/zlib-1.2.8/contrib/vstudio/vc9/x86/ZlibStatReleaseWithoutAsm/zlibstat.lib;..\..\..\Release\sanalyzer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>..\..\..\Release\01-open.exe</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="chisel.cpp" />
-    <ClCompile Include="jsoncpp.cpp" />
-    <ClCompile Include="sysdig.cpp" />
+    <ClCompile Include="test.cpp" />
     <ClCompile Include="win32\getopt.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="chisel.h" />
-    <ClInclude Include="sysdig.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
