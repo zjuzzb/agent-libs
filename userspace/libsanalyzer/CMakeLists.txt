@@ -3,6 +3,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 add_definitions( -DHAS_ANALYZER )
 
@@ -11,6 +12,7 @@ add_library(sanalyzer STATIC
 	analyzer_fd.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	connectinfo.cpp 
 	config.cpp
 	delays.cpp	
@@ -23,6 +25,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	metrics.cpp
 	parser_http.cpp
