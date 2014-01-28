@@ -312,12 +312,16 @@ void ssh_worker::request_input(const string& token, const string& input)
 {
 	Poco::Mutex::ScopedLock lock(m_pending_messages_lock);
 
-	g_log->information("Adding new input to session " + token);
-
 	map<string, pending_message>::iterator it = m_pending_messages.find(token);
 	if(it != m_pending_messages.end())
 	{
+		g_log->information("Adding new input to session " + token);
+
 		it->second.m_input.append(input);
+	}
+	else
+	{
+		g_log->error("SSH session " + token + " doesn't exist");
 	}
 }
 
@@ -343,5 +347,9 @@ void ssh_worker::request_close(const string& token)
 	if(it != m_pending_messages.end())
 	{
 		it->second.m_close = true;
+	}
+	else
+	{
+		g_log->error("SSH session " + token + " doesn't exist");
 	}
 }
