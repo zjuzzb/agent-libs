@@ -491,6 +491,17 @@ bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 		dst->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes()); 
 }
 
+bool threadinfo_cmp_net(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	return (src->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 
+		dst->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes()); 
+}
+
 bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
 {
 	ASSERT(src->m_ainfo);

@@ -491,7 +491,7 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	}
 
 	//
-	// Mark the top I/O consumers
+	// Mark the top disk I/O consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
 		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
@@ -513,16 +513,18 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	}
 
 	//
-	// Mark the top transaction generators
+	// Mark the top network I/O consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
 		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
 		prog_sortable_list.end(),
-		threadinfo_cmp_transactions);
+		threadinfo_cmp_net);
 
 	for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
 	{
-		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() > 0)
+		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+
+		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 		{
 			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
 		}
@@ -531,6 +533,26 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 			break;
 		}
 	}
+
+	//
+	// Mark the top transaction generators
+	//
+	//partial_sort(prog_sortable_list.begin(), 
+	//	prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+	//	prog_sortable_list.end(),
+	//	threadinfo_cmp_transactions);
+
+	//for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
+	//{
+	//	if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() > 0)
+	//	{
+	//		prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+	//	}
+	//	else
+	//	{
+	//		break;
+	//	}
+	//}
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)

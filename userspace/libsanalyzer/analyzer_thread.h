@@ -180,6 +180,7 @@ private:
 bool threadinfo_cmp_cpu(sinsp_threadinfo* src , sinsp_threadinfo* dst); 
 bool threadinfo_cmp_memory(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_net(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 
 #endif // HAS_ANALYZER
