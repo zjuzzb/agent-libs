@@ -80,6 +80,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
+	inspector->m_max_n_proc_lookups = 300;
 
 	m_configuration = new sinsp_configuration();
 
@@ -681,12 +682,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				if(m_inspector->m_islive)
 				{
-					it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
-						&it->second.m_ainfo->m_old_proc_jiffies, 
-						cur_global_total_jiffies - m_old_global_total_jiffies,
-						&it->second.m_ainfo->m_resident_memory_kb);
+					if((it->second.m_flags & PPM_CL_CLOSED) == 0)
+					{
+						it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+							&it->second.m_ainfo->m_old_proc_jiffies, 
+							cur_global_total_jiffies - m_old_global_total_jiffies,
+							&it->second.m_ainfo->m_resident_memory_kb);
 
-					m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+						m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+					}
 				}
 			}
 		}
@@ -1783,6 +1787,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		m_host_server_transactions[j].clear();
 		m_host_client_transactions[j].clear();
 	}
+
+	//
+	// Reset the proc lookup counter
+	//
+	m_inspector->m_n_proc_lookups = 0;
 
 	//
 	// Clear the network I/O counter
