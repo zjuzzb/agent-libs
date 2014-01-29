@@ -272,7 +272,8 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 
 		if(ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
-			g_log->information("Job completed");
+			g_log->information("Job completed, captured events: " 
+				+ NumberFormatter::format(job->m_n_events));
 
 			it = m_running_dump_jobs.erase(it);
 
@@ -296,6 +297,7 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 				}
 			}
 
+			++job->m_n_events;
 			job->m_dumper->dump(ev);
 		}
 	}
@@ -397,7 +399,8 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 
 		job_state->m_dumper = new sinsp_dumper(m_inspector);
 		job_state->m_file = TemporaryFile::tempName(m_configuration->m_dump_dir) + ".scap";
-		g_log->information("Starting dump job in " + job_state->m_file);
+		g_log->information("Starting dump job in " + job_state->m_file + 
+			", filter '" + request->m_filter + "'");
 		job_state->m_dumper->open(job_state->m_file);
 
 		job_state->m_duration_ns = request->m_duration_ns;

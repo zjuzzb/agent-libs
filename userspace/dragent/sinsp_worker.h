@@ -49,7 +49,8 @@ private:
 			m_filter(NULL),
 			m_start_ns(0),
 			m_duration_ns(0),
-			m_delete_file_when_done(true)
+			m_delete_file_when_done(true),
+			m_n_events(0)
 		{
 		}
 
@@ -83,6 +84,7 @@ private:
 		uint64_t m_duration_ns;
 		string m_file;
 		bool m_delete_file_when_done;
+		uint64_t m_n_events;
 	};
 
 	void prepare_response(draiosproto::dump_response* response);
