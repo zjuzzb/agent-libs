@@ -131,6 +131,12 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
 	}
 	
+	if(m_configuration->m_autodrop_enabled)
+	{
+		g_log->information("Setting autodrop");
+		m_analyzer->get_configuration()->set_autodrop_enabled(true);
+	}
+
 	//
 	// Start the capture with sinsp
 	//

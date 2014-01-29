@@ -140,7 +140,6 @@ void dragent_configuration::init(Application* app)
 	m_drop_upper_treshold = config.getInt("autodrop.treshold.upper", 0);
 	m_drop_lower_treshold = config.getInt("autodrop.treshold.lower", 0);
 
-
 	m_host_custom_name = config.getString("ui.customname", "");
 	m_host_custom_group = config.getString("ui.customgroup", "");
 	m_host_custom_map = config.getString("ui.custommap", "");
