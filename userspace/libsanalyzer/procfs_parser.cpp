@@ -54,6 +54,7 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
 		ASSERT(false);
+		fclose(f);
 		return -1;
 	}
 
@@ -77,6 +78,7 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 		&val7) != 8)
 	{
 		ASSERT(false);
+		fclose(f);
 		return -1;
 	}
 
@@ -148,6 +150,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
 		ASSERT(false);
+		fclose(f);
 		return;
 	}
 
@@ -183,6 +186,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 			&steal_jiffies) != 9) // steal
 		{
 			ASSERT(false);
+			fclose(f);
 			break;
 		}
 
@@ -296,6 +300,7 @@ double sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t*
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
 		ASSERT(false);
+		fclose(f);
 		return -1;
 	}
 
@@ -330,6 +335,7 @@ double sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t*
 		) != 24)
 	{
 		ASSERT(false);
+		fclose(f);
 		return -1;
 	}
 
