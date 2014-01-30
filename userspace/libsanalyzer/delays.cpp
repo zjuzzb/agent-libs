@@ -23,7 +23,7 @@ sinsp_delays::sinsp_delays(sinsp_analyzer* analyzer, uint32_t ncpus)
 // progid can be used to filter on a specific program id. progid=-1 means accept all the transactions.
 // Returns the sum of the time of the merged transactions.
 //
-uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* merge)
+uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals, OUT vector<sinsp_trlist_entry>* merge, bool do_sort)
 {
 	uint64_t tot_time = 0;
 	bool initializing = true;
@@ -37,8 +37,11 @@ uint64_t sinsp_delays::merge_transactions(vector<sinsp_trlist_entry>* intervals,
 	//
     // sort the intervals based on start time
 	//
-    sort(intervals->begin(), intervals->end(), sinsp_trlist_entry_comparer());
- 
+	if(do_sort)
+	{
+	    sort(intervals->begin(), intervals->end(), sinsp_trlist_entry_comparer());
+	}
+
 	//
     // Start from the next interval and merge if necessary
 	//
@@ -104,6 +107,10 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 
 	for(j = 0; j < ncpus; j++)
 	{
+		sort(server_transactions_per_cpu->at(j).begin(), 
+			server_transactions_per_cpu->at(j).end(), 
+			sinsp_trlist_entry_comparer());
+
 		server_iters[j] = server_transactions_per_cpu->at(j).begin();
 	}
 
@@ -178,13 +185,13 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	// Merge the server transactions
 	//
 	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[cpuid]),
-		&pd->m_last_server_transaction_union);
+		&pd->m_last_server_transaction_union, false);
 
 	//
 	// Merge the client transactions
 	//
 	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid]),
-		&pd->m_last_client_transaction_union);
+		&pd->m_last_client_transaction_union, false);
 
 	//
 	// Add the just computed delays to the program ones
@@ -293,46 +300,43 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	{
 		compute_program_percpu_delays(program_info, j, delays);
 	}
-/*
-if(program_info->m_comm == "haproxy")
-{
-vector<sinsp_trlist_entry>* transactions2 = &((delays)->m_last_percpu_delays[0]).m_last_client_transaction_union;
-vector<int64_t>v2;
-int64_t tot2 = 0;
-for(uint32_t k = 0; k < transactions2->size(); k++)
-{
-	int64_t delta = ((*transactions2))[k].m_etime - ((*transactions2))[k].m_stime;
-	v2.push_back(delta);
-	if(delta >= 0)
-	{
-		tot2 += delta;
-	}
-	else
-	{
-		int a = 0;
-	}
-}
 
-vector<sinsp_trlist_entry>* transactions3 = &((delays)->m_last_percpu_delays[0]).m_last_server_transaction_union;
-vector<int64_t>v3;
-int64_t tot3 = 0;
-for(uint32_t k = 0; k < transactions3->size(); k++)
-{
-	int64_t delta = ((*transactions3))[k].m_etime - ((*transactions3))[k].m_stime;
-	v3.push_back(delta);
-	if(delta >= 0)
-	{
-		tot3 += delta;
-	}
-	else
-	{
-		int a = 0;
-	}
-}
+//vector<sinsp_trlist_entry>* transactions2 = &((delays)->m_last_percpu_delays[0]).m_last_client_transaction_union;
+//vector<int64_t>v2;
+//int64_t tot2 = 0;
+//for(uint32_t k = 0; k < transactions2->size(); k++)
+//{
+//	int64_t delta = ((*transactions2))[k].m_etime - ((*transactions2))[k].m_stime;
+//	v2.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot2 += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+//
+//vector<sinsp_trlist_entry>* transactions3 = &((delays)->m_last_percpu_delays[0]).m_last_server_transaction_union;
+//vector<int64_t>v3;
+//int64_t tot3 = 0;
+//for(uint32_t k = 0; k < transactions3->size(); k++)
+//{
+//	int64_t delta = ((*transactions3))[k].m_etime - ((*transactions3))[k].m_stime;
+//	v3.push_back(delta);
+//	if(delta >= 0)
+//	{
+//		tot3 += delta;
+//	}
+//	else
+//	{
+//		int a = 0;
+//	}
+//}
+//
+//int a = 0;
 
-int a = 0;
-}
-*/
 	//
 	// Local transaction processing delay
 	//
@@ -393,13 +397,13 @@ void sinsp_delays::compute_host_percpu_delays(int32_t cpuid, sinsp_delays_info* 
 	// Merge the server transactions
 	//
 	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(m_analyzer->m_host_server_transactions[cpuid]),
-		&pd->m_last_server_transaction_union);
+		&pd->m_last_server_transaction_union, false);
 
 	//
 	// Merge the client transactions
 	//
 	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(m_analyzer->m_host_client_transactions[cpuid]),
-		&pd->m_last_client_transaction_union);
+		&pd->m_last_client_transaction_union, false);
 
 	//
 	// Add the just computed delays to the program ones
@@ -429,6 +433,12 @@ void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 	}
 
 	delays->clear();
+
+	//
+	// Prune the client connections
+	//
+	prune_client_transactions(&m_analyzer->m_host_client_transactions,
+		&m_analyzer->m_host_server_transactions);
 
 	//
 	// Per CPU transaction merging
