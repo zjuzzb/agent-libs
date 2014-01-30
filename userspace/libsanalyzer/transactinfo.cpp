@@ -59,7 +59,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 	//
 	// Detect the side and and determine the trigger directions
 	//
-	ASSERT(ffdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER	));
+	ASSERT(ffdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER));
 	if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 	{
 		startdir = sinsp_partial_transaction::DIR_IN;

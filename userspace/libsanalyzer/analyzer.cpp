@@ -682,6 +682,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				if(m_inspector->m_islive)
 				{
+					//
+					// It's pointless to try to get the CPU load if the process has been closed
+					//
 					if((it->second.m_flags & PPM_CL_CLOSED) == 0)
 					{
 						it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
@@ -1587,10 +1590,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->set_machine_id(m_configuration->get_machine_id());
 			m_metrics->set_customer_id(m_configuration->get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
-			if(m_sampling_ratio != 1)
-			{
-				m_metrics->set_sampling_ratio(m_sampling_ratio);
-			}
+			m_metrics->set_sampling_ratio(m_sampling_ratio);
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
 			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
@@ -1796,7 +1796,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 		if(m_configuration->get_autodrop_enabled())
 		{
-//			tune_drop_mode(flshflags, nevts_in_last_sample * m_machine_info->num_cpus);
 			tune_drop_mode(flshflags, m_my_cpuload);
 		}
 
