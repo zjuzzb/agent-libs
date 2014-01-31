@@ -148,12 +148,6 @@ void connection_manager::run()
 		// Check if we received a message
 		//
 		receive_message();
-
-		if(dragent_configuration::m_autoupdate)
-		{
-			dragent_configuration::m_autoupdate = false;
-			handle_auto_update();
-		}
 	}
 
 	g_log->information(m_name + ": Terminating");
