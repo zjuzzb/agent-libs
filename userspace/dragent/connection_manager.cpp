@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "draios.pb.h"
 #include "ssh_worker.h"
+#include "update_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
 
@@ -304,6 +305,9 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::AUTO_UPDATE_REQUEST:
+				handle_auto_update();
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: " 
 					+ NumberFormatter::format(header->messagetype));
@@ -397,4 +401,10 @@ void connection_manager::handle_ssh_close_channel(uint8_t* buf, uint32_t size)
 	}
 
 	ssh_worker::request_close(request.token());
+}
+
+void connection_manager::handle_auto_update()
+{
+	update_worker* worker = new update_worker(m_configuration);
+	ThreadPool::defaultPool().start(*worker, "update_worker");
 }

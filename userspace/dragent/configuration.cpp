@@ -28,6 +28,7 @@ dragent_configuration::dragent_configuration()
 	m_autodrop_enabled = false;
 	m_drop_upper_treshold = 0;
 	m_drop_lower_treshold = 0;
+	m_autoupdate_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -145,6 +146,7 @@ void dragent_configuration::init(Application* app)
 	m_host_custom_map = config.getString("ui.custommap", "");
 	m_host_hidden = config.getBool("ui.is_hidden", false);
 	m_hidden_processes = config.getString("ui.hidden_processes", "");
+	m_autodrop_enabled = config.getBool("autoupdate.enabled", true);
 }
 
 void dragent_configuration::print_configuration()
@@ -171,6 +173,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("ui.custommap: " + m_host_custom_map);
 	g_log->information("ui.is_hidden: " + m_host_hidden);
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
+	g_log->information("autoupdate.enabled: " + (m_autoupdate_enabled ? string("true") : string("false")));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

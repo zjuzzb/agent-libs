@@ -24,6 +24,7 @@ private:
 	void handle_ssh_open_channel(uint8_t* buf, uint32_t size);
 	void handle_ssh_data(uint8_t* buf, uint32_t size);
 	void handle_ssh_close_channel(uint8_t* buf, uint32_t size);
+	void handle_auto_update();
 
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const string m_name;

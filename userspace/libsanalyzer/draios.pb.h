@@ -57,6 +57,7 @@ class dump_response;
 class ssh_open_channel;
 class ssh_data;
 class ssh_close_channel;
+class auto_update_request;
 
 enum networkrole {
   NONE = 0,
@@ -88,11 +89,12 @@ enum message_type {
   DUMP_RESPONSE = 3,
   SSH_OPEN_CHANNEL = 6,
   SSH_CLOSE_CHANNEL = 7,
-  SSH_DATA = 8
+  SSH_DATA = 8,
+  AUTO_UPDATE_REQUEST = 9
 };
 bool message_type_IsValid(int value);
 const message_type message_type_MIN = METRICS;
-const message_type message_type_MAX = SSH_DATA;
+const message_type message_type_MAX = AUTO_UPDATE_REQUEST;
 const int message_type_ARRAYSIZE = message_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* message_type_descriptor();
@@ -3581,6 +3583,118 @@ class ssh_close_channel : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static ssh_close_channel* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class auto_update_request : public ::google::protobuf::Message {
+ public:
+  auto_update_request();
+  virtual ~auto_update_request();
+
+  auto_update_request(const auto_update_request& from);
+
+  inline auto_update_request& operator=(const auto_update_request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const auto_update_request& default_instance();
+
+  void Swap(auto_update_request* other);
+
+  // implements Message ----------------------------------------------
+
+  auto_update_request* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const auto_update_request& from);
+  void MergeFrom(const auto_update_request& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp_ns = 1;
+  inline bool has_timestamp_ns() const;
+  inline void clear_timestamp_ns();
+  static const int kTimestampNsFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_ns() const;
+  inline void set_timestamp_ns(::google::protobuf::uint64 value);
+
+  // required string machine_id = 2;
+  inline bool has_machine_id() const;
+  inline void clear_machine_id();
+  static const int kMachineIdFieldNumber = 2;
+  inline const ::std::string& machine_id() const;
+  inline void set_machine_id(const ::std::string& value);
+  inline void set_machine_id(const char* value);
+  inline void set_machine_id(const char* value, size_t size);
+  inline ::std::string* mutable_machine_id();
+  inline ::std::string* release_machine_id();
+  inline void set_allocated_machine_id(::std::string* machine_id);
+
+  // optional string customer_id = 3;
+  inline bool has_customer_id() const;
+  inline void clear_customer_id();
+  static const int kCustomerIdFieldNumber = 3;
+  inline const ::std::string& customer_id() const;
+  inline void set_customer_id(const ::std::string& value);
+  inline void set_customer_id(const char* value);
+  inline void set_customer_id(const char* value, size_t size);
+  inline ::std::string* mutable_customer_id();
+  inline ::std::string* release_customer_id();
+  inline void set_allocated_customer_id(::std::string* customer_id);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.auto_update_request)
+ private:
+  inline void set_has_timestamp_ns();
+  inline void clear_has_timestamp_ns();
+  inline void set_has_machine_id();
+  inline void clear_has_machine_id();
+  inline void set_has_customer_id();
+  inline void clear_has_customer_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_ns_;
+  ::std::string* machine_id_;
+  ::std::string* customer_id_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static auto_update_request* default_instance_;
 };
 // ===================================================================
 
@@ -9351,6 +9465,172 @@ inline void ssh_close_channel::set_allocated_token(::std::string* token) {
   } else {
     clear_has_token();
     token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// auto_update_request
+
+// required uint64 timestamp_ns = 1;
+inline bool auto_update_request::has_timestamp_ns() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void auto_update_request::set_has_timestamp_ns() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void auto_update_request::clear_has_timestamp_ns() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void auto_update_request::clear_timestamp_ns() {
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_ns();
+}
+inline ::google::protobuf::uint64 auto_update_request::timestamp_ns() const {
+  return timestamp_ns_;
+}
+inline void auto_update_request::set_timestamp_ns(::google::protobuf::uint64 value) {
+  set_has_timestamp_ns();
+  timestamp_ns_ = value;
+}
+
+// required string machine_id = 2;
+inline bool auto_update_request::has_machine_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void auto_update_request::set_has_machine_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void auto_update_request::clear_has_machine_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void auto_update_request::clear_machine_id() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    machine_id_->clear();
+  }
+  clear_has_machine_id();
+}
+inline const ::std::string& auto_update_request::machine_id() const {
+  return *machine_id_;
+}
+inline void auto_update_request::set_machine_id(const ::std::string& value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void auto_update_request::set_machine_id(const char* value) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(value);
+}
+inline void auto_update_request::set_machine_id(const char* value, size_t size) {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  machine_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* auto_update_request::mutable_machine_id() {
+  set_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    machine_id_ = new ::std::string;
+  }
+  return machine_id_;
+}
+inline ::std::string* auto_update_request::release_machine_id() {
+  clear_has_machine_id();
+  if (machine_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = machine_id_;
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void auto_update_request::set_allocated_machine_id(::std::string* machine_id) {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (machine_id) {
+    set_has_machine_id();
+    machine_id_ = machine_id;
+  } else {
+    clear_has_machine_id();
+    machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string customer_id = 3;
+inline bool auto_update_request::has_customer_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void auto_update_request::set_has_customer_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void auto_update_request::clear_has_customer_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void auto_update_request::clear_customer_id() {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    customer_id_->clear();
+  }
+  clear_has_customer_id();
+}
+inline const ::std::string& auto_update_request::customer_id() const {
+  return *customer_id_;
+}
+inline void auto_update_request::set_customer_id(const ::std::string& value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void auto_update_request::set_customer_id(const char* value) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(value);
+}
+inline void auto_update_request::set_customer_id(const char* value, size_t size) {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  customer_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* auto_update_request::mutable_customer_id() {
+  set_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    customer_id_ = new ::std::string;
+  }
+  return customer_id_;
+}
+inline ::std::string* auto_update_request::release_customer_id() {
+  clear_has_customer_id();
+  if (customer_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = customer_id_;
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void auto_update_request::set_allocated_customer_id(::std::string* customer_id) {
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (customer_id) {
+    set_has_customer_id();
+    customer_id_ = customer_id;
+  } else {
+    clear_has_customer_id();
+    customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

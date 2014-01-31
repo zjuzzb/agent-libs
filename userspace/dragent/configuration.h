@@ -65,4 +65,5 @@ public:
 	string m_host_custom_map;
 	bool m_host_hidden;
 	string m_hidden_processes;	
+	bool m_autoupdate_enabled;
 };
