@@ -89,28 +89,34 @@ void update_worker::launch(const string& command, const vector<string> args)
 	ProcessHandle handle = Process::launch(command, args, NULL, &output, &output);
 	pid_t pid = handle.id();
 
+	int ret;
+
 	while(!dragent_configuration::m_terminate)
 	{
 		int status;
 		pid_t waited_pid = waitpid(pid, &status, WNOHANG);
 
-		if(waited_pid != 0)
+		if(waited_pid == 0)
 		{
-			break;
+			//
+			// Child still alive
+			//
+			Thread::sleep(100);
+			continue;
 		}
 
-		//
-		// Child still alive
-		//
-		Thread::sleep(100);
+		if(WIFEXITED(status))
+		{
+			ret = WEXITSTATUS(status);
+
+			Poco::PipeInputStream istr(output);
+			string soutput;
+			
+			StreamCopier::copyToString(istr, soutput);
+
+			g_log->information("Update returned " + Poco::NumberFormatter::format(ret) + ": " + soutput);
+		}
+
+		break;
 	}
-
-	int ret = handle.wait();
-
-	Poco::PipeInputStream istr(output);
-	string soutput;
-	
-	StreamCopier::copyToString(istr, soutput);
-
-	g_log->information("Update returned " + Poco::NumberFormatter::format(ret) + ": " + soutput);
 }
