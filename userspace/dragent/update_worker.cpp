@@ -63,12 +63,22 @@ void update_worker::update_debian()
 
 void update_worker::update_rhel()
 {
-	string command = "yum";
-	vector<string> args;
-	args.push_back("-y");
-	args.push_back("install");
-	args.push_back("draios-agent");
-	launch(command, args);
+	{
+		string command = "yum";
+		vector<string> args;
+		args.push_back("clean");
+		args.push_back("expire-cache");
+		launch(command, args);
+	}
+
+	{
+		string command = "yum";
+		vector<string> args;
+		args.push_back("-y");
+		args.push_back("install");
+		args.push_back("draios-agent");
+		launch(command, args);
+	}
 }
 
 void update_worker::launch(const string& command, const vector<string> args)
