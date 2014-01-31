@@ -85,8 +85,7 @@ void update_worker::launch(const string& command, const vector<string> args)
 {
 	g_log->information("Running '" + command + "'");
 
-	Pipe output;
-	ProcessHandle handle = Process::launch(command, args, NULL, &output, &output);
+	ProcessHandle handle = Process::launch(command, args);
 	pid_t pid = handle.id();
 
 	int ret;
@@ -108,13 +107,7 @@ void update_worker::launch(const string& command, const vector<string> args)
 		if(WIFEXITED(status))
 		{
 			ret = WEXITSTATUS(status);
-
-			Poco::PipeInputStream istr(output);
-			string soutput;
-			
-			StreamCopier::copyToString(istr, soutput);
-
-			g_log->information("Update returned " + Poco::NumberFormatter::format(ret) + ": " + soutput);
+			g_log->information("Update returned " + Poco::NumberFormatter::format(ret));
 		}
 
 		break;
