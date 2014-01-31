@@ -251,6 +251,7 @@ message metrics {
     optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
     optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
+    optional string version = 16; // Agent/libsanalyzer/sysdig version
 }
 
 message dump_request {

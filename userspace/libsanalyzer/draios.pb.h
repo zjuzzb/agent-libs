@@ -2746,6 +2746,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* release_hidden_processes();
   inline void set_allocated_hidden_processes(::std::string* hidden_processes);
 
+  // optional string version = 16;
+  inline bool has_version() const;
+  inline void clear_version();
+  static const int kVersionFieldNumber = 16;
+  inline const ::std::string& version() const;
+  inline void set_version(const ::std::string& value);
+  inline void set_version(const char* value);
+  inline void set_version(const char* value, size_t size);
+  inline ::std::string* mutable_version();
+  inline ::std::string* release_version();
+  inline void set_allocated_version(::std::string* version);
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -2768,6 +2780,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_is_host_hidden();
   inline void set_has_hidden_processes();
   inline void clear_has_hidden_processes();
+  inline void set_has_version();
+  inline void clear_has_version();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2786,9 +2800,10 @@ class metrics : public ::google::protobuf::Message {
   bool is_host_hidden_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
+  ::std::string* version_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7530,6 +7545,76 @@ inline void metrics::set_allocated_hidden_processes(::std::string* hidden_proces
   } else {
     clear_has_hidden_processes();
     hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string version = 16;
+inline bool metrics::has_version() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void metrics::set_has_version() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void metrics::clear_has_version() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void metrics::clear_version() {
+  if (version_ != &::google::protobuf::internal::kEmptyString) {
+    version_->clear();
+  }
+  clear_has_version();
+}
+inline const ::std::string& metrics::version() const {
+  return *version_;
+}
+inline void metrics::set_version(const ::std::string& value) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(value);
+}
+inline void metrics::set_version(const char* value) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(value);
+}
+inline void metrics::set_version(const char* value, size_t size) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_version() {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  return version_;
+}
+inline ::std::string* metrics::release_version() {
+  clear_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = version_;
+    version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_version(::std::string* version) {
+  if (version_ != &::google::protobuf::internal::kEmptyString) {
+    delete version_;
+  }
+  if (version) {
+    set_has_version();
+    version_ = version;
+  } else {
+    clear_has_version();
+    version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

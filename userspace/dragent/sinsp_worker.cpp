@@ -137,6 +137,8 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_autodrop_enabled(true);
 	}
 
+	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
+	
 	//
 	// Start the capture with sinsp
 	//

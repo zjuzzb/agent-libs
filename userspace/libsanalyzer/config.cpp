@@ -242,6 +242,7 @@ void sinsp_configuration::set_hidden_processes(string hidden_processes)
 {
 	m_hidden_processes = hidden_processes;
 }
+
 const string& sinsp_configuration::get_host_custom_map() const
 {
 	return m_host_custom_map;
@@ -250,6 +251,16 @@ const string& sinsp_configuration::get_host_custom_map() const
 void sinsp_configuration::set_host_custom_map(string host_custom_map)
 {
 	m_host_custom_map = host_custom_map;
+}
+
+const string& sinsp_configuration::get_version() const
+{
+	return m_version;
+}
+
+void sinsp_configuration::set_version(const string& version)
+{
+	m_version = version;
 }
 
 #endif // HAS_ANALYZER

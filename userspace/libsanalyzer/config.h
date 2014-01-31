@@ -50,6 +50,8 @@ public:
 	void set_hidden_processes(string hidden_processes);
 	const string& get_host_custom_map() const;
 	void set_host_custom_map(string host_custom_map);
+	const string& get_version() const;
+	void set_version(const string& version);
 
 private:
 	uint64_t m_connection_pruning_interval_ns;
@@ -72,6 +74,7 @@ private:
 	bool m_host_hidden;
 	string m_hidden_processes;
 	string m_host_custom_map;
+	string m_version;
 };
 
 #endif // HAS_ANALYZER
