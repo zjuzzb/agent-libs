@@ -94,14 +94,15 @@ void update_worker::launch(const string& command, const vector<string> args)
 		int status;
 		pid_t waited_pid = waitpid(pid, &status, WNOHANG);
 
-		if(waited_pid == 0)
+		if(waited_pid != 0)
 		{
-			//
-			// Child still alive
-			//
-			Thread::sleep(100);
-			continue;
+			break;
 		}
+
+		//
+		// Child still alive
+		//
+		Thread::sleep(100);
 	}
 
 	int ret = handle.wait();
