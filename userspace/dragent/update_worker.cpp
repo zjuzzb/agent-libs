@@ -1,5 +1,8 @@
 #include "update_worker.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "logger.h"
 
 update_worker::update_worker(dragent_configuration* configuration):
@@ -74,6 +77,22 @@ void update_worker::launch(const string& command, const vector<string> args)
 
 	Pipe output;
 	ProcessHandle handle = Process::launch(command, args, NULL, &output, &output);
+	pid_t pid = handle.id();
+
+	while(!dragent_configuration::m_terminate)
+	{
+		int status;
+		pid_t waited_pid = waitpid(pid, &status, WNOHANG);
+
+		if(waited_pid == 0)
+		{
+			//
+			// Child still alive
+			//
+			Thread::sleep(100);
+			continue;
+		}
+	}
 
 	int ret = handle.wait();
 
