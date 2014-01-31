@@ -12,6 +12,7 @@ using namespace Poco::Net;
 
 volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
+volatile bool dragent_configuration::m_autoupdate = false;
 
 dragent_configuration::dragent_configuration()
 {

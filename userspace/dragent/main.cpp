@@ -25,6 +25,12 @@ static void g_usr_signal_callback(int sig)
 	dragent_configuration::m_signal_dump = true;
 }
 
+static void g_usr_signal2_callback(int sig)
+{
+	g_log->information("Received SIGUSR2, scheduling update"); 
+	dragent_configuration::m_autoupdate = true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
@@ -187,6 +193,7 @@ protected:
 		signal(SIGQUIT, g_signal_callback);
 		signal(SIGTERM, g_signal_callback);
 		signal(SIGUSR1, g_usr_signal_callback);
+		signal(SIGUSR2, g_usr_signal2_callback);
 
 		if(crash_handler::initialize() == false)
 		{
