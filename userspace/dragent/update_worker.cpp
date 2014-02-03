@@ -81,7 +81,7 @@ void update_worker::update_rhel()
 	}
 }
 
-void update_worker::launch(const string& command, const vector<string> args)
+void update_worker::launch(const string& command, const vector<string>& args)
 {
 	g_log->information("Running '" + command + "'");
 

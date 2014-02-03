@@ -13,7 +13,7 @@ public:
 private:
 	void update_debian();
 	void update_rhel();
-	void launch(const string& command, const vector<string> args);
+	void launch(const string& command, const vector<string>& args);
 	
 	dragent_configuration* m_configuration;
 };
