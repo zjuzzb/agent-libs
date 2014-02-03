@@ -138,20 +138,20 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			{
 				//
 				// We dropped the accept() or connect()
-				// Create a connection entry here and try to detect if this is the client or the server by lookig
-				// at the ports.
+				// Create a connection entry here and try to automatically detect if this is the client or the server.
 				//
-				evt->m_fdinfo->set_role_by_guessing(true);
-
-				string scomm = evt->m_tinfo->get_comm();
+				if(!evt->m_fdinfo->is_role_none())
+				{
+					string scomm = evt->m_tinfo->get_comm();
 				
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-				    tid,
-				    fd,
-				    evt->m_fdinfo->is_role_client(),
-				    evt->get_ts());
+					connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+						&scomm,
+						evt->m_tinfo->m_pid,
+						tid,
+						fd,
+						evt->m_fdinfo->is_role_client(),
+						evt->get_ts());
+				}
 			}
 			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
@@ -169,7 +169,11 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_by_guessing(true);
+
+					if(evt->m_fdinfo->is_role_none())
+					{
+						goto r_conn_creation_done;
+					}
 				}
 				else
 				{
@@ -185,7 +189,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					{
 						//
 						// FDs don't match but the connection has not been closed yet.
-						// This can happen in case of event drops, or when a commection
+						// This can happen in case of event drops, or when a connection
 						// is accepted by a process and served by another one.
 						//
 						if(evt->m_fdinfo->is_role_server())
@@ -202,7 +206,11 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						}
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_by_guessing(true);
+
+						if(evt->m_fdinfo->is_role_none())
+						{
+							goto r_conn_creation_done;
+						}
 					}
 				}
 
@@ -217,6 +225,8 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			}
 		}
 
+r_conn_creation_done:
+	
 		//
 		// Attribute the read bytes to the proper connection side
 		//
@@ -460,15 +470,17 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
-				evt->m_fdinfo->set_role_by_guessing(false);
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-				    tid,
-				    fd,
-				    evt->m_fdinfo->is_role_client(),
-				    evt->get_ts());
+				if(!evt->m_fdinfo->is_role_none())
+				{
+					string scomm = evt->m_tinfo->get_comm();
+					connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+						&scomm,
+						evt->m_tinfo->m_pid,
+						tid,
+						fd,
+						evt->m_fdinfo->is_role_client(),
+						evt->get_ts());
+				}
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -485,7 +497,11 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_by_guessing(false);
+
+					if(evt->m_fdinfo->is_role_none())
+					{
+						goto w_conn_creation_done;
+					}
 				}
 				else
 				{
@@ -518,7 +534,11 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						}
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_by_guessing(false);
+
+						if(evt->m_fdinfo->is_role_none())
+						{
+							goto w_conn_creation_done;
+						}
 					}
 				}
 
@@ -533,6 +553,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			}
 		}
 
+w_conn_creation_done:
+		
 		//
 		// Attribute the read bytes to the proper connection side
 		//
