@@ -98,6 +98,8 @@ wildass_guess:
 			pfdinfo->set_role_client();
 		}
 	}
+
+	return true;
 }
 
 
