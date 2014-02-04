@@ -77,23 +77,6 @@ bool sinsp_analyzer_fd_listener::set_role_by_guessing(sinsp_threadinfo* ptinfo,
 		pfdinfo->set_role_client();
 		return true;
 	}
-
-/*
-	if(!(m_flags & (FLAGS_ROLE_CLIENT | FLAGS_ROLE_SERVER)))
-	{
-		//
-		// We just assume that a server usually starts with a read and a client with a write
-		//
-		if(incoming)
-		{
-			set_role_server();
-		}
-		else
-		{
-			set_role_client();
-		}
-	}
-*/
 }
 
 
@@ -205,12 +188,14 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			if(connection == NULL)
 			{
 				//
-				// We dropped the accept() or connect()
+				// This is either:
+				//  - the first read of a UDP socket
+				//  - a TCP socket for which we dropped the accept() or connect()
 				// Create a connection entry here and try to automatically detect if this is the client or the server.
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 					{
 						goto r_conn_creation_done;
 					}
@@ -245,7 +230,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 						{
 							goto r_conn_creation_done;
 						}
@@ -285,7 +270,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 							{
 								goto r_conn_creation_done;
 							}
@@ -544,14 +529,16 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			if(connection == NULL)
 			{
 				//
-				// We dropped the accept() or connect()
+				// This is either:
+				//  - the first write of a UDP socket
+				//  - a TCP socket for which we dropped the accept() or connect()
 				// Create a connection entry here and try to detect if this is the client or the server by lookig
 				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 					{
 						goto w_conn_creation_done;
 					}
@@ -584,7 +571,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 						{
 							goto w_conn_creation_done;
 						}
@@ -624,7 +611,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
 							{
 								goto w_conn_creation_done;
 							}
