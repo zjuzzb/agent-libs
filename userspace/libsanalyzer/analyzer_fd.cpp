@@ -67,8 +67,13 @@ bool sinsp_analyzer_fd_listener::set_role_by_guessing(sinsp_threadinfo* ptinfo,
 	//
 	// If this process owns the port, mark it as server, otherwise mark it as client
 	//
-	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
+	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport))
 	{
+		if(ptinfo->uses_client_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
+		{
+			goto wildass_guess;
+		}
+
 		pfdinfo->set_role_server();
 		return true;
 	}
@@ -76,6 +81,22 @@ bool sinsp_analyzer_fd_listener::set_role_by_guessing(sinsp_threadinfo* ptinfo,
 	{
 		pfdinfo->set_role_client();
 		return true;
+	}
+
+wildass_guess:
+	if(!(pfdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER)))
+	{
+		//
+		// We just assume that a server usually starts with a read and a client with a write
+		//
+		if(incoming)
+		{
+			pfdinfo->set_role_server();
+		}
+		else
+		{
+			pfdinfo->set_role_client();
+		}
 	}
 }
 
@@ -538,7 +559,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
 					{
 						goto w_conn_creation_done;
 					}
@@ -571,7 +592,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
 						{
 							goto w_conn_creation_done;
 						}
@@ -611,7 +632,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
 							{
 								goto w_conn_creation_done;
 							}
