@@ -81,6 +81,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
 	inspector->m_max_n_proc_lookups = 300;
+	inspector->m_max_n_proc_socket_lookups = 3;
 
 	m_configuration = new sinsp_configuration();
 
