@@ -195,7 +195,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 					{
 						goto r_conn_creation_done;
 					}
@@ -230,7 +230,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 						{
 							goto r_conn_creation_done;
 						}
@@ -270,7 +270,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 							{
 								goto r_conn_creation_done;
 							}
@@ -538,7 +538,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 					{
 						goto w_conn_creation_done;
 					}
@@ -571,7 +571,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 						{
 							goto w_conn_creation_done;
 						}
@@ -611,7 +611,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == FALSE)
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
 							{
 								goto w_conn_creation_done;
 							}
