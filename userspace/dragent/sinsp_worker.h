@@ -50,6 +50,7 @@ private:
 			m_start_ns(0),
 			m_duration_ns(0),
 			m_delete_file_when_done(true),
+			m_send_file_when_done(true),
 			m_n_events(0)
 		{
 		}
@@ -84,6 +85,7 @@ private:
 		uint64_t m_duration_ns;
 		string m_file;
 		bool m_delete_file_when_done;
+		bool m_send_file_when_done;
 		uint64_t m_n_events;
 	};
 
@@ -96,6 +98,7 @@ private:
 	void start_new_jobs(uint64_t ts);
 
 	static const string m_name;
+	static const uint64_t m_max_dump_file_size = MAX_SERIALIZATION_BUF_SIZE_BYTES * 0.9;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

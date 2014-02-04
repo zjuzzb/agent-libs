@@ -277,7 +277,19 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
+		bool terminate = false;
+
+		if(job->m_dumper->written_bytes() > m_max_dump_file_size)
+		{
+			terminate = true;
+		}
+
 		if(ev->get_ts() - job->m_start_ns > job->m_duration_ns)
+		{
+			terminate = true;
+		}
+
+		if(terminate)
 		{
 			g_log->information("Job completed, captured events: " 
 				+ NumberFormatter::format(job->m_n_events));
@@ -290,7 +302,10 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			delete job->m_dumper;
 			job->m_dumper = NULL;
 
-			send_file(job->m_file);
+			if(job->m_send_file_when_done)
+			{
+				send_file(job->m_file);
+			}
 		}
 		else
 		{
@@ -347,7 +362,7 @@ std::streamsize sinsp_worker::copy_file(FileInputStream* istr, std::string* str)
 		len += n;
 		str->append(buffer.begin(), static_cast<std::string::size_type>(n));
 
-		if(len > MAX_SERIALIZATION_BUF_SIZE_BYTES * 0.9)
+		if(len > MAX_SERIALIZATION_BUF_SIZE_BYTES)
 		{
 			g_log->information("File too big, truncating to " + NumberFormatter::format(len));
 			break;
@@ -382,6 +397,7 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		job_state->m_duration_ns = 20000000000LL;
 		job_state->m_start_ns = ts;
 		job_state->m_delete_file_when_done = false;
+		job_state->m_send_file_when_done = false;
 
 		m_running_dump_jobs.push_back(job_state);
 	}
