@@ -265,13 +265,7 @@ void sinsp_worker::queue_response(const draiosproto::dump_response& response)
 
 	while(!m_queue->put(buffer))
 	{
-		g_log->error(m_name + ": Queue full, waiting");
-		Thread::sleep(1000);
-
-		if(dragent_configuration::m_terminate)
-		{
-			break;
-		}
+		g_log->error("Queue full, discarding file");
 	}
 }
 
