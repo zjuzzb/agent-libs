@@ -173,6 +173,20 @@ protected:
 		}
 
 #ifndef _WIN32
+		//
+		// Before running the monitor, unblock all the signals,
+		// because dragent might be restarted from a Poco thread (e.g.
+		// during auto-update), and the Poco implementation blocks
+		// signals by default in threads in order to allow a deterministic
+		// signal recipient instead of a random one.
+		//
+		sigset_t sigs;
+		sigemptyset(&sigs);
+		sigaddset(&sigs, SIGQUIT);
+		sigaddset(&sigs, SIGTERM);
+		sigaddset(&sigs, SIGPIPE); 
+		sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+
 		if(config().getBool("application.runAsDaemon", false))
 		{
 			run_monitor(m_pidfile);
