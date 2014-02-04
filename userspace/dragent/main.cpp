@@ -183,10 +183,17 @@ protected:
 			prctl(PR_SET_PDEATHSIG, SIGTERM);
 		}
 
-		signal(SIGINT, g_signal_callback);
-		signal(SIGQUIT, g_signal_callback);
-		signal(SIGTERM, g_signal_callback);
-		signal(SIGUSR1, g_usr_signal_callback);
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sigemptyset(&sa.sa_mask);
+		sa.sa_handler = g_signal_callback;
+		
+		sigaction(SIGINT, &sa, NULL);
+		sigaction(SIGQUIT, &sa, NULL);
+		sigaction(SIGTERM, &sa, NULL);
+
+		sa.sa_handler = g_usr_signal_callback;
+		sigaction(SIGUSR1, &sa, NULL);
 
 		if(crash_handler::initialize() == false)
 		{
