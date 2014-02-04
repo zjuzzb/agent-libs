@@ -21,13 +21,81 @@
 #include "analyzer_fd.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// sinsp_percpu_delays implementation
+// sinsp_analyzer_fd_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer)
 {
 	m_inspector = inspector; 
 	m_analyzer = analyzer;
 }
+
+bool sinsp_analyzer_fd_listener::set_role_by_guessing(sinsp_threadinfo* ptinfo, 
+													  sinsp_fdinfo_t* pfdinfo, 
+													  bool incoming)
+{
+	bool is_sip_local = 
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
+	bool is_dip_local = 
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip);
+
+	//
+	// If only the client is local, mark the role as client.
+	// If only the server is local, mark the role as server.
+	//
+	if(is_sip_local)
+	{
+		if(!is_dip_local)
+		{
+			pfdinfo->set_role_client();
+			return true;
+		}
+	}
+	else if(is_dip_local)
+	{
+		if(!is_sip_local)
+		{
+			pfdinfo->set_role_server();
+			return true;
+		}
+	}
+
+	//
+	// Both addresses are local
+	//
+	ASSERT(is_sip_local && is_dip_local);
+
+	//
+	// If this process owns the port, mark it as server, otherwise mark it as client
+	//
+	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
+	{
+		pfdinfo->set_role_server();
+		return true;
+	}
+	else
+	{
+		pfdinfo->set_role_client();
+		return true;
+	}
+
+/*
+	if(!(m_flags & (FLAGS_ROLE_CLIENT | FLAGS_ROLE_SERVER)))
+	{
+		//
+		// We just assume that a server usually starts with a read and a client with a write
+		//
+		if(incoming)
+		{
+			set_role_server();
+		}
+		else
+		{
+			set_role_client();
+		}
+	}
+*/
+}
+
 
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
@@ -140,18 +208,23 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				// We dropped the accept() or connect()
 				// Create a connection entry here and try to automatically detect if this is the client or the server.
 				//
-				if(!evt->m_fdinfo->is_role_none())
+				if(evt->m_fdinfo->is_role_none())
 				{
-					string scomm = evt->m_tinfo->get_comm();
-				
-					connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-						&scomm,
-						evt->m_tinfo->m_pid,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+					{
+						goto r_conn_creation_done;
+					}
 				}
+
+				string scomm = evt->m_tinfo->get_comm();
+				
+				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+					&scomm,
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
@@ -172,7 +245,10 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						goto r_conn_creation_done;
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+						{
+							goto r_conn_creation_done;
+						}
 					}
 				}
 				else
@@ -209,7 +285,10 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							goto r_conn_creation_done;
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+							{
+								goto r_conn_creation_done;
+							}
 						}
 					}
 				}
@@ -470,17 +549,22 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
-				if(!evt->m_fdinfo->is_role_none())
+				if(evt->m_fdinfo->is_role_none())
 				{
-					string scomm = evt->m_tinfo->get_comm();
-					connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-						&scomm,
-						evt->m_tinfo->m_pid,
-						tid,
-						fd,
-						evt->m_fdinfo->is_role_client(),
-						evt->get_ts());
+					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+					{
+						goto w_conn_creation_done;
+					}
 				}
+
+				string scomm = evt->m_tinfo->get_comm();
+				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+					&scomm,
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					evt->m_fdinfo->is_role_client(),
+					evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -500,7 +584,10 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						goto w_conn_creation_done;
+						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+						{
+							goto w_conn_creation_done;
+						}
 					}
 				}
 				else
@@ -537,7 +624,10 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							goto w_conn_creation_done;
+							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true))
+							{
+								goto w_conn_creation_done;
+							}
 						}
 					}
 				}

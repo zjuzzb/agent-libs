@@ -1091,7 +1091,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		{
 			uint32_t sip = cit->first.m_fields.m_sip;
 
-			if(!m_inspector->m_network_interfaces->is_ipv4addr_local(sip))
+			if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(sip))
 			{
 				unique_external_ips.insert(sip);
 
@@ -1128,7 +1128,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				if(aggregate_external_clients)
 				{
-					if(!m_inspector->m_network_interfaces->is_ipv4addr_local(cit->first.m_fields.m_sip))
+					if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(cit->first.m_fields.m_sip))
 					{
 						tuple.m_fields.m_sip = 0;
 					}
