@@ -984,7 +984,7 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 		{
 			if(param.m_evt->get_param_value_str("name") == "/etc/passwd")
 			{
-				EXPECT_EQ("f/etc/passwd", param.m_evt->get_param_value_str("fd"));
+				EXPECT_EQ("<f>/etc/passwd", param.m_evt->get_param_value_str("fd"));
 				fd = *(int64_t *)param.m_evt->get_param(0)->m_val;
 				++callnum;
 			}
@@ -997,7 +997,7 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 		{
 			if(*(int64_t *)param.m_evt->get_param(0)->m_val == fd)
 			{
-				EXPECT_EQ("f/etc/passwd", param.m_evt->get_param_value_str("fd"));
+				EXPECT_EQ("<f>/etc/passwd", param.m_evt->get_param_value_str("fd"));
 				++callnum;
 			}
 		}

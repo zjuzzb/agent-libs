@@ -166,7 +166,7 @@ TEST_F(sys_call_test, open_close)
 	{
 		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
 		{
-			EXPECT_EQ("f/tmp", param.m_evt->get_param_value_str("fd"));
+			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
 		}
 		callnum++;
 	};
@@ -283,7 +283,7 @@ TEST_F(sys_call_test, ioctl)
 
 		if(type == PPME_SYSCALL_IOCTL_E)
 		{
-			EXPECT_EQ("f/dev/ttyS0", e->get_param_value_str("fd"));
+			EXPECT_EQ("<f>/dev/ttyS0", e->get_param_value_str("fd"));
 			EXPECT_EQ(NumberFormatter::format(TIOCMGET), e->get_param_value_str("request"));
 			callnum++;
 		}
@@ -442,7 +442,7 @@ TEST_F(sys_call_test, timerfd)
 		{
 			if(callnum == 2)
 			{
-				EXPECT_EQ("t", e->get_param_value_str("fd"));
+				EXPECT_EQ("<t>", e->get_param_value_str("fd"));
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}

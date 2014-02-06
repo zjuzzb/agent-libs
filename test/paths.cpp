@@ -53,7 +53,7 @@ public:
 
 		Path pd(pdt.toString());
 //printf("!!!!%s -- %s -- %s\n", pd.toString().c_str(), filename.c_str(), bcwd.c_str());
-		m_scat = string("f") + pd.toString();
+		m_scat = string("<f>") + pd.toString();
 
 		m_scwd = bcwd;
 
@@ -732,22 +732,22 @@ TEST_F(sys_call_test, dir_fchdir)
 			switch(callnum)
 			{
 			case 0:
-				adir = string("f") + string(cwd0);
+				adir = string("<f>") + string(cwd0);
 				break;
 			case 2:
-				adir = string("f") + string(cwd1);
+				adir = string("<f>") + string(cwd1);
 				break;
 			case 4:
-				adir = string("f") + string(cwd2);
+				adir = string("<f>") + string(cwd2);
 				break;
 			case 6:
-				adir = string("f") + string(cwd3);
+				adir = string("<f>") + string(cwd3);
 				break;
 			case 8:
 				adir = "12345";
 				break;
 			case 10:
-				adir = string("f") + string(cwd_ori);
+				adir = string("<f>") + string(cwd_ori);
 				break;
 			default:
 				FAIL();

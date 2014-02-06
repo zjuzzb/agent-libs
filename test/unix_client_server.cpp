@@ -333,13 +333,13 @@ TEST_F(sys_call_test, unix_client_server)
 			EXPECT_EQ(NAME, fdfile);
 
 			StringTokenizer fdtst(fdaddrs, ">");
-			EXPECT_EQ(2, (int)fdtst.count());
-			string fdsrcstr = fdtst[0].substr(0, fdtst[0].size() - 1);
-			string fddststr = fdtst[1];
+			EXPECT_EQ(3, (int)fdtst.count());
+			string fdsrcstr = fdtst[1].substr(0, fdtst[1].size() - 1);
+			string fddststr = fdtst[2];
 
-			EXPECT_EQ('u', fdsrcstr[0]);
+			EXPECT_EQ('u', fdaddrs[1]);
 
-			EXPECT_NE("u0", fdsrcstr);
+			EXPECT_NE("0", fdsrcstr);
 			EXPECT_NE("0", fddststr);
 
 			callnum++;

@@ -622,16 +622,16 @@ void runtest_ipv4m(iotype iot,
 			}
 
 			StringTokenizer tst(evt->get_param_value_str("fd"), ">");
-			EXPECT_EQ(2, (int)tst.count());
+			EXPECT_EQ(3, (int)tst.count());
 
-			string srcstr = tst[0].substr(0, tst[0].size() - 1);
-			string dststr = tst[1];
+			string srcstr = tst[1].substr(0, tst[1].size() - 1);
+			string dststr = tst[2];
 			StringTokenizer sst(srcstr, ":");
 			StringTokenizer dst(dststr, ":");
 
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_EQ('4', sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_EQ('4', tst[0][1]);
+			EXPECT_STREQ(server_address, &sst[0].c_str()[0]);
 			EXPECT_EQ(sport, sst[1]);
 
 			EXPECT_EQ(2, (int)dst.count());

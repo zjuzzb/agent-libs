@@ -190,7 +190,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 		{
 			if(callnum == 2)
 			{
-				EXPECT_EQ("s", e->get_param_value_str("fd"));
+				EXPECT_EQ("<s>", e->get_param_value_str("fd"));
 				EXPECT_EQ(ssfd, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}
@@ -366,7 +366,7 @@ TEST_F(sys_call_test, process_inotify)
 		{
 			if(callnum == 2)
 			{
-				EXPECT_EQ("i", e->get_param_value_str("fd"));
+				EXPECT_EQ("<i>", e->get_param_value_str("fd"));
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}

@@ -133,7 +133,7 @@ public:
 private:
 };
 
-TEST_F(sys_call_test, unix_udp_client_server)
+TEST_F(sys_call_test, DISABLED_unix_udp_client_server)
 {
 	Poco::Thread server_thread;
 	unix_udp_server server(true);
@@ -190,27 +190,27 @@ TEST_F(sys_call_test, unix_udp_client_server)
 
 			EXPECT_EQ(NAME, tfile);
 
-			StringTokenizer ttst(taddrs, ">");
+			StringTokenizer ttst(taddrs, ">");			
 			EXPECT_EQ(2, (int)ttst.count());
-			string tsrcstr = ttst[0].substr(0, ttst[0].size() - 1);
-			string tdststr = ttst[1];
+			string tsrcstr = ttst[1].substr(0, ttst[1].size() - 1);
+			string tdststr = ttst[2];
 
-			EXPECT_EQ('u', tsrcstr[0]);
+			EXPECT_EQ('u', taddrs[1]);
 
 			if(evt->get_tid() == server.get_tid())
 			{
-				EXPECT_NE("u0", tsrcstr);
+				EXPECT_NE("u", tsrcstr);
 				EXPECT_EQ("0", tdststr);
 			}
 			else
 			{
-				EXPECT_EQ("u0", tsrcstr);
+				EXPECT_EQ("u", tsrcstr);
 				EXPECT_NE("0", tdststr);
 			}
 
 			string fdtuple = evt->get_param_value_str("fd");
 
-			if(fdtuple.length() > 1)
+			if(fdtuple.length() > 3)
 			{
 				string fdaddrs = fdtuple.substr(0, fdtuple.find(" "));
 				string fdfile = fdtuple.substr(fdtuple.find(" ") + 1);
@@ -219,8 +219,8 @@ TEST_F(sys_call_test, unix_udp_client_server)
 
 				StringTokenizer fdtst(fdaddrs, ">");
 				EXPECT_EQ(2, (int)fdtst.count());
-				string fdsrcstr = fdtst[0].substr(0, fdtst[0].size() - 1);
-				string fddststr = fdtst[1];
+				string fdsrcstr = fdtst[1].substr(0, fdtst[1].size() - 1);
+				string fddststr = fdtst[2];
 
 				EXPECT_EQ('u', fdsrcstr[0]);
 
@@ -332,7 +332,7 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 
 			string fdtuple = evt->get_param_value_str("fd");
 
-			if(fdtuple.length() > 1)
+			if(fdtuple.length() > 3)
 			{
 				string fdaddrs = fdtuple.substr(0, fdtuple.find(" "));
 				string fdfile = fdtuple.substr(fdtuple.find(" ") + 1);
@@ -340,11 +340,11 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 				EXPECT_EQ(NAME, fdfile);
 
 				StringTokenizer fdtst(fdaddrs, ">");
-				EXPECT_EQ(2, (int)fdtst.count());
-				string fdsrcstr = fdtst[0].substr(0, fdtst[0].size() - 1);
+				EXPECT_EQ(3, (int)fdtst.count());
+				string fdsrcstr = fdtst[0].substr(0, fdtst[1].size() - 1);
 				string fddststr = fdtst[1];
 
-				EXPECT_EQ('u', fdsrcstr[0]);
+				EXPECT_EQ('u', fdaddrs[1]);
 
 				if(evt->get_tid() == server.get_tid())
 				{
@@ -389,7 +389,7 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 				string ttype = fdtuple.substr(0, fdtuple.find(" "));
 				string tfile = fdtuple.substr(fdtuple.find(" ") + 1);
 
-				EXPECT_EQ("u", ttype);
+				EXPECT_EQ("<u>", ttype);
 				EXPECT_EQ(NAME, tfile);
 			}
 
