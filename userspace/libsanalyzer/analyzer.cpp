@@ -566,6 +566,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	threadinfo_map_iterator_t it;
 	map<uint64_t, sinsp_threadinfo*> progtable;
 	set<string> included_programs;
+	set<uint64_t> proctids;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -584,6 +585,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		m_ipv4_connections->clear_n_drops();
+	}
+
+	//
+	// Run the periodic /proc scan and use it to prune the process table
+	//
+	if(m_n_flushes % PROC_BASED_THREAD_PRUNING_INTERVAL == 
+		(PROC_BASED_THREAD_PRUNING_INTERVAL - 1))
+	{
+		m_procfs_parser->get_tid_list(&proctids);
 	}
 
 	//
@@ -789,6 +799,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			int64_t pid = it->second.m_pid;
 			sinsp_procinfo* procinfo = it->second.m_ainfo->m_procinfo;
 
+			if(proctids.size() != 0)
+			{
+				if(proctids.find(it->first) == proctids.end())
+				{
+					it->second.m_flags |= PPM_CL_CLOSED;
+				}
+			}
+
 #ifdef ANALYZER_EMITS_PROCESSES
 			sinsp_counter_time tot;
 	
@@ -800,8 +818,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			bool include = tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs &&
-				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
+			bool include = tot.m_count != 0 || procinfo->m_cpuload != 0 || (is_cs &&
+				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs));
 
 			if(is_cs)
 			{

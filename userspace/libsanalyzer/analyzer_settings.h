@@ -91,6 +91,12 @@
 #define PROCINFO_IN_SAMPLE_INTERVAL 1
 
 //
+// Number of samples after which /proc is scanned to detect processes that ended without being
+// removed from out table.
+//
+#define PROC_BASED_THREAD_PRUNING_INTERVAL 60
+
+//
 // Maximum numeber of external TCP/UDP client endpoints that are reported independently.
 // If the number goes beyond this treshold, the clients will be aggregated into a single
 // 0.0.0.0 endpoint.

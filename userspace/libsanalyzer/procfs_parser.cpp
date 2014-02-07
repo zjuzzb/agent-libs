@@ -9,6 +9,7 @@
 #include <algorithm>
 #ifndef _WIN32
 #include <unistd.h>
+#include <dirent.h>
 #endif
 #include <sys/stat.h>
 
@@ -363,4 +364,38 @@ double sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t*
 	*resident_memory_kb = (*resident_memory_kb) * (m_page_size / 1024);
 
 	return res;	
+}
+
+//
+// Scan a directory containing multiple processes under /proc
+//
+void sinsp_procfs_parser::get_tid_list(OUT set<uint64_t>* tids)
+{
+	DIR *dir_p;
+	struct dirent *dir_entry_p;
+	uint64_t tid;
+
+	tid = 0;
+	dir_p = opendir("/proc");
+
+	if(dir_p == NULL)
+	{
+		throw sinsp_exception("error opening the /proc directory");
+	}
+
+	while((dir_entry_p = readdir(dir_p)) != NULL)
+	{
+		if(strspn(dir_entry_p->d_name, "0123456789") != strlen(dir_entry_p->d_name))
+		{
+			continue;
+		}
+
+		//
+		// Gather the process TID, which is the directory name
+		//
+		tid = atoi(dir_entry_p->d_name);
+		tids->insert(tid);
+	}
+
+	closedir(dir_p);
 }
