@@ -565,6 +565,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
 	map<uint64_t, sinsp_threadinfo*> progtable;
+	set<string> included_programs;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -799,219 +800,234 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			if(tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs)
-			{
-				if(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs)
-				{
-#ifdef ANALYZER_EMITS_PROGRAMS
-					draiosproto::program* prog = m_metrics->add_programs();
-					draiosproto::process* proc = prog->mutable_procinfo();
+			bool include = tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs &&
+				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
 
-					vector<int64_t>* pids = &procinfo->m_program_pids;
-					for(uint32_t jj = 0; jj < pids->size(); jj++)
+			if(is_cs)
+			{
+				if(tot.m_count == 0 && procinfo->m_cpuload == 0)
+				{
+					if(included_programs.find(it->second.m_exe) != included_programs.end())
 					{
-						prog->add_pids((*pids)[jj]);
+						include = false;
 					}
+				}
+			}
+
+			if(include)
+			{
+				included_programs.insert(it->second.m_exe);
+
+#ifdef ANALYZER_EMITS_PROGRAMS
+				draiosproto::program* prog = m_metrics->add_programs();
+				draiosproto::process* proc = prog->mutable_procinfo();
+
+				vector<int64_t>* pids = &procinfo->m_program_pids;
+				for(uint32_t jj = 0; jj < pids->size(); jj++)
+				{
+					prog->add_pids((*pids)[jj]);
+				}
 #else // ANALYZER_EMITS_PROGRAMS
-					draiosproto::process* proc = m_metrics->add_processes();
+				draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
 
-					//
-					// Basic values
-					//
-					proc->set_pid(pid);
+				//
+				// Basic values
+				//
+				proc->set_pid(pid);
 
-					if((it->second.m_flags & PPM_CL_NAME_CHANGED) ||
-						(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+				if((it->second.m_flags & PPM_CL_NAME_CHANGED) ||
+					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+				{
+					proc->mutable_details()->set_comm(it->second.m_comm);
+					proc->mutable_details()->set_exe(it->second.m_exe);
+					for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
+						arg_it != it->second.m_args.end(); ++arg_it)
 					{
-						proc->mutable_details()->set_comm(it->second.m_comm);
-						proc->mutable_details()->set_exe(it->second.m_exe);
-						for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-							arg_it != it->second.m_args.end(); ++arg_it)
-						{
-							proc->mutable_details()->add_args(*arg_it);
-						}
-
-						it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
+						proc->mutable_details()->add_args(*arg_it);
 					}
 
-					//
-					// client-server role
-					//
-					uint32_t netrole = 0;
-
-					if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
-					{
-						netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
-					}
-					else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
-					{
-						netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
-					}
-					else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
-					{
-						netrole |= draiosproto::IS_UNIX_SERVER;
-					}
-
-					if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
-					{
-						netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
-					}
-					else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
-					{
-						netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
-					}
-					else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
-					{
-						netrole |= draiosproto::IS_UNIX_CLIENT;
-					}
-
-					proc->set_netrole(netrole);
-
-					//
-					// CPU utilization
-					//
-					if(procinfo->m_cpuload >= 0)
-					{
-						if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
-						{
-							procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
-						}
-
-						proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-						proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
-					}
-					else
-					{
-						proc->mutable_resource_counters()->set_cpu_pct(0);
-						proc->mutable_resource_counters()->set_resident_memory_usage_kb(0);
-					}
-
-					if(tot.m_count != 0)
-					{
-						sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-						m_delay_calculator->compute_program_delays(&it->second, prog_delays);
-
-						//
-						// Main metrics
-						//
-						procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
-
-						//
-						// Transaction-related metrics
-						//
-						if(prog_delays->m_local_processing_delay_ns != -1)
-						{
-							proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
-							proc->set_merged_server_delay(prog_delays->m_merged_server_delay * m_sampling_ratio);
-							proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
-						}
-
-						procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
-
-						//
-						// Health-related metrics
-						//
-						if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-						{
-							sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
-								prog_delays,
-								(uint32_t)it->second.m_ainfo->m_procinfo->m_n_transaction_threads,
-								m_prev_flush_time_ns, sample_duration);
-
-								procinfo->m_capacity_score = scores.m_current_capacity;
-								procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
-						}
-						else
-						{
-							procinfo->m_capacity_score = -1;
-							procinfo->m_stolen_capacity_score = 0;
-						}
-
-						//
-						// Update the host capcity score
-						//
-						if(procinfo->m_capacity_score != -1)
-						{
-							if(procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
-							{
-								m_host_metrics.m_capacity_score = procinfo->m_capacity_score;
-								m_host_metrics.m_stolen_capacity_score = procinfo->m_stolen_capacity_score;
-							}
-						}
-
-						proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
-						proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
-						proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-						proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
-
-						//
-						// Error-related metrics
-						//
-						procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-#if 1
-						if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
-						{
-							uint64_t trtimein = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-							uint64_t trtimeout = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-							uint32_t trcountin = procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
-							uint32_t trcountout = procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
-
-							if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-									it->second.m_comm.c_str(),
-									it->second.m_tid,
-									it->second.m_nchilds + 1,
-									procinfo->m_capacity_score,
-									procinfo->m_stolen_capacity_score,
-									(float)procinfo->m_cpuload,
-									procinfo->m_fd_usage_pct,
-									procinfo->m_connection_queue_usage_pct);
-
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-									procinfo->m_proc_transaction_metrics.m_counter.m_count_in * m_sampling_ratio,
-									procinfo->m_proc_transaction_metrics.m_counter.m_count_out * m_sampling_ratio,
-									trcountin? ((double)trtimein) / sample_duration : 0,
-									trcountout? ((double)trtimeout) / sample_duration : 0,
-									(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
-									(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
-									(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
-
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
-									procinfo->m_proc_metrics.get_processing_percentage() * 100,
-									procinfo->m_proc_metrics.get_file_percentage() * 100,
-									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
-									procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
-									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
-									procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
-									procinfo->m_proc_metrics.get_net_percentage() * 100,
-									procinfo->m_proc_metrics.get_other_percentage() * 100);
-							}
-						}
-
-#endif
-
-#ifdef _DEBUG
-						double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
-							procinfo->m_proc_metrics.get_file_percentage() + 
-							procinfo->m_proc_metrics.get_net_percentage() +
-							procinfo->m_proc_metrics.get_other_percentage();
-
-						ASSERT(totpct > 0.99);
-						ASSERT(totpct < 1.01);
-#endif // _DEBUG
-					}
-#endif // ANALYZER_EMITS_PROCESSES
+					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
 				//
-				// Update the host metrics with the info coming from this process
+				// client-server role
 				//
+				uint32_t netrole = 0;
+
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+				{
+					netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+				{
+					netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+				{
+					netrole |= draiosproto::IS_UNIX_SERVER;
+				}
+
+				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+				{
+					netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+				{
+					netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
+				}
+				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+				{
+					netrole |= draiosproto::IS_UNIX_CLIENT;
+				}
+
+				proc->set_netrole(netrole);
+
+				//
+				// CPU utilization
+				//
+				if(procinfo->m_cpuload >= 0)
+				{
+					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
+					{
+						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
+					}
+
+					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
+				}
+				else
+				{
+					proc->mutable_resource_counters()->set_cpu_pct(0);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(0);
+				}
+
+				if(tot.m_count != 0)
+				{
+					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+					m_delay_calculator->compute_program_delays(&it->second, prog_delays);
+
+					//
+					// Main metrics
+					//
+					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+					//
+					// Transaction-related metrics
+					//
+					if(prog_delays->m_local_processing_delay_ns != -1)
+					{
+						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
+						proc->set_merged_server_delay(prog_delays->m_merged_server_delay * m_sampling_ratio);
+						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
+					}
+
+					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
+
+					//
+					// Health-related metrics
+					//
+					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
+							prog_delays,
+							(uint32_t)it->second.m_ainfo->m_procinfo->m_n_transaction_threads,
+							m_prev_flush_time_ns, sample_duration);
+
+							procinfo->m_capacity_score = scores.m_current_capacity;
+							procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
+					}
+					else
+					{
+						procinfo->m_capacity_score = -1;
+						procinfo->m_stolen_capacity_score = 0;
+					}
+
+					//
+					// Update the host capcity score
+					//
+					if(procinfo->m_capacity_score != -1)
+					{
+						if(procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
+						{
+							m_host_metrics.m_capacity_score = procinfo->m_capacity_score;
+							m_host_metrics.m_stolen_capacity_score = procinfo->m_stolen_capacity_score;
+						}
+					}
+
+					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
+					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
+					proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
+					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
+
+					//
+					// Error-related metrics
+					//
+					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
+
+#if 1
+					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					{
+						uint64_t trtimein = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
+						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
+						uint32_t trcountin = procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
+						uint32_t trcountout = procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+
+						if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
+								it->second.m_comm.c_str(),
+								it->second.m_tid,
+								it->second.m_nchilds + 1,
+								procinfo->m_capacity_score,
+								procinfo->m_stolen_capacity_score,
+								(float)procinfo->m_cpuload,
+								procinfo->m_fd_usage_pct,
+								procinfo->m_connection_queue_usage_pct);
+
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_in * m_sampling_ratio,
+								procinfo->m_proc_transaction_metrics.m_counter.m_count_out * m_sampling_ratio,
+								trcountin? ((double)trtimein) / sample_duration : 0,
+								trcountout? ((double)trtimeout) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
+								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
+
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
+								procinfo->m_proc_metrics.get_processing_percentage() * 100,
+								procinfo->m_proc_metrics.get_file_percentage() * 100,
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
+								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
+								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
+								procinfo->m_proc_metrics.get_net_percentage() * 100,
+								procinfo->m_proc_metrics.get_other_percentage() * 100);
+						}
+					}
+#endif
+
+#ifdef _DEBUG
+					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
+						procinfo->m_proc_metrics.get_file_percentage() + 
+						procinfo->m_proc_metrics.get_net_percentage() +
+						procinfo->m_proc_metrics.get_other_percentage();
+
+					ASSERT(totpct > 0.99);
+					ASSERT(totpct < 1.01);
+#endif // _DEBUG
+				}
+#endif // ANALYZER_EMITS_PROCESSES
+			}
+
+			//
+			// Update the host metrics with the info coming from this process
+			//
+			if(tot.m_count != 0 || procinfo->m_cpuload != 0)
+			{
 				if(procinfo != NULL)
 				{
 					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
@@ -1031,6 +1047,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					ASSERT(false);
 				}
 			}
+
 		}
 
 		//
