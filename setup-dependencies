@@ -84,11 +84,11 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.0
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.1
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/draios-dependencies/libssh-0.6.0.tar.xz
-	tar -xf libssh-0.6.0.tar.xz
+	wget https://s3.amazonaws.com/draios-dependencies/libssh-0.6.1.tar.xz
+	tar -xf libssh-0.6.1.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
