@@ -371,6 +371,9 @@ double sinsp_procfs_parser::get_process_cpu_load_and_mem(uint64_t pid, uint64_t*
 //
 void sinsp_procfs_parser::get_tid_list(OUT set<uint64_t>* tids)
 {
+#ifdef _WIN32
+return;
+#else
 	DIR *dir_p;
 	struct dirent *dir_entry_p;
 	uint64_t tid;
@@ -398,4 +401,5 @@ void sinsp_procfs_parser::get_tid_list(OUT set<uint64_t>* tids)
 	}
 
 	closedir(dir_p);
+#endif // _WIN32
 }

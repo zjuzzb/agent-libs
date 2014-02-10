@@ -818,8 +818,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			bool include = tot.m_count != 0 || procinfo->m_cpuload != 0 || (is_cs &&
-				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs));
+			bool include = (tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs) &&
+				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
 
 			if(is_cs)
 			{
