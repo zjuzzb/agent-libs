@@ -124,7 +124,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -133,7 +133,7 @@
       <ImportLibrary>$(ProjectDir)\..\Debug\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>../../../LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../sysdig/userspace/Debug/scap.lib</AdditionalDependencies>
+      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../sysdig/userspace/Debug/scap.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Debug\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -143,7 +143,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/libantlr3c-3.4/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -154,7 +154,7 @@
       <ImportLibrary>$(ProjectDir)\..\Release\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>../../../LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../../../sysdig/userspace/Release/scap.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib</AdditionalDependencies>
+      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;../../../sysdig/userspace/Release/scap.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Release\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
