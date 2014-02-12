@@ -189,6 +189,7 @@ VISIBILITY_PRIVATE
 	draiosproto::metrics* m_metrics;
     char* m_serialization_buffer;
     uint32_t m_serialization_buffer_size;
+	FILE* m_protobuf_fp;
 
 	//
 	// The callback we invoke when a sample is ready

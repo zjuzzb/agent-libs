@@ -57,6 +57,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	}
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
+	m_protobuf_fp = NULL;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
 	m_last_transaction_delays_update_time = 0;
@@ -174,6 +175,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_configuration)
 	{
 		delete m_configuration;
+	}
+
+	if(m_protobuf_fp != NULL)
+	{
+		fclose(m_protobuf_fp);
 	}
 }
 
@@ -299,28 +305,28 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	// Find out how many bytes we need for the serialization
 	//
 	uint32_t full_len = m_metrics->ByteSize();
-			
-    //
-    // If the buffer is not big enough, expand it
-    //
-    if(m_serialization_buffer_size < full_len)
-    {
-        if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
-        {
-            g_logger.log("Metrics sample too big. Dropping it.", sinsp_logger::SEV_ERROR);
-            return NULL;
-        }
 
-        m_serialization_buffer = (char*)realloc(m_serialization_buffer, full_len);
+	//
+	// If the buffer is not big enough, expand it
+	//
+	if(m_serialization_buffer_size < full_len)
+	{
+		if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
+		{
+			g_logger.log("Metrics sample too big. Dropping it.", sinsp_logger::SEV_ERROR);
+			return NULL;
+		}
 
-        if(!m_serialization_buffer)
-        {
-            char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", __FILE__, __LINE__);
-            throw sinsp_exception(estr);
-        }
+		m_serialization_buffer = (char*)realloc(m_serialization_buffer, full_len);
 
-        m_serialization_buffer_size = full_len;
-    }
+		if(!m_serialization_buffer)
+		{
+			char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", __FILE__, __LINE__);
+			throw sinsp_exception(estr);
+		}
+
+		m_serialization_buffer_size = full_len;
+	}
 
 	//
 	// Do the serialization
@@ -374,7 +380,6 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	{
 		char fname[128];
 		uint32_t buflen;
-		FILE* fp;
 
 		//
 		// Serialize the protobuf
@@ -425,22 +430,23 @@ void sinsp_analyzer::serialize(uint64_t ts)
 			m_configuration->get_metrics_directory().c_str(),
 			ts / 1000000000);
 
-		fp = fopen(fname, "w");
-
-		if(!fp)
+		if(m_protobuf_fp == NULL)
 		{
-			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
-			throw sinsp_exception(estr);
+			m_protobuf_fp = fopen(fname, "w");
+
+			if(!m_protobuf_fp)
+			{
+				char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
+				throw sinsp_exception(estr);
+			}
 		}
 
-		if(fwrite(pbstr.c_str(), pbstr.length(), 1, fp) != 1)
+		if(fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1)
 		{
 			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
 			throw sinsp_exception(estr);
 		}
-
-		fclose(fp);
 	}
 }
 
@@ -721,6 +727,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		ASSERT(mtinfo != NULL);
 		progtable[mtinfo->m_tid] = mtinfo;
 
+if(evt)
+if(evt->m_evtnum == 130649 && mtinfo->m_tid == 11812)
+{
+	int a = 0;
+}
 		mtinfo->m_ainfo->add_all_metrics(it->second.m_ainfo);
 
 		//
@@ -1140,7 +1151,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	//
-	// Go through the list and perform the aggegation
+	// Second pass to perform the aggegation
 	//
 	for(cit = m_ipv4_connections->m_connections.begin(); 
 		cit != m_ipv4_connections->m_connections.end();)
