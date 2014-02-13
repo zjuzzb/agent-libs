@@ -213,9 +213,11 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 			loads->push_back(load);
 
 			double idle = (double)delta_idle_jiffies * 100 / delta_total_jiffies;
+			idle = MIN(idle, 100);
 			idles->push_back(idle);
 
 			double steal = (double)delta_steal_jiffies * 100 / (delta_steal_jiffies + delta_total_jiffies);
+			steal = MIN(steal, 100);
 			steals->push_back(steal);
 
 			m_old_total_jiffies[j] = total_jiffies;
