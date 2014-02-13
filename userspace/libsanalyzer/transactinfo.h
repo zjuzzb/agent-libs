@@ -10,6 +10,7 @@ class sinsp_connection;
 class sinsp_analyzer;
 class sinsp_threadinfo;
 class sinsp;
+class sinsp_evt;
 
 //
 // Transaction information class
@@ -55,6 +56,10 @@ public:
 		uint64_t exit_ts, 
 		int32_t cpuid,
 		direction dir,
+#if 1
+		sinsp_evt *evt,
+		uint64_t fd,
+#endif
 		uint32_t datalen);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
@@ -172,6 +177,11 @@ public:
 		void* fdinfo,
 		sinsp_connection* pconn,
 		sinsp_partial_transaction* tr,
+#if 1
+		sinsp_evt *evt,
+		uint64_t fd,
+		uint64_t ts,
+#endif
 		uint32_t len);
 
 	//

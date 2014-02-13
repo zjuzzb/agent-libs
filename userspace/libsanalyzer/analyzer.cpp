@@ -727,11 +727,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		ASSERT(mtinfo != NULL);
 		progtable[mtinfo->m_tid] = mtinfo;
 
-if(evt)
-if(evt->m_evtnum == 130649 && mtinfo->m_tid == 11812)
-{
-	int a = 0;
-}
 		mtinfo->m_ainfo->add_all_metrics(it->second.m_ainfo);
 
 		//

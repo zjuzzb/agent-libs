@@ -209,6 +209,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 			delta_total_jiffies = total_jiffies - m_old_total_jiffies[j];
 
 			double load = (double)delta_work_jiffies * 100 / delta_total_jiffies;
+			load = MIN(load, 100);
 			loads->push_back(load);
 
 			double idle = (double)delta_idle_jiffies * 100 / delta_total_jiffies;

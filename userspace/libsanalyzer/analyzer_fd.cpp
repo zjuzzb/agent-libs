@@ -425,7 +425,9 @@ r_conn_creation_done:
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
 			evt->get_cpuid(),
-			trdir, 
+			trdir,
+			evt,
+			fd,
 			len);
 	}
 	else if(evt->m_fdinfo->is_pipe())
@@ -706,6 +708,8 @@ w_conn_creation_done:
 			evt->get_ts(), 
 			evt->get_cpuid(),
 			sinsp_partial_transaction::DIR_OUT, 
+			evt,
+			fd,
 			len);
 	}
 	else if(evt->m_fdinfo->is_pipe())
@@ -910,6 +914,8 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 				params->m_ts, 
 				-1,
 				sinsp_partial_transaction::DIR_CLOSE,
+				NULL,
+				params->m_fd,
 				0);
 		}
 
@@ -956,7 +962,9 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 			evt->get_ts(), 
 			evt->get_ts(), 
 			evt->get_cpuid(),
-			sinsp_partial_transaction::DIR_CLOSE, 
+			sinsp_partial_transaction::DIR_CLOSE,
+			evt,
+			evt->m_tinfo->m_lastevent_fd,
 			0);
 
 		evt->m_fdinfo->m_usrstate.mark_inactive();

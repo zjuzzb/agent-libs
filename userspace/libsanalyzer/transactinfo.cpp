@@ -47,6 +47,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 								   void* fdinfo,
 								   sinsp_connection* pconn,
 								   sinsp_partial_transaction* tr,
+#if 1
+									sinsp_evt *evt,
+									uint64_t fd,
+									uint64_t ts,
+#endif
 								   uint32_t len)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
@@ -109,21 +114,27 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		{
 if(ptinfo->m_comm == "newrelic-daemon")
 {
-	g_logger.format(sinsp_logger::SEV_ERROR, "$%d.%d.%d.%d:%d", 
+	g_logger.format(sinsp_logger::SEV_ERROR, "$A%d.%d.%d.%d:%d", 
 		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 1)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 2)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 3)),
 		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport);
-	g_logger.format(sinsp_logger::SEV_ERROR, "$%d.%d.%d.%d:%d", 
+	g_logger.format(sinsp_logger::SEV_ERROR, "$B%d.%d.%d.%d:%d", 
 		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 1)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 2)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 3)),
 		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);
-	g_logger.format(sinsp_logger::SEV_ERROR, "$%d.%d %d.%d %d",
+	g_logger.format(sinsp_logger::SEV_ERROR, "$C%d.%d %d.%d %d",
 		(int)pconn->m_spid, (int)pconn->m_stid, (int)pconn->m_dpid, (int)pconn->m_dtid,
 		(int)pconn->m_refcount);
+	g_logger.format(sinsp_logger::SEV_ERROR, "$D%s",
+		ffdinfo->m_name.c_str());
+	g_logger.format(sinsp_logger::SEV_ERROR, "$E%d %" PRIu64,
+		(int)len, fd);
+	g_logger.format(sinsp_logger::SEV_ERROR, "$F%" PRIu64,
+		ts);
 }
 			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;
@@ -165,21 +176,27 @@ if(ptinfo->m_comm == "newrelic-daemon")
 		{
 if(ptinfo->m_comm == "newrelic-daemon")
 {
-	g_logger.format(sinsp_logger::SEV_ERROR, "*%d.%d.%d.%d:%d", 
+	g_logger.format(sinsp_logger::SEV_ERROR, "*A%d.%d.%d.%d:%d", 
 		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 1)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 2)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 3)),
 		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport);
-	g_logger.format(sinsp_logger::SEV_ERROR, "*%d.%d.%d.%d:%d", 
+	g_logger.format(sinsp_logger::SEV_ERROR, "*B%d.%d.%d.%d:%d", 
 		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 1)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 2)),
 		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 3)),
 		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);
-	g_logger.format(sinsp_logger::SEV_ERROR, "*%d.%d %d.%d %d",
+	g_logger.format(sinsp_logger::SEV_ERROR, "*C%d.%d %d.%d %d",
 		(int)pconn->m_spid, (int)pconn->m_stid, (int)pconn->m_dpid, (int)pconn->m_dtid,
 		(int)pconn->m_refcount);
+	g_logger.format(sinsp_logger::SEV_ERROR, "*D%s",
+		ffdinfo->m_name.c_str());
+	g_logger.format(sinsp_logger::SEV_ERROR, "*E%d %" PRIu64,
+		(int)len, fd);
+	g_logger.format(sinsp_logger::SEV_ERROR, "*F%" PRIu64,
+		ts);
 }
 			bool isexternal = pconn->is_client_only();
 			m_n_client_transactions++;
@@ -565,6 +582,10 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	uint64_t exit_ts, 
 	int32_t cpuid,
 	direction dir, 
+#if 1
+		sinsp_evt *evt,
+		uint64_t fd,
+#endif
 	uint32_t datalen)
 {
 	if(pconn == NULL)
@@ -582,7 +603,7 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
-		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this, datalen);
+		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this, evt, fd, exit_ts, datalen);
 	}
 }
 
