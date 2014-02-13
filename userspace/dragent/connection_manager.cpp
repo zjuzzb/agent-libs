@@ -369,6 +369,11 @@ void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
 		settings.m_key = request.key();
 	}
 
+	if(request.has_passphrase())
+	{
+		settings.m_passphrase = request.passphrase();
+	}
+
 	if(request.has_port())
 	{
 		settings.m_port = request.port();
