@@ -3,6 +3,7 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <analyzer.h>
+#include <analyzer_settings.h>
 #include <connectinfo.h>
 #include "sys_call_test.h"
 #include <gtest.h>
@@ -30,8 +31,7 @@ using Poco::NumberFormatter;
 #define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
 #define BUFFER_LENGTH    (sizeof(PAYLOAD) - 1)
 
-
-
+#ifdef HAS_PIPE_CONNECTIONS
 TEST_F(sys_call_test, pipe)
 {
 	//  int callnum = 0;
@@ -127,6 +127,7 @@ TEST_F(sys_call_test, pipe)
 	ASSERT_FALSE(client_read_failed);
 	ASSERT_TRUE(connection_established);
 }
+#endif // HAS_PIPE_CONNECTIONS
 
 #define FIFO_NAME "/tmp/myfifo"
 #define MAX_BUF 1024

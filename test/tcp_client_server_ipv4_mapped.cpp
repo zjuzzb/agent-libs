@@ -496,7 +496,9 @@ void runtest_ipv4m(iotype iot,
 		{
 			string tuple = evt->get_param_value_str("tuple");
 
-			if(tuple[0] != '4')
+			EXPECT_NE((sinsp_fdinfo_t*)NULL, evt->m_fdinfo);
+
+			if(evt->m_fdinfo->m_type != SCAP_FD_IPV4_SOCK)
 			{
 				//
 				// Skip non-tcp sockets. Python opens unix sockets
@@ -523,8 +525,7 @@ void runtest_ipv4m(iotype iot,
 			}
 
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_EQ('4', sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_STREQ(server_address, sst[0].c_str());
 			if(sport == "")
 			{
 				EXPECT_NE("0", sst[1]);
@@ -572,8 +573,7 @@ void runtest_ipv4m(iotype iot,
 			StringTokenizer dst(dststr, ":");
 
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_EQ('4', sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_STREQ(server_address, sst[0].c_str());
 			if(sport == "")
 			{
 				EXPECT_NE("0", sst[1]);

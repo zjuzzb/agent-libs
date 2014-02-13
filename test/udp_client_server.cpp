@@ -332,7 +332,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				StringTokenizer sst(srcstr, ":");
 				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_EQ("40.0.0.0", sst[0]);
+				EXPECT_EQ("0.0.0.0", sst[0]);
 
 				StringTokenizer dst(dststr, ":");
 				EXPECT_EQ(2, (int)dst.count());
@@ -353,8 +353,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				StringTokenizer sst(srcstr, ":");
 				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_TRUE('4' == sst[0].c_str()[0]);
-				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+				EXPECT_STREQ(server_address, sst[0].c_str());
 				EXPECT_NE("0", sst[1]);
 
 				StringTokenizer dst(dststr, ":");
@@ -385,7 +384,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				StringTokenizer sst(srcstr, ":");
 				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_EQ("40.0.0.0", sst[0]);
+				EXPECT_EQ("0.0.0.0", sst[0]);
 				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
 
 				StringTokenizer dst(dststr, ":");
@@ -409,8 +408,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				StringTokenizer sst(srcstr, ":");
 				EXPECT_EQ(2, (int)sst.count());
-				EXPECT_TRUE('4' == sst[0].c_str()[0]);
-				EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+				EXPECT_STREQ(server_address, sst[0].c_str());
 				EXPECT_EQ(SERVER_PORT_STR, sst[1]);
 
 				StringTokenizer dst(dststr, ":");
@@ -485,8 +483,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 
 			StringTokenizer sst(srcstr, ":");
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_TRUE('4' == sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_STREQ(server_address, sst[0].c_str());
 			client_port = sst[1];
 
 			StringTokenizer dst(dststr, ":");
@@ -563,8 +560,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 
 			StringTokenizer sst(srcstr, ":");
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_TRUE('4' == sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
+			EXPECT_STREQ(server_address, sst[0].c_str());
 			EXPECT_NE("0", sst[1]);
 
 			StringTokenizer dst(dststr, ":");
@@ -586,8 +582,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 
 			StringTokenizer sst(srcstr, ":");
 			EXPECT_EQ(2, (int)sst.count());
-			EXPECT_TRUE('4' == sst[0].c_str()[0]);
-			EXPECT_STREQ("0.0.0.0", &sst[0].c_str()[1]);
+			EXPECT_STREQ("0.0.0.0", sst[0].c_str());
 			EXPECT_EQ(SERVER_PORT_STR, sst[1]);
 
 			StringTokenizer dst(dststr, ":");

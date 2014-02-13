@@ -31,6 +31,7 @@ using Poco::NumberFormatter;
 
 #include "sinsp_int.h"
 #include "analyzer_thread.h"
+#include "analyzer_settings.h"
 
 #define NAME "/tmp/python_unix_sockets_example"
 #define PAYLOAD "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -172,7 +173,9 @@ private:
 TEST_F(sys_call_test, unix_client_server)
 {
 	int32_t callnum = 0;
+#ifdef HAS_UNIX_CONNECTIONS
 	int state = 0;
+#endif
 	bool first_connect_or_accept_seen = true;
 	string sport;
 
@@ -227,9 +230,8 @@ TEST_F(sys_call_test, unix_client_server)
 			string srcstr = tst[0].substr(0, tst[0].size() - 1);
 			string dststr = tst[1];
 
-			EXPECT_EQ('u', srcstr[0]);
-			EXPECT_NE("u0000000000000000", srcstr);
-			EXPECT_NE("u0000000000000000", dststr);
+			EXPECT_NE("0000000000000000", srcstr);
+			EXPECT_NE("0000000000000000", dststr);
 
 			//
 			// connect() and accept() can return
@@ -262,10 +264,8 @@ TEST_F(sys_call_test, unix_client_server)
 			string srcstr = tst[0].substr(0, tst[0].size() - 1);
 			string dststr = tst[1];
 
-			EXPECT_EQ('u', srcstr[0]);
-
-			EXPECT_NE("u0000000000000000", srcstr);
-			EXPECT_NE("u0000000000000000", dststr);
+			EXPECT_NE("0000000000000000", srcstr);
+			EXPECT_NE("0000000000000000", dststr);
 
 			//
 			// connect() and accept() can return
@@ -294,10 +294,8 @@ TEST_F(sys_call_test, unix_client_server)
 			string fdsrcstr = fdtst[0].substr(0, fdtst[0].size() - 1);
 			string fddststr = fdtst[1];
 
-			EXPECT_EQ('u', fdsrcstr[0]);
-
-			EXPECT_NE("u0000000000000000", fdsrcstr);
-			EXPECT_NE("u0000000000000000", fddststr);
+			EXPECT_NE("0000000000000000", fdsrcstr);
+			EXPECT_NE("0000000000000000", fddststr);
 
 			callnum++;
 		}
@@ -337,8 +335,6 @@ TEST_F(sys_call_test, unix_client_server)
 			string fdsrcstr = fdtst[1].substr(0, fdtst[1].size() - 1);
 			string fddststr = fdtst[2];
 
-			EXPECT_EQ('u', fdaddrs[1]);
-
 			EXPECT_NE("0", fdsrcstr);
 			EXPECT_NE("0", fddststr);
 
@@ -358,13 +354,14 @@ TEST_F(sys_call_test, unix_client_server)
 			callnum++;
 		}
 
+#ifdef HAS_UNIX_CONNECTIONS
 		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->m_args[0], "unix_server.py"))
 		{
 			state = 1;
 			sinsp_threadinfo* ti = evt->get_thread_info();
 			ASSERT_EQ(1, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
 		}
-
+#endif
 	};
 
 
@@ -374,7 +371,9 @@ TEST_F(sys_call_test, unix_client_server)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_FALSE(first_connect_or_accept_seen);
 	EXPECT_EQ(8, callnum);
+#ifdef HAS_UNIX_CONNECTIONS
 	EXPECT_EQ(1, state);
+#endif
 }
 
 TEST_F(sys_call_test, DISABLED_unix_client_server_with_server_starting_before_capturing_starts)

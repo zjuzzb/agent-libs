@@ -3,6 +3,7 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <analyzer.h>
+#include <analyzer_settings.h>
 #include <connectinfo.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -30,6 +31,7 @@ using Poco::NumberFormatter;
 #define DATA1 "vincenzino"
 #define DATA2 "josefina"
 
+#ifdef HAS_PIPE_CONNECTIONS
 TEST_F(sys_call_test, socketpair)
 {
 //	int callnum = 0;
@@ -132,3 +134,5 @@ TEST_F(sys_call_test, socketpair)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_TRUE(connection_established);
 }
+
+#endif // HAS_PIPE_CONNECTIONS

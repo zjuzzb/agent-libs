@@ -556,7 +556,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			}
 #else
 			return;
-#endif HAS_UNIX_CONNECTIONS
+#endif // HAS_UNIX_CONNECTIONS
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{

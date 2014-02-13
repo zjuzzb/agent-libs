@@ -295,11 +295,8 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 		if(evt->get_type() == PPME_SOCKET_BIND_X)
 		{
 			string ttuple = evt->get_param_value_str("addr");
-			string ttype = ttuple.substr(0, ttuple.find(" "));
-			string tfile = ttuple.substr(ttuple.find(" ") + 1);
 
-			EXPECT_EQ("u", ttype);
-			EXPECT_EQ(NAME, tfile);
+			EXPECT_EQ(NAME, ttuple);
 
 			callnum++;
 		}
@@ -317,16 +314,14 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 			string tsrcstr = ttst[0].substr(0, ttst[0].size() - 1);
 			string tdststr = ttst[1];
 
-			EXPECT_EQ('u', tsrcstr[0]);
-
 			if(evt->get_tid() == server.get_tid())
 			{
-				EXPECT_NE("u0", tsrcstr);
+				EXPECT_NE("0", tsrcstr);
 				EXPECT_EQ("0", tdststr);
 			}
 			else
 			{
-				EXPECT_EQ("u0", tsrcstr);
+				EXPECT_EQ("0", tsrcstr);
 				EXPECT_NE("0", tdststr);
 			}
 
@@ -348,12 +343,12 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 
 				if(evt->get_tid() == server.get_tid())
 				{
-					EXPECT_NE("u0", tsrcstr);
+					EXPECT_NE("0", tsrcstr);
 					EXPECT_EQ("0", tdststr);
 				}
 				else
 				{
-					EXPECT_EQ("u0", tsrcstr);
+					EXPECT_EQ("0", tsrcstr);
 					EXPECT_NE("0", tdststr);
 				}
 			}
@@ -386,10 +381,10 @@ TEST_F(sys_call_test, unix_udp_client_server_read)
 
 			if(fdtuple.length() > 1)
 			{
-				string ttype = fdtuple.substr(0, fdtuple.find(" "));
-				string tfile = fdtuple.substr(fdtuple.find(" ") + 1);
+				string ttype = fdtuple.substr(0, fdtuple.find(">"));
+				string tfile = fdtuple.substr(fdtuple.find(">") + 1);
 
-				EXPECT_EQ("<u>", ttype);
+				EXPECT_EQ("<u", ttype);
 				EXPECT_EQ(NAME, tfile);
 			}
 
