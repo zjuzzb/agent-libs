@@ -116,6 +116,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		/////////////////////////////////////////////////////////////////////////////
 		if(evt->m_fdinfo->is_unix_socket())
 		{
+#ifdef HAS_UNIX_CONNECTIONS
 			// ignore invalid destination addresses
 			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
@@ -203,6 +204,10 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					evt->m_fdinfo->is_role_client(),
 					evt->get_ts());
 			}
+#else
+			return;
+#endif // HAS_UNIX_CONNECTIONS
+
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
@@ -430,6 +435,7 @@ r_conn_creation_done:
 			fd,
 			len);
 	}
+#ifdef HAS_PIPE_CONNECTIONS
 	else if(evt->m_fdinfo->is_pipe())
 	{
 		sinsp_connection *connection = m_analyzer->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
@@ -445,6 +451,7 @@ r_conn_creation_done:
 			    evt->get_ts());
 		}
 	}
+#endif
 }
 
 void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
@@ -460,6 +467,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 		if(evt->m_fdinfo->is_unix_socket())
 		{
+#ifdef HAS_UNIX_CONNECTIONS
 			// ignore invalid destination addresses
 			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
@@ -546,6 +554,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					evt->m_fdinfo->is_role_client(),
 					evt->get_ts());
 			}
+#else
+			return;
+#endif HAS_UNIX_CONNECTIONS
 		}
 		else if(evt->m_fdinfo->is_ipv4_socket())
 		{
@@ -712,6 +723,7 @@ w_conn_creation_done:
 			fd,
 			len);
 	}
+#ifdef HAS_PIPE_CONNECTIONS
 	else if(evt->m_fdinfo->is_pipe())
 	{
 		sinsp_connection *connection = m_analyzer->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
@@ -728,6 +740,7 @@ w_conn_creation_done:
 			    evt->get_ts());
 		}
 	}
+#endif
 }
 
 void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
@@ -803,6 +816,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    true,
 		    evt->get_ts());
 	}
+#ifdef HAS_UNIX_CONNECTIONS
 	else
 	{
 		//
@@ -826,6 +840,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    true,
 		    evt->get_ts());
 	}
+#endif // HAS_UNIX_CONNECTIONS
 }
 
 void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
@@ -848,6 +863,7 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
+#ifdef HAS_UNIX_CONNECTIONS
 		m_analyzer->m_unix_connections->add_connection(new_fdinfo->m_sockinfo.m_unixinfo,
 			&scomm,
 			evt->m_tinfo->m_pid,
@@ -855,6 +871,9 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    newfd,
 		    false,
 		    evt->get_ts());
+#else
+		return;
+#endif
 	}
 	else
 	{
@@ -892,11 +911,13 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 				connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, 
 					params->m_ts);
 			}
+#ifdef HAS_UNIX_CONNECTIONS
 			else if(params->m_fdinfo->is_unix_socket())
 			{
 				connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, 
 					params->m_ts);
 			}
+#endif
 			else
 			{
 				ASSERT(false);
@@ -930,11 +951,13 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	{
 		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, false);
 	}
+#ifdef HAS_UNIX_CONNECTIONS
 	else if(params->m_fdinfo->is_unix_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
 		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, false);
 	}
+#endif
 }
 
 void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
@@ -950,10 +973,12 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 		{
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 		}
+#ifdef HAS_UNIX_CONNECTIONS
 		else
 		{
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
 		}
+#endif
 
 		evt->m_fdinfo->m_usrstate.update(m_inspector->m_analyzer,
 			evt->m_tinfo,

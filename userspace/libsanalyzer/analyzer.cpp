@@ -73,8 +73,12 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_delay_calculator = NULL;
 
 	m_ipv4_connections = NULL;
+#ifdef HAS_UNIX_CONNECTIONS
 	m_unix_connections = NULL;
+#endif
+#ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = NULL;
+#endif
 	m_trans_table = NULL;
 	m_sampling_ratio = 1;
 	m_last_dropmode_switch_time = 0;
@@ -157,15 +161,19 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_ipv4_connections;
 	}
 
+#ifdef HAS_UNIX_CONNECTIONS
 	if(m_unix_connections)
 	{
 		delete m_unix_connections;
 	}
+#endif
 
+#ifdef HAS_PIPE_CONNECTIONS
 	if(m_pipe_connections)
 	{
 		delete m_pipe_connections;
 	}
+#endif
 
 	if(m_trans_table)
 	{
@@ -215,8 +223,12 @@ void sinsp_analyzer::on_capture_start()
 	//
 	ASSERT(m_ipv4_connections == NULL);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+#ifdef HAS_UNIX_CONNECTIONS
 	m_unix_connections = new sinsp_unix_connection_manager(m_inspector);
+#endif
+#ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
+#endif
 	m_trans_table = new sinsp_transaction_table(m_inspector);
 
 	//
@@ -264,7 +276,12 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 {
 	m_ipv4_connections->remove_expired_connections(ts);
+#ifdef HAS_UNIX_CONNECTIONS
 	m_unix_connections->remove_expired_connections(ts);
+#endif
+#ifdef HAS_PIPE_CONNECTIONS
+	m_pipe_connections->remove_expired_connections(ts);
+#endif
 }
 
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
@@ -289,6 +306,7 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 	return connection;
 }
 
+#ifdef HAS_UNIX_CONNECTIONS
 sinsp_connection* sinsp_analyzer::get_connection(const unix_tuple& tuple, uint64_t timestamp)
 {
 	return m_unix_connections->get_connection(tuple, timestamp);
@@ -298,6 +316,7 @@ sinsp_connection* sinsp_analyzer::get_connection(const uint64_t ino, uint64_t ti
 {
 	return m_pipe_connections->get_connection(ino, timestamp);
 }
+#endif
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 {
@@ -1547,6 +1566,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
+#ifdef HAS_UNIX_CONNECTIONS
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -1582,7 +1602,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					++ucit;
 				}
 			}
+#endif // HAS_UNIX_CONNECTIONS
 
+#ifdef HAS_PIPE_CONNECTIONS
 			//
 			// Go though the list of pipe connections and for the moment just clean it up
 			//
@@ -1612,6 +1634,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					++pcit;
 				}
 			}
+#endif // HAS_PIPE_CONNECTIONS
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT THE LIST OF INTERFACES

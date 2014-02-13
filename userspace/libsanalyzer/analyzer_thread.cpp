@@ -284,10 +284,14 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 						}
 						else if(it->second.is_unix_socket())
 						{
+#ifdef HAS_UNIX_CONNECTIONS
 							connection = m_analyzer->get_connection(it->second.m_sockinfo.m_unixinfo, 
 								endtime);
 
 							ASSERT(connection || m_analyzer->m_unix_connections->get_n_drops() != 0);
+#else
+							return;
+#endif
 						}
 						else
 						{

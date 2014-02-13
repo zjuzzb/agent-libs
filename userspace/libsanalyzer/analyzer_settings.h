@@ -127,6 +127,12 @@
 #define TOP_PROCESSES_IN_SAMPLE 30
 
 //
+// Should the library track unix and FD connections
+//
+#undef HAS_UNIX_CONNECTIONS
+#undef HAS_PIPE_CONNECTIONS
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

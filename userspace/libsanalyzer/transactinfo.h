@@ -82,8 +82,6 @@ public:
 	direction m_direction;
 	int64_t m_tid;
 	int64_t m_fd;
-	ipv4tuple m_ipv4_flow;
-	unix_tuple m_unix_flow;
 	vector<string> m_protoinfo;
 
 	uint64_t m_start_time;
@@ -168,8 +166,6 @@ class SINSP_PUBLIC sinsp_transaction_table
 public:
 	sinsp_transaction_table(sinsp* inspector);
 	~sinsp_transaction_table();
-	void save_json(string filename);
-	void print_on(FILE *stream);
 	uint32_t get_size();
 	void clear();
 

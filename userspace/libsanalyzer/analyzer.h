@@ -127,8 +127,10 @@ public:
 	// Connection lookup
 	//
 	sinsp_connection* get_connection(const ipv4tuple& tuple, uint64_t timestamp);
+#ifdef HAS_UNIX_CONNECTIONS
 	sinsp_connection* get_connection(const unix_tuple& tuple, uint64_t timestamp);
 	sinsp_connection* get_connection(const uint64_t ino, uint64_t timestamp);
+#endif
 	void remove_expired_connections(uint64_t ts);
 
 #ifdef GATHER_INTERNAL_STATS
@@ -169,8 +171,12 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_transaction_table* m_trans_table;
 	sinsp_ipv4_connection_manager* m_ipv4_connections;
+#ifdef HAS_UNIX_CONNECTIONS
 	sinsp_unix_connection_manager* m_unix_connections;
+#endif
+#ifdef HAS_PIPE_CONNECTIONS
 	sinsp_pipe_connection_manager* m_pipe_connections;
+#endif
 
 	//
 	// Pointer to context that we use frequently
