@@ -587,13 +587,13 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 			StringTokenizer sst(srcstr, ":");
 			EXPECT_EQ(2, (int)sst.count());
 			EXPECT_TRUE('4' == sst[0].c_str()[0]);
-			EXPECT_STREQ(server_address, &sst[0].c_str()[1]);
-			EXPECT_NE("0", sst[1]);
+			EXPECT_STREQ("0.0.0.0", &sst[0].c_str()[1]);
+			EXPECT_EQ(SERVER_PORT_STR, sst[1]);
 
 			StringTokenizer dst(dststr, ":");
 			EXPECT_EQ(2, (int)dst.count());
-			EXPECT_EQ("0.0.0.0", dst[0]);
-			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+			EXPECT_EQ(server_address, dst[0]);
+			EXPECT_NE("0", dst[1]);
 			EXPECT_EQ((int)BUFFER_LENGTH, (int)NumberParser::parse(e->get_param_value_str("size")));
 		}
 		else if(type == PPME_SOCKET_SENDMSG_X)
