@@ -463,7 +463,7 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	}
 
 	//
-	// Mark the top CPU cosumers
+	// Mark the top CPU consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
 		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 

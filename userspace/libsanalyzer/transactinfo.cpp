@@ -176,18 +176,10 @@ if(ptinfo->m_comm == "newrelic-daemon")
 		{
 if(ptinfo->m_comm == "newrelic-daemon")
 {
-	g_logger.format(sinsp_logger::SEV_ERROR, "*A%d.%d.%d.%d:%d", 
-		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 1)),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 2)),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip + 3)),
-		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport);
-	g_logger.format(sinsp_logger::SEV_ERROR, "*B%d.%d.%d.%d:%d", 
-		(int)(*(uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 1)),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 2)),
-		(int)(*((uint8_t*)&ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip + 3)),
-		(int)ffdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);
+	g_logger.format(sinsp_logger::SEV_ERROR, "*A%" PRIu64,
+		delta);
+	g_logger.format(sinsp_logger::SEV_ERROR, "*B%d",
+		(int)ffdinfo->m_type);
 	g_logger.format(sinsp_logger::SEV_ERROR, "*C%d.%d %d.%d %d",
 		(int)pconn->m_spid, (int)pconn->m_stid, (int)pconn->m_dpid, (int)pconn->m_dtid,
 		(int)pconn->m_refcount);
