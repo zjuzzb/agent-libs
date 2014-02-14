@@ -29,80 +29,6 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_a
 	m_analyzer = analyzer;
 }
 
-bool sinsp_analyzer_fd_listener::set_role_by_guessing(sinsp_threadinfo* ptinfo, 
-													  sinsp_fdinfo_t* pfdinfo, 
-													  bool incoming)
-{
-	bool is_sip_local = 
-		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
-	bool is_dip_local = 
-		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip);
-
-	//
-	// If only the client is local, mark the role as client.
-	// If only the server is local, mark the role as server.
-	//
-	if(is_sip_local)
-	{
-		if(!is_dip_local)
-		{
-			pfdinfo->set_role_client();
-			return true;
-		}
-	}
-	else if(is_dip_local)
-	{
-		if(!is_sip_local)
-		{
-			pfdinfo->set_role_server();
-			return true;
-		}
-	}
-
-	//
-	// Both addresses are local
-	//
-	ASSERT(is_sip_local && is_dip_local);
-
-	//
-	// If this process owns the port, mark it as server, otherwise mark it as client
-	//
-	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport))
-	{
-		if(ptinfo->uses_client_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
-		{
-			goto wildass_guess;
-		}
-
-		pfdinfo->set_role_server();
-		return true;
-	}
-	else
-	{
-		pfdinfo->set_role_client();
-		return true;
-	}
-
-wildass_guess:
-	if(!(pfdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER)))
-	{
-		//
-		// We just assume that a server usually starts with a read and a client with a write
-		//
-		if(incoming)
-		{
-			pfdinfo->set_role_server();
-		}
-		else
-		{
-			pfdinfo->set_role_client();
-		}
-	}
-
-	return true;
-}
-
-
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
@@ -223,7 +149,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+					if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
 					{
 						goto r_conn_creation_done;
 					}
@@ -258,7 +184,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+						if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
 						{
 							goto r_conn_creation_done;
 						}
@@ -298,7 +224,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, true) == false)
+							if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
 							{
 								goto r_conn_creation_done;
 							}
@@ -574,7 +500,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
+					if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
 					{
 						goto w_conn_creation_done;
 					}
@@ -607,7 +533,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
+						if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
 						{
 							goto w_conn_creation_done;
 						}
@@ -647,7 +573,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(set_role_by_guessing(evt->m_tinfo, evt->m_fdinfo, false) == false)
+							if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
 							{
 								goto w_conn_creation_done;
 							}
@@ -800,7 +726,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		}
 		else
 		{
-			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, packed_data);
+			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, 
+				packed_data);
 		}
 
 		//
@@ -816,7 +743,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    true,
 		    evt->get_ts());
 	}
-#ifdef HAS_UNIX_CONNECTIONS
 	else
 	{
 		//
@@ -824,12 +750,13 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		//
 		evt->m_fdinfo->set_role_client();
 
+		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
+
+#ifdef HAS_UNIX_CONNECTIONS
 		//
 		// Mark this fd as a transaction
 		//
 		evt->m_fdinfo->set_is_transaction();
-
-		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
 
 		string scomm = evt->m_tinfo->get_comm();
 		m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
@@ -839,8 +766,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    evt->m_tinfo->m_lastevent_fd,
 		    true,
 		    evt->get_ts());
-	}
 #endif // HAS_UNIX_CONNECTIONS
+	}
 }
 
 void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
@@ -860,6 +787,11 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    newfd,
 		    false,
 		    evt->get_ts());
+
+		//
+		// Mark this fd as a server
+		//
+		new_fdinfo->set_role_server();
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
@@ -872,6 +804,11 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    false,
 		    evt->get_ts());
 #else
+		//
+		// Mark this fd as a server
+		//
+		new_fdinfo->set_role_server();
+
 		return;
 #endif
 	}
@@ -882,11 +819,6 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		//
 		ASSERT(false);
 	}
-
-	//
-	// Mark this fd as a server
-	//
-	new_fdinfo->set_role_server();
 
 	//
 	// Mark this fd as a transaction

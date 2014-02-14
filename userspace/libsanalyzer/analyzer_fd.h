@@ -14,7 +14,6 @@ public:
 	void on_socket_shutdown(sinsp_evt *evt);
 
 private:
-	bool set_role_by_guessing(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming);
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
 };
