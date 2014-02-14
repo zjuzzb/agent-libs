@@ -46,7 +46,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			// ignore invalid destination addresses
 			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
-				return;
+//				return;
 			}
 
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
@@ -357,8 +357,10 @@ r_conn_creation_done:
 			evt->get_ts(), 
 			evt->get_cpuid(),
 			trdir,
+#if _DEBUG
 			evt,
 			fd,
+#endif
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
@@ -397,7 +399,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			// ignore invalid destination addresses
 			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
-				return;
+//				return;
 			}
 
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
@@ -645,8 +647,10 @@ w_conn_creation_done:
 			evt->get_ts(), 
 			evt->get_cpuid(),
 			sinsp_partial_transaction::DIR_OUT, 
+#if _DEBUG
 			evt,
 			fd,
+#endif
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
@@ -677,11 +681,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 
 	if(family == PPM_AF_INET || family == PPM_AF_INET6)
 	{
-		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
 		//
 		// Mark this fd as a transaction
 		//
@@ -745,11 +744,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	}
 	else
 	{
-		//
-		// Mark this fd as a client
-		//
-		evt->m_fdinfo->set_role_client();
-
 		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
 
 #ifdef HAS_UNIX_CONNECTIONS
@@ -787,11 +781,6 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    newfd,
 		    false,
 		    evt->get_ts());
-
-		//
-		// Mark this fd as a server
-		//
-		new_fdinfo->set_role_server();
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
@@ -804,11 +793,6 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    false,
 		    evt->get_ts());
 #else
-		//
-		// Mark this fd as a server
-		//
-		new_fdinfo->set_role_server();
-
 		return;
 #endif
 	}
@@ -867,8 +851,10 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 				params->m_ts, 
 				-1,
 				sinsp_partial_transaction::DIR_CLOSE,
+#if _DEBUG
 				NULL,
 				params->m_fd,
+#endif
 				0);
 		}
 
@@ -920,8 +906,10 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 			evt->get_ts(), 
 			evt->get_cpuid(),
 			sinsp_partial_transaction::DIR_CLOSE,
+#if _DEBUG
 			evt,
 			evt->m_tinfo->m_lastevent_fd,
+#endif
 			0);
 
 		evt->m_fdinfo->m_usrstate.mark_inactive();

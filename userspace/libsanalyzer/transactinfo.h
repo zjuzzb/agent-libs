@@ -43,6 +43,8 @@ public:
 	{
 	    STATE_ONGOING = (1 << 0),
 	    STATE_SWITCHED = (1 << 1),
+	    STATE_NO_TRANSACTION = (1 << 2),	// Set when, based on timing observation, this is detected as 
+											// not being a client/server transaction.
 	};
 
 	sinsp_partial_transaction();
@@ -56,7 +58,7 @@ public:
 		uint64_t exit_ts, 
 		int32_t cpuid,
 		direction dir,
-#if 1
+#if _DEBUG
 		sinsp_evt *evt,
 		uint64_t fd,
 #endif
@@ -102,7 +104,9 @@ public:
 	uint32_t m_flags;
 
 private:
-	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, uint64_t exit_ts, direction dir, uint32_t len);
+	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, 
+		uint64_t exit_ts, direction dir, 
+		uint32_t len, bool is_server);
 };
 
 //
@@ -173,7 +177,7 @@ public:
 		void* fdinfo,
 		sinsp_connection* pconn,
 		sinsp_partial_transaction* tr,
-#if 1
+#if _DEBUG
 		sinsp_evt *evt,
 		uint64_t fd,
 		uint64_t ts,

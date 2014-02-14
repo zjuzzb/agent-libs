@@ -311,8 +311,10 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 								0,
 								-1,
 								sinsp_partial_transaction::DIR_CLOSE,
+#if _DEBUG
 								NULL,
 								0,
+#endif
 								0);
 
 							trinfo->m_incoming_bytes = 0;
