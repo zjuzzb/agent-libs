@@ -634,12 +634,13 @@ void sinsp_host_metrics::clear()
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
-	m_capacity_score = -1;
-	m_stolen_capacity_score = -1;
 	m_n_capacity_score_entries = 0;
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
 	m_syscall_errors.clear();
+	m_tot_capacity_score = 0;
+	m_tot_stolen_capacity_score = 0;
+	m_tot_server_transactions = 0;
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -657,6 +658,47 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	if(pinfo->m_fd_usage_pct > m_fd_usage_pct)
 	{
 		m_fd_usage_pct = pinfo->m_fd_usage_pct;
+	}
+}
+
+void sinsp_host_metrics::add_capacity_score(float capacity_score, 
+											float stolen_capacity_score,
+											uint32_t n_server_transactions)
+{
+	if(capacity_score > 0)
+	{
+		m_tot_capacity_score += (n_server_transactions * (100 / capacity_score));
+	}
+
+	if(stolen_capacity_score > 0)
+	{
+		m_tot_stolen_capacity_score += (n_server_transactions * (100 / stolen_capacity_score));
+	}
+
+	m_tot_server_transactions += n_server_transactions;
+}
+
+double sinsp_host_metrics::get_capacity_score()
+{
+	if(m_tot_capacity_score != 0)
+	{
+		return m_tot_server_transactions / m_tot_capacity_score * 100;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+double sinsp_host_metrics::get_stolen_score()
+{
+	if(m_tot_stolen_capacity_score != 0)
+	{
+		return m_tot_server_transactions / m_tot_stolen_capacity_score * 100;
+	}
+	else
+	{
+		return 0;
 	}
 }
 

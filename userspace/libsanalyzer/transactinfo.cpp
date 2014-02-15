@@ -364,8 +364,14 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(is_server)
 			{
-				if(exit_ts - m_end_time > 500000000)
+				if(exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
 				{
+					//
+					// This server-side transaction has stopped on a read for 
+					// a long time. We assume it's not a client server transaction
+					// (it could be an upload or a peer to peer application)
+					// and we drop it.
+					//
 					return STATE_NO_TRANSACTION;
 				}
 			}
@@ -420,8 +426,14 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 
 			if(!is_server)
 			{
-				if(exit_ts - m_end_time > 500000000)
+				if(exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
 				{
+					//
+					// This client-side transaction has stopped on a write for 
+					// a long time. We assume it's not a client server transaction
+					// (it could be an upload or a peer to peer application)
+					// and we drop it.
+					//
 					return STATE_NO_TRANSACTION;
 				}
 			}

@@ -133,6 +133,12 @@
 #undef HAS_PIPE_CONNECTIONS
 
 //
+// The maximum duration of a socket server-side read after which we
+// assume the transaction is not client server
+//
+#define TRANSACTION_READ_LIMIT_NS 500000000
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

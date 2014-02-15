@@ -84,6 +84,8 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
+	// The metrics for transaction coming from the external world
+	sinsp_transaction_counters m_external_transaction_metrics; 
 
 	sinsp_delays_info m_transaction_delays;
 };

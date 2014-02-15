@@ -805,7 +805,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Second pass of the list of threads: aggreagate threads into processes 
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
-	m_host_metrics.m_capacity_score = -1;
 
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
@@ -991,11 +990,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if(procinfo->m_capacity_score != -1)
 					{
-						if(procinfo->m_capacity_score > m_host_metrics.m_capacity_score)
-						{
-							m_host_metrics.m_capacity_score = procinfo->m_capacity_score;
-							m_host_metrics.m_stolen_capacity_score = procinfo->m_stolen_capacity_score;
-						}
+						m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
+							procinfo->m_stolen_capacity_score,
+							procinfo->m_external_transaction_metrics.m_counter.m_count_in);
 					}
 
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
@@ -1711,8 +1708,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Machine info
 			//
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.m_capacity_score * 100));
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.m_stolen_capacity_score * 100));
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.get_capacity_score() * 100));
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
@@ -1774,8 +1771,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						" host h:%.2f(s:%.2f)",
-						m_host_metrics.m_capacity_score,
-						m_host_metrics.m_stolen_capacity_score);
+						m_host_metrics.get_capacity_score(),
+						m_host_metrics.get_stolen_score());
 
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",

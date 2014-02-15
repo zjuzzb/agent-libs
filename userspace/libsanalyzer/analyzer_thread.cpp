@@ -60,6 +60,8 @@ void sinsp_procinfo::clear()
 	{
 		cts->clear();
 	}
+
+	m_external_transaction_metrics.clear();
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -215,6 +217,8 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	{
 		m_procinfo->m_n_transaction_threads++;
 	}
+
+	m_procinfo->m_external_transaction_metrics.add(&other->m_external_transaction_metrics);
 }
 
 void thread_analyzer_info::clear_all_metrics()

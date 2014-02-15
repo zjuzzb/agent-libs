@@ -227,16 +227,24 @@ public:
 	sinsp_host_metrics();
 	void clear();
 	void add(sinsp_procinfo* pinfo);
+	void add_capacity_score(float capacity_score,
+		float stolen_capacity_score,
+		uint32_t n_server_transactions);
+	double get_capacity_score();
+	double get_stolen_score();
 
 	sinsp_counters m_metrics; 
 	sinsp_transaction_counters m_transaction_metrics;
 	uint64_t m_transaction_processing_delay_ns;
-	float m_capacity_score;
-	float m_stolen_capacity_score;
 	uint32_t m_n_capacity_score_entries;
 	uint32_t m_connection_queue_usage_pct;
 	uint32_t m_fd_usage_pct;
 	sinsp_error_counters m_syscall_errors;
+
+private:
+	double m_tot_capacity_score;
+	double m_tot_stolen_capacity_score;
+	uint32_t m_tot_server_transactions;
 };
 
 #endif // HAS_ANALYZER
