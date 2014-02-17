@@ -873,21 +873,37 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			procinfo->m_proc_metrics.get_total(&tot);
 			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 
+			//
+			// Inclusion logic
+			//
+
+			// 1. Keep:
+			//  - top 30 clients/servers
+			//  - top 30 programs that were active
 			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			bool include = (tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs) &&
-				(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
+			bool include;
 
+			// 2. If this is a client or a server, it didn't generate any activity in the sample,
+			// and another program with the same name has already been included, we can safely
+			// exclude it, sind its presence would be completely redundant
 			if(is_cs)
 			{
-				if(tot.m_count == 0 && procinfo->m_cpuload == 0)
+				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
+
+				if(include && (tot.m_count == 0 && procinfo->m_cpuload == 0))
 				{
 					if(included_programs.find(it->second.m_exe) != included_programs.end())
 					{
 						include = false;
 					}
 				}
+			}
+			else
+			{
+				include = (tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs) &&
+					(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
 			}
 
 			if(include)
