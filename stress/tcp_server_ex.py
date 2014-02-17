@@ -4,15 +4,21 @@ import sys
 import time
 
 DELAY_MS = 300
+PORT = 17642
+
+if len(sys.argv) > 1:
+        PORT = int(sys.argv[1])
 
 # Establish a TCP/IP socket
 s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 # Bind to TCP port
-s.bind(("",17642))
+s.bind(("", PORT))
 # ... and listen for anyone to contact you
 # queueing up to five requests if you get a backlog
 s.listen(5)
+
+print "listening on port %d" % PORT
 
 # Servers are "infinite" loops handling requests
 while True:

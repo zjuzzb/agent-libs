@@ -1,18 +1,22 @@
 import socket
 import time
+import sys
 
 NUM_REQS = 10000000
 REQS_PER_SEC = 5
+PORT = 17642
 
-# Set up a TCP/IP socket
+if len(sys.argv) > 1:
+	PORT = int(sys.argv[1])
 
-# Connect as client to a selected server
-# on a specified port
+j = 0
+while True:
+	j = j + 1
+	if j == NUM_REQS:
+		break
 
-for j in range(0, NUM_REQS):
-#	print j
 	s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-	s.connect(("localhost",17642))
+	s.connect(("localhost", PORT))
 	s.send("GET /robots.txt HTTP/1.0\n\n")
 
 	# Protocol exchange - sends and receives
@@ -22,6 +26,7 @@ for j in range(0, NUM_REQS):
 #			print resp,
 
 	s.close()
+	s = 0
 
 	time.sleep(1.0 / REQS_PER_SEC)
 
