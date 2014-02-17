@@ -29,6 +29,84 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_a
 	m_analyzer = analyzer;
 }
 
+bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, 
+										  sinsp_fdinfo_t* pfdinfo,
+										  bool incoming)
+{
+	//
+	// This should be disabled for the moment
+	//
+	ASSERT(false);
+
+	bool is_sip_local = 
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
+	bool is_dip_local = 
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip);
+
+	//
+	// If only the client is local, mark the role as client.
+	// If only the server is local, mark the role as server.
+	//
+	if(is_sip_local)
+	{
+		if(!is_dip_local)
+		{
+			pfdinfo->set_role_client();
+			return true;
+		}
+	}
+	else if(is_dip_local)
+	{
+		if(!is_sip_local)
+		{
+			pfdinfo->set_role_server();
+			return true;
+		}
+	}
+
+	//
+	// Both addresses are local
+	//
+	ASSERT(is_sip_local && is_dip_local);
+
+	//
+	// If this process owns the port, mark it as server, otherwise mark it as client
+	//
+	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport))
+	{
+		if(ptinfo->uses_client_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
+		{
+			goto wildass_guess;
+		}
+
+		pfdinfo->set_role_server();
+		return true;
+	}
+	else
+	{
+		pfdinfo->set_role_client();
+		return true;
+	}
+
+wildass_guess:
+	if(!(pfdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER)))
+	{
+		//
+		// We just assume that a server usually starts with a read and a client with a write
+		//
+		if(incoming)
+		{
+			pfdinfo->set_role_server();
+		}
+		else
+		{
+			pfdinfo->set_role_client();
+		}
+	}
+
+	return true;
+}
+
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
 	evt->set_iosize(original_len);
@@ -149,7 +227,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
+					if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
 					{
 						goto r_conn_creation_done;
 					}
@@ -184,7 +262,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
+						if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
 						{
 							goto r_conn_creation_done;
 						}
@@ -224,7 +302,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, true) == false)
+							if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
 							{
 								goto r_conn_creation_done;
 							}
@@ -502,7 +580,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				//
 				if(evt->m_fdinfo->is_role_none())
 				{
-					if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
+					if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
 					{
 						goto w_conn_creation_done;
 					}
@@ -535,7 +613,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 					if(evt->m_fdinfo->is_role_none())
 					{
-						if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
+						if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
 						{
 							goto w_conn_creation_done;
 						}
@@ -575,7 +653,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						if(evt->m_fdinfo->is_role_none())
 						{
-							if(evt->m_fdinfo->set_role_by_guessing(m_inspector, evt->m_tinfo, evt->m_fdinfo, false) == false)
+							if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
 							{
 								goto w_conn_creation_done;
 							}

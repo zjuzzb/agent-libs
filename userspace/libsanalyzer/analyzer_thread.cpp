@@ -525,4 +525,59 @@ bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 		dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count()); 
 }
 
+bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst)
+{
+	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	double s = src->m_ainfo->m_procinfo->m_cpuload * (is_src_server * 1000);
+	double d = dst->m_ainfo->m_procinfo->m_cpuload * (is_dst_server * 1000);
+
+	return (s > d); 
+}
+
+bool threadinfo_cmp_memory_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_ainfo->m_procinfo->m_resident_memory_kb * (is_src_server * 1000);
+	uint64_t d = dst->m_ainfo->m_procinfo->m_resident_memory_kb * (is_dst_server * 1000);
+
+	return (s > d); 
+}
+
+bool threadinfo_cmp_io_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_src_server * 1000);
+	uint64_t d = dst->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_dst_server * 1000);
+
+	return (s > d); 
+}
+
+bool threadinfo_cmp_net_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_src_server * 1000);
+	uint64_t d = dst->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_dst_server * 1000);
+
+	return (s > d); 
+}
+
+bool threadinfo_cmp_transactions_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{
+	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() * (is_src_server * 1000);
+	uint64_t d = dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() * (is_dst_server * 1000);
+
+	return (s > d); 
+}
+
 #endif // HAS_ANALYZER

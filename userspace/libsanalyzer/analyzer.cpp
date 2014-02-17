@@ -469,29 +469,48 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	}
 }
 
-void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progtable)
+void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
 	vector<sinsp_threadinfo*> prog_sortable_list;
 
 	map<uint64_t, sinsp_threadinfo*>::iterator ptit;
+
 	for(ptit = progtable->begin(); ptit != progtable->end(); ++ptit)
 	{
-		prog_sortable_list.push_back(ptit->second);
+		if(cs_only)
+		{
+			int is_cs = (ptit->second->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
+
+			if(is_cs)
+			{
+				prog_sortable_list.push_back(ptit->second);
+			}
+		}
+		else
+		{
+			prog_sortable_list.push_back(ptit->second);
+		}
+	}
+
+	if(prog_sortable_list.size() == 0)
+	{
+		return;
 	}
 
 	//
 	// Mark the top CPU consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+		prog_sortable_list.begin() + howmany, 
 		prog_sortable_list.end(),
-		threadinfo_cmp_cpu);
+		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
 
 	for(j = 0; j < prog_sortable_list.size(); j++)
 	{
-		if(j >= TOP_PROCESSES_IN_SAMPLE || prog_sortable_list[j]->m_ainfo->m_cpuload <= 0)
+		if(j >= howmany || prog_sortable_list[j]->m_ainfo->m_cpuload <= 0)
 		{
 			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = true;
 		}
@@ -501,11 +520,11 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	// Mark the top memory consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+		prog_sortable_list.begin() + howmany, 
 		prog_sortable_list.end(),
-		threadinfo_cmp_memory);
+		(cs_only)?threadinfo_cmp_memory_cs:threadinfo_cmp_memory);
 
-	for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
+	for(j = 0; j < howmany; j++)
 	{
 		if(prog_sortable_list[j]->m_ainfo->m_resident_memory_kb > 0)
 		{
@@ -521,11 +540,11 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	// Mark the top disk I/O consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+		prog_sortable_list.begin() + howmany, 
 		prog_sortable_list.end(),
-		threadinfo_cmp_io);
+		(cs_only)?threadinfo_cmp_io_cs:threadinfo_cmp_io);
 
-	for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
+	for(j = 0; j < howmany; j++)
 	{
 		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
 
@@ -543,11 +562,11 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	// Mark the top network I/O consumers
 	//
 	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+		prog_sortable_list.begin() + howmany, 
 		prog_sortable_list.end(),
-		threadinfo_cmp_net);
+		(cs_only)?threadinfo_cmp_net_cs:threadinfo_cmp_net);
 
-	for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
+	for(j = 0; j < howmany; j++)
 	{
 		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
 
@@ -565,11 +584,11 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	// Mark the top transaction generators
 	//
 	//partial_sort(prog_sortable_list.begin(), 
-	//	prog_sortable_list.begin() + TOP_PROCESSES_IN_SAMPLE, 
+	//	prog_sortable_list.begin() + howmany, 
 	//	prog_sortable_list.end(),
 	//	threadinfo_cmp_transactions);
 
-	//for(j = 0; j < TOP_PROCESSES_IN_SAMPLE; j++)
+	//for(j = 0; j < howmany; j++)
 	//{
 	//	if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count() > 0)
 	//	{
@@ -580,6 +599,20 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	//		break;
 	//	}
 	//}
+}
+
+void sinsp_analyzer::filter_top_noncs_programs(map<uint64_t, sinsp_threadinfo*>* progtable)
+{
+	filter_top_programs(progtable, 
+		false,
+		TOP_PROCESSES_IN_SAMPLE);
+}
+
+void sinsp_analyzer::filter_top_cs_programs(map<uint64_t, sinsp_threadinfo*>* progtable)
+{
+	filter_top_programs(progtable, 
+		true,
+		TOP_PROCESSES_IN_SAMPLE);
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
@@ -797,7 +830,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
-			filter_top_programs(&progtable);
+			filter_top_noncs_programs(&progtable);
+			filter_top_cs_programs(&progtable);
 		}
 	}
 
@@ -1128,6 +1162,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 }
 
+//
+// Strategy:
+//  - sport is *always* masked to zero
+//  - if there are more than MAX_N_EXTERNAL_CLIENTS external client connections,
+//    external client IPs are masked to zero
+//
 void sinsp_analyzer::emit_aggregated_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;

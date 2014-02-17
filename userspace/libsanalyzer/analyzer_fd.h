@@ -13,6 +13,10 @@ public:
 	void on_erase_fd(erase_fd_params* params);
 	void on_socket_shutdown(sinsp_evt *evt);
 
+	bool patch_network_role(sinsp_threadinfo* ptinfo, 
+		sinsp_fdinfo_t* pfdinfo,
+		bool incoming);
+
 private:
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;

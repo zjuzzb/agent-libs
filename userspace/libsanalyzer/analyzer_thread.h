@@ -185,4 +185,10 @@ bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_net(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 
+bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst); 
+bool threadinfo_cmp_memory_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_io_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_net_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_transactions_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+
 #endif // HAS_ANALYZER
