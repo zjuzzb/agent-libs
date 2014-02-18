@@ -1737,7 +1737,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
-				cpustr += to_string(m_cpu_loads[j]) + "(" + to_string((long double) m_cpu_steals[j]) + ") ";
+				cpustr += to_string((long double) m_cpu_loads[j]) + "(" + to_string((long double) m_cpu_steals[j]) + ") ";
 				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_cpu_loads[j] * 100));
 				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_cpu_steals[j] * 100));
 
