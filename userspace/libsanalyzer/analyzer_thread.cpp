@@ -246,6 +246,12 @@ void thread_analyzer_info::clear_all_metrics()
 	}
 }
 
+void thread_analyzer_info::clear_role_flags()
+{
+	m_th_analysis_flags &= ~(AF_IS_LOCAL_IPV4_SERVER | AF_IS_REMOTE_IPV4_SERVER |
+		AF_IS_UNIX_SERVER | AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
+}
+
 //
 // Emit all the transactions that are still inactive after timeout_ns nanoseconds
 //
