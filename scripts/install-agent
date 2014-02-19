@@ -131,6 +131,6 @@ if ! grep ^customerid /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
 	echo "customerid = $ACCESS_KEY" >> /opt/draios/bin/dragent.properties
 fi
 
-sed -i 's/^customerid.*/customerid = $ACCESS_KEY/g' /opt/draios/bin/dragent.properties
+sed -i "s/^customerid.*/customerid = $ACCESS_KEY/g" /opt/draios/bin/dragent.properties
 
 service dragent restart
