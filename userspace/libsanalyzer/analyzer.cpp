@@ -487,15 +487,17 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 			if(is_cs)
 			{
 				prog_sortable_list.push_back(ptit->second);
+break;
 			}
 		}
 		else
 		{
 			prog_sortable_list.push_back(ptit->second);
+break;
 		}
 	}
 
-	if(prog_sortable_list.size() == 0)
+	if(prog_sortable_list.size() <= howmany)
 	{
 		return;
 	}
@@ -826,7 +828,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
-	if(m_inspector->m_islive)
+//	if(m_inspector->m_islive)
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
