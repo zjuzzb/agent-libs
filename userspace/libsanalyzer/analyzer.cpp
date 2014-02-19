@@ -487,13 +487,11 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 			if(is_cs)
 			{
 				prog_sortable_list.push_back(ptit->second);
-break;
 			}
 		}
 		else
 		{
 			prog_sortable_list.push_back(ptit->second);
-break;
 		}
 	}
 
