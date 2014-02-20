@@ -952,7 +952,7 @@ TEST_F(sys_call_test, fs_preadv)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// pwritev/preadv
+// dup
 /////////////////////////////////////////////////////////////////////////////////////
 TEST_F(sys_call_test, fs_dup)
 {
@@ -1085,4 +1085,82 @@ TEST_F(sys_call_test, fs_dup)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 	EXPECT_EQ(12, callnum);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// fcntl
+/////////////////////////////////////////////////////////////////////////////////////
+TEST_F(sys_call_test, fs_fcntl)
+{
+	int callnum = 0;
+	int fd;
+	int fd1;
+	int fd2;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		fd = open(FILENAME, O_CREAT | O_WRONLY, 0);
+		fd1 = fcntl(fd, F_DUPFD);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC);
+
+		close(fd);
+		close(fd1);
+		close(fd2);
+
+		unlink(FILENAME);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_FCNTL_E)
+		{
+			if(callnum == 0)
+			{
+				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
+				callnum++;
+			}
+			else if(callnum == 2)
+			{
+				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_FCNTL_X)
+		{
+			if(callnum == 1)
+			{
+				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd1));
+				callnum++;
+			}
+			else if(callnum == 3)
+			{
+				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd1));
+				callnum++;
+			}
+		}
+
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(4, callnum);
 }
