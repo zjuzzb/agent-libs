@@ -61,12 +61,15 @@ sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
 cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
 sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
+cp $SCRIPTS_DIR/install-sysdig $REPOSITORY_DIR
+sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
 
 #
 # S3 upload
 #
 export AWS_DEFAULT_REGION="us-east-1"
 aws s3 cp $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+aws s3 cp $REPOSITORY_DIR/install-sysdig s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
 aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete
 aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
