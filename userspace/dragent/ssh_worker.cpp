@@ -183,9 +183,6 @@ void ssh_worker::run()
 			prepare_response(&response);
 			response.set_data(output);
 
-			g_log->information(m_name + ": Sending partial output (" 
-				+ NumberFormatter::format(output.size()) + ")");
-
 			queue_response(response);
 		}
 
