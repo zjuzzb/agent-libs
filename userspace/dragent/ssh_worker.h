@@ -62,7 +62,7 @@ private:
 	static Mutex m_pending_messages_lock;
 	static map<string, pending_message> m_pending_messages;
 
-	static const uint64_t m_session_timeout_ns = 60 * 1000000000LL;
+	static const uint64_t m_session_timeout_ns = 3600 * 1000000000LL;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
