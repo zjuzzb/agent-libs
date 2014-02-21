@@ -686,7 +686,7 @@ double sinsp_host_metrics::get_capacity_score()
 	}
 	else
 	{
-		return 0;
+		return -1;
 	}
 }
 
@@ -698,7 +698,7 @@ double sinsp_host_metrics::get_stolen_score()
 	}
 	else
 	{
-		return 0;
+		return -1;
 	}
 }
 
