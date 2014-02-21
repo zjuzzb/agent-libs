@@ -109,3 +109,11 @@ uninstall
 curl -s http://download.draios.com/$REPOSITORY-debug/install-agent | bash -s access_key
 install_tests
 smoke_tests
+
+uninstall
+curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
+sysdig -n 50
+
+uninstall
+curl -s http://download.draios.com/$REPOSITORY-debug/install-sysdig | bash
+sysdig -n 50
