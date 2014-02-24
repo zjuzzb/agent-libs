@@ -30,11 +30,13 @@ public:
 	{
 	public:
 		pending_message():
+			m_new_message(false),
 			m_close(false)
 		{
 		}
 
 		string m_input;
+		bool m_new_message;
 		bool m_close;
 	};
 
@@ -62,7 +64,7 @@ private:
 	static Mutex m_pending_messages_lock;
 	static map<string, pending_message> m_pending_messages;
 
-	static const uint64_t m_session_timeout_ns = 3600 * 1000000000LL;
+	static const uint64_t m_session_timeout_ns = 600 * 1000000000LL;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

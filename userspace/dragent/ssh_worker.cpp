@@ -160,6 +160,11 @@ void ssh_worker::run()
 		pending_message message;
 		if(get_pending_messages(m_token, &message))
 		{
+			if(message.m_new_message)
+			{
+				m_last_activity_ns = dragent_configuration::get_current_time_ns();
+			}
+
 			if(message.m_close)
 			{
 				g_log->information("Received SSH close message, aborting session");
@@ -168,7 +173,6 @@ void ssh_worker::run()
 
 			if(!message.m_input.empty())
 			{
-				m_last_activity_ns = dragent_configuration::get_current_time_ns();
 				write_to_channel(message.m_input);
 			}
 		}
@@ -299,6 +303,7 @@ bool ssh_worker::get_pending_messages(const string& token, pending_message *mess
 	{
 		*message = it->second;
 		it->second.m_input.clear();
+		it->second.m_new_message = false;
 		return true;
 	}
 
@@ -315,6 +320,7 @@ void ssh_worker::request_input(const string& token, const string& input)
 		g_log->information("Adding new input to session " + token);
 
 		it->second.m_input.append(input);
+		it->second.m_new_message = true;
 	}
 	else
 	{
@@ -344,6 +350,7 @@ void ssh_worker::request_close(const string& token)
 	if(it != m_pending_messages.end())
 	{
 		it->second.m_close = true;
+		it->second.m_new_message = true;
 	}
 	else
 	{
