@@ -34,6 +34,8 @@ public:
 	static bool get_aws_metadata(aws_metadata* metadata);
 	static uint64_t get_current_time_ns();
 
+	static const uint32_t RESTART_INTERVAL = 86400;
+
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;

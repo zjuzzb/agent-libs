@@ -1,4 +1,5 @@
 #include "monitor.h"
+#include "configuration.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -11,6 +12,18 @@ static void g_monitor_signal_callback(int sig)
 	{
 		g_signal_received = sig;
 	}
+}
+
+static uint32_t get_restart_interval()
+{
+	Poco::Random rnd;
+	rnd.seed();
+
+	//
+	// Return a number around RESTART_INTERVAL
+	//
+	return dragent_configuration::RESTART_INTERVAL - 
+		rnd.next(dragent_configuration::RESTART_INTERVAL / 10);
 }
 
 void run_monitor(const string& pidfile)
@@ -37,6 +50,8 @@ void run_monitor(const string& pidfile)
 		return;
 	}
 
+	uint32_t seconds_to_restart = get_restart_interval();
+
 	//
 	// Father. It will be the monitor process
 	//
@@ -56,6 +71,17 @@ void run_monitor(const string& pidfile)
 			// Child still alive
 			//
 			sleep(1);
+
+			//
+			// Every now and then, kill dragent just in case of some leak or
+			// loop bug
+			//
+			if(--seconds_to_restart == 0)
+			{
+				kill(child_pid, SIGKILL);
+				seconds_to_restart = get_restart_interval();
+			}
+
 			continue;
 		}
 

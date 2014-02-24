@@ -194,7 +194,7 @@ protected:
 			//
 			// We want to terminate when the monitor is killed by init
 			//
-			prctl(PR_SET_PDEATHSIG, SIGTERM);
+			prctl(PR_SET_PDEATHSIG, SIGKILL);
 		}
 
 		struct sigaction sa;

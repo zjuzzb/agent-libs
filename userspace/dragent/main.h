@@ -71,6 +71,7 @@
 #include "Poco/Pipe.h"
 #include "Poco/PipeStream.h"
 #include "Poco/StringTokenizer.h"
+#include "Poco/Random.h"
 
 #include <sinsp.h>
 #include "config.h"
