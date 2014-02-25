@@ -54,12 +54,19 @@ function unsupported {
     exit 1	
 }
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 ACCESS_KEY"
-    exit 1
+function help {
+    echo "Usage: $0 access_key [custom_group]"
+    echo "  access_key: Secret access key, as shown in app.draios.com"
+    echo "  custom_group: If set, this host will belong to a custom group with the same name"
+    exit 1	
+}
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+	help
 fi
 
 ACCESS_KEY="$1"
+CUSTOM_GROUP="$2"
 
 if [ $(id -u) != 0 ]; then
     echo "Installer must be run as root (or with sudo)."
@@ -125,12 +132,22 @@ else
 	unsupported
 fi
 
-echo "* Installing access key"
+echo "* Setting access key"
 
 if ! grep ^customerid /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
 	echo "customerid = $ACCESS_KEY" >> /opt/draios/bin/dragent.properties
+else
+	sed -i "s/^customerid.*/customerid = $ACCESS_KEY/g" /opt/draios/bin/dragent.properties
 fi
 
-sed -i "s/^customerid.*/customerid = $ACCESS_KEY/g" /opt/draios/bin/dragent.properties
+if [ ! -z "$CUSTOM_GROUP" ]; then
+	echo "* Setting custom group"
+
+	if ! grep ^ui.customgroup /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
+		echo "ui.customgroup = $CUSTOM_GROUP" >> /opt/draios/bin/dragent.properties
+	else
+		sed -i "s/^ui\.customgroup.*/ui.customgroup = $CUSTOM_GROUP/g" /opt/draios/bin/dragent.properties
+	fi
+fi
 
 service dragent restart
