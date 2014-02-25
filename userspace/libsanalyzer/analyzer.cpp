@@ -189,6 +189,8 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		fclose(m_protobuf_fp);
 	}
+
+	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::on_capture_start()
