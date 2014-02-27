@@ -665,12 +665,6 @@ void sinsp_host_metrics::add_capacity_score(float capacity_score,
 											float stolen_capacity_score,
 											uint32_t n_server_transactions)
 {
-	if(capacity_score > m_tot_capacity_score)
-	{
-		m_tot_capacity_score = capacity_score;
-		m_tot_stolen_capacity_score = stolen_capacity_score;
-	}
-/*
 	if(capacity_score > 0)
 	{
 		m_tot_capacity_score += (n_server_transactions * (100 / capacity_score));
@@ -682,13 +676,10 @@ void sinsp_host_metrics::add_capacity_score(float capacity_score,
 	}
 
 	m_tot_server_transactions += n_server_transactions;
-*/
 }
 
 double sinsp_host_metrics::get_capacity_score()
 {
-	return m_tot_capacity_score;
-/*
 	if(m_tot_capacity_score != 0)
 	{
 		return m_tot_server_transactions / m_tot_capacity_score * 100;
@@ -697,14 +688,10 @@ double sinsp_host_metrics::get_capacity_score()
 	{
 		return -1;
 	}
-*/
 }
 
 double sinsp_host_metrics::get_stolen_score()
 {
-	return m_tot_stolen_capacity_score;
-
-/*
 	if(m_tot_stolen_capacity_score != 0)
 	{
 		return m_tot_server_transactions / m_tot_stolen_capacity_score * 100;
@@ -713,7 +700,6 @@ double sinsp_host_metrics::get_stolen_score()
 	{
 		return -1;
 	}
-*/
 }
 
 #endif // HAS_ANALYZER
