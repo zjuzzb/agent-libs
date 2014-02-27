@@ -55,10 +55,16 @@ function unsupported {
 }
 
 function help {
-    echo "Usage: $0 access_key [custom_group]"
+    echo "Usage: $0 access_key [tags]"
     echo "  access_key: Secret access key, as shown in app.draios.com"
-    echo "  custom_group: If set, this host will belong to a custom group with the same name"
-    exit 1	
+    echo "  tags: List of tags for this host. If set, tags can be used in"
+    echo "        the Draios map. The syntax can be a comma-separated list of"
+    echo "        TAG_NAME:TAG_VALUE or a single TAG_VALUE (in which case the tag"
+    echo "        name \"Tag\" is implicitly assumed)."
+    echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
+    echo "        and \"webserver\" are all valid alternatives."
+    echo
+    exit 1
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -66,7 +72,7 @@ if [[ $# -lt 1 || $# -gt 2 ]]; then
 fi
 
 ACCESS_KEY="$1"
-CUSTOM_GROUP="$2"
+TAGS="$2"
 
 if [ $(id -u) != 0 ]; then
     echo "Installer must be run as root (or with sudo)."
@@ -140,13 +146,13 @@ else
 	sed -i "s/^customerid.*/customerid = $ACCESS_KEY/g" /opt/draios/bin/dragent.properties
 fi
 
-if [ ! -z "$CUSTOM_GROUP" ]; then
-	echo "* Setting custom group"
+if [ ! -z "$TAGS" ]; then
+	echo "* Setting tags"
 
-	if ! grep ^ui.customgroup /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
-		echo "ui.customgroup = $CUSTOM_GROUP" >> /opt/draios/bin/dragent.properties
+	if ! grep ^ui.tags /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
+		echo "ui.tags = $TAGS" >> /opt/draios/bin/dragent.properties
 	else
-		sed -i "s/^ui\.customgroup.*/ui.customgroup = $CUSTOM_GROUP/g" /opt/draios/bin/dragent.properties
+		sed -i "s/^ui\.tags.*/ui.tags = $TAGS/g" /opt/draios/bin/dragent.properties
 	fi
 fi
 
