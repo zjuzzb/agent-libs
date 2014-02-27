@@ -112,10 +112,10 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_host_custom_name(m_configuration->m_host_custom_name);
 	}
 
-	if(m_configuration->m_host_custom_group != "")
+	if(m_configuration->m_host_tags != "")
 	{
-		g_log->information("Setting custom group=" + m_configuration->m_host_custom_group);
-		m_analyzer->get_configuration()->set_host_custom_group(m_configuration->m_host_custom_group);
+		g_log->information("Setting tags=" + m_configuration->m_host_tags);
+		m_analyzer->get_configuration()->set_host_tags(m_configuration->m_host_tags);
 	}
 
 	if(m_configuration->m_host_custom_map != "")

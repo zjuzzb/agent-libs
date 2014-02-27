@@ -42,8 +42,8 @@ public:
 	void set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds);
 	const string& get_host_custom_name() const;
 	void set_host_custom_name(string host_custom_name);
-	const string& get_host_custom_group() const;
-	void set_host_custom_group(string host_custom_group);
+	const string& get_host_tags() const;
+	void set_host_tags(const string& host_tags);
 	const bool get_host_hidden() const;
 	void set_host_hidden(bool host_hidden);
 	const string& get_hidden_processes() const;
@@ -70,7 +70,7 @@ private:
 	uint32_t m_drop_lower_threshold;
 	uint32_t m_drop_treshold_consecutive_seconds;
 	string m_host_custom_name;
-	string m_host_custom_group;
+	string m_host_tags;
 	bool m_host_hidden;
 	string m_hidden_processes;
 	string m_host_custom_map;

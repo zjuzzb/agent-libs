@@ -1722,7 +1722,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(m_n_flushes == 1)
 			{
 				m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
-				m_metrics->set_host_custom_group(m_configuration->get_host_custom_group());
+				m_metrics->set_host_tags(m_configuration->get_host_tags());
 				m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
 				m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
 				m_metrics->set_host_custom_map(m_configuration->get_host_custom_map());

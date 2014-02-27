@@ -2705,17 +2705,17 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* release_host_custom_name();
   inline void set_allocated_host_custom_name(::std::string* host_custom_name);
 
-  // optional string host_custom_group = 12;
-  inline bool has_host_custom_group() const;
-  inline void clear_host_custom_group();
-  static const int kHostCustomGroupFieldNumber = 12;
-  inline const ::std::string& host_custom_group() const;
-  inline void set_host_custom_group(const ::std::string& value);
-  inline void set_host_custom_group(const char* value);
-  inline void set_host_custom_group(const char* value, size_t size);
-  inline ::std::string* mutable_host_custom_group();
-  inline ::std::string* release_host_custom_group();
-  inline void set_allocated_host_custom_group(::std::string* host_custom_group);
+  // optional string host_tags = 12;
+  inline bool has_host_tags() const;
+  inline void clear_host_tags();
+  static const int kHostTagsFieldNumber = 12;
+  inline const ::std::string& host_tags() const;
+  inline void set_host_tags(const ::std::string& value);
+  inline void set_host_tags(const char* value);
+  inline void set_host_tags(const char* value, size_t size);
+  inline ::std::string* mutable_host_tags();
+  inline ::std::string* release_host_tags();
+  inline void set_allocated_host_tags(::std::string* host_tags);
 
   // optional string host_custom_map = 13;
   inline bool has_host_custom_map() const;
@@ -2774,8 +2774,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_sampling_ratio();
   inline void set_has_host_custom_name();
   inline void clear_has_host_custom_name();
-  inline void set_has_host_custom_group();
-  inline void clear_has_host_custom_group();
+  inline void set_has_host_tags();
+  inline void clear_has_host_tags();
   inline void set_has_host_custom_map();
   inline void clear_has_host_custom_map();
   inline void set_has_is_host_hidden();
@@ -2797,7 +2797,7 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
-  ::std::string* host_custom_group_;
+  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
   ::std::string* host_custom_map_;
@@ -7430,73 +7430,73 @@ inline void metrics::set_allocated_host_custom_name(::std::string* host_custom_n
   }
 }
 
-// optional string host_custom_group = 12;
-inline bool metrics::has_host_custom_group() const {
+// optional string host_tags = 12;
+inline bool metrics::has_host_tags() const {
   return (_has_bits_[0] & 0x00000800u) != 0;
 }
-inline void metrics::set_has_host_custom_group() {
+inline void metrics::set_has_host_tags() {
   _has_bits_[0] |= 0x00000800u;
 }
-inline void metrics::clear_has_host_custom_group() {
+inline void metrics::clear_has_host_tags() {
   _has_bits_[0] &= ~0x00000800u;
 }
-inline void metrics::clear_host_custom_group() {
-  if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
-    host_custom_group_->clear();
+inline void metrics::clear_host_tags() {
+  if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
+    host_tags_->clear();
   }
-  clear_has_host_custom_group();
+  clear_has_host_tags();
 }
-inline const ::std::string& metrics::host_custom_group() const {
-  return *host_custom_group_;
+inline const ::std::string& metrics::host_tags() const {
+  return *host_tags_;
 }
-inline void metrics::set_host_custom_group(const ::std::string& value) {
-  set_has_host_custom_group();
-  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_group_ = new ::std::string;
+inline void metrics::set_host_tags(const ::std::string& value) {
+  set_has_host_tags();
+  if (host_tags_ == &::google::protobuf::internal::kEmptyString) {
+    host_tags_ = new ::std::string;
   }
-  host_custom_group_->assign(value);
+  host_tags_->assign(value);
 }
-inline void metrics::set_host_custom_group(const char* value) {
-  set_has_host_custom_group();
-  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_group_ = new ::std::string;
+inline void metrics::set_host_tags(const char* value) {
+  set_has_host_tags();
+  if (host_tags_ == &::google::protobuf::internal::kEmptyString) {
+    host_tags_ = new ::std::string;
   }
-  host_custom_group_->assign(value);
+  host_tags_->assign(value);
 }
-inline void metrics::set_host_custom_group(const char* value, size_t size) {
-  set_has_host_custom_group();
-  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_group_ = new ::std::string;
+inline void metrics::set_host_tags(const char* value, size_t size) {
+  set_has_host_tags();
+  if (host_tags_ == &::google::protobuf::internal::kEmptyString) {
+    host_tags_ = new ::std::string;
   }
-  host_custom_group_->assign(reinterpret_cast<const char*>(value), size);
+  host_tags_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* metrics::mutable_host_custom_group() {
-  set_has_host_custom_group();
-  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_group_ = new ::std::string;
+inline ::std::string* metrics::mutable_host_tags() {
+  set_has_host_tags();
+  if (host_tags_ == &::google::protobuf::internal::kEmptyString) {
+    host_tags_ = new ::std::string;
   }
-  return host_custom_group_;
+  return host_tags_;
 }
-inline ::std::string* metrics::release_host_custom_group() {
-  clear_has_host_custom_group();
-  if (host_custom_group_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* metrics::release_host_tags() {
+  clear_has_host_tags();
+  if (host_tags_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = host_custom_group_;
-    host_custom_group_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = host_tags_;
+    host_tags_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void metrics::set_allocated_host_custom_group(::std::string* host_custom_group) {
-  if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
-    delete host_custom_group_;
+inline void metrics::set_allocated_host_tags(::std::string* host_tags) {
+  if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
+    delete host_tags_;
   }
-  if (host_custom_group) {
-    set_has_host_custom_group();
-    host_custom_group_ = host_custom_group;
+  if (host_tags) {
+    set_has_host_tags();
+    host_tags_ = host_tags;
   } else {
-    clear_has_host_custom_group();
-    host_custom_group_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_host_tags();
+    host_tags_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

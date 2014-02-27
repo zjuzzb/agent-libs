@@ -213,14 +213,14 @@ void sinsp_configuration::set_host_custom_name(string host_custom_name)
 	m_host_custom_name = host_custom_name;
 }
 
-const string& sinsp_configuration::get_host_custom_group() const
+const string& sinsp_configuration::get_host_tags() const
 {
-	return m_host_custom_group;
+	return m_host_tags;
 }
 
-void sinsp_configuration::set_host_custom_group(string host_custom_group)
+void sinsp_configuration::set_host_tags(const string& host_tags)
 {
-	m_host_custom_group = host_custom_group;
+	m_host_tags = host_tags;
 }
 
 const bool sinsp_configuration::get_host_hidden() const

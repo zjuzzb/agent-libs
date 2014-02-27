@@ -463,7 +463,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, ipv4_network_interfaces_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, sampling_ratio_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_custom_name_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_custom_group_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_tags_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_custom_map_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, is_host_hidden_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, hidden_processes_),
@@ -816,7 +816,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "\004\0224\n\010counters\030\010 \002(\0132\".draiosproto.connec"
     "tion_categories\"T\n\026ipv4_network_interfac"
     "e\022\014\n\004name\030\001 \002(\t\022\014\n\004addr\030\002 \002(\r\022\017\n\007netmask"
-    "\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"\213\004\n\007metrics\022\024\n\014tim"
+    "\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"\203\004\n\007metrics\022\024\n\014tim"
     "estamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013c"
     "ustomer_id\030\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021.dra"
     "iosproto.host\022&\n\010programs\030\t \003(\0132\024.draios"
@@ -826,38 +826,37 @@ void protobuf_AddDesc_draios_2eproto() {
     ".draiosproto.ipv4_connection\022D\n\027ipv4_net"
     "work_interfaces\030\010 \003(\0132#.draiosproto.ipv4"
     "_network_interface\022\026\n\016sampling_ratio\030\n \001"
-    "(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\031\n\021host_cus"
-    "tom_group\030\014 \001(\t\022\027\n\017host_custom_map\030\r \001(\t"
-    "\022\026\n\016is_host_hidden\030\016 \001(\010\022\030\n\020hidden_proce"
-    "sses\030\017 \001(\t\022\017\n\007version\030\020 \001(\t\"s\n\014dump_requ"
-    "est\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030"
-    "\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_n"
-    "s\030\004 \002(\004\022\017\n\007filters\030\005 \001(\t\"n\n\rdump_respons"
-    "e\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
-    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\017\n\007content\030\004 \001("
-    "\014\022\r\n\005error\030\005 \001(\t\"\257\001\n\020ssh_open_channel\022\024\n"
-    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
-    "\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004u"
-    "ser\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t"
-    "\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010s"
-    "sh_data\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
-    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030"
-    "\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013ex"
-    "it_status\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014"
-    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
-    "\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023au"
-    "to_update_request\022\024\n\014timestamp_ns\030\001 \002(\004\022"
-    "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
-    "*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_I"
-    "PV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022"
-    "\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLI"
-    "ENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_U"
-    "NIX_CLIENT\020 *\224\001\n\014message_type\022\013\n\007METRICS"
-    "\020\001\022\020\n\014DUMP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022"
-    "\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANN"
-    "EL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUES"
-    "T\020\tB$\n\031com.draios.model.protobufB\005AgentH"
-    "\001", 5441);
+    "(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\021\n\thost_tag"
+    "s\030\014 \001(\t\022\027\n\017host_custom_map\030\r \001(\t\022\026\n\016is_h"
+    "ost_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001"
+    "(\t\022\017\n\007version\030\020 \001(\t\"s\n\014dump_request\022\024\n\014t"
+    "imestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n"
+    "\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \002(\004\022"
+    "\017\n\007filters\030\005 \001(\t\"n\n\rdump_response\022\024\n\014tim"
+    "estamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013c"
+    "ustomer_id\030\003 \001(\t\022\017\n\007content\030\004 \001(\014\022\r\n\005err"
+    "or\030\005 \001(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timesta"
+    "mp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custo"
+    "mer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002("
+    "\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npass"
+    "phrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022"
+    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
+    "\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n"
+    "\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_statu"
+    "s\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestam"
+    "p_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custom"
+    "er_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_updat"
+    "e_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachi"
+    "ne_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013net"
+    "workrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERV"
+    "ER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UN"
+    "IX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n"
+    "\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIE"
+    "NT\020 *\224\001\n\014message_type\022\013\n\007METRICS\020\001\022\020\n\014DU"
+    "MP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_O"
+    "PEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010"
+    "SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n\031c"
+    "om.draios.model.protobufB\005AgentH\001", 5433);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -8603,7 +8602,7 @@ const int metrics::kIpv4ConnectionsFieldNumber;
 const int metrics::kIpv4NetworkInterfacesFieldNumber;
 const int metrics::kSamplingRatioFieldNumber;
 const int metrics::kHostCustomNameFieldNumber;
-const int metrics::kHostCustomGroupFieldNumber;
+const int metrics::kHostTagsFieldNumber;
 const int metrics::kHostCustomMapFieldNumber;
 const int metrics::kIsHostHiddenFieldNumber;
 const int metrics::kHiddenProcessesFieldNumber;
@@ -8633,7 +8632,7 @@ void metrics::SharedCtor() {
   hostinfo_ = NULL;
   sampling_ratio_ = 0u;
   host_custom_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  host_custom_group_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  host_tags_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   host_custom_map_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   is_host_hidden_ = false;
   hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
@@ -8655,8 +8654,8 @@ void metrics::SharedDtor() {
   if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
     delete host_custom_name_;
   }
-  if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
-    delete host_custom_group_;
+  if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
+    delete host_tags_;
   }
   if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
     delete host_custom_map_;
@@ -8717,9 +8716,9 @@ void metrics::Clear() {
         host_custom_name_->clear();
       }
     }
-    if (has_host_custom_group()) {
-      if (host_custom_group_ != &::google::protobuf::internal::kEmptyString) {
-        host_custom_group_->clear();
+    if (has_host_tags()) {
+      if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
+        host_tags_->clear();
       }
     }
     if (has_host_custom_map()) {
@@ -8921,19 +8920,19 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(98)) goto parse_host_custom_group;
+        if (input->ExpectTag(98)) goto parse_host_tags;
         break;
       }
 
-      // optional string host_custom_group = 12;
+      // optional string host_tags = 12;
       case 12: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_host_custom_group:
+         parse_host_tags:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_host_custom_group()));
+                input, this->mutable_host_tags()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->host_custom_group().data(), this->host_custom_group().length(),
+            this->host_tags().data(), this->host_tags().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
@@ -9100,13 +9099,13 @@ void metrics::SerializeWithCachedSizes(
       11, this->host_custom_name(), output);
   }
 
-  // optional string host_custom_group = 12;
-  if (has_host_custom_group()) {
+  // optional string host_tags = 12;
+  if (has_host_tags()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->host_custom_group().data(), this->host_custom_group().length(),
+      this->host_tags().data(), this->host_tags().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      12, this->host_custom_group(), output);
+      12, this->host_tags(), output);
   }
 
   // optional string host_custom_map = 13;
@@ -9231,14 +9230,14 @@ void metrics::SerializeWithCachedSizes(
         11, this->host_custom_name(), target);
   }
 
-  // optional string host_custom_group = 12;
-  if (has_host_custom_group()) {
+  // optional string host_tags = 12;
+  if (has_host_tags()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->host_custom_group().data(), this->host_custom_group().length(),
+      this->host_tags().data(), this->host_tags().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        12, this->host_custom_group(), target);
+        12, this->host_tags(), target);
   }
 
   // optional string host_custom_map = 13;
@@ -9331,11 +9330,11 @@ int metrics::ByteSize() const {
           this->host_custom_name());
     }
 
-    // optional string host_custom_group = 12;
-    if (has_host_custom_group()) {
+    // optional string host_tags = 12;
+    if (has_host_tags()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->host_custom_group());
+          this->host_tags());
     }
 
     // optional string host_custom_map = 13;
@@ -9456,8 +9455,8 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_host_custom_name()) {
       set_host_custom_name(from.host_custom_name());
     }
-    if (from.has_host_custom_group()) {
-      set_host_custom_group(from.host_custom_group());
+    if (from.has_host_tags()) {
+      set_host_tags(from.host_tags());
     }
     if (from.has_host_custom_map()) {
       set_host_custom_map(from.host_custom_map());
@@ -9524,7 +9523,7 @@ void metrics::Swap(metrics* other) {
     ipv4_network_interfaces_.Swap(&other->ipv4_network_interfaces_);
     std::swap(sampling_ratio_, other->sampling_ratio_);
     std::swap(host_custom_name_, other->host_custom_name_);
-    std::swap(host_custom_group_, other->host_custom_group_);
+    std::swap(host_tags_, other->host_tags_);
     std::swap(host_custom_map_, other->host_custom_map_);
     std::swap(is_host_hidden_, other->is_host_hidden_);
     std::swap(hidden_processes_, other->hidden_processes_);
