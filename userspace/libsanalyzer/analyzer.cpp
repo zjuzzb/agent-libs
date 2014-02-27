@@ -878,6 +878,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Inclusion logic
 			//
+
 			// 1. Keep:
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
