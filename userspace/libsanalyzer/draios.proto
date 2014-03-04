@@ -229,7 +229,7 @@ enum message_type {
     DUMP_RESPONSE = 3;
     SSH_OPEN_CHANNEL = 6;
     SSH_CLOSE_CHANNEL = 7;
-    SSH_DATA = 8;  
+    SSH_DATA = 8;
     AUTO_UPDATE_REQUEST = 9;
 }
 
@@ -261,6 +261,7 @@ message dump_request {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required uint64 duration_ns = 4; // The duration for the capture in ns
     optional string filters = 5; // Dump filters
+    required string token = 6; // The token associated with the request
 }
 
 message dump_response {
@@ -269,6 +270,7 @@ message dump_response {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     optional bytes content = 4; // The bynary dump file
     optional string error = 5; // Dump errors
+    required string token = 6; // The token associated with the request
 }
 
 message ssh_open_channel {

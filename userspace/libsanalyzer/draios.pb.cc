@@ -481,12 +481,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(metrics));
   dump_request_descriptor_ = file->message_type(18);
-  static const int dump_request_offsets_[5] = {
+  static const int dump_request_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, customer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, duration_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, filters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request, token_),
   };
   dump_request_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -500,12 +501,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request));
   dump_response_descriptor_ = file->message_type(19);
-  static const int dump_response_offsets_[5] = {
+  static const int dump_response_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, customer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, content_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, error_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, token_),
   };
   dump_response_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -829,34 +831,35 @@ void protobuf_AddDesc_draios_2eproto() {
     "(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\021\n\thost_tag"
     "s\030\014 \001(\t\022\027\n\017host_custom_map\030\r \001(\t\022\026\n\016is_h"
     "ost_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001"
-    "(\t\022\017\n\007version\030\020 \001(\t\"s\n\014dump_request\022\024\n\014t"
-    "imestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n"
-    "\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \002(\004\022"
-    "\017\n\007filters\030\005 \001(\t\"n\n\rdump_response\022\024\n\014tim"
-    "estamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013c"
-    "ustomer_id\030\003 \001(\t\022\017\n\007content\030\004 \001(\014\022\r\n\005err"
-    "or\030\005 \001(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timesta"
-    "mp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custo"
-    "mer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002("
-    "\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npass"
-    "phrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022"
-    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
-    "\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n"
-    "\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_statu"
-    "s\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestam"
-    "p_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custom"
-    "er_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_updat"
-    "e_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachi"
-    "ne_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013net"
-    "workrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERV"
-    "ER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UN"
-    "IX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n"
-    "\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIE"
-    "NT\020 *\224\001\n\014message_type\022\013\n\007METRICS\020\001\022\020\n\014DU"
-    "MP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_O"
-    "PEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010"
-    "SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n\031c"
-    "om.draios.model.protobufB\005AgentH\001", 5433);
+    "(\t\022\017\n\007version\030\020 \001(\t\"\202\001\n\014dump_request\022\024\n\014"
+    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
+    "\n\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \002(\004"
+    "\022\017\n\007filters\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"}\n\rdump"
+    "_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachi"
+    "ne_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\017\n\007cont"
+    "ent\030\004 \001(\014\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\""
+    "\257\001\n\020ssh_open_channel\022\024\n\014timestamp_ns\030\001 \002"
+    "(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 "
+    "\001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010pass"
+    "word\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 "
+    "\001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timest"
+    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
+    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001"
+    "(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a"
+    "\n\021ssh_close_channel\022\024\n\014timestamp_ns\030\001 \002("
+    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
+    "(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_update_request"
+    "\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002"
+    "(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013networkrole\022"
+    "\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025I"
+    "S_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER"
+    "\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOT"
+    "E_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\224\001\n\014"
+    "message_type\022\013\n\007METRICS\020\001\022\020\n\014DUMP_REQUES"
+    "T\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANN"
+    "EL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020"
+    "\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n\031com.draios"
+    ".model.protobufB\005AgentH\001", 5464);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -9551,6 +9554,7 @@ const int dump_request::kMachineIdFieldNumber;
 const int dump_request::kCustomerIdFieldNumber;
 const int dump_request::kDurationNsFieldNumber;
 const int dump_request::kFiltersFieldNumber;
+const int dump_request::kTokenFieldNumber;
 #endif  // !_MSC_VER
 
 dump_request::dump_request()
@@ -9574,6 +9578,7 @@ void dump_request::SharedCtor() {
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   duration_ns_ = GOOGLE_ULONGLONG(0);
   filters_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -9590,6 +9595,9 @@ void dump_request::SharedDtor() {
   }
   if (filters_ != &::google::protobuf::internal::kEmptyString) {
     delete filters_;
+  }
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
   }
   if (this != default_instance_) {
   }
@@ -9633,6 +9641,11 @@ void dump_request::Clear() {
     if (has_filters()) {
       if (filters_ != &::google::protobuf::internal::kEmptyString) {
         filters_->clear();
+      }
+    }
+    if (has_token()) {
+      if (token_ != &::google::protobuf::internal::kEmptyString) {
+        token_->clear();
       }
     }
   }
@@ -9724,6 +9737,23 @@ bool dump_request::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_token;
+        break;
+      }
+
+      // required string token = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_token:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_token()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->token().data(), this->token().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -9783,6 +9813,15 @@ void dump_request::SerializeWithCachedSizes(
       5, this->filters(), output);
   }
 
+  // required string token = 6;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->token().data(), this->token().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      6, this->token(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -9831,6 +9870,16 @@ void dump_request::SerializeWithCachedSizes(
         5, this->filters(), target);
   }
 
+  // required string token = 6;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->token().data(), this->token().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        6, this->token(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -9877,6 +9926,13 @@ int dump_request::ByteSize() const {
           this->filters());
     }
 
+    // required string token = 6;
+    if (has_token()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->token());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -9919,6 +9975,9 @@ void dump_request::MergeFrom(const dump_request& from) {
     if (from.has_filters()) {
       set_filters(from.filters());
     }
+    if (from.has_token()) {
+      set_token(from.token());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -9936,7 +9995,7 @@ void dump_request::CopyFrom(const dump_request& from) {
 }
 
 bool dump_request::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
+  if ((_has_bits_[0] & 0x0000002b) != 0x0000002b) return false;
 
   return true;
 }
@@ -9948,6 +10007,7 @@ void dump_request::Swap(dump_request* other) {
     std::swap(customer_id_, other->customer_id_);
     std::swap(duration_ns_, other->duration_ns_);
     std::swap(filters_, other->filters_);
+    std::swap(token_, other->token_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -9971,6 +10031,7 @@ const int dump_response::kMachineIdFieldNumber;
 const int dump_response::kCustomerIdFieldNumber;
 const int dump_response::kContentFieldNumber;
 const int dump_response::kErrorFieldNumber;
+const int dump_response::kTokenFieldNumber;
 #endif  // !_MSC_VER
 
 dump_response::dump_response()
@@ -9994,6 +10055,7 @@ void dump_response::SharedCtor() {
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -10013,6 +10075,9 @@ void dump_response::SharedDtor() {
   }
   if (error_ != &::google::protobuf::internal::kEmptyString) {
     delete error_;
+  }
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
   }
   if (this != default_instance_) {
   }
@@ -10060,6 +10125,11 @@ void dump_response::Clear() {
     if (has_error()) {
       if (error_ != &::google::protobuf::internal::kEmptyString) {
         error_->clear();
+      }
+    }
+    if (has_token()) {
+      if (token_ != &::google::protobuf::internal::kEmptyString) {
+        token_->clear();
       }
     }
   }
@@ -10149,6 +10219,23 @@ bool dump_response::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_token;
+        break;
+      }
+
+      // required string token = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_token:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_token()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->token().data(), this->token().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -10209,6 +10296,15 @@ void dump_response::SerializeWithCachedSizes(
       5, this->error(), output);
   }
 
+  // required string token = 6;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->token().data(), this->token().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      6, this->token(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -10259,6 +10355,16 @@ void dump_response::SerializeWithCachedSizes(
         5, this->error(), target);
   }
 
+  // required string token = 6;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->token().data(), this->token().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        6, this->token(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -10305,6 +10411,13 @@ int dump_response::ByteSize() const {
           this->error());
     }
 
+    // required string token = 6;
+    if (has_token()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->token());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -10347,6 +10460,9 @@ void dump_response::MergeFrom(const dump_response& from) {
     if (from.has_error()) {
       set_error(from.error());
     }
+    if (from.has_token()) {
+      set_token(from.token());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -10364,7 +10480,7 @@ void dump_response::CopyFrom(const dump_response& from) {
 }
 
 bool dump_response::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+  if ((_has_bits_[0] & 0x00000023) != 0x00000023) return false;
 
   return true;
 }
@@ -10376,6 +10492,7 @@ void dump_response::Swap(dump_response* other) {
     std::swap(customer_id_, other->customer_id_);
     std::swap(content_, other->content_);
     std::swap(error_, other->error_);
+    std::swap(token_, other->token_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

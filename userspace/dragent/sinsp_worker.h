@@ -23,12 +23,14 @@ public:
 	class dump_job_request
 	{
 	public:
-		dump_job_request(uint64_t duration_ns, const string& filter):
+		dump_job_request(const string& token, uint64_t duration_ns, const string& filter):
+			m_token(token),
 			m_duration_ns(duration_ns),
 			m_filter(filter)
 		{
 		}
 
+		string m_token;
 		uint64_t m_duration_ns;
 		string m_filter;
 	};
@@ -79,6 +81,7 @@ private:
 			}
 		}
 
+		string m_token;
 		sinsp_dumper* m_dumper;
 		sinsp_filter* m_filter;
 		uint64_t m_start_ns;
@@ -89,10 +92,10 @@ private:
 		uint64_t m_n_events;
 	};
 
-	void prepare_response(draiosproto::dump_response* response);
+	void prepare_response(const string& token, draiosproto::dump_response* response);
 	void queue_response(const draiosproto::dump_response& response);
-	void send_error(const string& error);
-	void send_file(const string& filename);
+	void send_error(const string& token, const string& error);
+	void send_file(const string& token, const string& filename);
 	static std::streamsize copy_file(FileInputStream* istr, std::string* str);
 	void run_dump_jobs(sinsp_evt* ev);
 	void start_new_jobs(uint64_t ts);

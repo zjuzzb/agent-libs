@@ -2920,6 +2920,18 @@ class dump_request : public ::google::protobuf::Message {
   inline ::std::string* release_filters();
   inline void set_allocated_filters(::std::string* filters);
 
+  // required string token = 6;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 6;
+  inline const ::std::string& token() const;
+  inline void set_token(const ::std::string& value);
+  inline void set_token(const char* value);
+  inline void set_token(const char* value, size_t size);
+  inline ::std::string* mutable_token();
+  inline ::std::string* release_token();
+  inline void set_allocated_token(::std::string* token);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_request)
  private:
   inline void set_has_timestamp_ns();
@@ -2932,6 +2944,8 @@ class dump_request : public ::google::protobuf::Message {
   inline void clear_has_duration_ns();
   inline void set_has_filters();
   inline void clear_has_filters();
+  inline void set_has_token();
+  inline void clear_has_token();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2940,9 +2954,10 @@ class dump_request : public ::google::protobuf::Message {
   ::std::string* customer_id_;
   ::google::protobuf::uint64 duration_ns_;
   ::std::string* filters_;
+  ::std::string* token_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -3062,6 +3077,18 @@ class dump_response : public ::google::protobuf::Message {
   inline ::std::string* release_error();
   inline void set_allocated_error(::std::string* error);
 
+  // required string token = 6;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 6;
+  inline const ::std::string& token() const;
+  inline void set_token(const ::std::string& value);
+  inline void set_token(const char* value);
+  inline void set_token(const char* value, size_t size);
+  inline ::std::string* mutable_token();
+  inline ::std::string* release_token();
+  inline void set_allocated_token(::std::string* token);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_response)
  private:
   inline void set_has_timestamp_ns();
@@ -3074,6 +3101,8 @@ class dump_response : public ::google::protobuf::Message {
   inline void clear_has_content();
   inline void set_has_error();
   inline void clear_has_error();
+  inline void set_has_token();
+  inline void clear_has_token();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3082,9 +3111,10 @@ class dump_response : public ::google::protobuf::Message {
   ::std::string* customer_id_;
   ::std::string* content_;
   ::std::string* error_;
+  ::std::string* token_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7990,6 +8020,76 @@ inline void dump_request::set_allocated_filters(::std::string* filters) {
   }
 }
 
+// required string token = 6;
+inline bool dump_request::has_token() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void dump_request::set_has_token() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void dump_request::clear_has_token() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void dump_request::clear_token() {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    token_->clear();
+  }
+  clear_has_token();
+}
+inline const ::std::string& dump_request::token() const {
+  return *token_;
+}
+inline void dump_request::set_token(const ::std::string& value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void dump_request::set_token(const char* value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void dump_request::set_token(const char* value, size_t size) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_request::mutable_token() {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  return token_;
+}
+inline ::std::string* dump_request::release_token() {
+  clear_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = token_;
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_request::set_allocated_token(::std::string* token) {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
+  }
+  if (token) {
+    set_has_token();
+    token_ = token;
+  } else {
+    clear_has_token();
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 // -------------------------------------------------------------------
 
 // dump_response
@@ -8293,6 +8393,76 @@ inline void dump_response::set_allocated_error(::std::string* error) {
   } else {
     clear_has_error();
     error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string token = 6;
+inline bool dump_response::has_token() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void dump_response::set_has_token() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void dump_response::clear_has_token() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void dump_response::clear_token() {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    token_->clear();
+  }
+  clear_has_token();
+}
+inline const ::std::string& dump_response::token() const {
+  return *token_;
+}
+inline void dump_response::set_token(const ::std::string& value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void dump_response::set_token(const char* value) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(value);
+}
+inline void dump_response::set_token(const char* value, size_t size) {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  token_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* dump_response::mutable_token() {
+  set_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    token_ = new ::std::string;
+  }
+  return token_;
+}
+inline ::std::string* dump_response::release_token() {
+  clear_has_token();
+  if (token_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = token_;
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void dump_response::set_allocated_token(::std::string* token) {
+  if (token_ != &::google::protobuf::internal::kEmptyString) {
+    delete token_;
+  }
+  if (token) {
+    set_has_token();
+    token_ = token;
+  } else {
+    clear_has_token();
+    token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

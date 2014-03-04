@@ -239,15 +239,16 @@ void sinsp_worker::schedule_dump_job(SharedPtr<dump_job_request> job_request)
 
 	if(!m_dump_job_requests.put(job_request))
 	{
-		send_error("Maximum number of dump jobs reached");
+		send_error(job_request->m_token, "Maximum number of dump jobs reached");
 	}
 }
 
-void sinsp_worker::prepare_response(draiosproto::dump_response* response)
+void sinsp_worker::prepare_response(const string& token, draiosproto::dump_response* response)
 {
 	response->set_timestamp_ns(dragent_configuration::get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
 	response->set_machine_id(m_configuration->m_machine_id);
+	response->set_token(token);
 }
 
 void sinsp_worker::queue_response(const draiosproto::dump_response& response)
@@ -304,7 +305,7 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 
 			if(job->m_send_file_when_done)
 			{
-				send_file(job->m_file);
+				send_file(job->m_token, job->m_file);
 			}
 		}
 		else
@@ -325,16 +326,16 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 	}
 }
 
-void sinsp_worker::send_error(const string& error)
+void sinsp_worker::send_error(const string& token, const string& error)
 {
 	g_log->error(error);
 	draiosproto::dump_response response;
-	prepare_response(&response);
+	prepare_response(token, &response);
 	response.set_error(error);
 	queue_response(response);	
 }
 
-void sinsp_worker::send_file(const string& filename)
+void sinsp_worker::send_file(const string& token, const string& filename)
 {
 	FileInputStream file(filename);
 	string sfile;
@@ -344,7 +345,7 @@ void sinsp_worker::send_file(const string& filename)
 	g_log->information(m_name + ": " + filename + ": File size: " + NumberFormatter::format(nread));
 
 	draiosproto::dump_response response;
-	prepare_response(&response);
+	prepare_response(token, &response);
 	response.set_content(sfile);
 	queue_response(response);
 }
@@ -415,11 +416,12 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 			}
 			catch(sinsp_exception& e)
 			{
-				send_error(e.what());
+				send_error(request->m_token, e.what());
 				return;
 			}
 		}
 
+		job_state->m_token = request->m_token;
 		job_state->m_dumper = new sinsp_dumper(m_inspector);
 		job_state->m_file = TemporaryFile::tempName(m_configuration->m_dump_dir) + ".scap";
 		g_log->information("Starting dump job in " + job_state->m_file + 

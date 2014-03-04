@@ -338,8 +338,10 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 		filter = request.filters();
 	}
 
+	string token = request.token();
+
 	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request(request.duration_ns(), filter));
+		new sinsp_worker::dump_job_request(token, request.duration_ns(), filter));
 	
 	m_sinsp_worker->schedule_dump_job(job_request);
 }
