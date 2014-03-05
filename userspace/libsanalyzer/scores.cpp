@@ -657,7 +657,7 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* main
 {
 	ASSERT(delays != NULL);
 
-	sinsp_score_info res = get_system_capacity_score_bycpu_4(delays, 
+	sinsp_score_info res = get_system_capacity_score_bycpu_5(delays, 
 		n_server_threads, 
 		sample_end_time,
 		sample_duration,
