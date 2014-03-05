@@ -638,8 +638,8 @@ void sinsp_host_metrics::clear()
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
 	m_syscall_errors.clear();
-	m_tot_capacity_score = 0;
-	m_tot_stolen_capacity_score = 0;
+	m_tot_capacity_score = -1;
+	m_tot_stolen_capacity_score = -1;
 	m_tot_server_transactions = 0;
 }
 

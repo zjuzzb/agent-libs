@@ -162,6 +162,8 @@ VISIBILITY_PRIVATE
 	void parse_select_poll_epollwait_exit(sinsp_evt *evt);
 	void parse_drop(sinsp_evt* evt);
 
+	void analyzer_process_event(sinsp_evt* evt, flush_flags flshflags);
+
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;

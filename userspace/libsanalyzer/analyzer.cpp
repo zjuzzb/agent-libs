@@ -2170,6 +2170,18 @@ void sinsp_analyzer::parse_drop(sinsp_evt* evt)
 	}
 }
 
+//
+// This is similar to sinsp_parser::process_event, but it's for draios-only event 
+// processing
+//
+void sinsp_analyzer::analyzer_process_event(sinsp_evt* evt, flush_flags flshflags)
+{
+	uint16_t etype = evt->get_type();
+}
+
+//
+// Analyzer event processing entry point
+//
 void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 {
 	uint64_t ts;
