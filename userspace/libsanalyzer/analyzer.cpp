@@ -2172,11 +2172,51 @@ void sinsp_analyzer::parse_drop(sinsp_evt* evt)
 
 //
 // This is similar to sinsp_parser::process_event, but it's for draios-only event 
-// processing
+// processing. Returns false if process_event() should return immediately.
 //
-void sinsp_analyzer::analyzer_process_event(sinsp_evt* evt, flush_flags flshflags)
+bool sinsp_analyzer::analyzer_process_event(sinsp_evt* evt)
 {
 	uint16_t etype = evt->get_type();
+
+	switch(etype)
+	{
+	case PPME_SCHEDSWITCH_E:
+		m_sched_analyzer2->process_event(evt);
+		return false;
+	case PPME_SOCKET_ACCEPT_X:
+	case PPME_SOCKET_ACCEPT4_X:
+		parse_accept_exit(evt);;
+		return true;
+	case PPME_SYSCALL_SELECT_X:
+	case PPME_SYSCALL_POLL_X:
+	case PPME_SYSCALL_EPOLLWAIT_X:
+		parse_select_poll_epollwait_exit(evt);
+		return true;
+	case PPME_DROP_E:
+		parse_drop(evt);
+
+		//
+		// Set dropping mode
+		//
+		m_inspector->m_isdropping = true;
+
+		flush(evt, evt->get_ts(), false, DF_FORCE_FLUSH);
+
+		return false;
+	case PPME_DROP_X:
+		parse_drop(evt);
+
+		//
+		// Turn off dropping mode
+		//
+		m_inspector->m_isdropping = false;
+
+		flush(evt, evt->get_ts(), false, DF_FORCE_FLUSH_BUT_DONT_EMIT);
+
+		return false;
+	default:
+		return true;
+	}
 }
 
 //
@@ -2197,46 +2237,10 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	if(evt)
 	{
 		ts = evt->get_ts();
-
 		etype = evt->get_type();
-		if(etype == PPME_SCHEDSWITCH_E)
-		{
-			m_sched_analyzer2->process_event(evt);
-			return;
-		}
-		else if(etype == PPME_SOCKET_ACCEPT_X || etype == PPME_SOCKET_ACCEPT4_X)
-		{
-			parse_accept_exit(evt);
-		}
-		else if(etype == PPME_SYSCALL_SELECT_X || etype == PPME_SYSCALL_POLL_X || 
-			etype == PPME_SYSCALL_EPOLLWAIT_X)
-		{
-			parse_select_poll_epollwait_exit(evt);
-		}
-		else if(etype == PPME_DROP_E)
-		{
-			parse_drop(evt);
 
-			//
-			// Set dropping mode
-			//
-			m_inspector->m_isdropping = true;
-
-			flush(evt, ts, false, DF_FORCE_FLUSH);
-			
-			return;
-		}
-		else if(etype == PPME_DROP_X)
+		if(analyzer_process_event(evt, flshflags) == false)
 		{
-			parse_drop(evt);
-
-			//
-			// Turn off dropping mode
-			//
-			m_inspector->m_isdropping = false;
-
-			flush(evt, ts, false, DF_FORCE_FLUSH_BUT_DONT_EMIT);
-
 			return;
 		}
 	}
