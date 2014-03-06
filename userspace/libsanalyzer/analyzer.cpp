@@ -2239,7 +2239,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		ts = evt->get_ts();
 		etype = evt->get_type();
 
-		if(analyzer_process_event(evt, flshflags) == false)
+		if(analyzer_process_event(evt) == false)
 		{
 			return;
 		}
