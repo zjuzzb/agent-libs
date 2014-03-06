@@ -592,7 +592,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 					idle1 = 0;
 				}
 
-				score1 = calculate_score_4(ntr1, ntrcpu1, nother1,
+				score1 = calculate_score_5(ntr1, ntrcpu1, nother1,
 					m_inspector->m_analyzer->m_server_programs.size());
 			}
 			else
