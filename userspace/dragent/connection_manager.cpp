@@ -68,22 +68,46 @@ bool connection_manager::connect()
 
 		if(m_configuration->m_ssl_enabled)
 		{
-			m_socket = new Poco::Net::SecureStreamSocket(*m_sa, m_configuration->m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
+			m_socket = new Poco::Net::SecureStreamSocket();
 
-			g_log->information("SSL identity verified");
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->setLazyHandshake(true);
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->setPeerHostName(m_configuration->m_server_addr);
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
 		}
 		else
 		{
-			m_socket = new Poco::Net::StreamSocket(*m_sa);
+			m_socket = new Poco::Net::StreamSocket();
+			m_socket->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
+		}
+
+		if(m_configuration->m_ssl_enabled)
+		{
+			//
+			// This is done to prevent getting stuck forever waiting during the handshake
+			// if the server doesn't speak to us
+			//
+			m_socket->setSendTimeout(SOCKET_TIMEOUT_DURING_CONNECT_US);
+			m_socket->setReceiveTimeout(SOCKET_TIMEOUT_DURING_CONNECT_US);
+
+			int32_t ret = ((Poco::Net::SecureStreamSocket*) m_socket.get())->completeHandshake();
+			if(ret != 1)
+			{
+				g_log->error(m_name + ": SSL Handshake didn't complete");
+				disconnect();
+				return false;
+			}
+
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
+
+			g_log->information("SSL identity verified");
 		}
 
 		//
 		// Set the send buffer size for the socket
 		//
 		m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
-		m_socket->setSendTimeout(100000);
-		m_socket->setReceiveTimeout(100000);
+		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
+		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 
 		g_log->information("Connected to collector");
 		return true;
@@ -91,6 +115,7 @@ bool connection_manager::connect()
 	catch(Poco::IOException& e)
 	{
 		g_log->error(m_name + ": " + e.displayText());
+		disconnect();
 		return false;
 	}
 }
