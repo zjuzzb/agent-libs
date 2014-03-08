@@ -23,6 +23,7 @@ class analyzer_threadtable_listener;
 class sinsp_analyzer_fd_listener;
 class sinsp_configuration;
 class sinsp_counters;
+class sinsp_analyzer_parsers;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -74,6 +75,36 @@ struct process_tuple_cmp
 		return (memcmp(t1.m_all, t2.m_all, sizeof(t1.m_all)) == 0);
 	}
 };
+
+//
+// Description of an executed command
+//
+class sinsp_executed_command
+{
+public:
+	enum flags
+	{
+		FL_NONE = 0,
+		FL_PIPE_HEAD = 1,
+		FL_PIPE_MIDDLE = 2,
+		FL_PIPE_TAIL = 4,
+		FL_EXCLUDE = 8,
+	};
+
+	sinsp_executed_command()
+	{
+		m_flags = FL_NONE;
+		m_n_repetitions = 0;
+	}
+
+	uint32_t m_flags;
+	uint64_t m_ts;
+	string m_exe;
+	string m_cmdline;
+	uint32_t m_n_repetitions;
+};
+
+bool executed_command_cmp(sinsp_executed_command& src , sinsp_executed_command& dst);
 
 //
 // The main analyzer class
@@ -157,18 +188,15 @@ VISIBILITY_PRIVATE
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-
-	void parse_accept_exit(sinsp_evt* evt);
-	void parse_select_poll_epollwait_exit(sinsp_evt *evt);
-	void parse_drop(sinsp_evt* evt);
-
-	bool analyzer_process_event(sinsp_evt* evt);
+	void emit_executed_commands();
 
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 
 	uint64_t m_prev_sample_evtnum;
+	
+	sinsp_analyzer_parsers* m_parser;
 
 	//
 	// Tables
@@ -268,6 +296,11 @@ VISIBILITY_PRIVATE
 	sinsp_delays* m_delay_calculator;
 
 	//
+	// Command list
+	//
+	vector<sinsp_executed_command> m_executed_commands;
+
+	//
 	// Subsampling-related stuff
 	//
 	uint32_t m_sampling_ratio;
@@ -291,6 +324,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_analyzer_fd_listener;
 	friend class analyzer_threadtable_listener;
 	friend class sinsp_sched_analyzer;
+	friend class sinsp_analyzer_parsers;
 };
 
 #endif // HAS_ANALYZER

@@ -54,6 +54,11 @@
 #define DEFAULT_MAX_CONNECTIONS_IN_PROTO 100
 
 //
+// Max number of executed commands that can be included in the protocol
+//
+#define DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO 30
+
+//
 // If this is set, all the connections *coming* from the external world
 // are aggreagated into a single connection in the protocol samples.
 // This can be overridden by set_aggregate_connections_in_proto().

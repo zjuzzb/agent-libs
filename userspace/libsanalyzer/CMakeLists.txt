@@ -11,6 +11,7 @@ add_definitions( -DHAS_ANALYZER )
 add_library(sanalyzer STATIC
 	analyzer.cpp
 	analyzer_fd.cpp
+	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp

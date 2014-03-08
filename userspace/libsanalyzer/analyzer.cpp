@@ -38,6 +38,7 @@ using namespace google::protobuf::io;
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
+#include "analyzer_parsers.h"
 
 #define DUMP_TO_DISK
 
@@ -91,6 +92,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_configuration = new sinsp_configuration();
 
 	m_mypid = getpid();
+
+	m_parser = new sinsp_analyzer_parsers(this);
 
 	//
 	// Listeners
@@ -185,6 +188,11 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_configuration;
 	}
 
+	if(m_parser)
+	{
+		delete m_parser;
+	}
+
 	if(m_protobuf_fp != NULL)
 	{
 		fclose(m_protobuf_fp);
@@ -238,6 +246,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	ASSERT(m_sched_analyzer2 != NULL);
 	m_sched_analyzer2->on_capture_start();
+	m_parser->on_capture_start();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -1493,6 +1502,140 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	}
 }
 
+bool executed_command_cmp(sinsp_executed_command& src , sinsp_executed_command& dst)
+{
+	return (src.m_ts < dst.m_ts); 
+}
+
+void sinsp_analyzer::emit_executed_commands()
+{
+	uint32_t j;
+	int32_t last_pipe_head = -1;
+
+	if(m_executed_commands.size() != 0)
+	{
+		sort(m_executed_commands.begin(),
+			m_executed_commands.end(),
+			executed_command_cmp);
+
+		//
+		// Consolidate command with pipes
+		//
+		for(j = 0; j < m_executed_commands.size(); j++)
+		{
+			uint32_t flags = m_executed_commands[j].m_flags;
+
+			if(flags & sinsp_executed_command::FL_PIPE_HEAD)
+			{
+				last_pipe_head = j;
+			}
+			else if(flags & (sinsp_executed_command::FL_PIPE_MIDDLE | sinsp_executed_command::FL_PIPE_TAIL))
+			{
+				if(last_pipe_head != -1)
+				{
+					m_executed_commands[last_pipe_head].m_cmdline += " | ";
+					m_executed_commands[last_pipe_head].m_cmdline += m_executed_commands[j].m_cmdline;
+					m_executed_commands[j].m_flags |= sinsp_executed_command::FL_EXCLUDE;
+				}
+				else
+				{
+					ASSERT(false);
+				}
+
+				if(flags & sinsp_executed_command::FL_PIPE_TAIL)
+				{
+					last_pipe_head = -1;
+				}
+			}
+		}
+
+		//
+		// If there are too many commands, try to aggregate by command line
+		//
+		uint32_t cmdcnt = 0;
+
+		vector<sinsp_executed_command>::iterator it;
+
+		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		{
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			{
+				cmdcnt++;
+			}
+		}
+
+		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+		{
+			map<string, sinsp_executed_command*> cmdlines;
+
+			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			{
+				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+				{
+					map<string, sinsp_executed_command*>::iterator eit = cmdlines.find(it->m_cmdline);
+					if(eit == cmdlines.end())
+					{
+						it->m_n_repetitions = 0;
+						cmdlines[it->m_cmdline] = &(*it);
+					}
+					else
+					{
+						eit->second->m_n_repetitions++;
+						it->m_flags |= sinsp_executed_command::FL_EXCLUDE;
+					}
+				}
+			}
+		}
+
+		//
+		// If there are STILL too many commands, try to aggregate by executable
+		//
+		cmdcnt = 0;
+
+		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		{
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			{
+				cmdcnt++;
+			}
+		}
+
+		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+		{
+			map<string, sinsp_executed_command*> exes;
+
+			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			{
+				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+				{
+					map<string, sinsp_executed_command*>::iterator eit = exes.find(it->m_exe);
+					if(eit == exes.end())
+					{
+						it->m_n_repetitions = 0;
+						exes[it->m_exe] = &(*it);
+					}
+					else
+					{
+						eit->second->m_n_repetitions++;
+						it->m_flags |= sinsp_executed_command::FL_EXCLUDE;
+					}
+				}
+			}
+		}
+
+		cmdcnt = 0;
+		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		{
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			{
+				cmdcnt++;
+			}
+		}
+
+		int a = 0;
+	}
+}
+
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	uint32_t j;
@@ -1773,6 +1916,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 
 			//
+			// Executed commands
+			//
+			//emit_executed_commands();
+
+			//
 			// Transactions
 			//
 			m_delay_calculator->compute_host_delays(m_host_transaction_delays);
@@ -1898,6 +2046,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Clear the network I/O counter
 	//
 	m_io_net.clear();
+
+	//
+	// Clear the executed command list
+	//
+	m_executed_commands.clear();
 
 	//
 	// Run the periodic connection and thread table cleanup
@@ -2043,182 +2196,6 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 	}
 }
 
-void sinsp_analyzer::parse_accept_exit(sinsp_evt* evt)
-{
-	//
-	// Extract the request queue length 
-	//
-	sinsp_evt_param *parinfo = evt->get_param(2);
-	ASSERT(parinfo->m_len == sizeof(uint8_t));
-	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
-	ASSERT(queueratio <= 100);
-
-	if(evt->m_tinfo == NULL)
-	{
-		return;
-	}
-
-	if(queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
-	{
-		evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct = queueratio;
-	}
-
-	//
-	// If this comes after a wait, reset the last wait time, since we don't count 
-	// time waiting for an accept as I/O time
-	//
-	evt->m_tinfo->m_ainfo->m_last_wait_duration_ns = 0;
-}
-
-void sinsp_analyzer::parse_select_poll_epollwait_exit(sinsp_evt *evt)
-{
-	sinsp_evt_param *parinfo;
-	int64_t retval;
-	uint16_t etype = evt->get_type();
-
-	if(evt->m_tinfo == NULL)
-	{
-		return;
-	}
-
-	if(etype != evt->m_tinfo->m_lastevent_type + 1)
-	{
-		//
-		// Packet drop. Previuos event didn't have a chance to 
-		//
-		return;
-	}
-
-	//
-	// Extract the return value
-	//
-	parinfo = evt->get_param(0);
-	retval = *(int64_t *)parinfo->m_val;
-	ASSERT(parinfo->m_len == sizeof(int64_t));
-
-	//
-	// Check if the syscall was successful
-	//
-	if(retval >= 0)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-
-		if(tinfo == NULL)
-		{
-			ASSERT(false);
-			return;
-		}
-
-		if(tinfo->is_lastevent_data_valid())
-		{
-			//
-			// We categorize this based on the next I/O operation only if the number of 
-			// FDs that were waited for is 1
-			//
-			if(retval == 0)
-			{
-				tinfo->m_ainfo->m_last_wait_duration_ns = 0;
-			}
-			else
-			{
-				//
-				// If this was a wait on a *single* fd, we can easily categorize it with certainty and
-				// we encode the delta as a positive number.
-				// If this was a wait on multiple FDs, we encode the delta as a negative number so
-				// the next steps will know that it needs to be handled with more care.
-				//
-				uint64_t sample_duration = m_configuration->get_analyzer_sample_len_ns();
-				uint64_t ts = evt->get_ts();
-
-				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
-				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
-
-				if(retval == 1)
-				{
-					tinfo->m_ainfo->m_last_wait_duration_ns = ts - start_time_ns;
-				}
-				else
-				{
-					tinfo->m_ainfo->m_last_wait_duration_ns = start_time_ns - ts;
-				}
-			}
-		}
-	}
-}
-
-void sinsp_analyzer::parse_drop(sinsp_evt* evt)
-{
-	m_last_dropmode_switch_time = evt->get_ts();
-
-	//
-	// If required, update the sample length
-	//
-	sinsp_evt_param *parinfo;
-	parinfo = evt->get_param(0);
-	ASSERT(parinfo->m_len == sizeof(int32_t));
-
-	if(*(uint32_t*)parinfo->m_val != m_sampling_ratio)
-	{
-		m_sampling_ratio = *(int32_t*)parinfo->m_val;
-		g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Switching sampling ratio to %" PRIu32, m_sampling_ratio);
-	}
-
-	uint64_t newsl =  ((uint64_t)ONE_SECOND_IN_NS) / m_sampling_ratio;
-	if(newsl != m_configuration->get_analyzer_sample_len_ns())
-	{
-		m_configuration->set_analyzer_sample_len_ns(newsl);
-	}
-}
-
-//
-// This is similar to sinsp_parser::process_event, but it's for draios-only event 
-// processing. Returns false if process_event() should return immediately.
-//
-bool sinsp_analyzer::analyzer_process_event(sinsp_evt* evt)
-{
-	uint16_t etype = evt->get_type();
-
-	switch(etype)
-	{
-	case PPME_SCHEDSWITCH_E:
-		m_sched_analyzer2->process_event(evt);
-		return false;
-	case PPME_SOCKET_ACCEPT_X:
-	case PPME_SOCKET_ACCEPT4_X:
-		parse_accept_exit(evt);;
-		return true;
-	case PPME_SYSCALL_SELECT_X:
-	case PPME_SYSCALL_POLL_X:
-	case PPME_SYSCALL_EPOLLWAIT_X:
-		parse_select_poll_epollwait_exit(evt);
-		return true;
-	case PPME_DROP_E:
-		parse_drop(evt);
-
-		//
-		// Set dropping mode
-		//
-		m_inspector->m_isdropping = true;
-
-		flush(evt, evt->get_ts(), false, DF_FORCE_FLUSH);
-
-		return false;
-	case PPME_DROP_X:
-		parse_drop(evt);
-
-		//
-		// Turn off dropping mode
-		//
-		m_inspector->m_isdropping = false;
-
-		flush(evt, evt->get_ts(), false, DF_FORCE_FLUSH_BUT_DONT_EMIT);
-
-		return false;
-	default:
-		return true;
-	}
-}
-
 //
 // Analyzer event processing entry point
 //
@@ -2239,7 +2216,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		ts = evt->get_ts();
 		etype = evt->get_type();
 
-		if(analyzer_process_event(evt) == false)
+		if(m_parser->process_event(evt) == false)
 		{
 			return;
 		}
