@@ -54,9 +54,9 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EPOLLWAIT_X:
 		parse_select_poll_epollwait_exit(evt);
 		return true;
-	//case PPME_SYSCALL_EXECVE_X:
-	//	parse_execve_exit(evt);
-	//	return true;
+	case PPME_SYSCALL_EXECVE_X:
+		parse_execve_exit(evt);
+		return true;
 	case PPME_DROP_E:
 		parse_drop(evt);
 
@@ -213,6 +213,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	ASSERT(tinfo->m_clone_ts != 0);
 	cmdinfo.m_ts = tinfo->m_clone_ts;
+	cmdinfo.m_comm = tinfo->m_comm;
 	cmdinfo.m_cmdline = tinfo->m_comm;
 	cmdinfo.m_exe = tinfo->m_exe;
 

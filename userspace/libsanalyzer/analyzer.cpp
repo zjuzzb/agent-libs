@@ -1535,7 +1535,7 @@ void sinsp_analyzer::emit_executed_commands()
 				{
 					m_executed_commands[last_pipe_head].m_cmdline += " | ";
 					m_executed_commands[last_pipe_head].m_cmdline += m_executed_commands[j].m_cmdline;
-					m_executed_commands[j].m_flags |= sinsp_executed_command::FL_EXCLUDE;
+					m_executed_commands[j].m_flags |= sinsp_executed_command::FL_EXCLUDED;
 				}
 				else
 				{
@@ -1558,30 +1558,30 @@ void sinsp_analyzer::emit_executed_commands()
 
 		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
 		{
-			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
 				cmdcnt++;
 			}
 		}
 
-		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+//		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+		if(cmdcnt > 10)
 		{
 			map<string, sinsp_executed_command*> cmdlines;
 
 			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
 			{
-				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
 					map<string, sinsp_executed_command*>::iterator eit = cmdlines.find(it->m_cmdline);
 					if(eit == cmdlines.end())
 					{
-						it->m_n_repetitions = 0;
 						cmdlines[it->m_cmdline] = &(*it);
 					}
 					else
 					{
-						eit->second->m_n_repetitions++;
-						it->m_flags |= sinsp_executed_command::FL_EXCLUDE;
+						eit->second->m_count++;
+						it->m_flags |= sinsp_executed_command::FL_EXCLUDED;
 					}
 				}
 			}
@@ -1594,30 +1594,31 @@ void sinsp_analyzer::emit_executed_commands()
 
 		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
 		{
-			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
 				cmdcnt++;
 			}
 		}
 
-		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+//		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+		if(cmdcnt > 8)
 		{
 			map<string, sinsp_executed_command*> exes;
 
 			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
 			{
-				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
 					map<string, sinsp_executed_command*>::iterator eit = exes.find(it->m_exe);
 					if(eit == exes.end())
 					{
-						it->m_n_repetitions = 0;
 						exes[it->m_exe] = &(*it);
+						it->m_flags |= sinsp_executed_command::FL_EXEONLY;
 					}
 					else
 					{
-						eit->second->m_n_repetitions++;
-						it->m_flags |= sinsp_executed_command::FL_EXCLUDE;
+						eit->second->m_count += it->m_count;
+						it->m_flags |= sinsp_executed_command::FL_EXCLUDED;
 					}
 				}
 			}
@@ -1626,13 +1627,31 @@ void sinsp_analyzer::emit_executed_commands()
 		cmdcnt = 0;
 		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
 		{
-			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDE))
+			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
 				cmdcnt++;
+
+				if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
+				{
+					break;
+				}
+
+				draiosproto::command_details* cd = m_metrics->add_commands();
+
+				cd->set_timestamp(it->m_ts);
+				cd->set_exe(it->m_exe);
+				cd->set_count(it->m_count);
+
+				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
+				{
+					cd->set_cmdline(it->m_comm);
+				}
+				else
+				{
+					cd->set_cmdline(it->m_cmdline);
+				}
 			}
 		}
-
-		int a = 0;
 	}
 }
 

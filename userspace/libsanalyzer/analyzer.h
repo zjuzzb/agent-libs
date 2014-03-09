@@ -88,23 +88,23 @@ public:
 		FL_PIPE_HEAD = 1,
 		FL_PIPE_MIDDLE = 2,
 		FL_PIPE_TAIL = 4,
-		FL_EXCLUDE = 8,
+		FL_EXCLUDED = 8,
+		FL_EXEONLY = 16,
 	};
 
 	sinsp_executed_command()
 	{
 		m_flags = FL_NONE;
-		m_n_repetitions = 0;
+		m_count = 1;
 	}
 
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
+	string m_comm;
 	string m_cmdline;
-	uint32_t m_n_repetitions;
+	uint32_t m_count; // how many times this command has been repeated
 };
-
-bool executed_command_cmp(sinsp_executed_command& src , sinsp_executed_command& dst);
 
 //
 // The main analyzer class

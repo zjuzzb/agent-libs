@@ -44,6 +44,7 @@ class counter_syscall_errors;
 class resource_categories;
 class connection_categories;
 class process_details;
+class command_details;
 class host;
 class thread;
 class process;
@@ -1487,6 +1488,128 @@ class process_details : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class command_details : public ::google::protobuf::Message {
+ public:
+  command_details();
+  virtual ~command_details();
+
+  command_details(const command_details& from);
+
+  inline command_details& operator=(const command_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const command_details& default_instance();
+
+  void Swap(command_details* other);
+
+  // implements Message ----------------------------------------------
+
+  command_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const command_details& from);
+  void MergeFrom(const command_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint64 timestamp = 1;
+  inline bool has_timestamp() const;
+  inline void clear_timestamp();
+  static const int kTimestampFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp() const;
+  inline void set_timestamp(::google::protobuf::uint64 value);
+
+  // required string cmdline = 2;
+  inline bool has_cmdline() const;
+  inline void clear_cmdline();
+  static const int kCmdlineFieldNumber = 2;
+  inline const ::std::string& cmdline() const;
+  inline void set_cmdline(const ::std::string& value);
+  inline void set_cmdline(const char* value);
+  inline void set_cmdline(const char* value, size_t size);
+  inline ::std::string* mutable_cmdline();
+  inline ::std::string* release_cmdline();
+  inline void set_allocated_cmdline(::std::string* cmdline);
+
+  // required string exe = 3;
+  inline bool has_exe() const;
+  inline void clear_exe();
+  static const int kExeFieldNumber = 3;
+  inline const ::std::string& exe() const;
+  inline void set_exe(const ::std::string& value);
+  inline void set_exe(const char* value);
+  inline void set_exe(const char* value, size_t size);
+  inline ::std::string* mutable_exe();
+  inline ::std::string* release_exe();
+  inline void set_allocated_exe(::std::string* exe);
+
+  // required uint32 count = 4;
+  inline bool has_count() const;
+  inline void clear_count();
+  static const int kCountFieldNumber = 4;
+  inline ::google::protobuf::uint32 count() const;
+  inline void set_count(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.command_details)
+ private:
+  inline void set_has_timestamp();
+  inline void clear_has_timestamp();
+  inline void set_has_cmdline();
+  inline void clear_has_cmdline();
+  inline void set_has_exe();
+  inline void clear_has_exe();
+  inline void set_has_count();
+  inline void clear_has_count();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_;
+  ::std::string* cmdline_;
+  ::std::string* exe_;
+  ::google::protobuf::uint32 count_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static command_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class host : public ::google::protobuf::Message {
  public:
   host();
@@ -2760,6 +2883,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* release_version();
   inline void set_allocated_version(::std::string* version);
 
+  // repeated .draiosproto.command_details commands = 17;
+  inline int commands_size() const;
+  inline void clear_commands();
+  static const int kCommandsFieldNumber = 17;
+  inline const ::draiosproto::command_details& commands(int index) const;
+  inline ::draiosproto::command_details* mutable_commands(int index);
+  inline ::draiosproto::command_details* add_commands();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+      commands() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+      mutable_commands();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -2803,9 +2938,10 @@ class metrics : public ::google::protobuf::Message {
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5574,6 +5710,194 @@ process_details::mutable_args() {
 
 // -------------------------------------------------------------------
 
+// command_details
+
+// required uint64 timestamp = 1;
+inline bool command_details::has_timestamp() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void command_details::set_has_timestamp() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void command_details::clear_has_timestamp() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void command_details::clear_timestamp() {
+  timestamp_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp();
+}
+inline ::google::protobuf::uint64 command_details::timestamp() const {
+  return timestamp_;
+}
+inline void command_details::set_timestamp(::google::protobuf::uint64 value) {
+  set_has_timestamp();
+  timestamp_ = value;
+}
+
+// required string cmdline = 2;
+inline bool command_details::has_cmdline() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void command_details::set_has_cmdline() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void command_details::clear_has_cmdline() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void command_details::clear_cmdline() {
+  if (cmdline_ != &::google::protobuf::internal::kEmptyString) {
+    cmdline_->clear();
+  }
+  clear_has_cmdline();
+}
+inline const ::std::string& command_details::cmdline() const {
+  return *cmdline_;
+}
+inline void command_details::set_cmdline(const ::std::string& value) {
+  set_has_cmdline();
+  if (cmdline_ == &::google::protobuf::internal::kEmptyString) {
+    cmdline_ = new ::std::string;
+  }
+  cmdline_->assign(value);
+}
+inline void command_details::set_cmdline(const char* value) {
+  set_has_cmdline();
+  if (cmdline_ == &::google::protobuf::internal::kEmptyString) {
+    cmdline_ = new ::std::string;
+  }
+  cmdline_->assign(value);
+}
+inline void command_details::set_cmdline(const char* value, size_t size) {
+  set_has_cmdline();
+  if (cmdline_ == &::google::protobuf::internal::kEmptyString) {
+    cmdline_ = new ::std::string;
+  }
+  cmdline_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* command_details::mutable_cmdline() {
+  set_has_cmdline();
+  if (cmdline_ == &::google::protobuf::internal::kEmptyString) {
+    cmdline_ = new ::std::string;
+  }
+  return cmdline_;
+}
+inline ::std::string* command_details::release_cmdline() {
+  clear_has_cmdline();
+  if (cmdline_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = cmdline_;
+    cmdline_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void command_details::set_allocated_cmdline(::std::string* cmdline) {
+  if (cmdline_ != &::google::protobuf::internal::kEmptyString) {
+    delete cmdline_;
+  }
+  if (cmdline) {
+    set_has_cmdline();
+    cmdline_ = cmdline;
+  } else {
+    clear_has_cmdline();
+    cmdline_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string exe = 3;
+inline bool command_details::has_exe() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void command_details::set_has_exe() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void command_details::clear_has_exe() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void command_details::clear_exe() {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    exe_->clear();
+  }
+  clear_has_exe();
+}
+inline const ::std::string& command_details::exe() const {
+  return *exe_;
+}
+inline void command_details::set_exe(const ::std::string& value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void command_details::set_exe(const char* value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void command_details::set_exe(const char* value, size_t size) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* command_details::mutable_exe() {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  return exe_;
+}
+inline ::std::string* command_details::release_exe() {
+  clear_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = exe_;
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void command_details::set_allocated_exe(::std::string* exe) {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    delete exe_;
+  }
+  if (exe) {
+    set_has_exe();
+    exe_ = exe;
+  } else {
+    clear_has_exe();
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint32 count = 4;
+inline bool command_details::has_count() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void command_details::set_has_count() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void command_details::clear_has_count() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void command_details::clear_count() {
+  count_ = 0u;
+  clear_has_count();
+}
+inline ::google::protobuf::uint32 command_details::count() const {
+  return count_;
+}
+inline void command_details::set_count(::google::protobuf::uint32 value) {
+  set_has_count();
+  count_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // host
 
 // optional string hostname = 1;
@@ -7760,6 +8084,31 @@ inline void metrics::set_allocated_version(::std::string* version) {
     clear_has_version();
     version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// repeated .draiosproto.command_details commands = 17;
+inline int metrics::commands_size() const {
+  return commands_.size();
+}
+inline void metrics::clear_commands() {
+  commands_.Clear();
+}
+inline const ::draiosproto::command_details& metrics::commands(int index) const {
+  return commands_.Get(index);
+}
+inline ::draiosproto::command_details* metrics::mutable_commands(int index) {
+  return commands_.Mutable(index);
+}
+inline ::draiosproto::command_details* metrics::add_commands() {
+  return commands_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+metrics::commands() const {
+  return commands_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+metrics::mutable_commands() {
+  return &commands_;
 }
 
 // -------------------------------------------------------------------
