@@ -1502,7 +1502,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	}
 }
 
-bool executed_command_cmp(sinsp_executed_command& src , sinsp_executed_command& dst)
+bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_executed_command& dst)
 {
 	return (src.m_ts < dst.m_ts); 
 }
