@@ -963,7 +963,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 	//
 	if(evt->m_fdinfo->m_usrstate.is_active())
 	{
-		sinsp_connection* connection;
+		sinsp_connection* connection = NULL;
 
 		if(evt->m_fdinfo->is_ipv4_socket())
 		{
