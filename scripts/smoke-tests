@@ -93,7 +93,7 @@ function uninstall {
 	if [ -f /etc/debian_version ]; then
 		apt-get -y purge draios-tests draios-agent sysdig || true
 	elif [ -f /etc/system-release-cpe ]; then
-		yum clean expire-cache
+		yum --enablerepo=draios clean all
 		yum -y erase draios-tests draios-agent sysdig
 	else
 	    echo "Unable to detect operating system."
