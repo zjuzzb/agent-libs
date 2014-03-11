@@ -1549,10 +1549,17 @@ class command_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 timestamp() const;
   inline void set_timestamp(::google::protobuf::uint64 value);
 
-  // required string cmdline = 2;
+  // required uint32 count = 2;
+  inline bool has_count() const;
+  inline void clear_count();
+  static const int kCountFieldNumber = 2;
+  inline ::google::protobuf::uint32 count() const;
+  inline void set_count(::google::protobuf::uint32 value);
+
+  // required string cmdline = 3;
   inline bool has_cmdline() const;
   inline void clear_cmdline();
-  static const int kCmdlineFieldNumber = 2;
+  static const int kCmdlineFieldNumber = 3;
   inline const ::std::string& cmdline() const;
   inline void set_cmdline(const ::std::string& value);
   inline void set_cmdline(const char* value);
@@ -1561,10 +1568,10 @@ class command_details : public ::google::protobuf::Message {
   inline ::std::string* release_cmdline();
   inline void set_allocated_cmdline(::std::string* cmdline);
 
-  // required string exe = 3;
+  // required string exe = 4;
   inline bool has_exe() const;
   inline void clear_exe();
-  static const int kExeFieldNumber = 3;
+  static const int kExeFieldNumber = 4;
   inline const ::std::string& exe() const;
   inline void set_exe(const ::std::string& value);
   inline void set_exe(const char* value);
@@ -1573,33 +1580,41 @@ class command_details : public ::google::protobuf::Message {
   inline ::std::string* release_exe();
   inline void set_allocated_exe(::std::string* exe);
 
-  // required uint32 count = 4;
-  inline bool has_count() const;
-  inline void clear_count();
-  static const int kCountFieldNumber = 4;
-  inline ::google::protobuf::uint32 count() const;
-  inline void set_count(::google::protobuf::uint32 value);
+  // required string parentcomm = 5;
+  inline bool has_parentcomm() const;
+  inline void clear_parentcomm();
+  static const int kParentcommFieldNumber = 5;
+  inline const ::std::string& parentcomm() const;
+  inline void set_parentcomm(const ::std::string& value);
+  inline void set_parentcomm(const char* value);
+  inline void set_parentcomm(const char* value, size_t size);
+  inline ::std::string* mutable_parentcomm();
+  inline ::std::string* release_parentcomm();
+  inline void set_allocated_parentcomm(::std::string* parentcomm);
 
   // @@protoc_insertion_point(class_scope:draiosproto.command_details)
  private:
   inline void set_has_timestamp();
   inline void clear_has_timestamp();
+  inline void set_has_count();
+  inline void clear_has_count();
   inline void set_has_cmdline();
   inline void clear_has_cmdline();
   inline void set_has_exe();
   inline void clear_has_exe();
-  inline void set_has_count();
-  inline void clear_has_count();
+  inline void set_has_parentcomm();
+  inline void clear_has_parentcomm();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint64 timestamp_;
   ::std::string* cmdline_;
   ::std::string* exe_;
+  ::std::string* parentcomm_;
   ::google::protobuf::uint32 count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5734,15 +5749,37 @@ inline void command_details::set_timestamp(::google::protobuf::uint64 value) {
   timestamp_ = value;
 }
 
-// required string cmdline = 2;
-inline bool command_details::has_cmdline() const {
+// required uint32 count = 2;
+inline bool command_details::has_count() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void command_details::set_has_cmdline() {
+inline void command_details::set_has_count() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void command_details::clear_has_cmdline() {
+inline void command_details::clear_has_count() {
   _has_bits_[0] &= ~0x00000002u;
+}
+inline void command_details::clear_count() {
+  count_ = 0u;
+  clear_has_count();
+}
+inline ::google::protobuf::uint32 command_details::count() const {
+  return count_;
+}
+inline void command_details::set_count(::google::protobuf::uint32 value) {
+  set_has_count();
+  count_ = value;
+}
+
+// required string cmdline = 3;
+inline bool command_details::has_cmdline() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void command_details::set_has_cmdline() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void command_details::clear_has_cmdline() {
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void command_details::clear_cmdline() {
   if (cmdline_ != &::google::protobuf::internal::kEmptyString) {
@@ -5804,15 +5841,15 @@ inline void command_details::set_allocated_cmdline(::std::string* cmdline) {
   }
 }
 
-// required string exe = 3;
+// required string exe = 4;
 inline bool command_details::has_exe() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void command_details::set_has_exe() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void command_details::clear_has_exe() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void command_details::clear_exe() {
   if (exe_ != &::google::protobuf::internal::kEmptyString) {
@@ -5874,26 +5911,74 @@ inline void command_details::set_allocated_exe(::std::string* exe) {
   }
 }
 
-// required uint32 count = 4;
-inline bool command_details::has_count() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+// required string parentcomm = 5;
+inline bool command_details::has_parentcomm() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void command_details::set_has_count() {
-  _has_bits_[0] |= 0x00000008u;
+inline void command_details::set_has_parentcomm() {
+  _has_bits_[0] |= 0x00000010u;
 }
-inline void command_details::clear_has_count() {
-  _has_bits_[0] &= ~0x00000008u;
+inline void command_details::clear_has_parentcomm() {
+  _has_bits_[0] &= ~0x00000010u;
 }
-inline void command_details::clear_count() {
-  count_ = 0u;
-  clear_has_count();
+inline void command_details::clear_parentcomm() {
+  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
+    parentcomm_->clear();
+  }
+  clear_has_parentcomm();
 }
-inline ::google::protobuf::uint32 command_details::count() const {
-  return count_;
+inline const ::std::string& command_details::parentcomm() const {
+  return *parentcomm_;
 }
-inline void command_details::set_count(::google::protobuf::uint32 value) {
-  set_has_count();
-  count_ = value;
+inline void command_details::set_parentcomm(const ::std::string& value) {
+  set_has_parentcomm();
+  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+    parentcomm_ = new ::std::string;
+  }
+  parentcomm_->assign(value);
+}
+inline void command_details::set_parentcomm(const char* value) {
+  set_has_parentcomm();
+  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+    parentcomm_ = new ::std::string;
+  }
+  parentcomm_->assign(value);
+}
+inline void command_details::set_parentcomm(const char* value, size_t size) {
+  set_has_parentcomm();
+  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+    parentcomm_ = new ::std::string;
+  }
+  parentcomm_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* command_details::mutable_parentcomm() {
+  set_has_parentcomm();
+  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+    parentcomm_ = new ::std::string;
+  }
+  return parentcomm_;
+}
+inline ::std::string* command_details::release_parentcomm() {
+  clear_has_parentcomm();
+  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = parentcomm_;
+    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void command_details::set_allocated_parentcomm(::std::string* parentcomm) {
+  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
+    delete parentcomm_;
+  }
+  if (parentcomm) {
+    set_has_parentcomm();
+    parentcomm_ = parentcomm;
+  } else {
+    clear_has_parentcomm();
+    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 // -------------------------------------------------------------------

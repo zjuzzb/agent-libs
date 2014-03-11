@@ -307,11 +307,12 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(process_details));
   command_details_descriptor_ = file->message_type(10);
-  static const int command_details_offsets_[4] = {
+  static const int command_details_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, timestamp_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, count_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, cmdline_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, exe_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, count_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(command_details, parentcomm_),
   };
   command_details_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -801,94 +802,95 @@ void protobuf_AddDesc_draios_2eproto() {
     "_counters\030\003 \001(\0132\'.draiosproto.counter_ti"
     "me_bidirectional\022 \n\030n_aggregated_connect"
     "ions\030\004 \001(\r\":\n\017process_details\022\014\n\004comm\030\001 "
-    "\002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\"Q\n\017comman"
-    "d_details\022\021\n\ttimestamp\030\001 \002(\004\022\017\n\007cmdline\030"
-    "\002 \002(\t\022\013\n\003exe\030\003 \002(\t\022\r\n\005count\030\004 \002(\r\"\301\004\n\004ho"
-    "st\022\020\n\010hostname\030\001 \001(\t\022\020\n\010num_cpus\030\002 \001(\r\022\021"
-    "\n\tcpu_loads\030\003 \003(\r\022\021\n\tcpu_steal\030\013 \003(\r\022\"\n\032"
-    "physical_memory_size_bytes\030\004 \002(\004\022/\n\ttcou"
-    "nters\030\005 \001(\0132\034.draiosproto.time_categorie"
-    "s\022B\n\013reqcounters\030\014 \001(\0132-.draiosproto.tra"
-    "nsaction_breakdown_categories\022E\n\024transac"
-    "tion_counters\030\006 \001(\0132\'.draiosproto.counte"
-    "r_time_bidirectional\022$\n\034transaction_proc"
-    "essing_delay\030\007 \001(\004\022\033\n\023merged_server_dela"
-    "y\030\016 \001(\004\022\030\n\020next_tiers_delay\030\r \001(\004\022;\n\021res"
-    "ource_counters\030\010 \001(\0132 .draiosproto.resou"
-    "rce_categories\022;\n\016syscall_errors\030\t \001(\0132#"
-    ".draiosproto.counter_syscall_errors\0228\n\017e"
-    "xternal_io_net\030\n \001(\0132\037.draiosproto.count"
-    "er_time_bytes\"\232\001\n\006thread\022\013\n\003pid\030\001 \002(\004\022\013\n"
-    "\003tid\030\002 \002(\004\022/\n\ttcounters\030\003 \001(\0132\034.draiospr"
-    "oto.time_categories\022E\n\024transaction_count"
-    "ers\030\005 \001(\0132\'.draiosproto.counter_time_bid"
-    "irectional\"\265\004\n\007process\022\013\n\003pid\030\001 \002(\004\022-\n\007d"
-    "etails\030\002 \001(\0132\034.draiosproto.process_detai"
-    "ls\022\"\n\032is_ipv4_transaction_server\030\003 \001(\010\022\""
-    "\n\032is_unix_transaction_server\030\004 \001(\010\022\"\n\032is"
-    "_ipv4_transaction_client\030\n \001(\010\022\"\n\032is_uni"
-    "x_transaction_client\030\013 \001(\010\022\017\n\007netrole\030\r "
-    "\001(\r\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto.tim"
-    "e_categories\022E\n\024transaction_counters\030\006 \001"
-    "(\0132\'.draiosproto.counter_time_bidirectio"
-    "nal\022$\n\034transaction_processing_delay\030\007 \001("
-    "\004\022\033\n\023merged_server_delay\030\016 \001(\004\022\030\n\020next_t"
-    "iers_delay\030\014 \001(\004\022;\n\021resource_counters\030\010 "
-    "\001(\0132 .draiosproto.resource_categories\022;\n"
-    "\016syscall_errors\030\t \001(\0132#.draiosproto.coun"
-    "ter_syscall_errors\"\?\n\007program\022&\n\010procinf"
-    "o\030\001 \002(\0132\024.draiosproto.process\022\014\n\004pids\030\002 "
-    "\003(\004\"T\n\tipv4tuple\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip\030\002 \002"
-    "(\r\022\r\n\005sport\030\003 \002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007l4pr"
-    "oto\030\005 \002(\r\"\246\001\n\017ipv4_connection\022%\n\005tuple\030\001"
-    " \002(\0132\026.draiosproto.ipv4tuple\022\014\n\004spid\030\002 \001"
-    "(\004\022\014\n\004stid\030\003 \001(\004\022\014\n\004dpid\030\005 \001(\004\022\014\n\004dtid\030\006"
-    " \001(\004\0224\n\010counters\030\010 \002(\0132\".draiosproto.con"
-    "nection_categories\"T\n\026ipv4_network_inter"
-    "face\022\014\n\004name\030\001 \002(\t\022\014\n\004addr\030\002 \002(\r\022\017\n\007netm"
-    "ask\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"\263\004\n\007metrics\022\024\n\014"
-    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
-    "\n\013customer_id\030\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021."
-    "draiosproto.host\022&\n\010programs\030\t \003(\0132\024.dra"
-    "iosproto.program\022\'\n\tprocesses\030\005 \003(\0132\024.dr"
-    "aiosproto.process\022$\n\007threads\030\006 \003(\0132\023.dra"
-    "iosproto.thread\0226\n\020ipv4_connections\030\007 \003("
-    "\0132\034.draiosproto.ipv4_connection\022D\n\027ipv4_"
-    "network_interfaces\030\010 \003(\0132#.draiosproto.i"
-    "pv4_network_interface\022\026\n\016sampling_ratio\030"
-    "\n \001(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\021\n\thost_"
-    "tags\030\014 \001(\t\022\027\n\017host_custom_map\030\r \001(\t\022\026\n\016i"
-    "s_host_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030"
-    "\017 \001(\t\022\017\n\007version\030\020 \001(\t\022.\n\010commands\030\021 \003(\013"
-    "2\034.draiosproto.command_details\"\202\001\n\014dump_"
-    "request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
-    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013durati"
-    "on_ns\030\004 \002(\004\022\017\n\007filters\030\005 \001(\t\022\r\n\005token\030\006 "
-    "\002(\t\"}\n\rdump_response\022\024\n\014timestamp_ns\030\001 \002"
-    "(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 "
-    "\001(\t\022\017\n\007content\030\004 \001(\014\022\r\n\005error\030\005 \001(\t\022\r\n\005t"
-    "oken\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014times"
+    "\002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\"e\n\017comman"
+    "d_details\022\021\n\ttimestamp\030\001 \002(\004\022\r\n\005count\030\002 "
+    "\002(\r\022\017\n\007cmdline\030\003 \002(\t\022\013\n\003exe\030\004 \002(\t\022\022\n\npar"
+    "entcomm\030\005 \002(\t\"\301\004\n\004host\022\020\n\010hostname\030\001 \001(\t"
+    "\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n"
+    "\tcpu_steal\030\013 \003(\r\022\"\n\032physical_memory_size"
+    "_bytes\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draios"
+    "proto.time_categories\022B\n\013reqcounters\030\014 \001"
+    "(\0132-.draiosproto.transaction_breakdown_c"
+    "ategories\022E\n\024transaction_counters\030\006 \001(\0132"
+    "\'.draiosproto.counter_time_bidirectional"
+    "\022$\n\034transaction_processing_delay\030\007 \001(\004\022\033"
+    "\n\023merged_server_delay\030\016 \001(\004\022\030\n\020next_tier"
+    "s_delay\030\r \001(\004\022;\n\021resource_counters\030\010 \001(\013"
+    "2 .draiosproto.resource_categories\022;\n\016sy"
+    "scall_errors\030\t \001(\0132#.draiosproto.counter"
+    "_syscall_errors\0228\n\017external_io_net\030\n \001(\013"
+    "2\037.draiosproto.counter_time_bytes\"\232\001\n\006th"
+    "read\022\013\n\003pid\030\001 \002(\004\022\013\n\003tid\030\002 \002(\004\022/\n\ttcount"
+    "ers\030\003 \001(\0132\034.draiosproto.time_categories\022"
+    "E\n\024transaction_counters\030\005 \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\"\265\004\n\007proce"
+    "ss\022\013\n\003pid\030\001 \002(\004\022-\n\007details\030\002 \001(\0132\034.draio"
+    "sproto.process_details\022\"\n\032is_ipv4_transa"
+    "ction_server\030\003 \001(\010\022\"\n\032is_unix_transactio"
+    "n_server\030\004 \001(\010\022\"\n\032is_ipv4_transaction_cl"
+    "ient\030\n \001(\010\022\"\n\032is_unix_transaction_client"
+    "\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/\n\ttcounters\030\005 \001"
+    "(\0132\034.draiosproto.time_categories\022E\n\024tran"
+    "saction_counters\030\006 \001(\0132\'.draiosproto.cou"
+    "nter_time_bidirectional\022$\n\034transaction_p"
+    "rocessing_delay\030\007 \001(\004\022\033\n\023merged_server_d"
+    "elay\030\016 \001(\004\022\030\n\020next_tiers_delay\030\014 \001(\004\022;\n\021"
+    "resource_counters\030\010 \001(\0132 .draiosproto.re"
+    "source_categories\022;\n\016syscall_errors\030\t \001("
+    "\0132#.draiosproto.counter_syscall_errors\"\?"
+    "\n\007program\022&\n\010procinfo\030\001 \002(\0132\024.draiosprot"
+    "o.process\022\014\n\004pids\030\002 \003(\004\"T\n\tipv4tuple\022\013\n\003"
+    "sip\030\001 \002(\r\022\013\n\003dip\030\002 \002(\r\022\r\n\005sport\030\003 \002(\r\022\r\n"
+    "\005dport\030\004 \002(\r\022\017\n\007l4proto\030\005 \002(\r\"\246\001\n\017ipv4_c"
+    "onnection\022%\n\005tuple\030\001 \002(\0132\026.draiosproto.i"
+    "pv4tuple\022\014\n\004spid\030\002 \001(\004\022\014\n\004stid\030\003 \001(\004\022\014\n\004"
+    "dpid\030\005 \001(\004\022\014\n\004dtid\030\006 \001(\004\0224\n\010counters\030\010 \002"
+    "(\0132\".draiosproto.connection_categories\"T"
+    "\n\026ipv4_network_interface\022\014\n\004name\030\001 \002(\t\022\014"
+    "\n\004addr\030\002 \002(\r\022\017\n\007netmask\030\003 \002(\r\022\r\n\005bcast\030\004"
+    " \001(\r\"\263\004\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
+    "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
+    "#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.host\022&\n\010"
+    "programs\030\t \003(\0132\024.draiosproto.program\022\'\n\t"
+    "processes\030\005 \003(\0132\024.draiosproto.process\022$\n"
+    "\007threads\030\006 \003(\0132\023.draiosproto.thread\0226\n\020i"
+    "pv4_connections\030\007 \003(\0132\034.draiosproto.ipv4"
+    "_connection\022D\n\027ipv4_network_interfaces\030\010"
+    " \003(\0132#.draiosproto.ipv4_network_interfac"
+    "e\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_custom"
+    "_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027\n\017host_c"
+    "ustom_map\030\r \001(\t\022\026\n\016is_host_hidden\030\016 \001(\010\022"
+    "\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007version\030\020 \001"
+    "(\t\022.\n\010commands\030\021 \003(\0132\034.draiosproto.comma"
+    "nd_details\"\202\001\n\014dump_request\022\024\n\014timestamp"
+    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
+    "r_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \002(\004\022\017\n\007filte"
+    "rs\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"}\n\rdump_response"
+    "\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002"
+    "(\t\022\023\n\013customer_id\030\003 \001(\t\022\017\n\007content\030\004 \001(\014"
+    "\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_o"
+    "pen_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
+    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005to"
+    "ken\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001("
+    "\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004po"
+    "rt\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns\030\001 "
+    "\002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003"
+    " \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005err"
+    "or\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_clo"
+    "se_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmach"
+    "ine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005tok"
+    "en\030\004 \002(\t\"T\n\023auto_update_request\022\024\n\014times"
     "tamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cus"
-    "tomer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 "
-    "\002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npa"
-    "ssphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_dat"
-    "a\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
-    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022"
-    "\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_sta"
-    "tus\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timest"
-    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
-    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_upd"
-    "ate_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
-    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013n"
-    "etworkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SE"
-    "RVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_"
-    "UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022"
-    "\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CL"
-    "IENT\020 *\224\001\n\014message_type\022\013\n\007METRICS\020\001\022\020\n\014"
-    "DUMP_REQUEST\020\002\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH"
-    "_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014"
-    "\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n"
-    "\031com.draios.model.protobufB\005AgentH\001", 5595);
+    "tomer_id\030\003 \001(\t*\251\001\n\013networkrole\022\010\n\004NONE\020\000"
+    "\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_"
+    "IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_"
+    "LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CL"
+    "IENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\224\001\n\014message_t"
+    "ype\022\013\n\007METRICS\020\001\022\020\n\014DUMP_REQUEST\020\002\022\021\n\rDU"
+    "MP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021S"
+    "SH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO"
+    "_UPDATE_REQUEST\020\tB$\n\031com.draios.model.pr"
+    "otobufB\005AgentH\001", 5615);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -5299,9 +5301,10 @@ void process_details::Swap(process_details* other) {
 
 #ifndef _MSC_VER
 const int command_details::kTimestampFieldNumber;
+const int command_details::kCountFieldNumber;
 const int command_details::kCmdlineFieldNumber;
 const int command_details::kExeFieldNumber;
-const int command_details::kCountFieldNumber;
+const int command_details::kParentcommFieldNumber;
 #endif  // !_MSC_VER
 
 command_details::command_details()
@@ -5321,9 +5324,10 @@ command_details::command_details(const command_details& from)
 void command_details::SharedCtor() {
   _cached_size_ = 0;
   timestamp_ = GOOGLE_ULONGLONG(0);
+  count_ = 0u;
   cmdline_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  count_ = 0u;
+  parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -5337,6 +5341,9 @@ void command_details::SharedDtor() {
   }
   if (exe_ != &::google::protobuf::internal::kEmptyString) {
     delete exe_;
+  }
+  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
+    delete parentcomm_;
   }
   if (this != default_instance_) {
   }
@@ -5366,6 +5373,7 @@ command_details* command_details::New() const {
 void command_details::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     timestamp_ = GOOGLE_ULONGLONG(0);
+    count_ = 0u;
     if (has_cmdline()) {
       if (cmdline_ != &::google::protobuf::internal::kEmptyString) {
         cmdline_->clear();
@@ -5376,7 +5384,11 @@ void command_details::Clear() {
         exe_->clear();
       }
     }
-    count_ = 0u;
+    if (has_parentcomm()) {
+      if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
+        parentcomm_->clear();
+      }
+    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -5399,12 +5411,28 @@ bool command_details::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_cmdline;
+        if (input->ExpectTag(16)) goto parse_count;
         break;
       }
 
-      // required string cmdline = 2;
+      // required uint32 count = 2;
       case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_count:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &count_)));
+          set_has_count();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_cmdline;
+        break;
+      }
+
+      // required string cmdline = 3;
+      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_cmdline:
@@ -5416,12 +5444,12 @@ bool command_details::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_exe;
+        if (input->ExpectTag(34)) goto parse_exe;
         break;
       }
 
-      // required string exe = 3;
-      case 3: {
+      // required string exe = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_exe:
@@ -5433,19 +5461,20 @@ bool command_details::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(32)) goto parse_count;
+        if (input->ExpectTag(42)) goto parse_parentcomm;
         break;
       }
 
-      // required uint32 count = 4;
-      case 4: {
+      // required string parentcomm = 5;
+      case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_count:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &count_)));
-          set_has_count();
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_parentcomm:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_parentcomm()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->parentcomm().data(), this->parentcomm().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
         }
@@ -5476,27 +5505,36 @@ void command_details::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->timestamp(), output);
   }
 
-  // required string cmdline = 2;
+  // required uint32 count = 2;
+  if (has_count()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->count(), output);
+  }
+
+  // required string cmdline = 3;
   if (has_cmdline()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->cmdline().data(), this->cmdline().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->cmdline(), output);
+      3, this->cmdline(), output);
   }
 
-  // required string exe = 3;
+  // required string exe = 4;
   if (has_exe()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->exe().data(), this->exe().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      3, this->exe(), output);
+      4, this->exe(), output);
   }
 
-  // required uint32 count = 4;
-  if (has_count()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->count(), output);
+  // required string parentcomm = 5;
+  if (has_parentcomm()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->parentcomm().data(), this->parentcomm().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      5, this->parentcomm(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -5512,29 +5550,39 @@ void command_details::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(1, this->timestamp(), target);
   }
 
-  // required string cmdline = 2;
+  // required uint32 count = 2;
+  if (has_count()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->count(), target);
+  }
+
+  // required string cmdline = 3;
   if (has_cmdline()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->cmdline().data(), this->cmdline().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->cmdline(), target);
+        3, this->cmdline(), target);
   }
 
-  // required string exe = 3;
+  // required string exe = 4;
   if (has_exe()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->exe().data(), this->exe().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->exe(), target);
+        4, this->exe(), target);
   }
 
-  // required uint32 count = 4;
-  if (has_count()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(4, this->count(), target);
+  // required string parentcomm = 5;
+  if (has_parentcomm()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->parentcomm().data(), this->parentcomm().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        5, this->parentcomm(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -5555,25 +5603,32 @@ int command_details::ByteSize() const {
           this->timestamp());
     }
 
-    // required string cmdline = 2;
+    // required uint32 count = 2;
+    if (has_count()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->count());
+    }
+
+    // required string cmdline = 3;
     if (has_cmdline()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->cmdline());
     }
 
-    // required string exe = 3;
+    // required string exe = 4;
     if (has_exe()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->exe());
     }
 
-    // required uint32 count = 4;
-    if (has_count()) {
+    // required string parentcomm = 5;
+    if (has_parentcomm()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->count());
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->parentcomm());
     }
 
   }
@@ -5606,14 +5661,17 @@ void command_details::MergeFrom(const command_details& from) {
     if (from.has_timestamp()) {
       set_timestamp(from.timestamp());
     }
+    if (from.has_count()) {
+      set_count(from.count());
+    }
     if (from.has_cmdline()) {
       set_cmdline(from.cmdline());
     }
     if (from.has_exe()) {
       set_exe(from.exe());
     }
-    if (from.has_count()) {
-      set_count(from.count());
+    if (from.has_parentcomm()) {
+      set_parentcomm(from.parentcomm());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -5632,7 +5690,7 @@ void command_details::CopyFrom(const command_details& from) {
 }
 
 bool command_details::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
+  if ((_has_bits_[0] & 0x0000001f) != 0x0000001f) return false;
 
   return true;
 }
@@ -5640,9 +5698,10 @@ bool command_details::IsInitialized() const {
 void command_details::Swap(command_details* other) {
   if (other != this) {
     std::swap(timestamp_, other->timestamp_);
+    std::swap(count_, other->count_);
     std::swap(cmdline_, other->cmdline_);
     std::swap(exe_, other->exe_);
-    std::swap(count_, other->count_);
+    std::swap(parentcomm_, other->parentcomm_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

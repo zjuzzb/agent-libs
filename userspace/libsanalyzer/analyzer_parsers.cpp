@@ -231,12 +231,12 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Lookup the parent process
 	//
-	//sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
-	//string pname;
-	//if(parentinfo != NULL)
-	//{
-	//	pname = parentinfo->m_exe;
-	//}
+	sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
+	string pname;
+	if(parentinfo != NULL)
+	{
+		cmdinfo.m_parent_comm = parentinfo->m_comm;
+	}
 
 	sinsp_fdinfo_t* fd0 = tinfo->get_fd(0);
 	sinsp_fdinfo_t* fd1 = tinfo->get_fd(1);

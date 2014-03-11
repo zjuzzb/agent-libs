@@ -101,9 +101,10 @@ message process_details {
 //
 message command_details {
 	required uint64 timestamp = 1;
-    required string cmdline = 2; // Program command line (e.g. "top -d1")
-    required string exe = 3; // Full executable name (e.g. "/bin/top")
-    required uint32 count = 4; // How many times this command has been repeated during the sample interval
+    required uint32 count = 2; // How many times this command has been repeated during the sample interval
+    required string cmdline = 3; // Program command line (e.g. "top -d1")
+    required string exe = 4; // Full executable name (e.g. "/bin/top")
+    optional string parentcomm = 5; // Name of the command that launched this one (e.g. "bash")
 }
 
 //

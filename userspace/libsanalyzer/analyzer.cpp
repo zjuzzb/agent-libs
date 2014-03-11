@@ -1564,8 +1564,7 @@ void sinsp_analyzer::emit_executed_commands()
 			}
 		}
 
-//		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
-		if(cmdcnt > 10)
+		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
 		{
 			map<string, sinsp_executed_command*> cmdlines;
 
@@ -1600,8 +1599,7 @@ void sinsp_analyzer::emit_executed_commands()
 			}
 		}
 
-//		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
-		if(cmdcnt > 8)
+		if(cmdcnt > DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO)
 		{
 			map<string, sinsp_executed_command*> exes;
 
@@ -1640,6 +1638,10 @@ void sinsp_analyzer::emit_executed_commands()
 
 				cd->set_timestamp(it->m_ts);
 				cd->set_exe(it->m_exe);
+				if(it->m_parent_comm != "")
+				{
+					cd->set_parentcomm(it->m_parent_comm);
+				}
 				cd->set_count(it->m_count);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)

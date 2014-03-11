@@ -102,6 +102,7 @@ public:
 	uint64_t m_ts;
 	string m_exe;
 	string m_comm;
+	string m_parent_comm;
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
 };
