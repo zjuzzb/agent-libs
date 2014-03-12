@@ -518,7 +518,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 			EXPECT_EQ("test", ti->get_comm());				
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
-			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags")));
+			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
 		else if(e->get_type() == PPME_SYSCALL_CLOSE_E)
@@ -663,7 +663,7 @@ TEST_F(sys_call_test, forking_clone_nofs)
 			EXPECT_EQ("test", ti->get_comm());				
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
-			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags")));
+			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
 		else if(e->get_type() == PPME_SYSCALL_CLOSE_E)
@@ -799,7 +799,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 			EXPECT_EQ("./test", e->get_param_value_str("exe"));				
 			EXPECT_EQ("test", ti->get_comm());				
-			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags")));
+			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
 		else if(e->get_type() == PPME_SYSCALL_GETCWD_E)
@@ -910,7 +910,7 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 
 			EXPECT_EQ("./test", e->get_param_value_str("exe"));				
 			EXPECT_EQ("test", ti->get_comm());				
-			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags")));
+			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
 		else if(e->get_type() == PPME_SYSCALL_GETCWD_E)

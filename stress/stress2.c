@@ -6,8 +6,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#define FILEPATH "/root/Dropbox/flyscript.zip"
-#define NUMCHARS  (49157778)
+#define FILEPATH "/root/Dropbox/lo_rubystrano.scap"
+#define NUMCHARS  (44843008)
 #define FILESIZE (NUMCHARS)
 
 int main(int argc, char *argv[])
@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 	int a;
 
 	fd = open(FILEPATH, O_RDONLY);
+
 	if (fd == -1)
 	{
 		perror("Error opening file for reading");
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
 	}
 
 	map = mmap(0, FILESIZE, PROT_READ, MAP_SHARED, fd, 0);
+
 	if (map == MAP_FAILED)
 	{
 		close(fd);
@@ -45,6 +47,7 @@ int main(int argc, char *argv[])
 	{
 		perror("Error un-mmapping the file");
 	}
+	sleep(1);
 	close(fd);
 	return 0;
 }
