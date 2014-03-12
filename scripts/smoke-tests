@@ -75,6 +75,7 @@ function smoke_tests {
 	modprobe sysdig-probe
 	sh -c "cd /opt/draios/test; ./test"
 	sysdig -n 50
+	sysdig -cstdout -n 50
 	rmmod sysdig-probe
 }
 
@@ -114,7 +115,9 @@ smoke_tests
 uninstall
 curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
+sysdig -cstdout -n 50
 
 uninstall
 curl -s http://download.draios.com/$REPOSITORY-debug/install-sysdig | bash
 sysdig -n 50
+sysdig -cstdout -n 50

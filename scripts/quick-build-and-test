@@ -9,13 +9,21 @@ make -C sysdig/build/debug
 insmod sysdig/driver/sysdig-probe.ko
 cd agent/build/debug/test
 ./test
-rmmod sysdig-probe
 cd -
+cd sysdig/build/debug/userspace/sysdig
+./sysdig -n 50
+./sysdig -cstdout -n 50
+cd -
+rmmod sysdig-probe
 
 make -C agent/build/release
 make -C sysdig/build/release
 insmod sysdig/driver/sysdig-probe.ko
 cd agent/build/release/test
 ./test
-rmmod sysdig-probe
 cd -
+cd sysdig/build/release/userspace/sysdig
+./sysdig -n 50
+./sysdig -cstdout -n 50
+cd -
+rmmod sysdig-probe
