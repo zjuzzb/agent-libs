@@ -694,12 +694,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(m_prev_flush_time_ns != 0)
 		{
 			delta = m_prev_flush_time_ns - it->second.m_lastevent_ts;
-			it->second.m_lastevent_ts = m_prev_flush_time_ns;
 
 			if(delta > (int64_t)sample_duration)
 			{
-				delta = sample_duration;
+				delta = (it->second.m_lastevent_ts / sample_duration * sample_duration + sample_duration) - 
+					it->second.m_lastevent_ts;
 			}
+
+			it->second.m_lastevent_ts = m_prev_flush_time_ns;
 
 			if(PPME_IS_ENTER(it->second.m_lastevent_type))
 			{
