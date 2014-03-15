@@ -10,6 +10,7 @@
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
+#include "analyzer_thread.h"
 #include "connectinfo.h"
 #include "metrics.h"
 #include "draios.pb.h"
@@ -167,11 +168,17 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				{
 					if(connection->is_server_only())
 					{
-						evt->m_fdinfo->set_role_client();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_client();
+						}
 					}
 					else if(connection->is_client_only())
 					{
-						evt->m_fdinfo->set_role_server();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_server();
+						}
 					}
 					else
 					{
@@ -272,11 +279,17 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				{
 					if(connection->is_server_only())
 					{
-						evt->m_fdinfo->set_role_client();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_client();
+						}
 					}
 					else if(connection->is_client_only())
 					{
-						evt->m_fdinfo->set_role_server();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_server();
+						}
 					}
 					else
 					{
@@ -519,11 +532,17 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				{
 					if(connection->is_server_only())
 					{
-						evt->m_fdinfo->set_role_client();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_client();
+						}
 					}
 					else if(connection->is_client_only())
 					{
-						evt->m_fdinfo->set_role_server();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_server();
+						}
 					}
 					else
 					{
@@ -623,11 +642,17 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				{
 					if(connection->is_server_only())
 					{
-						evt->m_fdinfo->set_role_client();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_client();
+						}
 					}
 					else if(connection->is_client_only())
 					{
-						evt->m_fdinfo->set_role_server();
+						if(evt->m_fdinfo->is_role_none())
+						{
+							evt->m_fdinfo->set_role_server();
+						}
 					}
 					else
 					{
