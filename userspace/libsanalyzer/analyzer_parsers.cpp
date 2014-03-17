@@ -211,8 +211,15 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	sinsp_executed_command cmdinfo;
 
-	ASSERT(tinfo->m_clone_ts != 0);
-	cmdinfo.m_ts = tinfo->m_clone_ts;
+	if(tinfo->m_clone_ts != 0)
+	{
+		cmdinfo.m_ts = tinfo->m_clone_ts;
+	}
+	else
+	{
+		cmdinfo.m_ts = evt->get_ts();
+	}
+
 	cmdinfo.m_comm = tinfo->m_comm;
 	cmdinfo.m_cmdline = tinfo->m_comm;
 	cmdinfo.m_exe = tinfo->m_exe;
