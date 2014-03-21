@@ -114,11 +114,11 @@ install_tests
 smoke_tests
 
 uninstall
-curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
+curl -s http://download.draios.com/$REPOSITORY-debug/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
 
 uninstall
-curl -s http://download.draios.com/$REPOSITORY-debug/install-sysdig | bash
+curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
