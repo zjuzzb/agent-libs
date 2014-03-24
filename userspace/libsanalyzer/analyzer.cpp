@@ -508,22 +508,49 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 
 	if(prog_sortable_list.size() <= howmany)
 	{
+		for(j = 0; j < prog_sortable_list.size(); j++)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+
 		return;
 	}
 
 	//
 	// Mark the top CPU consumers
 	//
-	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + howmany, 
-		prog_sortable_list.end(),
-		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
-
-	for(j = 0; j < prog_sortable_list.size(); j++)
+	if(cs_only)
 	{
-		if(j >= howmany || prog_sortable_list[j]->m_ainfo->m_cpuload <= 0)
+		partial_sort(prog_sortable_list.begin(), 
+			prog_sortable_list.begin() + howmany, 
+			prog_sortable_list.end(),
+			(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+
+		for(j = 0; j < howmany; j++)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = true;
+			if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+			{
+				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+	else
+	{
+		partial_sort(prog_sortable_list.begin(), 
+			prog_sortable_list.begin() + howmany, 
+			prog_sortable_list.end(),
+			(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+
+		for(j = 0; j < prog_sortable_list.size(); j++)
+		{
+			if(j >= howmany || prog_sortable_list[j]->m_ainfo->m_cpuload <= 0)
+			{
+				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = true;
+			}
 		}
 	}
 
@@ -839,7 +866,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
-//	if(m_inspector->m_islive)
+	if(m_inspector->m_islive)
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
@@ -889,7 +916,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Inclusion logic
 			//
-			// 1. Keep:
+			// Keep:
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
 			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
@@ -897,11 +924,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 			bool include;
 
-			// 2. If this is a client or a server, it didn't generate any activity in the sample,
-			// and another program with the same name has already been included, we can safely
-			// exclude it, sind its presence would be completely redundant
 			if(is_cs)
 			{
+				//
+				// If this is a client or a server, it didn't generate any activity in the sample,
+				// and another program with the same name has already been included, we can safely
+				// exclude it, sind its presence would be completely redundant
+				//
 				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
 
 				if(include && (tot.m_count == 0 && procinfo->m_cpuload == 0))
@@ -914,8 +943,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 			else
 			{
-				include = (tot.m_count != 0 || procinfo->m_cpuload != 0 || is_cs) &&
-					(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample || is_cs);
+				//
+				// If this NOT is a client or a server, skip it if it didn't generate any activity.
+				//
+				include = (tot.m_count != 0 || procinfo->m_cpuload != 0) &&
+					(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
 			}
 
 			if(include)
