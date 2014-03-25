@@ -980,7 +980,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
 						arg_it != it->second.m_args.end(); ++arg_it)
 					{
-						proc->mutable_details()->add_args(*arg_it);
+						if(*arg_it != "")
+						{
+							proc->mutable_details()->add_args(*arg_it);
+						}
 					}
 
 					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
