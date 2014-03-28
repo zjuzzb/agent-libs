@@ -3,7 +3,7 @@
 # Installer for Draios agent
 # www.draios.com
 #
-# (c) 2013 Draios Inc.
+# (c) 2013-2014 Draios Inc.
 #
 
 set -e
@@ -24,7 +24,7 @@ function install_rpm {
 	echo "* Installing Draios repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/_REPOSITORY_NAME_/rpm/draios.repo
 	echo "* Installing kernel headers"
-	yum -q -y install kernel-devel-$(uname -r)
+	yum -q -y install kernel-devel-$(uname -r) || kernel_warning
 	echo "* Installing Draios agent"
 	yum -q -y install draios-agent
 	service dragent start
@@ -44,7 +44,7 @@ function install_deb {
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/_REPOSITORY_NAME_/deb/draios.list
 	apt-get -qq update
 	echo "* Installing kernel headers"
-	apt-get -qq -y install linux-headers-$(uname -r)
+	apt-get -qq -y install linux-headers-$(uname -r) || kernel_warning
 	echo "* Installing Draios agent"
 	apt-get -qq -y install draios-agent
 }
@@ -52,6 +52,13 @@ function install_deb {
 function unsupported {
     echo "Unsupported operating system. Please consider contacting support@draios.com or trying the manual installation."
     exit 1	
+}
+
+function kernel_warning {
+    echo "Unable to find kernel development files for the current kernel version" $(uname -r)
+    echo "This usually means that your system is not up-to-date or you installed a custom kernel version."
+    echo "The installation will continue but you'll need to install these yourself in order to use the agent."
+    echo "Contact support@draios.com if you need further assistance."
 }
 
 function help {
