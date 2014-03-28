@@ -96,6 +96,7 @@ function uninstall {
 	elif [ -f /etc/system-release-cpe ]; then
 		yum -y erase draios-tests draios-agent sysdig
 		yum clean all
+		rm -rf /etc/yum.repos.d/draios.repo
 		yum clean all
 	else
 	    echo "Unable to detect operating system."
