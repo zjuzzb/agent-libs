@@ -2,9 +2,9 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 using namespace google::protobuf::io;
 
-#include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "../../driver/ppm_ringbuffer.h"
 
 #ifdef HAS_ANALYZER
 #include "analyzer_int.h"
