@@ -1,8 +1,8 @@
 #include <algorithm>
 
-#include "../../driver/ppm_ringbuffer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "../../driver/ppm_ringbuffer.h"
 
 #ifdef HAS_ANALYZER
 #include "analyzer_int.h"
