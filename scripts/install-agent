@@ -20,7 +20,7 @@ function install_rpm {
 	fi
 
 	echo "* Installing Draios public key"
-	rpm --quiet --import http://download.draios.com/DRAIOS-GPG-KEY.public
+	rpm --quiet --import https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public
 	echo "* Installing Draios repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/_REPOSITORY_NAME_/rpm/draios.repo
 	echo "* Installing kernel headers"
@@ -39,7 +39,7 @@ function install_deb {
 	fi
 
 	echo "* Installing Draios public key"
-	curl -s http://download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
+	curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
 	echo "* Installing Draios repository"
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/_REPOSITORY_NAME_/deb/draios.list
 	apt-get -qq update
@@ -124,7 +124,7 @@ elif [ -f /etc/system-release-cpe ]; then
 	DISTRO=$(cat /etc/system-release-cpe | cut -d':' -f3)
 	VERSION=$(cat /etc/system-release-cpe | cut -d':' -f5)
 
-	if [ $DISTRO = "centos" ] || [ $DISTRO = "redhat" ]; then
+	if [ $DISTRO = "oracle" ] || [ $DISTRO = "centos" ] || [ $DISTRO = "redhat" ]; then
 		if echo $VERSION | grep -q ^6; then
 			install_rpm
 		else
