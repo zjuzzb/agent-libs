@@ -61,7 +61,7 @@ sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
 cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
 sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
-cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig $REPOSITORY_DIR
+cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-sysdig
 sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
 
 #
