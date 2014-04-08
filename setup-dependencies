@@ -32,11 +32,11 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.0l
+OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1g
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/draios-dependencies/openssl-1.0.0l.tar.gz
-	tar -xzf openssl-1.0.0l.tar.gz
+	wget https://s3.amazonaws.com/draios-dependencies/openssl-1.0.1g.tar.gz
+	tar -xzf openssl-1.0.1g.tar.gz
 	cd $OPENSSL_DIR
 	./config --prefix=$OPENSSL_DIR/target
 	make install
