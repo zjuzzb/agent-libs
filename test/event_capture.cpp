@@ -51,6 +51,7 @@ void event_capture::capture()
 
 	const ::testing::TestInfo *const test_info =
 	    ::testing::UnitTest::GetInstance()->current_test_info();
+	m_inspector->set_debug_mode(true);
 	m_dump_filename = string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
 	try
 	{
