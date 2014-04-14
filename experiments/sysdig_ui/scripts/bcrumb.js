@@ -46,7 +46,7 @@ function breadcrumb_pop(redraw, nitems) {
 function breadcrumb_click(level) {
   breadcrumb_pop(true, stack.length - level - 1);
   
-  if(level <= 1) {
+  if(level < 1) {
     g_ChartManager.current().zoom(null, 1500, ZOOM_TYPE_OUT);
   } else {
     g_ChartManager.current().zoom(stack[level], 1500, ZOOM_TYPE_OUT);

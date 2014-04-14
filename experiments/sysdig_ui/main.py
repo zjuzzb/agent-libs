@@ -127,8 +127,6 @@ class myHandler(BaseHTTPRequestHandler):
 			post_body = self.rfile.read(content_len)
 			params = json.loads(post_body)
 			      
-			print params
-			
 			pvalue = params['value']
 			value = ''
 			filter = "fd.type=file and evt.is_io=true"
@@ -157,7 +155,8 @@ class myHandler(BaseHTTPRequestHandler):
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-r", "lo.scap", "-j", "-ctable_generator", keys, keydescs, value, "vd", filter, "10", "none"]
+			cmd = ["sysdig", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "50", "none"]
+
 			res = subprocess.check_output(cmd)
 
 			self.send_response(200)

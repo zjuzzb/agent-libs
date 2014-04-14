@@ -219,7 +219,7 @@ function DrTreeMap (parent_div_id, shownow) {
     //
     This.treemap = d3.layout.treemap()
       .round(false)
-      .padding([1, 1, 1, 1])
+      .padding([0, 0, 0, 0])
       .size([This.w, This.h])
       .sticky(true)
       .value(function(d) { return d.c0; });
