@@ -21,6 +21,7 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\ifinfo.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\internal_metrics.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\logger.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\memmem.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\parsers.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\sinsp.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\stats.cpp" />

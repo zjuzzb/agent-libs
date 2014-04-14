@@ -1576,7 +1576,7 @@ void sinsp_analyzer::emit_executed_commands()
 				}
 				else
 				{
-					ASSERT(false);
+//					ASSERT(false);
 				}
 
 				if(flags & sinsp_executed_command::FL_PIPE_TAIL)

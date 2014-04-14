@@ -235,6 +235,27 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cmdinfo.m_cmdline += tinfo->m_args[j];
 	}
 
+
+/*
+{
+	sinsp_threadinfo* parentinfo = tinfo;
+
+	while(1)
+	{
+		parentinfo = parentinfo->get_parent_thread();
+		string pname;
+		if(parentinfo != NULL)
+		{
+			cmdinfo.m_parent_comm = parentinfo->m_comm;
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+*/
+
 	//
 	// Lookup the parent process
 	//
@@ -250,9 +271,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	if(fd0 && fd1)
 	{
-		//if(parentinfo->m_comm.find("sh") != string::npos)
-		//{
-		//}
 		if(fd0->m_type == SCAP_FD_FIFO && fd1->m_type == SCAP_FD_FIFO)
 		{
 			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
