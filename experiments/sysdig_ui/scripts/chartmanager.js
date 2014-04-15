@@ -34,6 +34,8 @@ var g_ChartManager = {
       this._stack.push(new DrOpList('d3viz' + this._stack.length, false));
     } else if(type === this.TYPE_PIE || type === "pie") {
       this._stack.push(new DrPie('d3viz' + this._stack.length, false));
+    } else if(type === this.TYPE_TREEMAP2 || type === "treemap2") {
+      this._stack.push(new DrTreeMap2('d3viz' + this._stack.length, false));
     }
     
     var ntm = this._stack[this._stack.length - 1]; 

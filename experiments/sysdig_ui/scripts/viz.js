@@ -271,7 +271,7 @@ function DrTreeMap (parent_div_id, shownow) {
         .attr("width", function(d) { return d.dx - 1; })
         .attr("height", function(d) { return d.dy - 1; })
         .style("fill", function(d) { return This.color(d.parent.name); });
-  
+
     cell.append("svg:text")
         .attr("class", "celltext")
         .attr("x", function(d) { return 1; })

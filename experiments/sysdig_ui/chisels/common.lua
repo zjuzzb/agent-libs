@@ -138,17 +138,17 @@ function create_json_table(input_tbl, timedelta, viz_info, depth)
 	
 	local j = 1
 	local res = {}
-	
+		
 	for k,v in sorted_grtable do
 		local entry = {}
 		entry.name = k
-		entry.l = depth - 1
-		entry.c0 = v[2]
 		res[j] = entry
 		j = j + 1
 
 		if depth < #viz_info.key_fld then
 			entry.children = create_json_table(v[1], timedelta, viz_info, depth + 1)
+		else
+			entry.value = v[2]
 		end
 	end
 		
@@ -159,9 +159,7 @@ function print_sorted_table(stable, ts_s, ts_ns, timedelta, viz_info)
 	if viz_info.output_format == "json" then
 		local jtable = {}
 		jtable.children = create_json_table(stable, timedelta, viz_info, 1)
-		jtable.entity_name = {"root"}
-		jtable.data_depth = #viz_info.key_fld
-		jtable.data_depth = #viz_info.key_fld
+		jtable.name = "root"
 	
 		local str = json.encode(jtable, { indent = true })
 		print(str)

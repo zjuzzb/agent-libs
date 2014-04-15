@@ -2,7 +2,7 @@ function on_data_load(json) {
   //
   // Reset the breadcrumb
   //
-  breadcrumb_set({name: json.entity_name[0]}, true);    
+  breadcrumb_set({name: json.name}, true);    
   
   //
   // Update the chart
@@ -78,6 +78,6 @@ $("#slider2").timeslider({
 // Entry point for the page scripts
 //
 $(window).load(function() {
-  g_ChartManager.push('data/allfiles.json', g_ChartManager.TYPE_TREEMAP);
+  g_ChartManager.push('data/flare.json', g_ChartManager.TYPE_TREEMAP2);
   g_ChartManager.update_value('disk_rwbytes', 'File System R+W bytes');
 });
