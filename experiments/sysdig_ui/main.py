@@ -108,7 +108,7 @@ class myHandler(BaseHTTPRequestHandler):
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "50", "none"]
+			cmd = ["sysdig", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "500", "none"]
 
 			res = subprocess.check_output(cmd)
 

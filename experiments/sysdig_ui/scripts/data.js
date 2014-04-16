@@ -29,7 +29,7 @@ var value_list = [
 // Chart data management
 ////////////////////////////////////////////////////////////////////
 function on_data_load(json) {
-  var a = 0;
+  treemap2(json);
 }
 
 function on_data_load_error(jqXHR, textStatus, errorThrown) {
