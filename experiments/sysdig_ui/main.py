@@ -29,33 +29,16 @@ class myHandler(BaseHTTPRequestHandler):
 
 		if self.path=="/":
 			self.path="index.html"
-		if self.path=="/last":
+		'''
+		if self.path=="/fields":
 			self.send_response(200)
 			self.send_header('Content-type','application/json')
 			self.end_headers()
-			print string
-			self.wfile.write(string)
+			res = json.dumps(["a", "b", "c"])
+			print res
+			self.wfile.write(res)
 			return
-		if self.path=="/status":
-			running = False
-
-			try:
-				pr = proc.poll()
-
-				if pr == None:
-					running = True
-			except:
-				pass
-
-			res = {'running': running}
-			self.send_response(200)
-			self.send_header('Content-type','application/json')
-			self.end_headers()
-			string = json.dumps(res)
-			print string
-			self.wfile.write(string)
-			return
-
+		'''
 		try:
 			#Check the file extension required and
 			#set the right mime type
@@ -96,28 +79,6 @@ class myHandler(BaseHTTPRequestHandler):
 		except IOError:
 			self.send_error(404,'File Not Found: %s' % self.path)
 
-	def decode_keyval(self, keyval):
-		if keyval == 'Proc Name':
-			return 'proc.name'
-		elif keyval == 'Pid':
-			return 'proc.pid'
-		elif keyval == 'Directory':
-			return 'fd.directory'
-		elif keyval == 'File Name':
-			return 'fd.name'
-		elif keyval == 'User Name':
-			return 'user.name'
-		elif keyval == 'Tuple':
-			return 'fd.name'
-		elif keyval == 'Server Port':
-			return 'fd.sport'
-		elif keyval == 'Client Port':
-			return 'fd.cport'
-		elif keyval == 'User Name':
-			return 'user.name'
-		else:
-			return ''
-	
 	#Handler for the POST requests
 	def do_POST(self):
 		global proc
@@ -127,25 +88,17 @@ class myHandler(BaseHTTPRequestHandler):
 			post_body = self.rfile.read(content_len)
 			params = json.loads(post_body)
 			      
-			pvalue = params['value']
-			value = ''
-			filter = "fd.type=file and evt.is_io=true"
-			if pvalue == 'disk_rwbytes':
-				value = 'evt.rawarg.res'
-			elif pvalue == 'disk_time':
-				value = 'evt.latency'
-			elif pvalue == 'net_bytes':
-				value = 'evt.rawarg.res'
-				filter = "fd.type=ipv4 and evt.is_io=true"
+			value = params['value']['field']
+			filter = params['value']['filter']
       
-			keys = self.decode_keyval(params['key1'])
+			keys = params['key1']['field']
 			keydescs = "na"
 			
-			key2 = self.decode_keyval(params['key2'])
+			key2 = params['key2']['field']
 			if key2 != '':
 				keys += ',' + key2
 				keydescs += ",na"
-			key3 = self.decode_keyval(params['key3'])
+			key3 = params['key3']['field']
 			if key3 != '':
 				keys += ',' + key3
 				keydescs += ",na"
@@ -163,18 +116,6 @@ class myHandler(BaseHTTPRequestHandler):
 			self.end_headers()
 			self.wfile.write(res)
 			return
-		if self.path=="/stop":
-			try:
-				proc.terminate()
-			except:
-				pass
-
-			print "stopped"
-
-			self.send_response(200)
-			self.end_headers()
-			self.wfile.write("ok")
-			return			
 
 #
 # If the port is specified on the command line, use it
