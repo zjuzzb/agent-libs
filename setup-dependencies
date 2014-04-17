@@ -6,7 +6,7 @@ AGENT_SOURCEDIR=$(dirname $SCRIPT)
 SYSDIG_SOURCEDIR=$(dirname $SCRIPT)/../sysdig
 
 if [ -z "$WORKDIR" ]; then
-	WORKDIR=$AGENT_SOURCEDIR
+	WORKDIR=$AGENT_SOURCEDIR/..
 fi
 
 DEPENDENCIES=$WORKDIR/agent/dependencies
