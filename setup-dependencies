@@ -2,9 +2,12 @@
 set -ex 
 
 SCRIPT=$(readlink -f $0)
-TOP=$(dirname $SCRIPT)
+AGENT_SOURCEDIR=$(dirname $SCRIPT)
+SYSDIG_SOURCEDIR=$(dirname $SCRIPT)/../sysdig
 
-WORKDIR=$TOP/..
+if [ -z "$WORKDIR" ]; then
+	WORKDIR=$AGENT_SOURCEDIR
+fi
 
 DEPENDENCIES=$WORKDIR/agent/dependencies
 
@@ -49,7 +52,7 @@ if [ ! -d "$POCO_DIR" ]; then
 	wget https://s3.amazonaws.com/draios-dependencies/poco-1.4.6p2-all.tar.gz
 	tar -xzf poco-1.4.6p2-all.tar.gz
 	cd $POCO_DIR
-	patch -p1 < $TOP/patches/poco_libc_canonname_bug.patch
+	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
 	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC --include-path=$OPENSSL_DIR/target/include
 	make install
 	cd ..
@@ -79,7 +82,7 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	wget https://s3.amazonaws.com/draios-dependencies/cmake-2.8.12.1.tar.gz
 	tar -xzf cmake-2.8.12.1.tar.gz
 	cd $CMAKE_DIR
-	patch -p1 < $TOP/patches/0001-Make-deb-package-options-configurable-per-component.patch
+	patch -p1 < $AGENT_SOURCEDIR/patches/0001-Make-deb-package-options-configurable-per-component.patch
 	./bootstrap
 	make
 fi
@@ -113,25 +116,19 @@ fi
 VERSION="0.1.$BUILD_NUMBER"
 
 AGENT_BUILD_DIR=$WORKDIR/agent/build
-if [ ! -d "$AGENT_BUILD_DIR" ]; then
-	mkdir $AGENT_BUILD_DIR
-	mkdir $AGENT_BUILD_DIR/debug
-	mkdir $AGENT_BUILD_DIR/release
-fi
+mkdir -p $AGENT_BUILD_DIR/debug
+mkdir -p $AGENT_BUILD_DIR/release
 
 cd $AGENT_BUILD_DIR/debug
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DAGENT_VERSION=$VERSION ../..
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DAGENT_VERSION=$VERSION $AGENT_SOURCEDIR
 cd $AGENT_BUILD_DIR/release
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DAGENT_VERSION=$VERSION ../..
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DAGENT_VERSION=$VERSION $AGENT_SOURCEDIR
 
 SYSDIG_BUILD_DIR=$WORKDIR/sysdig/build
-if [ ! -d "$SYSDIG_BUILD_DIR" ]; then
-	mkdir $SYSDIG_BUILD_DIR
-	mkdir $SYSDIG_BUILD_DIR/debug
-	mkdir $SYSDIG_BUILD_DIR/release
-fi
+mkdir -p $SYSDIG_BUILD_DIR/debug
+mkdir -p $SYSDIG_BUILD_DIR/release
 
 cd $SYSDIG_BUILD_DIR/debug
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DSYSDIG_VERSION=$VERSION -DCMAKE_INSTALL_PREFIX=/usr ../..
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DSYSDIG_VERSION=$VERSION -DCMAKE_INSTALL_PREFIX=/usr $SYSDIG_SOURCEDIR
 cd $SYSDIG_BUILD_DIR/release
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DSYSDIG_VERSION=$VERSION -DCMAKE_INSTALL_PREFIX=/usr ../..
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DSYSDIG_VERSION=$VERSION -DCMAKE_INSTALL_PREFIX=/usr $SYSDIG_SOURCEDIR
