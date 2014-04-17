@@ -30,9 +30,7 @@ add_executable(test
 target_link_libraries(test
 	pthread
 	sanalyzer 
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoUtil.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.6.0/libgtest.a) 
 

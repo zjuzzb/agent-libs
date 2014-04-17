@@ -14,7 +14,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 
 set(DRAIOS_BIN_PREFIX "/opt/draios")
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libbscap)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(test)
