@@ -33,6 +33,7 @@ var key_list_io = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 21];
 var key_list_failed_io = [0, 12, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21];
 var key_list_slow_io = [0, 2, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21];
 var key_list_net = [0, 14, 17, 15, 16, 21];
+var key_list_failed_net = [0, 17, 21];
 var key_list_syscall = [12, 0, 18, 2, 3, 4, 5, 6, 7, 8, 9, 11, 19, 21];
 var key_list_failed_syscall = [12, 11, 0, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 21];
 var key_list_commands = [8, 13, 18, 7, 9];
@@ -49,7 +50,7 @@ var value_list = [
   {name:"Network Bytes", description:"amount of bytes sent/received on the network", field:"evt.rawarg.res", filter:"fd.type=ipv4 and evt.is_io=true", keys: key_list_net},
   {name:"Incoming Connection Count", description:"number of received network connections", field:"evt.count", filter:"evt.type=accept and evt.dir=<", keys: key_list_net},
   {name:"Outgoing Connection Count", description:"number of attempted network connections", field:"evt.count", filter:"evt.type=connect and evt.dir=<", keys: key_list_net},
-  {name:"Failed Connection Attempts", description:"number of falied network connection attempts", field:"evt.count", filter:"evt.type=connect and evt.dir=< and evt.failed=true", keys: key_list_net},
+  {name:"Failed Connection Attempts", description:"number of falied network connection attempts", field:"evt.count", filter:"(fd.type=ipv4 or fd.type=ipv6) and evt.type=connect and evt.dir=< and evt.failed=true", keys: key_list_failed_net},
   {name:"System Call Count", description:"number of system calls", field:"evt.count", filter:"evt.dir=<", keys: key_list_syscall},
   {name:"System Call Time", description:"Time spent in system calls", field:"evt.latency", filter:"evt.dir=<", keys: key_list_syscall},
   {name:"Failed System Call Count", description:"number of system calls that failed", field:"evt.count", filter:"evt.dir=< and evt.failed=true", keys: key_list_failed_syscall},

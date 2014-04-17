@@ -103,14 +103,18 @@ class myHandler(BaseHTTPRequestHandler):
 				keys += ',' + key3
 				keydescs += ",na"
 			
-			print keys
-			
 			#
 			# Spawn sysdig
 			#
 			cmd = ["sysdig", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "500", "none"]
 
+			print cmd
+
 			res = subprocess.check_output(cmd)
+
+			of = open("sdout.json", "w") 
+			of.write(res)
+			of.close()
 
 			self.send_response(200)
 			self.end_headers()
