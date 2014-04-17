@@ -2,9 +2,16 @@ var key_list_io = [
   {name:"Process Name", field:"proc.name", filter:""},
   {name:"Directory", field:"fd.directory", filter:""},
   {name:"Filename", field:"fd.name", filter:""},
-  {name:"Process PID", field:"proc.pid", filter:""},
+  {name:"Process ID", field:"proc.pid", filter:""},
+  {name:"Thread ID", field:"thread.tid", filter:""},
   {name:"Username", field:"user.name", filter:""},
+  {name:"Parent Process Name", field:"proc.pname", filter:""},
+  {name:"Parent Process ID", field:"proc.ppid", filter:""},
+  {name:"System call type", field:"evt.type", filter:""},
+  {name:"Process Name + Arguments", field:"proc.cmdline", filter:""},
   {name:"None", field:"", filter:""},
+// cpu
+// in/out (for I/O)
 ];
 
 var key_list_net = [
@@ -16,12 +23,50 @@ var key_list_net = [
   {name:"Process PID", field:"proc.pid", filter:""},
   {name:"Username", field:"user.name", filter:""},
   {name:"None", field:"", filter:""},
+// network protocol
+];
+
+var key_list_syscall = [
+  {name:"Process Name", field:"proc.name", filter:""},
+  {name:"Process PID", field:"proc.pid", filter:""},
+  {name:"Username", field:"user.name", filter:""},
+  {name:"System call type", field:"evt.type", filter:""},
+  {name:"None", field:"", filter:""},
+// cpu
+// parent process
+// thread id
+// executed commands
+// full process name with arguments
+// process arguments
+// in/out (for I/O)
 ];
 
 var value_list = [
-  {name:"I/O Bytes (R+W)", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true", keys: key_list_io},
-  {name:"I/O Bytes (R)", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true", keys: key_list_io},
-  {name:"Network Bytes (R+W)", field:"evt.rawarg.res", filter:"fd.type=ipv4 and evt.is_io=true", keys: key_list_net},
+  {name:"I/O Bytes", description:"amount of bytes read/written to disk", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io},
+  {name:"I/O Time", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io},
+  {name:"IOPS", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io},
+  {name:"Disk I/O Failure Count", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=true", keys: key_list_io},
+  {name:"File Open Failure Count", field:"evt.count", filter:"evt.type=open and evt.dir=< and evt.failed=true", keys: key_list_io},
+  {name:"System call Failure Count", field:"evt.count", filter:"evt.dir=< and evt.failed=true", keys: key_list_io},
+  {name:"Network Bytes", description:"amount of bytes sent/received on the network", field:"evt.rawarg.res", filter:"fd.type=ipv4 and evt.is_io=true", keys: key_list_net},
+// number of file opens
+// number of incoming connections
+// number of outgoing connections
+// number of system calls
+// system call latency
+// cpu usage
+// failed system calls
+// failed I/O system calls
+// failed file opens
+// failed network connections
+// number of threads
+// number of FDs
+// I/O calls with latency bigger than 1ms
+// I/O calls with latency bigger than 10ms
+// I/O calls with latency bigger than 100ms
+// number of forks
+// number of executed commands
+// page faults
 ];
 
 
