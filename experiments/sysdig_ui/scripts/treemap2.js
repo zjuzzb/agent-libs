@@ -1,6 +1,8 @@
 function treemap2(data) {
   var This = this;
   This.root = data;
+  This.color = d3.scale.category20c();
+
   $('#chart')[0].innerHTML = '';
 
   var margin = {top: 23, right: 0, bottom: 0, left: 0},
@@ -293,7 +295,10 @@ function treemap2(data) {
       rect.attr("x", function(d) { return x(d.x); })
           .attr("y", function(d) { return y(d.y); })
           .attr("width", function(d) { return x(d.x + d.dx) - x(d.x); })
-          .attr("height", function(d) { return y(d.y + d.dy) - y(d.y); });
+          .attr("height", function(d) { return y(d.y + d.dy) - y(d.y); })
+          .style("fill", function(d) { 
+            var res = This.color(d.name); 
+            return res;});
     }
 
     function name(d) {
