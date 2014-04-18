@@ -6,7 +6,8 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
+add_definitions(-D_FILE_OFFSET_BITS=64)
 
 add_executable(test 
 	analyzer.cpp
