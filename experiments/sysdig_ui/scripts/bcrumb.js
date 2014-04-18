@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////////////
-// This file contains a bunch of small functions to manage  the page readcrumb control
+// This file contains a bunch of small functions to manage the page breadcrumb control
 ////////////////////////////////////////////////////////////////////////////////////////
 
 var stack = [];
 
 function breadcrumb_redraw() {
-  bc = document.getElementById(g_ChartManager.current_bcrumb_id());
+  bc = document.getElementById('bcrumb');
 
   bc.innerHTML = '';
   
@@ -44,11 +44,9 @@ function breadcrumb_pop(redraw, nitems) {
 }
 
 function breadcrumb_click(level) {
+  stack[level].d.prev = stack.length - 1;
+  var g1 = stack[level + 1].g;
   breadcrumb_pop(true, stack.length - level - 1);
   
-  if(level < 1) {
-    g_ChartManager.current().zoom(null, 1500, ZOOM_TYPE_OUT);
-  } else {
-    g_ChartManager.current().zoom(stack[level], 1500, ZOOM_TYPE_OUT);
-  }
+  g_treemap.zoomout(stack[level].d, g1);
 }

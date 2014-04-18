@@ -68,8 +68,10 @@ var value_list = [
 ////////////////////////////////////////////////////////////////////
 // Chart data management
 ////////////////////////////////////////////////////////////////////
+var g_treemap;
+
 function on_data_load(json) {
-  treemap2(json);
+  g_treemap = new treemap2(json);
 }
 
 function on_data_load_error(jqXHR, textStatus, errorThrown) {
