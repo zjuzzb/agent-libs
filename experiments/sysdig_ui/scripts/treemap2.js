@@ -128,8 +128,9 @@ function treemap2(data) {
           .data(d._children)
         .enter().append("g");
 
-      g.filter(function(d) { return d._children || d._bchildren; })
+      g.filter(function(d) { return (d._children || d._bchildren); })
           .classed("children", true)
+          .classed("selectable", true)
           .on("mouseover", function(d) {
             grandparent
               .select("text")
@@ -141,9 +142,23 @@ function treemap2(data) {
                 .text(name(d.parent));
           })
           .on("click", function(d) {
-            d._children = d._bchildren;
-            layout(d);
-            transition(d, g);
+              d._children = d._bchildren;
+              layout(d);
+              transition(d, g);              
+          });
+
+      g.filter(function(d) { return !(d._children || d._bchildren); })
+          .classed("children", true)
+          .classed("unselectable", true)
+          .on("mouseover", function(d) {
+            grandparent
+              .select("text")
+                .text(name(d));
+          })
+          .on("mouseout", function(d) {
+            grandparent
+              .select("text")
+                .text(name(d.parent));
           });
 
       g.selectAll(".child")
