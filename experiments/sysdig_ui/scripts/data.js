@@ -84,13 +84,21 @@ function on_data_load_error(jqXHR, textStatus, errorThrown) {
 //
 function update_chart() {
   var value = value_list[$('#valuecombo')[0].value];
+  
   var value_simple = JSON.parse(JSON.stringify(value_list[$('#valuecombo')[0].value]));
   value_simple.keys = undefined;
   var keylist = value.keys;
   var key1 = keys_info[keylist[$('#keycombo1')[0].value]];
   var key2 = keys_info[keylist[$('#keycombo2')[0].value]];
   var key3 = keys_info[keylist[$('#keycombo3')[0].value]];
-  body = JSON.stringify({"value":value_simple, "key1": key1, "key2": key2, "key3": key3})
+  
+  var filter = $('#filterinput')[0].value;
+
+  body = JSON.stringify({"value":value_simple, 
+    "key1": key1, 
+    "key2": key2, 
+    "key3": key3,
+    "filter": filter})
   
   $.ajax({
     type : 'POST',

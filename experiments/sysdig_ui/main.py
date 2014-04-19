@@ -87,9 +87,9 @@ class myHandler(BaseHTTPRequestHandler):
 			content_len = int(self.headers.getheader('content-length'))
 			post_body = self.rfile.read(content_len)
 			params = json.loads(post_body)
-			      
+
 			value = params['value']['field']
-			filter = params['value']['filter']
+			valuefilter = params['value']['filter']
       
 			keys = params['key1']['field']
 			keydescs = "na"
@@ -103,6 +103,13 @@ class myHandler(BaseHTTPRequestHandler):
 				keys += ',' + key3
 				keydescs += ",na"
 			
+			if params['filter'] != None and params['filter'] != '':
+				filter = '(' + params['filter'] + ') and (' + valuefilter + ')'
+			else:
+				filter = valuefilter
+
+			print filter
+
 			#
 			# Spawn sysdig
 			#
