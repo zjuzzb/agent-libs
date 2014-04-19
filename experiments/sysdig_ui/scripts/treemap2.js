@@ -296,9 +296,19 @@ function treemap2(data) {
           .attr("y", function(d) { return y(d.y); })
           .attr("width", function(d) { return x(d.x + d.dx) - x(d.x); })
           .attr("height", function(d) { return y(d.y + d.dy) - y(d.y); })
-          .style("fill", function(d) { 
+          .style("fill", function(d) {
             var res = This.color(d.name); 
-            return res;});
+            return res;})
+// remove this to go much faster on firefox
+          .style("opacity", function(d) {
+            return 0;
+          })
+          .transition().duration(500)
+            .style("opacity", function(d) {
+              return 0.5;
+            })
+///////////////////////////////////////////
+          ;
     }
 
     function name(d) {
