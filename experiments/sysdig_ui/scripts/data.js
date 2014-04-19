@@ -1,7 +1,7 @@
 var keys_info = [
   {id: 0, name:"Process Name", field:"proc.name", filter:""},
   {id: 1, name:"Directory", field:"fd.directory", filter:""},
-  {id: 2, name:"Filename", field:"fd.name", filter:""},
+  {id: 2, name:"Filename", field:"fd.filename", filter:""},
   {id: 3, name:"Process ID", field:"proc.pid", filter:""},
   {id: 4, name:"Process Arguments", field:"proc.args", filter:""},
   {id: 5, name:"Process Name + Arguments", field:"proc.cmdline", filter:""},
@@ -20,7 +20,8 @@ var keys_info = [
   {id: 18, name:"CPU", field:"evt.cpu", filter:""},
   {id: 19, name:"FD Name", field:"fd.name", filter:""},
   {id: 20, name:"Process Name", field:"proc.name", filter:""},
-  {id: 21, name:"None", field:"", filter:""},
+  {id: 21, name:"Full File Name", field:"fd.name", filter:""},
+  {id: 22, name:"None", field:"", filter:""},
 // full executed process command line (name + args)
 // process grandparent
 // cpu
@@ -29,14 +30,14 @@ var keys_info = [
 // network protocol
 ];
 
-var key_list_io = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 21];
-var key_list_failed_io = [0, 12, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21];
-var key_list_slow_io = [0, 2, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21];
-var key_list_net = [0, 14, 17, 15, 16, 21];
-var key_list_failed_net = [0, 17, 21];
-var key_list_syscall = [12, 0, 18, 2, 3, 4, 5, 6, 7, 8, 9, 11, 19, 21];
-var key_list_failed_syscall = [12, 11, 0, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 21];
-var key_list_commands = [8, 13, 18, 7, 9];
+var key_list_io = [0, 1, 2, 21, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 22];
+var key_list_failed_io = [0, 12, 2, 21, 3, 4, 5, 6, 7, 8, 9, 10, 11, 22];
+var key_list_slow_io = [0, 2, 12, 21, 3, 4, 5, 6, 7, 8, 9, 10, 11, 22];
+var key_list_net = [0, 14, 17, 15, 16, 22];
+var key_list_failed_net = [0, 17, 22];
+var key_list_syscall = [12, 0, 18, 2, 22, 3, 4, 5, 6, 7, 8, 9, 11, 19, 22];
+var key_list_failed_syscall = [12, 11, 0, 2, 22, 3, 4, 5, 6, 7, 8, 9, 18, 19, 22];
+var key_list_commands = [8, 13, 18, 7, 9, 22];
 
 var value_list = [
   {name:"I/O Bytes", description:"amount of bytes read/written to disk", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io},
