@@ -20,7 +20,8 @@ private:
 	void disconnect();
 	bool transmit_buffer(const char* buffer, uint32_t buflen);
 	void receive_message();
-	void handle_dump_request(uint8_t* buf, uint32_t size);
+	void handle_dump_request_start(uint8_t* buf, uint32_t size);
+	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
 	void handle_ssh_open_channel(uint8_t* buf, uint32_t size);
 	void handle_ssh_data(uint8_t* buf, uint32_t size);
 	void handle_ssh_close_channel(uint8_t* buf, uint32_t size);

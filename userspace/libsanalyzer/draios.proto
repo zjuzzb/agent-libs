@@ -236,7 +236,8 @@ message ipv4_network_interface {
 //
 enum message_type {
     METRICS = 1;
-    DUMP_REQUEST = 2;
+    DUMP_REQUEST_START = 2;
+    DUMP_REQUEST_STOP = 4;
     DUMP_RESPONSE = 3;
     SSH_OPEN_CHANNEL = 6;
     SSH_CLOSE_CHANNEL = 7;
@@ -267,20 +268,30 @@ message metrics {
 	repeated command_details commands = 17; // List of commands executed during the sample.
 }
 
-message dump_request {
+message dump_request_start {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required uint64 duration_ns = 4; // The duration for the capture in ns
+    optional uint64 duration_ns = 4; // The duration for the capture in ns
     optional string filters = 5; // Dump filters
+    optional uint64 max_size = 7; // Max size
     required string token = 6; // The token associated with the request
+}
+
+message dump_request_stop {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string token = 4; // The token associated with the request
 }
 
 message dump_response {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    optional bytes content = 4; // The bynary dump file
+    optional uint32 chunk_no = 7; // Index of the current chunk, starting from 0
+    optional bool final_chunk = 8; // True if this is the last chunk
+    optional bytes content = 4; // The binary dump file
     optional string error = 5; // Dump errors
     required string token = 6; // The token associated with the request
 }

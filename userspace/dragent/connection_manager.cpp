@@ -310,8 +310,8 @@ void connection_manager::receive_message()
 
 		switch(header->messagetype)
 		{
-			case draiosproto::message_type::DUMP_REQUEST:
-				handle_dump_request(
+			case draiosproto::message_type::DUMP_REQUEST_START:
+				handle_dump_request_start(
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
@@ -349,9 +349,9 @@ void connection_manager::receive_message()
 	}
 }
 
-void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
+void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 {
-	draiosproto::dump_request request;
+	draiosproto::dump_request_start request;
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
 	{
 		return;
@@ -363,12 +363,33 @@ void connection_manager::handle_dump_request(uint8_t* buf, uint32_t size)
 		filter = request.filters();
 	}
 
+	uint64_t duration_ns = 0;
+	if(request.has_duration_ns())
+	{
+		duration_ns = request.duration_ns();
+	}
+
+	uint64_t max_size = 0;
+	if(request.has_max_size())
+	{
+		max_size = request.max_size();
+	}
+
 	string token = request.token();
 
 	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request(token, request.duration_ns(), filter));
+		new sinsp_worker::dump_job_request(token, duration_ns, max_size, filter));
 	
 	m_sinsp_worker->schedule_dump_job(job_request);
+}
+
+void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
+{
+	draiosproto::dump_request_stop request;
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
+	{
+		return;
+	}
 }
 
 void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)

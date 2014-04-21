@@ -23,15 +23,17 @@ public:
 	class dump_job_request
 	{
 	public:
-		dump_job_request(const string& token, uint64_t duration_ns, const string& filter):
+		dump_job_request(const string& token, uint64_t duration_ns, uint64_t max_size, const string& filter):
 			m_token(token),
 			m_duration_ns(duration_ns),
+			m_max_size(max_size),
 			m_filter(filter)
 		{
 		}
 
 		string m_token;
 		uint64_t m_duration_ns;
+		uint64_t m_max_size;
 		string m_filter;
 	};
 
@@ -51,9 +53,13 @@ private:
 			m_filter(NULL),
 			m_start_ns(0),
 			m_duration_ns(0),
+			m_max_size(0),
+			m_fp(NULL),
 			m_delete_file_when_done(true),
-			m_send_file_when_done(true),
-			m_n_events(0)
+			m_send_file(true),
+			m_n_events(0),
+			m_last_chunk_offset(0),
+			m_last_chunk_idx(0)
 		{
 		}
 
@@ -71,6 +77,12 @@ private:
 				m_filter = NULL;
 			}
 
+			if(m_fp)
+			{
+				fclose(m_fp);
+				m_fp = NULL;
+			}
+
 			if(m_delete_file_when_done && !m_file.empty())
 			{
 				File f(m_file);
@@ -86,22 +98,25 @@ private:
 		sinsp_filter* m_filter;
 		uint64_t m_start_ns;
 		uint64_t m_duration_ns;
+		uint64_t m_max_size;
 		string m_file;
+		FILE* m_fp;
 		bool m_delete_file_when_done;
-		bool m_send_file_when_done;
+		bool m_send_file;
 		uint64_t m_n_events;
+		uint64_t m_last_chunk_offset;
+		uint64_t m_last_chunk_idx;
 	};
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
 	void queue_response(const draiosproto::dump_response& response);
 	void send_error(const string& token, const string& error);
-	void send_file(const string& token, const string& filename);
-	static std::streamsize copy_file(FileInputStream* istr, std::string* str);
+	void send_dump_chunk(dump_job_state* job);
 	void run_dump_jobs(sinsp_evt* ev);
 	void start_new_jobs(uint64_t ts);
 
 	static const string m_name;
-	static const uint64_t m_max_dump_file_size = MAX_SERIALIZATION_BUF_SIZE_BYTES * 0.9;
+	static const uint64_t m_chunk_size = 10 * 1024 * 1024;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

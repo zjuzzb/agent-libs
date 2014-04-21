@@ -279,15 +279,37 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 		SharedPtr<dump_job_state> job = *it;
 
 		bool terminate = false;
+		bool send_chunk = false;
 
-		if(job->m_dumper->written_bytes() > m_max_dump_file_size)
+		if(job->m_send_file &&
+			job->m_dumper->written_bytes() - job->m_last_chunk_offset > m_chunk_size)
+		{
+			send_chunk = true;
+		}
+
+		if(job->m_max_size && job->m_dumper->written_bytes() > job->m_max_size)
 		{
 			terminate = true;
+
+			if(job->m_send_file)
+			{
+				send_chunk = true;
+			}
 		}
 
 		if(ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
 			terminate = true;
+
+			if(job->m_send_file)
+			{
+				send_chunk = true;
+			}
+		}
+
+		if(send_chunk)
+		{
+			send_dump_chunk(job);
 		}
 
 		if(terminate)
@@ -302,11 +324,6 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			//
 			delete job->m_dumper;
 			job->m_dumper = NULL;
-
-			if(job->m_send_file_when_done)
-			{
-				send_file(job->m_token, job->m_file);
-			}
 		}
 		else
 		{
@@ -335,52 +352,50 @@ void sinsp_worker::send_error(const string& token, const string& error)
 	queue_response(response);	
 }
 
-void sinsp_worker::send_file(const string& token, const string& filename)
+void sinsp_worker::send_dump_chunk(dump_job_state* job)
 {
-	FileInputStream file(filename);
-	string sfile;
+	Buffer<char> buffer(16384);
+	string chunk;
+	uint64_t chunk_size = m_chunk_size;
+	bool eof = false;
 
-	uint32_t nread = copy_file(&file, &sfile);
-	
-	g_log->information(m_name + ": " + filename + ": File size: " + NumberFormatter::format(nread));
-
-	draiosproto::dump_response response;
-	prepare_response(token, &response);
-	response.set_content(sfile);
-	queue_response(response);
-}
-
-std::streamsize sinsp_worker::copy_file(FileInputStream* istr, std::string* str)
-{
-	Buffer<char> buffer(8192);
-	std::streamsize len = 0;
-	
-	istr->read(buffer.begin(), buffer.size());
-	std::streamsize n = istr->gcount();
-
-	while(n > 0)
+	ASSERT(job->m_fp);	
+	while(true)
 	{
-		len += n;
-		str->append(buffer.begin(), static_cast<std::string::size_type>(n));
-
-		if(len > MAX_SERIALIZATION_BUF_SIZE_BYTES)
+		size_t to_read = min(buffer.size(), chunk_size); 
+		size_t res = fread(buffer.begin(), 1, buffer.size(), job->m_fp);
+		if(res != to_read)
 		{
-			g_log->information("File too big, truncating to " + NumberFormatter::format(len));
+			if(feof(job->m_fp))
+			{
+				g_log->information(m_name + ": " + job->m_file + ": EOF");
+				eof = true;
+			}
+			else if(ferror(job->m_fp))
+			{
+				ASSERT(false);
+			}
+
 			break;
 		}
 
-		if(istr)
-		{
-			istr->read(buffer.begin(), buffer.size());
-			n = istr->gcount();
-		}
-		else 
-		{
-			n = 0;
-		}
+		chunk_size -= res;
+		chunk.append(buffer.begin(), res);
 	}
+	
+	g_log->information(m_name + ": " + job->m_file + ": Sending chunk of " + NumberFormatter::format(chunk.size()));
 
-	return len;
+	draiosproto::dump_response response;
+	prepare_response(job->m_token, &response);
+	response.set_content(chunk);
+	response.set_chunk_no(job->m_last_chunk_idx);
+	if(eof)
+	{
+		response.set_final_chunk(true);
+	}
+	queue_response(response);
+
+	++job->m_last_chunk_idx;
 }
 
 void sinsp_worker::start_new_jobs(uint64_t ts)
@@ -398,7 +413,7 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		job_state->m_duration_ns = 20000000000LL;
 		job_state->m_start_ns = ts;
 		job_state->m_delete_file_when_done = false;
-		job_state->m_send_file_when_done = false;
+		job_state->m_send_file = false;
 
 		m_running_dump_jobs.push_back(job_state);
 	}
@@ -423,12 +438,20 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 
 		job_state->m_token = request->m_token;
 		job_state->m_dumper = new sinsp_dumper(m_inspector);
-		job_state->m_file = TemporaryFile::tempName(m_configuration->m_dump_dir) + ".scap";
+		job_state->m_file = m_configuration->m_dump_dir + request->m_token + ".scap";
 		g_log->information("Starting dump job in " + job_state->m_file + 
 			", filter '" + request->m_filter + "'");
 		job_state->m_dumper->open(job_state->m_file);
 
+		job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
+		if(job_state->m_fp == NULL)
+		{
+			send_error(request->m_token, strerror(errno));
+			return;
+		}
+
 		job_state->m_duration_ns = request->m_duration_ns;
+		job_state->m_max_size = request->m_max_size;
 		job_state->m_start_ns = ts;
 
 		m_running_dump_jobs.push_back(job_state);
