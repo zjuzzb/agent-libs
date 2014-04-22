@@ -1,7 +1,8 @@
-function treemap2(data) {
+function treemap2(data, unit) {
   var This = this;
   This.root = data;
   This.color = d3.scale.category20c();
+  This.unit = unit;
 
   $('#chart')[0].innerHTML = '';
 
@@ -134,6 +135,9 @@ function treemap2(data) {
           .classed("children", true)
           .classed("selectable", true)
           .on("mouseover", function(d) {
+            pt = $("#infotext")[0];
+            pt.innerHTML = This.unit + ': ' + d.value;
+
             grandparent
               .select("text")
                 .text(name(d));
@@ -153,6 +157,9 @@ function treemap2(data) {
           .classed("children", true)
           .classed("unselectable", true)
           .on("mouseover", function(d) {
+            pt = $("#infotext")[0];
+            pt.innerHTML = This.unit + ': ' + d.value;
+
             grandparent
               .select("text")
                 .text(name(d));
@@ -241,7 +248,7 @@ function treemap2(data) {
       t1.selectAll("rect").call(rect);
       t2.selectAll("rect").call(rect);
 
-      // Remove the old node when the transition is finished.
+      // Get rid of the old node when the transition is finished.
       t1.remove().each("end", function() {
         svg.style("shape-rendering", "crispEdges");
         transitioning = false;

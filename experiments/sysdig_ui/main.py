@@ -48,10 +48,12 @@ class myHandler(BaseHTTPRequestHandler):
 				return
 
 			stdout = proc.stdout.read()
-
+			
+			'''
 			of = open("sdout.json", "w") 
 			of.write(stdout)
 			of.close()
+			'''
 
 			self.send_response(200)
 			self.end_headers()
@@ -67,15 +69,12 @@ class myHandler(BaseHTTPRequestHandler):
 				try:  
 					line = readqueue.get_nowait()
 				except Empty:
-				    #print('no output yet')
-				    pass
+				    break
 				else: # got line
 					progress = float(line)
-					print progress
-					if progress == 100:
-						break
 
-			res = json.dumps(33)
+
+			res = json.dumps(progress)
 
 			self.send_response(200)
 			self.end_headers()
@@ -135,8 +134,13 @@ class myHandler(BaseHTTPRequestHandler):
 	def do_POST(self):
 		global proc
 		global readqueue
+		global progress
 
 		if self.path=="/run":
+			if progress != 0 and progress != 100:
+				self.send_error(400,'processing in progress')
+				return
+
 			proc = None
 
 			content_len = int(self.headers.getheader('content-length'))
@@ -163,10 +167,12 @@ class myHandler(BaseHTTPRequestHandler):
 			else:
 				filter = valuefilter
 
+			progress = 0
+
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "500", "none"]
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "100", "none"]
 
 			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
 
