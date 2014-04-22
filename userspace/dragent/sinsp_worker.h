@@ -59,7 +59,8 @@ private:
 			m_send_file(true),
 			m_n_events(0),
 			m_last_chunk_offset(0),
-			m_last_chunk_idx(0)
+			m_last_chunk_idx(0),
+			m_terminated(false)
 		{
 		}
 
@@ -106,17 +107,18 @@ private:
 		uint64_t m_n_events;
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
+		bool m_terminated;
 	};
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
 	void queue_response(const draiosproto::dump_response& response);
 	void send_error(const string& token, const string& error);
-	void send_dump_chunk(dump_job_state* job);
+	void send_dump_chunks(dump_job_state* job);
 	void run_dump_jobs(sinsp_evt* ev);
 	void start_new_jobs(uint64_t ts);
 
 	static const string m_name;
-	static const uint64_t m_chunk_size = 10 * 1024 * 1024;
+	static const uint64_t m_max_chunk_size = 10 * 1024 * 1024;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

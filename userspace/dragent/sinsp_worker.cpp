@@ -278,41 +278,30 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
-		bool terminate = false;
-		bool send_chunk = false;
-
-		if(job->m_send_file &&
-			job->m_dumper->written_bytes() - job->m_last_chunk_offset > m_chunk_size)
+		if(job->m_terminated)
 		{
-			send_chunk = true;
+			ASSERT(false);
+			continue;
 		}
 
-		if(job->m_max_size && job->m_dumper->written_bytes() > job->m_max_size)
+		if(job->m_max_size && 
+			job->m_dumper->written_bytes() > job->m_max_size)
 		{
-			terminate = true;
-
-			if(job->m_send_file)
-			{
-				send_chunk = true;
-			}
+			job->m_terminated = true;
 		}
 
-		if(ev->get_ts() - job->m_start_ns > job->m_duration_ns)
+		if(job->m_duration_ns && 
+			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
-			terminate = true;
-
-			if(job->m_send_file)
-			{
-				send_chunk = true;
-			}
+			job->m_terminated = true;
 		}
 
-		if(send_chunk)
+		if(job->m_send_file)
 		{
-			send_dump_chunk(job);
+			send_dump_chunks(job);
 		}
 
-		if(terminate)
+		if(job->m_terminated)
 		{
 			g_log->information("Job completed, captured events: " 
 				+ NumberFormatter::format(job->m_n_events));
@@ -352,50 +341,62 @@ void sinsp_worker::send_error(const string& token, const string& error)
 	queue_response(response);	
 }
 
-void sinsp_worker::send_dump_chunk(dump_job_state* job)
+void sinsp_worker::send_dump_chunks(dump_job_state* job)
 {
-	Buffer<char> buffer(16384);
-	string chunk;
-	uint64_t chunk_size = m_chunk_size;
 	bool eof = false;
 
-	ASSERT(job->m_fp);	
-	while(true)
+	while(!eof &&
+		(job->m_terminated ||
+		job->m_dumper->written_bytes() - job->m_last_chunk_offset > m_max_chunk_size))
 	{
-		size_t to_read = min(buffer.size(), chunk_size); 
-		size_t res = fread(buffer.begin(), 1, buffer.size(), job->m_fp);
-		if(res != to_read)
+		Buffer<char> buffer(16384);
+		string chunk;
+		uint64_t chunk_size = m_max_chunk_size;
+
+		while(chunk_size)
 		{
-			if(feof(job->m_fp))
+			size_t to_read = min(buffer.size(), chunk_size); 
+			ASSERT(job->m_fp);	
+			size_t res = fread(buffer.begin(), 1, buffer.size(), job->m_fp);
+			if(res != to_read)
 			{
-				g_log->information(m_name + ": " + job->m_file + ": EOF");
-				eof = true;
-			}
-			else if(ferror(job->m_fp))
-			{
-				ASSERT(false);
+				if(feof(job->m_fp))
+				{
+					g_log->information(m_name + ": " + job->m_file + ": EOF");
+					eof = true;
+					break;
+				}
+				else if(ferror(job->m_fp))
+				{
+					ASSERT(false);
+					return;
+				} else {
+					ASSERT(false);
+					return;
+				}
 			}
 
-			break;
+			chunk_size -= res;
+			chunk.append(buffer.begin(), res);
 		}
+		
+		g_log->information(m_name + ": " + job->m_file + ": Sending chunk " 
+			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size " + NumberFormatter::format(chunk.size()));
 
-		chunk_size -= res;
-		chunk.append(buffer.begin(), res);
+		draiosproto::dump_response response;
+		prepare_response(job->m_token, &response);
+		response.set_content(chunk);
+		response.set_chunk_no(job->m_last_chunk_idx);
+		if(eof)
+		{
+			response.set_final_chunk(true);
+		}
+		queue_response(response);
+
+		++job->m_last_chunk_idx;
+		job->m_last_chunk_offset += chunk.size();
+		ASSERT(!eof || job->m_last_chunk_offset == job->m_dumper->written_bytes());
 	}
-	
-	g_log->information(m_name + ": " + job->m_file + ": Sending chunk of " + NumberFormatter::format(chunk.size()));
-
-	draiosproto::dump_response response;
-	prepare_response(job->m_token, &response);
-	response.set_content(chunk);
-	response.set_chunk_no(job->m_last_chunk_idx);
-	if(eof)
-	{
-		response.set_final_chunk(true);
-	}
-	queue_response(response);
-
-	++job->m_last_chunk_idx;
 }
 
 void sinsp_worker::start_new_jobs(uint64_t ts)
