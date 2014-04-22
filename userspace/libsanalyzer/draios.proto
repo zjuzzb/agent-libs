@@ -241,7 +241,7 @@ enum message_type {
     DUMP_RESPONSE = 3;
     SSH_OPEN_CHANNEL = 6;
     SSH_CLOSE_CHANNEL = 7;
-    SSH_DATA = 8;  
+    SSH_DATA = 8;
     AUTO_UPDATE_REQUEST = 9;
 }
 
