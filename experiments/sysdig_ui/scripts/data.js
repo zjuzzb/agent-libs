@@ -75,8 +75,32 @@ function on_data_load(json) {
   g_treemap = new treemap2(json);
 }
 
-function on_data_load_error(jqXHR, textStatus, errorThrown) {
+function on_progress(json) {
+  $.ajax({
+    type : 'GET',
+    url : '/data',
+    dataType : 'json',
+    success : on_data_load,
+    error : on_error,
+    async : false,
+  });
+
   var a = 0;
+}
+
+function on_run(json) {
+  $.ajax({
+    type : 'GET',
+    url : '/progress',
+    dataType : 'json',
+    success : on_progress,
+    error : on_error,
+    async : false,
+  });
+}
+
+function on_error(jqXHR, textStatus, errorThrown) {
+  alert(textStatus);
 }
 
 //
@@ -104,8 +128,8 @@ function update_chart() {
     type : 'POST',
     url : '/run',
     dataType : 'json',
-    success : on_data_load,
-    error : on_data_load_error,
+    success : on_run,
+    error : on_error,
     data : body,
     async : false,
     processData: false
