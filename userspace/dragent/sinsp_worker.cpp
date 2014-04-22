@@ -212,9 +212,16 @@ captureinfo sinsp_worker::do_inspect()
 			// Check every second if we have a new job
 			//
 			start_new_jobs(ts);
+
+			//
+			// Also, just every second, cleanup the old ones
+			// Why every second? Because the sending queue might be
+			// full and we still send each one every second
+			//
+			flush_jobs();
 		}
 
-		run_dump_jobs(ev);
+		run_jobs(ev);
 
 		//
 		// Update the event count
@@ -235,7 +242,7 @@ captureinfo sinsp_worker::do_inspect()
 
 void sinsp_worker::schedule_dump_job(SharedPtr<dump_job_request> job_request)
 {
-	g_log->information("Scheduling dump job");
+	g_log->information("Scheduling dump job " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
 	{
@@ -251,7 +258,7 @@ void sinsp_worker::prepare_response(const string& token, draiosproto::dump_respo
 	response->set_token(token);
 }
 
-void sinsp_worker::queue_response(const draiosproto::dump_response& response)
+bool sinsp_worker::queue_response(const draiosproto::dump_response& response)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		draiosproto::message_type::DUMP_RESPONSE, 
@@ -261,28 +268,41 @@ void sinsp_worker::queue_response(const draiosproto::dump_response& response)
 	if(buffer.isNull())
 	{
 		g_log->error("NULL converting message to buffer");
-		return;
+		return true;
 	}
 
 	while(!m_queue->put(buffer))
 	{
-		g_log->error("Queue full, discarding file");
+		g_log->error("Queue full");
+		return false;
 	}
+
+	return true;
 }
 
-void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
+void sinsp_worker::run_jobs(sinsp_evt* ev)
 {
-	vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
-
-	while(it != m_running_dump_jobs.end())
+	for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
+		it != m_running_dump_jobs.end(); ++it)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
 		if(job->m_terminated)
 		{
-			ASSERT(false);
 			continue;
 		}
+
+		if(job->m_filter)
+		{
+			if(!job->m_filter->run(ev))
+			{
+				continue;
+			}
+		}
+
+		job->m_dumper->dump(ev);
+		++job->m_n_events;
+		job->m_written_bytes = job->m_dumper->written_bytes();
 
 		if(job->m_max_size && 
 			job->m_written_bytes > job->m_max_size)
@@ -298,37 +318,15 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 
 		if(job->m_terminated)
 		{
-			g_log->information("Job completed, captured events: " 
+			g_log->information("Job " + job->m_token + " completed, captured events: " 
 				+ NumberFormatter::format(job->m_n_events));
 
-			it = m_running_dump_jobs.erase(it);
-
 			//
-			// Stop the job
+			// Stop the job, but don't delete it yet, there might be
+			// a bunch of pending chunks
 			//
 			delete job->m_dumper;
 			job->m_dumper = NULL;
-		}
-		else
-		{
-			++it;
-			
-			if(job->m_filter)
-			{
-				if(!job->m_filter->run(ev))
-				{
-					continue;
-				}
-			}
-
-			job->m_dumper->dump(ev);
-			++job->m_n_events;
-			job->m_written_bytes = job->m_dumper->written_bytes();
-		}
-
-		if(job->m_send_file)
-		{
-			send_dump_chunks(job);
 		}
 	}
 }
@@ -344,58 +342,74 @@ void sinsp_worker::send_error(const string& token, const string& error)
 
 void sinsp_worker::send_dump_chunks(dump_job_state* job)
 {
-	bool eof = false;
-
-	while(!eof &&
+	ASSERT(job->m_last_chunk_offset <= job->m_written_bytes);
+	while(job->m_last_chunk_offset != job->m_written_bytes &&
 		(job->m_terminated ||
 		job->m_written_bytes - job->m_last_chunk_offset > m_max_chunk_size))
 	{
-		Buffer<char> buffer(16384);
-		string chunk;
-		uint64_t chunk_size = m_max_chunk_size;
-
-		while(!eof && chunk_size)
+		if(job->m_last_chunk.empty())
 		{
-			size_t to_read = min(buffer.size(), chunk_size); 
-			ASSERT(job->m_fp);
-			size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
-			if(res != to_read)
-			{
-				if(feof(job->m_fp))
-				{
-					g_log->information(m_name + ": " + job->m_file + ": EOF");
-					eof = true;
-				}
-				else if(ferror(job->m_fp))
-				{
-					ASSERT(false);
-					return;
-				} else {
-					ASSERT(false);
-					return;
-				}
-			}
-
-			chunk_size -= res;
-			chunk.append(buffer.begin(), res);
+			read_chunk(job);
 		}
-		
+
 		g_log->information(m_name + ": " + job->m_file + ": Sending chunk " 
-			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size " + NumberFormatter::format(chunk.size()));
+			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size " 
+			+ NumberFormatter::format(job->m_last_chunk.size()));
 
 		draiosproto::dump_response response;
 		prepare_response(job->m_token, &response);
-		response.set_content(chunk);
+		response.set_content(job->m_last_chunk);
 		response.set_chunk_no(job->m_last_chunk_idx);
-		if(eof)
+
+		if(job->m_last_chunk_offset + job->m_last_chunk.size() == job->m_written_bytes)
 		{
 			response.set_final_chunk(true);
 		}
-		queue_response(response);
+		
+		if(!queue_response(response))
+		{
+			g_log->error(m_name + ": " + job->m_file + ": Error sending chunk " 
+				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
+			return;
+		}
 
 		++job->m_last_chunk_idx;
-		job->m_last_chunk_offset += chunk.size();
-		ASSERT(!eof || job->m_last_chunk_offset == job->m_written_bytes);
+		job->m_last_chunk_offset += job->m_last_chunk.size();
+		job->m_last_chunk.clear();
+	}
+}
+
+void sinsp_worker::read_chunk(dump_job_state* job)
+{
+	Buffer<char> buffer(16384);
+	uint64_t chunk_size = m_max_chunk_size;
+	bool eof = false;
+
+	while(!eof && chunk_size)
+	{
+		size_t to_read = min(buffer.size(), chunk_size); 
+		ASSERT(job->m_fp);
+		size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
+		if(res != to_read)
+		{
+			if(feof(job->m_fp))
+			{
+				g_log->information(m_name + ": " + job->m_file + ": EOF");
+				eof = true;
+			}
+			else if(ferror(job->m_fp))
+			{
+				g_log->error(m_name + ": error reading " + job->m_file);
+				ASSERT(false);
+				return;
+			} else {
+				ASSERT(false);
+				return;
+			}
+		}
+
+		chunk_size -= res;
+		job->m_last_chunk.append(buffer.begin(), res);
 	}
 }
 
@@ -408,7 +422,8 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 
 		job_state->m_dumper = new sinsp_dumper(m_inspector);
 		job_state->m_file = m_configuration->m_dump_dir + "dump.scap";
-		g_log->information("Starting dump job in " + job_state->m_file);
+		g_log->information("Starting dump job " + job_state->m_token 
+			+ " in " + job_state->m_file);
 		job_state->m_dumper->open(job_state->m_file);
 
 		job_state->m_duration_ns = 20000000000LL;
@@ -456,5 +471,33 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		job_state->m_start_ns = ts;
 
 		m_running_dump_jobs.push_back(job_state);
+	}
+}
+
+void sinsp_worker::flush_jobs()
+{
+	vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
+
+	while(it != m_running_dump_jobs.end())
+	{
+		SharedPtr<dump_job_state> job = *it;
+
+		if(job->m_send_file)
+		{
+			send_dump_chunks(job);
+		}
+
+		if(job->m_terminated &&
+			(!job->m_send_file ||
+			job->m_last_chunk_offset == job->m_written_bytes))
+		{
+			g_log->information("Job " + job->m_token 
+				+ ": sent all chunks to backend, deleting"); 
+			it = m_running_dump_jobs.erase(it);
+		}
+		else
+		{
+			++it;
+		}
 	}
 }

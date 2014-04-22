@@ -109,15 +109,18 @@ private:
 		uint64_t m_written_bytes;
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
+		string m_last_chunk;
 		bool m_terminated;
 	};
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
-	void queue_response(const draiosproto::dump_response& response);
+	bool queue_response(const draiosproto::dump_response& response);
 	void send_error(const string& token, const string& error);
 	void send_dump_chunks(dump_job_state* job);
-	void run_dump_jobs(sinsp_evt* ev);
+	void run_jobs(sinsp_evt* ev);
 	void start_new_jobs(uint64_t ts);
+	void flush_jobs();
+	void read_chunk(dump_job_state* job);
 
 	static const string m_name;
 	static const uint64_t m_max_chunk_size = 10 * 1024 * 1024;
