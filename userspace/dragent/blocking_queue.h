@@ -12,6 +12,7 @@ public:
 
 	bool put(T item);
 	bool get(T* item, uint64_t timeout_ms);
+	bool is_full();
 
 private:
 	const uint32_t m_max_size;
@@ -60,4 +61,12 @@ bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 	}
 
 	return res;
+}
+
+template<class T>
+bool blocking_queue<T>::is_full()
+{
+	Mutex::ScopedLock lock(m_mutex);
+
+	return m_queue.size() == m_max_size;
 }
