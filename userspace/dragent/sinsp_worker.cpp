@@ -285,7 +285,7 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 		}
 
 		if(job->m_max_size && 
-			job->m_dumper->written_bytes() > job->m_max_size)
+			job->m_written_bytes > job->m_max_size)
 		{
 			job->m_terminated = true;
 		}
@@ -294,11 +294,6 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
 			job->m_terminated = true;
-		}
-
-		if(job->m_send_file)
-		{
-			send_dump_chunks(job);
 		}
 
 		if(job->m_terminated)
@@ -326,8 +321,14 @@ void sinsp_worker::run_dump_jobs(sinsp_evt* ev)
 				}
 			}
 
-			++job->m_n_events;
 			job->m_dumper->dump(ev);
+			++job->m_n_events;
+			job->m_written_bytes = job->m_dumper->written_bytes();
+		}
+
+		if(job->m_send_file)
+		{
+			send_dump_chunks(job);
 		}
 	}
 }
@@ -347,24 +348,23 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 
 	while(!eof &&
 		(job->m_terminated ||
-		job->m_dumper->written_bytes() - job->m_last_chunk_offset > m_max_chunk_size))
+		job->m_written_bytes - job->m_last_chunk_offset > m_max_chunk_size))
 	{
 		Buffer<char> buffer(16384);
 		string chunk;
 		uint64_t chunk_size = m_max_chunk_size;
 
-		while(chunk_size)
+		while(!eof && chunk_size)
 		{
 			size_t to_read = min(buffer.size(), chunk_size); 
-			ASSERT(job->m_fp);	
-			size_t res = fread(buffer.begin(), 1, buffer.size(), job->m_fp);
+			ASSERT(job->m_fp);
+			size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
 			if(res != to_read)
 			{
 				if(feof(job->m_fp))
 				{
 					g_log->information(m_name + ": " + job->m_file + ": EOF");
 					eof = true;
-					break;
 				}
 				else if(ferror(job->m_fp))
 				{
@@ -395,7 +395,7 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 
 		++job->m_last_chunk_idx;
 		job->m_last_chunk_offset += chunk.size();
-		ASSERT(!eof || job->m_last_chunk_offset == job->m_dumper->written_bytes());
+		ASSERT(!eof || job->m_last_chunk_offset == job->m_written_bytes);
 	}
 }
 

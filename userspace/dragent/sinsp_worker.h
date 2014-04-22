@@ -58,6 +58,7 @@ private:
 			m_delete_file_when_done(true),
 			m_send_file(true),
 			m_n_events(0),
+			m_written_bytes(0),
 			m_last_chunk_offset(0),
 			m_last_chunk_idx(0),
 			m_terminated(false)
@@ -105,6 +106,7 @@ private:
 		bool m_delete_file_when_done;
 		bool m_send_file;
 		uint64_t m_n_events;
+		uint64_t m_written_bytes;
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
 		bool m_terminated;
