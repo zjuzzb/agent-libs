@@ -55,7 +55,7 @@ void event_capture::capture()
 	m_dump_filename = string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
 	try
 	{
-		m_inspector->autodump_start(m_dump_filename);
+		m_inspector->autodump_start(m_dump_filename, false);
 	}
 	catch(...)
 	{

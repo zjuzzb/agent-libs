@@ -424,7 +424,7 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		job_state->m_file = m_configuration->m_dump_dir + "dump.scap";
 		g_log->information("Starting dump job " + job_state->m_token 
 			+ " in " + job_state->m_file);
-		job_state->m_dumper->open(job_state->m_file);
+		job_state->m_dumper->open(job_state->m_file, true);
 
 		job_state->m_duration_ns = 20000000000LL;
 		job_state->m_start_ns = ts;
@@ -457,7 +457,7 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 		job_state->m_file = m_configuration->m_dump_dir + request->m_token + ".scap";
 		g_log->information("Starting dump job in " + job_state->m_file + 
 			", filter '" + request->m_filter + "'");
-		job_state->m_dumper->open(job_state->m_file);
+		job_state->m_dumper->open(job_state->m_file, true);
 
 		job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 		if(job_state->m_fp == NULL)
