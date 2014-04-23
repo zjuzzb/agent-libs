@@ -387,7 +387,7 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 
 	while(!eof && chunk_size)
 	{
-		size_t to_read = min(buffer.size(), chunk_size); 
+		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size); 
 		ASSERT(job->m_fp);
 		size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
 		if(res != to_read)
