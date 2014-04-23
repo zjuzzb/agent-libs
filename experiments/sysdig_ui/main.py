@@ -172,7 +172,7 @@ class myHandler(BaseHTTPRequestHandler):
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "100", "none"]
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "100", "none", "false"]
 
 			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
 
@@ -201,11 +201,6 @@ server = HTTPServer(('', PORT_NUMBER), myHandler)
 print 'Started httpserver on port ' , PORT_NUMBER
 	
 server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-'''
-cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", "proc.name", "a", "evt.count", "vd", "", "500", "none"]
-proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
-'''
 
 try:
 	#

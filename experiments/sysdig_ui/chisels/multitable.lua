@@ -59,15 +59,22 @@ args =
 		description = "how to render the values in the result. Can be 'bytes', 'time', 'timepct', or 'none'.", 
 		argtype = "string"
 	},
+	{
+		name = "do_diff", 
+		description = "'true' if the script should perform a diff among the two input trace files, 'false' otherwise.", 
+		argtype = "bool"
+	},
 }
 
 require "common"
+require "deltas"
 terminal = require "ansiterminal"
 
 grtable = {}
 filter = ""
 islive = false
 fkeys = {}
+run_cnt = 0
 
 vizinfo = 
 {
@@ -77,7 +84,8 @@ vizinfo =
 	value_desc = "",
 	value_units = "none",
 	top_number = 0,
-	output_format = "normal"
+	output_format = "normal",
+	do_diff = false
 }
 
 -- Argument notification callback
@@ -103,12 +111,19 @@ function on_set_arg(name, val)
 	elseif name == "value_units" then
 		vizinfo.value_units = val
 		return true
+	elseif name == "do_diff" then
+		if val == 'true' then 
+			vizinfo.do_diff = true
+		end
+		return true
 	end
 
 	return false
 end
 
 function on_init()
+	run_cnt = run_cnt + 1
+	
 	if #vizinfo.key_fld ~= #vizinfo.key_desc then
 		print("error: number of entries in keys different from number entries in keydescs")
 		return false
@@ -203,7 +218,21 @@ function on_capture_end(ts_s, ts_ns, delta)
 		return true
 	end
 	
-	print_sorted_table(grtable, ts_s, 0, delta, vizinfo)
+	if vizinfo.do_diff then
+		if run_cnt == 1 then
+			local str = table_to_json_string(grtable, ts_s, 0, delta, vizinfo)
+
+			local f = assert(io.open("ttt.json", "w"))
+			f:write(str)
+			f:close()
+
+			grtable = {}
+		else
+			print_table_difference(grtable, ts_s, 0, delta, vizinfo)
+		end
+	else
+		print_sorted_table(grtable, ts_s, 0, delta, vizinfo)
+	end
 	
 	return true
 end
