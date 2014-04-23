@@ -70,15 +70,15 @@ ONE_US_IN_NS=1000
 
 function format_time_interval(val)
 	if val >= (ONE_S_IN_NS) then
-		return string.format("%u.%02us", val / ONE_S_IN_NS, (val % ONE_S_IN_NS) / 10000000)
+		return string.format("%u.%02us", math.floor(val / ONE_S_IN_NS), (val % ONE_S_IN_NS) / 10000000)
 	elseif val >= (ONE_S_IN_NS / 100) then
-		return string.format("%ums", val / (ONE_S_IN_NS / 1000))
+		return string.format("%ums", math.floor(val / (ONE_S_IN_NS / 1000)))
 	elseif val >= (ONE_S_IN_NS / 1000) then
-		return string.format("%u.%02ums", val / (ONE_S_IN_NS / 1000), (val % ONE_MS_IN_NS) / 10000)
+		return string.format("%u.%02ums", math.floor(val / (ONE_S_IN_NS / 1000)), (val % ONE_MS_IN_NS) / 10000)
 	elseif val >= (ONE_S_IN_NS / 100000) then
-		return string.format("%uus", val / (ONE_S_IN_NS / 1000000))
+		return string.format("%uus", math.floor(val / (ONE_S_IN_NS / 1000000)))
 	elseif val >= (ONE_S_IN_NS / 1000000) then
-		return string.format("%u.%02uus", val / (ONE_S_IN_NS / 1000000), (val % ONE_US_IN_NS) / 10)
+		return string.format("%u.%02uus", math.floor(val / (ONE_S_IN_NS / 1000000)), (val % ONE_US_IN_NS) / 10)
 	else
 		return string.format("%uns", val)
 	end
@@ -155,13 +155,17 @@ function create_json_table(input_tbl, timedelta, viz_info, depth)
 	return res
 end
 
+function table_to_json_string(stable, ts_s, ts_ns, timedelta, viz_info)		
+	local jtable = {}
+	jtable.children = create_json_table(stable, timedelta, viz_info, 1)
+	jtable.name = "root"
+
+	return json.encode(jtable, { indent = true })
+end
+
 function print_sorted_table(stable, ts_s, ts_ns, timedelta, viz_info)		
 	if viz_info.output_format == "json" then
-		local jtable = {}
-		jtable.children = create_json_table(stable, timedelta, viz_info, 1)
-		jtable.name = "root"
-	
-		local str = json.encode(jtable, { indent = true })
+		local str = table_to_json_string(stable, ts_s, ts_ns, timedelta, viz_info)
 		print(str)
 	else
 		header = ""

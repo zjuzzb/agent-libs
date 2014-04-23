@@ -40,22 +40,22 @@ var key_list_failed_syscall = [12, 11, 0, 2, 22, 3, 4, 5, 6, 7, 8, 9, 18, 19, 22
 var key_list_commands = [8, 13, 18, 7, 9, 22];
 
 var value_list = [
-  {name:"I/O Bytes", description:"amount of bytes read/written to disk", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io},
-  {name:"I/O Time", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io},
-  {name:"IOPS", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io},
-  {name:"File R/W Failure Count", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=true", keys: key_list_failed_io},
-  {name:"File Open Failure Count", field:"evt.count", filter:"evt.type=open and evt.dir=< and evt.failed=true", keys: key_list_failed_io},
-  {name:"> 1ms I/O calls count", field:"evt.count", filter:"fd.type=file and evt.latency > 1000000", keys: key_list_slow_io},
-  {name:"> 10ms I/O calls count", field:"evt.count", filter:"fd.type=file and evt.latency > 10000000", keys: key_list_slow_io},
-  {name:"> 100ms I/O calls count", field:"evt.count", filter:"fd.type=file and evt.latency > 100000000", keys: key_list_slow_io},
-  {name:"Network Bytes", description:"amount of bytes sent/received on the network", field:"evt.rawarg.res", filter:"fd.type=ipv4 and evt.is_io=true", keys: key_list_net},
-  {name:"Incoming Connection Count", description:"number of received network connections", field:"evt.count", filter:"evt.type=accept and evt.dir=<", keys: key_list_net},
-  {name:"Outgoing Connection Count", description:"number of attempted network connections", field:"evt.count", filter:"evt.type=connect and evt.dir=<", keys: key_list_net},
-  {name:"Failed Connection Attempts", description:"number of falied network connection attempts", field:"evt.count", filter:"(fd.type=ipv4 or fd.type=ipv6) and evt.type=connect and evt.dir=< and evt.failed=true", keys: key_list_failed_net},
-  {name:"System Call Count", description:"number of system calls", field:"evt.count", filter:"evt.dir=<", keys: key_list_syscall},
-  {name:"System Call Time", description:"Time spent in system calls", field:"evt.latency", filter:"evt.dir=<", keys: key_list_syscall},
-  {name:"Failed System Call Count", description:"number of system calls that failed", field:"evt.count", filter:"evt.dir=< and evt.failed=true", keys: key_list_failed_syscall},
-  {name:"# Executed Commands", description:"number of started processes", field:"evt.count", filter:"evt.dir=< and evt.type=execve", keys: key_list_commands},
+  {name:"I/O Bytes", description:"amount of bytes read/written to files", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io, unit:"bytes"},
+  {name:"I/O Time", description:"Time spent doing file I/O", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io, unit:"time"},
+  {name:"IOPS", description:"Number of I/O operations per second", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io, unit:"count"},
+  {name:"File R/W Failure Count", description:"Number of errors during file I/O", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=true", keys: key_list_failed_io, unit:"count"},
+  {name:"File Open Failure Count", description:"Number of file opens that failed", field:"evt.count", filter:"evt.type=open and evt.dir=< and evt.failed=true", keys: key_list_failed_io, unit:"count"},
+  {name:"> 1ms I/O calls count", description:"number of file I/O calls that took more than 1 ms to return", field:"evt.count", filter:"fd.type=file and evt.latency > 1000000", keys: key_list_slow_io, unit:"count"},
+  {name:"> 10ms I/O calls count", description:"number of file I/O calls that took more than 10 ms to return", field:"evt.count", filter:"fd.type=file and evt.latency > 10000000", keys: key_list_slow_io, unit:"count"},
+  {name:"> 100ms I/O calls count", description:"number of file I/O calls that took more than 100 ms to return", field:"evt.count", filter:"fd.type=file and evt.latency > 100000000", keys: key_list_slow_io, unit:"count"},
+  {name:"Network Bytes", description:"amount of bytes sent/received on the network", field:"evt.rawarg.res", filter:"fd.type=ipv4 and evt.is_io=true", keys: key_list_net, unit:"bytes"},
+  {name:"Incoming Connection Count", description:"Number of received network connections", description:"number of received network connections", field:"evt.count", filter:"evt.type=accept and evt.dir=<", keys: key_list_net, unit:"count"},
+  {name:"Outgoing Connection Count", description:"Number of established network connections", description:"number of attempted network connections", field:"evt.count", filter:"evt.type=connect and evt.dir=<", keys: key_list_net, unit:"count"},
+  {name:"Failed Connection Attempts", description:"number of falied network connection attempts", field:"evt.count", filter:"(fd.type=ipv4 or fd.type=ipv6) and evt.type=connect and evt.dir=< and evt.failed=true", keys: key_list_failed_net, unit:"count"},
+  {name:"System Call Count", description:"number of system calls", field:"evt.count", filter:"evt.dir=<", keys: key_list_syscall, unit:"count"},
+  {name:"System Call Time", description:"Time spent in system calls", field:"evt.latency", filter:"evt.dir=<", keys: key_list_syscall, unit:"time"},
+  {name:"Failed System Call Count", description:"number of system calls that failed", field:"evt.count", filter:"evt.dir=< and evt.failed=true", keys: key_list_failed_syscall, unit:"count"},
+  {name:"# Executed Commands", description:"number of processes that were started", field:"evt.count", filter:"evt.dir=< and evt.type=execve", keys: key_list_commands, unit:"count"},
 // time breakdown (disk vs cpu vs net)
 // system call latency
 // cpu usage
@@ -63,6 +63,7 @@ var value_list = [
 // number of FDs
 // number of forks
 // number of page faults
+// average size of an I/O call
 ];
 
 
@@ -70,13 +71,49 @@ var value_list = [
 // Chart data management
 ////////////////////////////////////////////////////////////////////
 var g_treemap;
+var chartunit;
 
 function on_data_load(json) {
-  g_treemap = new treemap2(json);
+  g_treemap = new treemap2(json, chartunit);
 }
 
-function on_data_load_error(jqXHR, textStatus, errorThrown) {
-  var a = 0;
+function on_progress(json) {
+  var progress = JSON.parse(json);
+  pt = $("#progresstext")[0];
+
+  if(progress < 100)
+  {
+    setTimeout(function(){on_run();}, 200);
+    pt.innerHTML = 'Progress: ' + progress + '%';
+  }
+  else
+  {
+    pt.innerHTML = 'Progress: done';
+
+    $.ajax({
+      type : 'GET',
+      url : '/data',
+      dataType : 'json',
+      success : on_data_load,
+      error : on_error,
+      async : false,
+    });
+  }
+}
+
+function on_run(json) {
+  $.ajax({
+    type : 'GET',
+    url : '/progress',
+    dataType : 'json',
+    success : on_progress,
+    error : on_error,
+    async : false,
+  });
+}
+
+function on_error(jqXHR, textStatus, errorThrown) {
+  alert(textStatus);
 }
 
 //
@@ -85,6 +122,8 @@ function on_data_load_error(jqXHR, textStatus, errorThrown) {
 function update_chart() {
   var value = value_list[$('#valuecombo')[0].value];
   
+  chartunit = value.unit;
+
   var value_simple = JSON.parse(JSON.stringify(value_list[$('#valuecombo')[0].value]));
   value_simple.keys = undefined;
   var keylist = value.keys;
@@ -104,8 +143,8 @@ function update_chart() {
     type : 'POST',
     url : '/run',
     dataType : 'json',
-    success : on_data_load,
-    error : on_data_load_error,
+    success : on_run,
+    error : on_error,
     data : body,
     async : false,
     processData: false

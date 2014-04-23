@@ -1,23 +1,34 @@
 #!/usr/bin/python
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from os import curdir, sep
+from threading  import Thread
 import cgi
 import json
 import subprocess
 import base64
 import sys
 import socket
+from subprocess import Popen, PIPE
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty  # python 3.x
+
+ON_POSIX = 'posix' in sys.builtin_module_names
 
 PORT_NUMBER = 8000
+proc = None
+readqueue = None
+progress = 0
 
-proc = {}
-
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+    out.close()
 
 #This class will handles any incoming request from
 #the browser 
 class myHandler(BaseHTTPRequestHandler):
-	#Handler for the GET requests
-
 	def do_AUTHHEAD(self):
 		self.send_response(401)
 		self.send_header('WWW-Authenticate', 'Basic realm=\"Test\"')
@@ -26,9 +37,49 @@ class myHandler(BaseHTTPRequestHandler):
 
 	def do_GET(self):
 		global proc
+		global readqueue
+		global progress
 
 		if self.path=="/":
 			self.path="index.html"
+		elif self.path=="/data":
+			if proc == None:
+				self.send_error(400,'no processing started')
+				return
+
+			stdout = proc.stdout.read()
+			
+			'''
+			of = open("sdout.json", "w") 
+			of.write(stdout)
+			of.close()
+			'''
+
+			self.send_response(200)
+			self.end_headers()
+			self.wfile.write(stdout)
+
+			return
+		elif self.path=="/progress":
+			if proc == None:
+				self.send_error(400,'no processing started')
+				return
+
+			while True:
+				try:  
+					line = readqueue.get_nowait()
+				except Empty:
+				    break
+				else: # got line
+					progress = float(line)
+
+
+			res = json.dumps(progress)
+
+			self.send_response(200)
+			self.end_headers()
+			self.wfile.write(res)
+
 		'''
 		if self.path=="/fields":
 			self.send_response(200)
@@ -82,18 +133,26 @@ class myHandler(BaseHTTPRequestHandler):
 	#Handler for the POST requests
 	def do_POST(self):
 		global proc
+		global readqueue
+		global progress
 
 		if self.path=="/run":
+			if progress != 0 and progress != 100:
+				self.send_error(400,'processing in progress')
+				return
+
+			proc = None
+
 			content_len = int(self.headers.getheader('content-length'))
 			post_body = self.rfile.read(content_len)
 			params = json.loads(post_body)
 
 			value = params['value']['field']
 			valuefilter = params['value']['filter']
-      
+
 			keys = params['key1']['field']
 			keydescs = "na"
-			
+
 			key2 = params['key2']['field']
 			if key2 != '':
 				keys += ',' + key2
@@ -102,30 +161,29 @@ class myHandler(BaseHTTPRequestHandler):
 			if key3 != '':
 				keys += ',' + key3
 				keydescs += ",na"
-			
+
 			if params['filter'] != None and params['filter'] != '':
 				filter = '(' + params['filter'] + ') and (' + valuefilter + ')'
 			else:
 				filter = valuefilter
 
-			print filter
+			progress = 0
 
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "500", "none"]
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "100", "none", "false"]
 
-			print cmd
+			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
 
-			res = subprocess.check_output(cmd)
-
-			of = open("sdout.json", "w") 
-			of.write(res)
-			of.close()
+			readqueue = Queue()
+			t = Thread(target=enqueue_output, args=(proc.stderr, readqueue))
+			t.daemon = True # thread dies with the program
+			t.start()
 
 			self.send_response(200)
 			self.end_headers()
-			self.wfile.write(res)
+			self.wfile.write("")
 			return
 
 #
