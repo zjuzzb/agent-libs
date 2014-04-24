@@ -342,7 +342,7 @@ void sinsp_worker::send_error(const string& token, const string& error)
 void sinsp_worker::send_dump_chunks(dump_job_state* job)
 {
 	ASSERT(job->m_last_chunk_offset <= job->m_file_size);
-	while(job->m_last_chunk_offset != job->m_file_size &&
+	while(job->m_last_chunk_offset < job->m_file_size &&
 		(job->m_terminated ||
 		job->m_file_size - job->m_last_chunk_offset > m_max_chunk_size))
 	{
@@ -360,14 +360,15 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		response.set_content(job->m_last_chunk);
 		response.set_chunk_no(job->m_last_chunk_idx);
 
-		if(job->m_last_chunk_offset + job->m_last_chunk.size() == job->m_file_size)
+		ASSERT(job->m_last_chunk_offset + job->m_last_chunk.size() <= job->m_file_size);
+		if(job->m_last_chunk_offset + job->m_last_chunk.size() >= job->m_file_size)
 		{
 			response.set_final_chunk(true);
 		}
 		
 		if(!queue_response(response))
 		{
-			g_log->error(m_name + ": " + job->m_file + ": Error sending chunk " 
+			g_log->error(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
 				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
 			return;
 		}
@@ -398,10 +399,13 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 			}
 			else if(ferror(job->m_fp))
 			{
-				g_log->error(m_name + ": error reading " + job->m_file);
+				g_log->error(m_name + ": ferror while reading " + job->m_file);
+				job->m_error = true;
 				ASSERT(false);
 				return;
 			} else {
+				g_log->error(m_name + ": unknown error while reading " + job->m_file);
+				job->m_error = true;
 				ASSERT(false);
 				return;
 			}
@@ -485,20 +489,28 @@ void sinsp_worker::flush_jobs()
 		if(stat(job->m_file.c_str(), &st) != 0)
 		{
 			g_log->error("Error checking file size");
+			job->m_error = true;
 			ASSERT(false);
 		}
 
 		job->m_file_size = st.st_size;
 
-		if(job->m_send_file)
+		if(!job->m_error && job->m_send_file)
 		{
 			send_dump_chunks(job);
 		}
 
-		if(job->m_terminated &&
-			(!job->m_send_file ||
-			job->m_last_chunk_offset == job->m_file_size))
+		if(job->m_error)
 		{
+			g_log->information("Job " + job->m_token 
+				+ ": in error state, deleting"); 
+			it = m_running_dump_jobs.erase(it);
+		}
+		else if(job->m_terminated &&
+			(!job->m_send_file ||
+			job->m_last_chunk_offset >= job->m_file_size))
+		{
+			ASSERT(job->m_last_chunk_offset <= job->m_file_size);
 			g_log->information("Job " + job->m_token 
 				+ ": sent all chunks to backend, deleting"); 
 			it = m_running_dump_jobs.erase(it);

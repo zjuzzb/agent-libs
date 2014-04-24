@@ -61,7 +61,8 @@ private:
 			m_n_events(0),
 			m_last_chunk_offset(0),
 			m_last_chunk_idx(0),
-			m_terminated(false)
+			m_terminated(false),
+			m_error(false)
 		{
 		}
 
@@ -111,6 +112,7 @@ private:
 		uint64_t m_last_chunk_idx;
 		string m_last_chunk;
 		bool m_terminated;
+		bool m_error;
 	};
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
