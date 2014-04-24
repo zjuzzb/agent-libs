@@ -302,10 +302,9 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 
 		job->m_dumper->dump(ev);
 		++job->m_n_events;
-		job->m_written_bytes = job->m_dumper->written_bytes();
 
 		if(job->m_max_size && 
-			job->m_written_bytes > job->m_max_size)
+			job->m_file_size > job->m_max_size)
 		{
 			job->m_terminated = true;
 		}
@@ -342,10 +341,10 @@ void sinsp_worker::send_error(const string& token, const string& error)
 
 void sinsp_worker::send_dump_chunks(dump_job_state* job)
 {
-	ASSERT(job->m_last_chunk_offset <= job->m_written_bytes);
-	while(job->m_last_chunk_offset != job->m_written_bytes &&
+	ASSERT(job->m_last_chunk_offset <= job->m_file_size);
+	while(job->m_last_chunk_offset != job->m_file_size &&
 		(job->m_terminated ||
-		job->m_written_bytes - job->m_last_chunk_offset > m_max_chunk_size))
+		job->m_file_size - job->m_last_chunk_offset > m_max_chunk_size))
 	{
 		if(job->m_last_chunk.empty())
 		{
@@ -361,7 +360,7 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		response.set_content(job->m_last_chunk);
 		response.set_chunk_no(job->m_last_chunk_idx);
 
-		if(job->m_last_chunk_offset + job->m_last_chunk.size() == job->m_written_bytes)
+		if(job->m_last_chunk_offset + job->m_last_chunk.size() == job->m_file_size)
 		{
 			response.set_final_chunk(true);
 		}
@@ -482,6 +481,15 @@ void sinsp_worker::flush_jobs()
 	{
 		SharedPtr<dump_job_state> job = *it;
 
+		struct stat st;
+		if(stat(job->m_file.c_str(), &st) != 0)
+		{
+			g_log->error("Error checking file size");
+			ASSERT(false);
+		}
+
+		job->m_file_size = st.st_size;
+
 		if(job->m_send_file)
 		{
 			send_dump_chunks(job);
@@ -489,7 +497,7 @@ void sinsp_worker::flush_jobs()
 
 		if(job->m_terminated &&
 			(!job->m_send_file ||
-			job->m_last_chunk_offset == job->m_written_bytes))
+			job->m_last_chunk_offset == job->m_file_size))
 		{
 			g_log->information("Job " + job->m_token 
 				+ ": sent all chunks to backend, deleting"); 

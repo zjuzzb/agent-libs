@@ -55,10 +55,10 @@ private:
 			m_duration_ns(0),
 			m_max_size(0),
 			m_fp(NULL),
+			m_file_size(0),
 			m_delete_file_when_done(true),
 			m_send_file(true),
 			m_n_events(0),
-			m_written_bytes(0),
 			m_last_chunk_offset(0),
 			m_last_chunk_idx(0),
 			m_terminated(false)
@@ -103,10 +103,10 @@ private:
 		uint64_t m_max_size;
 		string m_file;
 		FILE* m_fp;
+		uint64_t m_file_size;
 		bool m_delete_file_when_done;
 		bool m_send_file;
 		uint64_t m_n_events;
-		uint64_t m_written_bytes;
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
 		string m_last_chunk;
