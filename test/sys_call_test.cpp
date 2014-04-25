@@ -63,7 +63,6 @@ uint32_t get_server_address()
 	return address;
 }
 
-
 uint32_t parse_ipv4_addr(const char *dotted_notation)
 {
 	uint32_t a, b, c, d;
@@ -82,8 +81,6 @@ bool ends_with(std::string const &s, std::string const &ending)
 		return false;
 	}
 }
-
-
 
 void wait_for_process_start(Poco::Pipe &pipe)
 {
@@ -284,7 +281,7 @@ TEST_F(sys_call_test, ioctl)
 		if(type == PPME_SYSCALL_IOCTL_E)
 		{
 			EXPECT_EQ("<f>/dev/ttyS0", e->get_param_value_str("fd"));
-			EXPECT_EQ(NumberFormatter::format(TIOCMGET), e->get_param_value_str("request"));
+			EXPECT_EQ(NumberFormatter::formatHex(TIOCMGET), e->get_param_value_str("request"));
 			callnum++;
 		}
 		else if(type == PPME_SYSCALL_IOCTL_X)
