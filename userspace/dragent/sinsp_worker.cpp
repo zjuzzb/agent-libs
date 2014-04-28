@@ -37,7 +37,7 @@ void sinsp_worker::init()
 	//
 	// sysdig that comes with dragent is always installed in /usr
 	//
-	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR);
+	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR, false);
 
 	//
 	// Attach our transmit callback to the analyzer
