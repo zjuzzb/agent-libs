@@ -12,6 +12,7 @@ cd agent/build/debug/test
 cd -
 cd sysdig/build/debug/userspace/sysdig
 ./sysdig -n 50
+./sysdig -cl
 ./sysdig -cstdout -n 50
 cd -
 rmmod sysdig-probe
@@ -24,6 +25,7 @@ cd agent/build/release/test
 cd -
 cd sysdig/build/release/userspace/sysdig
 ./sysdig -n 50
+./sysdig -cl
 ./sysdig -cstdout -n 50
 cd -
 rmmod sysdig-probe

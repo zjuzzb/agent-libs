@@ -75,6 +75,7 @@ function smoke_tests {
 	modprobe sysdig-probe
 	sh -c "cd /opt/draios/test; ./test"
 	sysdig -n 50
+	sysdig -cl
 	sysdig -cstdout -n 50
 	rmmod sysdig-probe
 }
