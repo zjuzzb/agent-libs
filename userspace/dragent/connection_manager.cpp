@@ -315,6 +315,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::DUMP_REQUEST_STOP:
+				handle_dump_request_stop(
+					m_buffer.begin() + sizeof(dragent_protocol_header), 
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			case draiosproto::message_type::SSH_OPEN_CHANNEL:
 				handle_ssh_open_channel(
 					m_buffer.begin() + sizeof(dragent_protocol_header), 
@@ -357,30 +362,28 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	string filter;
+	SharedPtr<sinsp_worker::dump_job_request> job_request(
+		new sinsp_worker::dump_job_request());
+
+	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_START;
+	job_request->m_token = request.token();
+	
 	if(request.has_filters())
 	{
-		filter = request.filters();
+		job_request->m_filter = request.filters();
 	}
 
-	uint64_t duration_ns = 0;
 	if(request.has_duration_ns())
 	{
-		duration_ns = request.duration_ns();
+		job_request->m_duration_ns = request.duration_ns();
 	}
 
-	uint64_t max_size = 0;
 	if(request.has_max_size())
 	{
-		max_size = request.max_size();
+		job_request->m_max_size = request.max_size();
 	}
-
-	string token = request.token();
-
-	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request(token, duration_ns, max_size, filter));
 	
-	m_sinsp_worker->schedule_dump_job(job_request);
+	m_sinsp_worker->queue_job_request(job_request);
 }
 
 void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
@@ -390,6 +393,14 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 	{
 		return;
 	}
+
+	SharedPtr<sinsp_worker::dump_job_request> job_request(
+		new sinsp_worker::dump_job_request());
+
+	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_STOP;
+	job_request->m_token = request.token();
+
+	m_sinsp_worker->queue_job_request(job_request);
 }
 
 void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)

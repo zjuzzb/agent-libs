@@ -210,10 +210,7 @@ captureinfo sinsp_worker::do_inspect()
 		{
 			last_job_check_ns = ts;
 
-			//
-			// Check every second if we have a new job
-			//
-			start_new_jobs(ts);
+			process_job_requests(ts);
 
 			//
 			// Also, just every second, cleanup the old ones
@@ -242,13 +239,13 @@ captureinfo sinsp_worker::do_inspect()
 	return retval;
 }
 
-void sinsp_worker::schedule_dump_job(SharedPtr<dump_job_request> job_request)
+void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)
 {
-	g_log->information("Scheduling dump job " + job_request->m_token);
+	g_log->information("Scheduling job request " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
 	{
-		send_error(job_request->m_token, "Maximum number of dump jobs reached");
+		send_error(job_request->m_token, "Maximum number of requests reached");
 	}
 }
 
@@ -308,28 +305,31 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 		if(job->m_max_size && 
 			job->m_file_size > job->m_max_size)
 		{
-			job->m_terminated = true;
+			stop_job(job);
 		}
 
 		if(job->m_duration_ns && 
 			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
-			job->m_terminated = true;
-		}
-
-		if(job->m_terminated)
-		{
-			g_log->information("Job " + job->m_token + " completed, captured events: " 
-				+ NumberFormatter::format(job->m_n_events));
-
-			//
-			// Stop the job, but don't delete it yet, there might be
-			// a bunch of pending chunks
-			//
-			delete job->m_dumper;
-			job->m_dumper = NULL;
+			stop_job(job);
 		}
 	}
+}
+
+void sinsp_worker::stop_job(dump_job_state* job)
+{
+	ASSERT(!job->m_terminated);
+	job->m_terminated = true;
+
+	g_log->information("Job " + job->m_token + " stopped, captured events: " 
+		+ NumberFormatter::format(job->m_n_events));
+
+	//
+	// Stop the job, but don't delete it yet, there might be
+	// a bunch of pending chunks
+	//
+	delete job->m_dumper;
+	job->m_dumper = NULL;
 }
 
 void sinsp_worker::send_error(const string& token, const string& error)
@@ -418,7 +418,7 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 	}
 }
 
-void sinsp_worker::start_new_jobs(uint64_t ts)
+void sinsp_worker::process_job_requests(uint64_t ts)
 {
 	if(dragent_configuration::m_signal_dump)
 	{
@@ -442,41 +442,75 @@ void sinsp_worker::start_new_jobs(uint64_t ts)
 	SharedPtr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
-		SharedPtr<dump_job_state> job_state(new dump_job_state());
-
-		if(!request->m_filter.empty())
+		switch(request->m_request_type)
 		{
-			try
+		case dump_job_request::JOB_START:
+			start_job(*request, ts);
+			break;
+		case dump_job_request::JOB_STOP:
 			{
-				job_state->m_filter = new sinsp_filter(m_inspector, request->m_filter);
+				bool found = true;
+
+				for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
+					it != m_running_dump_jobs.end(); ++it)
+				{
+					if((*it)->m_token == request->m_token)
+					{
+						stop_job(*it);
+						found = true;
+						break;
+					}
+				}
+
+				if(!found)
+				{
+					g_log->error("Can't find job " + request->m_token);
+				}
+
+				break;
 			}
-			catch(sinsp_exception& e)
-			{
-				send_error(request->m_token, e.what());
-				return;
-			}
+		default:
+			ASSERT(false);
 		}
+	}
+}
 
-		job_state->m_token = request->m_token;
-		job_state->m_dumper = new sinsp_dumper(m_inspector);
-		job_state->m_file = m_configuration->m_dump_dir + request->m_token + ".scap";
-		g_log->information("Starting dump job in " + job_state->m_file + 
-			", filter '" + request->m_filter + "'");
-		job_state->m_dumper->open(job_state->m_file, true);
+void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
+{
+	SharedPtr<dump_job_state> job_state(new dump_job_state());
 
-		job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
-		if(job_state->m_fp == NULL)
+	if(!request.m_filter.empty())
+	{
+		try
 		{
-			send_error(request->m_token, strerror(errno));
+			job_state->m_filter = new sinsp_filter(m_inspector, request.m_filter);
+		}
+		catch(sinsp_exception& e)
+		{
+			send_error(request.m_token, e.what());
 			return;
 		}
-
-		job_state->m_duration_ns = request->m_duration_ns;
-		job_state->m_max_size = request->m_max_size;
-		job_state->m_start_ns = ts;
-
-		m_running_dump_jobs.push_back(job_state);
 	}
+
+	job_state->m_token = request.m_token;
+	job_state->m_dumper = new sinsp_dumper(m_inspector);
+	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
+	g_log->information("Starting dump job in " + job_state->m_file + 
+		", filter '" + request.m_filter + "'");
+	job_state->m_dumper->open(job_state->m_file, true);
+
+	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
+	if(job_state->m_fp == NULL)
+	{
+		send_error(request.m_token, strerror(errno));
+		return;
+	}
+
+	job_state->m_duration_ns = request.m_duration_ns;
+	job_state->m_max_size = request.m_max_size;
+	job_state->m_start_ns = ts;
+
+	m_running_dump_jobs.push_back(job_state);	
 }
 
 void sinsp_worker::flush_jobs()

@@ -23,14 +23,18 @@ public:
 	class dump_job_request
 	{
 	public:
-		dump_job_request(const string& token, uint64_t duration_ns, uint64_t max_size, const string& filter):
-			m_token(token),
-			m_duration_ns(duration_ns),
-			m_max_size(max_size),
-			m_filter(filter)
+		enum request_type {
+			JOB_START,
+			JOB_STOP
+		};
+
+		dump_job_request():
+			m_duration_ns(0),
+			m_max_size(0)
 		{
 		}
 
+		request_type m_request_type;
 		string m_token;
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
@@ -42,7 +46,7 @@ public:
 
 	void init();
 	captureinfo do_inspect();
-	void schedule_dump_job(SharedPtr<dump_job_request> job_request);
+	void queue_job_request(SharedPtr<dump_job_request> job_request);
 
 private:
 	class dump_job_state
@@ -120,8 +124,10 @@ private:
 	void send_error(const string& token, const string& error);
 	void send_dump_chunks(dump_job_state* job);
 	void run_jobs(sinsp_evt* ev);
-	void start_new_jobs(uint64_t ts);
+	void process_job_requests(uint64_t ts);
 	void flush_jobs();
+	void stop_job(dump_job_state* job);
+	void start_job(const dump_job_request& request, uint64_t ts);
 	void read_chunk(dump_job_state* job);
 
 	static const string m_name;
