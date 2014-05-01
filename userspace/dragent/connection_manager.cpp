@@ -306,7 +306,8 @@ void connection_manager::receive_message()
 		}
 
 		g_log->information(m_name + ": Received command " 
-			+ NumberFormatter::format(header->messagetype));
+			+ NumberFormatter::format(header->messagetype)
+			+ " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
 
 		switch(header->messagetype)
 		{
