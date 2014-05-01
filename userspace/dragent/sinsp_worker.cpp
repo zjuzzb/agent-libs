@@ -449,7 +449,7 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 			break;
 		case dump_job_request::JOB_STOP:
 			{
-				bool found = true;
+				bool found = false;
 
 				for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
 					it != m_running_dump_jobs.end(); ++it)
