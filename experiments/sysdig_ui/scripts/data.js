@@ -38,8 +38,10 @@ var key_list_failed_net = [0, 17, 22];
 var key_list_syscall = [12, 0, 18, 2, 22, 3, 4, 5, 6, 7, 8, 9, 11, 19, 22];
 var key_list_failed_syscall = [12, 11, 0, 2, 22, 3, 4, 5, 6, 7, 8, 9, 18, 19, 22];
 var key_list_commands = [8, 13, 18, 7, 9, 22];
+var key_list_CPU = [0, 4, 6, 18, 3, 5, 7, 8, 9, 22];
 
 var value_list = [
+  {name:"CPU usage", description:"CPU time used by the element", field:"thread.totexectime", filter:"", keys: key_list_CPU, unit:"time"},
   {name:"I/O Bytes", description:"amount of bytes read/written to files", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io, unit:"bytes"},
   {name:"I/O Time", description:"Time spent doing file I/O", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io, unit:"time"},
   {name:"IOPS", description:"Number of I/O operations per second", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io, unit:"count"},
@@ -64,6 +66,9 @@ var value_list = [
 // number of forks
 // number of page faults
 // average size of an I/O call
+// number of created files
+// Number of moved/deleted files
+// number of DNS resolutions
 ];
 
 
