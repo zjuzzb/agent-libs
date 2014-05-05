@@ -111,13 +111,13 @@ function print_table_normal(tbl, timedelta, viz_info, depth)
 	local sorted_grtable = pairs_top_by_val(tbl, viz_info.top_number, function(t,a,b) return t[b][2] < t[a][2] end)
 	
 	for k,v in sorted_grtable do
-		if viz_info.value_units == "none" then
+		if viz_info.valueunits[1] == "none" then
 			print(extend_string("", depth - 1) .. extend_string(v[2], 10) .. k)
-		elseif viz_info.value_units == "bytes" then
+		elseif viz_info.valueunits[1] == "bytes" then
 			print(extend_string(format_bytes(v[2]), 10) .. k)
-		elseif viz_info.value_units == "time" then
+		elseif viz_info.valueunits[1] == "time" then
 			print(extend_string(format_time_interval(v[2]), 10) .. k)
-		elseif viz_info.value_units == "timepct" then
+		elseif viz_info.valueunits[1] == "timepct" then
 			if timedelta ~= 0 then
 				pctstr = string.format("%.2f%%", v[2] / timedelta * 100)
 			else

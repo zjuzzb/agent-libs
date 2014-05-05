@@ -41,7 +41,7 @@ var key_list_commands = [8, 13, 18, 7, 9, 22];
 var key_list_CPU = [0, 4, 6, 18, 3, 5, 7, 8, 9, 22];
 
 var value_list = [
-  {name:"CPU usage", description:"CPU time used by the element", field:"thread.totexectime", filter:"", keys: key_list_CPU, unit:"time"},
+  {name:"CPU usage", description:"CPU time used by the element", field:"thread.exectime", filter:"", keys: key_list_CPU, unit:"time"},
   {name:"I/O Bytes", description:"amount of bytes read/written to files", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io, unit:"bytes"},
   {name:"I/O Time", description:"Time spent doing file I/O", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io, unit:"time"},
   {name:"IOPS", description:"Number of I/O operations per second", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io, unit:"count"},

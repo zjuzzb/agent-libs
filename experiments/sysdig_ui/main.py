@@ -172,7 +172,8 @@ class myHandler(BaseHTTPRequestHandler):
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, value, "vd", filter, "100", "none", "false"]
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, "", value, "vd", "SUM", "none", "", filter, "100", "false"]
+			print cmd
 
 			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
 

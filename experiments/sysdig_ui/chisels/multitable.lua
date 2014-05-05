@@ -35,6 +35,11 @@ args =
 		argtype = "string"
 	},
 	{
+		name = "keydefaults", 
+		description = "comma separated list of default values for keys. If specified, a default value is used when the key is not present", 
+		argtype = "string"
+	},
+	{
 		name = "values", 
 		description = "comma separated list of values to count for every key", 
 		argtype = "string"
@@ -42,6 +47,21 @@ args =
 	{
 		name = "valuedescs", 
 		description = "comma separated list of human readable descriptions for the values", 
+		argtype = "string"
+	},
+	{
+		name = "valueoperations", 
+		description = "comma separated list of operations to apply to values. Valid operations are 'SUM', 'AVG', 'MIN', 'MAX'.", 
+		argtype = "string"
+	},
+	{
+		name = "valueunits", 
+		description = "how to render the values in the result. Can be 'bytes', 'time', 'timepct', or 'none'.", 
+		argtype = "string"
+	},
+	{
+		name = "valuedefaults", 
+		description = "comma separated list of default values for keys. If specified, a default value is used when the value is not present.", 
 		argtype = "string"
 	},
 	{
@@ -55,18 +75,13 @@ args =
 		argtype = "string"
 	},
 	{
-		name = "value_units", 
-		description = "how to render the values in the result. Can be 'bytes', 'time', 'timepct', or 'none'.", 
-		argtype = "string"
-	},
-	{
 		name = "do_diff", 
 		description = "'true' if the script should perform a diff among the two input trace files, 'false' otherwise.", 
 		argtype = "bool"
 	},
 }
 
-require "common"
+require "multitable_common"
 require "deltas"
 terminal = require "ansiterminal"
 
@@ -78,11 +93,14 @@ run_cnt = 0
 
 vizinfo = 
 {
-	key_fld = "",
-	key_desc = "",
-	value_fld = "",
-	value_desc = "",
-	value_units = "none",
+	key_fld = {},
+	key_desc = {},
+	key_defaults = nil,
+	value_fld = {},
+	value_desc = {},
+	value_operations = {},
+	value_defaults = nil,
+	valueunits = {},
 	top_number = 0,
 	output_format = "normal",
 	do_diff = false
@@ -96,20 +114,33 @@ function on_set_arg(name, val)
 	elseif name == "keydescs" then
 		vizinfo.key_desc = split(val, ",")
 		return true
+	elseif name == "keydefaults" then
+		if val ~= "" then
+			vizinfo.key_defaults = split(val, ",")
+		end
+		return true
 	elseif name == "values" then
 		vizinfo.value_fld = split(val, ",")
 		return true
 	elseif name == "valuedescs" then
 		vizinfo.value_desc = split(val, ",")
 		return true
+	elseif name == "valueoperations" then
+		vizinfo.value_operations = split(val, ",")
+		return true
+	elseif name == "valueunits" then
+		vizinfo.valueunits = split(val, ",")
+		return true
+	elseif name == "valuedefaults" then
+		if val ~= "" then
+			vizinfo.value_defaults = split(val, ",")
+		end
+		return true
 	elseif name == "filter" then
 		filter = val
 		return true
 	elseif name == "top_number" then
 		vizinfo.top_number = tonumber(val)
-		return true
-	elseif name == "value_units" then
-		vizinfo.value_units = val
 		return true
 	elseif name == "do_diff" then
 		if val == 'true' then 
@@ -129,11 +160,35 @@ function on_init()
 		return false
 	end
 
+	if vizinfo.key_defaults ~= nil then
+		if #vizinfo.key_fld ~= #vizinfo.key_defaults then
+			print("error: number of entries in keys different from number entries in keydefaults")
+			return false
+		end
+	end
+	
 	if #vizinfo.value_fld ~= #vizinfo.value_desc then
 		print("error: number of entries in values different from number entries in valuedescs")
 		return false
 	end
 	
+	if #vizinfo.value_fld ~= #vizinfo.value_operations then
+		print("error: number of entries in values different from number entries in valueoperations")
+		return false
+	end
+	
+	if #vizinfo.value_fld ~= #vizinfo.valueunits then
+		print("error: number of entries in values different from number entries in valueunits")
+		return false
+	end
+	
+	if vizinfo.value_defaults ~= nil then
+		if #vizinfo.value_fld ~= #vizinfo.value_defaults then
+			print("error: number of entries in values different from number entries in valuedefaults")
+			return false
+		end
+	end
+		
 	-- Request the fields we need
 	for i, name in ipairs(vizinfo.key_fld) do
 		fkeys[i] = chisel.request_field(name)
@@ -167,23 +222,29 @@ end
 function insert(tbl, value, depth)
 	local key = evt.field(fkeys[depth])
 
-	if key ~= nil then
-		local entryval = tbl[key]
-
-		if entryval == nil then
-			tbl[key] = {{}, value}
-
-			if depth < #fkeys then
-				insert(tbl[key][1], value, depth + 1)
-			end
+	if key == nil then
+		if vizinfo.key_defaults ~= nil then
+			key = vizinfo.key_defaults[depth]
 		else
-			tbl[key][2] = tbl[key][2] + value
-			
-			if depth < #fkeys then
-				insert(tbl[key][1], value, depth + 1)
-			end
+			return
 		end
 	end
+	
+	local entryval = tbl[key]
+
+	if entryval == nil then
+		tbl[key] = {{}, value}
+
+		if depth < #fkeys then
+			insert(tbl[key][1], value, depth + 1)
+		end
+	else
+		tbl[key][2] = tbl[key][2] + value
+		
+		if depth < #fkeys then
+			insert(tbl[key][1], value, depth + 1)
+		end
+	end	
 end
 
 function on_event()
@@ -191,6 +252,10 @@ function on_event()
 
 	if value ~= nil then
 		insert(grtable, value, 1)
+	else
+		if vizinfo.value_defaults ~= nil then 
+			insert(grtable, vizinfo.value_defaults[1], 1)
+		end
 	end
 	
 	return true
