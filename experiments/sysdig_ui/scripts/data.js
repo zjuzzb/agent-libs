@@ -39,9 +39,11 @@ var key_list_syscall = [12, 0, 18, 2, 22, 3, 4, 5, 6, 7, 8, 9, 11, 19, 22];
 var key_list_failed_syscall = [12, 11, 0, 2, 22, 3, 4, 5, 6, 7, 8, 9, 18, 19, 22];
 var key_list_commands = [8, 13, 18, 7, 9, 22];
 var key_list_CPU = [0, 4, 6, 18, 3, 5, 7, 8, 9, 22];
+var default_list_CPU = ["idle", "no arguments", "idle", "", "idle", "idle", "", "idle", "idle", ""];
 
 var value_list = [
-  {name:"CPU usage", description:"CPU time used by the element", field:"thread.exectime", filter:"", keys: key_list_CPU, unit:"time"},
+  {name:"CPU usage (including idle)", description:"CPU time used by the element", field:"thread.exectime", filter:"", keys: key_list_CPU, key_defaults: default_list_CPU, unit:"time"},
+  {name:"CPU usage (no idle)", description:"CPU time used by the element", field:"thread.exectime", filter:"", keys: key_list_CPU, unit:"time"},
   {name:"I/O Bytes", description:"amount of bytes read/written to files", field:"evt.rawarg.res", filter:"fd.type=file and evt.is_io=true and evt.failed=false", keys: key_list_io, unit:"bytes"},
   {name:"I/O Time", description:"Time spent doing file I/O", field:"evt.latency", filter:"fd.type=file and evt.is_io=true", keys: key_list_io, unit:"time"},
   {name:"IOPS", description:"Number of I/O operations per second", field:"evt.count", filter:"fd.type=file and evt.is_io=true and evt.dir=< and evt.failed=false", keys: key_list_io, unit:"count"},
@@ -132,17 +134,25 @@ function update_chart() {
   var value_simple = JSON.parse(JSON.stringify(value_list[$('#valuecombo')[0].value]));
   value_simple.keys = undefined;
   var keylist = value.keys;
-  var key1 = keys_info[keylist[$('#keycombo1')[0].value]];
-  var key2 = keys_info[keylist[$('#keycombo2')[0].value]];
-  var key3 = keys_info[keylist[$('#keycombo3')[0].value]];
+  var key1 = JSON.parse(JSON.stringify(keys_info[keylist[$('#keycombo1')[0].value]]));
+  var key2 = JSON.parse(JSON.stringify(keys_info[keylist[$('#keycombo2')[0].value]]));
+  var key3 = JSON.parse(JSON.stringify(keys_info[keylist[$('#keycombo3')[0].value]]));
   
   var filter = $('#filterinput')[0].value;
 
-  body = JSON.stringify({"value":value_simple, 
+  var data_to_send = {"value":value_simple, 
     "key1": key1, 
     "key2": key2, 
     "key3": key3,
-    "filter": filter})
+    "filter": filter};
+
+  if(value.key_defaults) {
+    data_to_send["key1"]["default"] = value.key_defaults[$('#keycombo1')[0].value];
+    data_to_send["key2"]["default"] = value.key_defaults[$('#keycombo2')[0].value];
+    data_to_send["key3"]["default"] = value.key_defaults[$('#keycombo3')[0].value];
+  }
+
+  body = JSON.stringify(data_to_send)
   
   $.ajax({
     type : 'POST',

@@ -117,7 +117,26 @@ function on_set_arg(name, val)
 	elseif name == "keydefaults" then
 		if val ~= "" then
 			vizinfo.key_defaults = split(val, ",")
+
+			if #vizinfo.key_fld ~= #vizinfo.key_defaults then
+				print("error: number of entries in keys different from number entries in keydefaults")
+				return false
+			end
+		
+			local noneset = true
+			for i, v in ipairs(vizinfo.key_defaults) do
+				if vizinfo.key_defaults[i] == "" then
+					vizinfo.key_defaults[i] = nil
+				else
+					noneset = false
+				end
+			end
+			
+			if noneset then
+				vizinfo.key_defaults = nil
+			end
 		end
+					
 		return true
 	elseif name == "values" then
 		vizinfo.value_fld = split(val, ",")
@@ -158,13 +177,6 @@ function on_init()
 	if #vizinfo.key_fld ~= #vizinfo.key_desc then
 		print("error: number of entries in keys different from number entries in keydescs")
 		return false
-	end
-
-	if vizinfo.key_defaults ~= nil then
-		if #vizinfo.key_fld ~= #vizinfo.key_defaults then
-			print("error: number of entries in keys different from number entries in keydefaults")
-			return false
-		end
 	end
 	
 	if #vizinfo.value_fld ~= #vizinfo.value_desc then
@@ -225,9 +237,11 @@ function insert(tbl, value, depth)
 	if key == nil then
 		if vizinfo.key_defaults ~= nil then
 			key = vizinfo.key_defaults[depth]
-		else
-			return
 		end
+	end
+
+	if key == nil then
+		return
 	end
 	
 	local entryval = tbl[key]

@@ -151,16 +151,24 @@ class myHandler(BaseHTTPRequestHandler):
 			valuefilter = params['value']['filter']
 
 			keys = params['key1']['field']
-			keydescs = "na"
+			keydescs = 'na'
+			if params['key1'].has_key('default'):
+				defaults = params['key1']['default']
+			else:
+				defaults = ''
 
 			key2 = params['key2']['field']
 			if key2 != '':
 				keys += ',' + key2
-				keydescs += ",na"
+				keydescs += ',na'
+				if params['key2'].has_key('default'):
+					defaults += ',' + params['key2']['default']
 			key3 = params['key3']['field']
 			if key3 != '':
 				keys += ',' + key3
-				keydescs += ",na"
+				keydescs += ',na'
+				if params['key3'].has_key('default'):
+					defaults += ',' + params['key3']['default']
 
 			if params['filter'] != None and params['filter'] != '':
 				filter = '(' + params['filter'] + ') and (' + valuefilter + ')'
@@ -172,7 +180,7 @@ class myHandler(BaseHTTPRequestHandler):
 			#
 			# Spawn sysdig
 			#
-			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, "", value, "vd", "SUM", "none", "", filter, "100", "false"]
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, defaults, value, "vd", "SUM", "none", "", filter, "100", "false"]
 			print cmd
 
 			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
