@@ -929,7 +929,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// If this is a client or a server, it didn't generate any activity in the sample,
 				// and another program with the same name has already been included, we can safely
-				// exclude it, sind its presence would be completely redundant
+				// exclude it, since its presence would be completely redundant
 				//
 				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
 
@@ -946,8 +946,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// If this NOT is a client or a server, skip it if it didn't generate any activity.
 				//
-				include = (tot.m_count != 0 || procinfo->m_cpuload != 0) &&
-					(!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
+				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
 			}
 
 			if(include)
