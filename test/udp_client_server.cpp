@@ -310,6 +310,13 @@ TEST_F(sys_call_test, udp_client_server)
 		{
 			sinsp_threadinfo* ti = e->get_thread_info();
 			ASSERT_EQ(2, (int)ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
+				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if(type == PPME_SOCKET_RECVFROM_E)
@@ -496,7 +503,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 		sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
 		if(ti)
 		{
-			transaction_count = (int)ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in;
+			transaction_count = ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in;
 		}
 	};
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
@@ -548,6 +555,13 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 		{
 			sinsp_threadinfo* ti = e->get_thread_info();
 			ASSERT_EQ(2, (int)(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in));
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
+				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if(type == PPME_SOCKET_RECVMSG_X)

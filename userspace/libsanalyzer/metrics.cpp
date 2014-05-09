@@ -660,6 +660,16 @@ const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_counter(
 	return &m_counter;
 }
 
+const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_min_counter()
+{
+	return &m_min_counter;
+}
+
+const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_max_counter()
+{
+	return &m_max_counter;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_connection_counters implementation
 ///////////////////////////////////////////////////////////////////////////////
