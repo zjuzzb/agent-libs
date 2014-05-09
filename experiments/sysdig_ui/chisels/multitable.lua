@@ -36,7 +36,7 @@ args =
 	},
 	{
 		name = "keydefaults", 
-		description = "comma separated list of default values for keys. If specified, a default value is used when the key is not present", 
+		description = "comma separated list of default values for keys. If not specified or -, a default value is used when the key is not present", 
 		argtype = "string"
 	},
 	{
@@ -61,7 +61,7 @@ args =
 	},
 	{
 		name = "valuedefaults", 
-		description = "comma separated list of default values for keys. If specified, a default value is used when the value is not present.", 
+		description = "comma separated list of default values for keys. If not specified or -, a default value is used when the value is not present.", 
 		argtype = "string"
 	},
 	{
@@ -115,7 +115,7 @@ function on_set_arg(name, val)
 		vizinfo.key_desc = split(val, ",")
 		return true
 	elseif name == "keydefaults" then
-		if val ~= "" then
+		if val ~= "-" and val ~= "" then
 			vizinfo.key_defaults = split(val, ",")
 
 			if #vizinfo.key_fld ~= #vizinfo.key_defaults then
@@ -151,12 +151,14 @@ function on_set_arg(name, val)
 		vizinfo.valueunits = split(val, ",")
 		return true
 	elseif name == "valuedefaults" then
-		if val ~= "none" then
+		if val ~= "-" and val ~= "" then
 			vizinfo.value_defaults = split(val, ",")
 		end
 		return true
 	elseif name == "filter" then
-		filter = val
+		if val ~= "-" and val ~= "" then
+			filter = val
+		end
 		return true
 	elseif name == "top_number" then
 		vizinfo.top_number = tonumber(val)
