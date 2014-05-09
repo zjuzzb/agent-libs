@@ -148,7 +148,7 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	// NOTE: other is not included because we don't need it in the sample, just for internal use
 }
 
-uint32_t sinsp_counter_time_bidirectional::get_tot_count()
+uint32_t sinsp_counter_time_bidirectional::get_tot_count() const
 {
 	return m_count_in + m_count_out + m_count_other;
 }
@@ -558,16 +558,106 @@ double sinsp_counters::get_other_percentage()
 void sinsp_transaction_counters::clear()
 {
 	m_counter.clear();
+	m_min_counter.clear();
+	m_max_counter.clear();
 }
 
-void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio)
+void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
+		draiosproto::counter_time_bidirectional* min_protobuf_msg,
+		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
+		uint32_t sampling_ratio)
 {
 	m_counter.to_protobuf(protobuf_msg, sampling_ratio);
+	m_min_counter.to_protobuf(min_protobuf_msg, 1);
+	m_max_counter.to_protobuf(max_protobuf_msg, 1);
 }
 
 void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
+	if(m_min_counter.m_count_in == 0 || 
+		(other->m_min_counter.m_count_in != 0 &&
+		other->m_min_counter.m_time_ns_in < m_min_counter.m_time_ns_in))
+	{
+		m_min_counter.m_count_in = other->m_min_counter.m_count_in;
+		m_min_counter.m_time_ns_in = other->m_min_counter.m_time_ns_in;
+	}
+
+	if(m_min_counter.m_count_out == 0 ||
+		(other->m_min_counter.m_count_out != 0 &&
+		other->m_min_counter.m_time_ns_out < m_min_counter.m_time_ns_out))
+	{
+		m_min_counter.m_count_out = other->m_min_counter.m_count_out;
+		m_min_counter.m_time_ns_out = other->m_min_counter.m_time_ns_out;
+	}
+
+	if(m_max_counter.m_count_in == 0 || 
+		(other->m_max_counter.m_count_in != 0 &&
+		other->m_max_counter.m_count_in > m_max_counter.m_time_ns_in))
+	{
+		m_max_counter.m_count_in = other->m_max_counter.m_count_in;
+		m_max_counter.m_time_ns_in = other->m_max_counter.m_time_ns_in;
+	}
+
+	if(m_max_counter.m_count_out == 0 || 
+		(other->m_max_counter.m_count_out != 0 &&
+		other->m_max_counter.m_count_out > m_max_counter.m_time_ns_out))
+	{
+		m_max_counter.m_count_out = other->m_max_counter.m_count_out;
+		m_max_counter.m_time_ns_out = other->m_max_counter.m_time_ns_out;
+	}
+
 	m_counter.add(&other->m_counter);
+}
+
+void sinsp_transaction_counters::add_in(uint32_t cnt_delta, uint64_t time_delta)
+{
+	ASSERT(cnt_delta == 1);
+	if(cnt_delta == 1)
+	{
+		if(m_min_counter.m_count_in == 0 || 
+			time_delta < m_min_counter.m_time_ns_in)
+		{
+			m_min_counter.m_count_in = cnt_delta;
+			m_min_counter.m_time_ns_in = time_delta;
+		}
+
+		if(m_max_counter.m_count_in == 0 || 
+			time_delta > m_max_counter.m_time_ns_in)
+		{
+			m_max_counter.m_count_in = cnt_delta;
+			m_max_counter.m_time_ns_in = time_delta;
+		}
+	}
+
+	m_counter.add_in(cnt_delta, time_delta);
+}
+
+void sinsp_transaction_counters::add_out(uint32_t cnt_delta, uint64_t time_delta)
+{
+	ASSERT(cnt_delta == 1);
+	if(cnt_delta == 1)
+	{
+		if(m_min_counter.m_count_out == 0 || 
+			time_delta < m_min_counter.m_time_ns_out)
+		{
+			m_min_counter.m_count_out = cnt_delta;
+			m_min_counter.m_time_ns_out = time_delta;
+		}
+
+		if(m_max_counter.m_count_out == 0 || 
+			time_delta > m_max_counter.m_time_ns_out)
+		{
+			m_max_counter.m_count_out = cnt_delta;
+			m_max_counter.m_time_ns_out = time_delta;
+		}
+	}
+
+	m_counter.add_out(cnt_delta, time_delta);
+}
+
+const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_counter()
+{
+	return &m_counter;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -632,7 +722,6 @@ sinsp_host_metrics::sinsp_host_metrics()
 void sinsp_host_metrics::clear()
 {
 	m_metrics.clear();
-	m_transaction_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
 	m_n_capacity_score_entries = 0;
 	m_connection_queue_usage_pct = 0;
@@ -647,7 +736,6 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 {
 	m_metrics.add(&pinfo->m_proc_metrics);
 
-	m_transaction_metrics.add(&pinfo->m_proc_transaction_metrics);
 	m_transaction_processing_delay_ns += pinfo->m_proc_transaction_processing_delay_ns;
 
 	if(pinfo->m_connection_queue_usage_pct > m_connection_queue_usage_pct)

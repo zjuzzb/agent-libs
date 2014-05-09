@@ -69,7 +69,7 @@ public:
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio);
-	uint32_t get_tot_count();
+	uint32_t get_tot_count() const;
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;
@@ -199,11 +199,20 @@ public:
 class sinsp_transaction_counters
 {
 public:
-	sinsp_counter_time_bidirectional m_counter;
-
 	void clear();
-	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
+		draiosproto::counter_time_bidirectional* min_protobuf_msg,
+		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
+		uint32_t sampling_ratio);
 	void add(sinsp_transaction_counters* other);
+	void add_in(uint32_t cnt_delta, uint64_t time_delta);
+	void add_out(uint32_t cnt_delta, uint64_t time_delta);
+	const sinsp_counter_time_bidirectional* get_counter();
+
+private:
+	sinsp_counter_time_bidirectional m_counter;
+	sinsp_counter_time_bidirectional m_min_counter;
+	sinsp_counter_time_bidirectional m_max_counter;
 };
 
 //
@@ -234,7 +243,6 @@ public:
 	double get_stolen_score();
 
 	sinsp_counters m_metrics; 
-	sinsp_transaction_counters m_transaction_metrics;
 	uint64_t m_transaction_processing_delay_ns;
 	uint32_t m_n_capacity_score_entries;
 	uint32_t m_connection_queue_usage_pct;

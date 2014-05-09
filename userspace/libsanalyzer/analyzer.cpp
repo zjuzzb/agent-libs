@@ -826,10 +826,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		m_host_transaction_counters.add(&it->second.m_ainfo->m_external_transaction_metrics);
 
-		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 		{
 			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.m_counter.m_time_ns_out;
+			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
 		}
 
 		if(m_inspector->m_islive)
@@ -1060,12 +1060,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
 					}
 
-					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), m_sampling_ratio);
+					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), 
+						proc->mutable_min_transaction_counters(),
+						proc->mutable_max_transaction_counters(),
+						m_sampling_ratio);
 
 					//
 					// Health-related metrics
 					//
-					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
 						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
 							prog_delays,
@@ -1088,7 +1091,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
 							procinfo->m_stolen_capacity_score,
-							procinfo->m_external_transaction_metrics.m_counter.m_count_in);
+							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 					}
 
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
@@ -1102,12 +1105,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
 
 #if 1
-					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
-						uint64_t trtimein = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_in;
-						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.m_counter.m_time_ns_out;
-						uint32_t trcountin = procinfo->m_proc_transaction_metrics.m_counter.m_count_in;
-						uint32_t trcountout = procinfo->m_proc_transaction_metrics.m_counter.m_count_out;
+						uint64_t trtimein = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_in;
+						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_out;
+						uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
+						uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
 
 						if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 						{
@@ -1124,8 +1127,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-								procinfo->m_proc_transaction_metrics.m_counter.m_count_in * m_sampling_ratio,
-								procinfo->m_proc_transaction_metrics.m_counter.m_count_out * m_sampling_ratio,
+								procinfo->m_proc_transaction_metrics.get_counter()->m_count_in * m_sampling_ratio,
+								procinfo->m_proc_transaction_metrics.get_counter()->m_count_out * m_sampling_ratio,
 								trcountin? ((double)trtimein) / sample_duration : 0,
 								trcountout? ((double)trtimeout) / sample_duration : 0,
 								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
@@ -1166,7 +1169,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				if(procinfo != NULL)
 				{
-					if(procinfo->m_proc_transaction_metrics.m_counter.m_count_in != 0)
+					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
 						m_host_req_metrics.add(&procinfo->m_proc_metrics);
 					}
@@ -1388,7 +1391,10 @@ void sinsp_analyzer::emit_aggregated_connections()
 		conn->set_dtid(acit->second.m_dtid);
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(), m_sampling_ratio);
+		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+			conn->mutable_counters()->mutable_min_transaction_counters(),
+			conn->mutable_counters()->mutable_max_transaction_counters(), 
+			m_sampling_ratio);
 		
 		//
 		// The timestamp field is used to count the number of sub-connections
@@ -1424,7 +1430,10 @@ void sinsp_analyzer::emit_full_connections()
 			conn->set_dtid(cit->second.m_dtid);
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(), m_sampling_ratio);
+			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+				conn->mutable_counters()->mutable_min_transaction_counters(),
+				conn->mutable_counters()->mutable_max_transaction_counters(), 
+				m_sampling_ratio);
 		}
 
 		//
@@ -1982,7 +1991,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_delay_calculator->compute_host_delays(m_host_transaction_delays);
 
-			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(), m_sampling_ratio);
+			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
+				m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),
+				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(), 
+				m_sampling_ratio);
 
 			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
 			{
@@ -2027,7 +2039,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
 #endif // _DEBUG
 
-			if(m_host_transaction_counters.m_counter.m_count_in + m_host_transaction_counters.m_counter.m_count_out != 0)
+			if(m_host_transaction_counters.get_counter()->m_count_in + m_host_transaction_counters.get_counter()->m_count_out != 0)
 			{
 				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
@@ -2038,9 +2050,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-						m_host_transaction_counters.m_counter.m_count_in * m_sampling_ratio,
-						m_host_transaction_counters.m_counter.m_count_out * m_sampling_ratio,
-						(float)m_host_transaction_counters.m_counter.m_time_ns_in / sample_duration,
+						m_host_transaction_counters.get_counter()->m_count_in * m_sampling_ratio,
+						m_host_transaction_counters.get_counter()->m_count_out * m_sampling_ratio,
+						(float)m_host_transaction_counters.get_counter()->m_time_ns_in / sample_duration,
 						(float)m_client_tr_time_by_servers / sample_duration,
 						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
 						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,

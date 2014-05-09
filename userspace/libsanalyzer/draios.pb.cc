@@ -275,10 +275,12 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(resource_categories));
   connection_categories_descriptor_ = file->message_type(8);
-  static const int connection_categories_offsets_[4] = {
+  static const int connection_categories_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, server_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, client_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, min_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, max_transaction_counters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(connection_categories, n_aggregated_connections_),
   };
   connection_categories_reflection_ =
@@ -329,7 +331,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(command_details));
   host_descriptor_ = file->message_type(11);
-  static const int host_offsets_[14] = {
+  static const int host_offsets_[16] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, hostname_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, num_cpus_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, cpu_loads_),
@@ -338,6 +340,8 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, tcounters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, reqcounters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, min_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, max_transaction_counters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, transaction_processing_delay_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, merged_server_delay_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, next_tiers_delay_),
@@ -357,11 +361,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(host));
   thread_descriptor_ = file->message_type(12);
-  static const int thread_offsets_[4] = {
+  static const int thread_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, pid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, tid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, tcounters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, min_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(thread, max_transaction_counters_),
   };
   thread_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -375,7 +381,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(thread));
   process_descriptor_ = file->message_type(13);
-  static const int process_offsets_[14] = {
+  static const int process_offsets_[16] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, pid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, details_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, is_ipv4_transaction_server_),
@@ -385,6 +391,8 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, netrole_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, tcounters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, min_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, max_transaction_counters_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, transaction_processing_delay_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, merged_server_delay_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, next_tiers_delay_),
@@ -823,43 +831,58 @@ void protobuf_AddDesc_draios_2eproto() {
     "score\030\001 \001(\r\022\035\n\025stolen_capacity_score\030\006 \001"
     "(\r\022\"\n\032connection_queue_usage_pct\030\002 \001(\r\022\024"
     "\n\014fd_usage_pct\030\003 \001(\r\022\017\n\007cpu_pct\030\004 \001(\r\022 \n"
-    "\030resident_memory_usage_kb\030\005 \001(\004\"\330\001\n\025conn"
+    "\030resident_memory_usage_kb\030\005 \001(\004\"\356\002\n\025conn"
     "ection_categories\022*\n\006server\030\001 \001(\0132\032.drai"
     "osproto.counter_bytes\022*\n\006client\030\002 \001(\0132\032."
     "draiosproto.counter_bytes\022E\n\024transaction"
     "_counters\030\003 \001(\0132\'.draiosproto.counter_ti"
-    "me_bidirectional\022 \n\030n_aggregated_connect"
-    "ions\030\004 \001(\r\":\n\017process_details\022\014\n\004comm\030\001 "
-    "\002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\"e\n\017comman"
-    "d_details\022\021\n\ttimestamp\030\001 \002(\004\022\r\n\005count\030\002 "
-    "\002(\r\022\017\n\007cmdline\030\003 \002(\t\022\013\n\003exe\030\004 \002(\t\022\022\n\npar"
-    "entcomm\030\005 \001(\t\"\301\004\n\004host\022\020\n\010hostname\030\001 \001(\t"
-    "\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n"
-    "\tcpu_steal\030\013 \003(\r\022\"\n\032physical_memory_size"
-    "_bytes\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draios"
-    "proto.time_categories\022B\n\013reqcounters\030\014 \001"
-    "(\0132-.draiosproto.transaction_breakdown_c"
-    "ategories\022E\n\024transaction_counters\030\006 \001(\0132"
+    "me_bidirectional\022I\n\030min_transaction_coun"
+    "ters\030\022 \001(\0132\'.draiosproto.counter_time_bi"
+    "directional\022I\n\030max_transaction_counters\030"
+    "\023 \001(\0132\'.draiosproto.counter_time_bidirec"
+    "tional\022 \n\030n_aggregated_connections\030\004 \001(\r"
+    "\":\n\017process_details\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe"
+    "\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\"e\n\017command_details\022"
+    "\021\n\ttimestamp\030\001 \002(\004\022\r\n\005count\030\002 \002(\r\022\017\n\007cmd"
+    "line\030\003 \002(\t\022\013\n\003exe\030\004 \002(\t\022\022\n\nparentcomm\030\005 "
+    "\001(\t\"\327\005\n\004host\022\020\n\010hostname\030\001 \001(\t\022\020\n\010num_cp"
+    "us\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n\tcpu_steal"
+    "\030\013 \003(\r\022\"\n\032physical_memory_size_bytes\030\004 \002"
+    "(\004\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto.time"
+    "_categories\022B\n\013reqcounters\030\014 \001(\0132-.draio"
+    "sproto.transaction_breakdown_categories\022"
+    "E\n\024transaction_counters\030\006 \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\022I\n\030min_tr"
+    "ansaction_counters\030\026 \001(\0132\'.draiosproto.c"
+    "ounter_time_bidirectional\022I\n\030max_transac"
+    "tion_counters\030\027 \001(\0132\'.draiosproto.counte"
+    "r_time_bidirectional\022$\n\034transaction_proc"
+    "essing_delay\030\007 \001(\004\022\033\n\023merged_server_dela"
+    "y\030\016 \001(\004\022\030\n\020next_tiers_delay\030\r \001(\004\022;\n\021res"
+    "ource_counters\030\010 \001(\0132 .draiosproto.resou"
+    "rce_categories\022;\n\016syscall_errors\030\t \001(\0132#"
+    ".draiosproto.counter_syscall_errors\0228\n\017e"
+    "xternal_io_net\030\n \001(\0132\037.draiosproto.count"
+    "er_time_bytes\"\260\002\n\006thread\022\013\n\003pid\030\001 \002(\004\022\013\n"
+    "\003tid\030\002 \002(\004\022/\n\ttcounters\030\003 \001(\0132\034.draiospr"
+    "oto.time_categories\022E\n\024transaction_count"
+    "ers\030\005 \001(\0132\'.draiosproto.counter_time_bid"
+    "irectional\022I\n\030min_transaction_counters\030\006"
+    " \001(\0132\'.draiosproto.counter_time_bidirect"
+    "ional\022I\n\030max_transaction_counters\030\007 \001(\0132"
     "\'.draiosproto.counter_time_bidirectional"
-    "\022$\n\034transaction_processing_delay\030\007 \001(\004\022\033"
-    "\n\023merged_server_delay\030\016 \001(\004\022\030\n\020next_tier"
-    "s_delay\030\r \001(\004\022;\n\021resource_counters\030\010 \001(\013"
-    "2 .draiosproto.resource_categories\022;\n\016sy"
-    "scall_errors\030\t \001(\0132#.draiosproto.counter"
-    "_syscall_errors\0228\n\017external_io_net\030\n \001(\013"
-    "2\037.draiosproto.counter_time_bytes\"\232\001\n\006th"
-    "read\022\013\n\003pid\030\001 \002(\004\022\013\n\003tid\030\002 \002(\004\022/\n\ttcount"
-    "ers\030\003 \001(\0132\034.draiosproto.time_categories\022"
-    "E\n\024transaction_counters\030\005 \001(\0132\'.draiospr"
-    "oto.counter_time_bidirectional\"\265\004\n\007proce"
-    "ss\022\013\n\003pid\030\001 \002(\004\022-\n\007details\030\002 \001(\0132\034.draio"
-    "sproto.process_details\022\"\n\032is_ipv4_transa"
-    "ction_server\030\003 \001(\010\022\"\n\032is_unix_transactio"
-    "n_server\030\004 \001(\010\022\"\n\032is_ipv4_transaction_cl"
-    "ient\030\n \001(\010\022\"\n\032is_unix_transaction_client"
-    "\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/\n\ttcounters\030\005 \001"
-    "(\0132\034.draiosproto.time_categories\022E\n\024tran"
-    "saction_counters\030\006 \001(\0132\'.draiosproto.cou"
+    "\"\313\005\n\007process\022\013\n\003pid\030\001 \002(\004\022-\n\007details\030\002 \001"
+    "(\0132\034.draiosproto.process_details\022\"\n\032is_i"
+    "pv4_transaction_server\030\003 \001(\010\022\"\n\032is_unix_"
+    "transaction_server\030\004 \001(\010\022\"\n\032is_ipv4_tran"
+    "saction_client\030\n \001(\010\022\"\n\032is_unix_transact"
+    "ion_client\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/\n\ttco"
+    "unters\030\005 \001(\0132\034.draiosproto.time_categori"
+    "es\022E\n\024transaction_counters\030\006 \001(\0132\'.draio"
+    "sproto.counter_time_bidirectional\022I\n\030min"
+    "_transaction_counters\030\022 \001(\0132\'.draiosprot"
+    "o.counter_time_bidirectional\022I\n\030max_tran"
+    "saction_counters\030\023 \001(\0132\'.draiosproto.cou"
     "nter_time_bidirectional\022$\n\034transaction_p"
     "rocessing_delay\030\007 \001(\004\022\033\n\023merged_server_d"
     "elay\030\016 \001(\004\022\030\n\020next_tiers_delay\030\014 \001(\004\022;\n\021"
@@ -923,7 +946,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "NSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE"
     "_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_"
     "REQUEST\020\tB$\n\031com.draios.model.protobufB\005"
-    "AgentH\001", 5807);
+    "AgentH\001", 6407);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -4656,6 +4679,8 @@ void resource_categories::Swap(resource_categories* other) {
 const int connection_categories::kServerFieldNumber;
 const int connection_categories::kClientFieldNumber;
 const int connection_categories::kTransactionCountersFieldNumber;
+const int connection_categories::kMinTransactionCountersFieldNumber;
+const int connection_categories::kMaxTransactionCountersFieldNumber;
 const int connection_categories::kNAggregatedConnectionsFieldNumber;
 #endif  // !_MSC_VER
 
@@ -4668,6 +4693,8 @@ void connection_categories::InitAsDefaultInstance() {
   server_ = const_cast< ::draiosproto::counter_bytes*>(&::draiosproto::counter_bytes::default_instance());
   client_ = const_cast< ::draiosproto::counter_bytes*>(&::draiosproto::counter_bytes::default_instance());
   transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  min_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  max_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
 }
 
 connection_categories::connection_categories(const connection_categories& from)
@@ -4681,6 +4708,8 @@ void connection_categories::SharedCtor() {
   server_ = NULL;
   client_ = NULL;
   transaction_counters_ = NULL;
+  min_transaction_counters_ = NULL;
+  max_transaction_counters_ = NULL;
   n_aggregated_connections_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -4694,6 +4723,8 @@ void connection_categories::SharedDtor() {
     delete server_;
     delete client_;
     delete transaction_counters_;
+    delete min_transaction_counters_;
+    delete max_transaction_counters_;
   }
 }
 
@@ -4728,6 +4759,12 @@ void connection_categories::Clear() {
     }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_min_transaction_counters()) {
+      if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_max_transaction_counters()) {
+      if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
     n_aggregated_connections_ = 0u;
   }
@@ -4794,6 +4831,34 @@ bool connection_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(146)) goto parse_min_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+      case 18: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_min_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_min_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(154)) goto parse_max_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+      case 19: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_max_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_max_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -4839,6 +4904,18 @@ void connection_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->n_aggregated_connections(), output);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+  if (has_min_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      18, this->min_transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+  if (has_max_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      19, this->max_transaction_counters(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -4873,6 +4950,20 @@ void connection_categories::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(4, this->n_aggregated_connections(), target);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+  if (has_min_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        18, this->min_transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+  if (has_max_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        19, this->max_transaction_counters(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -4903,6 +4994,20 @@ int connection_categories::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+    if (has_min_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->min_transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+    if (has_max_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->max_transaction_counters());
     }
 
     // optional uint32 n_aggregated_connections = 4;
@@ -4948,6 +5053,12 @@ void connection_categories::MergeFrom(const connection_categories& from) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+    if (from.has_min_transaction_counters()) {
+      mutable_min_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.min_transaction_counters());
+    }
+    if (from.has_max_transaction_counters()) {
+      mutable_max_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.max_transaction_counters());
+    }
     if (from.has_n_aggregated_connections()) {
       set_n_aggregated_connections(from.n_aggregated_connections());
     }
@@ -4978,6 +5089,12 @@ bool connection_categories::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
+  if (has_min_transaction_counters()) {
+    if (!this->min_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_max_transaction_counters()) {
+    if (!this->max_transaction_counters().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -4986,6 +5103,8 @@ void connection_categories::Swap(connection_categories* other) {
     std::swap(server_, other->server_);
     std::swap(client_, other->client_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(min_transaction_counters_, other->min_transaction_counters_);
+    std::swap(max_transaction_counters_, other->max_transaction_counters_);
     std::swap(n_aggregated_connections_, other->n_aggregated_connections_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
@@ -5764,6 +5883,8 @@ const int host::kPhysicalMemorySizeBytesFieldNumber;
 const int host::kTcountersFieldNumber;
 const int host::kReqcountersFieldNumber;
 const int host::kTransactionCountersFieldNumber;
+const int host::kMinTransactionCountersFieldNumber;
+const int host::kMaxTransactionCountersFieldNumber;
 const int host::kTransactionProcessingDelayFieldNumber;
 const int host::kMergedServerDelayFieldNumber;
 const int host::kNextTiersDelayFieldNumber;
@@ -5781,6 +5902,8 @@ void host::InitAsDefaultInstance() {
   tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
   reqcounters_ = const_cast< ::draiosproto::transaction_breakdown_categories*>(&::draiosproto::transaction_breakdown_categories::default_instance());
   transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  min_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  max_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
   resource_counters_ = const_cast< ::draiosproto::resource_categories*>(&::draiosproto::resource_categories::default_instance());
   syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
   external_io_net_ = const_cast< ::draiosproto::counter_time_bytes*>(&::draiosproto::counter_time_bytes::default_instance());
@@ -5800,6 +5923,8 @@ void host::SharedCtor() {
   tcounters_ = NULL;
   reqcounters_ = NULL;
   transaction_counters_ = NULL;
+  min_transaction_counters_ = NULL;
+  max_transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   merged_server_delay_ = GOOGLE_ULONGLONG(0);
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -5821,6 +5946,8 @@ void host::SharedDtor() {
     delete tcounters_;
     delete reqcounters_;
     delete transaction_counters_;
+    delete min_transaction_counters_;
+    delete max_transaction_counters_;
     delete resource_counters_;
     delete syscall_errors_;
     delete external_io_net_;
@@ -5868,6 +5995,12 @@ void host::Clear() {
     }
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (has_min_transaction_counters()) {
+      if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_max_transaction_counters()) {
+      if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     merged_server_delay_ = GOOGLE_ULONGLONG(0);
     next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -6113,6 +6246,34 @@ bool host::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(178)) goto parse_min_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
+      case 22: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_min_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_min_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(186)) goto parse_max_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
+      case 23: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_max_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_max_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -6217,6 +6378,18 @@ void host::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(14, this->merged_server_delay(), output);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
+  if (has_min_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      22, this->min_transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
+  if (has_max_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      23, this->max_transaction_counters(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -6314,6 +6487,20 @@ void host::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(14, this->merged_server_delay(), target);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
+  if (has_min_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        22, this->min_transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
+  if (has_max_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        23, this->max_transaction_counters(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -6369,6 +6556,20 @@ int host::ByteSize() const {
 
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
+    if (has_min_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->min_transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
+    if (has_max_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->max_transaction_counters());
+    }
+
     // optional uint64 transaction_processing_delay = 7;
     if (has_transaction_processing_delay()) {
       total_size += 1 +
@@ -6480,6 +6681,12 @@ void host::MergeFrom(const host& from) {
     }
   }
   if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_min_transaction_counters()) {
+      mutable_min_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.min_transaction_counters());
+    }
+    if (from.has_max_transaction_counters()) {
+      mutable_max_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.max_transaction_counters());
+    }
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
@@ -6526,6 +6733,12 @@ bool host::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
+  if (has_min_transaction_counters()) {
+    if (!this->min_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_max_transaction_counters()) {
+    if (!this->max_transaction_counters().IsInitialized()) return false;
+  }
   if (has_syscall_errors()) {
     if (!this->syscall_errors().IsInitialized()) return false;
   }
@@ -6545,6 +6758,8 @@ void host::Swap(host* other) {
     std::swap(tcounters_, other->tcounters_);
     std::swap(reqcounters_, other->reqcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(min_transaction_counters_, other->min_transaction_counters_);
+    std::swap(max_transaction_counters_, other->max_transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(merged_server_delay_, other->merged_server_delay_);
     std::swap(next_tiers_delay_, other->next_tiers_delay_);
@@ -6573,6 +6788,8 @@ const int thread::kPidFieldNumber;
 const int thread::kTidFieldNumber;
 const int thread::kTcountersFieldNumber;
 const int thread::kTransactionCountersFieldNumber;
+const int thread::kMinTransactionCountersFieldNumber;
+const int thread::kMaxTransactionCountersFieldNumber;
 #endif  // !_MSC_VER
 
 thread::thread()
@@ -6583,6 +6800,8 @@ thread::thread()
 void thread::InitAsDefaultInstance() {
   tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
   transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  min_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  max_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
 }
 
 thread::thread(const thread& from)
@@ -6597,6 +6816,8 @@ void thread::SharedCtor() {
   tid_ = GOOGLE_ULONGLONG(0);
   tcounters_ = NULL;
   transaction_counters_ = NULL;
+  min_transaction_counters_ = NULL;
+  max_transaction_counters_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -6608,6 +6829,8 @@ void thread::SharedDtor() {
   if (this != default_instance_) {
     delete tcounters_;
     delete transaction_counters_;
+    delete min_transaction_counters_;
+    delete max_transaction_counters_;
   }
 }
 
@@ -6641,6 +6864,12 @@ void thread::Clear() {
     }
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_min_transaction_counters()) {
+      if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_max_transaction_counters()) {
+      if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -6708,6 +6937,34 @@ bool thread::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_min_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_min_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_min_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(58)) goto parse_max_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
+      case 7: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_max_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_max_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -6752,6 +7009,18 @@ void thread::SerializeWithCachedSizes(
       5, this->transaction_counters(), output);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
+  if (has_min_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      6, this->min_transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
+  if (has_max_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      7, this->max_transaction_counters(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -6782,6 +7051,20 @@ void thread::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         5, this->transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
+  if (has_min_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        6, this->min_transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
+  if (has_max_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        7, this->max_transaction_counters(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -6823,6 +7106,20 @@ int thread::ByteSize() const {
           this->transaction_counters());
     }
 
+    // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
+    if (has_min_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->min_transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
+    if (has_max_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->max_transaction_counters());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -6862,6 +7159,12 @@ void thread::MergeFrom(const thread& from) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+    if (from.has_min_transaction_counters()) {
+      mutable_min_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.min_transaction_counters());
+    }
+    if (from.has_max_transaction_counters()) {
+      mutable_max_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.max_transaction_counters());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -6887,6 +7190,12 @@ bool thread::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
+  if (has_min_transaction_counters()) {
+    if (!this->min_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_max_transaction_counters()) {
+    if (!this->max_transaction_counters().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -6896,6 +7205,8 @@ void thread::Swap(thread* other) {
     std::swap(tid_, other->tid_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(min_transaction_counters_, other->min_transaction_counters_);
+    std::swap(max_transaction_counters_, other->max_transaction_counters_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -6923,6 +7234,8 @@ const int process::kIsUnixTransactionClientFieldNumber;
 const int process::kNetroleFieldNumber;
 const int process::kTcountersFieldNumber;
 const int process::kTransactionCountersFieldNumber;
+const int process::kMinTransactionCountersFieldNumber;
+const int process::kMaxTransactionCountersFieldNumber;
 const int process::kTransactionProcessingDelayFieldNumber;
 const int process::kMergedServerDelayFieldNumber;
 const int process::kNextTiersDelayFieldNumber;
@@ -6939,6 +7252,8 @@ void process::InitAsDefaultInstance() {
   details_ = const_cast< ::draiosproto::process_details*>(&::draiosproto::process_details::default_instance());
   tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
   transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  min_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  max_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
   resource_counters_ = const_cast< ::draiosproto::resource_categories*>(&::draiosproto::resource_categories::default_instance());
   syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
 }
@@ -6960,6 +7275,8 @@ void process::SharedCtor() {
   netrole_ = 0u;
   tcounters_ = NULL;
   transaction_counters_ = NULL;
+  min_transaction_counters_ = NULL;
+  max_transaction_counters_ = NULL;
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
   merged_server_delay_ = GOOGLE_ULONGLONG(0);
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -6977,6 +7294,8 @@ void process::SharedDtor() {
     delete details_;
     delete tcounters_;
     delete transaction_counters_;
+    delete min_transaction_counters_;
+    delete max_transaction_counters_;
     delete resource_counters_;
     delete syscall_errors_;
   }
@@ -7021,6 +7340,12 @@ void process::Clear() {
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_transaction_counters()) {
       if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_min_transaction_counters()) {
+      if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_max_transaction_counters()) {
+      if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
     }
     transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
     merged_server_delay_ = GOOGLE_ULONGLONG(0);
@@ -7251,6 +7576,34 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(146)) goto parse_min_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+      case 18: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_min_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_min_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(154)) goto parse_max_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+      case 19: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_max_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_max_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -7348,6 +7701,18 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(14, this->merged_server_delay(), output);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+  if (has_min_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      18, this->min_transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+  if (has_max_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      19, this->max_transaction_counters(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -7436,6 +7801,20 @@ void process::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(14, this->merged_server_delay(), target);
   }
 
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+  if (has_min_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        18, this->min_transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+  if (has_max_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        19, this->max_transaction_counters(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -7502,6 +7881,20 @@ int process::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
+    if (has_min_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->min_transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
+    if (has_max_transaction_counters()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->max_transaction_counters());
     }
 
     // optional uint64 transaction_processing_delay = 7;
@@ -7595,6 +7988,12 @@ void process::MergeFrom(const process& from) {
     if (from.has_transaction_counters()) {
       mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
     }
+    if (from.has_min_transaction_counters()) {
+      mutable_min_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.min_transaction_counters());
+    }
+    if (from.has_max_transaction_counters()) {
+      mutable_max_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.max_transaction_counters());
+    }
     if (from.has_transaction_processing_delay()) {
       set_transaction_processing_delay(from.transaction_processing_delay());
     }
@@ -7638,6 +8037,12 @@ bool process::IsInitialized() const {
   if (has_transaction_counters()) {
     if (!this->transaction_counters().IsInitialized()) return false;
   }
+  if (has_min_transaction_counters()) {
+    if (!this->min_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_max_transaction_counters()) {
+    if (!this->max_transaction_counters().IsInitialized()) return false;
+  }
   if (has_syscall_errors()) {
     if (!this->syscall_errors().IsInitialized()) return false;
   }
@@ -7655,6 +8060,8 @@ void process::Swap(process* other) {
     std::swap(netrole_, other->netrole_);
     std::swap(tcounters_, other->tcounters_);
     std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(min_transaction_counters_, other->min_transaction_counters_);
+    std::swap(max_transaction_counters_, other->max_transaction_counters_);
     std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
     std::swap(merged_server_delay_, other->merged_server_delay_);
     std::swap(next_tiers_delay_, other->next_tiers_delay_);

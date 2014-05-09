@@ -87,6 +87,8 @@ message connection_categories {
     optional counter_bytes server = 1; // client-side metrics
     optional counter_bytes client = 2; // server-side metrics
     optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
+    optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this connection
+    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this connection
     optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
 }
 
@@ -121,6 +123,8 @@ message host {
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
+    optional counter_time_bidirectional min_transaction_counters = 22; // The fastest transaction counters for the whole host
+    optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
     optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
     optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests.
@@ -146,6 +150,8 @@ message thread {
     // started with the CLONE_FS flag
 
     optional counter_time_bidirectional transaction_counters = 5; // The transaction counters for this thread
+    optional counter_time_bidirectional min_transaction_counters = 6; // The fastest transaction counters for this thread
+    optional counter_time_bidirectional max_transaction_counters = 7; // The slowest transaction counters for this thread
 }
 
 //
@@ -177,6 +183,8 @@ message process {
 
     optional time_categories tcounters = 5; // The time counters for this thread.
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
+    optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this process.
+    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
     optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
     optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests. 

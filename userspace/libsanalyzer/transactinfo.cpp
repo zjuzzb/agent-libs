@@ -32,8 +32,8 @@ sinsp_transaction_table::~sinsp_transaction_table()
 
 bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 {
-	if(ptinfo->m_ainfo->m_transaction_metrics.m_counter.m_count_in >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
-		ptinfo->m_ainfo->m_transaction_metrics.m_counter.m_time_ns_in / ptinfo->m_ainfo->m_transaction_metrics.m_counter.m_count_in < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
+	if(ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
+		ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in / ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
 	{
 		return true;
 	}
@@ -135,12 +135,12 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ASSERT(false);
 			}
 
-			ptinfo->m_ainfo->m_transaction_metrics.m_counter.add_in(1, delta);
-			pconn->m_transaction_metrics.m_counter.add_in(1, delta);
+			ptinfo->m_ainfo->m_transaction_metrics.add_in(1, delta);
+			pconn->m_transaction_metrics.add_in(1, delta);
 
 			if(isexternal)
 			{
-				ptinfo->m_ainfo->m_external_transaction_metrics.m_counter.add_in(1, delta);
+				ptinfo->m_ainfo->m_external_transaction_metrics.add_in(1, delta);
 			}
 
 			if(tinfo != NULL && proginfo != NULL)
@@ -173,12 +173,12 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ASSERT(false);
 			}
 
-			ptinfo->m_ainfo->m_transaction_metrics.m_counter.add_out(1, delta);
-			pconn->m_transaction_metrics.m_counter.add_out(1, delta);
+			ptinfo->m_ainfo->m_transaction_metrics.add_out(1, delta);
+			pconn->m_transaction_metrics.add_out(1, delta);
 
 			if(isexternal)
 			{
-				ptinfo->m_ainfo->m_external_transaction_metrics.m_counter.add_out(1, delta);
+				ptinfo->m_ainfo->m_external_transaction_metrics.add_out(1, delta);
 			}
 
 			if(tinfo != NULL && proginfo != NULL)

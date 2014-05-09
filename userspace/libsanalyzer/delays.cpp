@@ -271,7 +271,7 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 //		int a = 0;
 //	}
 //}
-	if(program_info->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.m_count_in == 0)
+	if(program_info->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in == 0)
 	{
 		//
 		// Not a server
@@ -418,7 +418,7 @@ void sinsp_delays::compute_host_delays(OUT sinsp_delays_info* delays)
 
 	delays->m_local_processing_delay_ns = -1;
 
-	if(m_analyzer->m_host_transaction_counters.m_counter.m_count_in == 0)
+	if(m_analyzer->m_host_transaction_counters.get_counter()->m_count_in == 0)
 	{
 		//
 		// Not a server
