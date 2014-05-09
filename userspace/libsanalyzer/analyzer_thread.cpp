@@ -159,9 +159,9 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
 	}
 
-	if(other->m_tinfo->m_fd_usage_pct > m_procinfo->m_fd_usage_pct)
+	if(other->m_tinfo->get_fd_usage_pct() > m_procinfo->m_fd_usage_pct)
 	{
-		m_procinfo->m_fd_usage_pct = other->m_tinfo->m_fd_usage_pct;
+		m_procinfo->m_fd_usage_pct = other->m_tinfo->get_fd_usage_pct();
 	}
 
 	if(other->m_connection_queue_usage_pct > m_procinfo->m_connection_queue_usage_pct)
@@ -234,7 +234,6 @@ void thread_analyzer_info::clear_all_metrics()
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_external_transaction_metrics.clear();
-	m_tinfo->m_fd_usage_pct = 0;
 	m_connection_queue_usage_pct = 0;
 	m_cpuload = 0;
 	m_resident_memory_kb = 0;
