@@ -151,7 +151,7 @@ function on_set_arg(name, val)
 		vizinfo.valueunits = split(val, ",")
 		return true
 	elseif name == "valuedefaults" then
-		if val ~= "" then
+		if val ~= "none" then
 			vizinfo.value_defaults = split(val, ",")
 		end
 		return true
