@@ -298,18 +298,23 @@ function on_capture_end(ts_s, ts_ns, delta)
 		terminal.showcursor()
 		return true
 	end
-	
+
 	if vizinfo.do_diff then
 		if run_cnt == 1 then
-			local str = table_to_json_string(grtable, ts_s, 0, delta, vizinfo)
 
-			local f = assert(io.open("ttt.json", "w"))
-			f:write(str)
-			f:close()
+			-- t1 is global because we use it at the next run
+			t1 = {}
+			t1.children = create_json_table(grtable, delta, vizinfo, 1)
+			t1.name = "root"
 
 			grtable = {}
 		else
-			print_table_difference(grtable, ts_s, 0, delta, vizinfo)
+			local t2 = {}
+
+			t2.children = create_json_table(grtable, delta, vizinfo, 1)
+			t2.name = "root"
+			
+			print_table_difference(t1, t2, vizinfo)
 		end
 	else
 		print_sorted_table(grtable, ts_s, 0, delta, vizinfo)

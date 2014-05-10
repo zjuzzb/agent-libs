@@ -71,6 +71,9 @@ var value_list = [
 // number of created files
 // Number of moved/deleted files
 // number of DNS resolutions
+// FD usage %
+// cpu vs network vs disk time
+// fd usage by type
 ];
 
 

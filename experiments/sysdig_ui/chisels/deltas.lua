@@ -34,6 +34,8 @@ function subtract_tables(table1, table2, viz_info, max_result_size)
 	end	
 	
 	-- scan the merge map to perform the subtraction
+	dmax = -1000000000000
+	dmin = 1000000000000
 	for k,v in pairs(merge) do
 		local v1 = v.v1
 		if v1 == nil then
@@ -46,8 +48,12 @@ function subtract_tables(table1, table2, viz_info, max_result_size)
 		end
 		
 		v.delta = v2 - v1
+		
+		dmax = math.max(dmax, v.delta)
+		dmin = math.min(dmin, v.delta)
 	end
 	
+print("***", dmax, dmin)	
 	local fullres = {}
 	local j = 1
 	
@@ -74,24 +80,13 @@ function subtract_tables(table1, table2, viz_info, max_result_size)
 	return res
 end
 
-function print_table_difference(stable, ts_s, ts_ns, timedelta, viz_info)		
-	local f = assert(io.open("ttt.json", "r"))
-	local t = f:read("*all")
-	f:close()
-	
-	-- Load the first table from file
-	local t1 = json.decode(t)
-	
-	--local str = json.encode(jtable, { indent = true })
-	
-	-- Generate the second table from the data
-	local t2 = {}
-	t2.children = create_json_table(stable, timedelta, viz_info, 1)
-	t2.name = "root"
+function print_table_difference(t1, t2, viz_info)		
 	
 	-- Do the subtraction
 	local diff = subtract_tables(t1.children, t2.children, viz_info, 20)
-	
+
+	-- Print the result
 	local str = json.encode(diff, { indent = true })
+
 	print(str)
 end
