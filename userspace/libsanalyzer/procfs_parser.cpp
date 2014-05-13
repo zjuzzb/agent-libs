@@ -453,6 +453,7 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 			|| strcmp(entry->mnt_type, "devfs") == 0
 			|| strcmp(entry->mnt_type, "kernfs") == 0
 			|| strcmp(entry->mnt_type, "ignore") == 0
+			|| strcmp(entry->mnt_type, "rootfs") == 0
 			|| strcmp(entry->mnt_type, "none") == 0)
 		{
 			continue;
