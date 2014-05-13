@@ -438,17 +438,21 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 			break;
 		}
 
-		mounted_fs fs;
-
-		fs.device = entry->mnt_fsname;
-		fs.mount_dir = entry->mnt_dir;
-		fs.type =  entry->mnt_type;
-
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			throw sinsp_exception("error getting details for " + fs.mount_dir);
+			throw sinsp_exception("error getting details for " + string(entry->mnt_dir));
 		}
+
+		if(statfs.f_blocks == 0)
+		{
+			continue;
+		}
+
+		mounted_fs fs;
+		fs.device = entry->mnt_fsname;
+		fs.mount_dir = entry->mnt_dir;
+		fs.type =  entry->mnt_type;
 
 		fs.available_bytes = statfs.f_bsize * statfs.f_bavail; 
 		fs.size_bytes = statfs.f_bsize * statfs.f_blocks; 
@@ -456,4 +460,6 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 
 		fs_list->push_back(fs);
 	}
+
+	endmntent(fp);
 }
