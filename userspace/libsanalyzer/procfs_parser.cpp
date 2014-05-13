@@ -10,6 +10,8 @@
 #ifndef _WIN32
 #include <unistd.h>
 #include <dirent.h>
+#include <mntent.h>
+#include <sys/statvfs.h>
 #endif
 #include <sys/stat.h>
 
@@ -418,4 +420,40 @@ return;
 
 	closedir(dir_p);
 #endif // _WIN32
+}
+
+void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
+{
+	FILE* fp = setmntent("/etc/mtab", "r");
+	if(fp == NULL)
+	{
+		throw sinsp_exception("error opening /etc/mtab");
+	}
+
+	while(true)
+	{
+		struct mntent* entry = getmntent(fp);
+		if(entry == NULL)
+		{
+			break;
+		}
+
+		mounted_fs fs;
+
+		fs.device = entry->mnt_fsname;
+		fs.mount_dir = entry->mnt_dir;
+		fs.type =  entry->mnt_type;
+
+		struct statvfs statfs;
+		if(statvfs(entry->mnt_dir, &statfs) < 0)
+		{
+			throw sinsp_exception("error getting details for " + fs.mount_dir);
+		}
+
+		fs.available_bytes = statfs.f_bsize * statfs.f_bavail; 
+		fs.size_bytes = statfs.f_bsize * statfs.f_blocks; 
+		fs.used_bytes = statfs.f_bsize * statfs.f_blocks - statfs.f_bsize * statfs.f_bfree;
+
+		fs_list->push_back(fs);
+	}
 }

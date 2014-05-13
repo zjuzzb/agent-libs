@@ -51,6 +51,7 @@ class program;
 class ipv4tuple;
 class ipv4_connection;
 class ipv4_network_interface;
+class mounted_fs;
 class metrics;
 class dump_request_start;
 class dump_request_stop;
@@ -2667,6 +2668,153 @@ class ipv4_network_interface : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class mounted_fs : public ::google::protobuf::Message {
+ public:
+  mounted_fs();
+  virtual ~mounted_fs();
+
+  mounted_fs(const mounted_fs& from);
+
+  inline mounted_fs& operator=(const mounted_fs& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mounted_fs& default_instance();
+
+  void Swap(mounted_fs* other);
+
+  // implements Message ----------------------------------------------
+
+  mounted_fs* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mounted_fs& from);
+  void MergeFrom(const mounted_fs& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string device = 1;
+  inline bool has_device() const;
+  inline void clear_device();
+  static const int kDeviceFieldNumber = 1;
+  inline const ::std::string& device() const;
+  inline void set_device(const ::std::string& value);
+  inline void set_device(const char* value);
+  inline void set_device(const char* value, size_t size);
+  inline ::std::string* mutable_device();
+  inline ::std::string* release_device();
+  inline void set_allocated_device(::std::string* device);
+
+  // required string mount_dir = 2;
+  inline bool has_mount_dir() const;
+  inline void clear_mount_dir();
+  static const int kMountDirFieldNumber = 2;
+  inline const ::std::string& mount_dir() const;
+  inline void set_mount_dir(const ::std::string& value);
+  inline void set_mount_dir(const char* value);
+  inline void set_mount_dir(const char* value, size_t size);
+  inline ::std::string* mutable_mount_dir();
+  inline ::std::string* release_mount_dir();
+  inline void set_allocated_mount_dir(::std::string* mount_dir);
+
+  // required string type = 3;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 3;
+  inline const ::std::string& type() const;
+  inline void set_type(const ::std::string& value);
+  inline void set_type(const char* value);
+  inline void set_type(const char* value, size_t size);
+  inline ::std::string* mutable_type();
+  inline ::std::string* release_type();
+  inline void set_allocated_type(::std::string* type);
+
+  // required uint64 size_bytes = 4;
+  inline bool has_size_bytes() const;
+  inline void clear_size_bytes();
+  static const int kSizeBytesFieldNumber = 4;
+  inline ::google::protobuf::uint64 size_bytes() const;
+  inline void set_size_bytes(::google::protobuf::uint64 value);
+
+  // required uint64 used_bytes = 5;
+  inline bool has_used_bytes() const;
+  inline void clear_used_bytes();
+  static const int kUsedBytesFieldNumber = 5;
+  inline ::google::protobuf::uint64 used_bytes() const;
+  inline void set_used_bytes(::google::protobuf::uint64 value);
+
+  // required uint64 available_bytes = 6;
+  inline bool has_available_bytes() const;
+  inline void clear_available_bytes();
+  static const int kAvailableBytesFieldNumber = 6;
+  inline ::google::protobuf::uint64 available_bytes() const;
+  inline void set_available_bytes(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs)
+ private:
+  inline void set_has_device();
+  inline void clear_has_device();
+  inline void set_has_mount_dir();
+  inline void clear_has_mount_dir();
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_size_bytes();
+  inline void clear_has_size_bytes();
+  inline void set_has_used_bytes();
+  inline void clear_has_used_bytes();
+  inline void set_has_available_bytes();
+  inline void clear_has_available_bytes();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* device_;
+  ::std::string* mount_dir_;
+  ::std::string* type_;
+  ::google::protobuf::uint64 size_bytes_;
+  ::google::protobuf::uint64 used_bytes_;
+  ::google::protobuf::uint64 available_bytes_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mounted_fs* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class metrics : public ::google::protobuf::Message {
  public:
   metrics();
@@ -2895,6 +3043,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
       mutable_commands();
 
+  // repeated .draiosproto.mounted_fs mounts = 18;
+  inline int mounts_size() const;
+  inline void clear_mounts();
+  static const int kMountsFieldNumber = 18;
+  inline const ::draiosproto::mounted_fs& mounts(int index) const;
+  inline ::draiosproto::mounted_fs* mutable_mounts(int index);
+  inline ::draiosproto::mounted_fs* add_mounts();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+      mounts() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+      mutable_mounts();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -2938,9 +3098,10 @@ class metrics : public ::google::protobuf::Message {
   ::std::string* hidden_processes_;
   ::std::string* version_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7783,6 +7944,286 @@ inline void ipv4_network_interface::set_bcast(::google::protobuf::uint32 value) 
 
 // -------------------------------------------------------------------
 
+// mounted_fs
+
+// required string device = 1;
+inline bool mounted_fs::has_device() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mounted_fs::set_has_device() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mounted_fs::clear_has_device() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mounted_fs::clear_device() {
+  if (device_ != &::google::protobuf::internal::kEmptyString) {
+    device_->clear();
+  }
+  clear_has_device();
+}
+inline const ::std::string& mounted_fs::device() const {
+  return *device_;
+}
+inline void mounted_fs::set_device(const ::std::string& value) {
+  set_has_device();
+  if (device_ == &::google::protobuf::internal::kEmptyString) {
+    device_ = new ::std::string;
+  }
+  device_->assign(value);
+}
+inline void mounted_fs::set_device(const char* value) {
+  set_has_device();
+  if (device_ == &::google::protobuf::internal::kEmptyString) {
+    device_ = new ::std::string;
+  }
+  device_->assign(value);
+}
+inline void mounted_fs::set_device(const char* value, size_t size) {
+  set_has_device();
+  if (device_ == &::google::protobuf::internal::kEmptyString) {
+    device_ = new ::std::string;
+  }
+  device_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mounted_fs::mutable_device() {
+  set_has_device();
+  if (device_ == &::google::protobuf::internal::kEmptyString) {
+    device_ = new ::std::string;
+  }
+  return device_;
+}
+inline ::std::string* mounted_fs::release_device() {
+  clear_has_device();
+  if (device_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = device_;
+    device_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mounted_fs::set_allocated_device(::std::string* device) {
+  if (device_ != &::google::protobuf::internal::kEmptyString) {
+    delete device_;
+  }
+  if (device) {
+    set_has_device();
+    device_ = device;
+  } else {
+    clear_has_device();
+    device_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string mount_dir = 2;
+inline bool mounted_fs::has_mount_dir() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mounted_fs::set_has_mount_dir() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mounted_fs::clear_has_mount_dir() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mounted_fs::clear_mount_dir() {
+  if (mount_dir_ != &::google::protobuf::internal::kEmptyString) {
+    mount_dir_->clear();
+  }
+  clear_has_mount_dir();
+}
+inline const ::std::string& mounted_fs::mount_dir() const {
+  return *mount_dir_;
+}
+inline void mounted_fs::set_mount_dir(const ::std::string& value) {
+  set_has_mount_dir();
+  if (mount_dir_ == &::google::protobuf::internal::kEmptyString) {
+    mount_dir_ = new ::std::string;
+  }
+  mount_dir_->assign(value);
+}
+inline void mounted_fs::set_mount_dir(const char* value) {
+  set_has_mount_dir();
+  if (mount_dir_ == &::google::protobuf::internal::kEmptyString) {
+    mount_dir_ = new ::std::string;
+  }
+  mount_dir_->assign(value);
+}
+inline void mounted_fs::set_mount_dir(const char* value, size_t size) {
+  set_has_mount_dir();
+  if (mount_dir_ == &::google::protobuf::internal::kEmptyString) {
+    mount_dir_ = new ::std::string;
+  }
+  mount_dir_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mounted_fs::mutable_mount_dir() {
+  set_has_mount_dir();
+  if (mount_dir_ == &::google::protobuf::internal::kEmptyString) {
+    mount_dir_ = new ::std::string;
+  }
+  return mount_dir_;
+}
+inline ::std::string* mounted_fs::release_mount_dir() {
+  clear_has_mount_dir();
+  if (mount_dir_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = mount_dir_;
+    mount_dir_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mounted_fs::set_allocated_mount_dir(::std::string* mount_dir) {
+  if (mount_dir_ != &::google::protobuf::internal::kEmptyString) {
+    delete mount_dir_;
+  }
+  if (mount_dir) {
+    set_has_mount_dir();
+    mount_dir_ = mount_dir;
+  } else {
+    clear_has_mount_dir();
+    mount_dir_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string type = 3;
+inline bool mounted_fs::has_type() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void mounted_fs::set_has_type() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void mounted_fs::clear_has_type() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void mounted_fs::clear_type() {
+  if (type_ != &::google::protobuf::internal::kEmptyString) {
+    type_->clear();
+  }
+  clear_has_type();
+}
+inline const ::std::string& mounted_fs::type() const {
+  return *type_;
+}
+inline void mounted_fs::set_type(const ::std::string& value) {
+  set_has_type();
+  if (type_ == &::google::protobuf::internal::kEmptyString) {
+    type_ = new ::std::string;
+  }
+  type_->assign(value);
+}
+inline void mounted_fs::set_type(const char* value) {
+  set_has_type();
+  if (type_ == &::google::protobuf::internal::kEmptyString) {
+    type_ = new ::std::string;
+  }
+  type_->assign(value);
+}
+inline void mounted_fs::set_type(const char* value, size_t size) {
+  set_has_type();
+  if (type_ == &::google::protobuf::internal::kEmptyString) {
+    type_ = new ::std::string;
+  }
+  type_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mounted_fs::mutable_type() {
+  set_has_type();
+  if (type_ == &::google::protobuf::internal::kEmptyString) {
+    type_ = new ::std::string;
+  }
+  return type_;
+}
+inline ::std::string* mounted_fs::release_type() {
+  clear_has_type();
+  if (type_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = type_;
+    type_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mounted_fs::set_allocated_type(::std::string* type) {
+  if (type_ != &::google::protobuf::internal::kEmptyString) {
+    delete type_;
+  }
+  if (type) {
+    set_has_type();
+    type_ = type;
+  } else {
+    clear_has_type();
+    type_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint64 size_bytes = 4;
+inline bool mounted_fs::has_size_bytes() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void mounted_fs::set_has_size_bytes() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void mounted_fs::clear_has_size_bytes() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void mounted_fs::clear_size_bytes() {
+  size_bytes_ = GOOGLE_ULONGLONG(0);
+  clear_has_size_bytes();
+}
+inline ::google::protobuf::uint64 mounted_fs::size_bytes() const {
+  return size_bytes_;
+}
+inline void mounted_fs::set_size_bytes(::google::protobuf::uint64 value) {
+  set_has_size_bytes();
+  size_bytes_ = value;
+}
+
+// required uint64 used_bytes = 5;
+inline bool mounted_fs::has_used_bytes() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void mounted_fs::set_has_used_bytes() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void mounted_fs::clear_has_used_bytes() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void mounted_fs::clear_used_bytes() {
+  used_bytes_ = GOOGLE_ULONGLONG(0);
+  clear_has_used_bytes();
+}
+inline ::google::protobuf::uint64 mounted_fs::used_bytes() const {
+  return used_bytes_;
+}
+inline void mounted_fs::set_used_bytes(::google::protobuf::uint64 value) {
+  set_has_used_bytes();
+  used_bytes_ = value;
+}
+
+// required uint64 available_bytes = 6;
+inline bool mounted_fs::has_available_bytes() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void mounted_fs::set_has_available_bytes() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void mounted_fs::clear_has_available_bytes() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void mounted_fs::clear_available_bytes() {
+  available_bytes_ = GOOGLE_ULONGLONG(0);
+  clear_has_available_bytes();
+}
+inline ::google::protobuf::uint64 mounted_fs::available_bytes() const {
+  return available_bytes_;
+}
+inline void mounted_fs::set_available_bytes(::google::protobuf::uint64 value) {
+  set_has_available_bytes();
+  available_bytes_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // metrics
 
 // required uint64 timestamp_ns = 1;
@@ -8502,6 +8943,31 @@ metrics::commands() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
 metrics::mutable_commands() {
   return &commands_;
+}
+
+// repeated .draiosproto.mounted_fs mounts = 18;
+inline int metrics::mounts_size() const {
+  return mounts_.size();
+}
+inline void metrics::clear_mounts() {
+  mounts_.Clear();
+}
+inline const ::draiosproto::mounted_fs& metrics::mounts(int index) const {
+  return mounts_.Get(index);
+}
+inline ::draiosproto::mounted_fs* metrics::mutable_mounts(int index) {
+  return mounts_.Mutable(index);
+}
+inline ::draiosproto::mounted_fs* metrics::add_mounts() {
+  return mounts_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+metrics::mounts() const {
+  return mounts_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+metrics::mutable_mounts() {
+  return &mounts_;
 }
 
 // -------------------------------------------------------------------

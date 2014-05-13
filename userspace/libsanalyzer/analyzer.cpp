@@ -1975,6 +1975,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 
+			vector<sinsp_procfs_parser::mounted_fs> fs_list;
+			m_procfs_parser->get_mounted_fs_list(&fs_list);
+			for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
+				it != fs_list.end(); ++it)
+			{
+				draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+
+				fs->set_device(it->device);
+				fs->set_mount_dir(it->mount_dir);
+				fs->set_type(it->type);
+				fs->set_size_bytes(it->size_bytes);
+				fs->set_used_bytes(it->used_bytes);
+				fs->set_available_bytes(it->available_bytes);
+			}
+
 			//
 			// Executed commands
 			//

@@ -239,6 +239,18 @@ enum message_type {
 }
 
 //
+// MOUNTED FILE SYSTEM
+//
+message mounted_fs {
+    required string device = 1;
+    required string mount_dir = 2;
+    required string type = 3;
+    required uint64 size_bytes = 4;
+    required uint64 used_bytes = 5;
+    required uint64 available_bytes = 6;
+}
+
+//
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -258,6 +270,7 @@ message metrics {
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
     optional string version = 16; // Agent/libsanalyzer/sysdig version
 	repeated command_details commands = 17; // List of commands executed during the sample.
+    repeated mounted_fs mounts = 18; // List of mounted file systems
 }
 
 message dump_request_start {

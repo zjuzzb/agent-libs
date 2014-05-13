@@ -3,10 +3,29 @@
 class sinsp_procfs_parser
 {
 public:
+	struct mounted_fs
+	{
+		mounted_fs():
+			size_bytes(0),
+			used_bytes(0),
+			available_bytes(0)
+		{
+		}
+		
+		string device;
+		string mount_dir;
+		string type;
+		uint64_t size_bytes;
+		uint64_t used_bytes;
+		uint64_t available_bytes;
+	};
+
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL);
 	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap);
+
+	void get_mounted_fs_list(vector<mounted_fs>* fs_list);
 
 	//
 	// must call get_total_cpu_load to update the system time before calling this
