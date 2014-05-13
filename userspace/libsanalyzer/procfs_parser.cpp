@@ -449,14 +449,24 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 			continue;
 		}
 
+		uint64_t blocksize;
+		if(statfs.f_frsize)
+		{
+			blocksize = statfs.f_frsize;
+		}
+		else
+		{
+			blocksize = statfs.f_bsize;
+		}
+
 		mounted_fs fs;
+
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
 		fs.type =  entry->mnt_type;
-
-		fs.available_bytes = statfs.f_bsize * statfs.f_bavail; 
-		fs.size_bytes = statfs.f_bsize * statfs.f_blocks; 
-		fs.used_bytes = statfs.f_bsize * statfs.f_blocks - statfs.f_bsize * statfs.f_bfree;
+		fs.available_bytes = blocksize * statfs.f_bavail; 
+		fs.size_bytes = blocksize * statfs.f_blocks; 
+		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 
 		fs_list->push_back(fs);
 	}
