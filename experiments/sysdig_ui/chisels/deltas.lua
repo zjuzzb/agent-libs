@@ -15,8 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-function subtract_tables(table1, table2, viz_info, max_result_size)
+function subtract_tables(table1, table2, viz_info, max_result_size, delta1, delta2)
 	local merge = {}
+	local timeratio = delta1 / delta2
 
 	-- push table1 in the merge map
 	for k,v in pairs(table1) do
@@ -30,12 +31,13 @@ function subtract_tables(table1, table2, viz_info, max_result_size)
 			merge[v.name] = {}
 		end
 		
-		merge[v.name].v2 = v.value
+		merge[v.name].v2 = (v.value * timeratio)
 	end	
 	
 	-- scan the merge map to perform the subtraction
-	dmax = -1000000000000
-	dmin = 1000000000000
+	local tot = 0
+	local dtot = 0
+	
 	for k,v in pairs(merge) do
 		local v1 = v.v1
 		if v1 == nil then
@@ -49,41 +51,56 @@ function subtract_tables(table1, table2, viz_info, max_result_size)
 		
 		v.delta = v2 - v1
 		
-		dmax = math.max(dmax, v.delta)
-		dmin = math.min(dmin, v.delta)
+		tot = tot + v1
+		tot = tot + v2
+		
+		if v.delta >= 0 then
+			dtot = dtot + v.delta
+		else
+			dtot = dtot - v.delta
+		end
 	end
 	
-print("***", dmax, dmin)	
-	local fullres = {}
+	local fulldata = {}
 	local j = 1
 	
 	-- Sort the merge map
 	local sorted_map = pairs_top_by_val(merge, viz_info.top_number, function(t,a,b) return t[b].delta < t[a].delta end)
 	
 	for k,v in sorted_map do
-		fullres[j] = {name=k, v1=v.v1, v2=v.v2, delta=v.delta}
+		fulldata[j] = {name=k, v1=v.v1, v2=v.v2, delta=v.delta}
 		j = j + 1
 	end
 
 	-- filter the sorted map by applying the max_result_size limit
 	j = j - 1
+	cnt = 1
 	local res = {}
+	res.data = {}
+	res.info = {diffratio = dtot / tot, time_delta_1 = delta1, time_delta_2 = delta2, timemultiplier = timeratio}
 	
 	for i = 1, math.min(j / 2, max_result_size / 2) do
-		res[i] = fullres[i]
+		res.data[cnt] = fulldata[i]
+		cnt = cnt + 1
 	end
 		
 	for i = math.max(j / 2, j - max_result_size / 2), j do
-		res[i] = fullres[i]
+		res.data[cnt] = fulldata[i]
+		cnt = cnt + 1
 	end
 	
 	return res
 end
 
-function print_table_difference(t1, t2, viz_info)		
+function print_table_difference(t1, t2, viz_info, delta1, delta2)
 	
 	-- Do the subtraction
-	local diff = subtract_tables(t1.children, t2.children, viz_info, 20)
+	local diff = subtract_tables(t1.children, 
+		t2.children, 
+		viz_info, 
+		20, 
+		t1.timedelta, 
+		t2.timedelta)
 
 	-- Print the result
 	local str = json.encode(diff, { indent = true })

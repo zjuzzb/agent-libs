@@ -235,7 +235,7 @@ end
 
 function insert(tbl, value, depth)
 	local key = evt.field(fkeys[depth])
-
+	
 	if key == nil then
 		if vizinfo.key_defaults ~= nil then
 			key = vizinfo.key_defaults[depth]
@@ -306,6 +306,7 @@ function on_capture_end(ts_s, ts_ns, delta)
 			t1 = {}
 			t1.children = create_json_table(grtable, delta, vizinfo, 1)
 			t1.name = "root"
+			t1.timedelta = delta
 
 			grtable = {}
 		else
@@ -313,6 +314,7 @@ function on_capture_end(ts_s, ts_ns, delta)
 
 			t2.children = create_json_table(grtable, delta, vizinfo, 1)
 			t2.name = "root"
+			t2.timedelta = delta
 			
 			print_table_difference(t1, t2, vizinfo)
 		end

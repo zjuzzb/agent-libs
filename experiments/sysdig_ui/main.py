@@ -177,10 +177,15 @@ class myHandler(BaseHTTPRequestHandler):
 
 			progress = 0
 
+			chiselpars = keys + " '" + keydescs + "' '" + defaults + "' '" + value + "' vd" 
+			chiselpars += " SUM none - '" + filter + "' 100 false"
+
+			print chiselpars
+
 			#
 			# Spawn sysdig
-			#
-			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", keys, keydescs, defaults, value, "vd", "SUM", "none", "", filter, "100", "false"]
+			#			
+			cmd = ["sysdig", "-P", "-r", "lo.scap", "-j", "-cmultitable", chiselpars]
 			print cmd
 
 			proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, bufsize=1)
