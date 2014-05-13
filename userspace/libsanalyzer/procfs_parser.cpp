@@ -461,6 +461,7 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
+			endmntent(fp);
 			throw sinsp_exception("error getting details for " + string(entry->mnt_dir));
 		}
 
