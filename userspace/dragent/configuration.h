@@ -68,4 +68,5 @@ public:
 	bool m_host_hidden;
 	string m_hidden_processes;	
 	bool m_autoupdate_enabled;
+	bool m_print_protobuf;
 };

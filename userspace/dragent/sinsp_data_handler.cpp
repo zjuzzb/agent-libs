@@ -15,6 +15,11 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::
 		*metrics, 
 		m_configuration->m_compression_enabled);
 
+	if(m_configuration->m_print_protobuf)
+	{
+		g_log->information(metrics->DebugString());
+	}
+
 	if(buffer.isNull())
 	{
 		g_log->error("NULL converting message to buffer");
