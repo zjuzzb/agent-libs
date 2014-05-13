@@ -438,6 +438,26 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 			break;
 		}
 
+		//
+		// Dummy detection from coreutils
+		//
+  		if(strcmp(entry->mnt_type, "autofs") == 0
+			|| strcmp(entry->mnt_type, "proc") == 0
+			|| strcmp(entry->mnt_type, "subfs") == 0
+			|| strcmp(entry->mnt_type, "debugfs") == 0
+			|| strcmp(entry->mnt_type, "devpts") == 0
+			|| strcmp(entry->mnt_type, "fusectl") == 0
+			|| strcmp(entry->mnt_type, "mqueue") == 0
+			|| strcmp(entry->mnt_type, "rpc_pipefs") == 0
+			|| strcmp(entry->mnt_type, "sysfs") == 0
+			|| strcmp(entry->mnt_type, "devfs") == 0
+			|| strcmp(entry->mnt_type, "kernfs") == 0
+			|| strcmp(entry->mnt_type, "ignore") == 0
+			|| strcmp(entry->mnt_type, "none") == 0)
+		{
+			continue;
+		}
+
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
