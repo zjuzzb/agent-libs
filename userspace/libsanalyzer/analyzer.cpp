@@ -838,26 +838,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				m_my_cpuload = mtinfo->m_ainfo->m_cpuload;
 			}
 		}
-
-#ifdef ANALYZER_EMITS_THREADS
-		//
-		// Dump the thread info into the protobuf
-		//
-		sinsp_counter_time tot;
-		it->second.m_metrics.get_total(&tot);
-		ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-
-		if(tot.m_count != 0)
-		{
-			draiosproto::thread* thread = m_metrics->add_threads();
-			thread->set_pid(it->second.m_pid);
-			thread->set_tid(it->second.m_tid);
-			// CWD is currently disabed in the protocol
-			//thread->set_cwd(it->second.m_cwd);
-			it->second.m_metrics.to_protobuf(thread->mutable_tcounters(), m_sampling_ratio);
-			it->second.m_transaction_metrics.to_protobuf(thread->mutable_transaction_counters(), m_sampling_ratio);
-		}
-#endif
 	}
 
 	//

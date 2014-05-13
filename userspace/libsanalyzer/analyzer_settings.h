@@ -9,12 +9,6 @@
 #define TRANSACTION_DELAYS_INTERVAL_NS (5 * ONE_SECOND_IN_NS)
 
 //
-// If this is defined, the analyzer will include thread information inside
-// the protocol buffers that it sends to the agent
-//
-#undef ANALYZER_EMITS_THREADS
-
-//
 // If this is defined, the analyzer will include process information inside
 // the protocol buffers that it sends to the agent
 //

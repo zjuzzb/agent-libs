@@ -140,25 +140,6 @@ message host {
 }
 
 //
-// THREAD
-// This contains all the operational info (counters, etc.) for one of the threads.
-//
-message thread {
-    required uint64 pid = 1; // The ID of process this thread belongs to
-    required uint64 tid = 2; // The thread ID. If tid=pid, this is the main thread for this process.
-    optional time_categories tcounters = 3; // The time counters for this thread
-
-    // XXX Do we need this?
-    //optional string cwd = 4; // Current working directory. This is set only if this thread has its
-    // own working directory, which happens for main threads and threads
-    // started with the CLONE_FS flag
-
-    optional counter_time_bidirectional transaction_counters = 5; // The transaction counters for this thread
-    optional counter_time_bidirectional min_transaction_counters = 6; // The fastest transaction counters for this thread
-    optional counter_time_bidirectional max_transaction_counters = 7; // The slowest transaction counters for this thread
-}
-
-//
 // PROCESS
 // info for a process, i.e. a collection of threads.
 // NOTE: this is process info only, when emitting threads, the main thread of a process will have a
@@ -267,7 +248,6 @@ message metrics {
     required host hostinfo = 4; // The list of processes
     repeated program programs = 9; // The list of programs
     repeated process processes = 5; // The list of processes
-    repeated thread threads = 6; // The list of threads
     repeated ipv4_connection ipv4_connections = 7; // The list of threads
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
     optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.

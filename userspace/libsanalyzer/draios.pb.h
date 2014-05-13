@@ -46,7 +46,6 @@ class connection_categories;
 class process_details;
 class command_details;
 class host;
-class thread;
 class process;
 class program;
 class ipv4tuple;
@@ -1950,146 +1949,6 @@ class host : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class thread : public ::google::protobuf::Message {
- public:
-  thread();
-  virtual ~thread();
-
-  thread(const thread& from);
-
-  inline thread& operator=(const thread& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const thread& default_instance();
-
-  void Swap(thread* other);
-
-  // implements Message ----------------------------------------------
-
-  thread* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const thread& from);
-  void MergeFrom(const thread& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // required uint64 pid = 1;
-  inline bool has_pid() const;
-  inline void clear_pid();
-  static const int kPidFieldNumber = 1;
-  inline ::google::protobuf::uint64 pid() const;
-  inline void set_pid(::google::protobuf::uint64 value);
-
-  // required uint64 tid = 2;
-  inline bool has_tid() const;
-  inline void clear_tid();
-  static const int kTidFieldNumber = 2;
-  inline ::google::protobuf::uint64 tid() const;
-  inline void set_tid(::google::protobuf::uint64 value);
-
-  // optional .draiosproto.time_categories tcounters = 3;
-  inline bool has_tcounters() const;
-  inline void clear_tcounters();
-  static const int kTcountersFieldNumber = 3;
-  inline const ::draiosproto::time_categories& tcounters() const;
-  inline ::draiosproto::time_categories* mutable_tcounters();
-  inline ::draiosproto::time_categories* release_tcounters();
-  inline void set_allocated_tcounters(::draiosproto::time_categories* tcounters);
-
-  // optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
-  inline bool has_transaction_counters() const;
-  inline void clear_transaction_counters();
-  static const int kTransactionCountersFieldNumber = 5;
-  inline const ::draiosproto::counter_time_bidirectional& transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
-  inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
-
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
-  inline bool has_min_transaction_counters() const;
-  inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 6;
-  inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
-  inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
-
-  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
-  inline bool has_max_transaction_counters() const;
-  inline void clear_max_transaction_counters();
-  static const int kMaxTransactionCountersFieldNumber = 7;
-  inline const ::draiosproto::counter_time_bidirectional& max_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_max_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_max_transaction_counters();
-  inline void set_allocated_max_transaction_counters(::draiosproto::counter_time_bidirectional* max_transaction_counters);
-
-  // @@protoc_insertion_point(class_scope:draiosproto.thread)
- private:
-  inline void set_has_pid();
-  inline void clear_has_pid();
-  inline void set_has_tid();
-  inline void clear_has_tid();
-  inline void set_has_tcounters();
-  inline void clear_has_tcounters();
-  inline void set_has_transaction_counters();
-  inline void clear_has_transaction_counters();
-  inline void set_has_min_transaction_counters();
-  inline void clear_has_min_transaction_counters();
-  inline void set_has_max_transaction_counters();
-  inline void clear_has_max_transaction_counters();
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::google::protobuf::uint64 pid_;
-  ::google::protobuf::uint64 tid_;
-  ::draiosproto::time_categories* tcounters_;
-  ::draiosproto::counter_time_bidirectional* transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
-
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
-
-  friend void  protobuf_AddDesc_draios_2eproto();
-  friend void protobuf_AssignDesc_draios_2eproto();
-  friend void protobuf_ShutdownFile_draios_2eproto();
-
-  void InitAsDefaultInstance();
-  static thread* default_instance_;
-};
-// -------------------------------------------------------------------
-
 class process : public ::google::protobuf::Message {
  public:
   process();
@@ -2926,18 +2785,6 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::process >*
       mutable_processes();
 
-  // repeated .draiosproto.thread threads = 6;
-  inline int threads_size() const;
-  inline void clear_threads();
-  static const int kThreadsFieldNumber = 6;
-  inline const ::draiosproto::thread& threads(int index) const;
-  inline ::draiosproto::thread* mutable_threads(int index);
-  inline ::draiosproto::thread* add_threads();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::thread >&
-      threads() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::thread >*
-      mutable_threads();
-
   // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
   inline int ipv4_connections_size() const;
   inline void clear_ipv4_connections();
@@ -3081,7 +2928,6 @@ class metrics : public ::google::protobuf::Message {
   ::draiosproto::host* hostinfo_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::program > programs_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::process > processes_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::thread > threads_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
@@ -3094,7 +2940,7 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6980,206 +6826,6 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
 
 // -------------------------------------------------------------------
 
-// thread
-
-// required uint64 pid = 1;
-inline bool thread::has_pid() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void thread::set_has_pid() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void thread::clear_has_pid() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void thread::clear_pid() {
-  pid_ = GOOGLE_ULONGLONG(0);
-  clear_has_pid();
-}
-inline ::google::protobuf::uint64 thread::pid() const {
-  return pid_;
-}
-inline void thread::set_pid(::google::protobuf::uint64 value) {
-  set_has_pid();
-  pid_ = value;
-}
-
-// required uint64 tid = 2;
-inline bool thread::has_tid() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void thread::set_has_tid() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void thread::clear_has_tid() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void thread::clear_tid() {
-  tid_ = GOOGLE_ULONGLONG(0);
-  clear_has_tid();
-}
-inline ::google::protobuf::uint64 thread::tid() const {
-  return tid_;
-}
-inline void thread::set_tid(::google::protobuf::uint64 value) {
-  set_has_tid();
-  tid_ = value;
-}
-
-// optional .draiosproto.time_categories tcounters = 3;
-inline bool thread::has_tcounters() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void thread::set_has_tcounters() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void thread::clear_has_tcounters() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void thread::clear_tcounters() {
-  if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
-  clear_has_tcounters();
-}
-inline const ::draiosproto::time_categories& thread::tcounters() const {
-  return tcounters_ != NULL ? *tcounters_ : *default_instance_->tcounters_;
-}
-inline ::draiosproto::time_categories* thread::mutable_tcounters() {
-  set_has_tcounters();
-  if (tcounters_ == NULL) tcounters_ = new ::draiosproto::time_categories;
-  return tcounters_;
-}
-inline ::draiosproto::time_categories* thread::release_tcounters() {
-  clear_has_tcounters();
-  ::draiosproto::time_categories* temp = tcounters_;
-  tcounters_ = NULL;
-  return temp;
-}
-inline void thread::set_allocated_tcounters(::draiosproto::time_categories* tcounters) {
-  delete tcounters_;
-  tcounters_ = tcounters;
-  if (tcounters) {
-    set_has_tcounters();
-  } else {
-    clear_has_tcounters();
-  }
-}
-
-// optional .draiosproto.counter_time_bidirectional transaction_counters = 5;
-inline bool thread::has_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void thread::set_has_transaction_counters() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void thread::clear_has_transaction_counters() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void thread::clear_transaction_counters() {
-  if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& thread::transaction_counters() const {
-  return transaction_counters_ != NULL ? *transaction_counters_ : *default_instance_->transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::mutable_transaction_counters() {
-  set_has_transaction_counters();
-  if (transaction_counters_ == NULL) transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::release_transaction_counters() {
-  clear_has_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = transaction_counters_;
-  transaction_counters_ = NULL;
-  return temp;
-}
-inline void thread::set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters) {
-  delete transaction_counters_;
-  transaction_counters_ = transaction_counters;
-  if (transaction_counters) {
-    set_has_transaction_counters();
-  } else {
-    clear_has_transaction_counters();
-  }
-}
-
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 6;
-inline bool thread::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void thread::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void thread::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void thread::clear_min_transaction_counters() {
-  if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_min_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& thread::min_transaction_counters() const {
-  return min_transaction_counters_ != NULL ? *min_transaction_counters_ : *default_instance_->min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::mutable_min_transaction_counters() {
-  set_has_min_transaction_counters();
-  if (min_transaction_counters_ == NULL) min_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::release_min_transaction_counters() {
-  clear_has_min_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = min_transaction_counters_;
-  min_transaction_counters_ = NULL;
-  return temp;
-}
-inline void thread::set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters) {
-  delete min_transaction_counters_;
-  min_transaction_counters_ = min_transaction_counters;
-  if (min_transaction_counters) {
-    set_has_min_transaction_counters();
-  } else {
-    clear_has_min_transaction_counters();
-  }
-}
-
-// optional .draiosproto.counter_time_bidirectional max_transaction_counters = 7;
-inline bool thread::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void thread::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void thread::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void thread::clear_max_transaction_counters() {
-  if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_max_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& thread::max_transaction_counters() const {
-  return max_transaction_counters_ != NULL ? *max_transaction_counters_ : *default_instance_->max_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::mutable_max_transaction_counters() {
-  set_has_max_transaction_counters();
-  if (max_transaction_counters_ == NULL) max_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return max_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* thread::release_max_transaction_counters() {
-  clear_has_max_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = max_transaction_counters_;
-  max_transaction_counters_ = NULL;
-  return temp;
-}
-inline void thread::set_allocated_max_transaction_counters(::draiosproto::counter_time_bidirectional* max_transaction_counters) {
-  delete max_transaction_counters_;
-  max_transaction_counters_ = max_transaction_counters;
-  if (max_transaction_counters) {
-    set_has_max_transaction_counters();
-  } else {
-    clear_has_max_transaction_counters();
-  }
-}
-
-// -------------------------------------------------------------------
-
 // process
 
 // required uint64 pid = 1;
@@ -8389,31 +8035,6 @@ metrics::mutable_processes() {
   return &processes_;
 }
 
-// repeated .draiosproto.thread threads = 6;
-inline int metrics::threads_size() const {
-  return threads_.size();
-}
-inline void metrics::clear_threads() {
-  threads_.Clear();
-}
-inline const ::draiosproto::thread& metrics::threads(int index) const {
-  return threads_.Get(index);
-}
-inline ::draiosproto::thread* metrics::mutable_threads(int index) {
-  return threads_.Mutable(index);
-}
-inline ::draiosproto::thread* metrics::add_threads() {
-  return threads_.Add();
-}
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::thread >&
-metrics::threads() const {
-  return threads_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::thread >*
-metrics::mutable_threads() {
-  return &threads_;
-}
-
 // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
 inline int metrics::ipv4_connections_size() const {
   return ipv4_connections_.size();
@@ -8466,13 +8087,13 @@ metrics::mutable_ipv4_network_interfaces() {
 
 // optional uint32 sampling_ratio = 10;
 inline bool metrics::has_sampling_ratio() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void metrics::set_has_sampling_ratio() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void metrics::clear_has_sampling_ratio() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void metrics::clear_sampling_ratio() {
   sampling_ratio_ = 0u;
@@ -8488,13 +8109,13 @@ inline void metrics::set_sampling_ratio(::google::protobuf::uint32 value) {
 
 // optional string host_custom_name = 11;
 inline bool metrics::has_host_custom_name() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void metrics::set_has_host_custom_name() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void metrics::clear_has_host_custom_name() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void metrics::clear_host_custom_name() {
   if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
@@ -8558,13 +8179,13 @@ inline void metrics::set_allocated_host_custom_name(::std::string* host_custom_n
 
 // optional string host_tags = 12;
 inline bool metrics::has_host_tags() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void metrics::set_has_host_tags() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void metrics::clear_has_host_tags() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void metrics::clear_host_tags() {
   if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
@@ -8628,13 +8249,13 @@ inline void metrics::set_allocated_host_tags(::std::string* host_tags) {
 
 // optional string host_custom_map = 13;
 inline bool metrics::has_host_custom_map() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void metrics::set_has_host_custom_map() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void metrics::clear_has_host_custom_map() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void metrics::clear_host_custom_map() {
   if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
@@ -8698,13 +8319,13 @@ inline void metrics::set_allocated_host_custom_map(::std::string* host_custom_ma
 
 // optional bool is_host_hidden = 14;
 inline bool metrics::has_is_host_hidden() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void metrics::set_has_is_host_hidden() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void metrics::clear_has_is_host_hidden() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void metrics::clear_is_host_hidden() {
   is_host_hidden_ = false;
@@ -8720,13 +8341,13 @@ inline void metrics::set_is_host_hidden(bool value) {
 
 // optional string hidden_processes = 15;
 inline bool metrics::has_hidden_processes() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void metrics::set_has_hidden_processes() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void metrics::clear_has_hidden_processes() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void metrics::clear_hidden_processes() {
   if (hidden_processes_ != &::google::protobuf::internal::kEmptyString) {
@@ -8790,13 +8411,13 @@ inline void metrics::set_allocated_hidden_processes(::std::string* hidden_proces
 
 // optional string version = 16;
 inline bool metrics::has_version() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void metrics::set_has_version() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void metrics::clear_has_version() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void metrics::clear_version() {
   if (version_ != &::google::protobuf::internal::kEmptyString) {
