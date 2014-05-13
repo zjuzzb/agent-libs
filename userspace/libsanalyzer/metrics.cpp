@@ -740,6 +740,8 @@ void sinsp_host_metrics::clear()
 	m_tot_capacity_score = -1;
 	m_tot_stolen_capacity_score = -1;
 	m_tot_server_transactions = 0;
+	m_pfmajor = 0;
+	m_pfminor = 0;
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -757,6 +759,9 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	{
 		m_fd_usage_pct = pinfo->m_fd_usage_pct;
 	}
+
+	m_pfmajor += pinfo->m_pfmajor;
+	m_pfminor += pinfo->m_pfminor;
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

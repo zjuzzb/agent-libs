@@ -250,6 +250,8 @@ public:
 	uint32_t m_connection_queue_usage_pct;
 	uint32_t m_fd_usage_pct;
 	sinsp_error_counters m_syscall_errors;
+	uint64_t m_pfmajor;
+	uint64_t m_pfminor;
 
 private:
 	double m_tot_capacity_score;

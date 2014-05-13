@@ -34,7 +34,11 @@ void sinsp_procinfo::clear()
 	m_syscall_errors.clear();
 	m_capacity_score = 0;
 	m_cpuload = 0;
-	m_resident_memory_kb = 0;
+	m_vmsize_kb = 0;
+	m_vmrss_kb = 0;
+	m_vmswap_kb = 0;
+	m_pfmajor = 0;
+	m_pfminor = 0;
 	m_n_transaction_threads = 0;
 
 	vector<uint64_t>::iterator it;
@@ -90,7 +94,8 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
 	m_cpuload = 0;
-	m_resident_memory_kb = 0;
+	m_old_pfmajor = 0;
+	m_old_pfminor = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
 	m_cpu_time_ns = new vector<uint64_t>();
@@ -170,7 +175,23 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	}
 
 	m_procinfo->m_cpuload += other->m_cpuload;
-	m_procinfo->m_resident_memory_kb += other->m_resident_memory_kb;
+	if(other->m_tinfo->m_vmsize_kb > m_procinfo->m_vmsize_kb)
+	{
+		m_procinfo->m_vmsize_kb = other->m_tinfo->m_vmsize_kb;
+	}
+
+	if(other->m_tinfo->m_vmrss_kb > m_procinfo->m_vmrss_kb)
+	{
+		m_procinfo->m_vmrss_kb = other->m_tinfo->m_vmrss_kb;
+	}
+
+	if(other->m_tinfo->m_vmswap_kb > m_procinfo->m_vmswap_kb)
+	{
+		m_procinfo->m_vmswap_kb = other->m_tinfo->m_vmswap_kb;
+	}
+
+	m_procinfo->m_pfmajor += (other->m_tinfo->m_pfmajor - other->m_old_pfmajor);
+	m_procinfo->m_pfminor += (other->m_tinfo->m_pfminor - other->m_old_pfminor);
 
 	//
 	// Propagate client-server flags
@@ -236,7 +257,8 @@ void thread_analyzer_info::clear_all_metrics()
 	m_external_transaction_metrics.clear();
 	m_connection_queue_usage_pct = 0;
 	m_cpuload = 0;
-	m_resident_memory_kb = 0;
+	m_old_pfmajor = m_tinfo->m_pfmajor;
+	m_old_pfminor = m_tinfo->m_pfminor;
 
 	vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns->begin(); it != m_cpu_time_ns->end(); ++it)
@@ -493,8 +515,8 @@ bool threadinfo_cmp_memory(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 	ASSERT(dst->m_ainfo);
 	ASSERT(dst->m_ainfo->m_procinfo);
 
-	return (src->m_ainfo->m_procinfo->m_resident_memory_kb > 
-		dst->m_ainfo->m_procinfo->m_resident_memory_kb); 
+	return (src->m_ainfo->m_procinfo->m_vmrss_kb > 
+		dst->m_ainfo->m_procinfo->m_vmrss_kb); 
 }
 
 bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
@@ -546,8 +568,8 @@ bool threadinfo_cmp_memory_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 	int is_dst_server = (dst->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s = src->m_ainfo->m_procinfo->m_resident_memory_kb * (is_src_server * 1000);
-	uint64_t d = dst->m_ainfo->m_procinfo->m_resident_memory_kb * (is_dst_server * 1000);
+	uint64_t s = src->m_ainfo->m_procinfo->m_vmrss_kb * (is_src_server * 1000);
+	uint64_t d = dst->m_ainfo->m_procinfo->m_vmrss_kb * (is_dst_server * 1000);
 
 	return (s > d); 
 }

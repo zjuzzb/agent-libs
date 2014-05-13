@@ -737,12 +737,11 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
-	int64_t mem;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
 	pparser.get_global_cpu_load(&old_global_total_jiffies);
-	load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, 0, &mem);
+	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
 	
 	sleep(1);
 
@@ -757,7 +756,7 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		}
 
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
-		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
+		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
 
 		EXPECT_NE((double)-1, load);
 		EXPECT_LE((double)0, load);
@@ -811,7 +810,6 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
-	int64_t mem;
 	uint32_t num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 	uint32_t m = (num_cpus > 2) ? 2:num_cpus;
  
@@ -828,7 +826,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
 	pparser.get_global_cpu_load(&old_global_total_jiffies);
-	load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, 0, &mem);
+	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
 
 	sleep(1);
 
@@ -837,7 +835,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	for(j = 0; j < 3; j++)
 	{
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
-		load = pparser.get_process_cpu_load_and_mem(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies, &mem);
+		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
 
 		//printf("%" PRIu32 " %lu \n", load, mem);
 
@@ -861,6 +859,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 TEST_F(sys_call_test, procfs_globalmemory)
 {
 	int64_t memusage;
+	int64_t swapusage;
 	uint32_t j;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -869,10 +868,12 @@ TEST_F(sys_call_test, procfs_globalmemory)
 
 	for(j = 0; j < 5; j++)
 	{
-		memusage = pparser.get_global_mem_usage_kb();
+		pparser.get_global_mem_usage_kb(&memusage, &swapusage);
 		EXPECT_NE((int64_t)-1, memusage);
 		EXPECT_LE((int64_t)0, memusage);
 		EXPECT_GE((int64_t)memkb, memusage);	
+		EXPECT_NE((int64_t)-1, swapusage);
+		EXPECT_LE((int64_t)0, swapusage);
 		sleep(1);
 	}
 }

@@ -71,8 +71,16 @@ public:
 	float m_stolen_capacity_score;
 	// the process CPU load
 	double m_cpuload;
-	// the process resident memory
-	int64_t m_resident_memory_kb;
+	// total virtual memory
+	uint32_t m_vmsize_kb;
+	// resident non-swapped memory
+	uint32_t m_vmrss_kb;
+	// swapped memory
+	uint32_t m_vmswap_kb;
+	// number of major page faults since start
+	uint64_t m_pfmajor;
+	// number of minor page faults since start
+	uint64_t m_pfminor;
 	// Time spent by this thread on each of the CPUs
 	vector<uint64_t> m_cpu_time_ns;
 	// list of processes that are part of this program
@@ -153,8 +161,10 @@ public:
 	uint64_t m_old_proc_jiffies;
 	// the process CPU load
 	double m_cpuload;
-	// the process resident memory
-	int64_t m_resident_memory_kb;
+	// number of major page at last flush
+	uint64_t m_old_pfmajor;
+	// number of minor page at last flush
+	uint64_t m_old_pfminor;
 	// Time spent by this process on each of the CPUs
 	vector<uint64_t>* m_cpu_time_ns;
 	// Time and duration of the last select, poll or epoll

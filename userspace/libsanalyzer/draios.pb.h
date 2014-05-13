@@ -1210,12 +1210,40 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 cpu_pct() const;
   inline void set_cpu_pct(::google::protobuf::uint32 value);
 
-  // optional uint64 resident_memory_usage_kb = 5;
+  // optional uint32 resident_memory_usage_kb = 5;
   inline bool has_resident_memory_usage_kb() const;
   inline void clear_resident_memory_usage_kb();
   static const int kResidentMemoryUsageKbFieldNumber = 5;
-  inline ::google::protobuf::uint64 resident_memory_usage_kb() const;
-  inline void set_resident_memory_usage_kb(::google::protobuf::uint64 value);
+  inline ::google::protobuf::uint32 resident_memory_usage_kb() const;
+  inline void set_resident_memory_usage_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 virtual_memory_usage_kb = 13;
+  inline bool has_virtual_memory_usage_kb() const;
+  inline void clear_virtual_memory_usage_kb();
+  static const int kVirtualMemoryUsageKbFieldNumber = 13;
+  inline ::google::protobuf::uint32 virtual_memory_usage_kb() const;
+  inline void set_virtual_memory_usage_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 swap_memory_usage_kb = 14;
+  inline bool has_swap_memory_usage_kb() const;
+  inline void clear_swap_memory_usage_kb();
+  static const int kSwapMemoryUsageKbFieldNumber = 14;
+  inline ::google::protobuf::uint32 swap_memory_usage_kb() const;
+  inline void set_swap_memory_usage_kb(::google::protobuf::uint32 value);
+
+  // optional uint64 major_pagefaults = 15;
+  inline bool has_major_pagefaults() const;
+  inline void clear_major_pagefaults();
+  static const int kMajorPagefaultsFieldNumber = 15;
+  inline ::google::protobuf::uint64 major_pagefaults() const;
+  inline void set_major_pagefaults(::google::protobuf::uint64 value);
+
+  // optional uint64 minor_pagefaults = 16;
+  inline bool has_minor_pagefaults() const;
+  inline void clear_minor_pagefaults();
+  static const int kMinorPagefaultsFieldNumber = 16;
+  inline ::google::protobuf::uint64 minor_pagefaults() const;
+  inline void set_minor_pagefaults(::google::protobuf::uint64 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
@@ -1231,6 +1259,14 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_cpu_pct();
   inline void set_has_resident_memory_usage_kb();
   inline void clear_has_resident_memory_usage_kb();
+  inline void set_has_virtual_memory_usage_kb();
+  inline void clear_has_virtual_memory_usage_kb();
+  inline void set_has_swap_memory_usage_kb();
+  inline void clear_has_swap_memory_usage_kb();
+  inline void set_has_major_pagefaults();
+  inline void clear_has_major_pagefaults();
+  inline void set_has_minor_pagefaults();
+  inline void clear_has_minor_pagefaults();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1238,11 +1274,15 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 stolen_capacity_score_;
   ::google::protobuf::uint32 connection_queue_usage_pct_;
   ::google::protobuf::uint32 fd_usage_pct_;
-  ::google::protobuf::uint64 resident_memory_usage_kb_;
   ::google::protobuf::uint32 cpu_pct_;
+  ::google::protobuf::uint32 resident_memory_usage_kb_;
+  ::google::protobuf::uint32 virtual_memory_usage_kb_;
+  ::google::protobuf::uint32 swap_memory_usage_kb_;
+  ::google::protobuf::uint64 major_pagefaults_;
+  ::google::protobuf::uint64 minor_pagefaults_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5628,7 +5668,7 @@ inline void resource_categories::set_cpu_pct(::google::protobuf::uint32 value) {
   cpu_pct_ = value;
 }
 
-// optional uint64 resident_memory_usage_kb = 5;
+// optional uint32 resident_memory_usage_kb = 5;
 inline bool resource_categories::has_resident_memory_usage_kb() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
@@ -5639,15 +5679,103 @@ inline void resource_categories::clear_has_resident_memory_usage_kb() {
   _has_bits_[0] &= ~0x00000020u;
 }
 inline void resource_categories::clear_resident_memory_usage_kb() {
-  resident_memory_usage_kb_ = GOOGLE_ULONGLONG(0);
+  resident_memory_usage_kb_ = 0u;
   clear_has_resident_memory_usage_kb();
 }
-inline ::google::protobuf::uint64 resource_categories::resident_memory_usage_kb() const {
+inline ::google::protobuf::uint32 resource_categories::resident_memory_usage_kb() const {
   return resident_memory_usage_kb_;
 }
-inline void resource_categories::set_resident_memory_usage_kb(::google::protobuf::uint64 value) {
+inline void resource_categories::set_resident_memory_usage_kb(::google::protobuf::uint32 value) {
   set_has_resident_memory_usage_kb();
   resident_memory_usage_kb_ = value;
+}
+
+// optional uint32 virtual_memory_usage_kb = 13;
+inline bool resource_categories::has_virtual_memory_usage_kb() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void resource_categories::set_has_virtual_memory_usage_kb() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void resource_categories::clear_has_virtual_memory_usage_kb() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void resource_categories::clear_virtual_memory_usage_kb() {
+  virtual_memory_usage_kb_ = 0u;
+  clear_has_virtual_memory_usage_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::virtual_memory_usage_kb() const {
+  return virtual_memory_usage_kb_;
+}
+inline void resource_categories::set_virtual_memory_usage_kb(::google::protobuf::uint32 value) {
+  set_has_virtual_memory_usage_kb();
+  virtual_memory_usage_kb_ = value;
+}
+
+// optional uint32 swap_memory_usage_kb = 14;
+inline bool resource_categories::has_swap_memory_usage_kb() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void resource_categories::set_has_swap_memory_usage_kb() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void resource_categories::clear_has_swap_memory_usage_kb() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void resource_categories::clear_swap_memory_usage_kb() {
+  swap_memory_usage_kb_ = 0u;
+  clear_has_swap_memory_usage_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_memory_usage_kb() const {
+  return swap_memory_usage_kb_;
+}
+inline void resource_categories::set_swap_memory_usage_kb(::google::protobuf::uint32 value) {
+  set_has_swap_memory_usage_kb();
+  swap_memory_usage_kb_ = value;
+}
+
+// optional uint64 major_pagefaults = 15;
+inline bool resource_categories::has_major_pagefaults() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void resource_categories::set_has_major_pagefaults() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void resource_categories::clear_has_major_pagefaults() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void resource_categories::clear_major_pagefaults() {
+  major_pagefaults_ = GOOGLE_ULONGLONG(0);
+  clear_has_major_pagefaults();
+}
+inline ::google::protobuf::uint64 resource_categories::major_pagefaults() const {
+  return major_pagefaults_;
+}
+inline void resource_categories::set_major_pagefaults(::google::protobuf::uint64 value) {
+  set_has_major_pagefaults();
+  major_pagefaults_ = value;
+}
+
+// optional uint64 minor_pagefaults = 16;
+inline bool resource_categories::has_minor_pagefaults() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void resource_categories::set_has_minor_pagefaults() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void resource_categories::clear_has_minor_pagefaults() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void resource_categories::clear_minor_pagefaults() {
+  minor_pagefaults_ = GOOGLE_ULONGLONG(0);
+  clear_has_minor_pagefaults();
+}
+inline ::google::protobuf::uint64 resource_categories::minor_pagefaults() const {
+  return minor_pagefaults_;
+}
+inline void resource_categories::set_minor_pagefaults(::google::protobuf::uint64 value) {
+  set_has_minor_pagefaults();
+  minor_pagefaults_ = value;
 }
 
 // -------------------------------------------------------------------

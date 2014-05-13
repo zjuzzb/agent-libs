@@ -564,7 +564,7 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 
 	for(j = 0; j < howmany; j++)
 	{
-		if(prog_sortable_list[j]->m_ainfo->m_resident_memory_kb > 0)
+		if(prog_sortable_list[j]->m_vmsize_kb > 0)
 		{
 			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
 		}
@@ -797,10 +797,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if((it->second.m_flags & PPM_CL_CLOSED) == 0)
 					{
-						it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_and_mem(it->second.m_pid, 
+						it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(it->second.m_pid, 
 							&it->second.m_ainfo->m_old_proc_jiffies, 
-							cur_global_total_jiffies - m_old_global_total_jiffies,
-							&it->second.m_ainfo->m_resident_memory_kb);
+							cur_global_total_jiffies - m_old_global_total_jiffies);
 
 						m_total_process_cpu += it->second.m_ainfo->m_cpuload;
 					}
@@ -1032,12 +1031,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					}
 
 					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_resident_memory_kb);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmsize_kb);
+					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmrss_kb);
+					proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+					proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+					proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
 				}
 				else
 				{
 					proc->mutable_resource_counters()->set_cpu_pct(0);
 					proc->mutable_resource_counters()->set_resident_memory_usage_kb(0);
+					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(0);
+					proc->mutable_resource_counters()->set_swap_memory_usage_kb(0);
+					proc->mutable_resource_counters()->set_major_pagefaults(0);
+					proc->mutable_resource_counters()->set_minor_pagefaults(0);
 				}
 
 				if(tot.m_count != 0)
@@ -1969,7 +1976,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
 				}
-			}		
+			}
+
+			int64_t used_memory;
+			int64_t used_swap;
+			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
 
 			//
 			// Machine info
@@ -1978,7 +1989,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_procfs_parser->get_global_mem_usage_kb());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(used_memory);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(used_swap);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 
 			//
@@ -2336,7 +2350,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//
-	if(evt->m_tinfo == NULL)
+	if(evt->m_tinfo == NULL || evt->get_type() == PPME_SCHEDSWITCHEX_E)
 	{
 		//
 		// No thread associated to this event, nothing to do

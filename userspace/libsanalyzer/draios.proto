@@ -80,7 +80,11 @@ message resource_categories {
     optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
     optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
     optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
-    optional uint64 resident_memory_usage_kb = 5; // Resident (Physical) Memory usage in kb
+    optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
+    optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host.
+    optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
+    optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
+    optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
 }
 
 message connection_categories {
