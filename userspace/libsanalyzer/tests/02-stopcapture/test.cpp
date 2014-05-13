@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv)
 {
-	uint32_t j;
+	uint32_t j = 0;
 	sinsp_evt* ev;
 	int32_t res;
 

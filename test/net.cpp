@@ -175,19 +175,19 @@ TEST_F(sys_call_test, net_web_requests)
 				}
 
 				sinsp_threadinfo* ti = evt->get_thread_info();
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
-				ASSERT_EQ(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 				// Note: +1 is because of the DNS lookup
-				ASSERT_EQ(N_CONNECTIONS + 1, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out);
-				ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
-				ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_out);
-				ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_out);
-				ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_out);
-				ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
+				ASSERT_EQ((uint64_t) N_CONNECTIONS + 1, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out);
+				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
+				ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_out);
+				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_out);
+				ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_out);
+				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
 				ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_out,
 					ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
 			}

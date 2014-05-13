@@ -664,11 +664,11 @@ void runtest(iotype iot,
 
 			sinsp_threadinfo* ti = evt->get_thread_info();
 			ASSERT_EQ(ntransactions, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
-			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 			ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
 				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
@@ -785,12 +785,12 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 		{
 			state = 1;
 			sinsp_threadinfo* ti = evt->get_thread_info();
-			ASSERT_EQ(1, (int)ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
-			ASSERT_EQ(1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE(0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 			ASSERT_EQ(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
 				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
