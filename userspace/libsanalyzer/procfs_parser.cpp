@@ -232,12 +232,12 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap)
 {
 	char line[512];
-	int64_t mem_free;
-	int64_t buffers;
-	int64_t cached;
-	int64_t swap_total;
-	int64_t swap_free;
-	int64_t tmp;
+	int64_t mem_free = 0;
+	int64_t buffers = 0;
+	int64_t cached = 0;
+	int64_t swap_total = 0;
+	int64_t swap_free = 0;
+	int64_t tmp = 0;
 
 	*used_memory = -1;
 	*used_swap = -1;
