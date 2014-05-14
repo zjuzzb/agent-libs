@@ -70,6 +70,7 @@ const uint16_t g_events_to_keep[] =
 	PPME_SYSCALL_SETRLIMIT_E,
 	PPME_SYSCALL_PRLIMIT_E,
 	PPME_SCHEDSWITCH_E,
+	PPME_SCHEDSWITCHEX_E,
 };
 
 const uint16_t g_events_to_absolutely_keep[] =
