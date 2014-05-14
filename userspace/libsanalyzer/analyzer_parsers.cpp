@@ -43,6 +43,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	switch(etype)
 	{
 	case PPME_SCHEDSWITCH_E:
+	case PPME_SCHEDSWITCHEX_E:
 		m_sched_analyzer2->process_event(evt);
 		return false;
 	case PPME_SOCKET_ACCEPT_X:
