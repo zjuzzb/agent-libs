@@ -41,6 +41,7 @@
 #include "analyzer.h"
 #include "delays.h"
 #include "analyzer_thread.h"
+#include "analyzer_fd.h"
 
 using namespace std;
 
@@ -142,6 +143,126 @@ TEST_F(sys_call_test, analyzer_errors)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 //	EXPECT_EQ(7, callnum);
+}
+
+TEST_F(sys_call_test, analyzer_fdstats)
+{
+	bool found = false;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		int fd;
+		ssize_t res;
+
+		fd = open("/tmp/nonexistent", O_RDONLY);
+		EXPECT_EQ(-1, fd);
+
+		for(uint32_t j = 0; j < 10; ++j)
+		{
+			fd = open("/tmp/testfile_opencount", O_RDWR | O_CREAT);
+			EXPECT_LT(0, fd);
+			close(fd);
+		}
+
+		fd = open("/tmp/testfile_rdwr", O_RDWR | O_CREAT);
+		EXPECT_LT(0, fd);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(sizeof("token1"), res);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(sizeof("token1"), res);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(sizeof("token1"), res);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(sizeof("token1"), res);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(sizeof("token1"), res);
+		close(fd);
+
+		fd = open("/tmp/testfile_rdwr", O_RDONLY);
+		EXPECT_LT(0, fd);
+		char buf[512];
+		res = read(fd, buf, sizeof(buf));
+		EXPECT_EQ(5 * sizeof("token1"), res);
+		close(fd);
+
+		res = renameat(0, "/tmp/testfile_rdwr", 0, "/tmp/testfile_rdonly");
+		EXPECT_EQ(0, res);
+
+		fd = open("/tmp/testfile_rdonly", O_RDONLY);
+		EXPECT_LT(0, fd);
+		res = write(fd, "token1", sizeof("token1"));
+		EXPECT_EQ(-1, res);
+		close(fd);
+
+		// We use a random call to tee to signal that we're done
+		tee(-1, -1, 0, 0);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+
+		if(e->get_type() == PPME_GENERIC_E)
+		{
+			if(NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			{
+				found = true;
+
+				unordered_map<string, analyzer_file_stat>* files_stat = 
+					&param.m_inspector->m_analyzer->m_fd_listener->m_files_stat;
+
+				EXPECT_NE(0, files_stat->size());
+
+				unordered_map<string, analyzer_file_stat>::const_iterator it;
+
+				it = files_stat->find("/tmp/nonexistent");
+				EXPECT_NE(files_stat->end(), it);
+				EXPECT_EQ(0, it->second.m_time_ns);
+				EXPECT_EQ(0, it->second.m_bytes);
+				EXPECT_EQ(1, it->second.m_errors);
+				EXPECT_EQ(0, it->second.m_open_count);
+
+				it = files_stat->find("/tmp/testfile_opencount");
+				EXPECT_NE(files_stat->end(), it);
+				EXPECT_EQ(0, it->second.m_time_ns);
+				EXPECT_EQ(0, it->second.m_bytes);
+				EXPECT_EQ(0, it->second.m_errors);
+				EXPECT_EQ(10, it->second.m_open_count);
+
+				it = files_stat->find("/tmp/testfile_rdwr");
+				EXPECT_NE(files_stat->end(), it);
+				EXPECT_NE(0, it->second.m_time_ns);
+				EXPECT_EQ(10 * sizeof("token1"), it->second.m_bytes);
+				EXPECT_EQ(0, it->second.m_errors);
+				EXPECT_EQ(2, it->second.m_open_count);
+
+				it = files_stat->find("/tmp/testfile_rdonly");
+				EXPECT_NE(files_stat->end(), it);
+				EXPECT_EQ(0, it->second.m_time_ns);
+				EXPECT_EQ(0, it->second.m_bytes);
+				EXPECT_EQ(1, it->second.m_errors);
+				EXPECT_EQ(1, it->second.m_open_count);
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_TRUE(found);
 }
 
 TEST_F(sys_call_test, client_transaction_pruning1)
