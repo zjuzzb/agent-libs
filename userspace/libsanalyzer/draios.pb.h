@@ -52,6 +52,7 @@ class ipv4tuple;
 class ipv4_connection;
 class ipv4_network_interface;
 class mounted_fs;
+class file_stat;
 class metrics;
 class dump_request_start;
 class dump_request_stop;
@@ -2815,6 +2816,133 @@ class mounted_fs : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class file_stat : public ::google::protobuf::Message {
+ public:
+  file_stat();
+  virtual ~file_stat();
+
+  file_stat(const file_stat& from);
+
+  inline file_stat& operator=(const file_stat& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const file_stat& default_instance();
+
+  void Swap(file_stat* other);
+
+  // implements Message ----------------------------------------------
+
+  file_stat* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const file_stat& from);
+  void MergeFrom(const file_stat& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // required uint32 bytes = 2;
+  inline bool has_bytes() const;
+  inline void clear_bytes();
+  static const int kBytesFieldNumber = 2;
+  inline ::google::protobuf::uint32 bytes() const;
+  inline void set_bytes(::google::protobuf::uint32 value);
+
+  // required uint64 time_ns = 3;
+  inline bool has_time_ns() const;
+  inline void clear_time_ns();
+  static const int kTimeNsFieldNumber = 3;
+  inline ::google::protobuf::uint64 time_ns() const;
+  inline void set_time_ns(::google::protobuf::uint64 value);
+
+  // required uint32 open_count = 4;
+  inline bool has_open_count() const;
+  inline void clear_open_count();
+  static const int kOpenCountFieldNumber = 4;
+  inline ::google::protobuf::uint32 open_count() const;
+  inline void set_open_count(::google::protobuf::uint32 value);
+
+  // required uint32 errors = 5;
+  inline bool has_errors() const;
+  inline void clear_errors();
+  static const int kErrorsFieldNumber = 5;
+  inline ::google::protobuf::uint32 errors() const;
+  inline void set_errors(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.file_stat)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_bytes();
+  inline void clear_has_bytes();
+  inline void set_has_time_ns();
+  inline void clear_has_time_ns();
+  inline void set_has_open_count();
+  inline void clear_has_open_count();
+  inline void set_has_errors();
+  inline void clear_has_errors();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::uint64 time_ns_;
+  ::google::protobuf::uint32 bytes_;
+  ::google::protobuf::uint32 open_count_;
+  ::google::protobuf::uint32 errors_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static file_stat* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class metrics : public ::google::protobuf::Message {
  public:
   metrics();
@@ -3055,6 +3183,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
       mutable_mounts();
 
+  // repeated .draiosproto.file_stat top_files = 19;
+  inline int top_files_size() const;
+  inline void clear_top_files();
+  static const int kTopFilesFieldNumber = 19;
+  inline const ::draiosproto::file_stat& top_files(int index) const;
+  inline ::draiosproto::file_stat* mutable_top_files(int index);
+  inline ::draiosproto::file_stat* add_top_files();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >&
+      top_files() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >*
+      mutable_top_files();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -3099,9 +3239,10 @@ class metrics : public ::google::protobuf::Message {
   ::std::string* version_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat > top_files_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8224,6 +8365,168 @@ inline void mounted_fs::set_available_bytes(::google::protobuf::uint64 value) {
 
 // -------------------------------------------------------------------
 
+// file_stat
+
+// required string name = 1;
+inline bool file_stat::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void file_stat::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void file_stat::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void file_stat::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& file_stat::name() const {
+  return *name_;
+}
+inline void file_stat::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void file_stat::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void file_stat::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* file_stat::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* file_stat::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void file_stat::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint32 bytes = 2;
+inline bool file_stat::has_bytes() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void file_stat::set_has_bytes() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void file_stat::clear_has_bytes() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void file_stat::clear_bytes() {
+  bytes_ = 0u;
+  clear_has_bytes();
+}
+inline ::google::protobuf::uint32 file_stat::bytes() const {
+  return bytes_;
+}
+inline void file_stat::set_bytes(::google::protobuf::uint32 value) {
+  set_has_bytes();
+  bytes_ = value;
+}
+
+// required uint64 time_ns = 3;
+inline bool file_stat::has_time_ns() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void file_stat::set_has_time_ns() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void file_stat::clear_has_time_ns() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void file_stat::clear_time_ns() {
+  time_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_ns();
+}
+inline ::google::protobuf::uint64 file_stat::time_ns() const {
+  return time_ns_;
+}
+inline void file_stat::set_time_ns(::google::protobuf::uint64 value) {
+  set_has_time_ns();
+  time_ns_ = value;
+}
+
+// required uint32 open_count = 4;
+inline bool file_stat::has_open_count() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void file_stat::set_has_open_count() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void file_stat::clear_has_open_count() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void file_stat::clear_open_count() {
+  open_count_ = 0u;
+  clear_has_open_count();
+}
+inline ::google::protobuf::uint32 file_stat::open_count() const {
+  return open_count_;
+}
+inline void file_stat::set_open_count(::google::protobuf::uint32 value) {
+  set_has_open_count();
+  open_count_ = value;
+}
+
+// required uint32 errors = 5;
+inline bool file_stat::has_errors() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void file_stat::set_has_errors() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void file_stat::clear_has_errors() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void file_stat::clear_errors() {
+  errors_ = 0u;
+  clear_has_errors();
+}
+inline ::google::protobuf::uint32 file_stat::errors() const {
+  return errors_;
+}
+inline void file_stat::set_errors(::google::protobuf::uint32 value) {
+  set_has_errors();
+  errors_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // metrics
 
 // required uint64 timestamp_ns = 1;
@@ -8968,6 +9271,31 @@ metrics::mounts() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
 metrics::mutable_mounts() {
   return &mounts_;
+}
+
+// repeated .draiosproto.file_stat top_files = 19;
+inline int metrics::top_files_size() const {
+  return top_files_.size();
+}
+inline void metrics::clear_top_files() {
+  top_files_.Clear();
+}
+inline const ::draiosproto::file_stat& metrics::top_files(int index) const {
+  return top_files_.Get(index);
+}
+inline ::draiosproto::file_stat* metrics::mutable_top_files(int index) {
+  return top_files_.Mutable(index);
+}
+inline ::draiosproto::file_stat* metrics::add_top_files() {
+  return top_files_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >&
+metrics::top_files() const {
+  return top_files_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >*
+metrics::mutable_top_files() {
+  return &top_files_;
 }
 
 // -------------------------------------------------------------------

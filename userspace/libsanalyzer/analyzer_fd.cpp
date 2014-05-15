@@ -110,6 +110,17 @@ wildass_guess:
 
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
+	if(evt->m_fdinfo->is_file())
+	{
+		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
+		ASSERT(file_stat);
+		if(file_stat)
+		{
+			file_stat->m_bytes += original_len;
+			file_stat->m_time_ns += evt->m_tinfo->m_latency;
+		}
+	}
+
 	evt->set_iosize(original_len);
 
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
@@ -475,6 +486,17 @@ r_conn_creation_done:
 
 void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
 {
+	if(evt->m_fdinfo->is_file())
+	{
+		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
+		ASSERT(file_stat);
+		if(file_stat)
+		{
+			file_stat->m_bytes += original_len;
+			file_stat->m_time_ns += evt->m_tinfo->m_latency;
+		}
+	}
+	
 	evt->set_iosize(original_len);
 
 	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
@@ -1017,6 +1039,63 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 
 		evt->m_fdinfo->m_usrstate.mark_inactive();
 	}
+}
+
+void sinsp_analyzer_fd_listener::on_file_create(sinsp_evt* evt, const string& fullpath)
+{
+	analyzer_file_stat* file_stat = get_file_stat(fullpath);
+	ASSERT(file_stat);
+
+	if(evt->m_fdinfo)
+	{
+		ASSERT(evt->m_fdinfo->is_file() || evt->m_fdinfo->is_directory());
+		ASSERT(evt->m_fdinfo->m_name == fullpath);
+		if(evt->m_fdinfo->is_file())
+		{
+			if(file_stat)
+			{
+				++file_stat->m_open_count;			
+			}
+		}
+	}
+	else
+	{
+		if(file_stat)
+		{
+			++file_stat->m_errors;
+		}		
+	}
+}
+
+void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
+{
+	ASSERT(evt->m_fdinfo);
+	ASSERT(evt->m_errorcode != 0);
+	if(evt->m_fdinfo && evt->m_fdinfo->is_file())
+	{
+		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
+		ASSERT(file_stat);
+		if(file_stat)
+		{
+			++file_stat->m_errors;
+		}
+	}
+}
+
+analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const string& name)
+{
+	unordered_map<string, analyzer_file_stat>::iterator it = 
+		m_files_stat.find(name);
+
+	if(it == m_files_stat.end())
+	{
+		analyzer_file_stat file_stat;
+		file_stat.m_name = name;
+		m_files_stat.insert(pair<string, analyzer_file_stat>(string(name), file_stat));
+		it = m_files_stat.find(name);
+	}
+
+	return &it->second;
 }
 
 #endif // HAS_ANALYZER

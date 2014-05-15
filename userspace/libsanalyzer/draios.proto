@@ -251,6 +251,17 @@ message mounted_fs {
 }
 
 //
+// TOP FILE STATISTICS
+//
+message file_stat {
+    required string name = 1;
+    required uint32 bytes = 2;
+    required uint64 time_ns = 3;
+    required uint32 open_count = 4;
+    required uint32 errors = 5;
+}
+
+//
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -271,6 +282,7 @@ message metrics {
     optional string version = 16; // Agent/libsanalyzer/sysdig version
 	repeated command_details commands = 17; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
+    repeated file_stat top_files = 19; // Top files
 }
 
 message dump_request_start {
