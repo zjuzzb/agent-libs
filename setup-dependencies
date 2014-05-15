@@ -100,11 +100,11 @@ if [ ! -d "$LIBSSH_DIR" ]; then
 	make -C include install
 fi
 
-LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.2
+LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
 if [ ! -d "$LUAJIT_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/draios-dependencies/LuaJIT-2.0.2.tar.gz
-	tar -xzf LuaJIT-2.0.2.tar.gz
+	wget http://download.draios.com/dependencies/LuaJIT-2.0.3.tar.gz
+	tar -xzf LuaJIT-2.0.3.tar.gz
 	cd $LUAJIT_DIR
 	make
 fi
