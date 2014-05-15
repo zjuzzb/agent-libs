@@ -1048,7 +1048,7 @@ void sinsp_analyzer_fd_listener::on_file_create(sinsp_evt* evt, const string& fu
 
 	if(evt->m_fdinfo)
 	{
-		ASSERT(evt->m_fdinfo->is_file() || evt->m_fdinfo->is_directory());
+		ASSERT(evt->m_fdinfo->is_file());
 		ASSERT(evt->m_fdinfo->m_name == fullpath);
 		if(evt->m_fdinfo->is_file())
 		{
