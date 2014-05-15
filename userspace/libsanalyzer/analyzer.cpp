@@ -2618,12 +2618,10 @@ void sinsp_analyzer::emit_top_files()
 {
 	vector<analyzer_file_stat*> files_sortable_list;
 
-	printf("m_files_stat: %zd\n", m_fd_listener->m_files_stat.size());
 	for(unordered_map<string, analyzer_file_stat>::iterator it = m_fd_listener->m_files_stat.begin();
 		it != m_fd_listener->m_files_stat.end(); ++it)
 	{
 		files_sortable_list.push_back(&it->second);
-		printf("'%s' %llu %llu %llu %llu\n", it->first.c_str(), it->second.m_bytes, it->second.m_errors, it->second.m_open_count, it->second.m_time_ns);
 	}
 
 	if(files_sortable_list.size() > TOP_FILES_IN_SAMPLE)
