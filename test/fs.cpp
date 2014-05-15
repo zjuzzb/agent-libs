@@ -234,11 +234,11 @@ TEST_F(sys_call_test, fs_link)
 			if(callnum == 2)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("olddir", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("olddir"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("olddir"));				
 				EXPECT_EQ(FILENAME, e->get_param_value_str("oldpath"));
 
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("newdir", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("newdir"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("newdir"));				
 				EXPECT_EQ(FILENAME2, e->get_param_value_str("newpath"));
 
 				callnum++;
@@ -257,7 +257,7 @@ TEST_F(sys_call_test, fs_link)
 			if(callnum == 4)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
 				EXPECT_EQ(FILENAME, e->get_param_value_str("name"));
 
 				callnum++;
@@ -265,7 +265,7 @@ TEST_F(sys_call_test, fs_link)
 			else if(callnum == 6)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
 				EXPECT_EQ(FILENAME, e->get_param_value_str("name"));
 
 				callnum++;
@@ -273,7 +273,7 @@ TEST_F(sys_call_test, fs_link)
 			else if(callnum == 8)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
 				EXPECT_EQ(FILENAME1, e->get_param_value_str("name"));
 
 				callnum++;
@@ -281,7 +281,7 @@ TEST_F(sys_call_test, fs_link)
 			else if(callnum == 10)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
 				EXPECT_EQ(FILENAME2, e->get_param_value_str("name"));
 
 				callnum++;
@@ -456,6 +456,11 @@ TEST_F(sys_call_test, fs_openat)
 			FAIL();
 		}
 		
+		//
+		// Generate a pagefault to make sure openat_enter doesn't
+		// get dropped because FILENAME is not available in memory
+		//
+		string s = FILENAME;
 		fd1 = openat(dirfd, FILENAME, O_CREAT | O_WRONLY, 0);
 		if(fd1 <= 0)
 		{
@@ -492,7 +497,7 @@ TEST_F(sys_call_test, fs_openat)
 			if(callnum == 0)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<f>") + bcwd, e->get_param_value_str("dirfd"));			
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));			
 				callnum++;
 			}
 			else if(callnum == 2)
