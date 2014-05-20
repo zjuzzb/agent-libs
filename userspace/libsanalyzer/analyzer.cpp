@@ -1011,8 +1011,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					}
 
 					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmsize_kb);
-					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmrss_kb);
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
 					proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
 					proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
 					proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
