@@ -42,8 +42,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 
 	switch(etype)
 	{
-	case PPME_SCHEDSWITCH_E:
-	case PPME_SCHEDSWITCHEX_E:
+	case PPME_SCHEDSWITCH_1_E:
+	case PPME_SCHEDSWITCH_6_E:
 		m_sched_analyzer2->process_event(evt);
 		return false;
 	case PPME_SOCKET_ACCEPT_X:
@@ -55,7 +55,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EPOLLWAIT_X:
 		parse_select_poll_epollwait_exit(evt);
 		return true;
-	case PPME_SYSCALL_EXECVE_X:
+	case PPME_SYSCALL_EXECVE_8_X:
+	case PPME_SYSCALL_EXECVE_13_X:
 		parse_execve_exit(evt);
 		return true;
 	case PPME_DROP_E:

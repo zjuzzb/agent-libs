@@ -169,7 +169,8 @@ TEST_F(sys_call_test, forking_while_scap_stopped)
 	{
 		sinsp_evt* e = param.m_evt;
 
-		if(e->get_type() == PPME_SCHEDSWITCH_E)
+		if(e->get_type() == PPME_SCHEDSWITCH_1_E ||
+			e->get_type() == PPME_SCHEDSWITCH_6_E)
 		{
 			return;
 		}
@@ -354,16 +355,18 @@ TEST_F(sys_call_test, forking_execve)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_EXECVE_E)
+		if(e->get_type() == PPME_SYSCALL_EXECVE_13_E)
 		{
 			//
 			// The child should exist
 			//
 			sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
 			EXPECT_EQ("test", ti->get_comm());
+			EXPECT_NE(0, ti->m_vmsize_kb);
+			EXPECT_NE(0, ti->m_vmrss_kb);
 			callnum++;
 		}
-		else if(e->get_type() == PPME_SYSCALL_EXECVE_X)
+		else if(e->get_type() == PPME_SYSCALL_EXECVE_13_X)
 		{
 			if(callnum == 1)
 			{
@@ -495,7 +498,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_CLONE_X)
+		if(e->get_type() == PPME_CLONE_16_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);
@@ -640,7 +643,7 @@ TEST_F(sys_call_test, forking_clone_nofs)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_CLONE_X)
+		if(e->get_type() == PPME_CLONE_16_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);
@@ -779,7 +782,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_CLONE_X)
+		if(e->get_type() == PPME_CLONE_16_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);

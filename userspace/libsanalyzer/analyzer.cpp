@@ -2347,7 +2347,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//
-	if(evt->m_tinfo == NULL || evt->get_type() == PPME_SCHEDSWITCHEX_E)
+	if(evt->m_tinfo == NULL || 
+		evt->get_type() == PPME_SCHEDSWITCH_1_E ||
+		evt->get_type() == PPME_SCHEDSWITCH_6_E)
 	{
 		//
 		// No thread associated to this event, nothing to do
