@@ -740,12 +740,12 @@ TEST_F(sys_call_test, procfs_processcpuload)
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_global_cpu_load(&old_global_total_jiffies);
+	load = pparser.get_global_cpu_load(&old_global_total_jiffies);
+	EXPECT_EQ((double)-1, load);
 	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
+	EXPECT_EQ((double)-1, load);
 	
 	sleep(1);
-
-	EXPECT_EQ((double)-1, load);
 
 	for(j = 20; j > 10; j--)
 	{
