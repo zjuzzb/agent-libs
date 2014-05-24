@@ -488,3 +488,72 @@ TEST_F(sys_call_test, timestamp)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ((int) (sizeof(timestampv) / sizeof(timestampv[0])), callnum);
 }
+
+TEST_F(sys_call_test, brk)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [](sinsp* inspector)
+	{
+		sbrk(1000);
+		sbrk(100000);
+	};
+
+	uint32_t before_brk_vmsize;
+	uint32_t before_brk_vmrss;
+	uint32_t after_brk_vmsize;
+	uint32_t after_brk_vmrss;
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_BRK_4_E)
+		{
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_BRK_4_X)
+		{
+
+			uint32_t vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
+			uint32_t vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
+
+			EXPECT_EQ(e->get_thread_info(false)->m_vmsize_kb, vmsize);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmrss_kb, vmrss);
+
+			if(callnum == 1)
+			{
+				before_brk_vmsize = vmsize;
+				before_brk_vmrss = vmrss;
+			}
+			else if(callnum == 3)
+			{
+				after_brk_vmsize = vmsize;
+				after_brk_vmrss = vmrss;
+
+				EXPECT_GT(after_brk_vmsize, before_brk_vmsize);
+				EXPECT_GE(after_brk_vmrss, before_brk_vmrss);
+			}
+
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
