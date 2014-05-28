@@ -3,47 +3,6 @@
 class sinsp_evttables;
 
 ///////////////////////////////////////////////////////////////////////////////
-// A simple class to manage pre-allocated objects in a LIFO
-// fashion and make sure all of them are deleted upon destruction.
-///////////////////////////////////////////////////////////////////////////////
-template<typename OBJ> 
-class simple_lifo_queue
-{
-public:
-	void add(OBJ* newentry)
-	{
-		m_full_list.push_back(newentry);
-		m_avail_list.push_back(newentry);
-	}
-
-	void push(OBJ* newentry)
-	{
-		m_avail_list.push_front(newentry);
-	}
-
-	OBJ* pop()
-	{
-		if(m_avail_list.empty())
-		{
-			return NULL;
-		}
-
-		OBJ* head = m_avail_list.front();
-		m_avail_list.pop_front();
-		return head;
-	}
-
-	bool empty()
-	{
-		return m_avail_list.empty();
-	}
-
-private:
-	list<OBJ*> m_avail_list;
-	list<OBJ*> m_full_list;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 // Hashing support for stl pairs
 ///////////////////////////////////////////////////////////////////////////////
 template <class T>
