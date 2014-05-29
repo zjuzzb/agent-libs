@@ -58,7 +58,7 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 		return -1;
 	}
 
-	uint64_t val1, val2, val3, val4, val5, val6, val7;
+	uint64_t val1, val2, val3, val4, val5, val6, val7, val8;
 	uint64_t total_jiffies;
 	uint64_t work_jiffies;
 	uint64_t delta_total_jiffies;
@@ -67,7 +67,7 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	//
 	// Extract the line content
 	//
-	if(sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
+	if(sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
 		tmps,
 		&val1,
 		&val2,
@@ -75,7 +75,8 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 		&val4,
 		&val5,
 		&val6,
-		&val7) != 8)
+		&val7,
+		&val8) != 9)
 	{
 		ASSERT(false);
 		fclose(f);
@@ -85,8 +86,8 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	//
 	// Calculate the value
 	//
-	total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7;
-	work_jiffies = val1 + val2 + val3;
+	total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
+	work_jiffies = val1 + val2 + val3 + val8;
 
 	if(m_old_global_total_jiffies != 0)
 	{
@@ -190,8 +191,8 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 			break;
 		}
 
-		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7;
-		work_jiffies = val1 + val2 + val3 + val5 + val6 + val7;
+		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7 + steal_jiffies;
+		work_jiffies = val1 + val2 + val3 + val5 + val6 + val7 + steal_jiffies;
 
 		if(old_array_size == 0)
 		{
@@ -215,7 +216,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 			idle = MIN(idle, 100);
 			idles->push_back(idle);
 
-			double steal = (double)delta_steal_jiffies * 100 / (delta_steal_jiffies + delta_total_jiffies);
+			double steal = (double)delta_steal_jiffies * 100 / delta_total_jiffies;
 			steal = MIN(steal, 100);
 			steals->push_back(steal);
 
