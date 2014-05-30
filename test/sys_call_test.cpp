@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <sys/mman.h>
 
 #include "sys_call_test.h"
 #include <gtest.h>
@@ -556,4 +557,163 @@ TEST_F(sys_call_test, brk)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(4, callnum);
+}
+
+TEST_F(sys_call_test, mmap)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	void* p;
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		munmap((void*) 0x50, 300);
+		mmap((void*) 0x1234567891234567, 1234567891234567, 0, 0, -1,1234567891234567);
+		mmap(0, 0, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE, -1, 0);
+		p = mmap(NULL, 1003520, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		EXPECT_NE(NULL, (uint64_t) p);
+		munmap(p, 1003520);
+	};
+
+	uint32_t enter_vmsize;
+	uint32_t enter_vmrss;
+	uint32_t exit_vmsize;
+	uint32_t exit_vmrss;
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_MUNMAP_E)
+		{
+			callnum++;
+
+			enter_vmsize = e->get_thread_info(false)->m_vmsize_kb;
+			enter_vmrss = e->get_thread_info(false)->m_vmrss_kb;
+
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("50", e->get_param_value_str("addr"));
+				EXPECT_EQ("300", e->get_param_value_str("length"));
+				break;
+			case 9:
+			{
+				uint64_t addr = *((uint64_t*) e->get_param_value_raw("addr")->m_val);
+				EXPECT_EQ((uint64_t) p, addr);
+				EXPECT_EQ("1003520", e->get_param_value_str("length"));
+				break;
+			}
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MUNMAP_X)
+		{
+			callnum++;
+
+			exit_vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
+			exit_vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmsize_kb, exit_vmsize);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmrss_kb, exit_vmrss);
+
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("EINVAL", e->get_param_value_str("res"));
+				EXPECT_EQ("-22", e->get_param_value_str("res", false));
+				break;
+			case 10:
+				EXPECT_EQ("0", e->get_param_value_str("res"));
+				EXPECT_GT(enter_vmsize, exit_vmsize + 500);
+				EXPECT_GE(enter_vmrss, enter_vmrss);
+				break;
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MMAP_E)
+		{
+			callnum++;
+
+			enter_vmsize = e->get_thread_info(false)->m_vmsize_kb;
+			enter_vmrss = e->get_thread_info(false)->m_vmrss_kb;
+
+			switch(callnum)
+			{
+			case 3:
+				EXPECT_EQ("1234567891234567", e->get_param_value_str("addr"));
+				EXPECT_EQ("1234567891234567", e->get_param_value_str("length"));
+				EXPECT_EQ("PROT_NONE", e->get_param_value_str("prot"));
+				EXPECT_EQ("0", e->get_param_value_str("flags"));
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd"));
+				EXPECT_EQ("1234567891234567", e->get_param_value_str("offset"));
+				break;
+			case 5:
+				EXPECT_EQ("0", e->get_param_value_str("addr"));
+				EXPECT_EQ("0", e->get_param_value_str("length"));
+				EXPECT_EQ("PROT_READ|PROT_WRITE|PROT_EXEC", e->get_param_value_str("prot"));
+				EXPECT_EQ("MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE", e->get_param_value_str("flags"));
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd"));
+				EXPECT_EQ("0", e->get_param_value_str("offset"));
+				break;
+			case 7:
+				EXPECT_EQ("0", e->get_param_value_str("addr"));
+				EXPECT_EQ("1003520", e->get_param_value_str("length"));
+				EXPECT_EQ("PROT_READ|PROT_WRITE", e->get_param_value_str("prot"));
+				EXPECT_EQ("MAP_PRIVATE|MAP_ANONYMOUS", e->get_param_value_str("flags"));
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd"));
+				EXPECT_EQ("0", e->get_param_value_str("offset"));
+				break;
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MMAP_X)
+		{
+			callnum++;
+
+			exit_vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
+			exit_vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmsize_kb, exit_vmsize);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmrss_kb, exit_vmrss);
+
+			switch(callnum)
+			{
+			case 4:
+			case 6:
+				EXPECT_EQ("FFFFFFFFFFFFFFEA", e->get_param_value_str("res"));
+				EXPECT_EQ("FFFFFFFFFFFFFFEA", e->get_param_value_str("res", false));
+				break;
+			case 8:
+			{
+				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
+				EXPECT_EQ((uint64_t) p, res);
+				EXPECT_GT(exit_vmsize, enter_vmsize + 500);
+				EXPECT_GE(exit_vmrss, enter_vmrss);
+				break;
+			}
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(10, callnum);
 }
