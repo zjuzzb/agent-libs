@@ -25,6 +25,7 @@ add_executable(test
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
+	userevts.cpp
 	main.cpp)
 
 target_link_libraries(test
