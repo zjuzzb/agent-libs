@@ -46,12 +46,12 @@ int main(void)
 		tf1 = fopen(TMP_FILE_NAME, "w");
 		generate_sysdig_event(f, "[2, >, [\"lorisapp\", \"loop\", \"write\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}]]");
 		fwrite("hello world", strlen("hello world"), 1, tf1);
-		generate_sysdig_event(f, "[2, <, [], []]");
+		generate_sysdig_event(f, "[2, <, [\"lorisapp\", \"loop\", \"write\"], []]");
 		fclose(tf1);
 
 		unlink(TMP_FILE_NAME);
 
-		generate_sysdig_event(f, "[1, <, [], []]");
+		generate_sysdig_event(f, "[1, <, [\"lorisapp\", \"loop\"], []]");
 		
 		sleep(1);
 	}
