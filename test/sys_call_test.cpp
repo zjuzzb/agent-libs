@@ -562,6 +562,8 @@ TEST_F(sys_call_test, brk)
 TEST_F(sys_call_test, mmap)
 {
 	int callnum = 0;
+	int errno1;
+	int errno2;
 
 	//
 	// FILTER
@@ -579,8 +581,12 @@ TEST_F(sys_call_test, mmap)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		munmap((void*) 0x50, 300);
-		mmap((void*) 0x1234567891234567, 1234567891234567, 0, 0, -1,1234567891234567);
-		mmap(0, 0, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE, -1, 0);
+		p = mmap((void*) 0x1234567891234567, 1234567891234567, 0, 0, -1,1234567891234567);
+		EXPECT_EQ(-1, (uint64_t) p);
+		errno1 = errno;
+		p = mmap(0, 0, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE, -1, 0);
+		EXPECT_EQ(-1, (uint64_t) p);
+		errno2 = errno;
 		p = mmap(NULL, 1003520, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 		EXPECT_NE(NULL, (uint64_t) p);
 		munmap(p, 1003520);
@@ -696,10 +702,17 @@ TEST_F(sys_call_test, mmap)
 			switch(callnum)
 			{
 			case 4:
-			case 6:
-				EXPECT_EQ("FFFFFFFFFFFFFFEA", e->get_param_value_str("res"));
-				EXPECT_EQ("FFFFFFFFFFFFFFEA", e->get_param_value_str("res", false));
+			{
+				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
+				EXPECT_EQ(-errno1, res);
 				break;
+			}
+			case 6:
+			{
+				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
+				EXPECT_EQ(-errno2, res);
+				break;
+			}
 			case 8:
 			{
 				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
