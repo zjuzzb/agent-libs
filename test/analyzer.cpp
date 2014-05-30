@@ -178,22 +178,22 @@ TEST_F(sys_call_test, analyzer_fdstats)
 		fd = open("/tmp/testfile_rdwr", O_RDWR | O_CREAT);
 		EXPECT_LT(0, fd);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
 		close(fd);
 
 		fd = open("/tmp/testfile_rdwr", O_RDONLY);
 		EXPECT_LT(0, fd);
 		char buf[512];
 		res = read(fd, buf, sizeof(buf));
-		EXPECT_EQ(5 * sizeof("token1"), res);
+		EXPECT_EQ(5 * sizeof("token1"), (uint64_t) res);
 		close(fd);
 
 		res = renameat(0, "/tmp/testfile_rdwr", 0, "/tmp/testfile_rdonly");
@@ -225,37 +225,37 @@ TEST_F(sys_call_test, analyzer_fdstats)
 				unordered_map<string, analyzer_file_stat>* files_stat = 
 					&param.m_inspector->m_analyzer->m_fd_listener->m_files_stat;
 
-				EXPECT_NE(0, files_stat->size());
+				EXPECT_NE((uint64_t) 0, files_stat->size());
 
 				unordered_map<string, analyzer_file_stat>::const_iterator it;
 
 				it = files_stat->find("/tmp/nonexistent");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ(0, it->second.m_time_ns);
-				EXPECT_EQ(0, it->second.m_bytes);
-				EXPECT_EQ(1, it->second.m_errors);
-				EXPECT_EQ(0, it->second.m_open_count);
+				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+				EXPECT_EQ((uint64_t) 1, it->second.m_errors);
+				EXPECT_EQ((uint64_t) 0, it->second.m_open_count);
 
 				it = files_stat->find("/tmp/testfile_opencount");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ(0, it->second.m_time_ns);
-				EXPECT_EQ(0, it->second.m_bytes);
-				EXPECT_EQ(0, it->second.m_errors);
-				EXPECT_EQ(10, it->second.m_open_count);
+				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+				EXPECT_EQ((uint64_t) 0, it->second.m_errors);
+				EXPECT_EQ((uint64_t) 10, it->second.m_open_count);
 
 				it = files_stat->find("/tmp/testfile_rdwr");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_NE(0, it->second.m_time_ns);
+				EXPECT_NE((uint64_t) 0, it->second.m_time_ns);
 				EXPECT_EQ(10 * sizeof("token1"), it->second.m_bytes);
-				EXPECT_EQ(0, it->second.m_errors);
-				EXPECT_EQ(2, it->second.m_open_count);
+				EXPECT_EQ((uint64_t) 0, it->second.m_errors);
+				EXPECT_EQ((uint64_t) 2, it->second.m_open_count);
 
 				it = files_stat->find("/tmp/testfile_rdonly");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ(0, it->second.m_time_ns);
-				EXPECT_EQ(0, it->second.m_bytes);
-				EXPECT_EQ(1, it->second.m_errors);
-				EXPECT_EQ(1, it->second.m_open_count);
+				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+				EXPECT_EQ((uint64_t) 1, it->second.m_errors);
+				EXPECT_EQ((uint64_t) 1, it->second.m_open_count);
 			}
 		}
 	};

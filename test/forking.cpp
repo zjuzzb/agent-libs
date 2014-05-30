@@ -362,8 +362,8 @@ TEST_F(sys_call_test, forking_execve)
 			//
 			sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
 			EXPECT_EQ("test", ti->get_comm());
-			EXPECT_NE(0, ti->m_vmsize_kb);
-			EXPECT_NE(0, ti->m_vmrss_kb);
+			EXPECT_NE((uint64_t) 0, ti->m_vmsize_kb);
+			EXPECT_NE((uint64_t) 0, ti->m_vmrss_kb);
 			callnum++;
 		}
 		else if(e->get_type() == PPME_SYSCALL_EXECVE_13_X)
