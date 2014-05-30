@@ -23,6 +23,7 @@
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
 
+#if 0
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <parsers.h>
@@ -34,7 +35,6 @@ using Poco::StringTokenizer;
 using Poco::NumberFormatter;
 using Poco::NumberParser;
 
-#if 0
 
 TEST_F(sys_call_test, usrevts_1)
 {
