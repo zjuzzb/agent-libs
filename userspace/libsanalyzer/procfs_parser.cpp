@@ -30,7 +30,7 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_old_global_work_jiffies = 0;
 }
 
-double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies)
+double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
 {
 	double res = -1;
 	char line[512];
@@ -109,6 +109,16 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	if(global_total_jiffies)
 	{
 		*global_total_jiffies = total_jiffies;
+	}
+
+	if(global_idle_jiffies)
+	{
+		*global_idle_jiffies = val4;
+	}
+
+	if(global_steal_jiffies)
+	{
+		*global_steal_jiffies = val8;
 	}
 
 	fclose(f);
