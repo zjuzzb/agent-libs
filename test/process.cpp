@@ -807,6 +807,8 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	int pid = getpid();
 	uint64_t old_global_total_jiffies;
 	uint64_t cur_global_total_jiffies;
+	uint64_t old_global_steal_jiffies;
+	uint64_t cur_global_steal_jiffies;
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -825,7 +827,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_global_cpu_load(&old_global_total_jiffies);
+	pparser.get_global_cpu_load(&old_global_total_jiffies, NULL, &old_global_steal_jiffies);
 	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
 
 	sleep(1);
@@ -834,19 +836,25 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	for(j = 0; j < 3; j++)
 	{
-		pparser.get_global_cpu_load(&cur_global_total_jiffies);
+		pparser.get_global_cpu_load(&cur_global_total_jiffies, NULL, &cur_global_steal_jiffies);
 		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
 
-		//printf("%" PRIu32 " %lu \n", load, mem);
-
-		old_global_total_jiffies = cur_global_total_jiffies;
 		sleep(1);
 
-		if(j > 0)
-		{
-			EXPECT_LE((double)m * 100 - 15, load);
-			EXPECT_GE((double)m * 100 + 15, load);
-		}
+		double stolen = (double) (cur_global_steal_jiffies - old_global_steal_jiffies) * 100 / (cur_global_total_jiffies - old_global_total_jiffies);
+
+		//
+		// When there's steal time, on AWS there are processes that if ran at 100% will have low spikes of 10-20% cpu for a second 
+		// (verified, top/htop show the exact same information, even after accounting steal time). 
+		// On Digital Ocean instead, every process always consumes 100% after accounting steal time.
+		// It recently broke because the stolen time was not accounted as a global cpu time, so the math was working most of the time, but
+		// now that the measurements are more precise, the issue is more frequent, so in case of stolen time, we'll just lower the threshold.
+		//
+		EXPECT_LE((double)m * 100 - 15 - stolen, load);
+		EXPECT_GE((double)m * 100 + 15, load);
+
+		old_global_total_jiffies = cur_global_total_jiffies;
+		old_global_steal_jiffies = cur_global_steal_jiffies;
 	}
 
 	ct.m_die = true;
