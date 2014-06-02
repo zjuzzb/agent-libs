@@ -515,6 +515,7 @@ TEST_F(sys_call_test, brk)
 	uint32_t before_brk_vmrss;
 	uint32_t after_brk_vmsize;
 	uint32_t after_brk_vmrss;
+	bool ignore_this_call = false;
 
 	//
 	// OUTPUT VALDATION
@@ -526,10 +527,22 @@ TEST_F(sys_call_test, brk)
 
 		if(type == PPME_SYSCALL_BRK_4_E)
 		{
+			uint64_t addr = *((uint64_t*) e->get_param_value_raw("addr")->m_val);
+			if(addr == 0)
+			{
+				ignore_this_call = true;
+				return;
+			}
+
 			callnum++;
 		}
 		else if(type == PPME_SYSCALL_BRK_4_X)
 		{
+			if(ignore_this_call)
+			{
+				ignore_this_call = false;
+				return;
+			}
 
 			uint32_t vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
 			uint32_t vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
@@ -547,7 +560,7 @@ TEST_F(sys_call_test, brk)
 				after_brk_vmsize = vmsize;
 				after_brk_vmrss = vmrss;
 
-				EXPECT_GT(after_brk_vmsize, before_brk_vmsize);
+				EXPECT_GT(after_brk_vmsize, before_brk_vmsize + 50);
 				EXPECT_GE(after_brk_vmrss, before_brk_vmrss);
 			}
 
