@@ -1,6 +1,6 @@
 include_directories(${PROJECT_SOURCE_DIR}/common)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-1.6.0/fused-src/gtest)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/fused-src/gtest)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/driver)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
@@ -31,9 +31,9 @@ add_executable(test
 target_link_libraries(test
 	pthread
 	sanalyzer 
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.6.0/libgtest.a) 
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/libgtest.a) 
 
 add_executable(resources/forking_main_thread_exit
 	resources/forking_main_thread_exit.c)

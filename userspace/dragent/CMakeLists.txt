@@ -5,8 +5,8 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.1/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -27,13 +27,13 @@ add_executable(dragent
 target_link_libraries(dragent
 	pthread
 	sanalyzer
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoXML.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p2-all/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.1/target/lib/libssh.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoXML.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/lib/libssh.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/lib/libcrypto.a
 	dl
