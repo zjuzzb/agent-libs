@@ -14,13 +14,13 @@ yum -y update
 #
 # Setup repos 
 #
-curl -o /etc/yum.repos.d/devtools-1.1.repo http://people.centos.org/tru/devtools-1.1/devtools-1.1.repo
+curl -o /etc/yum.repos.d/devtools-2.repo http://people.centos.org/tru/devtools-2/devtools-2.repo
 rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
 
 #
 # Install various crap
 #
-yum -y install createrepo devtoolset-1.1 dpkg dpkg-devel expect gcc gcc-c++ git glibc-static java-1.7.0-openjdk kernel-devel-$(uname -r) make python-pip rpm-build unzip wget cmake28 
+yum -y install createrepo devtoolset-2-toolchain dpkg dpkg-devel expect gcc gcc-c++ git glibc-static java-1.7.0-openjdk kernel-devel-$(uname -r) make python-pip rpm-build unzip wget cmake28 
 
 ln -s /usr/bin/cmake28 /usr/bin/cmake
 
