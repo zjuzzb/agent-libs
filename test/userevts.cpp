@@ -615,4 +615,22 @@ TEST_F(sys_call_test, usrevts_40)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
+TEST_F(sys_call_test, usrevts_41)
+{
+	sinsp_appevtparser p(NULL);
+
+	char doc[] = "[\"\\\">\", 12435, [\"my\\\"\\\"sql\", \"query\", \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ("\\\">", string(p.m_type_str));
+	EXPECT_EQ(12435, (int)p.m_id);
+	EXPECT_EQ(3, (int)p.m_tags.size());
+	EXPECT_EQ(3, (int)p.m_argnames.size());
+	EXPECT_EQ(3, (int)p.m_argvals.size());
+}
+
 #endif // 0
