@@ -272,7 +272,7 @@ uint32_t sinsp_transaction_table::get_size()
 	// first try to find exact match
 	for(it = m_table.begin(); it != m_table.end(); it++)
 	{
-		res += it->second.size();
+		res += (uint32_t)it->second.size();
 	}
 
 	return res;

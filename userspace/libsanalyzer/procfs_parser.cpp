@@ -134,7 +134,7 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 	char line[512];
 	char tmps[32];
 	uint32_t j;
-	uint32_t old_array_size = m_old_total_jiffies.size();
+	uint32_t old_array_size = (uint32_t)m_old_total_jiffies.size();
 
 	//
 	// Nothing to do on windows
@@ -435,6 +435,9 @@ return;
 
 void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 {
+#ifdef _WIN32
+return;
+#else
 	FILE* fp = setmntent("/etc/mtab", "r");
 	if(fp == NULL)
 	{
@@ -505,4 +508,5 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
 	}
 
 	endmntent(fp);
+#endif
 }

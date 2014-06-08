@@ -24,7 +24,7 @@ int32_t sinsp_scores::get_system_capacity_score_global(vector<pair<uint64_t,pair
 	uint32_t n_server_threads,
 	uint64_t sample_end_time, uint64_t sample_duration)
 {
-	uint32_t trsize = transactions->size();
+	uint32_t trsize = (uint32_t)transactions->size();
 	const scap_machine_info* machine_info = m_inspector->get_machine_info();
 	if(machine_info == NULL)
 	{
@@ -313,7 +313,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 			// This gives us the *actual* resouce limit.
 			//
 			float score = calculate_score_4(ntr, ntrcpu, nother, 
-				m_inspector->m_analyzer->m_server_programs.size());
+				(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
 
 			tot_score += score;
 			n_scores++;
@@ -349,7 +349,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_4(sinsp_delays_in
 				}
 
 				score1 = calculate_score_4(ntr1, ntrcpu1, nother1,
-					m_inspector->m_analyzer->m_server_programs.size());
+					(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
 			}
 			else
 			{
@@ -557,7 +557,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 			// This gives us the *actual* resouce limit.
 			//
 			float score = calculate_score_5(ntr, ntrcpu, nother, 
-				m_inspector->m_analyzer->m_server_programs.size());
+				(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
 
 			tot_score += score;
 			n_scores++;
@@ -593,7 +593,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 				}
 
 				score1 = calculate_score_5(ntr1, ntrcpu1, nother1,
-					m_inspector->m_analyzer->m_server_programs.size());
+					(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
 			}
 			else
 			{

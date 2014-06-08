@@ -61,7 +61,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			}
 			else if(res == false)
 			{
-				url_len = buf + j - url;
+				url_len = (uint32_t)(buf + j - url);
 				m_url.assign(url, url_len);
 				res = true;
 			}

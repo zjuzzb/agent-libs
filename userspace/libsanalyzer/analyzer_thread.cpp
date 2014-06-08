@@ -166,7 +166,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	if(other->m_tinfo->get_fd_usage_pct() > m_procinfo->m_fd_usage_pct)
 	{
-		m_procinfo->m_fd_usage_pct = other->m_tinfo->get_fd_usage_pct();
+		m_procinfo->m_fd_usage_pct = (uint32_t)other->m_tinfo->get_fd_usage_pct();
 	}
 
 	if(other->m_connection_queue_usage_pct > m_procinfo->m_connection_queue_usage_pct)
