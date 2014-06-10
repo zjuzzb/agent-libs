@@ -95,7 +95,8 @@ function datacube.create_json_table(input_tbl, timedelta, depth)
 		res[j] = entry
 		j = j + 1
 
-		if depth < #datacube.viz_info.key_fld then
+--		if depth < #datacube.viz_info.key_fld then
+		if next(v[1]) ~= nil then
 			entry.children = datacube.create_json_table(v[1], timedelta, depth + 1)
 		else
 			entry.value = v[2]
@@ -123,8 +124,10 @@ function datacube.print(stable, ts_s, ts_ns, timedelta)
 			header = header .. extend_string(name, 10)
 		end
 
-		for i, name in ipairs(datacube.viz_info.key_desc) do
-			header = header .. extend_string(name, 20)
+		if datacube.viz_info.key_desc ~= nil then
+			for i, name in ipairs(datacube.viz_info.key_desc) do
+				header = header .. extend_string(name, 20)
+			end
 		end
 
 		print(header)
