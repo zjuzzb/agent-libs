@@ -246,7 +246,7 @@ function on_event()
 			dcube.insert(keys, grtable, vizinfo.value_defaults[1], 1)
 		end
 	end
-	
+
 	return true
 end
 

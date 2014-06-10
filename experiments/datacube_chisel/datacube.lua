@@ -46,20 +46,20 @@ function datacube.insert(keys, key_deflts, tbl, value, depth)
 		tbl[key] = {{}, value}
 
 		if depth < #keys then
-			insert(keys, tbl[key][1], value, depth + 1)
+			datacube.insert(keys, key_deflts, tbl[key][1], value, depth + 1)
 		end
 	else
 		tbl[key][2] = tbl[key][2] + value
 		
 		if depth < #keys then
-			insert(keys, tbl[key][1], value, depth + 1)
+			datacube.insert(keys, key_deflts, tbl[key][1], value, depth + 1)
 		end
 	end	
 end
 
 function datacube.print_table_normal(tbl, timedelta, depth)
-	local sorted_grtable = pairs_top_by_val(tbl.top_number, function(t,a,b) return t[b][2] < t[a][2] end)
-	
+	local sorted_grtable = pairs_top_by_val(tbl, datacube.viz_info.top_number, function(t,a,b) return t[b][2] < t[a][2] end)
+		
 	for k,v in sorted_grtable do
 		if datacube.viz_info.valueunits[1] == "none" then
 			print(extend_string("", depth - 1) .. extend_string(v[2], 10) .. k)
@@ -76,9 +76,9 @@ function datacube.print_table_normal(tbl, timedelta, depth)
 
 			print(extend_string(pctstr, 10) .. k)
 		end
-		
-		if depth < #datacube.viz_info.key_fld then
-			print_table_normal(v[1], timedelta, depth + 1)
+
+		if v[1] ~= nil then
+			datacube.print_table_normal(v[1], timedelta, depth + 1)
 		end
 	end
 end
@@ -130,7 +130,7 @@ function datacube.print(stable, ts_s, ts_ns, timedelta)
 		print(header)
 		print("------------------------------")
 		
-		print_table_normal(stable, timedelta, 1)
+		datacube.print_table_normal(stable, timedelta, 1)
 	end
 end
 
