@@ -57,6 +57,36 @@ function datacube.insert(keys, key_deflts, tbl, value, depth)
 	end	
 end
 
+function datacube.insert_raw(keys, key_deflts, tbl, value, depth)
+	local key = keys[depth]
+	
+	if key == nil then
+		if key_deflts ~= nil then
+			key = key_deflts[depth]
+		end
+	end
+
+	if key == nil then
+		return
+	end
+	
+	local entryval = tbl[key]
+
+	if entryval == nil then
+		tbl[key] = {{}, value}
+
+		if depth < #keys then
+			datacube.insert_raw(keys, key_deflts, tbl[key][1], value, depth + 1)
+		end
+	else
+		tbl[key][2] = tbl[key][2] + value
+		
+		if depth < #keys then
+			datacube.insert_raw(keys, key_deflts, tbl[key][1], value, depth + 1)
+		end
+	end	
+end
+
 function datacube.print_table_normal(tbl, timedelta, depth)
 	local sorted_grtable = pairs_top_by_val(tbl, datacube.viz_info.top_number, function(t,a,b) return t[b][2] < t[a][2] end)
 		

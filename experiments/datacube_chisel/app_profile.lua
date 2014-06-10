@@ -60,8 +60,8 @@ function on_init()
 	fntags = chisel.request_field("appevt.ntags")
 	
 	-- Note: we assume the user won't specify more than 32 nested tags
-	for i = 0, 32 do
-		fkeys[i] = chisel.request_field("appevt.tag[0]")
+	for j = 0, 32 do
+		fkeys[j + 1] = chisel.request_field("appevt.tag[" .. j .. "]")
 	end
 
 	fvalue = chisel.request_field(vizinfo.value_fld[1])
@@ -69,6 +69,8 @@ function on_init()
 	-- Init the datacube
 	dcube.set_viz_info(vizinfo)
 	
+	chisel.set_filter("evt.type=appevt and evt.dir=<")
+		
 	return true
 end
 
@@ -89,13 +91,15 @@ end
 
 function on_event()
 	local value = evt.field(fvalue)
-
+	local ntags = evt.field(fntags)
+	local keys = {}
+	
+	for j = 1, ntags do
+		keys[j] = evt.field(fkeys[j])
+	end
+	
 	if value ~= nil then
-		dcube.insert(fkeys, vizinfo.key_defaults, grtable, value, 1)
-	else
-		if vizinfo.value_defaults ~= nil then 
-			dcube.insert(keys, grtable, vizinfo.value_defaults[1], 1)
-		end
+		dcube.insert_raw(keys, vizinfo.key_defaults, grtable, value, 1)
 	end
 
 	return true
