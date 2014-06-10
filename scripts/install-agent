@@ -16,7 +16,11 @@ function install_rpm {
 
 	if ! yum -q list dkms > /dev/null 2>&1; then
 		echo "* Installing EPEL repository (for DKMS)"
-		rpm --quiet -i http://mirror.us.leaseweb.net/epel/6/i386/epel-release-6-8.noarch.rpm
+		if [ $VERSION -eq 7 ]; then
+			rpm --quiet -i http://mirrors.kernel.org/fedora-epel/beta/7/x86_64/epel-release-7-0.1.noarch.rpm
+		else
+			rpm --quiet -i http://mirrors.kernel.org/fedora-epel/6/i386/epel-release-6-8.noarch.rpm
+		fi
 	fi
 
 	echo "* Installing Draios public key"
@@ -58,28 +62,28 @@ function install_deb {
 }
 
 function unsupported {
-    echo "Unsupported operating system. Please consider contacting support@draios.com or trying the manual installation."
-    exit 1	
+	echo "Unsupported operating system. Please consider contacting support@draios.com or trying the manual installation."
+	exit 1	
 }
 
 function kernel_warning {
-    echo "Unable to find kernel development files for the current kernel version" $(uname -r)
-    echo "This usually means that your system is not up-to-date or you installed a custom kernel version."
-    echo "The installation will continue but you'll need to install these yourself in order to use the agent."
-    echo "Contact support@draios.com if you need further assistance."
+	echo "Unable to find kernel development files for the current kernel version" $(uname -r)
+	echo "This usually means that your system is not up-to-date or you installed a custom kernel version."
+	echo "The installation will continue but you'll need to install these yourself in order to use the agent."
+	echo "Contact support@draios.com if you need further assistance."
 }
 
 function help {
-    echo "Usage: $0 access_key [tags]"
-    echo "  access_key: Secret access key, as shown in app.draios.com"
-    echo "  tags: List of tags for this host. If set, tags can be used in"
-    echo "        the Draios map. The syntax can be a comma-separated list of"
-    echo "        TAG_NAME:TAG_VALUE or a single TAG_VALUE (in which case the tag"
-    echo "        name \"Tag\" is implicitly assumed)."
-    echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
-    echo "        and \"webserver\" are all valid alternatives."
-    echo
-    exit 1
+	echo "Usage: $0 access_key [tags]"
+	echo "  access_key: Secret access key, as shown in app.draios.com"
+	echo "  tags: List of tags for this host. If set, tags can be used in"
+	echo "        the Draios map. The syntax can be a comma-separated list of"
+	echo "        TAG_NAME:TAG_VALUE or a single TAG_VALUE (in which case the tag"
+	echo "        name \"Tag\" is implicitly assumed)."
+	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
+	echo "        and \"webserver\" are all valid alternatives."
+	echo
+	exit 1
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -90,8 +94,8 @@ ACCESS_KEY="$1"
 TAGS="$2"
 
 if [ $(id -u) != 0 ]; then
-    echo "Installer must be run as root (or with sudo)."
-    exit 1
+	echo "Installer must be run as root (or with sudo)."
+	exit 1
 fi
 
 echo "* Detecting operating system"
@@ -114,19 +118,19 @@ if [ -f /etc/debian_version ]; then
 	if [ $DISTRO = "Ubuntu" ]; then
 		VERSION=$(echo $VERSION | cut -d'.' -f1)
 		if [ $VERSION -ge 10 ]; then
-		    install_deb
+			install_deb
 		else
 			unsupported
 		fi
 	elif [ $DISTRO = "LinuxMint" ]; then
 		if [ $VERSION -ge 9 ]; then
-		    install_deb
+			install_deb
 		else
 			unsupported
 		fi
 	elif [ $DISTRO = "Debian" ]; then
 		if [ $VERSION -ge 6 ]; then
-		    install_deb
+			install_deb
 		elif [[ $VERSION == *sid* ]]; then
 			install_deb
 		else
@@ -138,19 +142,19 @@ if [ -f /etc/debian_version ]; then
 
 elif [ -f /etc/system-release-cpe ]; then
 	DISTRO=$(cat /etc/system-release-cpe | cut -d':' -f3)
-	VERSION=$(cat /etc/system-release-cpe | cut -d':' -f5)
+	VERSION=$(cat /etc/system-release-cpe | cut -d':' -f5 | cut -d'.' -f1)
 
 	if [ $DISTRO = "oracle" ] || [ $DISTRO = "centos" ] || [ $DISTRO = "redhat" ]; then
-		if echo $VERSION | grep -q ^6; then
+		if [ $VERSION -ge 6 ]; then
 			install_rpm
 		else
 			unsupported
 		fi
 	elif [ $DISTRO = "amazon" ]; then
-	    install_rpm
+		install_rpm
 	elif [ $DISTRO = "fedoraproject" ]; then
 		if [ $VERSION -ge 13 ]; then
-		    install_rpm
+			install_rpm
 		else
 			unsupported
 		fi
