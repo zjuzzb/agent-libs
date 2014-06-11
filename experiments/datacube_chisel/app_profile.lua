@@ -30,6 +30,7 @@ terminal = require "ansiterminal"
 grtable = {}
 islive = false
 fkeys = {}
+fvals = {}
 fntags = nil
 run_cnt = 0
 
@@ -38,14 +39,17 @@ vizinfo =
 	key_fld = nil,
 	key_desc = nil,
 	key_defaults = nil,
-	value_fld = {"appevt.latency"},
+	value_fld = {"appevt.latency", "evt.count"},
+--	value_fld = {"evt.count"},
 	value_desc = {"time"},
 	value_operations = {"SUM"},
 	value_defaults = nil,
-	valueunits = {"time"},
+	valueunits = {"time", "none"},
+--	valueunits = {"none"},
 	top_number = 0,
 	output_format = "normal",
-	do_diff = false
+	aggregate_vals = false,
+	print_keys_first = true
 }
 
 -- Argument notification callback
@@ -55,20 +59,22 @@ end
 
 function on_init()
 	run_cnt = run_cnt + 1
-			
+
 	-- Request the fields that we need
 	fntags = chisel.request_field("appevt.ntags")
-	
+
 	-- Note: we assume the user won't specify more than 32 nested tags
 	for j = 0, 32 do
 		fkeys[j + 1] = chisel.request_field("appevt.tag[" .. j .. "]")
 	end
 
-	fvalue = chisel.request_field(vizinfo.value_fld[1])
+	for j = 1, #vizinfo.value_fld do
+		fvals[j] = chisel.request_field(vizinfo.value_fld[j])
+	end
 
 	-- Init the datacube
 	dcube.set_viz_info(vizinfo)
-	
+
 	chisel.set_filter("evt.type=appevt and evt.dir=<")
 		
 	return true
@@ -90,17 +96,24 @@ function on_capture_start()
 end
 
 function on_event()
-	local value = evt.field(fvalue)
 	local ntags = evt.field(fntags)
 	local keys = {}
+	local vals = {}
 	
 	for j = 1, ntags do
 		keys[j] = evt.field(fkeys[j])
 	end
 	
-	if value ~= nil then
-		dcube.insert_raw(keys, vizinfo.key_defaults, grtable, value, 1)
+	for j = 1, #fvals do
+		local v = evt.field(fvals[j])
+		if v == nil then
+			return true
+		end
+		
+		vals[j] = v
 	end
+
+	dcube.insert_raw(keys, vizinfo.key_defaults, grtable, vals, 1)
 
 	return true
 end
@@ -111,7 +124,7 @@ function on_interval(ts_s, ts_ns, delta)
 		terminal.goto(0, 0)
 	end
 	
-	dcube.print(grtable, ts_s, 0, delta, vizinfo)
+	dcube.print(grtable, ts_s, 0, delta)
 
 	-- Clear the table
 	grtable = {}
@@ -127,28 +140,7 @@ function on_capture_end(ts_s, ts_ns, delta)
 		return true
 	end
 
-	if vizinfo.do_diff then
-		if run_cnt == 1 then
-
-			-- t1 is global because we use it at the next run
-			t1 = {}
-			t1.children = create_json_table(grtable, delta, vizinfo, 1)
-			t1.name = "root"
-			t1.timedelta = delta
-
-			grtable = {}
-		else
-			local t2 = {}
-
-			t2.children = create_json_table(grtable, delta, vizinfo, 1)
-			t2.name = "root"
-			t2.timedelta = delta
-			
-			print_table_difference(t1, t2, vizinfo)
-		end
-	else
-		dcube.print(grtable, ts_s, 0, delta, vizinfo)
-	end
+	dcube.print(grtable, ts_s, 0, delta)
 	
 	return true
 end
