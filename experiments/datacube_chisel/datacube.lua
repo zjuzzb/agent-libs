@@ -23,147 +23,154 @@ json = require ("dkjson")
 
 local datacube = {}
 
+datacube.OP_SUM = 0
+datacube.OP_MIN = 1
+datacube.OP_MAX = 2
+datacube.OP_AVG = 3
+
 function datacube.set_viz_info(viz_info)
 	datacube.viz_info = viz_info
 end
 
-function datacube.insert(keys, key_deflts, tbl, value, depth)
-	local key = evt.field(keys[depth])
-	
-	if key == nil then
-		if key_deflts ~= nil then
-			key = key_deflts[depth]
-		else
-			return
+function datacube.add(entry, values)
+	for j, v in ipairs(values) do
+		if datacube.viz_info.value_operations[j] == datacube.OP_SUM then
+			entry[j + 1] = entry[j + 1] + v
+		elseif datacube.viz_info.value_operations[j] == datacube.OP_AVG then
+			entry[j + 1] = entry[j + 1] + v
+			if entry.cnt == nil then
+				entry.cnt = {}
+			end
+			
+			entry.cnt[j + 1] = (entry.cnt[j + 1] or 1) + 1
+		elseif datacube.viz_info.value_operations[j] == datacube.OP_MIN then
+			if v < entry[j + 1] then
+				entry[j + 1] = v
+			end
+		elseif datacube.viz_info.value_operations[j] == datacube.OP_MAX then
+			if v > entry[j + 1] then
+				entry[j + 1] = v
+			end
 		end
 	end
-
-	local entryval = tbl[key]
-
-	if entryval == nil then
-		if datacube.viz_info.aggregate_vals == true then
-			tbl[key] = {{}, value}
-		else
-			tbl[key] = {{}, nil}
-		end
-
-		if depth < #keys then
-			datacube.insert(keys, key_deflts, tbl[key][1], value, depth + 1)
-			if datacube.viz_info.aggregate_vals == false then
-				return
-			end
-		end
-		
-		tbl[key][2] = value
-	else
-		if depth < #keys then
-			datacube.insert(keys, key_deflts, tbl[key][1], value, depth + 1)
-			if datacube.viz_info.aggregate_vals == false then
-				return
-			end
-		end
-		
-		local cval = tbl[key][2]
-		if cval ~= nil then
-			tbl[key][2] = cval + value
-		else
-			tbl[key][2] = value
-		end
-	end	
 end
 
-function datacube.insert_raw(keys, key_deflts, tbl, values, depth)
-	local key = keys[depth]
+function datacube.insert(keys, tbl, values, depth, raw)
+	local key
+	
+	if raw == true then
+		key = keys[depth]
+	else
+		key = evt.field(keys[depth])
+	end
 	
 	if key == nil then
-		if key_deflts ~= nil then
-			key = key_deflts[depth]
+		if datacube.viz_info.key_defaults ~= nil then
+			key = datacube.viz_info.key_defaults[depth]
 		else
-			return
+			return false
 		end
 	end
 
-	local entryval = tbl[key]
+	local entry = tbl[key]
 
-	if entryval == nil then
-		tbl[key] = {{}}
-		
+	if entry == nil then
+		entry = {{}}
+				
+		if depth < #keys then
+			if datacube.insert(keys, entry[1], values, depth + 1, raw) == false then
+				return false
+			end
+		end
+
 		if depth == #keys or datacube.viz_info.aggregate_vals == true then
 			for j, v in ipairs(values) do
-				tbl[key][j + 1] = v
+				entry[j + 1] = v
 			end
-		else
-			datacube.insert_raw(keys, key_deflts, tbl[key][1], values, depth + 1)
 		end
+		
+		tbl[key] = entry		
 	else
+		if depth < #keys then
+			if datacube.insert(keys, entry[1], values, depth + 1, raw) == false then
+				return false
+			end
+		end
+		
 		if depth == #keys or datacube.viz_info.aggregate_vals == true then
-			local cval = tbl[key][2]
+			local cval = entry[2]
 			if cval ~= nil then
-				for j, v in ipairs(values) do
-					tbl[key][j + 1] = tbl[key][j + 1] + v
-				end
+				datacube.add(entry, values)
 			else
 				for j, v in ipairs(values) do
-					tbl[key][j + 1] = v
+					entry[j + 1] = v
 				end
 			end
-		else
-			datacube.insert_raw(keys, key_deflts, tbl[key][1], values, depth + 1)
 		end				
 	end	
+	
+	return true
 end
 
 local VALS_OFF = 20
 local KEYS_OFF = 10
 
 function datacube.print_table_normal(tbl, timedelta, depth)
+--print("*" .. serialize_table(tbl))
 	local sorted_grtable = pairs_top_by_val(tbl, datacube.viz_info.top_number, function(t,a,b) return t[b][2] < t[a][2] end)
 
 	for k,v in sorted_grtable do
 	
-		local valstr = ""
+		local allvalstr = ""
 
 		for j = 2, #v do
-			local val = v[2]
+			local valstr = ""
+			local val = v[j]
 			
 			if val == nil then
 				valstr = ""
 				break
 			end
 			
+			if datacube.viz_info.value_operations[j - 1] == datacube.OP_AVG then
+				val = val / v.cnt[j]
+			end
+			
 			if datacube.viz_info.valueunits[j - 1] == "none" then
-				valstr = valstr .. v[j]
+				valstr = val
 			elseif datacube.viz_info.valueunits[j - 1] == "bytes" then
-				valstr = valstr .. format_bytes(v[j])
+				valstr = format_bytes(val)
 			elseif datacube.viz_info.valueunits[j - 1] == "time" then
-				valstr = valstr .. format_time_interval(v[j])
+				valstr = format_time_interval(val)
 			elseif datacube.viz_info.valueunits[j - 1] == "timepct" then
 				if timedelta ~= 0 then
-					pctstr = string.format("%.2f%%", v[j] / timedelta * 100)
+					pctstr = string.format("%.2f%%", val / timedelta * 100)
 				else
 					pctstr = "0.00%"
 				end
 
-				valstr = valstr .. extend_string(pctstr, 10)
+				valstr = extend_string(pctstr, 10)
 			end
 			
 			if j < #v then
-				valstr = valstr .. "  "
+				valstr = extend_string(valstr, KEYS_OFF)
 			end
+			
+			allvalstr = allvalstr .. valstr
 		end
 		
-		if valstr == "" then
-			valstr = "-"
+		if allvalstr == "" then
+			allvalstr = "-"
 		end
 		
 		if datacube.viz_info.print_keys_first then
 			local rvals_off = VALS_OFF - depth
-			print(extend_string("", depth - 1) .. extend_string(string.sub(k, 0, rvals_off - 1), rvals_off) .. valstr)
+			print(extend_string(extend_string("", depth - 1) .. string.sub(k, 0, rvals_off - 1), VALS_OFF) .. allvalstr)
 		else
 			local rkeys_off = KEYS_OFF - depth
-			print(extend_string("", depth - 1) .. extend_string(string.sub(valstr, 0, rkeys_off - 1), rkeys_off) .. k)
+			print(extend_string("", depth - 1) .. extend_string(string.sub(allvalstr, 0, rkeys_off - 1), KEYS_OFF) .. k)
 		end
-		
+
 		if v[1] ~= nil then
 			datacube.print_table_normal(v[1], timedelta, depth + 1)
 		end
@@ -206,18 +213,38 @@ function datacube.print(stable, ts_s, ts_ns, timedelta)
 		print(str)
 	else
 		header = ""
-		for i, name in ipairs(datacube.viz_info.value_desc) do
-			header = header .. extend_string(name, 10)
-		end
 
-		if datacube.viz_info.key_desc ~= nil then
-			for i, name in ipairs(datacube.viz_info.key_desc) do
-				header = header .. extend_string(name, 20)
+		if datacube.viz_info.print_keys_first then
+			if datacube.viz_info.key_desc ~= nil then
+				for i, name in ipairs(datacube.viz_info.key_desc) do
+					header = header .. extend_string(name, KEYS_OFF)
+				end
+			end
+
+			header = extend_string(header, VALS_OFF)
+					
+			for i, name in ipairs(datacube.viz_info.value_desc) do
+				header = header .. extend_string(name, KEYS_OFF)
+			end
+		else
+			for i, name in ipairs(datacube.viz_info.value_desc) do
+				header = header .. extend_string(name, KEYS_OFF)
+			end
+
+			if datacube.viz_info.key_desc ~= nil then
+				for i, name in ipairs(datacube.viz_info.key_desc) do
+					header = header .. name .. "/"
+				end
 			end
 		end
-
+		
 		print(header)
-		print("------------------------------")
+		
+		separator = ""
+		for j = 0, #header do
+			separator = separator.. "-"
+		end
+		print(separator)
 		
 		datacube.print_table_normal(stable, timedelta, 1)
 	end

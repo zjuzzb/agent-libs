@@ -104,7 +104,8 @@ vizinfo =
 	valueunits = {},
 	top_number = 0,
 	output_format = "normal",
-	do_diff = false
+	do_diff = false,
+	aggregate_vals = true,
 }
 
 -- Argument notification callback
@@ -146,7 +147,20 @@ function on_set_arg(name, val)
 		vizinfo.value_desc = split(val, ",")
 		return true
 	elseif name == "valueoperations" then
-		vizinfo.value_operations = split(val, ",")
+		local ops = split(val, ",")
+		
+		for j,v in ipairs(ops) do
+			if v == "SUM" then
+				vizinfo.value_operations[j] = dcube.OP_SUM
+			elseif v == "MIN" then
+				vizinfo.value_operations[j] = dcube.OP_MIN
+			elseif v == "MAX" then
+				vizinfo.value_operations[j] = dcube.OP_MAX
+			elseif v == "AVG" then
+				vizinfo.value_operations[j] = dcube.OP_AVG
+			end
+		end
+		
 		return true
 	elseif name == "valueunits" then
 		vizinfo.valueunits = split(val, ",")
@@ -240,7 +254,7 @@ function on_event()
 	local value = evt.field(fvalue)
 
 	if value ~= nil then
-		dcube.insert(fkeys, vizinfo.key_defaults, grtable, value, 1)
+		dcube.insert(fkeys, grtable, {value}, 1)
 	else
 		if vizinfo.value_defaults ~= nil then 
 			dcube.insert(keys, grtable, vizinfo.value_defaults[1], 1)
@@ -256,7 +270,7 @@ function on_interval(ts_s, ts_ns, delta)
 		terminal.goto(0, 0)
 	end
 	
-	dcube.print(grtable, ts_s, 0, delta, vizinfo)
+	dcube.print(grtable, ts_s, 0, delta)
 
 	-- Clear the table
 	grtable = {}
@@ -277,7 +291,7 @@ function on_capture_end(ts_s, ts_ns, delta)
 
 			-- t1 is global because we use it at the next run
 			t1 = {}
-			t1.children = create_json_table(grtable, delta, vizinfo, 1)
+			t1.children = create_json_table(grtable, delta, 1)
 			t1.name = "root"
 			t1.timedelta = delta
 
@@ -285,14 +299,14 @@ function on_capture_end(ts_s, ts_ns, delta)
 		else
 			local t2 = {}
 
-			t2.children = create_json_table(grtable, delta, vizinfo, 1)
+			t2.children = create_json_table(grtable, delta, 1)
 			t2.name = "root"
 			t2.timedelta = delta
 			
 			print_table_difference(t1, t2, vizinfo)
 		end
 	else
-		dcube.print(grtable, ts_s, 0, delta, vizinfo)
+		dcube.print(grtable, ts_s, 0, delta)
 	end
 	
 	return true

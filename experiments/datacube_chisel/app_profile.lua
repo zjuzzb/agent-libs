@@ -30,22 +30,20 @@ terminal = require "ansiterminal"
 grtable = {}
 islive = false
 fkeys = {}
-fvals = {}
 fntags = nil
 run_cnt = 0
+flatency = nil
+fncalls = nil
 
 vizinfo = 
 {
 	key_fld = nil,
-	key_desc = nil,
+	key_desc = {"Tag"},
 	key_defaults = nil,
-	value_fld = {"appevt.latency", "evt.count"},
---	value_fld = {"evt.count"},
-	value_desc = {"time"},
-	value_operations = {"SUM"},
+	value_desc = {"#calls", "TotTime", "AvgTime", "MinTime", "MaxTime"},
+	value_operations = {dcube.OP_SUM, dcube.OP_SUM, dcube.OP_AVG, dcube.OP_MIN, dcube.OP_MAX},
 	value_defaults = nil,
-	valueunits = {"time", "none"},
---	valueunits = {"none"},
+	valueunits = {"none", "time", "time", "time", "time"},
 	top_number = 0,
 	output_format = "normal",
 	aggregate_vals = false,
@@ -68,9 +66,8 @@ function on_init()
 		fkeys[j + 1] = chisel.request_field("appevt.tag[" .. j .. "]")
 	end
 
-	for j = 1, #vizinfo.value_fld do
-		fvals[j] = chisel.request_field(vizinfo.value_fld[j])
-	end
+	flatency = chisel.request_field("appevt.latency")
+	fncalls = chisel.request_field("evt.count")
 
 	-- Init the datacube
 	dcube.set_viz_info(vizinfo)
@@ -98,22 +95,17 @@ end
 function on_event()
 	local ntags = evt.field(fntags)
 	local keys = {}
-	local vals = {}
 	
 	for j = 1, ntags do
 		keys[j] = evt.field(fkeys[j])
 	end
-	
-	for j = 1, #fvals do
-		local v = evt.field(fvals[j])
-		if v == nil then
-			return true
-		end
-		
-		vals[j] = v
-	end
 
-	dcube.insert_raw(keys, vizinfo.key_defaults, grtable, vals, 1)
+	local latency = evt.field(flatency)
+	local ncalls = evt.field(fncalls)
+
+	local vals = {ncalls, latency, latency, latency, latency}
+
+	dcube.insert(keys, grtable, vals, 1, true)
 
 	return true
 end
