@@ -11,7 +11,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration, protocol_queue*
 	m_inspector(NULL),
 	m_analyzer(NULL),
 	m_sinsp_handler(configuration, queue),
-	m_dump_job_requests(10)
+	m_dump_job_requests(10),
+	m_dragent_pid(0)
 {
 }
 
@@ -33,6 +34,8 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 	m_inspector->m_analyzer = m_analyzer;
+
+	m_dragent_pid = getpid();
 
 	//
 	// sysdig that comes with dragent is always installed in /usr
@@ -287,6 +290,15 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 		SharedPtr<dump_job_state> job = *it;
 
 		if(job->m_terminated)
+		{
+			continue;
+		}
+
+		//
+		// We don't want dragent to show up in captures
+		//
+		sinsp_threadinfo* tinfo = ev->get_thread_info();
+		if(tinfo && tinfo->m_pid == m_dragent_pid)
 		{
 			continue;
 		}

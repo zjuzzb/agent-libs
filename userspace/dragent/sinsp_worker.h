@@ -140,4 +140,5 @@ private:
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
 	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
+	int64_t m_dragent_pid;
 };
