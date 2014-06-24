@@ -708,6 +708,33 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
+	//
+	// Propagate the memory information from child thread to main thread:
+	// since memory is updated at context-switch intervals, it can happen
+	// that the "main" thread stays mostly idle, without getting memory events then
+	//
+	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
+	{
+		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+		sinsp_threadinfo* tinfo = &it->second;
+
+		if(tinfo->m_vmsize_kb > mtinfo->m_vmsize_kb)
+		{
+			mtinfo->m_vmsize_kb = tinfo->m_vmsize_kb;
+		}
+
+		if(tinfo->m_vmrss_kb > mtinfo->m_vmrss_kb)
+		{
+			mtinfo->m_vmrss_kb = tinfo->m_vmrss_kb;
+		}
+
+		if(tinfo->m_vmswap_kb > mtinfo->m_vmswap_kb)
+		{
+			mtinfo->m_vmswap_kb = tinfo->m_vmswap_kb;
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes

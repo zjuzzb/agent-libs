@@ -175,19 +175,16 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	}
 
 	m_procinfo->m_cpuload += other->m_cpuload;
-	if(other->m_tinfo->m_vmsize_kb > m_procinfo->m_vmsize_kb)
-	{
-		m_procinfo->m_vmsize_kb = other->m_tinfo->m_vmsize_kb;
-	}
 
-	if(other->m_tinfo->m_vmrss_kb > m_procinfo->m_vmrss_kb)
+	//
+	// The memory is just per-process, so we sum it into the parent program
+	// just if this is not a child thread
+	//
+	if(other->m_tinfo->is_main_thread())
 	{
-		m_procinfo->m_vmrss_kb = other->m_tinfo->m_vmrss_kb;
-	}
-
-	if(other->m_tinfo->m_vmswap_kb > m_procinfo->m_vmswap_kb)
-	{
-		m_procinfo->m_vmswap_kb = other->m_tinfo->m_vmswap_kb;
+		m_procinfo->m_vmsize_kb += other->m_tinfo->m_vmsize_kb;
+		m_procinfo->m_vmrss_kb += other->m_tinfo->m_vmrss_kb;
+		m_procinfo->m_vmswap_kb += other->m_tinfo->m_vmswap_kb;
 	}
 
 	m_procinfo->m_pfmajor += (other->m_tinfo->m_pfmajor - other->m_old_pfmajor);
