@@ -298,7 +298,12 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 		// We don't want dragent to show up in captures
 		//
 		sinsp_threadinfo* tinfo = ev->get_thread_info();
-		if(tinfo && tinfo->m_pid == m_dragent_pid)
+		uint16_t etype = ev->get_type();
+
+		if(tinfo &&
+			tinfo->m_pid == m_dragent_pid &&
+			etype != PPME_SCHEDSWITCH_1_E && 
+			etype != PPME_SCHEDSWITCH_6_E)
 		{
 			continue;
 		}
