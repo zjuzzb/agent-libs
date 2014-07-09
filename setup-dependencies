@@ -35,11 +35,11 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1g
+OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1h
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/openssl-1.0.1g.tar.gz
-	tar -xzf openssl-1.0.1g.tar.gz
+	wget https://s3.amazonaws.com/download.draios.com/dependencies/openssl-1.0.1h.tar.gz
+	tar -xzf openssl-1.0.1h.tar.gz
 	cd $OPENSSL_DIR
 	./config --prefix=$OPENSSL_DIR/target
 	make install
@@ -76,11 +76,11 @@ if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
 	unzip simpleopt-3.6.zip
 fi
 
-CMAKE_DIR=$DEPENDENCIES/cmake-2.8.12.2
+CMAKE_DIR=$DEPENDENCIES/cmake-3.0.0
 if [ ! -d "$CMAKE_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-2.8.12.2.tar.gz
-	tar -xzf cmake-2.8.12.2.tar.gz
+	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.0.0.tar.gz
+	tar -xzf cmake-3.0.0.tar.gz
 	cd $CMAKE_DIR
 	patch -p1 < $AGENT_SOURCEDIR/patches/0001-Make-deb-package-options-configurable-per-component.patch
 	./bootstrap

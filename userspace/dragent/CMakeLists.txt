@@ -5,7 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/include)
 
@@ -35,8 +35,8 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/lib/libssh.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1g/target/lib/libcrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a
 	dl
 	rt)
 
