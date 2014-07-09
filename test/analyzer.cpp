@@ -170,12 +170,12 @@ TEST_F(sys_call_test, analyzer_fdstats)
 
 		for(uint32_t j = 0; j < 10; ++j)
 		{
-			fd = open("/tmp/testfile_opencount", O_RDWR | O_CREAT);
+			fd = open("/tmp/testfile_opencount", O_RDWR | O_CREAT, 0666);
 			EXPECT_LT(0, fd);
 			close(fd);
 		}
 
-		fd = open("/tmp/testfile_rdwr", O_RDWR | O_CREAT);
+		fd = open("/tmp/testfile_rdwr", O_RDWR | O_CREAT, 0666);
 		EXPECT_LT(0, fd);
 		res = write(fd, "token1", sizeof("token1"));
 		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
