@@ -15,7 +15,7 @@
 // The number of analyzer samples that we store in memory when we lose connection
 // to the backend. After MAX_SAMPLE_STORE_SIZE samples, we will start dropping.
 //
-#define MAX_SAMPLE_STORE_SIZE	30
+#define MAX_SAMPLE_STORE_SIZE 256
 
 class aws_metadata
 {
