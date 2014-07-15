@@ -273,7 +273,7 @@ bool sinsp_worker::queue_response(const draiosproto::dump_response& response)
 		return true;
 	}
 
-	while(!m_queue->put(buffer))
+	while(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{
 		g_log->error("Queue full");
 		return false;

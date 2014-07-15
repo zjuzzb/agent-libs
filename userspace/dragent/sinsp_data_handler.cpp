@@ -30,7 +30,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::
 		+ NumberFormatter::format(ts_ns / 1000000000) 
 		+ ", len=" + NumberFormatter::format(buffer->size()));
 
-	if(!m_queue->put(buffer))
+	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		g_log->error("Queue full, discarding sample");
 	}
