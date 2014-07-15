@@ -308,6 +308,20 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 			continue;
 		}
 
+		if(job->m_max_size && 
+			job->m_file_size > job->m_max_size)
+		{
+			stop_job(job);
+			continue;
+		}
+
+		if(job->m_duration_ns && 
+			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
+		{
+			stop_job(job);
+			continue;
+		}
+
 		if(job->m_filter)
 		{
 			if(!job->m_filter->run(ev))
@@ -318,18 +332,6 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 
 		job->m_dumper->dump(ev);
 		++job->m_n_events;
-
-		if(job->m_max_size && 
-			job->m_file_size > job->m_max_size)
-		{
-			stop_job(job);
-		}
-
-		if(job->m_duration_ns && 
-			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
-		{
-			stop_job(job);
-		}
 	}
 }
 
