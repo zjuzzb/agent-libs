@@ -581,12 +581,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_stop));
   dump_response_descriptor_ = file->message_type(22);
-  static const int dump_response_offsets_[8] = {
+  static const int dump_response_offsets_[9] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, customer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, chunk_no_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, final_chunk_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, keep_alive_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, content_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, error_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, token_),
@@ -952,34 +953,34 @@ void protobuf_AddDesc_draios_2eproto() {
     "lters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006"
     " \002(\t\"a\n\021dump_request_stop\022\024\n\014timestamp_n"
     "s\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_"
-    "id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\244\001\n\rdump_respons"
+    "id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\270\001\n\rdump_respons"
     "e\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
     "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001"
-    "(\r\022\023\n\013final_chunk\030\010 \001(\010\022\017\n\007content\030\004 \001(\014"
-    "\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_o"
-    "pen_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
-    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005to"
-    "ken\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001("
-    "\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004po"
-    "rt\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns\030\001 "
-    "\002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003"
-    " \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005err"
-    "or\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_clo"
-    "se_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmach"
-    "ine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005tok"
-    "en\030\004 \002(\t\"T\n\023auto_update_request\022\024\n\014times"
+    "(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t "
+    "\001(\010\022\017\n\007content\030\004 \001(\014\022\r\n\005error\030\005 \001(\t\022\r\n\005t"
+    "oken\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014times"
     "tamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cus"
-    "tomer_id\030\003 \001(\t*\251\001\n\013networkrole\022\010\n\004NONE\020\000"
-    "\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_"
-    "IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_"
-    "LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CL"
-    "IENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\261\001\n\014message_t"
-    "ype\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002"
-    "\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE"
-    "\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CH"
-    "ANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQ"
-    "UEST\020\tB$\n\031com.draios.model.protobufB\005Age"
-    "ntH\001", 6484);
+    "tomer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 "
+    "\002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npa"
+    "ssphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_dat"
+    "a\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
+    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022"
+    "\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_sta"
+    "tus\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timest"
+    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
+    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_upd"
+    "ate_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
+    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013n"
+    "etworkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SE"
+    "RVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_"
+    "UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022"
+    "\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CL"
+    "IENT\020 *\261\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022"
+    "DUMP_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST_STO"
+    "P\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANN"
+    "EL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020"
+    "\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n\031com.draios"
+    ".model.protobufB\005AgentH\001", 6504);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -12039,6 +12040,7 @@ const int dump_response::kMachineIdFieldNumber;
 const int dump_response::kCustomerIdFieldNumber;
 const int dump_response::kChunkNoFieldNumber;
 const int dump_response::kFinalChunkFieldNumber;
+const int dump_response::kKeepAliveFieldNumber;
 const int dump_response::kContentFieldNumber;
 const int dump_response::kErrorFieldNumber;
 const int dump_response::kTokenFieldNumber;
@@ -12065,6 +12067,7 @@ void dump_response::SharedCtor() {
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   chunk_no_ = 0u;
   final_chunk_ = false;
+  keep_alive_ = false;
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
@@ -12131,6 +12134,7 @@ void dump_response::Clear() {
     }
     chunk_no_ = 0u;
     final_chunk_ = false;
+    keep_alive_ = false;
     if (has_content()) {
       if (content_ != &::google::protobuf::internal::kEmptyString) {
         content_->clear();
@@ -12141,6 +12145,8 @@ void dump_response::Clear() {
         error_->clear();
       }
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_token()) {
       if (token_ != &::google::protobuf::internal::kEmptyString) {
         token_->clear();
@@ -12282,6 +12288,22 @@ bool dump_response::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(72)) goto parse_keep_alive;
+        break;
+      }
+
+      // optional bool keep_alive = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_keep_alive:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &keep_alive_)));
+          set_has_keep_alive();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -12361,6 +12383,11 @@ void dump_response::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(8, this->final_chunk(), output);
   }
 
+  // optional bool keep_alive = 9;
+  if (has_keep_alive()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(9, this->keep_alive(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -12431,6 +12458,11 @@ void dump_response::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(8, this->final_chunk(), target);
   }
 
+  // optional bool keep_alive = 9;
+  if (has_keep_alive()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(9, this->keep_alive(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -12475,6 +12507,11 @@ int dump_response::ByteSize() const {
       total_size += 1 + 1;
     }
 
+    // optional bool keep_alive = 9;
+    if (has_keep_alive()) {
+      total_size += 1 + 1;
+    }
+
     // optional bytes content = 4;
     if (has_content()) {
       total_size += 1 +
@@ -12489,6 +12526,8 @@ int dump_response::ByteSize() const {
           this->error());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // required string token = 6;
     if (has_token()) {
       total_size += 1 +
@@ -12538,12 +12577,17 @@ void dump_response::MergeFrom(const dump_response& from) {
     if (from.has_final_chunk()) {
       set_final_chunk(from.final_chunk());
     }
+    if (from.has_keep_alive()) {
+      set_keep_alive(from.keep_alive());
+    }
     if (from.has_content()) {
       set_content(from.content());
     }
     if (from.has_error()) {
       set_error(from.error());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_token()) {
       set_token(from.token());
     }
@@ -12564,7 +12608,7 @@ void dump_response::CopyFrom(const dump_response& from) {
 }
 
 bool dump_response::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000083) != 0x00000083) return false;
+  if ((_has_bits_[0] & 0x00000103) != 0x00000103) return false;
 
   return true;
 }
@@ -12576,6 +12620,7 @@ void dump_response::Swap(dump_response* other) {
     std::swap(customer_id_, other->customer_id_);
     std::swap(chunk_no_, other->chunk_no_);
     std::swap(final_chunk_, other->final_chunk_);
+    std::swap(keep_alive_, other->keep_alive_);
     std::swap(content_, other->content_);
     std::swap(error_, other->error_);
     std::swap(token_, other->token_);

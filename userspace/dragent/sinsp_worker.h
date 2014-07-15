@@ -65,6 +65,7 @@ private:
 			m_n_events(0),
 			m_last_chunk_offset(0),
 			m_last_chunk_idx(0),
+			m_last_keepalive_ns(0),
 			m_terminated(false),
 			m_error(false)
 		{
@@ -115,6 +116,7 @@ private:
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
 		string m_last_chunk;
+		uint64_t m_last_keepalive_ns;
 		bool m_terminated;
 		bool m_error;
 	};
@@ -125,13 +127,14 @@ private:
 	void send_dump_chunks(dump_job_state* job);
 	void run_jobs(sinsp_evt* ev);
 	void process_job_requests(uint64_t ts);
-	void flush_jobs();
+	void flush_jobs(uint64_t ts);
 	void stop_job(dump_job_state* job);
 	void start_job(const dump_job_request& request, uint64_t ts);
 	void read_chunk(dump_job_state* job);
 
 	static const string m_name;
 	static const uint64_t m_max_chunk_size = 100 * 1024;
+	static const uint64_t m_keepalive_interval_ns = 30 * 1000000000LL;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

@@ -308,6 +308,7 @@ message dump_response {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     optional uint32 chunk_no = 7; // Index of the current chunk, starting from 0
     optional bool final_chunk = 8; // True if this is the last chunk
+    optional bool keep_alive = 9; // True if this is a keep alive packet
     optional bytes content = 4; // The binary dump file
     optional string error = 5; // Dump errors
     required string token = 6; // The token associated with the request

@@ -220,7 +220,7 @@ captureinfo sinsp_worker::do_inspect()
 			// Why every second? Because the sending queue might be
 			// full and we still send each one every second
 			//
-			flush_jobs();
+			flush_jobs(ts);
 		}
 
 		run_jobs(ev);
@@ -527,10 +527,10 @@ void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
 	job_state->m_max_size = request.m_max_size;
 	job_state->m_start_ns = ts;
 
-	m_running_dump_jobs.push_back(job_state);	
+	m_running_dump_jobs.push_back(job_state);
 }
 
-void sinsp_worker::flush_jobs()
+void sinsp_worker::flush_jobs(uint64_t ts)
 {
 	vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
 
@@ -544,6 +544,15 @@ void sinsp_worker::flush_jobs()
 			g_log->error("Error checking file size");
 			job->m_error = true;
 			ASSERT(false);
+		}
+
+		if(ts - job->m_last_keepalive_ns > m_keepalive_interval_ns)
+		{
+			job->m_last_keepalive_ns = ts;
+			draiosproto::dump_response response;
+			prepare_response(job->m_token, &response);
+			response.set_keep_alive(true);
+			g_log->information("Job " + job->m_token + ": sending keepalive"); 
 		}
 
 		job->m_file_size = st.st_size;

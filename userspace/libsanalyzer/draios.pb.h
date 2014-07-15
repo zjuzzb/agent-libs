@@ -3641,6 +3641,13 @@ class dump_response : public ::google::protobuf::Message {
   inline bool final_chunk() const;
   inline void set_final_chunk(bool value);
 
+  // optional bool keep_alive = 9;
+  inline bool has_keep_alive() const;
+  inline void clear_keep_alive();
+  static const int kKeepAliveFieldNumber = 9;
+  inline bool keep_alive() const;
+  inline void set_keep_alive(bool value);
+
   // optional bytes content = 4;
   inline bool has_content() const;
   inline void clear_content();
@@ -3689,6 +3696,8 @@ class dump_response : public ::google::protobuf::Message {
   inline void clear_has_chunk_no();
   inline void set_has_final_chunk();
   inline void clear_has_final_chunk();
+  inline void set_has_keep_alive();
+  inline void clear_has_keep_alive();
   inline void set_has_content();
   inline void clear_has_content();
   inline void set_has_error();
@@ -3703,12 +3712,13 @@ class dump_response : public ::google::protobuf::Message {
   ::std::string* customer_id_;
   ::google::protobuf::uint32 chunk_no_;
   bool final_chunk_;
+  bool keep_alive_;
   ::std::string* content_;
   ::std::string* error_;
   ::std::string* token_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10094,15 +10104,37 @@ inline void dump_response::set_final_chunk(bool value) {
   final_chunk_ = value;
 }
 
-// optional bytes content = 4;
-inline bool dump_response::has_content() const {
+// optional bool keep_alive = 9;
+inline bool dump_response::has_keep_alive() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void dump_response::set_has_content() {
+inline void dump_response::set_has_keep_alive() {
   _has_bits_[0] |= 0x00000020u;
 }
-inline void dump_response::clear_has_content() {
+inline void dump_response::clear_has_keep_alive() {
   _has_bits_[0] &= ~0x00000020u;
+}
+inline void dump_response::clear_keep_alive() {
+  keep_alive_ = false;
+  clear_has_keep_alive();
+}
+inline bool dump_response::keep_alive() const {
+  return keep_alive_;
+}
+inline void dump_response::set_keep_alive(bool value) {
+  set_has_keep_alive();
+  keep_alive_ = value;
+}
+
+// optional bytes content = 4;
+inline bool dump_response::has_content() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void dump_response::set_has_content() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void dump_response::clear_has_content() {
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void dump_response::clear_content() {
   if (content_ != &::google::protobuf::internal::kEmptyString) {
@@ -10166,13 +10198,13 @@ inline void dump_response::set_allocated_content(::std::string* content) {
 
 // optional string error = 5;
 inline bool dump_response::has_error() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void dump_response::set_has_error() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void dump_response::clear_has_error() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void dump_response::clear_error() {
   if (error_ != &::google::protobuf::internal::kEmptyString) {
@@ -10236,13 +10268,13 @@ inline void dump_response::set_allocated_error(::std::string* error) {
 
 // required string token = 6;
 inline bool dump_response::has_token() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void dump_response::set_has_token() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void dump_response::clear_has_token() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void dump_response::clear_token() {
   if (token_ != &::google::protobuf::internal::kEmptyString) {
