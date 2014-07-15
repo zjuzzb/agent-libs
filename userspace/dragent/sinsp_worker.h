@@ -131,7 +131,7 @@ private:
 	void read_chunk(dump_job_state* job);
 
 	static const string m_name;
-	static const uint64_t m_max_chunk_size = 10 * 1024 * 1024;
+	static const uint64_t m_max_chunk_size = 100 * 1024;
 
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
