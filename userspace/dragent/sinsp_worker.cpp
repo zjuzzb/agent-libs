@@ -422,11 +422,13 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 			{
 				g_log->error(m_name + ": ferror while reading " + job->m_file);
 				job->m_error = true;
+				send_error(job->m_token, "ferror while reading " + job->m_file);
 				ASSERT(false);
 				return;
 			} else {
 				g_log->error(m_name + ": unknown error while reading " + job->m_file);
 				job->m_error = true;
+				send_error(job->m_token, "unknown error while reading " + job->m_file);
 				ASSERT(false);
 				return;
 			}
@@ -544,6 +546,7 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 		if(stat(job->m_file.c_str(), &st) != 0)
 		{
 			g_log->error("Error checking file size");
+			send_error(job->m_token, "Error checking file size");
 			job->m_error = true;
 			ASSERT(false);
 		}
