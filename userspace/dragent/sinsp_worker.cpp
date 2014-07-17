@@ -558,6 +558,12 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 			prepare_response(job->m_token, &response);
 			response.set_keep_alive(true);
 			g_log->information("Job " + job->m_token + ": sending keepalive"); 
+			if(!queue_response(response))
+			{
+				g_log->error(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
+					+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
+				return;
+			}
 		}
 
 		job->m_file_size = st.st_size;
