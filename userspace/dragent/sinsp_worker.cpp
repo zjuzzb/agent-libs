@@ -550,15 +550,6 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
-		struct stat st;
-		if(stat(job->m_file.c_str(), &st) != 0)
-		{
-			g_log->error("Error checking file size");
-			send_error(job->m_token, "Error checking file size");
-			job->m_error = true;
-			ASSERT(false);
-		}
-
 		if(ts - job->m_last_keepalive_ns > m_keepalive_interval_ns)
 		{
 			job->m_last_keepalive_ns = ts;
