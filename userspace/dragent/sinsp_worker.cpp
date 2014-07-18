@@ -260,7 +260,7 @@ void sinsp_worker::prepare_response(const string& token, draiosproto::dump_respo
 	response->set_token(token);
 }
 
-bool sinsp_worker::queue_response(const draiosproto::dump_response& response)
+bool sinsp_worker::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		draiosproto::message_type::DUMP_RESPONSE, 
@@ -273,7 +273,7 @@ bool sinsp_worker::queue_response(const draiosproto::dump_response& response)
 		return true;
 	}
 
-	while(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
+	while(!m_queue->put(buffer, priority))
 	{
 		g_log->error("Queue full");
 		return false;
@@ -357,7 +357,7 @@ void sinsp_worker::send_error(const string& token, const string& error)
 	draiosproto::dump_response response;
 	prepare_response(token, &response);
 	response.set_error(error);
-	queue_response(response);	
+	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);	
 }
 
 void sinsp_worker::send_dump_chunks(dump_job_state* job)
@@ -387,7 +387,7 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 			response.set_final_chunk(true);
 		}
 		
-		if(!queue_response(response))
+		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
 		{
 			g_log->error(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
 				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
@@ -558,7 +558,16 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 			prepare_response(job->m_token, &response);
 			response.set_keep_alive(true);
 			g_log->information("Job " + job->m_token + ": sending keepalive"); 
-			queue_response(response);
+			queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
+		}
+
+		struct stat st;
+		if(stat(job->m_file.c_str(), &st) != 0)
+		{
+			g_log->error("Error checking file size");
+			send_error(job->m_token, "Error checking file size");
+			job->m_error = true;
+			ASSERT(false);
 		}
 
 		job->m_file_size = st.st_size;

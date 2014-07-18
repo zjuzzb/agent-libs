@@ -122,7 +122,7 @@ private:
 	};
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
-	bool queue_response(const draiosproto::dump_response& response);
+	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 	void send_error(const string& token, const string& error);
 	void send_dump_chunks(dump_job_state* job);
 	void run_jobs(sinsp_evt* ev);
