@@ -372,9 +372,17 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 			read_chunk(job);
 		}
 
+		uint32_t progress = 0;
+		ASSERT(job->m_file_size > 0);
+		if(job->m_file_size > 0)
+		{
+			progress = (job->m_last_chunk_offset * 100) / job->m_file_size;
+		}
+
 		g_log->information(m_name + ": " + job->m_file + ": Sending chunk " 
 			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size " 
-			+ NumberFormatter::format(job->m_last_chunk.size()));
+			+ NumberFormatter::format(job->m_last_chunk.size())
+			+ ", progress " + NumberFormatter::format(progress) + "%%");
 
 		draiosproto::dump_response response;
 		prepare_response(job->m_token, &response);
