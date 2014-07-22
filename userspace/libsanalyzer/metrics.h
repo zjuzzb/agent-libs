@@ -153,6 +153,8 @@ public:
 	sinsp_counter_time m_wait_other;
 	sinsp_counter_time m_processing;
 
+	sinsp_counters();
+
 	void clear();
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);

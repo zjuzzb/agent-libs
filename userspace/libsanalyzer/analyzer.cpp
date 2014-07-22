@@ -1795,12 +1795,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			//
-			// Reset the aggreagted host metrics
-			//
-			m_host_metrics.clear();
-			m_host_req_metrics.clear();
-
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
@@ -2112,6 +2106,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				serialize(m_prev_flush_time_ns);
 			}
+
+			//
+			// Reset the aggregated host metrics
+			//
+			m_host_metrics.clear();
+			m_host_req_metrics.clear();
 		}
 	}
 
