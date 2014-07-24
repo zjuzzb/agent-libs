@@ -2,6 +2,8 @@
 set -exu
 
 rmmod sysdig-probe || true
+rm -rf agent/build || true
+rm -rf sysdig/build || true
 agent/setup-dependencies
 
 make -C agent/build/debug
