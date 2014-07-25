@@ -15,6 +15,7 @@ add_executable(dragent
 	configuration.cpp 
 	connection_manager.cpp
 	crash_handler.cpp
+	dragent.cpp
 	error_handler.cpp
 	logger.cpp
 	main.cpp
