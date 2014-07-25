@@ -225,10 +225,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
 
 	file_channel->setProperty("rotation", "10M");
-	file_channel->setProperty("purgeCount", "5");
+	file_channel->setProperty("purgeCount", "10");
 	file_channel->setProperty("archive", "timestamp");
 
-	AutoPtr<Formatter> formatter(new PatternFormatter("%h-%M-%S.%i, %p, %t"));
+	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %h:%M:%S.%i, %P, %p, %t"));
 
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
 	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
