@@ -41,4 +41,5 @@ rm -f DRAIOS-GPG-KEY.private
 aws s3 cp s3://draios-builder/config ~/.ssh
 aws s3 cp s3://draios-builder/jenkins-github-agent.pem ~/.ssh
 aws s3 cp s3://draios-builder/jenkins-github-sysdig.pem ~/.ssh
+aws s3 cp s3://draios-builder/jenkins-github-sysdig-private.pem ~/.ssh
 chmod 600 ~/.ssh/*
