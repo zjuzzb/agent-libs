@@ -133,46 +133,49 @@ void connection_manager::run()
 {
 	g_log->information(m_name + ": Starting");
 
-	SharedPtr<protocol_queue_item> item;
-
-	while(!dragent_configuration::m_terminate)
+	if(init())
 	{
-		//
-		// Make sure we have a valid connection
-		//
-		if(m_socket.isNull())
+		SharedPtr<protocol_queue_item> item;
+
+		while(!dragent_configuration::m_terminate)
 		{
-			Thread::sleep(1000);
-			
-			if(!connect())
+			//
+			// Make sure we have a valid connection
+			//
+			if(m_socket.isNull())
 			{
-				continue;
+				Thread::sleep(1000);
+				
+				if(!connect())
+				{
+					continue;
+				}
 			}
-		}
 
-		if(item.isNull())
-		{
-			//
-			// Wait 100ms to get a message from the queue
-			//
-			m_queue->get(&item, 100);
-		}
-
-		if(!item.isNull())
-		{
-			//
-			// Got a message, transmit it
-			//
-			if(transmit_buffer(item->data(), item->size()))
+			if(item.isNull())
 			{
-				item = NULL;
+				//
+				// Wait 100ms to get a message from the queue
+				//
+				m_queue->get(&item, 100);
 			}
-		}
 
-		//
-		// Check if we received a message
-		//
-		receive_message();
+			if(!item.isNull())
+			{
+				//
+				// Got a message, transmit it
+				//
+				if(transmit_buffer(item->data(), item->size()))
+				{
+					item = NULL;
+				}
+			}
+
+			//
+			// Check if we received a message
+			//
+			receive_message();
+		}
 	}
 
 	g_log->information(m_name + ": Terminating");

@@ -13,6 +13,11 @@ using namespace Poco::Net;
 volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
 
+static std::string bool_as_text(bool b)
+{
+	return b ? "true" : "false";
+}
+
 dragent_configuration::dragent_configuration()
 {
 	m_daemon = false;
@@ -30,6 +35,7 @@ dragent_configuration::dragent_configuration()
 	m_drop_lower_treshold = 0;
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
+	m_watchdog_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -148,6 +154,7 @@ void dragent_configuration::init(Application* app)
 	m_hidden_processes = config.getString("ui.hidden_processes", "");
 	m_autodrop_enabled = config.getBool("autoupdate.enabled", true);
 	m_print_protobuf = config.getBool("protobuf.print", false);
+	m_watchdog_enabled = config.getBool("watchdog.enabled", true);
 }
 
 void dragent_configuration::print_configuration()
@@ -161,10 +168,10 @@ void dragent_configuration::print_configuration()
 	g_log->information("logpriority.file: " + NumberFormatter::format(m_min_file_priority));
 	g_log->information("logpriority.console: " + NumberFormatter::format(m_min_console_priority));
 	g_log->information("transmitbuffer.size: " + NumberFormatter::format(m_transmitbuffer_size));
-	g_log->information("ssl.enabled: " + (m_ssl_enabled ? string("true") : string("false")));	
+	g_log->information("ssl.enabled: " + bool_as_text(m_ssl_enabled));	
 	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
-	g_log->information("compression.enabled: " + (m_compression_enabled ? string("true") : string("false")));
-	g_log->information("emitfullconnections.enabled: " + (m_emit_full_connections ? string("true") : string("false")));
+	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
+	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	g_log->information("dumpdir: " + m_dump_dir);
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.treshold.upper: " + NumberFormatter::format(m_drop_upper_treshold));
@@ -174,8 +181,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("ui.custommap: " + m_host_custom_map);
 	g_log->information("ui.is_hidden: " + m_host_hidden);
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
-	g_log->information("autoupdate.enabled: " + (m_autoupdate_enabled ? string("true") : string("false")));
-	g_log->information("protobuf.print: " + (m_print_protobuf ? string("true") : string("false")));
+	g_log->information("autoupdate.enabled: " + bool_as_text(m_autoupdate_enabled));
+	g_log->information("protobuf.print: " + bool_as_text(m_print_protobuf));
+	g_log->information("watchdog.enabled: " + bool_as_text(m_watchdog_enabled));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

@@ -12,10 +12,10 @@ public:
 		protocol_queue* queue, sinsp_worker* sinsp_worker);
 	~connection_manager();
 
-	bool init();
 	void run();
 
 private:
+	bool init();
 	bool connect();
 	void disconnect();
 	bool transmit_buffer(const char* buffer, uint32_t buflen);

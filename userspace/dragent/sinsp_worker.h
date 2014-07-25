@@ -17,7 +17,7 @@ public:
 	uint64_t m_time;
 };
 
-class sinsp_worker
+class sinsp_worker : public Runnable
 {
 public:
 	class dump_job_request
@@ -44,8 +44,7 @@ public:
 	sinsp_worker(dragent_configuration* configuration, protocol_queue* queue);
 	~sinsp_worker();
 
-	void init();
-	captureinfo do_inspect();
+	void run();
 	void queue_job_request(SharedPtr<dump_job_request> job_request);
 
 private:
@@ -121,6 +120,7 @@ private:
 		bool m_error;
 	};
 
+	void init();
 	void prepare_response(const string& token, draiosproto::dump_response* response);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 	void send_error(const string& token, const string& error);

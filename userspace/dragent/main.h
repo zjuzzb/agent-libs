@@ -7,6 +7,7 @@
 #include <analyzer.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <time.h>
 #include <signal.h>
 #include <fcntl.h>

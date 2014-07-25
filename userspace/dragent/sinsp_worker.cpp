@@ -170,9 +170,9 @@ void sinsp_worker::init()
 	}
 }
 
-captureinfo sinsp_worker::do_inspect()
+void sinsp_worker::run()
 {
-	captureinfo retval;
+	captureinfo cinfo;
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
@@ -180,9 +180,13 @@ captureinfo sinsp_worker::do_inspect()
 	uint64_t firstts = 0;
 	uint64_t last_job_check_ns = 0;
 
+	g_log->information("sinsp_worker: Starting");
+
+	init();
+
 	while(!dragent_configuration::m_terminate)
 	{
-		if(m_configuration->m_evtcnt != 0 && retval.m_nevts == m_configuration->m_evtcnt)
+		if(m_configuration->m_evtcnt != 0 && cinfo.m_nevts == m_configuration->m_evtcnt)
 		{
 			dragent_configuration::m_terminate = true;
 			break;
@@ -228,7 +232,7 @@ captureinfo sinsp_worker::do_inspect()
 		//
 		// Update the event count
 		//
-		retval.m_nevts++;
+		cinfo.m_nevts++;
 
 		if(firstts == 0)
 		{
@@ -238,8 +242,8 @@ captureinfo sinsp_worker::do_inspect()
 		deltats = ts - firstts;
 	}
 
-	retval.m_time = deltats;
-	return retval;
+	cinfo.m_time = deltats;
+	g_log->information("sinsp_worker: Terminating");
 }
 
 void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)

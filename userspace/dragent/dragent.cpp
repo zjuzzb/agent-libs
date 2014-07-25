@@ -9,7 +9,9 @@
 #include "logger.h"
 #include "monitor.h"
 
+#if 0
 #define AGENT_PRIORITY 19
+#endif
 
 static void g_signal_callback(int sig)
 {
@@ -283,54 +285,25 @@ int dragent_app::main(const std::vector<std::string>& args)
 #endif
 
 	ExitCode exit_code;
+	m_configuration.m_machine_id = Environment::nodeId();
 
-	//
-	// From now on we can get exceptions
-	//
-	try
+	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+
+	while(!dragent_configuration::m_terminate)
 	{
-		m_configuration.m_machine_id = Environment::nodeId();
-
-		//
-		// Connect to the server
-		//
-		if(m_connection_manager.init())
-		{
-			ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
-		}
-		
-		m_sinsp_worker.init();
-
-		//
-		// Start consuming the captured events
-		//
-		m_sinsp_worker.do_inspect();
-
-		if(dragent_error_handler::m_exception)
-		{
-			g_log->error("Application::EXIT_SOFTWARE\n");
-			exit_code = Application::EXIT_SOFTWARE;
-		}
-		else
-		{
-			g_log->information("Application::EXIT_OK\n");
-			exit_code = Application::EXIT_OK;
-		}
+		Thread::sleep(1000);
 	}
-	catch(sinsp_exception& e)
+
+	if(dragent_error_handler::m_exception)
 	{
-		g_log->error(e.what());
+		g_log->error("Application::EXIT_SOFTWARE");
 		exit_code = Application::EXIT_SOFTWARE;
 	}
-	catch(Poco::Exception& e)
+	else
 	{
-		g_log->error(e.displayText());
-		exit_code = Application::EXIT_SOFTWARE;
-	}
-	catch(...)
-	{
-		g_log->error("Application::EXIT_SOFTWARE\n");
-		exit_code = Application::EXIT_SOFTWARE;
+		g_log->information("Application::EXIT_OK");
+		exit_code = Application::EXIT_OK;
 	}
 
 	dragent_configuration::m_terminate = true;
