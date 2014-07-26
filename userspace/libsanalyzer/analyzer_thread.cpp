@@ -412,7 +412,7 @@ sinsp_threadinfo* thread_analyzer_info::get_main_program_thread()
 		if(m_tinfo->m_progid != -1)
 		{
 			//
-			// Yes, this is a child sub-process. Find the progrm root thread.
+			// Yes, this is a child sub-process. Find the program root thread.
 			//
 			sinsp_threadinfo *ttinfo = m_inspector->get_thread(m_tinfo->m_progid, true);
 			if(NULL == ttinfo)

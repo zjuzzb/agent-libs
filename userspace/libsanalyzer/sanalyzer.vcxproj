@@ -20,6 +20,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\cyclewriter.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\dumper.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\event.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\eventformatter.cpp" />
@@ -31,6 +33,7 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\logger.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\memmem.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\parsers.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\protodecoder.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\sinsp.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\stats.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\third-party\jsoncpp\jsoncpp.cpp" />
@@ -54,6 +57,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\chisel.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\cyclewriter.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\event.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\eventformatter.h" />
@@ -64,6 +69,7 @@
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\internal_metrics.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\logger.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\parsers.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\protodecoder.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\settings.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\sinsp_errno.h" />
@@ -168,7 +174,7 @@
       <ImportLibrary>$(ProjectDir)\..\Debug\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../sysdig/build32/userspace/libscap/debug/scap.lib;../../../sysdig/build32/zlib-prefix\src\zlib\zdll.lib</AdditionalDependencies>
+      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Debug/libprotobuf.lib;../../../sysdig/userspace/debug/scap.lib;../../../sysdig/build32/zlib-prefix\src\zlib\zdll.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Debug\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -208,7 +214,7 @@
       <ImportLibrary>$(ProjectDir)\..\Release\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib;../../../sysdig/build32/userspace/libscap/release/scap.lib;../../../sysdig/build32/zlib-prefix\src\zlib\zdll.lib</AdditionalDependencies>
+      <AdditionalDependencies>../../../draios_win32_deps/LuaJIT/src/lua51.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Ws2_32.lib;%(AdditionalDependencies);../../../draios_win32_deps/protobuf-2.5.0/vsprojects/Release/libprotobuf.lib;../../../sysdig/userspace/release/scap.lib;../../../sysdig/build32/zlib-prefix\src\zlib\zdll.lib</AdditionalDependencies>
       <OutputFile>$(ProjectDir)\..\Release\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>

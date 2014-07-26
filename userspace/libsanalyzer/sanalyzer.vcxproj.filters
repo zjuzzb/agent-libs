@@ -105,6 +105,15 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\memmem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\protodecoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\cyclewriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h">
@@ -216,6 +225,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="analyzer_parsers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\protodecoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\cyclewriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
