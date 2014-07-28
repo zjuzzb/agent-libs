@@ -100,7 +100,9 @@ captureinfo do_inspect(sinsp* inspector,
 					   bool quiet, 
 					   bool statistics, 
 					   bool absolute_times,
-					   uint64_t emit_stats_every_x_sec)
+					   uint64_t emit_stats_every_x_sec,
+					   uint64_t max_evts_in_file,
+					   string dumpfile)
 {
 	captureinfo retval;
 	int32_t res;
@@ -166,6 +168,18 @@ captureinfo do_inspect(sinsp* inspector,
 		else
 		{
 			screents = deltats;
+		}
+
+		//
+		// Rotate the dump file if required
+		//
+		if(max_evts_in_file != 0)
+		{
+			if(retval.m_nevts % max_evts_in_file == max_evts_in_file - 1)
+			{
+				inspector->autodump_stop();
+				inspector->autodump_start(dumpfile, false);
+			}
 		}
 
 		//
@@ -360,6 +374,7 @@ int main(int argc, char **argv)
 	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
 	uint32_t drop_ratio = 0;
+	uint64_t max_evts_in_file = 0;
 
 	{
 		sinsp* inspector = new sinsp();
@@ -371,7 +386,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:qr:s:vw:")) != -1)
+		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:qr:s:vw:W:")) != -1)
 		{
 			switch (op)
 			{
@@ -478,6 +493,9 @@ int main(int argc, char **argv)
 			case 'w':
 				dumpfile = optarg;
 				break;
+			case 'W':
+				max_evts_in_file = atoi(optarg);
+				break;
 			default:
 				usage(argv[0]);
 				delete inspector;
@@ -566,7 +584,9 @@ int main(int argc, char **argv)
 				quiet, 
 				get_stats, 
 				absolute_times,
-				emit_stats_every_x_sec);
+				emit_stats_every_x_sec,
+				max_evts_in_file,
+				dumpfile);
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 		}
