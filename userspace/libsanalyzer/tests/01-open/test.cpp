@@ -178,7 +178,7 @@ captureinfo do_inspect(sinsp* inspector,
 			if(retval.m_nevts % max_evts_in_file == max_evts_in_file - 1)
 			{
 				inspector->autodump_stop();
-				inspector->autodump_start(dumpfile, false);
+				inspector->autodump_start(dumpfile, true);
 			}
 		}
 
@@ -573,7 +573,7 @@ int main(int argc, char **argv)
 
 			if(dumpfile != "")
 			{
-				inspector->autodump_start(dumpfile, false);
+				inspector->autodump_start(dumpfile, true);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
