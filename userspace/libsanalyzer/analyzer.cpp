@@ -742,24 +742,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
+		sinsp_threadinfo* tinfo = &it->second;
+
 		//
 		// Attribute the last pending event to this second
 		//
 		if(m_prev_flush_time_ns != 0)
 		{
-			delta = m_prev_flush_time_ns - it->second.m_lastevent_ts;
+			delta = m_prev_flush_time_ns - tinfo->m_lastevent_ts;
 
 			if(delta > (int64_t)sample_duration)
 			{
-				delta = (it->second.m_lastevent_ts / sample_duration * sample_duration + sample_duration) - 
-					it->second.m_lastevent_ts;
+				delta = (tinfo->m_lastevent_ts / sample_duration * sample_duration + sample_duration) - 
+					tinfo->m_lastevent_ts;
 			}
 
-			it->second.m_lastevent_ts = m_prev_flush_time_ns;
+			tinfo->m_lastevent_ts = m_prev_flush_time_ns;
 
-			if(PPME_IS_ENTER(it->second.m_lastevent_type))
+			if(PPME_IS_ENTER(tinfo->m_lastevent_type))
 			{
-				cat = &it->second.m_lastevent_category;
+				cat = &tinfo->m_lastevent_category;
 			}
 			else
 			{
@@ -768,7 +770,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				cat = &tcat;
 			}
 
-			add_syscall_time(&it->second.m_ainfo->m_metrics, 
+			add_syscall_time(&tinfo->m_ainfo->m_metrics, 
 				cat, 
 				delta,
 				0,
@@ -777,7 +779,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			it->second.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
+			tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
 		}
 
 		//
@@ -785,7 +787,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
-		it->second.m_ainfo->m_metrics.get_total(&ttot);
+		tinfo->m_ainfo->m_metrics.get_total(&ttot);
 		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
 
@@ -806,29 +808,29 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			is_subsampling = true;
 		}
 
-		it->second.m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+		tinfo->m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
 
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
-		it->second.m_ainfo->m_cpuload = 0;
+		tinfo->m_ainfo->m_cpuload = 0;
 
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			if(it->second.is_main_thread() || it->first == m_mypid)
+			if(tinfo->is_main_thread() || it->first == m_mypid)
 			{
 				if(m_inspector->m_islive)
 				{
 					//
 					// It's pointless to try to get the CPU load if the process has been closed
 					//
-					if((it->second.m_flags & PPM_CL_CLOSED) == 0)
+					if((tinfo->m_flags & PPM_CL_CLOSED) == 0)
 					{
-						it->second.m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(it->second.m_pid, 
-							&it->second.m_ainfo->m_old_proc_jiffies, 
+						tinfo->m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, 
+							&tinfo->m_ainfo->m_old_proc_jiffies, 
 							cur_global_total_jiffies - m_old_global_total_jiffies);
 
-						m_total_process_cpu += it->second.m_ainfo->m_cpuload;
+						m_total_process_cpu += tinfo->m_ainfo->m_cpuload;
 					}
 				}
 			}
@@ -838,24 +840,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Add this thread's counters to the process ones...
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		sinsp_threadinfo* mtinfo = it->second.m_ainfo->get_main_program_thread();
+		sinsp_threadinfo* mtinfo = tinfo->m_ainfo->get_main_program_thread();
 #else
-		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
+		sinsp_threadinfo* mtinfo = tinfo->get_main_thread();
 #endif
 		ASSERT(mtinfo != NULL);
 		progtable[mtinfo->m_tid] = mtinfo;
 
-		mtinfo->m_ainfo->add_all_metrics(it->second.m_ainfo);
+		mtinfo->m_ainfo->add_all_metrics(tinfo->m_ainfo);
 
 		//
 		// ... And to the host ones
 		//
-		m_host_transaction_counters.add(&it->second.m_ainfo->m_external_transaction_metrics);
+		m_host_transaction_counters.add(&tinfo->m_ainfo->m_external_transaction_metrics);
 
 		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 		{
 			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += it->second.m_ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
+			m_client_tr_time_by_servers += tinfo->m_ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
 		}
 
 		if(m_inspector->m_islive)
@@ -890,24 +892,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
 		)
 	{
+		sinsp_threadinfo* tinfo = &it->second;
+
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		if(it->second.m_ainfo->is_main_program_thread())
+		if(tinfo->m_ainfo->is_main_program_thread())
 #else
-		if(it->second.is_main_thread())
+		if(tinfo->is_main_thread())
 #endif
 		{
-			int64_t pid = it->second.m_pid;
-			sinsp_procinfo* procinfo = it->second.m_ainfo->m_procinfo;
+			int64_t pid = tinfo->m_pid;
+			sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 			if(proctids.size() != 0)
 			{
 				if(proctids.find(it->first) == proctids.end())
 				{
-					it->second.m_flags |= PPM_CL_CLOSED;
+					tinfo->m_flags |= PPM_CL_CLOSED;
 				}
 			}
 
@@ -925,7 +929,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Keep:
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
-			int is_cs = (it->second.m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+			int is_cs = (tinfo->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
 			bool include;
@@ -937,11 +941,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				// and another program with the same name has already been included, we can safely
 				// exclude it, since its presence would be completely redundant
 				//
-				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
+				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
 
 				if(include && (tot.m_count == 0 && procinfo->m_cpuload == 0))
 				{
-					if(included_programs.find(it->second.m_exe) != included_programs.end())
+					if(included_programs.find(tinfo->m_exe) != included_programs.end())
 					{
 						include = false;
 					}
@@ -952,12 +956,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// If this NOT is a client or a server, skip it if it didn't generate any activity.
 				//
-				include = (!it->second.m_ainfo->m_procinfo->m_exclude_from_sample);
+				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
 			}
 
 			if(include)
 			{
-				included_programs.insert(it->second.m_exe);
+				included_programs.insert(tinfo->m_exe);
 
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
@@ -977,13 +981,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				proc->set_pid(pid);
 
-				if((it->second.m_flags & PPM_CL_NAME_CHANGED) ||
+				if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
 					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 				{
-					proc->mutable_details()->set_comm(it->second.m_comm);
-					proc->mutable_details()->set_exe(it->second.m_exe);
-					for(vector<string>::const_iterator arg_it = it->second.m_args.begin(); 
-						arg_it != it->second.m_args.end(); ++arg_it)
+					proc->mutable_details()->set_comm(tinfo->m_comm);
+					proc->mutable_details()->set_exe(tinfo->m_exe);
+					for(vector<string>::const_iterator arg_it = tinfo->m_args.begin(); 
+						arg_it != tinfo->m_args.end(); ++arg_it)
 					{
 						if(*arg_it != "")
 						{
@@ -991,7 +995,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 
-					it->second.m_flags &= ~PPM_CL_NAME_CHANGED;
+					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
 				//
@@ -999,28 +1003,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				uint32_t netrole = 0;
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 				{
 					netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
 				}
-				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
 				{
 					netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
 				}
-				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 				{
 					netrole |= draiosproto::IS_UNIX_SERVER;
 				}
 
-				if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 				{
 					netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
 				}
-				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
 				{
 					netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
 				}
-				else if(it->second.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 				{
 					netrole |= draiosproto::IS_UNIX_CLIENT;
 				}
@@ -1057,7 +1061,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if(tot.m_count != 0)
 				{
 					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-					m_delay_calculator->compute_program_delays(&it->second, prog_delays);
+					m_delay_calculator->compute_program_delays(tinfo, prog_delays);
 
 					//
 					// Main metrics
@@ -1084,9 +1088,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
-						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(&it->second,
+						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
 							prog_delays,
-							(uint32_t)it->second.m_ainfo->m_procinfo->m_n_transaction_threads,
+							(uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
 							m_prev_flush_time_ns, sample_duration);
 
 							procinfo->m_capacity_score = scores.m_current_capacity;
@@ -1130,9 +1134,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-								it->second.m_comm.c_str(),
-								it->second.m_tid,
-								it->second.m_nchilds + 1,
+								tinfo->m_comm.c_str(),
+								tinfo->m_tid,
+								tinfo->m_nchilds + 1,
 								procinfo->m_capacity_score,
 								procinfo->m_stolen_capacity_score,
 								(float)procinfo->m_cpuload,
@@ -1206,7 +1210,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
-		if(it->second.m_flags & PPM_CL_CLOSED)
+		if(tinfo->m_flags & PPM_CL_CLOSED)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -1214,9 +1218,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
 			//       not actually remove the thread if it has childs.
 			//
-			it->second.m_ainfo->clear_all_metrics();
+			tinfo->m_ainfo->clear_all_metrics();
 
-			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == &it->second)
+			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == tinfo)
 			{
 				++it;
 			}
@@ -1230,7 +1234,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Clear the thread metrics, so we're ready for the next sample
 			//
-			it->second.m_ainfo->clear_all_metrics();
+			tinfo->m_ainfo->clear_all_metrics();
 			++it;
 		}
 	}
