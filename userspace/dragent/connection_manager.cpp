@@ -15,7 +15,8 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_buffer(RECEIVER_BUFSIZE),
 	m_configuration(configuration),
 	m_queue(queue),
-	m_sinsp_worker(sinsp_worker)
+	m_sinsp_worker(sinsp_worker),
+	m_last_loop_ns(0)
 {
 	Poco::Net::initializeSSL();	
 }
@@ -139,6 +140,8 @@ void connection_manager::run()
 
 		while(!dragent_configuration::m_terminate)
 		{
+			m_last_loop_ns = dragent_configuration::get_current_time_ns();
+
 			//
 			// Make sure we have a valid connection
 			//

@@ -292,6 +292,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	while(!dragent_configuration::m_terminate)
 	{
+		if(m_configuration.m_watchdog_enabled)
+		{
+			watchdog_check();
+		}
+
 		Thread::sleep(1000);
 	}
 
@@ -311,4 +316,43 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	g_log->information("Terminating");
 	return exit_code;
+}
+
+void dragent_app::watchdog_check()
+{
+	bool to_kill = false;
+
+	if(m_sinsp_worker.get_last_loop_ns() != 0)
+	{
+		int64_t diff = dragent_configuration::get_current_time_ns() 
+			- m_sinsp_worker.get_last_loop_ns();
+
+		g_log->debug("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
+
+		if(diff > (int64_t) dragent_configuration::SINSP_WORKER_WATCHDOG_TIMEOUT_NS)
+		{
+			g_log->error("watchdog: Detected sinsp_worker stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+			to_kill = true;
+		}
+	}
+
+	if(m_connection_manager.get_last_loop_ns() != 0)
+	{
+		int64_t diff = dragent_configuration::get_current_time_ns() 
+			- m_connection_manager.get_last_loop_ns();
+
+		g_log->debug("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
+
+		if(diff > (int64_t) dragent_configuration::CONNECTION_MANAGER_WATCHDOG_TIMEOUT_NS)
+		{
+			g_log->error("watchdog: Detected connection_manager stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+			to_kill = true;
+		}
+	}
+
+	if(to_kill)
+	{
+		g_log->error("watchdog: committing suicide");
+		kill(getpid(), SIGKILL);
+	}
 }

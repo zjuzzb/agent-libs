@@ -46,6 +46,10 @@ public:
 
 	void run();
 	void queue_job_request(SharedPtr<dump_job_request> job_request);
+	uint64_t get_last_loop_ns()
+	{
+		return m_last_loop_ns;
+	}
 
 private:
 	class dump_job_state
@@ -144,4 +148,5 @@ private:
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
 	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
 	int64_t m_dragent_pid;
+	volatile uint64_t m_last_loop_ns;
 };

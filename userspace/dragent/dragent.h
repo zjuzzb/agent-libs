@@ -32,6 +32,7 @@ protected:
 	void handleOption(const std::string& name, const std::string& value);
 	void displayHelp();
 	int main(const std::vector<std::string>& args);
+	void watchdog_check();
 	
 private:
 	bool m_help_requested;

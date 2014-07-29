@@ -12,7 +12,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration, protocol_queue*
 	m_analyzer(NULL),
 	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
-	m_dragent_pid(0)
+	m_dragent_pid(0),
+	m_last_loop_ns(0)
 {
 }
 
@@ -172,12 +173,10 @@ void sinsp_worker::init()
 
 void sinsp_worker::run()
 {
-	captureinfo cinfo;
+	uint64_t nevts = 0;
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
-	uint64_t deltats = 0;
-	uint64_t firstts = 0;
 	uint64_t last_job_check_ns = 0;
 
 	g_log->information("sinsp_worker: Starting");
@@ -186,7 +185,7 @@ void sinsp_worker::run()
 
 	while(!dragent_configuration::m_terminate)
 	{
-		if(m_configuration->m_evtcnt != 0 && cinfo.m_nevts == m_configuration->m_evtcnt)
+		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
 		{
 			dragent_configuration::m_terminate = true;
 			break;
@@ -196,6 +195,7 @@ void sinsp_worker::run()
 
 		if(res == SCAP_TIMEOUT)
 		{
+			m_last_loop_ns = dragent_configuration::get_current_time_ns();
 			continue;
 		}
 		else if(res == SCAP_EOF)
@@ -212,6 +212,7 @@ void sinsp_worker::run()
 		// Update the time 
 		//
 		ts = ev->get_ts();
+		m_last_loop_ns = ts;
 
 		if(ts - last_job_check_ns > 1000000000)
 		{
@@ -232,17 +233,9 @@ void sinsp_worker::run()
 		//
 		// Update the event count
 		//
-		cinfo.m_nevts++;
-
-		if(firstts == 0)
-		{
-			firstts = ts;
-		}
-
-		deltats = ts - firstts;
+		++nevts;
 	}
 
-	cinfo.m_time = deltats;
 	g_log->information("sinsp_worker: Terminating");
 }
 

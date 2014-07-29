@@ -13,6 +13,10 @@ public:
 	~connection_manager();
 
 	void run();
+	uint64_t get_last_loop_ns()
+	{
+		return m_last_loop_ns;
+	}
 
 private:
 	bool init();
@@ -38,4 +42,5 @@ private:
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	sinsp_worker* m_sinsp_worker;
+	volatile uint64_t m_last_loop_ns;
 };
