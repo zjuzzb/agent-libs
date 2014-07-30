@@ -887,7 +887,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Second pass of the list of threads: aggreagate threads into processes 
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
-
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
 		)
