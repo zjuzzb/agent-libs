@@ -36,8 +36,8 @@ protected:
 private:
 	void watchdog_check();
 	void initialize_logging();
-	void check_for_clean_shutdown();	
-	void mark_clean_shutdown();	
+	void check_for_clean_shutdown();
+	void mark_clean_shutdown();
 
 	bool m_help_requested;
 	string m_pidfile;

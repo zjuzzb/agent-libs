@@ -72,4 +72,5 @@ public:
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
+	uint64_t m_dirty_shutdown_report_log_size_b;
 };

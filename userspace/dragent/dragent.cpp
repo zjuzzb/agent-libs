@@ -351,7 +351,78 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		g_log->error("agent didn't terminate cleanly, sending log to backend");
+		g_log->error("agent didn't terminate cleanly, sending the last " 
+			+ NumberFormatter::format(m_configuration.m_dirty_shutdown_report_log_size_b) 
+			+ " KB to collector");
+
+		p.setFileName("draios.log");
+
+		FILE* fp = fopen(p.toString().c_str(), "r");
+		if(fp == NULL)
+		{
+			g_log->error(string("fopen: ") + strerror(errno));
+			return;
+		}
+
+		if(fseek(fp, 0, SEEK_END) == -1)
+		{
+			g_log->error(string("fseek (1): ") + strerror(errno));
+			fclose(fp);
+			return;
+		}
+
+		long offset = ftell(fp);
+		if(offset == -1)
+		{
+			g_log->error(string("ftell: ") + strerror(errno));
+			fclose(fp);
+			return;
+		}
+
+		if((uint64_t) offset > m_configuration.m_dirty_shutdown_report_log_size_b)
+		{
+			offset = m_configuration.m_dirty_shutdown_report_log_size_b;
+		}
+
+		if(fseek(fp, -offset, SEEK_END) == -1)
+		{
+			g_log->error(string("fseek (2): ") + strerror(errno));
+			fclose(fp);
+			return;
+		}
+
+		Buffer<char> buf(offset);
+		if(fread(buf.begin(), offset, 1, fp) != 1)
+		{
+			g_log->error("fread error");
+			fclose(fp);
+			return;
+		}
+
+		draiosproto::dirty_shutdown_report report;
+		report.set_timestamp_ns(dragent_configuration::get_current_time_ns());
+		report.set_customer_id(m_configuration.m_customer_id);
+		report.set_machine_id(m_configuration.m_machine_id);
+		report.set_log(buf.begin(), buf.size());
+
+		SharedPtr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
+			draiosproto::message_type::DIRTY_SHUTDOWN_REPORT, 
+			report, 
+			m_configuration.m_compression_enabled);
+
+		if(report_serialized.isNull())
+		{
+			g_log->error("NULL converting message to buffer");
+			return;
+		}
+
+		if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
+		{
+			g_log->error("Queue full");
+			return;
+		}
+
+		fclose(fp);
 	}
 	else
 	{
