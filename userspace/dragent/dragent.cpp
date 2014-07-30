@@ -353,7 +353,7 @@ void dragent_app::check_for_clean_shutdown()
 	{
 		g_log->error("agent didn't terminate cleanly, sending the last " 
 			+ NumberFormatter::format(m_configuration.m_dirty_shutdown_report_log_size_b) 
-			+ " KB to collector");
+			+ "B to collector");
 
 		p.setFileName("draios.log");
 

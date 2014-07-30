@@ -161,7 +161,7 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_sinsp_worker_timeout_s = config.getInt("watchdog.sinsp_worker.timeout_s", 10);
 	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
 	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 256);
-	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 10 * 1024);
+	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 30 * 1024);
 }
 
 void dragent_configuration::print_configuration()
