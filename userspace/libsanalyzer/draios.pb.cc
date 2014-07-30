@@ -101,6 +101,9 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* auto_update_request_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   auto_update_request_reflection_ = NULL;
+const ::google::protobuf::Descriptor* dirty_shutdown_report_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  dirty_shutdown_report_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* networkrole_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* message_type_descriptor_ = NULL;
 
@@ -682,6 +685,24 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(auto_update_request));
+  dirty_shutdown_report_descriptor_ = file->message_type(27);
+  static const int dirty_shutdown_report_offsets_[4] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, timestamp_ns_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, machine_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, customer_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, log_),
+  };
+  dirty_shutdown_report_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      dirty_shutdown_report_descriptor_,
+      dirty_shutdown_report::default_instance_,
+      dirty_shutdown_report_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(dirty_shutdown_report));
   networkrole_descriptor_ = file->enum_type(0);
   message_type_descriptor_ = file->enum_type(1);
 }
@@ -750,6 +771,8 @@ void protobuf_RegisterTypes(const ::std::string&) {
     ssh_close_channel_descriptor_, &ssh_close_channel::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     auto_update_request_descriptor_, &auto_update_request::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    dirty_shutdown_report_descriptor_, &dirty_shutdown_report::default_instance());
 }
 
 }  // namespace
@@ -809,6 +832,8 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete ssh_close_channel_reflection_;
   delete auto_update_request::default_instance_;
   delete auto_update_request_reflection_;
+  delete dirty_shutdown_report::default_instance_;
+  delete dirty_shutdown_report_reflection_;
 }
 
 void protobuf_AddDesc_draios_2eproto() {
@@ -970,17 +995,20 @@ void protobuf_AddDesc_draios_2eproto() {
     "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
     "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_upd"
     "ate_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
-    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t*\251\001\n\013n"
-    "etworkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SE"
-    "RVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_"
-    "UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022"
-    "\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CL"
-    "IENT\020 *\261\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022"
-    "DUMP_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST_STO"
-    "P\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANN"
-    "EL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020"
-    "\010\022\027\n\023AUTO_UPDATE_REQUEST\020\tB$\n\031com.draios"
-    ".model.protobufB\005AgentH\001", 6504);
+    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025di"
+    "rty_shutdown_report\022\024\n\014timestamp_ns\030\001 \002("
+    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
+    "(\t\022\013\n\003log\030\004 \002(\t*\251\001\n\013networkrole\022\010\n\004NONE\020"
+    "\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE"
+    "_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS"
+    "_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_C"
+    "LIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014message_"
+    "type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_START\020"
+    "\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONS"
+    "E\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_C"
+    "HANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_RE"
+    "QUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\nB$\n\031co"
+    "m.draios.model.protobufB\005AgentH\001", 6632);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -1010,6 +1038,7 @@ void protobuf_AddDesc_draios_2eproto() {
   ssh_data::default_instance_ = new ssh_data();
   ssh_close_channel::default_instance_ = new ssh_close_channel();
   auto_update_request::default_instance_ = new auto_update_request();
+  dirty_shutdown_report::default_instance_ = new dirty_shutdown_report();
   counter_time::default_instance_->InitAsDefaultInstance();
   counter_time_bidirectional::default_instance_->InitAsDefaultInstance();
   counter_bytes::default_instance_->InitAsDefaultInstance();
@@ -1037,6 +1066,7 @@ void protobuf_AddDesc_draios_2eproto() {
   ssh_data::default_instance_->InitAsDefaultInstance();
   ssh_close_channel::default_instance_->InitAsDefaultInstance();
   auto_update_request::default_instance_->InitAsDefaultInstance();
+  dirty_shutdown_report::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_draios_2eproto);
 }
 
@@ -1079,6 +1109,7 @@ bool message_type_IsValid(int value) {
     case 7:
     case 8:
     case 9:
+    case 10:
       return true;
     default:
       return false;
@@ -14517,6 +14548,386 @@ void auto_update_request::Swap(auto_update_request* other) {
   ::google::protobuf::Metadata metadata;
   metadata.descriptor = auto_update_request_descriptor_;
   metadata.reflection = auto_update_request_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int dirty_shutdown_report::kTimestampNsFieldNumber;
+const int dirty_shutdown_report::kMachineIdFieldNumber;
+const int dirty_shutdown_report::kCustomerIdFieldNumber;
+const int dirty_shutdown_report::kLogFieldNumber;
+#endif  // !_MSC_VER
+
+dirty_shutdown_report::dirty_shutdown_report()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void dirty_shutdown_report::InitAsDefaultInstance() {
+}
+
+dirty_shutdown_report::dirty_shutdown_report(const dirty_shutdown_report& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void dirty_shutdown_report::SharedCtor() {
+  _cached_size_ = 0;
+  timestamp_ns_ = GOOGLE_ULONGLONG(0);
+  machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  log_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+dirty_shutdown_report::~dirty_shutdown_report() {
+  SharedDtor();
+}
+
+void dirty_shutdown_report::SharedDtor() {
+  if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete machine_id_;
+  }
+  if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete customer_id_;
+  }
+  if (log_ != &::google::protobuf::internal::kEmptyString) {
+    delete log_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void dirty_shutdown_report::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* dirty_shutdown_report::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return dirty_shutdown_report_descriptor_;
+}
+
+const dirty_shutdown_report& dirty_shutdown_report::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+dirty_shutdown_report* dirty_shutdown_report::default_instance_ = NULL;
+
+dirty_shutdown_report* dirty_shutdown_report::New() const {
+  return new dirty_shutdown_report;
+}
+
+void dirty_shutdown_report::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    timestamp_ns_ = GOOGLE_ULONGLONG(0);
+    if (has_machine_id()) {
+      if (machine_id_ != &::google::protobuf::internal::kEmptyString) {
+        machine_id_->clear();
+      }
+    }
+    if (has_customer_id()) {
+      if (customer_id_ != &::google::protobuf::internal::kEmptyString) {
+        customer_id_->clear();
+      }
+    }
+    if (has_log()) {
+      if (log_ != &::google::protobuf::internal::kEmptyString) {
+        log_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool dirty_shutdown_report::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required uint64 timestamp_ns = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &timestamp_ns_)));
+          set_has_timestamp_ns();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_machine_id;
+        break;
+      }
+
+      // required string machine_id = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_machine_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_machine_id()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->machine_id().data(), this->machine_id().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_customer_id;
+        break;
+      }
+
+      // optional string customer_id = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_customer_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_customer_id()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->customer_id().data(), this->customer_id().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_log;
+        break;
+      }
+
+      // required string log = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_log:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_log()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->log().data(), this->log().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void dirty_shutdown_report::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required uint64 timestamp_ns = 1;
+  if (has_timestamp_ns()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->timestamp_ns(), output);
+  }
+
+  // required string machine_id = 2;
+  if (has_machine_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->machine_id().data(), this->machine_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->machine_id(), output);
+  }
+
+  // optional string customer_id = 3;
+  if (has_customer_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->customer_id().data(), this->customer_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      3, this->customer_id(), output);
+  }
+
+  // required string log = 4;
+  if (has_log()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->log().data(), this->log().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      4, this->log(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* dirty_shutdown_report::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required uint64 timestamp_ns = 1;
+  if (has_timestamp_ns()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(1, this->timestamp_ns(), target);
+  }
+
+  // required string machine_id = 2;
+  if (has_machine_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->machine_id().data(), this->machine_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->machine_id(), target);
+  }
+
+  // optional string customer_id = 3;
+  if (has_customer_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->customer_id().data(), this->customer_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        3, this->customer_id(), target);
+  }
+
+  // required string log = 4;
+  if (has_log()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->log().data(), this->log().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        4, this->log(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int dirty_shutdown_report::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required uint64 timestamp_ns = 1;
+    if (has_timestamp_ns()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->timestamp_ns());
+    }
+
+    // required string machine_id = 2;
+    if (has_machine_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->machine_id());
+    }
+
+    // optional string customer_id = 3;
+    if (has_customer_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->customer_id());
+    }
+
+    // required string log = 4;
+    if (has_log()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->log());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void dirty_shutdown_report::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const dirty_shutdown_report* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const dirty_shutdown_report*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void dirty_shutdown_report::MergeFrom(const dirty_shutdown_report& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_timestamp_ns()) {
+      set_timestamp_ns(from.timestamp_ns());
+    }
+    if (from.has_machine_id()) {
+      set_machine_id(from.machine_id());
+    }
+    if (from.has_customer_id()) {
+      set_customer_id(from.customer_id());
+    }
+    if (from.has_log()) {
+      set_log(from.log());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void dirty_shutdown_report::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void dirty_shutdown_report::CopyFrom(const dirty_shutdown_report& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool dirty_shutdown_report::IsInitialized() const {
+  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
+
+  return true;
+}
+
+void dirty_shutdown_report::Swap(dirty_shutdown_report* other) {
+  if (other != this) {
+    std::swap(timestamp_ns_, other->timestamp_ns_);
+    std::swap(machine_id_, other->machine_id_);
+    std::swap(customer_id_, other->customer_id_);
+    std::swap(log_, other->log_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata dirty_shutdown_report::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = dirty_shutdown_report_descriptor_;
+  metadata.reflection = dirty_shutdown_report_reflection_;
   return metadata;
 }
 

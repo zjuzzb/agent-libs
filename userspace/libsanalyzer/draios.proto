@@ -236,6 +236,7 @@ enum message_type {
     SSH_CLOSE_CHANNEL = 7;
     SSH_DATA = 8;
     AUTO_UPDATE_REQUEST = 9;
+    DIRTY_SHUTDOWN_REPORT = 10;
 }
 
 //
@@ -347,4 +348,11 @@ message auto_update_request {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+}
+
+message dirty_shutdown_report {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    required string log = 4; // The log portion
 }

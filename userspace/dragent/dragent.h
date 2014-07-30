@@ -32,9 +32,13 @@ protected:
 	void handleOption(const std::string& name, const std::string& value);
 	void displayHelp();
 	int main(const std::vector<std::string>& args);
-	void watchdog_check();
-	
+
 private:
+	void watchdog_check();
+	void initialize_logging();
+	void check_for_clean_shutdown();	
+	void mark_clean_shutdown();	
+
 	bool m_help_requested;
 	string m_pidfile;
 	dragent_configuration m_configuration;

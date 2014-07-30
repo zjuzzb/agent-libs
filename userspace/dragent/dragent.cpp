@@ -208,46 +208,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	m_configuration.init(this);
 
-	//
-	// Create the logs directory if it doesn't exist
-	//
-	File d(m_configuration.m_log_dir);
-	d.createDirectories();
-	Path p;
-	p.parseDirectory(m_configuration.m_log_dir);
-	p.setFileName("draios.log");
-	string logsdir = p.toString();
-
-	//
-	// Setup the logging
-	//
-	AutoPtr<Channel> console_channel(new ConsoleChannel());
-	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
-
-	file_channel->setProperty("rotation", "10M");
-	file_channel->setProperty("purgeCount", "10");
-	file_channel->setProperty("archive", "timestamp");
-
-	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %h:%M:%S.%i, %P, %p, %t"));
-
-	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
-	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-
-	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
-	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
-	
-	if(m_configuration.m_min_console_priority != -1)
-	{
-		g_log = new dragent_logger(&loggerf, &loggerc);
-	}
-	else
-	{
-		g_log = new dragent_logger(&loggerf, NULL);
-	}
+	initialize_logging();
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	m_configuration.print_configuration();
+
+	check_for_clean_shutdown();
 
 #if 0
 	if(m_configuration.m_daemon)
@@ -314,6 +281,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	dragent_configuration::m_terminate = true;
 	ThreadPool::defaultPool().stopAll();
 
+	mark_clean_shutdown();
+
 	g_log->information("Terminating");
 	return exit_code;
 }
@@ -370,5 +339,75 @@ void dragent_app::watchdog_check()
 	{
 		g_log->error("watchdog: committing suicide");
 		kill(getpid(), SIGKILL);
+	}
+}
+
+void dragent_app::check_for_clean_shutdown()
+{
+	Path p;
+	p.parseDirectory(m_configuration.m_log_dir);
+	p.setFileName("running");
+
+	File f(p);
+	if(f.exists())
+	{
+		g_log->error("agent didn't terminate cleanly, sending log to backend");
+	}
+	else
+	{
+		f.createFile();
+	}
+}
+
+void dragent_app::mark_clean_shutdown()
+{
+	Path p;
+	p.parseDirectory(m_configuration.m_log_dir);
+	p.setFileName("running");
+
+	File f(p);
+	if(f.exists())
+	{
+		f.remove();
+	}
+}
+
+void dragent_app::initialize_logging()
+{
+	//
+	// Create the logs directory if it doesn't exist
+	//
+	File d(m_configuration.m_log_dir);
+	d.createDirectories();
+	Path p;
+	p.parseDirectory(m_configuration.m_log_dir);
+	p.setFileName("draios.log");
+	string logsdir = p.toString();
+
+	//
+	// Setup the logging
+	//
+	AutoPtr<Channel> console_channel(new ConsoleChannel());
+	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
+
+	file_channel->setProperty("rotation", "10M");
+	file_channel->setProperty("purgeCount", "10");
+	file_channel->setProperty("archive", "timestamp");
+
+	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %h:%M:%S.%i, %P, %p, %t"));
+
+	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
+	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+
+	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
+	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
+	
+	if(m_configuration.m_min_console_priority != -1)
+	{
+		g_log = new dragent_logger(&loggerf, &loggerc);
+	}
+	else
+	{
+		g_log = new dragent_logger(&loggerf, NULL);
 	}
 }
