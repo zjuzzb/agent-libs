@@ -77,6 +77,8 @@ void dragent_configuration::init(Application* app)
 {
 	LayeredConfiguration& config = app->config();
 
+	m_machine_id = Environment::nodeId();
+
 	Path configuration_file = Poco::Path::forDirectory(config.getString("application.dir"));
 
 	configuration_file.setFileName("dragent.properties");

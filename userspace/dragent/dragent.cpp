@@ -252,7 +252,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 #endif
 
 	ExitCode exit_code;
-	m_configuration.m_machine_id = Environment::nodeId();
 
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
