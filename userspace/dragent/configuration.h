@@ -33,6 +33,7 @@ public:
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_aws_metadata(aws_metadata* metadata);
 	static uint64_t get_current_time_ns();
+	static bool get_memory_usage_mb(uint64_t* memory);
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
@@ -70,4 +71,5 @@ public:
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
+	uint64_t m_watchdog_max_memory_usage_mb;
 };

@@ -7,6 +7,9 @@
 
 #include "logger.h"
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 using namespace Poco;
 using namespace Poco::Net;
 
@@ -38,6 +41,7 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
+	m_watchdog_max_memory_usage_mb = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -155,6 +159,7 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_enabled = config.getBool("watchdog.enabled", true);
 	m_watchdog_sinsp_worker_timeout_s = config.getInt("watchdog.sinsp_worker.timeout_s", 10);
 	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
+	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 1024);
 }
 
 void dragent_configuration::print_configuration()
@@ -186,6 +191,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker.timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager.timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
+	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
@@ -233,4 +239,17 @@ uint64_t dragent_configuration::get_current_time_ns()
     gettimeofday(&tv, NULL);
 
     return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
+}
+
+bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
+{
+	struct rusage usage;
+	if(getrusage(RUSAGE_SELF, &usage) == -1)
+	{
+		g_log->error(string("getrusage") + strerror(errno));
+		return false;
+	}
+
+	*memory = usage.ru_maxrss / 1024;
+	return true;
 }

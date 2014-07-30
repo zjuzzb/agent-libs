@@ -350,6 +350,22 @@ void dragent_app::watchdog_check()
 		}
 	}
 
+	uint64_t memory;
+	if(dragent_configuration::get_memory_usage_mb(&memory))
+	{
+		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+
+		if(memory > m_configuration.m_watchdog_max_memory_usage_mb)
+		{
+			g_log->error("watchdog: High memory usage, " + NumberFormatter::format(memory) + " MB");
+			to_kill = true;
+		}
+	}
+	else
+	{
+		ASSERT(false);
+	}
+
 	if(to_kill)
 	{
 		g_log->error("watchdog: committing suicide");
