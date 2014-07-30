@@ -36,6 +36,8 @@ dragent_configuration::dragent_configuration()
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
 	m_watchdog_enabled = true;
+	m_watchdog_sinsp_worker_timeout_s = 0;
+	m_watchdog_connection_manager_timeout_s = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -151,6 +153,8 @@ void dragent_configuration::init(Application* app)
 	m_autodrop_enabled = config.getBool("autoupdate.enabled", true);
 	m_print_protobuf = config.getBool("protobuf.print", false);
 	m_watchdog_enabled = config.getBool("watchdog.enabled", true);
+	m_watchdog_sinsp_worker_timeout_s = config.getInt("watchdog.sinsp_worker.timeout_s", 10);
+	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
 }
 
 void dragent_configuration::print_configuration()
@@ -180,6 +184,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("autoupdate.enabled: " + bool_as_text(m_autoupdate_enabled));
 	g_log->information("protobuf.print: " + bool_as_text(m_print_protobuf));
 	g_log->information("watchdog.enabled: " + bool_as_text(m_watchdog_enabled));
+	g_log->information("watchdog.sinsp_worker.timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
+	g_log->information("watchdog.connection_manager.timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)

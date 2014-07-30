@@ -329,7 +329,7 @@ void dragent_app::watchdog_check()
 
 		g_log->debug("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
 
-		if(diff > (int64_t) dragent_configuration::SINSP_WORKER_WATCHDOG_TIMEOUT_NS)
+		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
 		{
 			g_log->error("watchdog: Detected sinsp_worker stall, last activity " + NumberFormatter::format(diff) + " ns ago");
 			to_kill = true;
@@ -343,7 +343,7 @@ void dragent_app::watchdog_check()
 
 		g_log->debug("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
 
-		if(diff > (int64_t) dragent_configuration::CONNECTION_MANAGER_WATCHDOG_TIMEOUT_NS)
+		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
 		{
 			g_log->error("watchdog: Detected connection_manager stall, last activity " + NumberFormatter::format(diff) + " ns ago");
 			to_kill = true;

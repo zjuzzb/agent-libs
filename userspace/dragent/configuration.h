@@ -34,9 +34,6 @@ public:
 	static bool get_aws_metadata(aws_metadata* metadata);
 	static uint64_t get_current_time_ns();
 
-	static const uint64_t SINSP_WORKER_WATCHDOG_TIMEOUT_NS = 10 * 1000000000LL;
-	static const uint64_t CONNECTION_MANAGER_WATCHDOG_TIMEOUT_NS = 100 * 1000000000LL;
-
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
@@ -71,4 +68,6 @@ public:
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
 	bool m_watchdog_enabled;
+	uint64_t m_watchdog_sinsp_worker_timeout_s;
+	uint64_t m_watchdog_connection_manager_timeout_s;
 };
