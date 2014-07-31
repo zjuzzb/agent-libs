@@ -8,3 +8,8 @@ if(CPACK_GENERATOR MATCHES "RPM")
 	list(APPEND CPACK_INSTALL_COMMANDS "mkdir -p _CPack_Packages/${CPACK_TOPLEVEL_TAG}/${CPACK_GENERATOR}/${CPACK_PACKAGE_FILE_NAME}/agent/etc/rc.d/init.d/")
 	list(APPEND CPACK_INSTALL_COMMANDS "cp scripts/rpm/dragent _CPack_Packages/${CPACK_TOPLEVEL_TAG}/${CPACK_GENERATOR}/${CPACK_PACKAGE_FILE_NAME}/agent/etc/rc.d/init.d")
 endif()
+
+if(CPACK_GENERATOR MATCHES "TGZ")
+	set(CPACK_SET_DESTDIR "ON")
+	set(CPACK_STRIP_FILES "OFF")
+endif()
