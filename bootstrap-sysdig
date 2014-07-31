@@ -1,0 +1,42 @@
+#!/bin/bash
+set -ex 
+
+SCRIPT=$(readlink -f $0)
+AGENT_SOURCEDIR=$(dirname $SCRIPT)
+SYSDIG_SOURCEDIR=$(dirname $SCRIPT)/../sysdig
+
+if [ -z "$WORKDIR" ]; then
+	WORKDIR=$AGENT_SOURCEDIR/..
+fi
+
+DEPENDENCIES=$WORKDIR/agent/dependencies
+
+if [ ! -d "$DEPENDENCIES" ]; then
+	mkdir -p $DEPENDENCIES
+fi
+
+CMAKE_DIR=$DEPENDENCIES/cmake-3.0.0
+if [ ! -d "$CMAKE_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.0.0.tar.gz
+	tar -xzf cmake-3.0.0.tar.gz
+	cd $CMAKE_DIR
+	patch -p1 < $AGENT_SOURCEDIR/patches/0001-Make-deb-package-options-configurable-per-component.patch
+	./bootstrap
+	make
+fi
+
+if [ -z "$BUILD_NUMBER" ]; then
+	BUILD_NUMBER="1"
+fi
+
+VERSION="0.1.$BUILD_NUMBER"
+
+SYSDIG_BUILD_DIR=$WORKDIR/sysdig/build
+mkdir -p $SYSDIG_BUILD_DIR/debug
+mkdir -p $SYSDIG_BUILD_DIR/release
+
+cd $SYSDIG_BUILD_DIR/debug
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DSYSDIG_VERSION=$VERSION -DDIR_ETC=/etc -DCMAKE_INSTALL_PREFIX=/usr $SYSDIG_SOURCEDIR
+cd $SYSDIG_BUILD_DIR/release
+$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DSYSDIG_VERSION=$VERSION -DDIR_ETC=/etc -DCMAKE_INSTALL_PREFIX=/usr $SYSDIG_SOURCEDIR
