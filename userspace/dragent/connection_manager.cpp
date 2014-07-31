@@ -132,6 +132,8 @@ void connection_manager::disconnect()
 
 void connection_manager::run()
 {
+	m_pthread_id = pthread_self();
+
 	g_log->information(m_name + ": Starting");
 
 	if(init())

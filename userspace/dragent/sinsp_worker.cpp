@@ -179,6 +179,8 @@ void sinsp_worker::run()
 	uint64_t ts;
 	uint64_t last_job_check_ns = 0;
 
+	m_pthread_id = pthread_self();
+
 	g_log->information("sinsp_worker: Starting");
 
 	init();

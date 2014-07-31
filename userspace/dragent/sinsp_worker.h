@@ -51,6 +51,11 @@ public:
 		return m_last_loop_ns;
 	}
 
+	pthread_t get_pthread_id()
+	{
+		return m_pthread_id;
+	}
+
 private:
 	class dump_job_state
 	{
@@ -149,4 +154,5 @@ private:
 	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
 	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
+	volatile pthread_t m_pthread_id;
 };

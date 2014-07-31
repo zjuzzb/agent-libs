@@ -18,6 +18,11 @@ public:
 		return m_last_loop_ns;
 	}
 
+	pthread_t get_pthread_id()
+	{
+		return m_pthread_id;
+	}
+
 private:
 	bool init();
 	bool connect();
@@ -43,4 +48,5 @@ private:
 	protocol_queue* m_queue;
 	sinsp_worker* m_sinsp_worker;
 	volatile uint64_t m_last_loop_ns;
+	volatile pthread_t m_pthread_id;
 };

@@ -300,6 +300,7 @@ void dragent_app::watchdog_check()
 		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
 		{
 			g_log->error("watchdog: Detected sinsp_worker stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
 	}
@@ -314,6 +315,7 @@ void dragent_app::watchdog_check()
 		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
 		{
 			g_log->error("watchdog: Detected connection_manager stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+			pthread_kill(m_connection_manager.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
 	}
@@ -334,8 +336,12 @@ void dragent_app::watchdog_check()
 		ASSERT(false);
 	}
 
+	//
+	// Just wait a bit to give time to the other threads to print stacktrace
+	//
 	if(to_kill)
 	{
+		sleep(5);
 		g_log->error("watchdog: committing suicide");
 		kill(getpid(), SIGKILL);
 	}
