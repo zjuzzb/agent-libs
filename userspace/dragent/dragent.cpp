@@ -295,11 +295,15 @@ void dragent_app::watchdog_check()
 		int64_t diff = dragent_configuration::get_current_time_ns() 
 			- m_sinsp_worker.get_last_loop_ns();
 
+#if _DEBUG
 		g_log->debug("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
 		{
+#if _DEBUG
 			g_log->error("watchdog: Detected sinsp_worker stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
 			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
@@ -310,11 +314,15 @@ void dragent_app::watchdog_check()
 		int64_t diff = dragent_configuration::get_current_time_ns() 
 			- m_connection_manager.get_last_loop_ns();
 
+#if _DEBUG
 		g_log->debug("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
 		{
+#if _DEBUG
 			g_log->error("watchdog: Detected connection_manager stall, last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
 			pthread_kill(m_connection_manager.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
@@ -342,7 +350,9 @@ void dragent_app::watchdog_check()
 	if(to_kill)
 	{
 		sleep(5);
+#if _DEBUG
 		g_log->error("watchdog: committing suicide");
+#endif
 		kill(getpid(), SIGKILL);
 	}
 }
