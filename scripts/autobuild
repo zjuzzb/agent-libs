@@ -11,6 +11,7 @@ cd $TOP/../..
 rm -rf agent/build || true
 rm -rf sysdig/build || true
 agent/bootstrap-agent
+agent/bootstrap-sysdig
 
 make -C agent/build/debug package
 make -C agent/build/release package

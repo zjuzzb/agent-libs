@@ -5,6 +5,7 @@ rmmod sysdig-probe || true
 rm -rf agent/build || true
 rm -rf sysdig/build || true
 agent/bootstrap-agent
+agent/bootstrap-sysdig
 
 make -C agent/build/debug
 make -C sysdig/build/debug
