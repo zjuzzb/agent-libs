@@ -81,7 +81,7 @@ function configure_debian_repo {
 
 	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 	cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+	dpkg-scanpackages --multiversion $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
 	gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
 	cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 	echo "Date:" $(date) >> Release
