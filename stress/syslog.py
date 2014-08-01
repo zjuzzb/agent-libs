@@ -8,6 +8,6 @@ handler = logging.handlers.SysLogHandler(address = '/dev/log')
 
 my_logger.addHandler(handler)
 
-my_logger.debug('this is debug')
-my_logger.warning('this is warning')
-my_logger.critical('this is critical')
+my_logger.error('root: This is an error message from ptyhon')
+my_logger.warning('root: This is a warning message from ptyhon')
+my_logger.debug('root: This is a debug message from ptyhon')
