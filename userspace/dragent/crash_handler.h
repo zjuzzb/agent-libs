@@ -12,6 +12,11 @@ public:
 		m_crashdump_file = crashdump_file;
 	}
 
+	//
+	// To be used in critical contexts where a malloc can't happen
+	//
+	static void log_crashdump_message(const char* message);
+
 private:
 	static const int NUM_FRAMES = 10;
 	static string m_crashdump_file;

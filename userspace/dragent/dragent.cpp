@@ -307,9 +307,9 @@ void dragent_app::watchdog_check()
 
 		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
 		{
-#if _DEBUG
-			g_log->error("watchdog: Detected sinsp_worker stall, last activity " + NumberFormatter::format(diff) + " ns ago");
-#endif
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected sinsp_worker stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
 			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
@@ -326,9 +326,9 @@ void dragent_app::watchdog_check()
 
 		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
 		{
-#if _DEBUG
-			g_log->error("watchdog: Detected connection_manager stall, last activity " + NumberFormatter::format(diff) + " ns ago");
-#endif
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected connection_manager stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
 			pthread_kill(m_connection_manager.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
@@ -337,11 +337,15 @@ void dragent_app::watchdog_check()
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
+#if _DEBUG
 		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+#endif
 
 		if(memory > m_configuration.m_watchdog_max_memory_usage_mb)
 		{
-			g_log->error("watchdog: High memory usage, " + NumberFormatter::format(memory) + " MB");
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: High memory usage, %" PRId64 " MB\n", memory);
+			crash_handler::log_crashdump_message(line);
 			to_kill = true;
 		}
 	}
@@ -356,9 +360,9 @@ void dragent_app::watchdog_check()
 	if(to_kill)
 	{
 		sleep(5);
-#if _DEBUG
-		g_log->error("watchdog: committing suicide");
-#endif
+		char line[128];
+		snprintf(line, sizeof(line), "watchdog: committing suicide\n");
+		crash_handler::log_crashdump_message(line);
 		kill(getpid(), SIGKILL);
 	}
 }

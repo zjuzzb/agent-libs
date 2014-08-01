@@ -185,6 +185,8 @@ void sinsp_worker::run()
 
 	init();
 
+	m_last_loop_ns = dragent_configuration::get_current_time_ns();
+
 	while(!dragent_configuration::m_terminate)
 	{
 		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)

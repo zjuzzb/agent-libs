@@ -21,24 +21,42 @@ void crash_handler::run(int sig)
 	{
 		char line[128];
 		snprintf(line, sizeof(line), "Received signal %d\n", sig);
+		log_crashdump_message(line);
 
 		void *array[NUM_FRAMES];
 		int frames = backtrace(array, NUM_FRAMES);
 		int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
 		if(fd != -1)
 		{
-			write(fd, line, strlen(line));
-
 			backtrace_symbols_fd(array, frames, fd);
 			close(fd);
 		}
+		else
+		{
+			ASSERT(false);
+		}
 
-		write(1, line, strlen(line));
 		backtrace_symbols_fd(array, frames, 1);
 	}
 
 	signal(sig, SIG_DFL);
 	raise(sig);
+}
+
+void crash_handler::log_crashdump_message(const char* message)
+{
+	int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
+	if(fd != -1)
+	{
+		write(fd, message, strlen(message));
+		close(fd);
+	}
+	else
+	{
+		ASSERT(false);
+	}
+
+	write(1, message, strlen(message));	
 }
 
 bool crash_handler::initialize()
