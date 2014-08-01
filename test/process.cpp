@@ -30,8 +30,12 @@
 #include <sys/socket.h>
 #include <sys/inotify.h>
 
-#include <sinsp.h>
-#include <procfs_parser.h>
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "protodecoder.h"
+#include "procfs_parser.h"
+#include "analyzer_thread.h"
+
 
 using namespace std;
 
@@ -1024,4 +1028,115 @@ TEST_F(sys_call_test, program_child_with_threads)
 
 //	EXPECT_EQ(2, callnum);
 	sleep(2);
+}
+
+TEST_F(sys_call_test, nested_program_childs)
+{
+	int ctid;
+	int cctid, cctid1, cctid2;
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return true;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		ctid = fork();
+
+		if(ctid == 0)
+		{
+			//
+			// CHILD PROCESS
+			//
+			cctid = fork();
+	
+			if(cctid == 0)
+			{
+				//
+				// CHILD PROCESS
+				//
+				cctid1 = fork();
+		
+				if(cctid1 == 0)
+				{
+					//
+					// CHILD PROCESS
+					//
+					cctid2 = fork();
+					
+					if(cctid2 == 0)
+					{
+						_exit(0);
+					}
+					else
+					{
+						int status;
+						wait(&status);	// wait for child to exit, and store its status
+										// Use WEXITSTATUS to validate status.
+										// some time so the samples can flush
+						sleep(1);
+						_exit(0);
+					}
+				}
+				else
+				{
+					int status;
+					wait(&status);	// wait for child to exit, and store its status
+									// Use WEXITSTATUS to validate status.
+									// some time so the samples can flush
+					sleep(2);
+					_exit(0);
+				}
+			}
+			else
+			{
+				int status;
+				wait(&status);	// wait for child to exit, and store its status
+								// Use WEXITSTATUS to validate status.
+								// some time so the samples can flush
+				sleep(3);
+				_exit(0);
+			}
+		}
+		else
+		{
+			int status;
+			wait(&status);	// wait for child to exit, and store its status
+							// Use WEXITSTATUS to validate status.
+							// some time so the samples can flush
+			sleep(4);
+		}
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* evt = param.m_evt;
+		uint16_t type = evt->get_type();
+
+		if(type == PPME_CLONE_16_X)
+		{
+			callnum++;
+
+			sinsp_threadinfo* tinfo = evt->get_thread_info(false);
+			EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
+
+			sinsp_threadinfo* ptinfo = tinfo->m_ainfo->get_main_program_thread();
+			EXPECT_EQ(getpid(), ptinfo->m_tid);
+		}		
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(8, callnum);
 }
