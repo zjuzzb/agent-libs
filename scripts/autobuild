@@ -1,38 +1,151 @@
 #!/bin/bash
 set -exu
 
+COMPONENT=$1
+REPOSITORY_BASENAME=$2
+RELEASE_TYPE=$3
+
 SCRIPT=$(readlink -f $0)
-TOP=$(dirname $SCRIPT)
+SCRIPTS_DIR=$(dirname $SCRIPT)
+BINARIES_DIR="/tmp/binaries"
+REPOSITORY_DIR="/tmp/repo"
 
-RELEASE_TYPE=$1
+export AWS_DEFAULT_REGION="us-east-1"
 
-cd $TOP/../..
+cd $SCRIPTS_DIR/../..
 
-rm -rf agent/build || true
-rm -rf sysdig/build || true
-agent/bootstrap-agent
-agent/bootstrap-sysdig
+function build_components {
+	rm -rf $BINARIES_DIR
+	mkdir -p $BINARIES_DIR/debug
+	mkdir -p $BINARIES_DIR/release
 
-make -C agent/build/debug package
-make -C agent/build/release package
-make -C sysdig/build/debug package
-make -C sysdig/build/release package
+	case "$COMPONENT" in
+		agent)
+			rm -rf agent/build || true
+			agent/bootstrap-agent
+			
+			make -C agent/build/debug package
+			make -C agent/build/release package
 
-rm -rf /tmp/packages
-mkdir -p /tmp/packages/debug
-mkdir -p /tmp/packages/release
+			cp agent/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+			case "$RELEASE_TYPE" in
+				internal)
+					cp {agent/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+					;;
+				public)
+					cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release # copy agent and not tests
+					;;
+				*) 
+					false
+					;;
+			esac
+			;;
+		sysdig)
+			rm -rf sysdig/build || true
+			agent/bootstrap-sysdig
+			
+			make -C sysdig/build/debug package
+			make -C sysdig/build/release package
 
-case "$RELEASE_TYPE" in
-	internal)
-		cp {agent,sysdig}/build/debug/*{deb,rpm} /tmp/packages/debug
-		cp {agent,sysdig}/build/release/*{deb,rpm} /tmp/packages/release
-		;;
-	public)
-		cp {agent,sysdig}/build/debug/*{deb,rpm} /tmp/packages/debug
-		cp agent/build/release/*agent*{deb,rpm} /tmp/packages/release # copy agent and not tests
-		cp sysdig/build/release/*{deb,rpm} /tmp/packages/release
-		;;
-	*) 
-		false
-		;;
-esac
+			cp sysdig/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+			cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+			;;
+		*)
+			false
+			;;
+	esac
+}
+
+function configure_rpm_repo {
+	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete
+
+	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+
+	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
+	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
+
+	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete
+}
+
+function configure_debian_repo {
+	DEB_BASEARCH=$(dpkg --print-architecture)
+
+	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete
+
+	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+	cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	dpkg-scanpackages $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+	gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
+	cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	echo "Date:" $(date) >> Release
+	echo "Suite: stable-$DEB_BASEARCH" >> Release
+	echo "MD5Sum:" >> Release
+	echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages) >> Release
+	echo -n " "$(md5sum Packages.gz | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages.gz) >> Release
+	echo "SHA1:" >> Release
+	echo -n " "$(sha1sum Packages | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages) >> Release
+	echo -n " "$(sha1sum Packages.gz | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages.gz) >> Release
+	echo "SHA256:" >> Release
+	echo -n " "$(sha256sum Packages | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages) >> Release
+	echo -n " "$(sha256sum Packages.gz | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages.gz) >> Release
+	echo "SHA512:" >> Release
+	echo -n " "$(sha512sum Packages | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages) >> Release
+	echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
+	echo " "$(du -b Packages.gz) >> Release
+	gpg --yes -abs -o Release.gpg Release
+	cd -
+
+	cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
+	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
+
+	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete
+}
+
+function configure_tgz_repo {
+	mkdir -p $REPOSITORY_DIR/tgz
+	aws s3 cp $PACKAGES_DIR/*tar.gz s3://download.draios.com/$REPOSITORY_NAME/tgz/
+}
+
+function configure_installers {
+	cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
+	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
+	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-sysdig
+	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
+
+	aws s3 cp $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/install-sysdig s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
+}
+
+function upload_binaries {
+	rm -rf $REPOSITORY_DIR
+	configure_rpm_repo
+	configure_debian_repo
+	configure_tgz_repo
+	configure_installers
+}
+
+build_components
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME
+PACKAGES_DIR=BINARIES_DIR/release
+upload_binaries
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
+PACKAGES_DIR=BINARIES_DIR/debug
+upload_binaries
