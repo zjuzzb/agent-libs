@@ -214,8 +214,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	m_configuration.print_configuration();
 
-	check_for_clean_shutdown();
-
+	if(m_configuration.m_watchdog_enabled)
+	{
+		check_for_clean_shutdown();
+	}
+	
 #if 0
 	if(m_configuration.m_daemon)
 	{
@@ -280,7 +283,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	dragent_configuration::m_terminate = true;
 	ThreadPool::defaultPool().stopAll();
 
-	mark_clean_shutdown();
+	if(m_configuration.m_watchdog_enabled)
+	{
+		mark_clean_shutdown();
+	}
 
 	g_log->information("Terminating");
 	return exit_code;
