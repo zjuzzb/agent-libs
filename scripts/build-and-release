@@ -30,7 +30,7 @@ function build_components {
 			cp agent/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			case "$RELEASE_TYPE" in
 				internal)
-					cp {agent/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+					cp agent/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
 					;;
 				public)
 					cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release # copy agent and not tests
