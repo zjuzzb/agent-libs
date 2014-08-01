@@ -476,6 +476,8 @@ void dragent_app::initialize_logging()
 	p.setFileName("draios.log");
 	string logsdir = p.toString();
 
+	crash_handler::set_crashdump_file(p.toString());
+	
 	//
 	// Setup the logging
 	//

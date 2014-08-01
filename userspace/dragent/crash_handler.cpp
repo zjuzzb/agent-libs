@@ -4,6 +4,8 @@
 
 #include "logger.h"
 
+string crash_handler::m_crashdump_file;
+
 static const int g_crash_signals[] = 
 {
 	SIGSEGV,
@@ -15,27 +17,24 @@ static const int g_crash_signals[] =
 
 void crash_handler::run(int sig)
 {
-	static int NUM_FRAMES = 10;
-
 	if(g_log)
 	{
-		g_log->error("Received signal " + NumberFormatter::format(sig));
+		char line[128];
+		snprintf(line, sizeof(line), "Received signal %d\n", sig);
 
 		void *array[NUM_FRAMES];
-
 		int frames = backtrace(array, NUM_FRAMES);
-		
-		char **strings = backtrace_symbols(array, frames);
-		
-		if(strings != NULL)
+		int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
+		if(fd != -1)
 		{
-			for(int32_t j = 0; j < frames; ++j)
-			{
-				g_log->error(strings[j]);
-			}
+			write(fd, line, strlen(line));
 
-			free(strings);
+			backtrace_symbols_fd(array, frames, fd);
+			close(fd);
 		}
+
+		write(1, line, strlen(line));
+		backtrace_symbols_fd(array, frames, 1);
 	}
 
 	signal(sig, SIG_DFL);
@@ -75,6 +74,9 @@ bool crash_handler::initialize()
 			return false;
 		}
 	}
+
+	void *array[NUM_FRAMES];
+	backtrace(array, NUM_FRAMES);
 
 	return true;
 }
