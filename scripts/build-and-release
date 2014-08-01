@@ -143,9 +143,9 @@ function upload_binaries {
 build_components
 
 REPOSITORY_NAME=$REPOSITORY_BASENAME
-PACKAGES_DIR=BINARIES_DIR/release
+PACKAGES_DIR=$BINARIES_DIR/release
 upload_binaries
 
 REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
-PACKAGES_DIR=BINARIES_DIR/debug
+PACKAGES_DIR=$BINARIES_DIR/debug
 upload_binaries
