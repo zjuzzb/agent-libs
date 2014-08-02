@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
-set(DRAIOS_DEBUG_FLAGS "-D_DEBUG -DNDEBUG")
+set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
 set(CMAKE_C_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
@@ -40,17 +40,18 @@ set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Draios Inc. <support@draios.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.draios.com")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "sysdig (>= ${SYSDIG_MINIMUM_VERSION})")
-set(CPACK_DEBIAN_PACKAGE_agent_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/scripts/debian/postinst;${PROJECT_SOURCE_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
-set(CPACK_DEBIAN_PACKAGE_tests_CONTROL_EXTRA " ")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/scripts/debian/postinst;${PROJECT_SOURCE_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
 set(CPACK_RPM_PACKAGE_REQUIRES "sysdig >= ${SYSDIG_MINIMUM_VERSION}, gcc, make, kernel-devel, perl")
-set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
-set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
-set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
+set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
+set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d
 	/etc/rc.d/init.d
 	/opt)
+
+set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")
 
 include(CPack)

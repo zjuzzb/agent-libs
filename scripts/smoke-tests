@@ -1,13 +1,13 @@
 #!/bin/bash
 set -exu
 
-REPOSITORY=$1
+BASE_REPOSITORY=$1
 
 function smoke_tests {
 	killall -9 test || true
 
+	echo "watchdog.enabled = false" >> /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties /opt/draios/bin/dragent.properties.bak
-	echo "server.address =" >> /opt/draios/bin/dragent.properties
 
 	# The agent should be running after the installation script	
 	sleep 2
@@ -15,6 +15,9 @@ function smoke_tests {
 	service dragent status
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
+
+	# The agent should be sucessfully connected to app.draios.com
+	cat /opt/draios/logs/* | grep "SSL identity verified"
 
 	# The agent should restart if it dies unexpectedly
 	kill -SIGKILL $AGENT_PID
@@ -46,9 +49,10 @@ function smoke_tests {
 	rm -rf /opt/draios/logs/*
 	rm -rf /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	cp /etc/hosts /etc/hosts.bak
 	echo "127.0.0.1 collector.draios.com" >> /etc/hosts
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
-	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
+	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
 	service dragent start
 	sleep 5
 	cat /opt/draios/logs/* | grep "certificate verify failed"
@@ -62,7 +66,9 @@ function smoke_tests {
 	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
 	echo "ssl.ca_certificate = test/resources/fake_backend.cert" >> /opt/draios/bin/dragent.properties
-	python /opt/draios/test/resources/fake_backend.py --ssl-certificate=/opt/draios/test/resources/fake_backend.cert --ssl-key=/opt/draios/test/resources/fake_backend.key &
+	mkdir -p /opt/draios/test/resources
+	cp ./opt/draios/test/resources/fake_backend.cert /opt/draios/test/resources/
+	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
 	service dragent start
 	sleep 5
 	cat /opt/draios/logs/* | grep "SSL identity verified"
@@ -71,9 +77,11 @@ function smoke_tests {
 
 	rm -rf /opt/draios/bin/dragent.properties
 	mv /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	rm -rf /etc/hosts
+	mv /etc/hosts.bak /etc/hosts
 	
 	modprobe sysdig-probe
-	sh -c "cd /opt/draios/test; ./test"
+	sh -c "cd ./opt/draios/test; ./test"
 	sysdig -n 50
 	sysdig -cl
 	sysdig -cstdout -n 50
@@ -82,45 +90,59 @@ function smoke_tests {
 
 function install_tests {
 	if [ -f /etc/debian_version ]; then
-	    apt-get -y install draios-tests
+		AGENT_VERSION=$(dpkg-query -W --showformat='${Version}\n' draios-agent)
 	elif [ -f /etc/system-release-cpe ]; then
-	    yum -y install draios-tests
+		AGENT_VERSION=$(rpm -q --qf "%{VERSION}" draios-agent)
 	else
 	    echo "Unable to detect operating system."
 	    exit 1
 	fi
+
+	ARCH=$(uname -m)
+	FILE_NAME="draios-$AGENT_VERSION-$ARCH-tests.tar.gz"
+	wget http://download.draios.com/$REPOSITORY/tgz/$FILE_NAME
+	tar zxvf $FILE_NAME
+	mkdir ./opt/draios/test/captures
+	rm -rf $FILE_NAME
 }
 
 function uninstall {
 	if [ -f /etc/debian_version ]; then
-		apt-get -y purge draios-tests draios-agent sysdig || true
+		apt-get -y purge draios-agent sysdig || true
 	elif [ -f /etc/system-release-cpe ]; then
-		yum -y erase draios-tests draios-agent sysdig
+		yum -y erase draios-agent sysdig
 		yum clean all
 		rm -rf /etc/yum.repos.d/draios.repo
 		yum clean all
 	else
 	    echo "Unable to detect operating system."
 	    exit 1
-	fi	
+	fi
+
+	rm -rf ./opt
+	rm -rf /opt/draios
 }
 
 uninstall
+REPOSITORY=$BASE_REPOSITORY
 curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s access_key
 install_tests
 smoke_tests
 
 uninstall
-curl -s http://download.draios.com/$REPOSITORY-debug/install-agent | bash -s access_key
+REPOSITORY=$BASE_REPOSITORY-debug
+curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s access_key
 install_tests
 smoke_tests
 
 uninstall
-curl -s http://download.draios.com/$REPOSITORY-debug/install-sysdig | bash
+REPOSITORY=$BASE_REPOSITORY-debug
+curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
 
 uninstall
+REPOSITORY=$BASE_REPOSITORY
 curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50

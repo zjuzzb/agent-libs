@@ -81,7 +81,6 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.0.0.tar.gz
 	tar -xzf cmake-3.0.0.tar.gz
 	cd $CMAKE_DIR
-	patch -p1 < $AGENT_SOURCEDIR/patches/0001-Make-deb-package-options-configurable-per-component.patch
 	./bootstrap
 	make
 fi
