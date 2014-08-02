@@ -42,6 +42,12 @@ add_executable(resources/forking_main_thread_exit
 target_link_libraries(resources/forking_main_thread_exit
 	pthread) 
 
+add_executable(resources/forking_nested
+	resources/forking_nested.c)
+
+target_link_libraries(resources/forking_nested
+	pthread) 
+	
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -56,5 +62,9 @@ install(TARGETS test
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
 	COMPONENT tests)
 install(TARGETS resources/forking_main_thread_exit 
+	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+	COMPONENT tests)
+
+install(TARGETS resources/forking_nested 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
