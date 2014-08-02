@@ -52,4 +52,6 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d/init.d
 	/opt)
 
+set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")
+
 include(CPack)
