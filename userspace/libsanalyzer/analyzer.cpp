@@ -1225,7 +1225,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 			else
 			{
-				m_inspector->m_thread_manager->remove_thread(it++);
+				m_inspector->m_thread_manager->remove_thread(it++, false);
 			}
 		}
 		else
