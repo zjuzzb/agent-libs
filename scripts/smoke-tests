@@ -8,7 +8,6 @@ function smoke_tests {
 
 	echo "watchdog.enabled = false" >> /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties /opt/draios/bin/dragent.properties.bak
-	echo "server.address =" >> /opt/draios/bin/dragent.properties
 
 	# The agent should be running after the installation script	
 	sleep 2
@@ -16,6 +15,9 @@ function smoke_tests {
 	service dragent status
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
+
+	# The agent should be sucessfully connected to app.draios.com
+	cat /opt/draios/logs/* | grep "SSL identity verified"
 
 	# The agent should restart if it dies unexpectedly
 	kill -SIGKILL $AGENT_PID
@@ -47,6 +49,7 @@ function smoke_tests {
 	rm -rf /opt/draios/logs/*
 	rm -rf /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	cp /etc/hosts /etc/hosts.bak
 	echo "127.0.0.1 collector.draios.com" >> /etc/hosts
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
@@ -74,6 +77,8 @@ function smoke_tests {
 
 	rm -rf /opt/draios/bin/dragent.properties
 	mv /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	rm -rf /etc/hosts
+	mv /etc/hosts.bak /etc/hosts
 	
 	modprobe sysdig-probe
 	sh -c "cd ./opt/draios/test; ./test"
