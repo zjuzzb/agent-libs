@@ -7,8 +7,8 @@ rm -rf sysdig/build || true
 agent/bootstrap-agent
 agent/bootstrap-sysdig
 
-make -C agent/build/debug
-make -C sysdig/build/debug
+make -C agent/build/debug VERBOSE=1
+make -C sysdig/build/debug VERBOSE=1
 insmod sysdig/driver/sysdig-probe.ko
 cd agent/build/debug/test
 ./test
@@ -20,8 +20,8 @@ cd sysdig/build/debug/userspace/sysdig
 cd -
 rmmod sysdig-probe
 
-make -C agent/build/release
-make -C sysdig/build/release
+make -C agent/build/release VERBOSE=1
+make -C sysdig/build/release VERBOSE=1
 insmod sysdig/driver/sysdig-probe.ko
 cd agent/build/release/test
 ./test
