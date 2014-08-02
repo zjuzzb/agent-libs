@@ -111,7 +111,7 @@ function configure_debian_repo {
 function configure_tgz_repo {
 	mkdir -p $REPOSITORY_DIR/tgz
 	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/
-	aws s3 cp $PACKAGES_DIR/*tar.gz s3://download.draios.com/$REPOSITORY_NAME/tgz/ --recursive --acl public-read
+	aws s3 cp $REPOSITORY_DIR/tgz/ s3://download.draios.com/$REPOSITORY_NAME/tgz/ --recursive --acl public-read
 }
 
 function configure_installers {
