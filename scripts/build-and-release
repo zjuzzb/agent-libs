@@ -3,7 +3,6 @@ set -exu
 
 COMPONENT=$1
 REPOSITORY_BASENAME=$2
-RELEASE_TYPE=$3
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $SCRIPT)
@@ -27,18 +26,10 @@ function build_components {
 			make -C agent/build/debug package
 			make -C agent/build/release package
 
-			cp agent/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-			case "$RELEASE_TYPE" in
-				internal)
-					cp agent/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
-					;;
-				public)
-					cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release # copy agent and not tests
-					;;
-				*) 
-					false
-					;;
-			esac
+			cp agent/build/debug/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+			cp agent/build/debug/*tests*tar.gz $BINARIES_DIR/debug
+			cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release
+			cp agent/build/release/*tests*tar.gz $BINARIES_DIR/release
 			;;
 		sysdig)
 			rm -rf sysdig/build || true
