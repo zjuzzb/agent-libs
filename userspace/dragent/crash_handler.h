@@ -18,6 +18,6 @@ public:
 	static void log_crashdump_message(const char* message);
 
 private:
-	static const int NUM_FRAMES = 10;
+	static const int NUM_FRAMES = 20;
 	static string m_crashdump_file;
 };
