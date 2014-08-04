@@ -411,7 +411,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		//
 		// Complete the state for this CPU
 		//
-		sinsp_threadinfo* tinfo = m_inspector->get_thread(state.m_last_switch_tid, false);
+		sinsp_threadinfo* tinfo = m_inspector->get_thread(state.m_last_switch_tid, false, true);
 		uint64_t utime = MAX(flush_time - 1, state.m_last_switch_time);
 		update(tinfo, utime, j, state.m_last_switch_tid);
 
