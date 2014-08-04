@@ -159,7 +159,11 @@ void dragent_configuration::init(Application* app)
 	m_hidden_processes = config.getString("ui.hidden_processes", "");
 	m_autodrop_enabled = config.getBool("autoupdate.enabled", true);
 	m_print_protobuf = config.getBool("protobuf.print", false);
+#ifdef _DEBUG
+	m_watchdog_enabled = config.getBool("watchdog.enabled", false);
+#else
 	m_watchdog_enabled = config.getBool("watchdog.enabled", true);
+#endif
 	m_watchdog_sinsp_worker_timeout_s = config.getInt("watchdog.sinsp_worker.timeout_s", 10);
 	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
 	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 256);
