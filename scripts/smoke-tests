@@ -119,8 +119,8 @@ function uninstall {
 	    exit 1
 	fi
 
-	rm -rf ./opt
-	rm -rf /opt/draios
+	rm -rf ./opt || true
+	rm -rf /opt/draios || true
 }
 
 uninstall
