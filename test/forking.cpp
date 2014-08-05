@@ -270,12 +270,12 @@ TEST_F(sys_call_test, forking_process_expired)
 				//
 				// The child should exist
 				//
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
+				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 				EXPECT_NE((sinsp_threadinfo*)NULL, ti);
 			}
 			else if(e->get_type() == PPME_SYSCALL_NANOSLEEP_X && !sleep_caught)
 			{
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
+				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 				EXPECT_EQ(NULL, ti);
 				sleep_caught = true;
 			}
@@ -287,8 +287,6 @@ TEST_F(sys_call_test, forking_process_expired)
 	};
 
 	sinsp_configuration configuration;
-//	configuration.set_thread_timeout_ns(5 * ONE_SECOND_IN_NS);
-//	configuration.set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, 
 		callback, 
@@ -296,8 +294,8 @@ TEST_F(sys_call_test, forking_process_expired)
 		configuration,
 		NULL,
 		0,
-		5 * ONE_SECOND_IN_NS,
-		ONE_SECOND_IN_NS);});
+		5 * ONE_SECOND_IN_NS,	// thread timeout
+		ONE_SECOND_IN_NS);});	// thread table scan time
 
 	EXPECT_TRUE(sleep_caught);
 }
@@ -360,7 +358,7 @@ TEST_F(sys_call_test, forking_execve)
 			//
 			// The child should exist
 			//
-			sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
+			sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 			EXPECT_EQ("test", ti->get_comm());
 			EXPECT_NE((uint64_t) 0, ti->m_vmsize_kb);
 			EXPECT_NE((uint64_t) 0, ti->m_vmrss_kb);
@@ -370,7 +368,7 @@ TEST_F(sys_call_test, forking_execve)
 		{
 			if(callnum == 1)
 			{
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
+				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 				EXPECT_EQ("test", ti->get_comm());
 				EXPECT_GE(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("", e->get_param_value_str("exe"));
@@ -378,7 +376,7 @@ TEST_F(sys_call_test, forking_execve)
 			}
 			else
 			{
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false);
+				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 				EXPECT_EQ("echo", ti->get_comm());
 				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("/bin/echo", e->get_param_value_str("exe"));

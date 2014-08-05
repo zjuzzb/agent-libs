@@ -500,7 +500,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 
 			callnum++;
 		}
-		sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
+		sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false, true);
 		if(ti)
 		{
 			transaction_count = ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in;

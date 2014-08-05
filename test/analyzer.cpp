@@ -104,7 +104,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((uint32_t)3, ec->m_table[SE_EBADF].m_count);
 				EXPECT_LE((uint32_t)2, ec->m_table[SE_EFAULT].m_count);
 
-				sinsp_threadinfo* tinfo = param.m_inspector->m_thread_manager->get_thread(getpid());
+				sinsp_threadinfo* tinfo = param.m_inspector->m_thread_manager->get_thread(getpid(), true);
 				ec = &tinfo->m_ainfo->m_procinfo->m_syscall_errors;
 
 				EXPECT_NE((size_t)0, ec->m_table.size());

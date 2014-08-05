@@ -679,11 +679,11 @@ void runtest(iotype iot,
 			{
 				if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
-					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false);
+					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false, true);
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
 					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 
-					ti = param.m_inspector->get_thread(ctid, false);
+					ti = param.m_inspector->get_thread(ctid, false, true);
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
 					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_count);

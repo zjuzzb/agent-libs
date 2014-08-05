@@ -1051,31 +1051,31 @@ TEST_F(sys_call_test, fs_dup)
 			if(callnum == 1)
 			{
 				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd1));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd1));
 				callnum++;
 			}
 			else if(callnum == 3)
 			{
 				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd2));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd2));
 				callnum++;
 			}
 			else if(callnum == 5)
 			{
 				EXPECT_EQ(fd3, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd3));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd3));
 				callnum++;
 			}
 			else if(callnum == 7)
 			{
 				EXPECT_EQ(fd4, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd4));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd4));
 				callnum++;
 			}
 			else if(callnum == 9)
 			{
 				EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_EQ((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd5));
+				EXPECT_EQ((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd5));
 				callnum++;
 			}
 			else if(callnum == 11)
@@ -1152,13 +1152,13 @@ TEST_F(sys_call_test, fs_fcntl)
 			if(callnum == 1)
 			{
 				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd1));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd1));
 				callnum++;
 			}
 			else if(callnum == 3)
 			{
 				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false)->get_fd(fd1));
+				EXPECT_NE((sinsp_threadinfo*)NULL, (sinsp_threadinfo*)param.m_inspector->get_thread(e->get_tid(), false, true)->get_fd(fd1));
 				callnum++;
 			}
 		}

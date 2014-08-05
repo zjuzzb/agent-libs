@@ -391,17 +391,17 @@ TEST(procinfo, process_not_existent)
 	//
 	// The first lookup should fail
 	//
-	EXPECT_EQ(NULL, inspector.get_thread(0xffff, false));
+	EXPECT_EQ(NULL, inspector.get_thread(0xffff, false, true));
 
 	//
 	// Even the second, to confirm that nothing was added to the table
 	//
-	EXPECT_EQ(NULL, inspector.get_thread(0xffff, false));
+	EXPECT_EQ(NULL, inspector.get_thread(0xffff, false, true));
 
 	//
 	// Now a new entry should be added to the process list...
 	//
-	sinsp_threadinfo* tinfo = inspector.get_thread(0xffff, true);
+	sinsp_threadinfo* tinfo = inspector.get_thread(0xffff, true, true);
 	EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
 	if(tinfo)
 	{
@@ -411,7 +411,7 @@ TEST(procinfo, process_not_existent)
 	//
 	// ...and confirm
 	//
-	tinfo = inspector.get_thread(0xffff, false);
+	tinfo = inspector.get_thread(0xffff, false, true);
 	EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
 	if(tinfo)
 	{
@@ -989,33 +989,33 @@ TEST_F(sys_call_test, program_child_with_threads)
 				{
 					sinsp_threadinfo* tinfo;
 
-					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid(), true);
 					EXPECT_EQ((uint64_t)0, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)3, tinfo->m_nchilds);
 				}
 				else if(callnum == 1)
 				{
 					sinsp_threadinfo* tinfo;
 
-					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid(), true);
 					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)1, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)3, tinfo->m_nchilds);
 				}
 				else if(callnum == 2)
 				{
 					sinsp_threadinfo* tinfo;
 
-					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid());
+					tinfo = param.m_inspector->m_thread_manager->get_thread(evt->get_tid(), true);
 					EXPECT_EQ((uint64_t)0, tinfo->m_nchilds);
-					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid);
+					tinfo = param.m_inspector->m_thread_manager->get_thread(tinfo->m_ptid, true);
 					EXPECT_EQ((uint64_t)2, tinfo->m_nchilds);
 				}
 
@@ -1126,8 +1126,6 @@ TEST_F(sys_call_test, nested_program_childs)
 
 TEST_F(sys_call_test, DISABLED_nested_program_childs_limit)
 {
-	int callnum = 0;
-
 	//
 	// FILTER
 	//
