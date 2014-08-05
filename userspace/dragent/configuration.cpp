@@ -172,6 +172,7 @@ void dragent_configuration::init(Application* app)
 
 void dragent_configuration::print_configuration()
 {
+	g_log->information("Distribution: " + get_distribution());
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
 	g_log->information("logfile.location: " + m_log_dir);
@@ -261,4 +262,42 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 
 	*memory = usage.ru_maxrss / 1024;
 	return true;
+}
+
+string dragent_configuration::get_distribution()
+{
+	string s;
+
+	try
+	{
+		Poco::FileInputStream f("/etc/system-release-cpe");
+		StreamCopier::copyToString(f, s);
+		return s;
+	}
+	catch(...)
+	{
+	}
+
+	try
+	{
+		Poco::FileInputStream f("/etc/lsb-release");
+		StreamCopier::copyToString(f, s);
+		return s;
+	}
+	catch(...)
+	{
+	}
+
+	try
+	{
+		Poco::FileInputStream f("/etc/debian_version");
+		StreamCopier::copyToString(f, s);
+		return s;
+	}
+	catch(...)
+	{
+	}
+
+	ASSERT(false);
+	return s;
 }

@@ -34,6 +34,7 @@ public:
 	static bool get_aws_metadata(aws_metadata* metadata);
 	static uint64_t get_current_time_ns();
 	static bool get_memory_usage_mb(uint64_t* memory);
+	static string get_distribution();
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
