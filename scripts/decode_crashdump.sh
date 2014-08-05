@@ -7,14 +7,20 @@ if [[ $# -lt 1 || $# -gt 1 ]]; then
 	exit 1
 fi
 
-EXE=$1
-
 echo "Paste your stacktrace here, and press CTRL+D when done"
 
 input=$(cat)
 
 echo "$input" | while IFS= read -r line
 do
-  symbol=$(echo "$line" | cut -d\( -f2 | cut -d\) -f1)
-  gdb -batch -ex "info line *$symbol" $EXE
+	if [[ $line == *dragent* ]]
+	then
+		exe=$1
+	else
+		exe=$(echo "$line" | cut -d\( -f1)
+	fi
+
+	symbol=$(echo "$line" | cut -d\( -f2 | cut -d\) -f1)
+
+	gdb -batch -ex "info line *$symbol" $exe
 done
