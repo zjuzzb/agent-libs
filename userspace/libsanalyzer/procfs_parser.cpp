@@ -468,7 +468,8 @@ return;
 			|| strcmp(entry->mnt_type, "kernfs") == 0
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
-			|| strcmp(entry->mnt_type, "none") == 0)
+			|| strcmp(entry->mnt_type, "none") == 0
+			|| strcmp(entry->mnt_type, "nfs") == 0)
 		{
 			continue;
 		}
