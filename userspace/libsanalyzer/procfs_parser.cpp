@@ -455,7 +455,7 @@ return;
 		//
 		// Dummy detection from coreutils
 		//
-  		if(strcmp(entry->mnt_type, "autofs") == 0
+  		if(strcmp(entry->mnt_type, "autofs") == 0 // dummy fs
 			|| strcmp(entry->mnt_type, "proc") == 0
 			|| strcmp(entry->mnt_type, "subfs") == 0
 			|| strcmp(entry->mnt_type, "debugfs") == 0
@@ -469,7 +469,17 @@ return;
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
 			|| strcmp(entry->mnt_type, "none") == 0
-			|| strcmp(entry->mnt_type, "nfs") == 0)
+			|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
+			|| strcmp(entry->mnt_type, "smbfs") == 0
+			|| strcmp(entry->mnt_type, "cifs") == 0)
+		{
+			continue;
+		}
+
+		//
+		// From coreutils, if dev contains ':', then remote
+		//
+		if(strchr(entry->mnt_fsname, ':') != NULL)
 		{
 			continue;
 		}
