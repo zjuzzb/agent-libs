@@ -157,7 +157,7 @@ void dragent_configuration::init(Application* app)
 	m_host_custom_map = config.getString("ui.custommap", "");
 	m_host_hidden = config.getBool("ui.is_hidden", false);
 	m_hidden_processes = config.getString("ui.hidden_processes", "");
-	m_autodrop_enabled = config.getBool("autoupdate.enabled", true);
+	m_autoupdate_enabled = config.getBool("autoupdate.enabled", true);
 	m_print_protobuf = config.getBool("protobuf.print", false);
 #ifdef _DEBUG
 	m_watchdog_enabled = config.getBool("watchdog.enabled", false);
@@ -188,6 +188,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	g_log->information("dumpdir: " + m_dump_dir);
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
+	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	g_log->information("autodrop.treshold.upper: " + NumberFormatter::format(m_drop_upper_treshold));
 	g_log->information("autodrop.treshold.lower: " + NumberFormatter::format(m_drop_lower_treshold));
 	g_log->information("ui.customname: " + m_host_custom_name);
