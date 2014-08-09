@@ -2166,8 +2166,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Run the periodic connection and thread table cleanup
 	//
 	remove_expired_connections(ts);
-	m_inspector->m_thread_manager->remove_inactive_threads();
-
+	if(m_inspector->m_thread_manager->remove_inactive_threads() == true)
+	{
+		//
+		// The thread tabl cleanup process might remove this thread and
+		// that would cause evt->m_tinfo to become invalid.
+		// To avoid that, we refresh evt->m_tinfo.
+		//
+		evt->m_tinfo = evt->get_thread_info();
+	}
+	
 	if(evt)
 	{
 		uint64_t nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
