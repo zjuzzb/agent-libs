@@ -2389,6 +2389,16 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 	tainfo = evt->m_tinfo->m_ainfo;
 
+	if(tainfo == NULL)
+	{
+		//
+		// No analyzer state associated to this thread.
+		// This should never happen. If it does, skip the event.
+		//
+		ASSERT(false);
+		return;
+	}
+
 	//
 	// Get the event category and type
 	//
