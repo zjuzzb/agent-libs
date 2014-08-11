@@ -15,6 +15,7 @@
 
 static void g_signal_callback(int sig)
 {
+	g_log->information("Received signal " + NumberFormatter::format(sig) + ", terminating"); 
 	dragent_configuration::m_terminate = true;
 }
 
