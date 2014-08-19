@@ -301,7 +301,8 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 		sinsp_threadinfo* tinfo = ev->get_thread_info();
 		uint16_t etype = ev->get_type();
 
-		if(tinfo &&
+		if(!m_configuration->m_capture_dragent_events &&
+			tinfo &&
 			tinfo->m_pid == m_dragent_pid &&
 			etype != PPME_SCHEDSWITCH_1_E && 
 			etype != PPME_SCHEDSWITCH_6_E)

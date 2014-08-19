@@ -43,6 +43,7 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_connection_manager_timeout_s = 0;
 	m_watchdog_max_memory_usage_mb = 0;
 	m_dirty_shutdown_report_log_size_b = 0;
+	m_capture_dragent_events = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -168,6 +169,7 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
 	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 256);
 	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 30 * 1024);
+	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
 }
 
 void dragent_configuration::print_configuration()
@@ -203,6 +205,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.connection_manager.timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 	g_log->information("dirty_shutdown.report.log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
+	g_log->information("capture.draget.events: " + bool_as_text(m_capture_dragent_events));
 }
 
 bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
