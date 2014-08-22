@@ -110,7 +110,8 @@ bool connection_manager::connect()
 		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 
-		g_log->information("Connected to collector");
+		g_log->information("Connected to collector, flushing sending queue");
+		m_queue->clear();
 		return true;
 	}
 	catch(Poco::IOException& e)

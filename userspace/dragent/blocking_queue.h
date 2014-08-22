@@ -22,6 +22,7 @@ public:
 	bool get(T* item, uint64_t timeout_ms);
 	bool is_full(item_priority priority);
 	size_t size(item_priority priority);
+	void clear();
 
 private:
 	const uint32_t m_max_size;
@@ -72,7 +73,10 @@ bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 			{
 				T p = m_queues[j].front();
 				m_queues[j].pop();
-				*item = p;
+				if(item)
+				{
+					*item = p;
+				}
 				break;
 			}
 		}
@@ -97,4 +101,10 @@ size_t blocking_queue<T>::size(item_priority priority)
 	Mutex::ScopedLock lock(m_mutex);
 
 	return m_queues[priority].size();
+}
+
+template<class T>
+void blocking_queue<T>::clear()
+{
+	while(get(NULL, 0));
 }
