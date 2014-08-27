@@ -208,6 +208,12 @@ void sinsp_analyzer::on_capture_start()
 		throw sinsp_exception("analyzer can be opened only once");
 	}
 
+	if(scap_enable_dynamic_snaplen(m_inspector->m_h) != SCAP_SUCCESS)
+	{
+		throw sinsp_exception(scap_getlasterr(m_inspector->m_h));
+	}
+
+
 	//
 	// Hardware-dependent inits
 	//
