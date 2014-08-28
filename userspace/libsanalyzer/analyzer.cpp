@@ -1943,17 +1943,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			//
 			// Map customizations coming from the analyzer.
-			// We send them in the first sample only.
 			//
-			if(m_n_flushes == 1)
-			{
-				m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
-				m_metrics->set_host_tags(m_configuration->get_host_tags());
-				m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
-				m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
-				m_metrics->set_host_custom_map(m_configuration->get_host_custom_map());
-				m_metrics->set_version(m_configuration->get_version());
-			}
+			m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
+			m_metrics->set_host_tags(m_configuration->get_host_tags());
+			m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
+			m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
+			m_metrics->set_host_custom_map(m_configuration->get_host_custom_map());
+			m_metrics->set_version(m_configuration->get_version());
 
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
