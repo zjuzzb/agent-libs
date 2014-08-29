@@ -20,6 +20,7 @@
 class sinsp_protocol_parser
 {
 public:
+	virtual ~sinsp_protocol_parser();
 	virtual bool parse_buffer(char* buf, uint32_t buflen) = 0;
 };
 

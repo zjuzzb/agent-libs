@@ -67,7 +67,7 @@ inline bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 		if(check_and_extract(buf + j, 
 			buflen - j,
-			"User-Agent:",
+			(char*)"User-Agent:",
 			sizeof("User-Agent:")))
 		{
 			n_extracted++;
@@ -80,7 +80,7 @@ inline bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else if(check_and_extract(buf + j, 
 			buflen - j,
-			"Host:",
+			(char*)"Host:",
 			sizeof("Host:")))
 		{
 			n_extracted++;
@@ -102,7 +102,6 @@ inline bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	char* status_code = NULL;
 	uint32_t status_code_len;
 	bool res = false;
-	uint32_t n_extracted = 0;
 	uint32_t n_spaces = 0;
 
 	for(j = 0; j < buflen; j++)
@@ -136,7 +135,7 @@ inline bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 
 		if(check_and_extract(buf + j, 
 			buflen - j,
-			"Content-Type:",
+			(char*)"Content-Type:",
 			sizeof("Content-Type:")))
 		{
 			return true;
