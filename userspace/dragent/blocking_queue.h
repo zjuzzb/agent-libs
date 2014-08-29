@@ -22,6 +22,7 @@ public:
 	bool get(T* item, uint64_t timeout_ms);
 	bool is_full(item_priority priority);
 	size_t size(item_priority priority);
+	size_t size();
 	void clear();
 
 private:
@@ -101,6 +102,19 @@ size_t blocking_queue<T>::size(item_priority priority)
 	Mutex::ScopedLock lock(m_mutex);
 
 	return m_queues[priority].size();
+}
+
+template<class T>
+size_t blocking_queue<T>::size()
+{
+	size_t s = 0;
+
+	for(uint32_t j = 0; j < BQ_PRIORITY_SIZE; ++j)
+	{
+		s += size((item_priority) j);
+	}
+
+	return s;
 }
 
 template<class T>
