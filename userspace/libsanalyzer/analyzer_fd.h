@@ -60,6 +60,7 @@ public:
 	inline sinsp_partial_transaction::type detect_proto(sinsp_partial_transaction *trinfo,
 		char* buf, uint32_t buflen)
 	{
+/*
 		//
 		// Make sure there are at least 4 bytes
 		//
@@ -78,7 +79,7 @@ public:
 				return sinsp_partial_transaction::TYPE_HTTP;
 			}
 		}
-
+*/
 		return sinsp_partial_transaction::TYPE_IP;
 	}
 
