@@ -15,6 +15,7 @@
 #include "analyzer_int.h"
 #include "connectinfo.h"
 #include "analyzer_thread.h"
+#include "parser_http.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transact_table implementation
@@ -50,9 +51,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 #if _DEBUG
 									sinsp_evt *evt,
 									uint64_t fd,
-									uint64_t ts,
+									uint64_t ts
 #endif
-								   uint32_t len)
+									)
 {
 	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
 
@@ -288,6 +289,7 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
+	m_protoparser = NULL;
 	reset();
 }
 
@@ -306,18 +308,38 @@ void sinsp_partial_transaction::reset()
 	m_start_of_transaction_time = 0;
 	m_prev_start_of_transaction_time = 0;
 	m_prev_prev_start_of_transaction_time = 0;
+	if(m_protoparser)
+	{
+		delete m_protoparser;
+		m_protoparser = NULL;
+	}
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
+	if(m_protoparser)
+	{
+		delete m_protoparser;
+		m_protoparser = NULL;
+	}
 }
 
-sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts, 
-																			 uint64_t exit_ts, 
-																			 direction dir, 
-																			 uint32_t len, 
-																			 bool is_server)
+sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts,
+		uint64_t exit_ts, 
+		direction dir,
+		char* data,
+		uint32_t original_len,
+		uint32_t len,
+		bool is_server)
 {
+/*
+	if(len >= 5)
+	{
+		ASSERT(m_protoparser != NULL);
+		m_protoparser->parse_buffer(data, len);
+	}
+*/
+
 	if(dir == DIR_IN)
 	{
 		m_incoming_bytes += len;
@@ -471,7 +493,9 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 		sinsp_evt *evt,
 		uint64_t fd,
 #endif
-	uint32_t datalen)
+	char* data,
+	uint32_t original_len, 
+	uint32_t len)
 {
 	if(pconn == NULL)
 	{
@@ -487,15 +511,15 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo; 
 
 	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, 
-		dir, datalen, ffdinfo->is_role_server());
+		dir, data, len, original_len, ffdinfo->is_role_server());
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
 		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this, 
 #if _DEBUG
-			evt, fd, exit_ts, 
-#endif
-			datalen);
+			evt, fd, exit_ts 
+#endif	
+			);
 	}
 	else if(res == STATE_NO_TRANSACTION)
 	{

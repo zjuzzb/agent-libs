@@ -1,4 +1,5 @@
 #pragma once
+#include "parser_http.h"
 
 class analyzer_file_stat
 {
@@ -48,6 +49,59 @@ public:
 	bool m_exclude_from_sample;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// The DPI-based protocol detector
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_proto_detector
+{
+public:
+	sinsp_proto_detector();
+
+	inline sinsp_partial_transaction::type detect_proto(sinsp_partial_transaction *trinfo,
+		char* buf, uint32_t buflen)
+	{
+		//
+		// Make sure there are at least 4 bytes
+		//
+		if(buflen > 4)
+		{
+			if(*(uint32_t*)buf == m_http_get_intval ||
+					*(uint32_t*)buf == m_http_post_intval ||
+					*(uint32_t*)buf == m_http_put_intval ||
+					*(uint32_t*)buf == m_http_delete_intval ||
+					*(uint32_t*)buf == m_http_trace_intval ||
+					*(uint32_t*)buf == m_http_connect_intval ||
+					*(uint32_t*)buf == m_http_options_intval ||
+					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
+			{
+				trinfo->m_protoparser = (sinsp_protocol_parser*)new sinsp_http_parser();
+				return sinsp_partial_transaction::TYPE_HTTP;
+			}
+		}
+
+		return sinsp_partial_transaction::TYPE_IP;
+	}
+
+	bool parse_request(char* buf, uint32_t buflen);
+
+	string m_url;
+	string m_agent;
+
+private:
+	uint32_t m_http_options_intval;
+	uint32_t m_http_get_intval;
+	uint32_t m_http_head_intval;
+	uint32_t m_http_post_intval;
+	uint32_t m_http_put_intval;
+	uint32_t m_http_delete_intval;
+	uint32_t m_http_trace_intval;
+	uint32_t m_http_connect_intval;
+	uint32_t m_http_resp_intval;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// This class listens on FD activity and performs advanced analysis
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_analyzer_fd_listener : public sinsp_fd_listener
 {
 public:
@@ -74,4 +128,5 @@ private:
 
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
+	sinsp_proto_detector m_proto_detector;
 };

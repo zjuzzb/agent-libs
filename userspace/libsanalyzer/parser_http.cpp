@@ -5,33 +5,28 @@
 
 #ifdef HAS_ANALYZER
 
-sinsp_http_parser::sinsp_http_parser()
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
+												 char* tosearch, uint32_t tosearchlen)
 {
-	m_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
-	m_http_get_intval = (*(uint32_t*)HTTP_GET_STR);
-	m_http_head_intval = (*(uint32_t*)HTTP_HEAD_STR);
-	m_http_post_intval = (*(uint32_t*)HTTP_POST_STR);
-	m_http_put_intval = (*(uint32_t*)HTTP_PUT_STR);
-	m_http_delete_intval = (*(uint32_t*)HTTP_DELETE_STR);
-	m_http_trace_intval = (*(uint32_t*)HTTP_TRACE_STR);
-	m_http_connect_intval = (*(uint32_t*)HTTP_CONNECT_STR);
-}
+	uint32_t k;
 
-bool sinsp_http_parser::is_msg_http(char* buf, uint32_t buflen)
-{
-	//
-	// Make sure there are at least 4 bytes
-	//
-	if(buflen > 4)
+	if(buflen > tosearchlen)
 	{
-		if(*(uint32_t*)buf == m_http_get_intval ||
-		        *(uint32_t*)buf == m_http_post_intval ||
-		        *(uint32_t*)buf == m_http_put_intval ||
-		        *(uint32_t*)buf == m_http_delete_intval ||
-		        *(uint32_t*)buf == m_http_trace_intval ||
-		        *(uint32_t*)buf == m_http_connect_intval ||
-		        *(uint32_t*)buf == m_http_options_intval)
+		if(memcmp(buf, tosearch, tosearchlen - 1) == 0)
 		{
+			uint32_t uastart = tosearchlen;
+
+			for(k = tosearchlen; k < buflen; k++)
+			{
+				if(buf[k] == '\r' || buf[k] == '\n')
+				{
+					m_agent.assign(buf + uastart, k - uastart);
+					break;
+				}
+			}
+
 			return true;
 		}
 	}
@@ -39,18 +34,21 @@ bool sinsp_http_parser::is_msg_http(char* buf, uint32_t buflen)
 	return false;
 }
 
-bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
+#define PARSE_REQUEST_N_TO_EXTRACT 2
+
+inline bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 {
-	uint32_t j, k;
+	uint32_t j;
 	char* url = NULL;
 	uint32_t url_len;
 	bool res = false;
+	uint32_t n_extracted = 0;
 
 	for(j = 0; j < buflen; j++)
 	{
 		if(buf[j] == 0)
 		{
-			return false;
+			return res;
 		}
 
 		if(buf[j] == ' ')
@@ -67,35 +65,101 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			}
 		}
 
-		if(buflen - j > sizeof("User-Agent:") - 1)
+		if(check_and_extract(buf + j, 
+			buflen - j,
+			"User-Agent:",
+			sizeof("User-Agent:")))
 		{
-			if(buf[j] == 'U' &&
-			        buf[j + 1] == 's' &&
-			        buf[j + 2] == 'e' &&
-			        buf[j + 3] == 'r' &&
-			        buf[j + 4] == '-' &&
-			        buf[j + 5] == 'A' &&
-			        buf[j + 6] == 'g' &&
-			        buf[j + 7] == 'e' &&
-			        buf[j + 8] == 'n' &&
-			        buf[j + 9] == 't' &&
-			        buf[j + 10] == ':')
+			n_extracted++;
+			if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 			{
-				uint32_t uastart = j + sizeof("User-Agent:");
-
-				for(k = j + sizeof("User-Agent:"); k < buflen; k++)
-				{
-					if(buf[k] == '\r' || buf[k] == '\n')
-					{
-						m_agent.assign(buf + uastart, k - uastart);
-						break;
-					}
-				}
+				return true;
 			}
+
+			continue;
+		}
+		else if(check_and_extract(buf + j, 
+			buflen - j,
+			"Host:",
+			sizeof("Host:")))
+		{
+			n_extracted++;
+			if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+			{
+				return true;
+			}
+
+			continue;
 		}
 	}
 
 	return res;
+}
+
+inline bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
+{
+	uint32_t j;
+	char* status_code = NULL;
+	uint32_t status_code_len;
+	bool res = false;
+	uint32_t n_extracted = 0;
+	uint32_t n_spaces = 0;
+
+	for(j = 0; j < buflen; j++)
+	{
+		if(buf[j] == 0)
+		{
+			return res;
+		}
+
+		if(buf[j] == ' ')
+		{
+			n_spaces++;
+
+			if(n_spaces == 1)
+			{
+				status_code = buf + j + 1;
+			}
+			else if(res == false)
+			{
+				status_code_len = (uint32_t)(buf + j - status_code);
+				
+				if(!sinsp_numparser::tryparsed32_fast(status_code, 
+					status_code_len, &m_status_code))
+				{
+					m_status_code = -1;
+				}
+
+				res = true;
+			}
+		}
+
+		if(check_and_extract(buf + j, 
+			buflen - j,
+			"Content-Type:",
+			sizeof("Content-Type:")))
+		{
+			return true;
+		}
+	}
+
+	return res;
+}
+
+bool sinsp_http_parser::parse_buffer(char* buf, uint32_t buflen)
+{
+	//
+	// This checks if the buffer starts with "HTTP"
+	//
+	if(*(uint32_t*)buf == 0x50545448)
+	{
+//		m_status_code = 0;
+		return parse_response(buf, buflen);
+	}
+	else
+	{
+		return parse_request(buf, buflen);
+	}
 }
 
 #endif // HAS_ANALYZER

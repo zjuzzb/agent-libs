@@ -11,6 +11,7 @@ class sinsp_analyzer;
 class sinsp_threadinfo;
 class sinsp;
 class sinsp_evt;
+class sinsp_protocol_parser;
 
 //
 // Transaction information class
@@ -62,7 +63,9 @@ public:
 		sinsp_evt *evt,
 		uint64_t fd,
 #endif
-		uint32_t datalen);
+		char *data,
+		uint32_t original_len, 
+		uint32_t len);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
 	bool is_active()
@@ -102,11 +105,13 @@ public:
 	uint32_t m_outgoing_bytes;
 	int32_t m_cpuid;
 	uint32_t m_flags;
+	sinsp_protocol_parser* m_protoparser;
 
 private:
-	sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, 
+	inline sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, 
 		uint64_t exit_ts, direction dir, 
-		uint32_t len, bool is_server);
+		char* data, uint32_t original_len, uint32_t len, 
+		bool is_server);
 };
 
 //
@@ -180,9 +185,9 @@ public:
 #if _DEBUG
 		sinsp_evt *evt,
 		uint64_t fd,
-		uint64_t ts,
+		uint64_t ts
 #endif
-		uint32_t len);
+	);
 
 	//
 	// Stores the global list of transactions.

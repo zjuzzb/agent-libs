@@ -22,6 +22,22 @@
 #include "analyzer_fd.h"
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_proto_detector implementation
+///////////////////////////////////////////////////////////////////////////////
+sinsp_proto_detector::sinsp_proto_detector()
+{
+	m_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
+	m_http_get_intval = (*(uint32_t*)HTTP_GET_STR);
+	m_http_head_intval = (*(uint32_t*)HTTP_HEAD_STR);
+	m_http_post_intval = (*(uint32_t*)HTTP_POST_STR);
+	m_http_put_intval = (*(uint32_t*)HTTP_PUT_STR);
+	m_http_delete_intval = (*(uint32_t*)HTTP_DELETE_STR);
+	m_http_trace_intval = (*(uint32_t*)HTTP_TRACE_STR);
+	m_http_connect_intval = (*(uint32_t*)HTTP_CONNECT_STR);
+	m_http_resp_intval = (*(uint32_t*)HTTP_RESP_STR);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_analyzer_fd_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer)
@@ -426,9 +442,12 @@ r_conn_creation_done:
 		if(!trinfo->is_active())
 		{
 			//
-			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
+			// New transaction. Detect the protocol and initialize the transaction.
 			//
-			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			sinsp_partial_transaction::type type = 
+				m_proto_detector.detect_proto(trinfo, data, len);
+
+			trinfo->mark_active_and_reset(type);
 			evt->m_fdinfo->set_is_transaction();
 		}
 
@@ -463,6 +482,8 @@ r_conn_creation_done:
 			evt,
 			fd,
 #endif
+			data,
+			original_len,
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
@@ -755,9 +776,12 @@ w_conn_creation_done:
 		if(!trinfo->is_active())
 		{
 			//
-			// New transaction. Just mark it as IP, which is the only kind of transaction we support for the moment.
+			// New transaction. Detect the protocol and initialize the transaction.
 			//
-			trinfo->mark_active_and_reset(sinsp_partial_transaction::TYPE_IP);
+			sinsp_partial_transaction::type type = 
+				m_proto_detector.detect_proto(trinfo, data, len);
+
+			trinfo->mark_active_and_reset(type);
 			evt->m_fdinfo->set_is_transaction();
 		}
 
@@ -776,6 +800,8 @@ w_conn_creation_done:
 			evt,
 			fd,
 #endif
+			data,
+			original_len,
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
@@ -980,6 +1006,8 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 				NULL,
 				params->m_fd,
 #endif
+				NULL,
+				0,
 				0);
 		}
 
@@ -1035,6 +1063,8 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 			evt,
 			evt->m_tinfo->m_lastevent_fd,
 #endif
+			NULL,
+			0,
 			0);
 
 		evt->m_fdinfo->m_usrstate.mark_inactive();
