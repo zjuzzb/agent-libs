@@ -515,9 +515,9 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
-		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this, 
+		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this 
 #if _DEBUG
-			evt, fd, exit_ts 
+			, evt, fd, exit_ts 
 #endif	
 			);
 	}
