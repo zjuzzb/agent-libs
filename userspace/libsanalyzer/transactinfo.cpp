@@ -289,7 +289,7 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
-	m_protoparser = NULL;
+//	m_protoparser = NULL;
 	reset();
 }
 
@@ -308,20 +308,24 @@ void sinsp_partial_transaction::reset()
 	m_start_of_transaction_time = 0;
 	m_prev_start_of_transaction_time = 0;
 	m_prev_prev_start_of_transaction_time = 0;
+/*
 	if(m_protoparser)
 	{
 		delete m_protoparser;
 		m_protoparser = NULL;
 	}
+*/
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
+/*
 	if(m_protoparser)
 	{
 		delete m_protoparser;
 		m_protoparser = NULL;
 	}
+*/
 }
 
 sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts,
