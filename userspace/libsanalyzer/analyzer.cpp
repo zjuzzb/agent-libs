@@ -213,12 +213,10 @@ void sinsp_analyzer::on_capture_start()
 	//
 	if(m_inspector->is_live())
 	{
-/*
 		if(scap_enable_dynamic_snaplen(m_inspector->m_h) != SCAP_SUCCESS)
 		{
 			throw sinsp_exception(scap_getlasterr(m_inspector->m_h));
 		}
-*/
 	}
 
 	//
