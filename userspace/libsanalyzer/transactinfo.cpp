@@ -47,9 +47,9 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 								   void* fdinfo,
 								   sinsp_connection* pconn,
-								   sinsp_partial_transaction* tr,
+								   sinsp_partial_transaction* tr
 #if _DEBUG
-									sinsp_evt *evt,
+									, sinsp_evt *evt,
 									uint64_t fd,
 									uint64_t ts
 #endif
