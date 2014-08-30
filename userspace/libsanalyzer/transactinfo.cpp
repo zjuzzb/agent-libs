@@ -332,13 +332,21 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 		uint32_t len,
 		bool is_server)
 {
-/*
-	if(len >= 5)
+	if(m_protoparser != NULL && len >= 5)
 	{
-		ASSERT(m_protoparser != NULL);
-		m_protoparser->parse_buffer(data, len);
+		if(m_protoparser->is_request(data, len))
+		{
+			sinsp_protocol_parser* tpp;
+			tpp = m_protoparser;
+			m_protoparser = m_protoparser_old;
+			m_protoparser_old = tpp;
+			m_protoparser->parse_request(data, len);
+		}
+		else
+		{
+			m_protoparser->parse_response(data, len);
+		}
 	}
-*/
 
 	if(dir == DIR_IN)
 	{

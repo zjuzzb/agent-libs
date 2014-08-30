@@ -5,6 +5,10 @@
 
 #ifdef HAS_ANALYZER
 
+sinsp_protocol_parser::~sinsp_protocol_parser()
+{
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
@@ -36,7 +40,7 @@ inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 
 #define PARSE_REQUEST_N_TO_EXTRACT 2
 
-inline bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
+bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 {
 	uint32_t j;
 	char* url = NULL;
@@ -96,7 +100,7 @@ inline bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	return res;
 }
 
-inline bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
+bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 {
 	uint32_t j;
 	char* status_code = NULL;
@@ -145,19 +149,18 @@ inline bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	return res;
 }
 
-bool sinsp_http_parser::parse_buffer(char* buf, uint32_t buflen)
+bool sinsp_http_parser::is_request(char* buf, uint32_t buflen)
 {
 	//
 	// This checks if the buffer starts with "HTTP"
 	//
 	if(*(uint32_t*)buf == 0x50545448)
 	{
-//		m_status_code = 0;
-		return parse_response(buf, buflen);
+		return false;
 	}
 	else
 	{
-		return parse_request(buf, buflen);
+		return true;
 	}
 }
 

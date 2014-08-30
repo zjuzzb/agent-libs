@@ -14,25 +14,27 @@
 #define HTTP_CONNECT_STR "CONN"
 #define HTTP_RESP_STR "HTTP/"
 
-///////////////////////////////////////////////////////////////////////////////
-// HTTP parser
-///////////////////////////////////////////////////////////////////////////////
 class sinsp_protocol_parser
 {
 public:
 	virtual ~sinsp_protocol_parser();
-	virtual bool parse_buffer(char* buf, uint32_t buflen) = 0;
+	virtual bool is_request(char* buf, uint32_t buflen) = 0;
+	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
+	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// HTTP parser
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_http_parser : sinsp_protocol_parser
 {
 public:
-	bool parse_buffer(char* buf, uint32_t buflen);
+	bool is_request(char* buf, uint32_t buflen);
+	bool parse_request(char* buf, uint32_t buflen);
+	bool parse_response(char* buf, uint32_t buflen);
 
 private:
 	inline bool check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen);
-	inline bool parse_request(char* buf, uint32_t buflen);
-	inline bool parse_response(char* buf, uint32_t buflen);
 
 	string m_url;
 	string m_agent;
