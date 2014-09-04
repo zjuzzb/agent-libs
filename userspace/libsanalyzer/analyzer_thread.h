@@ -170,6 +170,8 @@ public:
 	// Time and duration of the last select, poll or epoll
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
+	// List of transaction that this thread is currently handling
+//	vector<sinsp_partial_transaction*> m_transactions_in_progress;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

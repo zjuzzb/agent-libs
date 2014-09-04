@@ -11,8 +11,9 @@ sinsp_protocol_parser::~sinsp_protocol_parser()
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
-												 char* tosearch, uint32_t tosearchlen)
+inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
+												 char* tosearch, uint32_t tosearchlen,
+												 OUT uint32_t* reslen)
 {
 	uint32_t k;
 
@@ -26,16 +27,14 @@ inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 			{
 				if(buf[k] == '\r' || buf[k] == '\n')
 				{
-					m_agent.assign(buf + uastart, k - uastart);
-					break;
+					*reslen = k - uastart;
+					return buf + uastart;
 				}
 			}
-
-			return true;
 		}
 	}
 
-	return false;
+	return NULL;
 }
 
 #define PARSE_REQUEST_N_TO_EXTRACT 2
@@ -43,8 +42,8 @@ inline bool sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 {
 	uint32_t j;
-	char* url = NULL;
-	uint32_t url_len;
+	char* str = NULL;
+	uint32_t strlen;
 	bool res = false;
 	uint32_t n_extracted = 0;
 
@@ -57,43 +56,50 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 		if(buf[j] == ' ')
 		{
-			if(url == NULL)
+			if(str == NULL)
 			{
-				url = buf + j + 1;
+				str = buf + j + 1;
 			}
 			else if(res == false)
 			{
-				url_len = (uint32_t)(buf + j - url);
-				m_url.assign(url, url_len);
+				strlen = (uint32_t)(buf + j - str);
+				m_path.assign(str, strlen);
 				res = true;
 			}
 		}
 
-		if(check_and_extract(buf + j, 
-			buflen - j,
-			(char*)"User-Agent:",
-			sizeof("User-Agent:")))
+		if(res == true)
 		{
-			n_extracted++;
-			if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+			if(str = check_and_extract(buf + j,
+				buflen - j,
+				(char*)"User-Agent:",
+				sizeof("User-Agent:"),
+				&strlen))
 			{
-				return true;
-			}
+				m_agent.assign(str, strlen);
+				n_extracted++;
+				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+				{
+					return true;
+				}
 
-			continue;
-		}
-		else if(check_and_extract(buf + j, 
-			buflen - j,
-			(char*)"Host:",
-			sizeof("Host:")))
-		{
-			n_extracted++;
-			if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+				continue;
+			}
+			else if(str = check_and_extract(buf + j, 
+				buflen - j,
+				(char*)"Host:",
+				sizeof("Host:"),
+				&strlen))
 			{
-				return true;
-			}
+				m_host.assign(str, strlen);
+				n_extracted++;
+				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+				{
+					return true;
+				}
 
-			continue;
+				continue;
+			}
 		}
 	}
 
@@ -107,6 +113,8 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	uint32_t status_code_len;
 	bool res = false;
 	uint32_t n_spaces = 0;
+	char* str = NULL;
+	uint32_t strlen;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -137,12 +145,17 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 			}
 		}
 
-		if(check_and_extract(buf + j, 
-			buflen - j,
-			(char*)"Content-Type:",
-			sizeof("Content-Type:")))
+		if(res == true)
 		{
-			return true;
+			if(str = check_and_extract(buf + j, 
+				buflen - j,
+				(char*)"Content-Type:",
+				sizeof("Content-Type:"),
+				&strlen))
+			{
+				m_content_type.assign(str, strlen);
+				return true;
+			}
 		}
 	}
 

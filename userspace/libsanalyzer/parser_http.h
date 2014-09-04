@@ -34,10 +34,12 @@ public:
 	bool parse_response(char* buf, uint32_t buflen);
 
 private:
-	inline bool check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen);
+	inline char* check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen, OUT uint32_t* reslen);
 
-	string m_url;
+	string m_path;
+	string m_host;
 	string m_agent;
+	string m_content_type;
 	int32_t m_status_code;
 };
 

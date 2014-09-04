@@ -63,7 +63,7 @@ public:
 		//
 		// Make sure there are at least 4 bytes
 		//
-		if(buflen > 4)
+		if(buflen >= MIN_PROTO_BUF_SIZE)
 		{
 			if(*(uint32_t*)buf == m_http_get_intval ||
 					*(uint32_t*)buf == m_http_post_intval ||
@@ -76,14 +76,24 @@ public:
 			{
 				sinsp_http_parser* st = new sinsp_http_parser[2];
 
+				ASSERT(trinfo->m_protoparser_storage == NULL);
+
 				trinfo->m_protoparser_storage = (sinsp_protocol_parser*)st;
 				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 				trinfo->m_protoparser_old = (sinsp_protocol_parser*)&(st[1]);
 
 				return sinsp_partial_transaction::TYPE_HTTP;
 			}
+			else
+			{
+				ASSERT(trinfo->m_protoparser_storage == NULL);
+				trinfo->m_protoparser_storage = NULL;
+				return sinsp_partial_transaction::TYPE_IP;
+			}
 		}
 
+		ASSERT(trinfo->m_protoparser_storage == NULL);
+		trinfo->m_protoparser_storage = NULL;
 		return sinsp_partial_transaction::TYPE_IP;
 	}
 

@@ -439,16 +439,26 @@ r_conn_creation_done:
 		// See if there's already a transaction
 		//
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
-		if(!trinfo->is_active())
+		if(!trinfo->is_active() ||
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_PROTO_BUF_SIZE))
 		{
 			//
-			// New transaction. Detect the protocol and initialize the transaction.
+			// New or just detected transaction. Detect the protocol and initialize the transaction.
+			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
+			//       like a shutdown().
 			//
-			sinsp_partial_transaction::type type = 
-				m_proto_detector.detect_proto(trinfo, data, len);
+			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
+			{
+				sinsp_partial_transaction::type type = 
+					m_proto_detector.detect_proto(trinfo, data, len);
 
-			trinfo->mark_active_and_reset(type);
-			evt->m_fdinfo->set_is_transaction();
+				trinfo->mark_active_and_reset(type);
+				evt->m_fdinfo->set_is_transaction();
+			}
+			else
+			{
+				trinfo->mark_active_and_reset(trinfo->m_type);
+			}
 		}
 
 		//
@@ -773,16 +783,27 @@ w_conn_creation_done:
 		// See if there's already a transaction
 		//
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
-		if(!trinfo->is_active())
+
+		if(!trinfo->is_active() ||
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_PROTO_BUF_SIZE))
 		{
 			//
-			// New transaction. Detect the protocol and initialize the transaction.
+			// New or just detected transaction. Detect the protocol and initialize the transaction.
+			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
+			//       like a shutdown().
 			//
-			sinsp_partial_transaction::type type = 
-				m_proto_detector.detect_proto(trinfo, data, len);
+			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
+			{
+				sinsp_partial_transaction::type type = 
+					m_proto_detector.detect_proto(trinfo, data, len);
 
-			trinfo->mark_active_and_reset(type);
-			evt->m_fdinfo->set_is_transaction();
+				trinfo->mark_active_and_reset(type);
+				evt->m_fdinfo->set_is_transaction();
+			}
+			else
+			{
+				trinfo->mark_active_and_reset(trinfo->m_type);
+			}
 		}
 
 		//

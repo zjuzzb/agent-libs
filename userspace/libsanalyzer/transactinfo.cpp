@@ -147,6 +147,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			if(tinfo != NULL && proginfo != NULL)
 			{
 				proginfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
+
+				if(tr->m_protoparser_storage)
+				{
+					int a = 0;
+				}
 			}
 		}
 		else
@@ -185,6 +190,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			if(tinfo != NULL && proginfo != NULL)
 			{
 				proginfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
+
+				if(tr->m_protoparser_storage)
+				{
+					int a = 0;
+				}
 			}
 		}
 
@@ -289,7 +299,7 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
-	m_protoparser = NULL;
+	m_protoparser_storage = NULL;
 	reset();
 }
 
@@ -308,23 +318,20 @@ void sinsp_partial_transaction::reset()
 	m_start_of_transaction_time = 0;
 	m_prev_start_of_transaction_time = 0;
 	m_prev_prev_start_of_transaction_time = 0;
-	if(m_protoparser)
-	{
-		delete m_protoparser;
-		m_protoparser = NULL;
-	}
+	m_is_active = false;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
-	if(m_protoparser)
+	if(m_protoparser_storage)
 	{
-		delete m_protoparser;
-		m_protoparser = NULL;
+		delete [] m_protoparser_storage;
+		m_protoparser_storage = NULL;
 	}
 }
 
-sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uint64_t enter_ts,
+inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(sinsp_threadinfo* ptinfo,
+		uint64_t enter_ts,
 		uint64_t exit_ts, 
 		direction dir,
 		char* data,
@@ -332,7 +339,7 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 		uint32_t len,
 		bool is_server)
 {
-	if(m_protoparser != NULL && len >= 5)
+	if(m_protoparser_storage != NULL && len >= MIN_PROTO_BUF_SIZE)
 	{
 		if(m_protoparser->is_request(data, len))
 		{
@@ -340,7 +347,10 @@ sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(uin
 			tpp = m_protoparser;
 			m_protoparser = m_protoparser_old;
 			m_protoparser_old = tpp;
-			m_protoparser->parse_request(data, len);
+			if(m_protoparser->parse_request(data, len))
+			{
+//				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
+			}
 		}
 		else
 		{
@@ -518,8 +528,9 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 
 	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo; 
 
-	sinsp_partial_transaction::updatestate res = update_int(enter_ts, exit_ts, 
-		dir, data, len, original_len, ffdinfo->is_role_server());
+	sinsp_partial_transaction::updatestate res = update_int(ptinfo, 
+		enter_ts, exit_ts, dir, data, len, 
+		original_len, ffdinfo->is_role_server());
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
@@ -540,11 +551,12 @@ void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction:
 	m_type = newtype;
 	m_incoming_bytes = 0;
 	m_outgoing_bytes = 0;
+	m_is_active = true;
 }
 
 void sinsp_partial_transaction::mark_inactive()
 {
-	m_type = sinsp_partial_transaction::TYPE_UNKNOWN;
+	m_is_active = false;
 }
 
 #endif

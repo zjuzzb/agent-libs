@@ -21,9 +21,9 @@ class SINSP_PUBLIC sinsp_partial_transaction
 public:
 	enum type
 	{
-	    TYPE_UNKNOWN,
-	    TYPE_IP,
-	    TYPE_HTTP,
+	    TYPE_UNKNOWN = 0,
+	    TYPE_IP = 1,
+	    TYPE_HTTP = 2,
 	};
 
 	enum family
@@ -68,9 +68,9 @@ public:
 		uint32_t len);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
-	bool is_active()
+	inline bool is_active()
 	{
-		return m_type != type::TYPE_UNKNOWN;
+		return m_is_active;
 	}
 
 	bool is_ipv4_flow()
@@ -110,10 +110,14 @@ public:
 	sinsp_protocol_parser* m_protoparser_old;
 
 private:
-	inline sinsp_partial_transaction::updatestate update_int(uint64_t enter_ts, 
+	inline sinsp_partial_transaction::updatestate update_int(
+		sinsp_threadinfo* ptinfo,
+		uint64_t enter_ts, 
 		uint64_t exit_ts, direction dir, 
 		char* data, uint32_t original_len, uint32_t len, 
 		bool is_server);
+
+	bool m_is_active;
 };
 
 //
