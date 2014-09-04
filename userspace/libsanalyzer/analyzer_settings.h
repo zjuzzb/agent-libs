@@ -144,6 +144,11 @@
 #define TRANSACTION_READ_LIMIT_NS 500000000
 
 //
+// Minimum size of a socket buffer containing actual protocol information  
+//
+#define MIN_VALID_PROTO_BUF_SIZE 5
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

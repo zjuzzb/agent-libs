@@ -440,7 +440,7 @@ r_conn_creation_done:
 		//
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_PROTO_BUF_SIZE))
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_VALID_PROTO_BUF_SIZE))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
@@ -785,7 +785,7 @@ w_conn_creation_done:
  		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_PROTO_BUF_SIZE))
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_VALID_PROTO_BUF_SIZE))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.

@@ -63,7 +63,7 @@ public:
 		//
 		// Make sure there are at least 4 bytes
 		//
-		if(buflen >= MIN_PROTO_BUF_SIZE)
+		if(buflen >= MIN_VALID_PROTO_BUF_SIZE)
 		{
 			if(*(uint32_t*)buf == m_http_get_intval ||
 					*(uint32_t*)buf == m_http_post_intval ||

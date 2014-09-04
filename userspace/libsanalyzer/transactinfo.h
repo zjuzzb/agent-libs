@@ -211,4 +211,17 @@ private:
 	friend class sinsp_partial_transaction;
 };
 
+//
+// This little class describes an entry in the per-cpu transaction list that
+// is consumed when a sample is created
+//
+class sinsp_url_info
+{
+public:
+	uint64_t m_ncalls;		// number of times this url has been served
+	uint64_t m_time_tot;	// total time spent serving this request
+	uint64_t m_time_min;	// fastest time spent serving this request
+	uint64_t m_time_max;	// slowest time spent serving this request
+};
+
 #endif

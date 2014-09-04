@@ -96,9 +96,6 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\third-party\jsoncpp\jsoncpp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="analyzer_parsers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -112,6 +109,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\third-party\jsoncpp\jsoncpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

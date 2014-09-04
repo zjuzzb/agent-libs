@@ -339,7 +339,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 		uint32_t len,
 		bool is_server)
 {
-	if(m_protoparser_storage != NULL && len >= MIN_PROTO_BUF_SIZE)
+	if(m_protoparser_storage != NULL && len >= MIN_VALID_PROTO_BUF_SIZE)
 	{
 		if(m_protoparser->is_request(data, len))
 		{
