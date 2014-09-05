@@ -110,7 +110,7 @@ function install_tests {
 
 function uninstall {
 	if [ -f /etc/debian_version ]; then
-		apt-get -y purge draios-agent sysdig || true
+		apt-get -y purge draios-agent sysdig < /dev/null || true
 	elif [ -f /etc/system-release-cpe ]; then
 		yum -y erase draios-agent sysdig
 		yum clean all
