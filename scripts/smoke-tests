@@ -6,6 +6,8 @@ BASE_REPOSITORY=$1
 function smoke_tests {
 	killall -9 test || true
 
+	cat /opt/draios/bin/dragent.properties | grep "access_key"
+
 	echo "watchdog.enabled = false" >> /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties /opt/draios/bin/dragent.properties.bak
 
