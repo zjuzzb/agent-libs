@@ -75,7 +75,6 @@ public:
 					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
 			{
 				sinsp_http_parser* st = new sinsp_http_parser[2];
-
 				ASSERT(trinfo->m_protoparser_storage == NULL);
 
 				trinfo->m_protoparser_storage = (sinsp_protocol_parser*)st;

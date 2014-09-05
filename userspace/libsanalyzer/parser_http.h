@@ -17,6 +17,9 @@
 class sinsp_protocol_parser
 {
 public:
+	sinsp_protocol_parser()
+	{
+	}
 	virtual ~sinsp_protocol_parser();
 	virtual bool is_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;

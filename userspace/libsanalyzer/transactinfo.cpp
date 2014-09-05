@@ -325,7 +325,16 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 {
 	if(m_protoparser_storage)
 	{
-		delete [] m_protoparser_storage;
+		if(m_type == TYPE_HTTP)
+		{
+			delete [] (sinsp_http_parser*)m_protoparser_storage;			
+		}
+		else
+		{
+			ASSERT(false);
+			throw sinsp_exception("unsupported transaction protocol");
+		}
+		
 		m_protoparser_storage = NULL;
 	}
 }

@@ -70,11 +70,11 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 		if(res == true)
 		{
-			if(str = check_and_extract(buf + j,
+			if((str = check_and_extract(buf + j,
 				buflen - j,
 				(char*)"User-Agent:",
 				sizeof("User-Agent:"),
-				&strlen))
+				&strlen)) != NULL)
 			{
 				m_agent.assign(str, strlen);
 				n_extracted++;
@@ -85,11 +85,11 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 				continue;
 			}
-			else if(str = check_and_extract(buf + j, 
+			else if((str = check_and_extract(buf + j, 
 				buflen - j,
 				(char*)"Host:",
 				sizeof("Host:"),
-				&strlen))
+				&strlen)) != NULL)
 			{
 				m_host.assign(str, strlen);
 				n_extracted++;
@@ -147,11 +147,11 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 
 		if(res == true)
 		{
-			if(str = check_and_extract(buf + j, 
+			if((str = check_and_extract(buf + j, 
 				buflen - j,
 				(char*)"Content-Type:",
 				sizeof("Content-Type:"),
-				&strlen))
+				&strlen)) != NULL)
 			{
 				m_content_type.assign(str, strlen);
 				return true;
