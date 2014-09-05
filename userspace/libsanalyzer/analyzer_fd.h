@@ -59,7 +59,7 @@ public:
 
 	inline sinsp_partial_transaction::type detect_proto(sinsp_partial_transaction *trinfo,
 		char* buf, uint32_t buflen)
-	{
+	{		
 		//
 		// Make sure there are at least 4 bytes
 		//
@@ -93,7 +93,7 @@ public:
 
 		ASSERT(trinfo->m_protoparser_storage == NULL);
 		trinfo->m_protoparser_storage = NULL;
-		return sinsp_partial_transaction::TYPE_IP;
+		return sinsp_partial_transaction::TYPE_IP;		
 	}
 
 	bool parse_request(char* buf, uint32_t buflen);

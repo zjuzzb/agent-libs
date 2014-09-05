@@ -34,16 +34,21 @@ inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 
 	if(buflen > tosearchlen)
 	{
-		if(memcmp(buf, tosearch, tosearchlen - 1) == 0)
-		{
-			uint32_t uastart = tosearchlen;
+		ASSERT(tosearchlen >= 2);
 
-			for(k = tosearchlen; k < buflen; k++)
+		if(buf[0] == tosearch[0] && buf[1] == tosearch[1])
+		{
+			if(memcmp(buf, tosearch, tosearchlen - 1) == 0)
 			{
-				if(buf[k] == '\r' || buf[k] == '\n')
+				uint32_t uastart = tosearchlen;
+
+				for(k = tosearchlen; k < buflen; k++)
 				{
-					*reslen = k - uastart;
-					return buf + uastart;
+					if(buf[k] == '\r' || buf[k] == '\n')
+					{
+						*reslen = k - uastart;
+						return buf + uastart;
+					}
 				}
 			}
 		}
@@ -61,7 +66,7 @@ inline void sinsp_http_parser::extend_req_buffer_len(uint32_t len)
 			m_req_storage = NULL;
 		}
 
-		m_req_storage_size = m_req_storage_pos + len + 1;
+		m_req_storage_size = m_req_storage_pos + len + 16;
 
 		m_req_storage = (char*)realloc(m_req_storage, m_req_storage_size);
 		if(m_req_storage == NULL)
@@ -89,7 +94,7 @@ inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
 			m_resp_storage = NULL;
 		}
 
-		m_resp_storage_size = m_resp_storage_pos + len + 1;
+		m_resp_storage_size = m_resp_storage_pos + len + 16;
 
 		m_resp_storage = (char*)realloc(m_resp_storage, m_resp_storage_size);
 		if(m_resp_storage == NULL)
@@ -227,7 +232,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 			{
 				resp_assign(&m_host, str, strlen);
 				return true;
-			}
+			}			
 		}
 	}
 

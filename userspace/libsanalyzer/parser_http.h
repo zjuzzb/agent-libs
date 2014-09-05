@@ -45,7 +45,7 @@ private:
 	char* m_req_storage;
 	uint32_t m_req_storage_size;
 	uint32_t m_req_storage_pos;
-	char m_req_initial_storage[3];
+	char m_req_initial_storage[256];
 
 	char* m_resp_storage;
 	uint32_t m_resp_storage_size;
