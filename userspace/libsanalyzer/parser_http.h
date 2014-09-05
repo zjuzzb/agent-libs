@@ -53,7 +53,7 @@ private:
 	char m_resp_initial_storage[32];
 
 	char* m_path;
-	char* m_host;
+	char* m_url;
 	char* m_agent;
 	char* m_content_type;
 	int32_t m_status_code;

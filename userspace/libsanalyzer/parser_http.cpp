@@ -121,25 +121,27 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	bool res = false;
 	uint32_t n_extracted = 0;
 	m_req_storage_pos = 0;
-
+	char* host = NULL;
+	uint32_t hostlen;
+	char* path = NULL;
+	uint32_t pathlen;
 
 	for(j = 0; j < buflen; j++)
 	{
 		if(buf[j] == 0)
 		{
-			return res;
+			break;
 		}
 
 		if(buf[j] == ' ')
 		{
-			if(str == NULL)
+			if(path == NULL)
 			{
-				str = buf + j + 1;
+				path = buf + j + 1;
 			}
 			else if(res == false)
 			{
-				strlen = (uint32_t)(buf + j - str);
-				req_assign(&m_path, str, strlen);
+				pathlen = (uint32_t)(buf + j - path);
 				res = true;
 			}
 		}
@@ -156,7 +158,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
-					return true;
+					break;
 				}
 
 				continue;
@@ -167,15 +169,30 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 				sizeof("Host:"),
 				&strlen)) != NULL)
 			{
-				req_assign(&m_host, str, strlen);
+				host = str;
+				hostlen = strlen;
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
-					return true;
+					break;
 				}
 
 				continue;
 			}
+		}
+	}
+
+	if(res == true)
+	{
+		if(host != NULL)
+		{
+			req_assign(&m_url, host, hostlen);
+			m_req_storage_pos--;
+			req_assign(&m_path, path, pathlen);
+		}
+		else
+		{
+			req_assign(&m_url, path, pathlen);
 		}
 	}
 
@@ -230,7 +247,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 				sizeof("Content-Type:"),
 				&strlen)) != NULL)
 			{
-				resp_assign(&m_host, str, strlen);
+				resp_assign(&m_url, str, strlen);
 				return true;
 			}			
 		}
