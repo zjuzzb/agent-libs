@@ -17,9 +17,7 @@
 class sinsp_protocol_parser
 {
 public:
-	sinsp_protocol_parser()
-	{
-	}
+	sinsp_protocol_parser();
 	virtual ~sinsp_protocol_parser();
 	virtual bool is_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
@@ -32,17 +30,32 @@ public:
 class sinsp_http_parser : sinsp_protocol_parser
 {
 public:
+	sinsp_http_parser();
 	bool is_request(char* buf, uint32_t buflen);
 	bool parse_request(char* buf, uint32_t buflen);
 	bool parse_response(char* buf, uint32_t buflen);
 
 private:
 	inline char* check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen, OUT uint32_t* reslen);
+	inline void extend_req_buffer_len(uint32_t len);
+	inline void req_assign(char** dest, char* src, uint32_t len);
+	inline void extend_resp_buffer_len(uint32_t len);
+	inline void resp_assign(char** dest, char* src, uint32_t len);
 
-	string m_path;
-	string m_host;
-	string m_agent;
-	string m_content_type;
+	char* m_req_storage;
+	uint32_t m_req_storage_size;
+	uint32_t m_req_storage_pos;
+	char m_req_initial_storage[3];
+
+	char* m_resp_storage;
+	uint32_t m_resp_storage_size;
+	uint32_t m_resp_storage_pos;
+	char m_resp_initial_storage[32];
+
+	char* m_path;
+	char* m_host;
+	char* m_agent;
+	char* m_content_type;
 	int32_t m_status_code;
 };
 

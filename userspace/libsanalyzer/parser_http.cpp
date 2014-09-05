@@ -5,12 +5,27 @@
 
 #ifdef HAS_ANALYZER
 
+#define PARSE_REQUEST_N_TO_EXTRACT 2
+
+sinsp_protocol_parser::sinsp_protocol_parser()
+{
+}
+
 sinsp_protocol_parser::~sinsp_protocol_parser()
 {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+sinsp_http_parser::sinsp_http_parser()
+{
+	m_req_storage = (char*)m_req_initial_storage;
+	m_req_storage_size = sizeof(m_req_initial_storage);
+
+	m_resp_storage = (char*)m_resp_initial_storage;
+	m_resp_storage_size = sizeof(m_resp_initial_storage);
+}
+
 inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 												 char* tosearch, uint32_t tosearchlen,
 												 OUT uint32_t* reslen)
@@ -37,7 +52,61 @@ inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 	return NULL;
 }
 
-#define PARSE_REQUEST_N_TO_EXTRACT 2
+inline void sinsp_http_parser::extend_req_buffer_len(uint32_t len)
+{
+	if(m_req_storage_pos + len >= m_req_storage_size)
+	{
+		if(m_req_storage == m_req_initial_storage)
+		{
+			m_req_storage = NULL;
+		}
+
+		m_req_storage_size = m_req_storage_pos + len + 1;
+
+		m_req_storage = (char*)realloc(m_req_storage, m_req_storage_size);
+		if(m_req_storage == NULL)
+		{
+			throw sinsp_exception("memory allocation error in sinsp_http_parser::extend_req_buffer_len");
+		}
+	}
+}
+
+inline void sinsp_http_parser::req_assign(char** dest, char* src, uint32_t len)
+{
+	extend_req_buffer_len(len + 1);
+	memcpy(m_req_storage + m_req_storage_pos, src, len);
+	*dest = m_req_storage + m_req_storage_pos;
+	*(m_req_storage + m_req_storage_pos + len) = 0;
+	m_req_storage_pos += (len + 1);
+}
+
+inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
+{
+	if(m_resp_storage_pos + len >= m_resp_storage_size)
+	{
+		if(m_resp_storage == m_resp_initial_storage)
+		{
+			m_resp_storage = NULL;
+		}
+
+		m_resp_storage_size = m_resp_storage_pos + len + 1;
+
+		m_resp_storage = (char*)realloc(m_resp_storage, m_resp_storage_size);
+		if(m_resp_storage == NULL)
+		{
+			throw sinsp_exception("memory allocation error in sinsp_http_parser::extend_resp_buffer_len");
+		}
+	}
+}
+
+inline void sinsp_http_parser::resp_assign(char** dest, char* src, uint32_t len)
+{
+	extend_resp_buffer_len(len + 1);
+	memcpy(m_resp_storage + m_resp_storage_pos, src, len);
+	*dest = m_resp_storage + m_resp_storage_pos;
+	*(m_resp_storage + m_resp_storage_pos + len) = 0;
+	m_resp_storage_pos += (len + 1);
+}
 
 bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 {
@@ -46,6 +115,8 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	uint32_t strlen;
 	bool res = false;
 	uint32_t n_extracted = 0;
+	m_req_storage_pos = 0;
+
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -63,7 +134,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			else if(res == false)
 			{
 				strlen = (uint32_t)(buf + j - str);
-				m_path.assign(str, strlen);
+				req_assign(&m_path, str, strlen);
 				res = true;
 			}
 		}
@@ -76,7 +147,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 				sizeof("User-Agent:"),
 				&strlen)) != NULL)
 			{
-				m_agent.assign(str, strlen);
+				req_assign(&m_agent, str, strlen);
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
@@ -91,7 +162,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 				sizeof("Host:"),
 				&strlen)) != NULL)
 			{
-				m_host.assign(str, strlen);
+				req_assign(&m_host, str, strlen);
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
@@ -115,6 +186,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	uint32_t n_spaces = 0;
 	char* str = NULL;
 	uint32_t strlen;
+	m_resp_storage_pos = 0;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -153,7 +225,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 				sizeof("Content-Type:"),
 				&strlen)) != NULL)
 			{
-				m_content_type.assign(str, strlen);
+				resp_assign(&m_host, str, strlen);
 				return true;
 			}
 		}
