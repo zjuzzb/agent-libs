@@ -12,6 +12,7 @@ class sinsp_threadinfo;
 class sinsp;
 class sinsp_evt;
 class sinsp_protocol_parser;
+class sinsp_procinfo;
 
 //
 // Transaction information class
@@ -68,6 +69,9 @@ public:
 		uint32_t len);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
+	inline void update_proto_tables(sinsp_procinfo* mt_procinfo, 
+		uint64_t time_delta,
+		bool is_server);
 	inline bool is_active()
 	{
 		return m_is_active;
@@ -105,9 +109,7 @@ public:
 	uint32_t m_outgoing_bytes;
 	int32_t m_cpuid;
 	uint32_t m_flags;
-	sinsp_protocol_parser* m_protoparser_storage;
 	sinsp_protocol_parser* m_protoparser;
-	sinsp_protocol_parser* m_protoparser_old;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(
@@ -218,6 +220,11 @@ private:
 class sinsp_url_info
 {
 public:
+	sinsp_url_info()
+	{
+		m_ncalls = 0;
+	}
+
 	uint64_t m_ncalls;		// number of times this url has been served
 	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_min;	// fastest time spent serving this request

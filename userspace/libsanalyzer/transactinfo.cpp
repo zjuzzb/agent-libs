@@ -148,9 +148,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			{
 				proginfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
 
-				if(tr->m_protoparser_storage)
+				if(tr->m_protoparser != NULL)
 				{
-					int a = 0;
+					tr->update_proto_tables(proginfo->m_ainfo->m_procinfo, delta, true);
 				}
 			}
 		}
@@ -191,9 +191,9 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			{
 				proginfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
 
-				if(tr->m_protoparser_storage)
+				if(tr->m_protoparser != NULL)
 				{
-					int a = 0;
+					tr->update_proto_tables(proginfo->m_ainfo->m_procinfo, delta, false);
 				}
 			}
 		}
@@ -299,7 +299,7 @@ void sinsp_transaction_table::clear()
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
-	m_protoparser_storage = NULL;
+	m_protoparser = NULL;
 	reset();
 }
 
@@ -323,11 +323,11 @@ void sinsp_partial_transaction::reset()
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
-	if(m_protoparser_storage)
+	if(m_protoparser)
 	{
 		if(m_type == TYPE_HTTP)
 		{
-			delete [] (sinsp_http_parser*)m_protoparser_storage;			
+			delete (sinsp_http_parser*)m_protoparser;			
 		}
 		else
 		{
@@ -335,7 +335,7 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 			throw sinsp_exception("unsupported transaction protocol");
 		}
 		
-		m_protoparser_storage = NULL;
+		m_protoparser = NULL;
 	}
 }
 
@@ -348,25 +348,6 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 		uint32_t len,
 		bool is_server)
 {
-	if(m_protoparser_storage != NULL && len >= MIN_VALID_PROTO_BUF_SIZE)
-	{
-		if(m_protoparser->is_request(data, len))
-		{
-			sinsp_protocol_parser* tpp;
-			tpp = m_protoparser;
-			m_protoparser = m_protoparser_old;
-			m_protoparser_old = tpp;
-			if(m_protoparser->parse_request(data, len))
-			{
-//				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
-			}
-		}
-		else
-		{
-			m_protoparser->parse_response(data, len);
-		}
-	}
-
 	if(dir == DIR_IN)
 	{
 		m_incoming_bytes += len;
@@ -552,6 +533,28 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	else if(res == STATE_NO_TRANSACTION)
 	{
 		reset();
+		return;
+	}
+
+	if(m_protoparser != NULL && len >= MIN_VALID_PROTO_BUF_SIZE)
+	{
+		if(m_protoparser->is_request(data, len))
+		{
+/*
+			sinsp_protocol_parser* tpp;
+			tpp = m_protoparser;
+			m_protoparser = m_protoparser_old;
+			m_protoparser_old = tpp;
+*/
+			if(m_protoparser->parse_request(data, len))
+			{
+//				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
+			}
+		}
+		else
+		{
+			m_protoparser->parse_response(data, len);
+		}
 	}
 }
 
@@ -566,6 +569,49 @@ void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction:
 void sinsp_partial_transaction::mark_inactive()
 {
 	m_is_active = false;
+}
+
+inline void sinsp_partial_transaction::update_proto_tables(sinsp_procinfo* mt_procinfo,
+														   uint64_t time_delta,
+														   bool is_server)
+{
+	ASSERT(mt_procinfo != NULL);
+
+	if(m_type == TYPE_HTTP)
+	{
+		ASSERT(m_protoparser != NULL);
+
+		if(m_protoparser->m_is_valid)
+		{
+			sinsp_http_parser* pp = (sinsp_http_parser*)m_protoparser;
+			sinsp_url_info* entry;
+
+			if(is_server)
+			{
+				entry = &(mt_procinfo->m_server_urls[pp->m_url]);
+			}
+			else
+			{
+				entry = &(mt_procinfo->m_client_urls[pp->m_url]);
+			}
+
+			if(entry->m_ncalls == 0)
+			{
+				entry->m_ncalls = 1;
+				entry->m_time_tot = time_delta;
+				entry->m_time_min = time_delta;
+				entry->m_time_max = time_delta;
+			}
+			else
+			{
+				entry->m_ncalls++;
+				entry->m_time_tot += time_delta;
+				entry->m_time_min += time_delta;
+				entry->m_time_max += time_delta;
+			}
+
+		}
+	}
 }
 
 #endif

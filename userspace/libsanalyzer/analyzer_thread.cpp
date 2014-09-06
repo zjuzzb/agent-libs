@@ -66,6 +66,9 @@ void sinsp_procinfo::clear()
 	}
 
 	m_external_transaction_metrics.clear();
+
+	m_client_urls.clear();
+	m_server_urls.clear();
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()

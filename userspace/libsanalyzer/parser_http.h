@@ -22,6 +22,8 @@ public:
 	virtual bool is_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
+
+	bool m_is_valid;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -34,6 +36,12 @@ public:
 	bool is_request(char* buf, uint32_t buflen);
 	bool parse_request(char* buf, uint32_t buflen);
 	bool parse_response(char* buf, uint32_t buflen);
+
+	char* m_path;
+	char* m_url;
+	char* m_agent;
+	char* m_content_type;
+	int32_t m_status_code;
 
 private:
 	inline char* check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen, OUT uint32_t* reslen);
@@ -51,12 +59,6 @@ private:
 	uint32_t m_resp_storage_size;
 	uint32_t m_resp_storage_pos;
 	char m_resp_initial_storage[32];
-
-	char* m_path;
-	char* m_url;
-	char* m_agent;
-	char* m_content_type;
-	int32_t m_status_code;
 };
 
 #endif // HAS_ANALYZER

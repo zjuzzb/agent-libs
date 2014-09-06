@@ -9,6 +9,7 @@
 
 sinsp_protocol_parser::sinsp_protocol_parser()
 {
+	m_is_valid = false;
 }
 
 sinsp_protocol_parser::~sinsp_protocol_parser()
@@ -118,13 +119,13 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	uint32_t j;
 	char* str = NULL;
 	uint32_t strlen;
-	bool res = false;
 	uint32_t n_extracted = 0;
 	m_req_storage_pos = 0;
 	char* host = NULL;
 	uint32_t hostlen;
 	char* path = NULL;
 	uint32_t pathlen;
+	m_is_valid = false;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -139,14 +140,14 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			{
 				path = buf + j + 1;
 			}
-			else if(res == false)
+			else if(m_is_valid == false)
 			{
 				pathlen = (uint32_t)(buf + j - path);
-				res = true;
+				m_is_valid = true;
 			}
 		}
 
-		if(res == true)
+		if(m_is_valid == true)
 		{
 			if((str = check_and_extract(buf + j,
 				buflen - j,
@@ -182,7 +183,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 	}
 
-	if(res == true)
+	if(m_is_valid == true)
 	{
 		if(host != NULL)
 		{
@@ -196,7 +197,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 	}
 
-	return res;
+	return m_is_valid;
 }
 
 bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
@@ -204,7 +205,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	uint32_t j;
 	char* status_code = NULL;
 	uint32_t status_code_len;
-	bool res = false;
+	m_is_valid = false;
 	uint32_t n_spaces = 0;
 	char* str = NULL;
 	uint32_t strlen;
@@ -214,7 +215,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	{
 		if(buf[j] == 0)
 		{
-			return res;
+			return m_is_valid;
 		}
 
 		if(buf[j] == ' ')
@@ -225,7 +226,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 			{
 				status_code = buf + j + 1;
 			}
-			else if(res == false)
+			else if(m_is_valid == false)
 			{
 				status_code_len = (uint32_t)(buf + j - status_code);
 				
@@ -235,11 +236,11 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 					m_status_code = -1;
 				}
 
-				res = true;
+				m_is_valid = true;
 			}
 		}
 
-		if(res == true)
+		if(m_is_valid == true)
 		{
 			if((str = check_and_extract(buf + j, 
 				buflen - j,
@@ -247,13 +248,13 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 				sizeof("Content-Type:"),
 				&strlen)) != NULL)
 			{
-				resp_assign(&m_url, str, strlen);
+				resp_assign(&m_content_type, str, strlen);
 				return true;
 			}			
 		}
 	}
 
-	return res;
+	return m_is_valid;
 }
 
 bool sinsp_http_parser::is_request(char* buf, uint32_t buflen)

@@ -74,25 +74,23 @@ public:
 					*(uint32_t*)buf == m_http_options_intval ||
 					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
 			{
-				sinsp_http_parser* st = new sinsp_http_parser[2];
-				ASSERT(trinfo->m_protoparser_storage == NULL);
+				sinsp_http_parser* st = new sinsp_http_parser;
+				ASSERT(trinfo->m_protoparser == NULL);
 
-				trinfo->m_protoparser_storage = (sinsp_protocol_parser*)st;
 				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-				trinfo->m_protoparser_old = (sinsp_protocol_parser*)&(st[1]);
 
 				return sinsp_partial_transaction::TYPE_HTTP;
 			}
 			else
 			{
-				ASSERT(trinfo->m_protoparser_storage == NULL);
-				trinfo->m_protoparser_storage = NULL;
+				ASSERT(trinfo->m_protoparser == NULL);
+				trinfo->m_protoparser = NULL;
 				return sinsp_partial_transaction::TYPE_IP;
 			}
 		}
 
-		ASSERT(trinfo->m_protoparser_storage == NULL);
-		trinfo->m_protoparser_storage = NULL;
+		ASSERT(trinfo->m_protoparser == NULL);
+		trinfo->m_protoparser = NULL;
 		return sinsp_partial_transaction::TYPE_IP;		
 	}
 

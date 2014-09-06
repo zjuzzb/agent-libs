@@ -95,7 +95,8 @@ public:
 	// The metrics for transaction coming from the external world
 	sinsp_transaction_counters m_external_transaction_metrics; 
 	// The list of usrls
-	unordered_map<string, sinsp_url_info> m_urls;
+	unordered_map<string, sinsp_url_info> m_server_urls;
+	unordered_map<string, sinsp_url_info> m_client_urls;
 
 	sinsp_delays_info m_transaction_delays;
 };
