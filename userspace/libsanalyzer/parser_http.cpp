@@ -122,9 +122,9 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	uint32_t n_extracted = 0;
 	m_req_storage_pos = 0;
 	char* host = NULL;
-	uint32_t hostlen;
+	uint32_t hostlen = 0;
 	char* path = NULL;
-	uint32_t pathlen;
+	uint32_t pathlen = 0;
 	m_is_valid = false;
 
 	for(j = 0; j < buflen; j++)
