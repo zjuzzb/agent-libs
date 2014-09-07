@@ -300,12 +300,12 @@ void sinsp_transaction_table::clear()
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
 	m_protoparser = NULL;
+	m_type = TYPE_UNKNOWN;
 	reset();
 }
 
 void sinsp_partial_transaction::reset()
 {
-	m_type = TYPE_UNKNOWN;
 	m_direction = DIR_UNKNOWN;
 	m_start_time = 0;
 	m_end_time = 0;
@@ -540,12 +540,6 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	{
 		if(m_protoparser->is_request(data, len))
 		{
-/*
-			sinsp_protocol_parser* tpp;
-			tpp = m_protoparser;
-			m_protoparser = m_protoparser_old;
-			m_protoparser_old = tpp;
-*/
 			if(m_protoparser->parse_request(data, len))
 			{
 //				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
@@ -553,7 +547,10 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 		}
 		else
 		{
-			m_protoparser->parse_response(data, len);
+			if(m_protoparser->m_is_valid)
+			{
+				m_protoparser->parse_response(data, len);
+			}
 		}
 	}
 }
