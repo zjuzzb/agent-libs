@@ -114,6 +114,16 @@ message command_details {
 }
 
 //
+// URL information
+//
+message url_details {
+	required uint64 ncalls = 1;
+	required uint64 time_tot = 2;
+	required uint64 time_min = 3;
+	required uint64 time_max = 4;
+}
+
+//
 // HOST
 // global host info.
 //

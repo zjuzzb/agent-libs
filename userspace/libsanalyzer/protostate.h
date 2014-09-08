@@ -3,7 +3,6 @@
 #pragma once
 
 #include "parser_http.h"
-#include "transactinfo.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The DPI-based protocol detector
@@ -67,6 +66,26 @@ private:
 	uint32_t m_http_resp_intval;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// URL table entry
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_url_details
+{
+public:
+	sinsp_url_details()
+	{
+		m_ncalls = 0;
+	}
+
+	uint64_t m_ncalls;		// number of times this url has been served
+	uint64_t m_time_tot;	// total time spent serving this request
+	uint64_t m_time_min;	// fastest time spent serving this request
+	uint64_t m_time_max;	// slowest time spent serving this request
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// The protocol state class
+///////////////////////////////////////////////////////////////////////////////
 class sinsp_protostate
 {
 public:
@@ -81,7 +100,7 @@ public:
 			if(tr->m_protoparser->m_is_valid)
 			{
 				sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
-				sinsp_url_info* entry;
+				sinsp_url_details* entry;
 
 				if(is_server)
 				{
@@ -118,8 +137,8 @@ public:
 
 	void add(sinsp_protostate* other)
 	{
-		unordered_map<string, sinsp_url_info>::iterator uit;
-		unordered_map<string, sinsp_url_info>* pom;
+		unordered_map<string, sinsp_url_details>::iterator uit;
+		unordered_map<string, sinsp_url_details>* pom;
 
 		//
 		// Add the server URLs
@@ -128,9 +147,7 @@ public:
 
 		for(uit = pom->begin(); uit != pom->end(); ++uit)
 		{
-			//sinsp_url_info* entry = &(uit->second);
-
-			sinsp_url_info* entry = &(m_server_urls[uit->first]);
+			sinsp_url_details* entry = &(m_server_urls[uit->first]);
 
 			if(entry->m_ncalls == 0)
 			{
@@ -152,9 +169,7 @@ public:
 
 		for(uit = pom->begin(); uit != pom->end(); ++uit)
 		{
-			//sinsp_url_info* entry = &(uit->second);
-
-			sinsp_url_info* entry = &(m_client_urls[uit->first]);
+			sinsp_url_details* entry = &(m_client_urls[uit->first]);
 
 			if(entry->m_ncalls == 0)
 			{
@@ -171,8 +186,8 @@ public:
 	}
 
 	// The list of URLs
-	unordered_map<string, sinsp_url_info> m_server_urls;
-	unordered_map<string, sinsp_url_info> m_client_urls;
+	unordered_map<string, sinsp_url_details> m_server_urls;
+	unordered_map<string, sinsp_url_details> m_client_urls;
 };
 
 #endif // HAS_ANALYZER
