@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "transactinfo.h"
+#include "protostate.h"
+
 //
 // Delays info
 // XXX this is a temporary place for these classes
@@ -94,9 +97,8 @@ public:
 	uint64_t m_n_transaction_threads;
 	// The metrics for transaction coming from the external world
 	sinsp_transaction_counters m_external_transaction_metrics; 
-	// The list of usrls
-	unordered_map<string, sinsp_url_info> m_server_urls;
-	unordered_map<string, sinsp_url_info> m_client_urls;
+	// The protocol state
+	sinsp_protostate m_protostate;
 
 	sinsp_delays_info m_transaction_delays;
 };

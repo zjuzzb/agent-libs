@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <sinsp.h>
+#include <sinsp_int.h>
 #include <analyzer.h>
 #include "settings.h"
 #include <iostream>

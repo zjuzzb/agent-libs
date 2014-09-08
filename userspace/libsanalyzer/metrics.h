@@ -2,6 +2,8 @@
 
 #ifdef HAS_ANALYZER
 
+#include "protostate.h"
+
 //
 // Forward declarations
 //
@@ -254,6 +256,7 @@ public:
 	sinsp_error_counters m_syscall_errors;
 	uint64_t m_pfmajor;
 	uint64_t m_pfminor;
+	sinsp_protostate m_protostate;
 
 private:
 	double m_tot_capacity_score;

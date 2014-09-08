@@ -69,9 +69,6 @@ public:
 		uint32_t len);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
-	inline void update_proto_tables(sinsp_procinfo* mt_procinfo, 
-		uint64_t time_delta,
-		bool is_server);
 	inline bool is_active()
 	{
 		return m_is_active;

@@ -150,7 +150,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 				if(tr->m_protoparser != NULL)
 				{
-					tr->update_proto_tables(proginfo->m_ainfo->m_procinfo, delta, true);
+					proginfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, true);
 				}
 			}
 		}
@@ -193,7 +193,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 				if(tr->m_protoparser != NULL)
 				{
-					tr->update_proto_tables(proginfo->m_ainfo->m_procinfo, delta, false);
+					proginfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, false);
 				}
 			}
 		}
@@ -536,7 +536,7 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 		return;
 	}
 
-	if(m_protoparser != NULL && len >= MIN_VALID_PROTO_BUF_SIZE)
+	if(m_protoparser != NULL && len > MIN_VALID_PROTO_BUF_SIZE)
 	{
 		if(m_protoparser->is_request(data, len))
 		{
@@ -566,49 +566,6 @@ void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction:
 void sinsp_partial_transaction::mark_inactive()
 {
 	m_is_active = false;
-}
-
-inline void sinsp_partial_transaction::update_proto_tables(sinsp_procinfo* mt_procinfo,
-														   uint64_t time_delta,
-														   bool is_server)
-{
-	ASSERT(mt_procinfo != NULL);
-
-	if(m_type == TYPE_HTTP)
-	{
-		ASSERT(m_protoparser != NULL);
-
-		if(m_protoparser->m_is_valid)
-		{
-			sinsp_http_parser* pp = (sinsp_http_parser*)m_protoparser;
-			sinsp_url_info* entry;
-
-			if(is_server)
-			{
-				entry = &(mt_procinfo->m_server_urls[pp->m_url]);
-			}
-			else
-			{
-				entry = &(mt_procinfo->m_client_urls[pp->m_url]);
-			}
-
-			if(entry->m_ncalls == 0)
-			{
-				entry->m_ncalls = 1;
-				entry->m_time_tot = time_delta;
-				entry->m_time_min = time_delta;
-				entry->m_time_max = time_delta;
-			}
-			else
-			{
-				entry->m_ncalls++;
-				entry->m_time_tot += time_delta;
-				entry->m_time_min += time_delta;
-				entry->m_time_max += time_delta;
-			}
-
-		}
-	}
 }
 
 #endif

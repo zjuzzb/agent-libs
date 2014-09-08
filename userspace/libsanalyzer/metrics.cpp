@@ -747,6 +747,7 @@ void sinsp_host_metrics::clear()
 	m_tot_server_transactions = 0;
 	m_pfmajor = 0;
 	m_pfminor = 0;
+	m_protostate.clear();
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -767,6 +768,8 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 
 	m_pfmajor += pinfo->m_pfmajor;
 	m_pfminor += pinfo->m_pfminor;
+
+	m_protostate.add(&(pinfo->m_protostate));
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

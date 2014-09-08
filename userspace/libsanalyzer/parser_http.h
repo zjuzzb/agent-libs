@@ -1,5 +1,8 @@
 #ifdef HAS_ANALYZER
 
+#pragma once
+
+
 //
 // A very rudimentary HTTP parser
 // XXX replace this with a real http parser.

@@ -1,5 +1,4 @@
 #pragma once
-#include "parser_http.h"
 
 class analyzer_file_stat
 {
@@ -47,68 +46,6 @@ public:
 	uint32_t m_errors;
 	uint32_t m_open_count;
 	bool m_exclude_from_sample;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// The DPI-based protocol detector
-///////////////////////////////////////////////////////////////////////////////
-class sinsp_proto_detector
-{
-public:
-	sinsp_proto_detector();
-
-	inline sinsp_partial_transaction::type detect_proto(sinsp_partial_transaction *trinfo,
-		char* buf, uint32_t buflen)
-	{		
-		//
-		// Make sure there are at least 4 bytes
-		//
-		if(buflen >= MIN_VALID_PROTO_BUF_SIZE)
-		{
-			if(*(uint32_t*)buf == m_http_get_intval ||
-					*(uint32_t*)buf == m_http_post_intval ||
-					*(uint32_t*)buf == m_http_put_intval ||
-					*(uint32_t*)buf == m_http_delete_intval ||
-					*(uint32_t*)buf == m_http_trace_intval ||
-					*(uint32_t*)buf == m_http_connect_intval ||
-					*(uint32_t*)buf == m_http_options_intval ||
-					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
-			{
-				sinsp_http_parser* st = new sinsp_http_parser;
-				ASSERT(trinfo->m_protoparser == NULL);
-
-				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-
-				return sinsp_partial_transaction::TYPE_HTTP;
-			}
-			else
-			{
-				ASSERT(trinfo->m_protoparser == NULL);
-				trinfo->m_protoparser = NULL;
-				return sinsp_partial_transaction::TYPE_IP;
-			}
-		}
-
-		ASSERT(trinfo->m_protoparser == NULL);
-		trinfo->m_protoparser = NULL;
-		return sinsp_partial_transaction::TYPE_IP;		
-	}
-
-	bool parse_request(char* buf, uint32_t buflen);
-
-	string m_url;
-	string m_agent;
-
-private:
-	uint32_t m_http_options_intval;
-	uint32_t m_http_get_intval;
-	uint32_t m_http_head_intval;
-	uint32_t m_http_post_intval;
-	uint32_t m_http_put_intval;
-	uint32_t m_http_delete_intval;
-	uint32_t m_http_trace_intval;
-	uint32_t m_http_connect_intval;
-	uint32_t m_http_resp_intval;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

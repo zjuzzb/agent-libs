@@ -236,5 +236,8 @@
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="protostate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

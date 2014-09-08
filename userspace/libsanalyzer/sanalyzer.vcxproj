@@ -93,6 +93,7 @@
     <ClInclude Include="metrics.h" />
     <ClInclude Include="parser_http.h" />
     <ClInclude Include="procfs_parser.h" />
+    <ClInclude Include="protostate.h" />
     <ClInclude Include="sched_analyzer.h" />
     <ClInclude Include="scores.h" />
     <ClInclude Include="transactinfo.h" />

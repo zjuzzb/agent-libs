@@ -6,4 +6,5 @@
 #include "analyzer_utils.h"
 #include "metrics.h"
 #include "transactinfo.h"
+#include "protostate.h"
 #endif
