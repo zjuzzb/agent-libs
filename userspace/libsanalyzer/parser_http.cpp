@@ -10,6 +10,7 @@
 sinsp_protocol_parser::sinsp_protocol_parser()
 {
 	m_is_valid = false;
+	m_is_req_valid = false;
 }
 
 sinsp_protocol_parser::~sinsp_protocol_parser()
@@ -126,6 +127,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	char* path = NULL;
 	uint32_t pathlen = 0;
 	m_is_valid = false;
+	m_is_req_valid = false;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -140,14 +142,14 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			{
 				path = buf + j + 1;
 			}
-			else if(m_is_valid == false)
+			else if(m_is_req_valid == false)
 			{
 				pathlen = (uint32_t)(buf + j - path);
-				m_is_valid = true;
+				m_is_req_valid = true;
 			}
 		}
 
-		if(m_is_valid == true)
+		if(m_is_req_valid == true)
 		{
 			if((str = check_and_extract(buf + j,
 				buflen - j,
@@ -183,7 +185,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 	}
 
-	if(m_is_valid == true)
+	if(m_is_req_valid == true)
 	{
 		if(host != NULL)
 		{
@@ -197,7 +199,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 	}
 
-	return m_is_valid;
+	return m_is_req_valid;
 }
 
 bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
@@ -205,7 +207,6 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	uint32_t j;
 	char* status_code = NULL;
 	uint32_t status_code_len;
-	m_is_valid = false;
 	uint32_t n_spaces = 0;
 	char* str = NULL;
 	uint32_t strlen;
@@ -257,19 +258,41 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	return m_is_valid;
 }
 
-bool sinsp_http_parser::is_request(char* buf, uint32_t buflen)
+#define MSG_STR_RESP 0x50545448		// 'HTTP' in hex
+#define MSG_STR_OPTIONS 0x4954504f
+#define MSG_STR_GET 0x20544547
+#define MSG_STR_HEAD 0x44414548
+#define MSG_STR_POST 0x54534f50
+#define MSG_STR_PUT 0x20545550
+#define MSG_STR_DELETE 0x454c4544
+#define MSG_STR_TRACE 0x43415254
+#define MSG_STR_CONNECT 0x4e4e4f43
+
+sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(char* buf, uint32_t buflen)
 {
 	//
 	// This checks if the buffer starts with "HTTP"
 	//
-	if(*(uint32_t*)buf == 0x50545448)
+	if(*(uint32_t*)buf == MSG_STR_RESP)
 	{
-		return false;
+		return sinsp_protocol_parser::MSG_RESPONSE;
 	}
 	else
 	{
-		return true;
+		if(*(uint32_t*)buf == MSG_STR_GET ||
+			*(uint32_t*)buf == MSG_STR_POST ||
+			*(uint32_t*)buf == MSG_STR_OPTIONS ||
+			*(uint32_t*)buf == MSG_STR_HEAD ||
+			*(uint32_t*)buf == MSG_STR_PUT ||
+			*(uint32_t*)buf == MSG_STR_DELETE ||
+			*(uint32_t*)buf == MSG_STR_TRACE ||
+			*(uint32_t*)buf == MSG_STR_CONNECT)
+		{
+			return sinsp_protocol_parser::MSG_REQUEST;
+		}
 	}
+
+	return sinsp_protocol_parser::MSG_NONE;
 }
 
 #endif // HAS_ANALYZER

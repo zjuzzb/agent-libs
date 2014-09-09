@@ -731,7 +731,13 @@ void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* prot
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_host_metrics::sinsp_host_metrics()
 {
+	m_protostate = new sinsp_protostate();
 	clear();
+}
+
+sinsp_host_metrics::~sinsp_host_metrics()
+{
+	delete m_protostate;
 }
 
 void sinsp_host_metrics::clear()
@@ -747,7 +753,7 @@ void sinsp_host_metrics::clear()
 	m_tot_server_transactions = 0;
 	m_pfmajor = 0;
 	m_pfminor = 0;
-	m_protostate.clear();
+	m_protostate->clear();
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -769,7 +775,7 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_pfmajor += pinfo->m_pfmajor;
 	m_pfminor += pinfo->m_pfminor;
 
-	m_protostate.add(&(pinfo->m_protostate));
+	m_protostate->add(&(pinfo->m_protostate));
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

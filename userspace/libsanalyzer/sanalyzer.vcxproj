@@ -51,6 +51,7 @@
     <ClCompile Include="metrics.cpp" />
     <ClCompile Include="parser_http.cpp" />
     <ClCompile Include="procfs_parser.cpp" />
+    <ClCompile Include="protostate.cpp" />
     <ClCompile Include="sched_analyzer.cpp" />
     <ClCompile Include="scores.cpp" />
     <ClCompile Include="transactinfo.cpp" />

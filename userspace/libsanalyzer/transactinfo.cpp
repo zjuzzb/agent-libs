@@ -538,16 +538,18 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 
 	if(m_protoparser != NULL && len > MIN_VALID_PROTO_BUF_SIZE)
 	{
-		if(m_protoparser->is_request(data, len))
+		sinsp_protocol_parser::msg_type mtype = m_protoparser->should_parse(data, len);
+
+		if(mtype == sinsp_protocol_parser::MSG_REQUEST)
 		{
 			if(m_protoparser->parse_request(data, len))
 			{
 //				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
 			}
 		}
-		else
+		if(mtype == sinsp_protocol_parser::MSG_RESPONSE)
 		{
-			if(m_protoparser->m_is_valid)
+			if(m_protoparser->m_is_req_valid)
 			{
 				m_protoparser->parse_response(data, len);
 			}

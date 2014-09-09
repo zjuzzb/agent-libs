@@ -2,14 +2,13 @@
 
 #ifdef HAS_ANALYZER
 
-#include "protostate.h"
-
 //
 // Forward declarations
 //
 class sinsp_counter_time_bytes;
 class sinsp_procinfo;
 class sinsp_counter_time_bidirectional;
+class sinsp_protostate;
 
 namespace draiosproto
 {
@@ -23,6 +22,8 @@ namespace draiosproto
 	class connection_categories;
 	class counter_syscall_errors;
 	class transaction_breakdown_categories;
+	class proto_info;
+	class url_details;
 };
 
 //
@@ -236,10 +237,11 @@ public:
 //
 // Various metrics coming from processes, aggregated at the host level
 //
-class sinsp_host_metrics
+class SINSP_PUBLIC sinsp_host_metrics
 {
 public:
 	sinsp_host_metrics();
+	~sinsp_host_metrics();
 	void clear();
 	void add(sinsp_procinfo* pinfo);
 	void add_capacity_score(float capacity_score,
@@ -256,7 +258,7 @@ public:
 	sinsp_error_counters m_syscall_errors;
 	uint64_t m_pfmajor;
 	uint64_t m_pfminor;
-	sinsp_protostate m_protostate;
+	sinsp_protostate* m_protostate;
 
 private:
 	double m_tot_capacity_score;

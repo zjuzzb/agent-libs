@@ -20,13 +20,21 @@
 class sinsp_protocol_parser
 {
 public:
+	enum msg_type
+	{
+		MSG_NONE = 0,
+		MSG_REQUEST,
+		MSG_RESPONSE,
+	};
+
 	sinsp_protocol_parser();
 	virtual ~sinsp_protocol_parser();
-	virtual bool is_request(char* buf, uint32_t buflen) = 0;
+	virtual msg_type should_parse(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
 
 	bool m_is_valid;
+	bool m_is_req_valid;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -36,7 +44,7 @@ class sinsp_http_parser : sinsp_protocol_parser
 {
 public:
 	sinsp_http_parser();
-	bool is_request(char* buf, uint32_t buflen);
+	sinsp_protocol_parser::msg_type should_parse(char* buf, uint32_t buflen);
 	bool parse_request(char* buf, uint32_t buflen);
 	bool parse_response(char* buf, uint32_t buflen);
 

@@ -1132,6 +1132,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
 
+					//
+					// Protocol tables
+					//
+					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
+						m_sampling_ratio);
+
 #if 1
 					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
@@ -1992,6 +1998,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			int64_t used_memory;
 			int64_t used_swap;
 			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
+
+			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_hostinfo()->mutable_protos(),
+				m_sampling_ratio);
 
 			//
 			// Machine info

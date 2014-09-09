@@ -14,7 +14,7 @@ public:
 
 	inline sinsp_partial_transaction::type detect_proto(sinsp_partial_transaction *trinfo,
 		char* buf, uint32_t buflen)
-	{		
+	{
 		//
 		// Make sure there are at least 4 bytes
 		//
@@ -31,7 +31,6 @@ public:
 			{
 				sinsp_http_parser* st = new sinsp_http_parser;
 				ASSERT(trinfo->m_protoparser == NULL);
-
 				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 
 				return sinsp_partial_transaction::TYPE_HTTP;
@@ -184,6 +183,8 @@ public:
 			}
 		}
 	}
+
+	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio);
 
 	// The list of URLs
 	unordered_map<string, sinsp_url_details> m_server_urls;
