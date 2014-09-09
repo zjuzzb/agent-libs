@@ -45,6 +45,9 @@ class resource_categories;
 class connection_categories;
 class process_details;
 class command_details;
+class url_details;
+class http_info;
+class proto_info;
 class host;
 class process;
 class program;
@@ -1694,6 +1697,315 @@ class command_details : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class url_details : public ::google::protobuf::Message {
+ public:
+  url_details();
+  virtual ~url_details();
+
+  url_details(const url_details& from);
+
+  inline url_details& operator=(const url_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const url_details& default_instance();
+
+  void Swap(url_details* other);
+
+  // implements Message ----------------------------------------------
+
+  url_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const url_details& from);
+  void MergeFrom(const url_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string url = 1;
+  inline bool has_url() const;
+  inline void clear_url();
+  static const int kUrlFieldNumber = 1;
+  inline const ::std::string& url() const;
+  inline void set_url(const ::std::string& value);
+  inline void set_url(const char* value);
+  inline void set_url(const char* value, size_t size);
+  inline ::std::string* mutable_url();
+  inline ::std::string* release_url();
+  inline void set_allocated_url(::std::string* url);
+
+  // required uint64 ncalls = 2;
+  inline bool has_ncalls() const;
+  inline void clear_ncalls();
+  static const int kNcallsFieldNumber = 2;
+  inline ::google::protobuf::uint64 ncalls() const;
+  inline void set_ncalls(::google::protobuf::uint64 value);
+
+  // required uint64 time_tot = 3;
+  inline bool has_time_tot() const;
+  inline void clear_time_tot();
+  static const int kTimeTotFieldNumber = 3;
+  inline ::google::protobuf::uint64 time_tot() const;
+  inline void set_time_tot(::google::protobuf::uint64 value);
+
+  // required uint64 time_min = 4;
+  inline bool has_time_min() const;
+  inline void clear_time_min();
+  static const int kTimeMinFieldNumber = 4;
+  inline ::google::protobuf::uint64 time_min() const;
+  inline void set_time_min(::google::protobuf::uint64 value);
+
+  // required uint64 time_max = 5;
+  inline bool has_time_max() const;
+  inline void clear_time_max();
+  static const int kTimeMaxFieldNumber = 5;
+  inline ::google::protobuf::uint64 time_max() const;
+  inline void set_time_max(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.url_details)
+ private:
+  inline void set_has_url();
+  inline void clear_has_url();
+  inline void set_has_ncalls();
+  inline void clear_has_ncalls();
+  inline void set_has_time_tot();
+  inline void clear_has_time_tot();
+  inline void set_has_time_min();
+  inline void clear_has_time_min();
+  inline void set_has_time_max();
+  inline void clear_has_time_max();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* url_;
+  ::google::protobuf::uint64 ncalls_;
+  ::google::protobuf::uint64 time_tot_;
+  ::google::protobuf::uint64 time_min_;
+  ::google::protobuf::uint64 time_max_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static url_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class http_info : public ::google::protobuf::Message {
+ public:
+  http_info();
+  virtual ~http_info();
+
+  http_info(const http_info& from);
+
+  inline http_info& operator=(const http_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const http_info& default_instance();
+
+  void Swap(http_info* other);
+
+  // implements Message ----------------------------------------------
+
+  http_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const http_info& from);
+  void MergeFrom(const http_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.url_details server_urls = 1;
+  inline int server_urls_size() const;
+  inline void clear_server_urls();
+  static const int kServerUrlsFieldNumber = 1;
+  inline const ::draiosproto::url_details& server_urls(int index) const;
+  inline ::draiosproto::url_details* mutable_server_urls(int index);
+  inline ::draiosproto::url_details* add_server_urls();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >&
+      server_urls() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
+      mutable_server_urls();
+
+  // repeated .draiosproto.url_details client_urls = 2;
+  inline int client_urls_size() const;
+  inline void clear_client_urls();
+  static const int kClientUrlsFieldNumber = 2;
+  inline const ::draiosproto::url_details& client_urls(int index) const;
+  inline ::draiosproto::url_details* mutable_client_urls(int index);
+  inline ::draiosproto::url_details* add_client_urls();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >&
+      client_urls() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
+      mutable_client_urls();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.http_info)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details > server_urls_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details > client_urls_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static http_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class proto_info : public ::google::protobuf::Message {
+ public:
+  proto_info();
+  virtual ~proto_info();
+
+  proto_info(const proto_info& from);
+
+  inline proto_info& operator=(const proto_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const proto_info& default_instance();
+
+  void Swap(proto_info* other);
+
+  // implements Message ----------------------------------------------
+
+  proto_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const proto_info& from);
+  void MergeFrom(const proto_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional .draiosproto.http_info http = 1;
+  inline bool has_http() const;
+  inline void clear_http();
+  static const int kHttpFieldNumber = 1;
+  inline const ::draiosproto::http_info& http() const;
+  inline ::draiosproto::http_info* mutable_http();
+  inline ::draiosproto::http_info* release_http();
+  inline void set_allocated_http(::draiosproto::http_info* http);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.proto_info)
+ private:
+  inline void set_has_http();
+  inline void clear_has_http();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::http_info* http_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static proto_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class host : public ::google::protobuf::Message {
  public:
   host();
@@ -1891,6 +2203,15 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
+  // optional .draiosproto.proto_info protos = 15;
+  inline bool has_protos() const;
+  inline void clear_protos();
+  static const int kProtosFieldNumber = 15;
+  inline const ::draiosproto::proto_info& protos() const;
+  inline ::draiosproto::proto_info* mutable_protos();
+  inline ::draiosproto::proto_info* release_protos();
+  inline void set_allocated_protos(::draiosproto::proto_info* protos);
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -1921,6 +2242,8 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
+  inline void set_has_protos();
+  inline void clear_has_protos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1939,10 +2262,11 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
+  ::draiosproto::proto_info* protos_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2133,6 +2457,15 @@ class process : public ::google::protobuf::Message {
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
   inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
 
+  // optional .draiosproto.proto_info protos = 15;
+  inline bool has_protos() const;
+  inline void clear_protos();
+  static const int kProtosFieldNumber = 15;
+  inline const ::draiosproto::proto_info& protos() const;
+  inline ::draiosproto::proto_info* mutable_protos();
+  inline ::draiosproto::proto_info* release_protos();
+  inline void set_allocated_protos(::draiosproto::proto_info* protos);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_pid();
@@ -2167,6 +2500,8 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_resource_counters();
   inline void set_has_syscall_errors();
   inline void clear_has_syscall_errors();
+  inline void set_has_protos();
+  inline void clear_has_protos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2186,9 +2521,10 @@ class process : public ::google::protobuf::Message {
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
+  ::draiosproto::proto_info* protos_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6729,6 +7065,264 @@ inline void command_details::set_allocated_parentcomm(::std::string* parentcomm)
 
 // -------------------------------------------------------------------
 
+// url_details
+
+// required string url = 1;
+inline bool url_details::has_url() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void url_details::set_has_url() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void url_details::clear_has_url() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void url_details::clear_url() {
+  if (url_ != &::google::protobuf::internal::kEmptyString) {
+    url_->clear();
+  }
+  clear_has_url();
+}
+inline const ::std::string& url_details::url() const {
+  return *url_;
+}
+inline void url_details::set_url(const ::std::string& value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(value);
+}
+inline void url_details::set_url(const char* value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(value);
+}
+inline void url_details::set_url(const char* value, size_t size) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* url_details::mutable_url() {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  return url_;
+}
+inline ::std::string* url_details::release_url() {
+  clear_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = url_;
+    url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void url_details::set_allocated_url(::std::string* url) {
+  if (url_ != &::google::protobuf::internal::kEmptyString) {
+    delete url_;
+  }
+  if (url) {
+    set_has_url();
+    url_ = url;
+  } else {
+    clear_has_url();
+    url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint64 ncalls = 2;
+inline bool url_details::has_ncalls() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void url_details::set_has_ncalls() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void url_details::clear_has_ncalls() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void url_details::clear_ncalls() {
+  ncalls_ = GOOGLE_ULONGLONG(0);
+  clear_has_ncalls();
+}
+inline ::google::protobuf::uint64 url_details::ncalls() const {
+  return ncalls_;
+}
+inline void url_details::set_ncalls(::google::protobuf::uint64 value) {
+  set_has_ncalls();
+  ncalls_ = value;
+}
+
+// required uint64 time_tot = 3;
+inline bool url_details::has_time_tot() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void url_details::set_has_time_tot() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void url_details::clear_has_time_tot() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void url_details::clear_time_tot() {
+  time_tot_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_tot();
+}
+inline ::google::protobuf::uint64 url_details::time_tot() const {
+  return time_tot_;
+}
+inline void url_details::set_time_tot(::google::protobuf::uint64 value) {
+  set_has_time_tot();
+  time_tot_ = value;
+}
+
+// required uint64 time_min = 4;
+inline bool url_details::has_time_min() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void url_details::set_has_time_min() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void url_details::clear_has_time_min() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void url_details::clear_time_min() {
+  time_min_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_min();
+}
+inline ::google::protobuf::uint64 url_details::time_min() const {
+  return time_min_;
+}
+inline void url_details::set_time_min(::google::protobuf::uint64 value) {
+  set_has_time_min();
+  time_min_ = value;
+}
+
+// required uint64 time_max = 5;
+inline bool url_details::has_time_max() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void url_details::set_has_time_max() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void url_details::clear_has_time_max() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void url_details::clear_time_max() {
+  time_max_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_max();
+}
+inline ::google::protobuf::uint64 url_details::time_max() const {
+  return time_max_;
+}
+inline void url_details::set_time_max(::google::protobuf::uint64 value) {
+  set_has_time_max();
+  time_max_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// http_info
+
+// repeated .draiosproto.url_details server_urls = 1;
+inline int http_info::server_urls_size() const {
+  return server_urls_.size();
+}
+inline void http_info::clear_server_urls() {
+  server_urls_.Clear();
+}
+inline const ::draiosproto::url_details& http_info::server_urls(int index) const {
+  return server_urls_.Get(index);
+}
+inline ::draiosproto::url_details* http_info::mutable_server_urls(int index) {
+  return server_urls_.Mutable(index);
+}
+inline ::draiosproto::url_details* http_info::add_server_urls() {
+  return server_urls_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >&
+http_info::server_urls() const {
+  return server_urls_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
+http_info::mutable_server_urls() {
+  return &server_urls_;
+}
+
+// repeated .draiosproto.url_details client_urls = 2;
+inline int http_info::client_urls_size() const {
+  return client_urls_.size();
+}
+inline void http_info::clear_client_urls() {
+  client_urls_.Clear();
+}
+inline const ::draiosproto::url_details& http_info::client_urls(int index) const {
+  return client_urls_.Get(index);
+}
+inline ::draiosproto::url_details* http_info::mutable_client_urls(int index) {
+  return client_urls_.Mutable(index);
+}
+inline ::draiosproto::url_details* http_info::add_client_urls() {
+  return client_urls_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >&
+http_info::client_urls() const {
+  return client_urls_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
+http_info::mutable_client_urls() {
+  return &client_urls_;
+}
+
+// -------------------------------------------------------------------
+
+// proto_info
+
+// optional .draiosproto.http_info http = 1;
+inline bool proto_info::has_http() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void proto_info::set_has_http() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void proto_info::clear_has_http() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void proto_info::clear_http() {
+  if (http_ != NULL) http_->::draiosproto::http_info::Clear();
+  clear_has_http();
+}
+inline const ::draiosproto::http_info& proto_info::http() const {
+  return http_ != NULL ? *http_ : *default_instance_->http_;
+}
+inline ::draiosproto::http_info* proto_info::mutable_http() {
+  set_has_http();
+  if (http_ == NULL) http_ = new ::draiosproto::http_info;
+  return http_;
+}
+inline ::draiosproto::http_info* proto_info::release_http() {
+  clear_has_http();
+  ::draiosproto::http_info* temp = http_;
+  http_ = NULL;
+  return temp;
+}
+inline void proto_info::set_allocated_http(::draiosproto::http_info* http) {
+  delete http_;
+  http_ = http;
+  if (http) {
+    set_has_http();
+  } else {
+    clear_has_http();
+  }
+}
+
+// -------------------------------------------------------------------
+
 // host
 
 // optional string hostname = 1;
@@ -7265,6 +7859,44 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   }
 }
 
+// optional .draiosproto.proto_info protos = 15;
+inline bool host::has_protos() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void host::set_has_protos() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void host::clear_has_protos() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void host::clear_protos() {
+  if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
+  clear_has_protos();
+}
+inline const ::draiosproto::proto_info& host::protos() const {
+  return protos_ != NULL ? *protos_ : *default_instance_->protos_;
+}
+inline ::draiosproto::proto_info* host::mutable_protos() {
+  set_has_protos();
+  if (protos_ == NULL) protos_ = new ::draiosproto::proto_info;
+  return protos_;
+}
+inline ::draiosproto::proto_info* host::release_protos() {
+  clear_has_protos();
+  ::draiosproto::proto_info* temp = protos_;
+  protos_ = NULL;
+  return temp;
+}
+inline void host::set_allocated_protos(::draiosproto::proto_info* protos) {
+  delete protos_;
+  protos_ = protos;
+  if (protos) {
+    set_has_protos();
+  } else {
+    clear_has_protos();
+  }
+}
+
 // -------------------------------------------------------------------
 
 // process
@@ -7730,6 +8362,44 @@ inline void process::set_allocated_syscall_errors(::draiosproto::counter_syscall
     set_has_syscall_errors();
   } else {
     clear_has_syscall_errors();
+  }
+}
+
+// optional .draiosproto.proto_info protos = 15;
+inline bool process::has_protos() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void process::set_has_protos() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void process::clear_has_protos() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void process::clear_protos() {
+  if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
+  clear_has_protos();
+}
+inline const ::draiosproto::proto_info& process::protos() const {
+  return protos_ != NULL ? *protos_ : *default_instance_->protos_;
+}
+inline ::draiosproto::proto_info* process::mutable_protos() {
+  set_has_protos();
+  if (protos_ == NULL) protos_ = new ::draiosproto::proto_info;
+  return protos_;
+}
+inline ::draiosproto::proto_info* process::release_protos() {
+  clear_has_protos();
+  ::draiosproto::proto_info* temp = protos_;
+  protos_ = NULL;
+  return temp;
+}
+inline void process::set_allocated_protos(::draiosproto::proto_info* protos) {
+  delete protos_;
+  protos_ = protos;
+  if (protos) {
+    set_has_protos();
+  } else {
+    clear_has_protos();
   }
 }
 
