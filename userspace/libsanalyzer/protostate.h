@@ -121,8 +121,16 @@ public:
 				{
 					entry->m_ncalls++;
 					entry->m_time_tot += time_delta;
-					entry->m_time_min += time_delta;
-					entry->m_time_max += time_delta;
+
+					if(time_delta < entry->m_time_min)
+					{
+						entry->m_time_min = time_delta;
+					}
+
+					if(time_delta > entry->m_time_max)
+					{
+						entry->m_time_max = time_delta;
+					}
 				}
 			}
 		}
