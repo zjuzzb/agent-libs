@@ -23,6 +23,11 @@ public:
 		return m_pthread_id;
 	}
 
+	bool is_connected()
+	{
+		return m_connected;
+	}
+
 private:
 	bool init();
 	bool connect();
@@ -43,6 +48,7 @@ private:
 
 	SharedPtr<SocketAddress> m_sa;
 	SharedPtr<StreamSocket> m_socket;
+	bool m_connected;
 	Buffer<uint8_t> m_buffer;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

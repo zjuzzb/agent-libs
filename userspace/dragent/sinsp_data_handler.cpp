@@ -1,15 +1,26 @@
 #include "sinsp_data_handler.h"
+#include "configuration.h"
+#include "connection_manager.h"
 
 #include "logger.h"
 
-sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, protocol_queue* queue):
+sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, 
+		connection_manager* connection_manager, protocol_queue* queue):
 	m_configuration(configuration),
+	m_connection_manager(connection_manager),
 	m_queue(queue)
 {
 }
 
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
 {
+	if(!m_connection_manager->is_connected())
+	{
+		g_log->information("Agent not connected, skipping metric ts=" 
+			+ NumberFormatter::format(ts_ns / 1000000000));
+		return;
+	}
+
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		draiosproto::message_type::METRICS, 
 		*metrics, 

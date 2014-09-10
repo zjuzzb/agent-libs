@@ -12,6 +12,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
 	m_sa(NULL),
 	m_socket(NULL),
+	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
 	m_configuration(configuration),
 	m_queue(queue),
@@ -110,8 +111,8 @@ bool connection_manager::connect()
 		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 
-		g_log->information("Connected to collector, flushing sending queue");
-		m_queue->clear();
+		g_log->information("Connected to collector");
+		m_connected = true;
 		return true;
 	}
 	catch(Poco::IOException& e)
@@ -128,6 +129,7 @@ void connection_manager::disconnect()
 	{
 		m_socket->close();
 		m_socket = NULL;
+		m_connected = false;
 	}
 }
 

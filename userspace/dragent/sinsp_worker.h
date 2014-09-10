@@ -41,7 +41,8 @@ public:
 		string m_filter;
 	};
 
-	sinsp_worker(dragent_configuration* configuration, protocol_queue* queue);
+	sinsp_worker(dragent_configuration* configuration, 
+		connection_manager* connection_manager, protocol_queue* queue);
 	~sinsp_worker();
 
 	void run();
