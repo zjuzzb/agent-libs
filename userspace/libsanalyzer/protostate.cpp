@@ -21,7 +21,6 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 {
 	unordered_map<string, sinsp_url_details>::iterator uit;
 
-
 	if(m_server_urls.size() != 0)
 	{
 		for(uit = m_server_urls.begin(); uit != m_server_urls.end(); ++uit)

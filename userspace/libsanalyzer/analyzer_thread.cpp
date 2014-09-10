@@ -278,6 +278,7 @@ void thread_analyzer_info::clear_role_flags()
 void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time, uint64_t timeout_ns, bool is_subsampling)
 {
 	sinsp_fdtable* fdtable = m_tinfo->get_fd_table();
+	bool has_thread_exited = (m_tinfo->m_flags & PPM_CL_CLOSED) != 0;
 
 	if(fdtable == &m_tinfo->m_fdtable)
 	{
@@ -301,7 +302,11 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 						return;
 					}
 
-					if(endtime - it->second.m_usrstate.m_end_time > timeout_ns)
+					//
+					// Note: if the thread has exited, we don't care about the timeout and we flush the connection
+					//       no matter what. We can safely assume it's ended.
+					//
+					if(has_thread_exited || (endtime - it->second.m_usrstate.m_end_time > timeout_ns))
 					{
 						sinsp_connection *connection;
 
