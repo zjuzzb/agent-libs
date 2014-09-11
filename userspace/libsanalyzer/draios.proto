@@ -117,7 +117,20 @@ message command_details {
 // URL information
 //
 message url_details {
-	required string url = 1;
+	//
+	// The URL, in the following format "TYPEADDR<:PORT>/PATH", e.g. "p172.16.189.128:9000/api/data".
+	// Note: possible values foy type are:
+	//   n for NONE
+	//   g for GET
+	//   p for POST
+	//   o for OPTIONS
+	//   h for HEAD
+	//   P for PUT
+	//   d for DELETE
+	//   t for TRACE
+	//   c for CONNECT
+	//
+	required string url = 1; 
 	required uint64 ncalls = 2;
 	required uint64 time_tot = 3;
 	required uint64 time_min = 4;

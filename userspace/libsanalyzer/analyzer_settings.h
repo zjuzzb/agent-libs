@@ -134,7 +134,7 @@
 //
 // Max number of URLS that are reported on a per process and per machine basis
 //
-#define TOP_URLS_IN_SAMPLE 20
+#define TOP_URLS_IN_SAMPLE 15
 
 //
 // Should the library track unix and FD connections

@@ -94,20 +94,30 @@ private:
 class sinsp_url_details
 {
 public:
+	enum udflags
+	{
+		UF_NONE = 0,
+		UF_INCLUDE_IN_SAMPLE = 1
+	};
+
 	sinsp_url_details()
 	{
 		m_ncalls = 0;
+		m_flags = UF_NONE;
 	}
 
 	uint64_t m_ncalls;		// number of times this url has been served
 	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_min;	// fastest time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
+	udflags m_flags;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
 ///////////////////////////////////////////////////////////////////////////////
+typedef bool (*url_comparer)(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst);
+
 class sinsp_protostate
 {
 public:
@@ -230,10 +240,27 @@ public:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 
 private:
+	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+		unordered_map<string, sinsp_url_details>* table,
+		bool is_server,
+		uint32_t sampling_ratio);
+
 	static bool cmp_ncalls(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
 	{
 		return src->second.m_ncalls > dst->second.m_ncalls;
 	}
+
+	static bool cmp_time_avg(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
+	{
+		return (src->second.m_time_tot / src->second.m_ncalls) > (dst->second.m_time_tot / dst->second.m_ncalls);
+	}
+
+	static bool cmp_time_max(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
+	{
+		return src->second.m_time_max > dst->second.m_time_max;
+	}
+
+	inline void mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list, url_comparer comparer);
 };
 
 #endif // HAS_ANALYZER
