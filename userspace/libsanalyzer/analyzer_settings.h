@@ -126,10 +126,15 @@
 #define TOP_PROCESSES_IN_SAMPLE 30
 
 //
-//Max number of files per category that can go in a sample, so the worst case is 4X
+// Max number of files per category that can go in a sample, so the worst case is 4X
 // this number
 //
 #define TOP_FILES_IN_SAMPLE 20
+
+//
+// Max number of URLS that are reported on a per process and per machine basis
+//
+#define TOP_URLS_IN_SAMPLE 20
 
 //
 // Should the library track unix and FD connections

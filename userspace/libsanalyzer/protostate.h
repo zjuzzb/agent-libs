@@ -2,6 +2,29 @@
 
 #pragma once
 
+///////////////////////////////////////////////////////////////////////////////
+// The protocol parser interface class
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_protocol_parser
+{
+public:
+	enum msg_type
+	{
+		MSG_NONE = 0,
+		MSG_REQUEST,
+		MSG_RESPONSE,
+	};
+
+	sinsp_protocol_parser();
+	virtual ~sinsp_protocol_parser();
+	virtual msg_type should_parse(char* buf, uint32_t buflen) = 0;
+	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
+	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
+
+	bool m_is_valid;
+	bool m_is_req_valid;
+};
+
 #include "parser_http.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -164,8 +187,16 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_time_tot += uit->second.m_time_tot;
-				entry->m_time_min += uit->second.m_time_min;
-				entry->m_time_max += uit->second.m_time_max;
+				
+				if(uit->second.m_time_min < entry->m_time_min)
+				{
+					entry->m_time_min = uit->second.m_time_min;
+				}
+
+				if(uit->second.m_time_max > entry->m_time_max)
+				{
+					entry->m_time_max = uit->second.m_time_max;
+				}
 			}
 		}
 
@@ -197,6 +228,12 @@ public:
 	// The list of URLs
 	unordered_map<string, sinsp_url_details> m_server_urls;
 	unordered_map<string, sinsp_url_details> m_client_urls;
+
+private:
+	static bool cmp_ncalls(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
+	{
+		return src->second.m_ncalls > dst->second.m_ncalls;
+	}
 };
 
 #endif // HAS_ANALYZER

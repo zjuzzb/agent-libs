@@ -187,15 +187,21 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 	if(m_is_req_valid == true)
 	{
+		m_req_storage[m_req_storage_pos++] = (char)m_method;
+
 		if(host != NULL)
 		{
 			req_assign(&m_url, host, hostlen);
+			ASSERT(m_url > m_req_storage);
+			m_url--;
 			m_req_storage_pos--;
 			req_assign(&m_path, path, pathlen);
 		}
 		else
 		{
 			req_assign(&m_url, path, pathlen);
+			ASSERT(m_url > m_req_storage);
+			m_url--;
 		}
 	}
 
@@ -279,16 +285,34 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(char* buf, uint3
 	}
 	else
 	{
-		if(*(uint32_t*)buf == MSG_STR_GET ||
-			*(uint32_t*)buf == MSG_STR_POST ||
-			*(uint32_t*)buf == MSG_STR_OPTIONS ||
-			*(uint32_t*)buf == MSG_STR_HEAD ||
-			*(uint32_t*)buf == MSG_STR_PUT ||
-			*(uint32_t*)buf == MSG_STR_DELETE ||
-			*(uint32_t*)buf == MSG_STR_TRACE ||
-			*(uint32_t*)buf == MSG_STR_CONNECT)
+		switch(*(uint32_t*)buf)
 		{
+		case MSG_STR_GET:
+			m_method = UM_GET;
 			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_POST:
+			m_method = UM_POST;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_OPTIONS:
+			m_method = UM_OPTIONS;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_HEAD:
+			m_method = UM_HEAD;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_PUT:
+			m_method = UM_PUT;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_DELETE:
+			m_method = UM_DELETE;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_TRACE:
+			m_method = UM_TRACE;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		case MSG_STR_CONNECT:
+			m_method = UM_CONNECT;
+			return sinsp_protocol_parser::MSG_REQUEST;
+		default:
+			break;
 		}
 	}
 
