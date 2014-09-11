@@ -135,21 +135,23 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		{
 			break;
 		}
-
-		if(buf[j] == ' ')
+		
+		if(m_is_req_valid == false)
 		{
-			if(path == NULL)
+			if(buf[j] == ' ' || buf[j] == '?')
 			{
-				path = buf + j + 1;
-			}
-			else if(m_is_req_valid == false)
-			{
-				pathlen = (uint32_t)(buf + j - path);
-				m_is_req_valid = true;
+				if(path == NULL)
+				{
+					path = buf + j + 1;
+				}
+				else if(m_is_req_valid == false)
+				{
+					pathlen = (uint32_t)(buf + j - path);
+					m_is_req_valid = true;
+				}
 			}
 		}
-
-		if(m_is_req_valid == true)
+		else
 		{
 			if((str = check_and_extract(buf + j,
 				buflen - j,

@@ -14,11 +14,6 @@
 #include "draios.pb.h"
 #include "protostate.h"
 
-//
-// XXX implement sampling ratio
-// XXX remove URL arguments
-//
-
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -96,8 +91,8 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			if((*vit)->second.m_flags & (uint32_t)sinsp_url_details::UF_INCLUDE_IN_SAMPLE)
 			{
 				ud->set_url((*vit)->first);
-				ud->set_ncalls((*vit)->second.m_ncalls / sampling_ratio);
-				ud->set_time_tot((*vit)->second.m_time_tot / sampling_ratio);
+				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
+				ud->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
 				ud->set_time_min((*vit)->second.m_time_min);
 				ud->set_time_max((*vit)->second.m_time_max);
 			}
@@ -120,8 +115,8 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			}
 
 			ud->set_url(uit->first);
-			ud->set_ncalls(uit->second.m_ncalls / sampling_ratio);
-			ud->set_time_tot(uit->second.m_time_tot / sampling_ratio);
+			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+			ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
 			ud->set_time_min(uit->second.m_time_min);
 			ud->set_time_max(uit->second.m_time_max);
 		}
