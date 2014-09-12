@@ -106,7 +106,7 @@ public:
 		m_flags = UF_NONE;
 	}
 
-	uint64_t m_ncalls;		// number of times this url has been served
+	uint32_t m_ncalls;		// number of times this url has been served
 	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_min;	// fastest time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
@@ -132,6 +132,10 @@ public:
 			if(tr->m_protoparser->m_is_valid)
 			{
 				sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
+
+				//
+				// Update the URL table
+				//
 				sinsp_url_details* entry;
 
 				if(is_server)
@@ -165,20 +169,55 @@ public:
 						entry->m_time_max = time_delta;
 					}
 				}
+
+				//
+				// Update the status code table
+				//
+				unordered_map<uint32_t, uint32_t>::iterator scit;
+
+				if(is_server)
+				{
+					scit = m_server_status_codes.find(pp->m_status_code);
+					if(scit != m_server_status_codes.end())
+					{
+						scit->second++;
+					}
+					else
+					{
+						m_server_status_codes[pp->m_status_code] = 1;
+					}
+				}
+				else
+				{
+					scit = m_client_status_codes.find(pp->m_status_code);
+					if(scit != m_client_status_codes.end())
+					{
+						scit->second++;
+					}
+					else
+					{
+						m_client_status_codes[pp->m_status_code] = 1;
+					}
+				}
 			}
 		}
 	}
 
 	inline void clear()
 	{
-		m_client_urls.clear();
 		m_server_urls.clear();
+		m_client_urls.clear();
+		m_server_status_codes.clear();
+		m_client_status_codes.clear();
 	}
 
 	void add(sinsp_protostate* other)
 	{
 		unordered_map<string, sinsp_url_details>::iterator uit;
 		unordered_map<string, sinsp_url_details>* pom;
+		unordered_map<uint32_t, uint32_t>::iterator scit;
+		unordered_map<uint32_t, uint32_t>::iterator scit1;
+		unordered_map<uint32_t, uint32_t>* psc;
 
 		//
 		// Add the server URLs
@@ -227,8 +266,51 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_time_tot += uit->second.m_time_tot;
-				entry->m_time_min += uit->second.m_time_min;
-				entry->m_time_max += uit->second.m_time_max;
+
+				if(uit->second.m_time_min < entry->m_time_min)
+				{
+					entry->m_time_min = uit->second.m_time_min;
+				}
+
+				if(uit->second.m_time_max > entry->m_time_max)
+				{
+					entry->m_time_max = uit->second.m_time_max;
+				}
+			}
+		}
+
+		//
+		// Add the status codes
+		//
+		psc = &(other->m_server_status_codes);
+
+		for(scit = psc->begin(); scit != psc->end(); ++scit)
+		{
+			scit1 = m_server_status_codes.find(scit->first);
+
+			if(scit1 == m_server_status_codes.end())
+			{
+				m_server_status_codes[scit->first] = scit->second;
+			}
+			else
+			{
+				m_server_status_codes[scit->first] += scit->second;
+			}
+		}
+
+		psc = &(other->m_client_status_codes);
+
+		for(scit = psc->begin(); scit != psc->end(); ++scit)
+		{
+			scit1 = m_client_status_codes.find(scit->first);
+
+			if(scit1 == m_client_status_codes.end())
+			{
+				m_client_status_codes[scit->first] = scit->second;
+			}
+			else
+			{
+				m_client_status_codes[scit->first] += scit->second;
 			}
 		}
 	}
@@ -238,6 +320,8 @@ public:
 	// The list of URLs
 	unordered_map<string, sinsp_url_details> m_server_urls;
 	unordered_map<string, sinsp_url_details> m_client_urls;
+	unordered_map<uint32_t, uint32_t> m_server_status_codes;
+	unordered_map<uint32_t, uint32_t> m_client_status_codes;
 
 private:
 	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
@@ -245,6 +329,16 @@ private:
 		bool is_server,
 		uint32_t sampling_ratio);
 
+	void status_code_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+		unordered_map<uint32_t, uint32_t>* table,
+		bool is_server,
+		uint32_t sampling_ratio);
+
+	inline void mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list, url_comparer comparer);
+
+	//
+	// Comparers for sorting
+	//
 	static bool cmp_ncalls(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
 	{
 		return src->second.m_ncalls > dst->second.m_ncalls;
@@ -259,8 +353,6 @@ private:
 	{
 		return src->second.m_time_max > dst->second.m_time_max;
 	}
-
-	inline void mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list, url_comparer comparer);
 };
 
 #endif // HAS_ANALYZER

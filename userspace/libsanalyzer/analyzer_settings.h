@@ -137,6 +137,11 @@
 #define TOP_URLS_IN_SAMPLE 15
 
 //
+// Max number of URLS that are reported on a per process and per machine basis
+//
+#define TOP_STATUS_CODES_IN_SAMPLE 10
+
+//
 // Should the library track unix and FD connections
 //
 #undef HAS_UNIX_CONNECTIONS

@@ -46,6 +46,7 @@ class connection_categories;
 class process_details;
 class command_details;
 class url_details;
+class status_code_details;
 class http_info;
 class proto_info;
 class host;
@@ -1763,12 +1764,12 @@ class url_details : public ::google::protobuf::Message {
   inline ::std::string* release_url();
   inline void set_allocated_url(::std::string* url);
 
-  // required uint64 ncalls = 2;
+  // required uint32 ncalls = 2;
   inline bool has_ncalls() const;
   inline void clear_ncalls();
   static const int kNcallsFieldNumber = 2;
-  inline ::google::protobuf::uint64 ncalls() const;
-  inline void set_ncalls(::google::protobuf::uint64 value);
+  inline ::google::protobuf::uint32 ncalls() const;
+  inline void set_ncalls(::google::protobuf::uint32 value);
 
   // required uint64 time_tot = 3;
   inline bool has_time_tot() const;
@@ -1807,10 +1808,10 @@ class url_details : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* url_;
-  ::google::protobuf::uint64 ncalls_;
   ::google::protobuf::uint64 time_tot_;
   ::google::protobuf::uint64 time_min_;
   ::google::protobuf::uint64 time_max_;
+  ::google::protobuf::uint32 ncalls_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
@@ -1821,6 +1822,98 @@ class url_details : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static url_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class status_code_details : public ::google::protobuf::Message {
+ public:
+  status_code_details();
+  virtual ~status_code_details();
+
+  status_code_details(const status_code_details& from);
+
+  inline status_code_details& operator=(const status_code_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const status_code_details& default_instance();
+
+  void Swap(status_code_details* other);
+
+  // implements Message ----------------------------------------------
+
+  status_code_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const status_code_details& from);
+  void MergeFrom(const status_code_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 status_code = 1;
+  inline bool has_status_code() const;
+  inline void clear_status_code();
+  static const int kStatusCodeFieldNumber = 1;
+  inline ::google::protobuf::uint32 status_code() const;
+  inline void set_status_code(::google::protobuf::uint32 value);
+
+  // required uint32 ncalls = 2;
+  inline bool has_ncalls() const;
+  inline void clear_ncalls();
+  static const int kNcallsFieldNumber = 2;
+  inline ::google::protobuf::uint32 ncalls() const;
+  inline void set_ncalls(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.status_code_details)
+ private:
+  inline void set_has_status_code();
+  inline void clear_has_status_code();
+  inline void set_has_ncalls();
+  inline void clear_has_ncalls();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint32 status_code_;
+  ::google::protobuf::uint32 ncalls_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static status_code_details* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -1902,6 +1995,30 @@ class http_info : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
       mutable_client_urls();
 
+  // repeated .draiosproto.status_code_details client_status_codes = 3;
+  inline int client_status_codes_size() const;
+  inline void clear_client_status_codes();
+  static const int kClientStatusCodesFieldNumber = 3;
+  inline const ::draiosproto::status_code_details& client_status_codes(int index) const;
+  inline ::draiosproto::status_code_details* mutable_client_status_codes(int index);
+  inline ::draiosproto::status_code_details* add_client_status_codes();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >&
+      client_status_codes() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >*
+      mutable_client_status_codes();
+
+  // repeated .draiosproto.status_code_details server_status_codes = 4;
+  inline int server_status_codes_size() const;
+  inline void clear_server_status_codes();
+  static const int kServerStatusCodesFieldNumber = 4;
+  inline const ::draiosproto::status_code_details& server_status_codes(int index) const;
+  inline ::draiosproto::status_code_details* mutable_server_status_codes(int index);
+  inline ::draiosproto::status_code_details* add_server_status_codes();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >&
+      server_status_codes() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >*
+      mutable_server_status_codes();
+
   // @@protoc_insertion_point(class_scope:draiosproto.http_info)
  private:
 
@@ -1909,9 +2026,11 @@ class http_info : public ::google::protobuf::Message {
 
   ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details > server_urls_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details > client_urls_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details > client_status_codes_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details > server_status_codes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7137,7 +7256,7 @@ inline void url_details::set_allocated_url(::std::string* url) {
   }
 }
 
-// required uint64 ncalls = 2;
+// required uint32 ncalls = 2;
 inline bool url_details::has_ncalls() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -7148,13 +7267,13 @@ inline void url_details::clear_has_ncalls() {
   _has_bits_[0] &= ~0x00000002u;
 }
 inline void url_details::clear_ncalls() {
-  ncalls_ = GOOGLE_ULONGLONG(0);
+  ncalls_ = 0u;
   clear_has_ncalls();
 }
-inline ::google::protobuf::uint64 url_details::ncalls() const {
+inline ::google::protobuf::uint32 url_details::ncalls() const {
   return ncalls_;
 }
-inline void url_details::set_ncalls(::google::protobuf::uint64 value) {
+inline void url_details::set_ncalls(::google::protobuf::uint32 value) {
   set_has_ncalls();
   ncalls_ = value;
 }
@@ -7227,6 +7346,54 @@ inline void url_details::set_time_max(::google::protobuf::uint64 value) {
 
 // -------------------------------------------------------------------
 
+// status_code_details
+
+// required uint32 status_code = 1;
+inline bool status_code_details::has_status_code() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void status_code_details::set_has_status_code() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void status_code_details::clear_has_status_code() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void status_code_details::clear_status_code() {
+  status_code_ = 0u;
+  clear_has_status_code();
+}
+inline ::google::protobuf::uint32 status_code_details::status_code() const {
+  return status_code_;
+}
+inline void status_code_details::set_status_code(::google::protobuf::uint32 value) {
+  set_has_status_code();
+  status_code_ = value;
+}
+
+// required uint32 ncalls = 2;
+inline bool status_code_details::has_ncalls() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void status_code_details::set_has_ncalls() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void status_code_details::clear_has_ncalls() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void status_code_details::clear_ncalls() {
+  ncalls_ = 0u;
+  clear_has_ncalls();
+}
+inline ::google::protobuf::uint32 status_code_details::ncalls() const {
+  return ncalls_;
+}
+inline void status_code_details::set_ncalls(::google::protobuf::uint32 value) {
+  set_has_ncalls();
+  ncalls_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // http_info
 
 // repeated .draiosproto.url_details server_urls = 1;
@@ -7277,6 +7444,56 @@ http_info::client_urls() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::url_details >*
 http_info::mutable_client_urls() {
   return &client_urls_;
+}
+
+// repeated .draiosproto.status_code_details client_status_codes = 3;
+inline int http_info::client_status_codes_size() const {
+  return client_status_codes_.size();
+}
+inline void http_info::clear_client_status_codes() {
+  client_status_codes_.Clear();
+}
+inline const ::draiosproto::status_code_details& http_info::client_status_codes(int index) const {
+  return client_status_codes_.Get(index);
+}
+inline ::draiosproto::status_code_details* http_info::mutable_client_status_codes(int index) {
+  return client_status_codes_.Mutable(index);
+}
+inline ::draiosproto::status_code_details* http_info::add_client_status_codes() {
+  return client_status_codes_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >&
+http_info::client_status_codes() const {
+  return client_status_codes_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >*
+http_info::mutable_client_status_codes() {
+  return &client_status_codes_;
+}
+
+// repeated .draiosproto.status_code_details server_status_codes = 4;
+inline int http_info::server_status_codes_size() const {
+  return server_status_codes_.size();
+}
+inline void http_info::clear_server_status_codes() {
+  server_status_codes_.Clear();
+}
+inline const ::draiosproto::status_code_details& http_info::server_status_codes(int index) const {
+  return server_status_codes_.Get(index);
+}
+inline ::draiosproto::status_code_details* http_info::mutable_server_status_codes(int index) {
+  return server_status_codes_.Mutable(index);
+}
+inline ::draiosproto::status_code_details* http_info::add_server_status_codes() {
+  return server_status_codes_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >&
+http_info::server_status_codes() const {
+  return server_status_codes_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::status_code_details >*
+http_info::mutable_server_status_codes() {
+  return &server_status_codes_;
 }
 
 // -------------------------------------------------------------------

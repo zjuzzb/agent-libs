@@ -123,6 +123,72 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 	}
 }
 
+void sinsp_protostate::status_code_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+	unordered_map<uint32_t, uint32_t>* table,
+	bool is_server,
+	uint32_t sampling_ratio)
+{
+	uint32_t j;
+	unordered_map<uint32_t, uint32_t>::iterator uit;
+	draiosproto::status_code_details* ud;
+
+	if(table->size() > TOP_STATUS_CODES_IN_SAMPLE)
+	{
+		//
+		// The table is big enough to require sorting
+		//
+		vector<pair<uint32_t, uint32_t>> sortable_list;
+		vector<pair<uint32_t, uint32_t>>::iterator vit;
+
+		for(uit = table->begin(); uit != table->end(); ++uit)
+		{
+			sortable_list.push_back(pair<uint32_t, uint32_t>(uit->second, uit->first));
+		}
+
+		partial_sort(sortable_list.rbegin(), 
+			sortable_list.rbegin() + TOP_STATUS_CODES_IN_SAMPLE, 
+			sortable_list.rend());
+
+		//
+		// Go through the list and emit the marked elements
+		//
+		for(vit = sortable_list.begin(), j = 0; j < TOP_STATUS_CODES_IN_SAMPLE; ++vit, ++j)
+		{
+			if(is_server)
+			{
+				ud = protobuf_msg->mutable_http()->add_server_status_codes();
+			}
+			else
+			{
+				ud = protobuf_msg->mutable_http()->add_client_status_codes();
+			}
+
+			ud->set_status_code(vit->second);
+			ud->set_ncalls(vit->first * sampling_ratio);
+		}
+	}
+	else
+	{
+		//
+		// The table is small enough that we don't need to sort it
+		//
+		for(uit = table->begin(); uit != table->end(); ++uit)
+		{
+			if(is_server)
+			{
+				ud = protobuf_msg->mutable_http()->add_server_status_codes();
+			}
+			else
+			{
+				ud = protobuf_msg->mutable_http()->add_client_status_codes();
+			}
+
+			ud->set_status_code(uit->first);
+			ud->set_ncalls(uit->second * sampling_ratio);
+		}
+	}
+}
+
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio)
 {
 	if(m_server_urls.size() != 0)
@@ -133,6 +199,16 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	if(m_client_urls.size() != 0)
 	{
 		url_table_to_protobuf(protobuf_msg, &m_client_urls, false, sampling_ratio);
+	}
+
+	if(m_server_status_codes.size() != 0)
+	{
+		status_code_table_to_protobuf(protobuf_msg, &m_server_status_codes, true, sampling_ratio);
+	}
+
+	if(m_client_status_codes.size() != 0)
+	{
+		status_code_table_to_protobuf(protobuf_msg, &m_client_status_codes, false, sampling_ratio);
 	}
 }
 

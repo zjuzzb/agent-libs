@@ -131,10 +131,15 @@ message url_details {
 	//   c for CONNECT
 	//
 	required string url = 1; 
-	required uint64 ncalls = 2;
+	required uint32 ncalls = 2;
 	required uint64 time_tot = 3;
 	required uint64 time_min = 4;
 	required uint64 time_max = 5;
+}
+
+message status_code_details {
+	required uint32 status_code = 1; 
+	required uint32 ncalls = 2;
 }
 
 //
@@ -143,6 +148,8 @@ message url_details {
 message http_info {
 	repeated url_details server_urls = 1;
 	repeated url_details client_urls = 2;
+	repeated status_code_details client_status_codes = 3;
+	repeated status_code_details server_status_codes = 4;
 }
 
 //
