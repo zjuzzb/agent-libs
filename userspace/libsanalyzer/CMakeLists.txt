@@ -35,6 +35,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
+	protostate.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp
 	sched_analyzer.cpp
 	scores.cpp
