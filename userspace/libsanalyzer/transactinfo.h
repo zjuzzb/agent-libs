@@ -106,7 +106,7 @@ public:
 	uint32_t m_outgoing_bytes;
 	int32_t m_cpuid;
 	uint32_t m_flags;
-	sinsp_protocol_parser* m_protoparser;
+//	sinsp_protocol_parser* m_protoparser;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(

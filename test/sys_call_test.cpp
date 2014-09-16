@@ -259,12 +259,14 @@ TEST_F(sys_call_test, ioctl)
 		return m_tid_filter(evt);
 	};
 
+	int status;
+
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [](sinsp* inspector)
+	run_callback_t test = [&](sinsp* inspector)
 	{
-		int fd, status;
+		int fd;
 
 		fd = open("/dev/ttyS0", O_RDONLY);
 		ioctl(fd, TIOCMGET, &status);
@@ -279,13 +281,14 @@ TEST_F(sys_call_test, ioctl)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_IOCTL_E)
+		if(type == PPME_SYSCALL_IOCTL_3_E)
 		{
 			EXPECT_EQ("<f>/dev/ttyS0", e->get_param_value_str("fd"));
 			EXPECT_EQ(NumberFormatter::formatHex(TIOCMGET), e->get_param_value_str("request"));
+			EXPECT_EQ(NumberFormatter::formatHex((unsigned long) &status), e->get_param_value_str("argument"));
 			callnum++;
 		}
-		else if(type == PPME_SYSCALL_IOCTL_X)
+		else if(type == PPME_SYSCALL_IOCTL_3_X)
 		{
 			string res = e->get_param_value_str("res");
 			EXPECT_TRUE(res == "0" || res == "EIO");
