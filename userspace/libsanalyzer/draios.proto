@@ -135,6 +135,8 @@ message url_details {
 	required uint64 time_tot = 3;
 	required uint64 time_min = 4;
 	required uint64 time_max = 5;
+	required uint64 bytes_in = 6;
+	required uint64 bytes_out = 7;
 }
 
 message status_code_details {

@@ -354,8 +354,8 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 								0,
 								0);
 
-							trinfo->m_incoming_bytes = 0;
-							trinfo->m_outgoing_bytes = 0;
+							trinfo->m_bytes_in = 0;
+							trinfo->m_bytes_out = 0;
 						}
 					}
 				}

@@ -350,7 +350,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 {
 	if(dir == DIR_IN)
 	{
-		m_incoming_bytes += len;
+		m_bytes_in += len;
 
 		if(m_direction != DIR_IN)
 		{
@@ -365,7 +365,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
-				m_incoming_bytes = len;
+				m_bytes_in = len;
 				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
 			}
@@ -376,7 +376,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			{
 				m_direction = dir;
 
-				if(m_incoming_bytes == len)
+				if(m_bytes_in == len)
 				{
 					m_start_of_transaction_time = exit_ts;
 				}
@@ -412,7 +412,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 	}
 	else if(dir == DIR_OUT)
 	{
-		m_outgoing_bytes += len;
+		m_bytes_out += len;
 
 		if(m_direction != DIR_OUT)
 		{
@@ -427,7 +427,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
-				m_outgoing_bytes = len;
+				m_bytes_out = len;
 				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
 			}
@@ -438,7 +438,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			{
 				m_direction = dir;
 
-				if(m_outgoing_bytes == len)
+				if(m_bytes_out == len)
 				{
 					m_start_of_transaction_time = exit_ts;
 				}
@@ -560,8 +560,8 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction::type newtype)
 {
 	m_type = newtype;
-	m_incoming_bytes = 0;
-	m_outgoing_bytes = 0;
+	m_bytes_in = 0;
+	m_bytes_out = 0;
 	m_is_active = true;
 }
 

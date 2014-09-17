@@ -102,11 +102,11 @@ public:
 	uint64_t m_prev_prev_end_time;
 	uint64_t m_prev_prev_start_of_transaction_time;
 	family m_family;
-	uint32_t m_incoming_bytes;
-	uint32_t m_outgoing_bytes;
+	uint32_t m_bytes_in;
+	uint32_t m_bytes_out;
 	int32_t m_cpuid;
 	uint32_t m_flags;
-//	sinsp_protocol_parser* m_protoparser;
+	sinsp_protocol_parser* m_protoparser;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(

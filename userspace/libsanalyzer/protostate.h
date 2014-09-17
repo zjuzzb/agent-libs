@@ -110,6 +110,8 @@ public:
 	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_min;	// fastest time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
+	uint32_t m_bytes_in;	// received bytes for this request
+	uint32_t m_bytes_out;	// sent bytes for this request
 	udflags m_flags;
 };
 
@@ -153,11 +155,15 @@ public:
 					entry->m_time_tot = time_delta;
 					entry->m_time_min = time_delta;
 					entry->m_time_max = time_delta;
+					entry->m_bytes_in = tr->m_bytes_in;
+					entry->m_bytes_out = tr->m_bytes_out;
 				}
 				else
 				{
 					entry->m_ncalls++;
 					entry->m_time_tot += time_delta;
+					entry->m_bytes_in += tr->m_bytes_in;
+					entry->m_bytes_out += tr->m_bytes_out;
 
 					if(time_delta < entry->m_time_min)
 					{
@@ -236,6 +242,8 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_time_tot += uit->second.m_time_tot;
+				entry->m_bytes_in += uit->second.m_bytes_in;
+				entry->m_bytes_out += uit->second.m_bytes_out;
 				
 				if(uit->second.m_time_min < entry->m_time_min)
 				{
@@ -266,6 +274,8 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_time_tot += uit->second.m_time_tot;
+				entry->m_bytes_in += uit->second.m_bytes_in;
+				entry->m_bytes_out += uit->second.m_bytes_out;
 
 				if(uit->second.m_time_min < entry->m_time_min)
 				{
@@ -352,6 +362,12 @@ private:
 	static bool cmp_time_max(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
 	{
 		return src->second.m_time_max > dst->second.m_time_max;
+	}
+
+	static bool cmp_bytes_tot(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
+	{
+		return (src->second.m_bytes_in + src->second.m_bytes_out) > 
+			(dst->second.m_bytes_in + dst->second.m_bytes_out);
 	}
 };
 
