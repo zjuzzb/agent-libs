@@ -45,6 +45,8 @@ inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
 		buf1++;
 		buf2++;
 	}
+
+	return true;
 }
 
 inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
