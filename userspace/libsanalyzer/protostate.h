@@ -53,20 +53,20 @@ public:
 					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
 			{
 				sinsp_http_parser* st = new sinsp_http_parser;
-				ASSERT(trinfo->m_protoparser == NULL);
+				//ASSERT(trinfo->m_protoparser == NULL);
 				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 
 				return sinsp_partial_transaction::TYPE_HTTP;
 			}
 			else
 			{
-				ASSERT(trinfo->m_protoparser == NULL);
+				//ASSERT(trinfo->m_protoparser == NULL);
 				trinfo->m_protoparser = NULL;
 				return sinsp_partial_transaction::TYPE_IP;
 			}
 		}
 
-		ASSERT(trinfo->m_protoparser == NULL);
+		//ASSERT(trinfo->m_protoparser == NULL);
 		trinfo->m_protoparser = NULL;
 		return sinsp_partial_transaction::TYPE_IP;		
 	}
@@ -108,7 +108,6 @@ public:
 
 	uint32_t m_ncalls;		// number of times this url has been served
 	uint64_t m_time_tot;	// total time spent serving this request
-	uint64_t m_time_min;	// fastest time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
@@ -129,7 +128,7 @@ public:
 	{
 		if(tr->m_type == sinsp_partial_transaction::TYPE_HTTP)
 		{
-			ASSERT(tr->m_protoparser != NULL);
+			//ASSERT(tr->m_protoparser != NULL);
 
 			if(tr->m_protoparser->m_is_valid)
 			{
@@ -153,7 +152,6 @@ public:
 				{
 					entry->m_ncalls = 1;
 					entry->m_time_tot = time_delta;
-					entry->m_time_min = time_delta;
 					entry->m_time_max = time_delta;
 					entry->m_bytes_in = tr->m_bytes_in;
 					entry->m_bytes_out = tr->m_bytes_out;
@@ -164,11 +162,6 @@ public:
 					entry->m_time_tot += time_delta;
 					entry->m_bytes_in += tr->m_bytes_in;
 					entry->m_bytes_out += tr->m_bytes_out;
-
-					if(time_delta < entry->m_time_min)
-					{
-						entry->m_time_min = time_delta;
-					}
 
 					if(time_delta > entry->m_time_max)
 					{
@@ -245,11 +238,6 @@ public:
 				entry->m_bytes_in += uit->second.m_bytes_in;
 				entry->m_bytes_out += uit->second.m_bytes_out;
 				
-				if(uit->second.m_time_min < entry->m_time_min)
-				{
-					entry->m_time_min = uit->second.m_time_min;
-				}
-
 				if(uit->second.m_time_max > entry->m_time_max)
 				{
 					entry->m_time_max = uit->second.m_time_max;
@@ -276,11 +264,6 @@ public:
 				entry->m_time_tot += uit->second.m_time_tot;
 				entry->m_bytes_in += uit->second.m_bytes_in;
 				entry->m_bytes_out += uit->second.m_bytes_out;
-
-				if(uit->second.m_time_min < entry->m_time_min)
-				{
-					entry->m_time_min = uit->second.m_time_min;
-				}
 
 				if(uit->second.m_time_max > entry->m_time_max)
 				{

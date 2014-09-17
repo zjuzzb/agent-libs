@@ -25,6 +25,7 @@ public:
 	    TYPE_UNKNOWN = 0,
 	    TYPE_IP = 1,
 	    TYPE_HTTP = 2,
+	    TYPE_MYSQL = 3,
 	};
 
 	enum family

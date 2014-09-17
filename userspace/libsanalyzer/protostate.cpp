@@ -98,7 +98,6 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 				ud->set_url((*vit)->first);
 				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
 				ud->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
-				ud->set_time_min((*vit)->second.m_time_min);
 				ud->set_time_max((*vit)->second.m_time_max);
 				ud->set_bytes_in((*vit)->second.m_bytes_in);
 				ud->set_bytes_out((*vit)->second.m_bytes_out);
@@ -124,7 +123,6 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			ud->set_url(uit->first);
 			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
 			ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
-			ud->set_time_min(uit->second.m_time_min);
 			ud->set_time_max(uit->second.m_time_max);
 			ud->set_bytes_in(uit->second.m_bytes_in);
 			ud->set_bytes_out(uit->second.m_bytes_out);
