@@ -434,7 +434,6 @@ r_conn_creation_done:
 				len);
 		}
 */
-
 		//
 		// See if there's already a transaction
 		//

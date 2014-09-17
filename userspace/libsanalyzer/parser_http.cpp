@@ -28,6 +28,25 @@ sinsp_http_parser::sinsp_http_parser()
 	m_resp_storage_size = sizeof(m_resp_initial_storage);
 }
 
+inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
+{
+	uint32_t j = count;
+
+	while(--j)
+	{
+		//
+		// Note: '| 0x20' converts to lowercase
+		//
+		if(((*buf1) | 0x20) != ((*buf2) | 0x20))
+		{
+			return false;
+		}
+
+		buf1++;
+		buf2++;
+	}
+}
+
 inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 												 char* tosearch, uint32_t tosearchlen,
 												 OUT uint32_t* reslen)
@@ -38,9 +57,12 @@ inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 	{
 		ASSERT(tosearchlen >= 2);
 
-		if(buf[0] == tosearch[0] && buf[1] == tosearch[1])
+		//
+		// Note: '| 0x20' converts to lowercase
+		//
+		if((buf[0] | 0x20) == tosearch[0] && (buf[1] | 0x20) == tosearch[1])
 		{
-			if(memcmp(buf, tosearch, tosearchlen - 1) == 0)
+			if(sinsp_strcmpi(buf, tosearch, tosearchlen - 1))
 			{
 				uint32_t uastart = tosearchlen;
 
@@ -128,6 +150,8 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 	uint32_t pathlen = 0;
 	m_is_valid = false;
 	m_is_req_valid = false;
+	bool hostvalid = false;
+	bool agentvalid = false;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -153,12 +177,13 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
-			if((str = check_and_extract(buf + j,
+			if((!agentvalid) && ((str = check_and_extract(buf + j,
 				buflen - j,
-				(char*)"User-Agent:",
-				sizeof("User-Agent:"),
-				&strlen)) != NULL)
+				(char*)"user-agent:",
+				sizeof("user-agent:"),
+				&strlen)) != NULL))
 			{
+				agentvalid = true;
 				req_assign(&m_agent, str, strlen);
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
@@ -168,12 +193,13 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 				continue;
 			}
-			else if((str = check_and_extract(buf + j, 
+			else if((!hostvalid) && ((str = check_and_extract(buf + j, 
 				buflen - j,
-				(char*)"Host:",
-				sizeof("Host:"),
-				&strlen)) != NULL)
+				(char*)"host:",
+				sizeof("host:"),
+				&strlen)) != NULL))
 			{
+				hostvalid = true;
 				host = str;
 				hostlen = strlen;
 				n_extracted++;
@@ -253,8 +279,8 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 		{
 			if((str = check_and_extract(buf + j, 
 				buflen - j,
-				(char*)"Content-Type:",
-				sizeof("Content-Type:"),
+				(char*)"content-type:",
+				sizeof("content-type:"),
 				&strlen)) != NULL)
 			{
 				resp_assign(&m_content_type, str, strlen);
