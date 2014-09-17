@@ -1778,31 +1778,24 @@ class url_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 time_tot() const;
   inline void set_time_tot(::google::protobuf::uint64 value);
 
-  // required uint64 time_min = 4;
-  inline bool has_time_min() const;
-  inline void clear_time_min();
-  static const int kTimeMinFieldNumber = 4;
-  inline ::google::protobuf::uint64 time_min() const;
-  inline void set_time_min(::google::protobuf::uint64 value);
-
-  // required uint64 time_max = 5;
+  // required uint64 time_max = 4;
   inline bool has_time_max() const;
   inline void clear_time_max();
-  static const int kTimeMaxFieldNumber = 5;
+  static const int kTimeMaxFieldNumber = 4;
   inline ::google::protobuf::uint64 time_max() const;
   inline void set_time_max(::google::protobuf::uint64 value);
 
-  // required uint64 bytes_in = 6;
+  // required uint64 bytes_in = 5;
   inline bool has_bytes_in() const;
   inline void clear_bytes_in();
-  static const int kBytesInFieldNumber = 6;
+  static const int kBytesInFieldNumber = 5;
   inline ::google::protobuf::uint64 bytes_in() const;
   inline void set_bytes_in(::google::protobuf::uint64 value);
 
-  // required uint64 bytes_out = 7;
+  // required uint64 bytes_out = 6;
   inline bool has_bytes_out() const;
   inline void clear_bytes_out();
-  static const int kBytesOutFieldNumber = 7;
+  static const int kBytesOutFieldNumber = 6;
   inline ::google::protobuf::uint64 bytes_out() const;
   inline void set_bytes_out(::google::protobuf::uint64 value);
 
@@ -1814,8 +1807,6 @@ class url_details : public ::google::protobuf::Message {
   inline void clear_has_ncalls();
   inline void set_has_time_tot();
   inline void clear_has_time_tot();
-  inline void set_has_time_min();
-  inline void clear_has_time_min();
   inline void set_has_time_max();
   inline void clear_has_time_max();
   inline void set_has_bytes_in();
@@ -1827,14 +1818,13 @@ class url_details : public ::google::protobuf::Message {
 
   ::std::string* url_;
   ::google::protobuf::uint64 time_tot_;
-  ::google::protobuf::uint64 time_min_;
   ::google::protobuf::uint64 time_max_;
   ::google::protobuf::uint64 bytes_in_;
   ::google::protobuf::uint64 bytes_out_;
   ::google::protobuf::uint32 ncalls_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7320,37 +7310,15 @@ inline void url_details::set_time_tot(::google::protobuf::uint64 value) {
   time_tot_ = value;
 }
 
-// required uint64 time_min = 4;
-inline bool url_details::has_time_min() const {
+// required uint64 time_max = 4;
+inline bool url_details::has_time_max() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void url_details::set_has_time_min() {
+inline void url_details::set_has_time_max() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void url_details::clear_has_time_min() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void url_details::clear_time_min() {
-  time_min_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_min();
-}
-inline ::google::protobuf::uint64 url_details::time_min() const {
-  return time_min_;
-}
-inline void url_details::set_time_min(::google::protobuf::uint64 value) {
-  set_has_time_min();
-  time_min_ = value;
-}
-
-// required uint64 time_max = 5;
-inline bool url_details::has_time_max() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void url_details::set_has_time_max() {
-  _has_bits_[0] |= 0x00000010u;
-}
 inline void url_details::clear_has_time_max() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void url_details::clear_time_max() {
   time_max_ = GOOGLE_ULONGLONG(0);
@@ -7364,15 +7332,15 @@ inline void url_details::set_time_max(::google::protobuf::uint64 value) {
   time_max_ = value;
 }
 
-// required uint64 bytes_in = 6;
+// required uint64 bytes_in = 5;
 inline bool url_details::has_bytes_in() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void url_details::set_has_bytes_in() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void url_details::clear_has_bytes_in() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void url_details::clear_bytes_in() {
   bytes_in_ = GOOGLE_ULONGLONG(0);
@@ -7386,15 +7354,15 @@ inline void url_details::set_bytes_in(::google::protobuf::uint64 value) {
   bytes_in_ = value;
 }
 
-// required uint64 bytes_out = 7;
+// required uint64 bytes_out = 6;
 inline bool url_details::has_bytes_out() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void url_details::set_has_bytes_out() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void url_details::clear_has_bytes_out() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void url_details::clear_bytes_out() {
   bytes_out_ = GOOGLE_ULONGLONG(0);
