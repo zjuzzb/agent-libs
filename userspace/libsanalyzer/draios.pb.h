@@ -2342,10 +2342,10 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
-  // optional .draiosproto.proto_info protos = 15;
+  // optional .draiosproto.proto_info protos = 24;
   inline bool has_protos() const;
   inline void clear_protos();
-  static const int kProtosFieldNumber = 15;
+  static const int kProtosFieldNumber = 24;
   inline const ::draiosproto::proto_info& protos() const;
   inline ::draiosproto::proto_info* mutable_protos();
   inline ::draiosproto::proto_info* release_protos();
@@ -2596,10 +2596,10 @@ class process : public ::google::protobuf::Message {
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
   inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
 
-  // optional .draiosproto.proto_info protos = 15;
+  // optional .draiosproto.proto_info protos = 20;
   inline bool has_protos() const;
   inline void clear_protos();
-  static const int kProtosFieldNumber = 15;
+  static const int kProtosFieldNumber = 20;
   inline const ::draiosproto::proto_info& protos() const;
   inline ::draiosproto::proto_info* mutable_protos();
   inline ::draiosproto::proto_info* release_protos();
@@ -8140,7 +8140,7 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   }
 }
 
-// optional .draiosproto.proto_info protos = 15;
+// optional .draiosproto.proto_info protos = 24;
 inline bool host::has_protos() const {
   return (_has_bits_[0] & 0x00010000u) != 0;
 }
@@ -8646,7 +8646,7 @@ inline void process::set_allocated_syscall_errors(::draiosproto::counter_syscall
   }
 }
 
-// optional .draiosproto.proto_info protos = 15;
+// optional .draiosproto.proto_info protos = 20;
 inline bool process::has_protos() const {
   return (_has_bits_[0] & 0x00010000u) != 0;
 }
