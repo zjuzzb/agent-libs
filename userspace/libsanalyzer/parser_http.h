@@ -32,6 +32,7 @@ public:
 	};
 
 	sinsp_http_parser();
+	~sinsp_http_parser();
 	sinsp_protocol_parser::msg_type should_parse(char* buf, uint32_t buflen);
 	bool parse_request(char* buf, uint32_t buflen);
 	bool parse_response(char* buf, uint32_t buflen);

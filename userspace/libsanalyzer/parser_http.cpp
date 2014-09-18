@@ -28,6 +28,19 @@ sinsp_http_parser::sinsp_http_parser()
 	m_resp_storage_size = sizeof(m_resp_initial_storage);
 }
 
+sinsp_http_parser::~sinsp_http_parser()
+{
+	if(m_req_storage != m_req_initial_storage)
+	{
+		free(m_req_storage);
+	}
+
+	if(m_resp_storage != m_resp_initial_storage)
+	{
+		free(m_resp_storage);
+	}
+}
+
 inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
 {
 	uint32_t j = count;

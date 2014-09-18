@@ -435,32 +435,6 @@ r_conn_creation_done:
 		}
 */
 		//
-		// See if there's already a transaction
-		//
- 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
-		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_VALID_PROTO_BUF_SIZE))
-		{
-			//
-			// New or just detected transaction. Detect the protocol and initialize the transaction.
-			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
-			//       like a shutdown().
-			//
-			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
-			{
-				sinsp_partial_transaction::type type = 
-					m_proto_detector.detect_proto(trinfo, data, len);
-
-				trinfo->mark_active_and_reset(type);
-				evt->m_fdinfo->set_is_transaction();
-			}
-			else
-			{
-				trinfo->mark_active_and_reset(trinfo->m_type);
-			}
-		}
-
-		//
 		// Determine the transaction direction.
 		// recv(), recvfrom() and recvmsg() return 0 if the connection has been closed by the other side.
 		//
@@ -474,6 +448,35 @@ r_conn_creation_done:
 		else
 		{
 			trdir = sinsp_partial_transaction::DIR_IN;
+		}
+
+		//
+		// See if there's already a transaction
+		//
+//BRK(15178);
+		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
+		if(!trinfo->is_active() ||
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && 
+			len >= MIN_VALID_PROTO_BUF_SIZE))
+		{
+			//
+			// New or just detected transaction. Detect the protocol and initialize the transaction.
+			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
+			//       like a shutdown().
+			//
+			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
+			{
+				sinsp_partial_transaction::type type = 
+					m_proto_detector.detect_proto(evt, trinfo, trdir, 
+					(uint8_t*)data, len);
+
+				trinfo->mark_active_and_reset(type);
+				evt->m_fdinfo->set_is_transaction();
+			}
+			else
+			{
+				trinfo->mark_active_and_reset(trinfo->m_type);
+			}
 		}
 
 		//
@@ -781,10 +784,12 @@ w_conn_creation_done:
 		//
 		// See if there's already a transaction
 		//
- 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
+//BRK(15899);
+		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && len >= MIN_VALID_PROTO_BUF_SIZE))
+			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && 
+			len >= MIN_VALID_PROTO_BUF_SIZE))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
@@ -794,7 +799,8 @@ w_conn_creation_done:
 			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
 			{
 				sinsp_partial_transaction::type type = 
-					m_proto_detector.detect_proto(trinfo, data, len);
+					m_proto_detector.detect_proto(evt, trinfo, sinsp_partial_transaction::DIR_OUT,
+						(uint8_t*)data, len);
 
 				trinfo->mark_active_and_reset(type);
 				evt->m_fdinfo->set_is_transaction();

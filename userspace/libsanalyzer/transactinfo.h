@@ -52,6 +52,8 @@ public:
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
+	sinsp_partial_transaction(const sinsp_partial_transaction &other);
+
 	void reset();
 	void update(sinsp_analyzer* analyzer, 
 		sinsp_threadinfo* ptinfo,
@@ -85,6 +87,18 @@ public:
 		return m_family == family::UNIX;
 	}
 
+	void copy_to_reassebly_storage(char* data, uint32_t size);
+
+	inline uint32_t get_reassebly_storage_size()
+	{
+		return m_reassembly_storage_size;
+	}
+
+	inline void clear_reassebly_storage()
+	{
+		m_reassembly_storage_pos = 0;
+	}
+
 	sinsp_partial_transaction::type m_type;
 	direction m_direction;
 	int64_t m_tid;
@@ -108,6 +122,9 @@ public:
 	int32_t m_cpuid;
 	uint32_t m_flags;
 	sinsp_protocol_parser* m_protoparser;
+	char* m_reassembly_storage;
+	uint32_t m_reassembly_storage_size;
+	uint32_t m_reassembly_storage_pos;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(
