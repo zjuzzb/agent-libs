@@ -350,7 +350,10 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transaction &other)
 {
 	*this = other;
+
 	m_protoparser = NULL;
+
+	m_reassembly_storage = NULL;
 	m_reassembly_storage_size = 0;
 	m_reassembly_storage_pos = 0;
 }
