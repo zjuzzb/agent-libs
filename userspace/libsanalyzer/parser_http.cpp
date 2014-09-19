@@ -317,7 +317,10 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 #define MSG_STR_TRACE 0x43415254
 #define MSG_STR_CONNECT 0x4e4e4f43
 
-sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(char* buf, uint32_t buflen)
+sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
+																sinsp_partial_transaction::direction dir,
+																bool is_switched,
+																char* buf, uint32_t buflen)
 {
 	//
 	// This checks if the buffer starts with "HTTP"

@@ -19,7 +19,10 @@ public:
 
 	sinsp_protocol_parser();
 	virtual ~sinsp_protocol_parser();
-	virtual msg_type should_parse(char* buf, uint32_t buflen) = 0;
+	virtual msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
+		sinsp_partial_transaction::direction dir,
+		bool is_switched,
+		char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
 
@@ -38,106 +41,10 @@ class sinsp_proto_detector
 public:
 	sinsp_proto_detector();
 
-	inline sinsp_partial_transaction::type detect_proto(sinsp_evt *evt, 
+	sinsp_partial_transaction::type detect_proto(sinsp_evt *evt, 
 		sinsp_partial_transaction *trinfo, 
 		sinsp_partial_transaction::direction trdir,
-		uint8_t* buf, uint32_t buflen)
-	{
-		uint16_t serverport = evt->m_fdinfo->get_serverport();
-
-		//
-		// Make sure there are at least 4 bytes
-		//
-		if(buflen >= MIN_VALID_PROTO_BUF_SIZE)
-		{
-			//
-			// Detect HTTP
-			//
-			if(*(uint32_t*)buf == m_http_get_intval ||
-					*(uint32_t*)buf == m_http_post_intval ||
-					*(uint32_t*)buf == m_http_put_intval ||
-					*(uint32_t*)buf == m_http_delete_intval ||
-					*(uint32_t*)buf == m_http_trace_intval ||
-					*(uint32_t*)buf == m_http_connect_intval ||
-					*(uint32_t*)buf == m_http_options_intval ||
-					(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
-			{
-				//ASSERT(trinfo->m_protoparser == NULL);
-				sinsp_http_parser* st = new sinsp_http_parser;
-				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-
-				return sinsp_partial_transaction::TYPE_HTTP;
-			}
-			//
-			// Detect mysql
-			//
-/*
-			else if(serverport == SRV_PORT_MYSQL)
-			{
-//				if(trinfo->get_reassebly_storage_size() != 0)
-				if(buflen > 37	//min length
-					&& *(uint16_t*)buf == buflen - 4	//first 3 bytes are length
-					&& buf[2] == 0x00	//3rd byte of packet length
-					&& buf[3] == 0x00	//packet sequence number is 0 for startup packet
-					&& buf[5] > 0x30	//server version > 0
-					&& buf[5] < 0x37	//server version < 7
-					&& buf[6] == 0x2e	//dot
-					) 
-				{
-					uint32_t j;
-
-					for(j = 7; j + 31 < buflen; j++) 
-					{
-						if(buf[j] == 0x00) 
-						{
-							if (buf[j + 13] == 0x00	//filler byte
-								&& (*(uint64_t*)(buf + j + 19)) == 0x0ULL	// 13 more
-								&& (*(uint32_t*)(buf + j + 27)) == 0x0	// filler bytes
-								&& buf[j + 31] == 0x0) 
-							{
-								int a = 0;
-								sinsp_mysql_parser* st = new sinsp_mysql_parser;
-								trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-								return sinsp_partial_transaction::TYPE_MYSQL;
-							}
-
-							break;
-						}
-					}
-				}
-			}
-*/
-			else
-			{
-				//ASSERT(trinfo->m_protoparser == NULL);
-				trinfo->m_protoparser = NULL;
-				return sinsp_partial_transaction::TYPE_IP;
-			}
-		}
-
-/*
-		if(serverport == SRV_PORT_MYSQL)
-		{
-			//
-			// This transaction has not been recognized yet, and the port is
-			// the mysql one. Sometimes mysql splits the receive into multiple
-			// reads, so we try to buffer this data and try again later
-			//
-			if(trdir == sinsp_partial_transaction::DIR_IN &&
-				trinfo->m_direction == sinsp_partial_transaction::DIR_OUT)
-			{
-				trinfo->clear_reassebly_storage();
-			}
-
-			trinfo->copy_to_reassebly_storage((char*)buf, buflen);
-			return sinsp_partial_transaction::TYPE_MYSQL;
-		}
-*/
-
-		//ASSERT(trinfo->m_protoparser == NULL);
-		trinfo->m_protoparser = NULL;
-		return sinsp_partial_transaction::TYPE_IP;		
-	}
+		uint8_t* buf, uint32_t buflen);
 
 	bool parse_request(char* buf, uint32_t buflen);
 

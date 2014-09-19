@@ -87,16 +87,16 @@ public:
 		return m_family == family::UNIX;
 	}
 
-	void copy_to_reassebly_storage(char* data, uint32_t size);
+	void copy_to_reassembly_storage(char* data, uint32_t size);
 
-	inline uint32_t get_reassebly_storage_size()
+	inline uint32_t get_reassembly_storage_size()
 	{
-		return m_reassembly_storage_size;
+		return m_reassembly_storage_cursize;
 	}
 
-	inline void clear_reassebly_storage()
+	inline void clear_reassembly_storage()
 	{
-		m_reassembly_storage_pos = 0;
+		m_reassembly_storage_cursize = 0;
 	}
 
 	sinsp_partial_transaction::type m_type;
@@ -121,10 +121,11 @@ public:
 	uint32_t m_bytes_out;
 	int32_t m_cpuid;
 	uint32_t m_flags;
+	uint32_t m_n_direction_switches; // Number of times this transaction has switched direction 
 	sinsp_protocol_parser* m_protoparser;
 	char* m_reassembly_storage;
-	uint32_t m_reassembly_storage_size;
-	uint32_t m_reassembly_storage_pos;
+	uint32_t m_reassembly_storage_totsize;
+	uint32_t m_reassembly_storage_cursize;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(

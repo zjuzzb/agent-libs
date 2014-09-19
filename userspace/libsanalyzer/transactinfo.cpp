@@ -301,8 +301,8 @@ sinsp_partial_transaction::sinsp_partial_transaction()
 {
 	m_protoparser = NULL;
 	m_reassembly_storage = NULL;
-	m_reassembly_storage_size = 0;
-	m_reassembly_storage_pos = 0;
+	m_reassembly_storage_totsize = 0;
+	m_reassembly_storage_cursize = 0;
 	m_type = TYPE_UNKNOWN;
 	reset();
 }
@@ -322,6 +322,7 @@ void sinsp_partial_transaction::reset()
 	m_prev_start_of_transaction_time = 0;
 	m_prev_prev_start_of_transaction_time = 0;
 	m_is_active = false;
+	m_n_direction_switches = 0;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
@@ -331,6 +332,10 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 		if(m_type == TYPE_HTTP)
 		{
 			delete (sinsp_http_parser*)m_protoparser;			
+		}
+		else if(m_type == TYPE_MYSQL)
+		{
+			delete (sinsp_mysql_parser*)m_protoparser;			
 		}
 		else
 		{
@@ -354,22 +359,25 @@ sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transac
 	m_protoparser = NULL;
 
 	m_reassembly_storage = NULL;
-	m_reassembly_storage_size = 0;
-	m_reassembly_storage_pos = 0;
+	m_reassembly_storage_totsize = 0;
+	m_reassembly_storage_cursize = 0;
 }
 
-void sinsp_partial_transaction::copy_to_reassebly_storage(char* data, uint32_t size)
+void sinsp_partial_transaction::copy_to_reassembly_storage(char* data, uint32_t size)
 {
-	if(size + m_reassembly_storage_pos >= m_reassembly_storage_size)
+	if(size + m_reassembly_storage_cursize >= m_reassembly_storage_totsize)
 	{
-		m_reassembly_storage_size = m_reassembly_storage_pos + size + 32;
+		m_reassembly_storage_totsize = m_reassembly_storage_cursize + size + 256;
 
-		m_reassembly_storage = (char*)realloc(m_reassembly_storage, m_reassembly_storage_size);
+		m_reassembly_storage = (char*)realloc(m_reassembly_storage, m_reassembly_storage_totsize);
 		if(m_reassembly_storage == NULL)
 		{
 			throw sinsp_exception("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage");
 		}
 	}
+
+	memcpy(m_reassembly_storage + m_reassembly_storage_cursize, data, size);
+	m_reassembly_storage_cursize += size;
 }
 
 
@@ -558,6 +566,8 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 	if(res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
+		m_n_direction_switches++;
+
 		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this 
 #if _DEBUG
 			, evt, fd, exit_ts 
@@ -570,15 +580,21 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 		return;
 	}
 
-	if(m_protoparser != NULL && len > MIN_VALID_PROTO_BUF_SIZE)
+	if(m_protoparser != NULL && len > 0)
 	{
-		sinsp_protocol_parser::msg_type mtype = m_protoparser->should_parse(data, len);
+		sinsp_protocol_parser::msg_type mtype = m_protoparser->should_parse(ffdinfo, dir, 
+			res == STATE_SWITCHED,
+			data, len);
 
 		if(mtype == sinsp_protocol_parser::MSG_REQUEST)
 		{
 			if(m_protoparser->parse_request(data, len))
 			{
-//				ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
+				//
+				// This is related to measuring transaction resources, and is not
+				// implemented yet.
+				//
+				//ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
 			}
 		}
 		if(mtype == sinsp_protocol_parser::MSG_RESPONSE)

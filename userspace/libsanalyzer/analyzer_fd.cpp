@@ -37,6 +37,99 @@ sinsp_proto_detector::sinsp_proto_detector()
 	m_http_resp_intval = (*(uint32_t*)HTTP_RESP_STR);
 }
 
+sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *evt, 
+	sinsp_partial_transaction *trinfo, 
+	sinsp_partial_transaction::direction trdir,
+	uint8_t* buf, uint32_t buflen)
+{
+	uint16_t serverport = evt->m_fdinfo->get_serverport();
+
+	//
+	// Make sure there are at least 4 bytes
+	//
+	if(buflen >= MIN_VALID_PROTO_BUF_SIZE)
+	{
+		//
+		// Detect HTTP
+		//
+		if(*(uint32_t*)buf == m_http_get_intval ||
+				*(uint32_t*)buf == m_http_post_intval ||
+				*(uint32_t*)buf == m_http_put_intval ||
+				*(uint32_t*)buf == m_http_delete_intval ||
+				*(uint32_t*)buf == m_http_trace_intval ||
+				*(uint32_t*)buf == m_http_connect_intval ||
+				*(uint32_t*)buf == m_http_options_intval ||
+				(*(uint32_t*)buf == m_http_resp_intval && buf[4] == '/'))
+		{
+			//ASSERT(trinfo->m_protoparser == NULL);
+			sinsp_http_parser* st = new sinsp_http_parser;
+			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+
+			return sinsp_partial_transaction::TYPE_HTTP;
+		}
+		//
+		// Detect mysql
+		//
+		else if(serverport == SRV_PORT_MYSQL)
+		{
+			uint8_t* tbuf;
+			uint32_t tbuflen;
+			uint32_t stsize = trinfo->get_reassembly_storage_size();
+
+			if(stsize != 0)
+			{
+				trinfo->copy_to_reassembly_storage((char*)buf, buflen);
+				tbuf = (uint8_t*)trinfo->m_reassembly_storage;
+				tbuflen = stsize + buflen;
+			}
+			else
+			{
+				tbuf = buf;
+				tbuflen = buflen;
+			}
+
+			if(tbuflen > 5	// min length
+				&& *(uint16_t*)tbuf == tbuflen - 4 // first 3 bytes are length
+				&& tbuf[2] == 0x00 // 3rd byte of packet length
+				&& tbuf[3] == 0) // Sequence number is zero for the beginning of a query
+			{
+				sinsp_mysql_parser* st = new sinsp_mysql_parser;
+				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+				return sinsp_partial_transaction::TYPE_MYSQL;
+			}
+		}
+		else
+		{
+			//ASSERT(trinfo->m_protoparser == NULL);
+			trinfo->m_protoparser = NULL;
+			return sinsp_partial_transaction::TYPE_IP;
+		}
+	}
+
+	if(serverport == SRV_PORT_MYSQL)
+	{
+		//
+		// This transaction has not been recognized yet, and the port is
+		// the mysql one. Sometimes mysql splits the receive into multiple
+		// reads, so we try to buffer this data and try again later
+		//
+		if(evt->m_fdinfo->is_role_server() && trdir == sinsp_partial_transaction::DIR_IN ||
+			evt->m_fdinfo->is_role_client() && trdir == sinsp_partial_transaction::DIR_OUT)
+		{
+			if(trdir !=	trinfo->m_direction)
+			{
+				trinfo->clear_reassembly_storage();
+			}
+
+			trinfo->copy_to_reassembly_storage((char*)buf, buflen);
+		}
+	}
+
+	//ASSERT(trinfo->m_protoparser == NULL);
+	trinfo->m_protoparser = NULL;
+	return sinsp_partial_transaction::TYPE_IP;		
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_analyzer_fd_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -451,13 +544,15 @@ r_conn_creation_done:
 		}
 
 		//
-		// See if there's already a transaction
+		// Check if this is a new transaction that needs to be initialized, and whose
+		// protocol needs to be discovered.
+		// NOTE: after two turns, we give up discovering the protocol and we consider this
+		//       to be just IP.
 		//
 //BRK(15178);
 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && 
-			len >= MIN_VALID_PROTO_BUF_SIZE))
+			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
@@ -782,14 +877,16 @@ w_conn_creation_done:
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
 		//
-		// See if there's already a transaction
+		// Check if this is a new transaction that needs to be initialized, and whose
+		// protocol needs to be discovered.
+		// NOTE: after two turns, we give up discovering the protocol and we consider this
+		//       to be just IP.
 		//
 //BRK(15899);
 		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP && 
-			len >= MIN_VALID_PROTO_BUF_SIZE))
+			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
