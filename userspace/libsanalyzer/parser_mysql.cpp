@@ -14,16 +14,16 @@ sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t*
 																 bool is_switched,
 																 char* buf, uint32_t buflen)
 {
-	if(fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_IN ||
-		fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_OUT)
+	if((fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_IN) ||
+		(fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_OUT))
 	{
 		if(buflen >= 5)
 		{
 			return sinsp_protocol_parser::MSG_REQUEST;
 		}
 	}
-	else if(fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_OUT ||
-		fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_IN)
+	else if((fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_OUT) ||
+		(fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_IN))
 	{
 		if(is_switched)
 		{

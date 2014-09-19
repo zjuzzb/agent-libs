@@ -113,8 +113,8 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 		// the mysql one. Sometimes mysql splits the receive into multiple
 		// reads, so we try to buffer this data and try again later
 		//
-		if(evt->m_fdinfo->is_role_server() && trdir == sinsp_partial_transaction::DIR_IN ||
-			evt->m_fdinfo->is_role_client() && trdir == sinsp_partial_transaction::DIR_OUT)
+		if((evt->m_fdinfo->is_role_server() && trdir == sinsp_partial_transaction::DIR_IN )||
+			(evt->m_fdinfo->is_role_client() && trdir == sinsp_partial_transaction::DIR_OUT))
 		{
 			if(trdir !=	trinfo->m_direction)
 			{
