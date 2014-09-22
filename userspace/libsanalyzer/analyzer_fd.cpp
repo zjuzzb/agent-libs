@@ -74,12 +74,12 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 		{
 			uint8_t* tbuf;
 			uint32_t tbuflen;
-			uint32_t stsize = trinfo->get_reassembly_storage_size();
+			uint32_t stsize = trinfo->m_reassembly_buffer.get_size();
 
 			if(stsize != 0)
 			{
-				trinfo->copy_to_reassembly_storage((char*)buf, buflen);
-				tbuf = (uint8_t*)trinfo->m_reassembly_storage;
+				trinfo->m_reassembly_buffer.copy((char*)buf, buflen);
+				tbuf = (uint8_t*)trinfo->m_reassembly_buffer.get_buf();
 				tbuflen = stsize + buflen;
 			}
 			else
@@ -118,10 +118,10 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 		{
 			if(trdir !=	trinfo->m_direction)
 			{
-				trinfo->clear_reassembly_storage();
+				trinfo->m_reassembly_buffer.clear();
 			}
 
-			trinfo->copy_to_reassembly_storage((char*)buf, buflen);
+			trinfo->m_reassembly_buffer.copy((char*)buf, buflen);
 		}
 	}
 

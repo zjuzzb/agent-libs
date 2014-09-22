@@ -14,9 +14,84 @@ class sinsp_evt;
 class sinsp_protocol_parser;
 class sinsp_procinfo;
 
-//
+///////////////////////////////////////////////////////////////////////////////
+// Auto-expand buffer
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_autobuffer
+{
+public:
+	sinsp_autobuffer()
+	{
+		reset();
+	}
+
+	~sinsp_autobuffer()
+	{
+		if(m_storage != NULL)
+		{
+			free(m_storage);
+		}
+	}
+
+	inline void reset()
+	{
+		m_storage = NULL;
+		m_storage_totsize = 0;
+		m_storage_cursize = 0;
+	}
+
+	inline void copy(char* data, uint32_t size)
+	{
+		if(size + m_storage_cursize >= m_storage_totsize)
+		{
+			m_storage_totsize = m_storage_cursize + size + 256;
+
+			m_storage = (char*)realloc(m_storage, m_storage_totsize);
+			if(m_storage == NULL)
+			{
+				throw exception("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage");
+			}
+		}
+
+		memcpy(m_storage + m_storage_cursize, data, size);
+		m_storage_cursize += size;
+	}
+
+	inline void strcopy(char* data, uint32_t maxsize)
+	{
+		uint32_t size = strnlen(data, maxsize);
+		this->copy(data, size);
+	}
+
+	inline char* get_buf()
+	{
+		return m_storage;
+	}
+
+	inline char* get_buf_end()
+	{
+		return m_storage + m_storage_cursize;
+	}
+
+	inline uint32_t get_size()
+	{
+		return m_storage_cursize;
+	}
+
+	inline void clear()
+	{
+		m_storage_cursize = 0;
+	}
+
+private:
+	char* m_storage;
+	uint32_t m_storage_totsize;
+	uint32_t m_storage_cursize;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // Transaction information class
-//
+///////////////////////////////////////////////////////////////////////////////
 class SINSP_PUBLIC sinsp_partial_transaction
 {
 public:
@@ -87,18 +162,6 @@ public:
 		return m_family == family::UNIX;
 	}
 
-	void copy_to_reassembly_storage(char* data, uint32_t size);
-
-	inline uint32_t get_reassembly_storage_size()
-	{
-		return m_reassembly_storage_cursize;
-	}
-
-	inline void clear_reassembly_storage()
-	{
-		m_reassembly_storage_cursize = 0;
-	}
-
 	sinsp_partial_transaction::type m_type;
 	direction m_direction;
 	int64_t m_tid;
@@ -123,9 +186,7 @@ public:
 	uint32_t m_flags;
 	uint32_t m_n_direction_switches; // Number of times this transaction has switched direction 
 	sinsp_protocol_parser* m_protoparser;
-	char* m_reassembly_storage;
-	uint32_t m_reassembly_storage_totsize;
-	uint32_t m_reassembly_storage_cursize;
+	sinsp_autobuffer m_reassembly_buffer;
 
 private:
 	inline sinsp_partial_transaction::updatestate update_int(

@@ -300,9 +300,6 @@ void sinsp_transaction_table::clear()
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
 	m_protoparser = NULL;
-	m_reassembly_storage = NULL;
-	m_reassembly_storage_totsize = 0;
-	m_reassembly_storage_cursize = 0;
 	m_type = TYPE_UNKNOWN;
 	reset();
 }
@@ -345,11 +342,6 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 		
 		m_protoparser = NULL;
 	}
-
-	if(m_reassembly_storage != NULL)
-	{
-		free(m_reassembly_storage);
-	}
 }
 
 sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transaction &other)
@@ -357,29 +349,8 @@ sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transac
 	*this = other;
 
 	m_protoparser = NULL;
-
-	m_reassembly_storage = NULL;
-	m_reassembly_storage_totsize = 0;
-	m_reassembly_storage_cursize = 0;
+	m_reassembly_buffer.reset();
 }
-
-void sinsp_partial_transaction::copy_to_reassembly_storage(char* data, uint32_t size)
-{
-	if(size + m_reassembly_storage_cursize >= m_reassembly_storage_totsize)
-	{
-		m_reassembly_storage_totsize = m_reassembly_storage_cursize + size + 256;
-
-		m_reassembly_storage = (char*)realloc(m_reassembly_storage, m_reassembly_storage_totsize);
-		if(m_reassembly_storage == NULL)
-		{
-			throw sinsp_exception("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage");
-		}
-	}
-
-	memcpy(m_reassembly_storage + m_reassembly_storage_cursize, data, size);
-	m_reassembly_storage_cursize += size;
-}
-
 
 inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(sinsp_threadinfo* ptinfo,
 		uint64_t enter_ts,
