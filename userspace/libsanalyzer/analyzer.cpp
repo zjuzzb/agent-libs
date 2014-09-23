@@ -2522,20 +2522,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			
 			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
-#ifdef ANALYZER_EMITS_PROGRAMS
-			sinsp_threadinfo* parentinfo = evt->m_tinfo->m_ainfo->get_main_program_thread();
-#else
-			sinsp_threadinfo* parentinfo = evt->m_tinfo->get_main_thread();
-#endif
-			if(parentinfo != NULL)
-			{
-				parentinfo->m_ainfo->allocate_procinfo_if_not_present();
-				parentinfo->m_ainfo->m_procinfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
-			}
-			else
-			{
-				ASSERT(false);
-			}
+			ASSERT(evt->m_tinfo);
+			ASSERT(evt->m_tinfo->m_ainfo);
+			evt->m_tinfo->m_ainfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 		}
 	}
 }

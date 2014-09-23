@@ -51,20 +51,6 @@ void sinsp_procinfo::clear()
 	m_program_pids.clear();
 #endif
 
-	vector<vector<sinsp_trlist_entry>>::iterator sts;
-	for(sts = m_server_transactions_per_cpu.begin(); 
-		sts != m_server_transactions_per_cpu.end(); sts++)
-	{
-		sts->clear();
-	}
-
-	vector<vector<sinsp_trlist_entry>>::iterator cts;
-	for(cts = m_client_transactions_per_cpu.begin(); 
-		cts != m_client_transactions_per_cpu.end(); cts++)
-	{
-		cts->clear();
-	}
-
 	m_external_transaction_metrics.clear();
 
 	m_protostate.clear();
@@ -101,6 +87,8 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
 	m_cpu_time_ns = new vector<uint64_t>();
+	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
+	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
 }
 
 void thread_analyzer_info::destroy()
@@ -124,8 +112,6 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
-		m_procinfo->m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
-		m_procinfo->m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
 		m_procinfo->clear();
 	}
 }
@@ -239,6 +225,16 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	}
 
 	m_procinfo->m_external_transaction_metrics.add(&other->m_external_transaction_metrics);
+
+	m_procinfo->m_syscall_errors.add(&other->m_syscall_errors);
+
+	m_server_transactions_per_cpu.insert(m_server_transactions_per_cpu.end(),
+		other->m_server_transactions_per_cpu.begin(),
+		other->m_server_transactions_per_cpu.end());
+
+	m_client_transactions_per_cpu.insert(m_client_transactions_per_cpu.end(),
+		other->m_client_transactions_per_cpu.begin(),
+		other->m_client_transactions_per_cpu.end());
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -249,6 +245,20 @@ void thread_analyzer_info::clear_all_metrics()
 	{
 		ASSERT(m_tinfo->is_main_thread());
 		m_procinfo->clear();
+	}
+
+	vector<vector<sinsp_trlist_entry>>::iterator sts;
+	for(sts = m_server_transactions_per_cpu.begin(); 
+		sts != m_server_transactions_per_cpu.end(); sts++)
+	{
+		sts->clear();
+	}
+
+	vector<vector<sinsp_trlist_entry>>::iterator cts;
+	for(cts = m_client_transactions_per_cpu.begin(); 
+		cts != m_client_transactions_per_cpu.end(); cts++)
+	{
+		cts->clear();
 	}
 
 	m_metrics.clear();
@@ -264,6 +274,8 @@ void thread_analyzer_info::clear_all_metrics()
 	{
 		*it = 0;
 	}
+
+	m_syscall_errors.clear();
 }
 
 void thread_analyzer_info::clear_role_flags()
@@ -376,11 +388,9 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 //
 void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal)
 {
-	allocate_procinfo_if_not_present();
-
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_procinfo->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
 }
 
@@ -390,11 +400,9 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 //
 void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal)
 {
-	allocate_procinfo_if_not_present();
-
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_procinfo->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
 }

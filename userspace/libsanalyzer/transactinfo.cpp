@@ -106,10 +106,6 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		ASSERT(tr->m_prev_end_time > tr->m_prev_prev_start_of_transaction_time);
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
-		sinsp_threadinfo* tinfo = ptinfo->m_ainfo->get_main_program_thread();
-		ASSERT(tinfo != NULL);
-		sinsp_threadinfo* proginfo = ptinfo->m_ainfo->get_main_program_thread();
-		ASSERT(proginfo != NULL);
 
 		if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 		{
@@ -144,14 +140,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ptinfo->m_ainfo->m_external_transaction_metrics.add_in(1, delta);
 			}
 
-			if(tinfo != NULL && proginfo != NULL)
-			{
-				proginfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
+			ptinfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
 
-				if(tr->m_protoparser != NULL)
-				{
-					proginfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, true);
-				}
+			if(tr->m_protoparser != NULL)
+			{
+				ptinfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, true);
 			}
 		}
 		else
@@ -187,14 +180,11 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 				ptinfo->m_ainfo->m_external_transaction_metrics.add_out(1, delta);
 			}
 
-			if(tinfo != NULL && proginfo != NULL)
-			{
-				proginfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
+			ptinfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
 
-				if(tr->m_protoparser != NULL)
-				{
-					proginfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, false);
-				}
+			if(tr->m_protoparser != NULL)
+			{
+				ptinfo->m_ainfo->m_procinfo->m_protostate.update(tr, delta, false);
 			}
 		}
 

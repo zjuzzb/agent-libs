@@ -704,11 +704,37 @@ void sinsp_error_counters::clear()
 	m_table.clear();
 }
 
+void sinsp_error_counters::add(sinsp_error_counters* other)
+{
+	unordered_map<int32_t, sinsp_counter_cnt>::iterator uit;
+	unordered_map<int32_t, sinsp_counter_cnt>* pom;
+
+	//
+	// Add the server URLs
+	//
+	pom = &(other->m_table);
+
+	for(uit = pom->begin(); uit != pom->end(); ++uit)
+	{
+		sinsp_counter_cnt* entry = &(m_table[uit->first]);
+
+		if(entry->m_count == 0)
+		{
+			entry->m_count = uit->second.m_count;
+		}
+		else
+		{
+			entry->m_count += uit->second.m_count;
+		}
+	}
+}
+
+
 void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio)
 {
 	uint32_t tot = 0;
 
-	map<int32_t, sinsp_counter_cnt>::iterator it;
+	unordered_map<int32_t, sinsp_counter_cnt>::iterator it;
 
 	uint32_t j;
 

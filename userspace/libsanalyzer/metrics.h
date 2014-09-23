@@ -228,9 +228,10 @@ private:
 class sinsp_error_counters
 {
 public:
-	map<int32_t, sinsp_counter_cnt> m_table;
+	unordered_map<int32_t, sinsp_counter_cnt> m_table;
 
 	void clear();
+	void add(sinsp_error_counters* other);
 	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio);
 };
 

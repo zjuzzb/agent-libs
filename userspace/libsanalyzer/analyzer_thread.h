@@ -90,9 +90,6 @@ public:
 #ifdef ANALYZER_EMITS_PROGRAMS
 	vector<int64_t> m_program_pids;
 #endif
-	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
 	// The metrics for transaction coming from the external world
@@ -177,6 +174,11 @@ public:
 	int64_t m_last_wait_duration_ns;
 	// List of transaction that this thread is currently handling
 //	vector<sinsp_partial_transaction*> m_transactions_in_progress;
+	// Syscall error table
+	sinsp_error_counters m_syscall_errors;
+	// Completed transactions lists
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
