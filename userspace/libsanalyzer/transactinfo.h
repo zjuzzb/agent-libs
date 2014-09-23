@@ -40,8 +40,10 @@ public:
 		m_storage_cursize = 0;
 	}
 
-	inline void copy(char* data, uint32_t size)
+	inline char* copy(char* data, uint32_t size)
 	{
+		char* res;
+
 		if(size + m_storage_cursize >= m_storage_totsize)
 		{
 			m_storage_totsize = m_storage_cursize + size + 256;
@@ -53,14 +55,23 @@ public:
 			}
 		}
 
+		res = m_storage + m_storage_cursize;
 		memcpy(m_storage + m_storage_cursize, data, size);
 		m_storage_cursize += size;
+
+		return res;
 	}
 
-	inline void strcopy(char* data, uint32_t maxsize)
+	inline char* strcopy(char* data, uint32_t maxsize)
 	{
-		uint32_t size = strnlen(data, maxsize);
-		this->copy(data, size);
+		uint32_t size = strnlen(data, maxsize) + 1;
+
+		if(size > maxsize)
+		{
+			return NULL;
+		}
+
+		return this->copy(data, size);
 	}
 
 	inline char* get_buf()
