@@ -397,6 +397,11 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		{
 			response.set_final_chunk(true);
 		}
+
+		if(job->m_terminated)
+		{
+			response.set_final_size(job->m_file_size);
+		}
 		
 		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
 		{

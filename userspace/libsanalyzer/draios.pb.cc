@@ -584,7 +584,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_stop));
   dump_response_descriptor_ = file->message_type(22);
-  static const int dump_response_offsets_[9] = {
+  static const int dump_response_offsets_[10] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, customer_id_),
@@ -592,6 +592,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, final_chunk_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, keep_alive_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, content_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, final_size_bytes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, error_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, token_),
   };
@@ -978,37 +979,38 @@ void protobuf_AddDesc_draios_2eproto() {
     "lters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006"
     " \002(\t\"a\n\021dump_request_stop\022\024\n\014timestamp_n"
     "s\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_"
-    "id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\270\001\n\rdump_respons"
+    "id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_respons"
     "e\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
     "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001"
     "(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t "
-    "\001(\010\022\017\n\007content\030\004 \001(\014\022\r\n\005error\030\005 \001(\t\022\r\n\005t"
-    "oken\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014times"
-    "tamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cus"
-    "tomer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 "
-    "\002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npa"
-    "ssphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_dat"
-    "a\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
-    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022"
-    "\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_sta"
-    "tus\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timest"
-    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
-    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_upd"
-    "ate_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
-    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025di"
-    "rty_shutdown_report\022\024\n\014timestamp_ns\030\001 \002("
-    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
-    "(\t\022\013\n\003log\030\004 \002(\t*\251\001\n\013networkrole\022\010\n\004NONE\020"
-    "\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE"
-    "_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS"
-    "_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_C"
-    "LIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014message_"
-    "type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_START\020"
-    "\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONS"
-    "E\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_C"
-    "HANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_RE"
-    "QUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\nB$\n\031co"
-    "m.draios.model.protobufB\005AgentH\001", 6632);
+    "\001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020final_size_bytes"
+    "\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n"
+    "\020ssh_open_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022"
+    "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
+    "\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010passwor"
+    "d\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t"
+    "\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp"
+    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
+    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022"
+    "\r\n\005error\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021s"
+    "sh_close_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
+    "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
+    "\r\n\005token\030\004 \002(\t\"T\n\023auto_update_request\022\024\n"
+    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
+    "\023\n\013customer_id\030\003 \001(\t\"c\n\025dirty_shutdown_r"
+    "eport\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_i"
+    "d\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 \002("
+    "\t*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_"
+    "IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002"
+    "\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CL"
+    "IENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_"
+    "UNIX_CLIENT\020 *\314\001\n\014message_type\022\013\n\007METRIC"
+    "S\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_REQU"
+    "EST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPE"
+    "N_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SS"
+    "H_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025DIR"
+    "TY_SHUTDOWN_REPORT\020\nB$\n\031com.draios.model"
+    ".protobufB\005AgentH\001", 6658);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -12073,6 +12075,7 @@ const int dump_response::kChunkNoFieldNumber;
 const int dump_response::kFinalChunkFieldNumber;
 const int dump_response::kKeepAliveFieldNumber;
 const int dump_response::kContentFieldNumber;
+const int dump_response::kFinalSizeBytesFieldNumber;
 const int dump_response::kErrorFieldNumber;
 const int dump_response::kTokenFieldNumber;
 #endif  // !_MSC_VER
@@ -12100,6 +12103,7 @@ void dump_response::SharedCtor() {
   final_chunk_ = false;
   keep_alive_ = false;
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  final_size_bytes_ = GOOGLE_ULONGLONG(0);
   error_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -12171,13 +12175,14 @@ void dump_response::Clear() {
         content_->clear();
       }
     }
+    final_size_bytes_ = GOOGLE_ULONGLONG(0);
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_error()) {
       if (error_ != &::google::protobuf::internal::kEmptyString) {
         error_->clear();
       }
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_token()) {
       if (token_ != &::google::protobuf::internal::kEmptyString) {
         token_->clear();
@@ -12335,6 +12340,22 @@ bool dump_response::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_final_size_bytes;
+        break;
+      }
+
+      // optional uint64 final_size_bytes = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_final_size_bytes:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &final_size_bytes_)));
+          set_has_final_size_bytes();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -12419,6 +12440,11 @@ void dump_response::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(9, this->keep_alive(), output);
   }
 
+  // optional uint64 final_size_bytes = 10;
+  if (has_final_size_bytes()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(10, this->final_size_bytes(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -12494,6 +12520,11 @@ void dump_response::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(9, this->keep_alive(), target);
   }
 
+  // optional uint64 final_size_bytes = 10;
+  if (has_final_size_bytes()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(10, this->final_size_bytes(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -12550,6 +12581,15 @@ int dump_response::ByteSize() const {
           this->content());
     }
 
+    // optional uint64 final_size_bytes = 10;
+    if (has_final_size_bytes()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->final_size_bytes());
+    }
+
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional string error = 5;
     if (has_error()) {
       total_size += 1 +
@@ -12557,8 +12597,6 @@ int dump_response::ByteSize() const {
           this->error());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // required string token = 6;
     if (has_token()) {
       total_size += 1 +
@@ -12614,11 +12652,14 @@ void dump_response::MergeFrom(const dump_response& from) {
     if (from.has_content()) {
       set_content(from.content());
     }
-    if (from.has_error()) {
-      set_error(from.error());
+    if (from.has_final_size_bytes()) {
+      set_final_size_bytes(from.final_size_bytes());
     }
   }
   if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_error()) {
+      set_error(from.error());
+    }
     if (from.has_token()) {
       set_token(from.token());
     }
@@ -12639,7 +12680,7 @@ void dump_response::CopyFrom(const dump_response& from) {
 }
 
 bool dump_response::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000103) != 0x00000103) return false;
+  if ((_has_bits_[0] & 0x00000203) != 0x00000203) return false;
 
   return true;
 }
@@ -12653,6 +12694,7 @@ void dump_response::Swap(dump_response* other) {
     std::swap(final_chunk_, other->final_chunk_);
     std::swap(keep_alive_, other->keep_alive_);
     std::swap(content_, other->content_);
+    std::swap(final_size_bytes_, other->final_size_bytes_);
     std::swap(error_, other->error_);
     std::swap(token_, other->token_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
