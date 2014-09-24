@@ -100,6 +100,18 @@ public:
 	sinsp_delays_info m_transaction_delays;
 };
 
+class thread_analyzer_dyn_state
+{
+public:
+	// Time spent by this process on each of the CPUs
+	vector<uint64_t> m_cpu_time_ns;
+	// Syscall error table
+	sinsp_error_counters m_syscall_errors;
+	// Completed transactions lists
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
 ///////////////////////////////////////////////////////////////////////////////
@@ -167,18 +179,12 @@ public:
 	uint64_t m_old_pfmajor;
 	// number of minor page at last flush
 	uint64_t m_old_pfminor;
-	// Time spent by this process on each of the CPUs
-	vector<uint64_t>* m_cpu_time_ns;
 	// Time and duration of the last select, poll or epoll
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
-	// List of transaction that this thread is currently handling
-//	vector<sinsp_partial_transaction*> m_transactions_in_progress;
-	// Syscall error table
-	sinsp_error_counters m_syscall_errors;
-	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	// The complext state that needs to be explicitly allocated because placement
+	// new doesn't support it
+	thread_analyzer_dyn_state* m_dynstate;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

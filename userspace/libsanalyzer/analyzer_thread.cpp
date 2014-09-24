@@ -86,9 +86,9 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_old_pfminor = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
-	m_cpu_time_ns = new vector<uint64_t>();
-	m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
-	m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_dynstate = new thread_analyzer_dyn_state();
+	m_dynstate->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_dynstate->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 }
 
 void thread_analyzer_info::destroy()
@@ -99,7 +99,7 @@ void thread_analyzer_info::destroy()
 		m_procinfo = NULL;
 	}
 
-	delete m_cpu_time_ns;
+	delete m_dynstate;
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -193,7 +193,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	//
 	// Propagate the CPU times vector
 	//
-	uint32_t oc = other->m_cpu_time_ns->size();
+	uint32_t oc = other->m_dynstate->m_cpu_time_ns.size();
 	if(oc != 0)
 	{
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
@@ -204,7 +204,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 		for(uint32_t j = 0; j < oc; j++)
 		{
-			m_procinfo->m_cpu_time_ns[j] += (*other->m_cpu_time_ns)[j];
+			m_procinfo->m_cpu_time_ns[j] += other->m_dynstate->m_cpu_time_ns[j];
 		}
 	}
 
@@ -228,22 +228,22 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_external_transaction_metrics.add(&other->m_external_transaction_metrics);
 
-	m_procinfo->m_syscall_errors.add(&other->m_syscall_errors);
+	m_procinfo->m_syscall_errors.add(&other->m_dynstate->m_syscall_errors);
 
-	ASSERT(other->m_server_transactions_per_cpu.size() == m_server_transactions_per_cpu.size());
-	for(j = 0; j < m_server_transactions_per_cpu.size(); j++) 
+	ASSERT(other->m_dynstate->m_server_transactions_per_cpu.size() == m_dynstate->m_server_transactions_per_cpu.size());
+	for(j = 0; j < m_dynstate->m_server_transactions_per_cpu.size(); j++) 
 	{
-		m_server_transactions_per_cpu[j].insert(m_server_transactions_per_cpu[j].end(),
-			other->m_server_transactions_per_cpu[j].begin(),
-			other->m_server_transactions_per_cpu[j].end());
+		m_dynstate->m_server_transactions_per_cpu[j].insert(m_dynstate->m_server_transactions_per_cpu[j].end(),
+			other->m_dynstate->m_server_transactions_per_cpu[j].begin(),
+			other->m_dynstate->m_server_transactions_per_cpu[j].end());
 	}
 
-	ASSERT(other->m_client_transactions_per_cpu.size() == m_client_transactions_per_cpu.size());
-	for(j = 0; j < m_client_transactions_per_cpu.size(); j++) 
+	ASSERT(other->m_dynstate->m_client_transactions_per_cpu.size() == m_dynstate->m_client_transactions_per_cpu.size());
+	for(j = 0; j < m_dynstate->m_client_transactions_per_cpu.size(); j++) 
 	{
-		m_client_transactions_per_cpu[j].insert(m_client_transactions_per_cpu[j].end(),
-			other->m_client_transactions_per_cpu[j].begin(),
-			other->m_client_transactions_per_cpu[j].end());
+		m_dynstate->m_client_transactions_per_cpu[j].insert(m_dynstate->m_client_transactions_per_cpu[j].end(),
+			other->m_dynstate->m_client_transactions_per_cpu[j].begin(),
+			other->m_dynstate->m_client_transactions_per_cpu[j].end());
 	}
 }
 
@@ -258,15 +258,15 @@ void thread_analyzer_info::clear_all_metrics()
 	}
 
 	vector<vector<sinsp_trlist_entry>>::iterator sts;
-	for(sts = m_server_transactions_per_cpu.begin(); 
-		sts != m_server_transactions_per_cpu.end(); sts++)
+	for(sts = m_dynstate->m_server_transactions_per_cpu.begin(); 
+		sts != m_dynstate->m_server_transactions_per_cpu.end(); sts++)
 	{
 		sts->clear();
 	}
 
 	vector<vector<sinsp_trlist_entry>>::iterator cts;
-	for(cts = m_client_transactions_per_cpu.begin(); 
-		cts != m_client_transactions_per_cpu.end(); cts++)
+	for(cts = m_dynstate->m_client_transactions_per_cpu.begin(); 
+		cts != m_dynstate->m_client_transactions_per_cpu.end(); cts++)
 	{
 		cts->clear();
 	}
@@ -280,12 +280,12 @@ void thread_analyzer_info::clear_all_metrics()
 	m_old_pfminor = m_tinfo->m_pfminor;
 
 	vector<uint64_t>::iterator it;
-	for(it = m_cpu_time_ns->begin(); it != m_cpu_time_ns->end(); ++it)
+	for(it = m_dynstate->m_cpu_time_ns.begin(); it != m_dynstate->m_cpu_time_ns.end(); ++it)
 	{
 		*it = 0;
 	}
 
-	m_syscall_errors.clear();
+	m_dynstate->m_syscall_errors.clear();
 }
 
 void thread_analyzer_info::clear_role_flags()
@@ -400,7 +400,7 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_dynstate->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
 }
 
@@ -412,7 +412,7 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_dynstate->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
 }
