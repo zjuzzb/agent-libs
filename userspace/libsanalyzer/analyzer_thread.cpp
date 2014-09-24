@@ -87,8 +87,8 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
 	m_cpu_time_ns = new vector<uint64_t>();
-	m_server_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
-	m_client_transactions_per_cpu = vector<vector<sinsp_trlist_entry>>(m_inspector->get_machine_info()->num_cpus);
+	m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 }
 
 void thread_analyzer_info::destroy()
@@ -141,6 +141,8 @@ void thread_analyzer_info::propagate_flag_bidirectional(flags flag, thread_analy
 
 void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 {
+	uint32_t j;
+
 	allocate_procinfo_if_not_present();
 
 	sinsp_counter_time ttot;
@@ -228,13 +230,21 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_syscall_errors.add(&other->m_syscall_errors);
 
-	m_server_transactions_per_cpu.insert(m_server_transactions_per_cpu.end(),
-		other->m_server_transactions_per_cpu.begin(),
-		other->m_server_transactions_per_cpu.end());
+	ASSERT(other->m_server_transactions_per_cpu.size() == m_server_transactions_per_cpu.size());
+	for(j = 0; j < m_server_transactions_per_cpu.size(); j++) 
+	{
+		m_server_transactions_per_cpu[j].insert(m_server_transactions_per_cpu[j].end(),
+			other->m_server_transactions_per_cpu[j].begin(),
+			other->m_server_transactions_per_cpu[j].end());
+	}
 
-	m_client_transactions_per_cpu.insert(m_client_transactions_per_cpu.end(),
-		other->m_client_transactions_per_cpu.begin(),
-		other->m_client_transactions_per_cpu.end());
+	ASSERT(other->m_client_transactions_per_cpu.size() == m_client_transactions_per_cpu.size());
+	for(j = 0; j < m_client_transactions_per_cpu.size(); j++) 
+	{
+		m_client_transactions_per_cpu[j].insert(m_client_transactions_per_cpu[j].end(),
+			other->m_client_transactions_per_cpu[j].begin(),
+			other->m_client_transactions_per_cpu[j].end());
+	}
 }
 
 void thread_analyzer_info::clear_all_metrics()
