@@ -184,13 +184,13 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	//
 	// Merge the server transactions
 	//
-	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_server_transactions_per_cpu[cpuid]),
+	pd->m_merged_server_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_dynstate->m_server_transactions_per_cpu[cpuid]),
 		&pd->m_last_server_transaction_union, false);
 
 	//
 	// Merge the client transactions
 	//
-	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_client_transactions_per_cpu[cpuid]),
+	pd->m_merged_client_delay = sinsp_delays::merge_transactions(&(program_info->m_ainfo->m_dynstate->m_client_transactions_per_cpu[cpuid]),
 		&pd->m_last_client_transaction_union, false);
 
 	//
@@ -204,8 +204,8 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 	//
 	vector<sinsp_trlist_entry>::iterator it;
 
-	for(it = program_info->m_ainfo->m_server_transactions_per_cpu[cpuid].begin();
-		it != program_info->m_ainfo->m_server_transactions_per_cpu[cpuid].end();
+	for(it = program_info->m_ainfo->m_dynstate->m_server_transactions_per_cpu[cpuid].begin();
+		it != program_info->m_ainfo->m_dynstate->m_server_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
 		ASSERT(m_analyzer != NULL);
@@ -216,8 +216,8 @@ void sinsp_delays::compute_program_percpu_delays(sinsp_threadinfo* program_info,
 		}
 	}
 
-	for(it = program_info->m_ainfo->m_client_transactions_per_cpu[cpuid].begin();
-		it != program_info->m_ainfo->m_client_transactions_per_cpu[cpuid].end();
+	for(it = program_info->m_ainfo->m_dynstate->m_client_transactions_per_cpu[cpuid].begin();
+		it != program_info->m_ainfo->m_dynstate->m_client_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
 		ASSERT(m_analyzer != NULL);
@@ -290,8 +290,8 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	//
 	// Prune the client connections
 	//
-	prune_client_transactions(&program_info->m_ainfo->m_client_transactions_per_cpu,
-		&program_info->m_ainfo->m_server_transactions_per_cpu);
+	prune_client_transactions(&program_info->m_ainfo->m_dynstate->m_client_transactions_per_cpu,
+		&program_info->m_ainfo->m_dynstate->m_server_transactions_per_cpu);
 
 	//
 	// Per CPU transaction merging

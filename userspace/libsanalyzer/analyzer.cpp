@@ -2524,7 +2524,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			
 			ASSERT(evt->m_tinfo);
 			ASSERT(evt->m_tinfo->m_ainfo);
-			evt->m_tinfo->m_ainfo->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
+			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 		}
 	}
 }
