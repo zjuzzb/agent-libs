@@ -2519,7 +2519,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			(evt->m_errorcode != SE_EAGAIN) && 
 			(evt->m_errorcode != SE_ETIMEDOUT))
 		{
-			
 			m_host_metrics.m_syscall_errors.m_table[evt->m_errorcode].m_count++;
 			
 			ASSERT(evt->m_tinfo);

@@ -53,6 +53,21 @@ void sinsp_procinfo::clear()
 
 	m_external_transaction_metrics.clear();
 
+	m_syscall_errors.clear();
+
+	vector<vector<sinsp_trlist_entry>>::iterator sts;
+	for(sts = m_server_transactions_per_cpu.begin(); 
+		sts != m_server_transactions_per_cpu.end(); sts++)
+	{
+		sts->clear();
+	}
+
+	for(sts = m_client_transactions_per_cpu.begin(); 
+		sts != m_client_transactions_per_cpu.end(); sts++)
+	{
+		sts->clear();
+	}
+
 	m_protostate.clear();
 }
 
@@ -112,6 +127,10 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	if(m_procinfo == NULL)
 	{
 		m_procinfo = new sinsp_procinfo();
+
+		m_procinfo->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+		m_procinfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+
 		m_procinfo->clear();
 	}
 }
@@ -230,21 +249,23 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_syscall_errors.add(&other->m_dynstate->m_syscall_errors);
 
-	ASSERT(other->m_dynstate->m_server_transactions_per_cpu.size() == m_dynstate->m_server_transactions_per_cpu.size());
-	for(j = 0; j < m_dynstate->m_server_transactions_per_cpu.size(); j++) 
+	ASSERT(other->m_dynstate->m_server_transactions_per_cpu.size() == m_procinfo->m_server_transactions_per_cpu.size());
+	for(j = 0; j < m_procinfo->m_server_transactions_per_cpu.size(); j++) 
 	{
-		m_dynstate->m_server_transactions_per_cpu[j].insert(m_dynstate->m_server_transactions_per_cpu[j].end(),
+		m_procinfo->m_server_transactions_per_cpu[j].insert(m_procinfo->m_server_transactions_per_cpu[j].end(),
 			other->m_dynstate->m_server_transactions_per_cpu[j].begin(),
 			other->m_dynstate->m_server_transactions_per_cpu[j].end());
 	}
 
-	ASSERT(other->m_dynstate->m_client_transactions_per_cpu.size() == m_dynstate->m_client_transactions_per_cpu.size());
-	for(j = 0; j < m_dynstate->m_client_transactions_per_cpu.size(); j++) 
+	ASSERT(other->m_dynstate->m_client_transactions_per_cpu.size() == m_procinfo->m_client_transactions_per_cpu.size());
+	for(j = 0; j < m_procinfo->m_client_transactions_per_cpu.size(); j++) 
 	{
-		m_dynstate->m_client_transactions_per_cpu[j].insert(m_dynstate->m_client_transactions_per_cpu[j].end(),
+		m_procinfo->m_client_transactions_per_cpu[j].insert(m_procinfo->m_client_transactions_per_cpu[j].end(),
 			other->m_dynstate->m_client_transactions_per_cpu[j].begin(),
 			other->m_dynstate->m_client_transactions_per_cpu[j].end());
 	}
+
+	m_procinfo->m_protostate.add(&other->m_dynstate->m_protostate);
 }
 
 void thread_analyzer_info::clear_all_metrics()

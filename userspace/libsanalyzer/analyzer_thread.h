@@ -66,8 +66,6 @@ public:
 	uint32_t m_connection_queue_usage_pct;
 	// The ratio between open FDs and maximum available FDs fir this thread
 	uint32_t m_fd_usage_pct;
-	// Syscall error table
-	sinsp_error_counters m_syscall_errors;
 	// the process capcity score calculated with our secret sauce algorithms
 	float m_capacity_score;
 	// the process capacity stolen by CPU steal time, calculated with our secret sauce algorithms
@@ -84,8 +82,6 @@ public:
 	uint64_t m_pfmajor;
 	// number of minor page faults since start
 	uint64_t m_pfminor;
-	// Time spent by this thread on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
 	// list of processes that are part of this program
 #ifdef ANALYZER_EMITS_PROGRAMS
 	vector<int64_t> m_program_pids;
@@ -94,10 +90,17 @@ public:
 	uint64_t m_n_transaction_threads;
 	// The metrics for transaction coming from the external world
 	sinsp_transaction_counters m_external_transaction_metrics; 
+	// State for delay computation
+	sinsp_delays_info m_transaction_delays;
+	// Time spent by this process on each of the CPUs
+	vector<uint64_t> m_cpu_time_ns;
+	// Syscall error table
+	sinsp_error_counters m_syscall_errors;
+	// Completed transactions lists
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
-
-	sinsp_delays_info m_transaction_delays;
 };
 
 class thread_analyzer_dyn_state
@@ -110,6 +113,8 @@ public:
 	// Completed transactions lists
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	// The protocol state
+	sinsp_protostate m_protostate;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
