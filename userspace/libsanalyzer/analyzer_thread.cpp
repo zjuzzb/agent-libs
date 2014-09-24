@@ -278,20 +278,6 @@ void thread_analyzer_info::clear_all_metrics()
 		m_procinfo->clear();
 	}
 
-	vector<vector<sinsp_trlist_entry>>::iterator sts;
-	for(sts = m_dynstate->m_server_transactions_per_cpu.begin(); 
-		sts != m_dynstate->m_server_transactions_per_cpu.end(); sts++)
-	{
-		sts->clear();
-	}
-
-	vector<vector<sinsp_trlist_entry>>::iterator cts;
-	for(cts = m_dynstate->m_client_transactions_per_cpu.begin(); 
-		cts != m_dynstate->m_client_transactions_per_cpu.end(); cts++)
-	{
-		cts->clear();
-	}
-
 	m_metrics.clear();
 	m_transaction_metrics.clear();
 	m_external_transaction_metrics.clear();
@@ -307,6 +293,22 @@ void thread_analyzer_info::clear_all_metrics()
 	}
 
 	m_dynstate->m_syscall_errors.clear();
+
+	vector<vector<sinsp_trlist_entry>>::iterator sts;
+	for(sts = m_dynstate->m_server_transactions_per_cpu.begin(); 
+		sts != m_dynstate->m_server_transactions_per_cpu.end(); sts++)
+	{
+		sts->clear();
+	}
+
+	vector<vector<sinsp_trlist_entry>>::iterator cts;
+	for(cts = m_dynstate->m_client_transactions_per_cpu.begin(); 
+		cts != m_dynstate->m_client_transactions_per_cpu.end(); cts++)
+	{
+		cts->clear();
+	}
+
+	m_dynstate->m_protostate.clear();
 }
 
 void thread_analyzer_info::clear_role_flags()
