@@ -360,6 +360,7 @@ message dump_response {
     optional bool final_chunk = 8; // True if this is the last chunk
     optional bool keep_alive = 9; // True if this is a keep alive packet
     optional bytes content = 4; // The binary dump file
+    optional uint64 final_size_bytes = 10; // Final size of the trace file
     optional string error = 5; // Dump errors
     required string token = 6; // The token associated with the request
 }

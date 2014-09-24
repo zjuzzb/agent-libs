@@ -4127,6 +4127,13 @@ class dump_response : public ::google::protobuf::Message {
   inline ::std::string* release_content();
   inline void set_allocated_content(::std::string* content);
 
+  // optional uint64 final_size_bytes = 10;
+  inline bool has_final_size_bytes() const;
+  inline void clear_final_size_bytes();
+  static const int kFinalSizeBytesFieldNumber = 10;
+  inline ::google::protobuf::uint64 final_size_bytes() const;
+  inline void set_final_size_bytes(::google::protobuf::uint64 value);
+
   // optional string error = 5;
   inline bool has_error() const;
   inline void clear_error();
@@ -4167,6 +4174,8 @@ class dump_response : public ::google::protobuf::Message {
   inline void clear_has_keep_alive();
   inline void set_has_content();
   inline void clear_has_content();
+  inline void set_has_final_size_bytes();
+  inline void clear_has_final_size_bytes();
   inline void set_has_error();
   inline void clear_has_error();
   inline void set_has_token();
@@ -4181,11 +4190,12 @@ class dump_response : public ::google::protobuf::Message {
   bool final_chunk_;
   bool keep_alive_;
   ::std::string* content_;
+  ::google::protobuf::uint64 final_size_bytes_;
   ::std::string* error_;
   ::std::string* token_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11244,15 +11254,37 @@ inline void dump_response::set_allocated_content(::std::string* content) {
   }
 }
 
-// optional string error = 5;
-inline bool dump_response::has_error() const {
+// optional uint64 final_size_bytes = 10;
+inline bool dump_response::has_final_size_bytes() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
-inline void dump_response::set_has_error() {
+inline void dump_response::set_has_final_size_bytes() {
   _has_bits_[0] |= 0x00000080u;
 }
-inline void dump_response::clear_has_error() {
+inline void dump_response::clear_has_final_size_bytes() {
   _has_bits_[0] &= ~0x00000080u;
+}
+inline void dump_response::clear_final_size_bytes() {
+  final_size_bytes_ = GOOGLE_ULONGLONG(0);
+  clear_has_final_size_bytes();
+}
+inline ::google::protobuf::uint64 dump_response::final_size_bytes() const {
+  return final_size_bytes_;
+}
+inline void dump_response::set_final_size_bytes(::google::protobuf::uint64 value) {
+  set_has_final_size_bytes();
+  final_size_bytes_ = value;
+}
+
+// optional string error = 5;
+inline bool dump_response::has_error() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void dump_response::set_has_error() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void dump_response::clear_has_error() {
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void dump_response::clear_error() {
   if (error_ != &::google::protobuf::internal::kEmptyString) {
@@ -11316,13 +11348,13 @@ inline void dump_response::set_allocated_error(::std::string* error) {
 
 // required string token = 6;
 inline bool dump_response::has_token() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void dump_response::set_has_token() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void dump_response::clear_has_token() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void dump_response::clear_token() {
   if (token_ != &::google::protobuf::internal::kEmptyString) {
