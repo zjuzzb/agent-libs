@@ -3,6 +3,13 @@
 #pragma once
 
 #include <stack>
+#include <stdexcept>
+
+class copyexcept : public std::runtime_error {
+public:
+    copyexcept(const string& message) 
+        : std::runtime_error(message) { };
+};
 
 template<class T> class sinsp_fdinfo;
 class sinsp_transaction_manager;
@@ -51,7 +58,7 @@ public:
 			m_storage = (char*)realloc(m_storage, m_storage_totsize);
 			if(m_storage == NULL)
 			{
-				throw exception("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage");
+				throw copyexcept(string("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage"));
 			}
 		}
 

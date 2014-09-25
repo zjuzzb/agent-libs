@@ -1135,6 +1135,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Protocol tables
 					//
+if(it->first == 49362)
+
 					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 						m_sampling_ratio);
 
