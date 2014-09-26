@@ -353,7 +353,7 @@ TEST_F(sys_call_test, forking_execve)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_EXECVE_13_E)
+		if(e->get_type() == PPME_SYSCALL_EXECVE_14_E)
 		{
 			//
 			// The child should exist
@@ -364,7 +364,7 @@ TEST_F(sys_call_test, forking_execve)
 			EXPECT_NE((uint64_t) 0, ti->m_vmrss_kb);
 			callnum++;
 		}
-		else if(e->get_type() == PPME_SYSCALL_EXECVE_13_X)
+		else if(e->get_type() == PPME_SYSCALL_EXECVE_14_X)
 		{
 			if(callnum == 1)
 			{
