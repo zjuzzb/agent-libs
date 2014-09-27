@@ -491,13 +491,13 @@ void sinsp_analyzer::serialize(uint64_t ts)
 	}
 }
 
-void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
 	vector<sinsp_threadinfo*> prog_sortable_list;
 
-	map<uint64_t, sinsp_threadinfo*>::iterator ptit;
+	unordered_map<size_t, sinsp_threadinfo*>::iterator ptit;
 
 	for(ptit = progtable->begin(); ptit != progtable->end(); ++ptit)
 	{
@@ -650,14 +650,14 @@ void sinsp_analyzer::filter_top_programs(map<uint64_t, sinsp_threadinfo*>* progt
 	//}
 }
 
-void sinsp_analyzer::filter_top_noncs_programs(map<uint64_t, sinsp_threadinfo*>* progtable)
+void sinsp_analyzer::filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable)
 {
 	filter_top_programs(progtable, 
 		false,
 		TOP_PROCESSES_IN_SAMPLE);
 }
 
-void sinsp_analyzer::filter_top_cs_programs(map<uint64_t, sinsp_threadinfo*>* progtable)
+void sinsp_analyzer::filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable)
 {
 	filter_top_programs(progtable, 
 		true,
@@ -671,10 +671,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
-	map<uint64_t, sinsp_threadinfo*> progtable;
 	set<string> included_programs;
 	set<uint64_t> proctids;
-	unordered_map<size_t, sinsp_threadinfo*> progtable1;
+	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -852,7 +851,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Add this thread's counters to the process ones...
 		//
 		ASSERT(it->second.m_program_hash != 0);
-		auto mtinfo = progtable1.emplace(it->second.m_program_hash, &it->second).first->second;
+		auto mtinfo = progtable.emplace(it->second.m_program_hash, &it->second).first->second;
 		if(mtinfo->m_tid == it->second.m_tid)
 		{
 			it->second.m_ainfo->set_main_program_thread1(true);
@@ -868,7 +867,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		sinsp_threadinfo* mtinfo = tinfo->get_main_thread();
 #endif
 		ASSERT(mtinfo != NULL);
-		progtable[mtinfo->m_tid] = mtinfo;
 
 		mtinfo->m_ainfo->add_all_metrics(tinfo->m_ainfo);
 
