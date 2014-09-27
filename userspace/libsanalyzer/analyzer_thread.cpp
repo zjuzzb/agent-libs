@@ -202,11 +202,11 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	//
 	// Propagate client-server flags
 	//
-	propagate_flag((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | 
+	propagate_flag_bidirectional((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | 
 		thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER | 
 		thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | 
 		thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT), other);
-	propagate_flag((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_UNIX_SERVER | 
+	propagate_flag_bidirectional((thread_analyzer_info::flags)(thread_analyzer_info::AF_IS_UNIX_SERVER | 
 		thread_analyzer_info::AF_IS_UNIX_CLIENT), other);
 
 	//
@@ -234,10 +234,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 #ifdef ANALYZER_EMITS_PROGRAMS
 	ASSERT(other->m_tinfo != NULL);
 
-	if(other->m_tinfo->is_main_thread())
-	{
-		m_procinfo->m_program_pids.push_back(other->m_tinfo->m_pid);
-	}
+	m_procinfo->m_program_pids.insert(other->m_tinfo->m_pid);
 #endif
 
 	if(other->m_transaction_metrics.get_counter()->m_count_in != 0)
@@ -274,7 +271,6 @@ void thread_analyzer_info::clear_all_metrics()
 
 	if(m_procinfo != NULL)
 	{
-		ASSERT(m_tinfo->is_main_thread());
 		m_procinfo->clear();
 	}
 

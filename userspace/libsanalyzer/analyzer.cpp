@@ -674,6 +674,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	map<uint64_t, sinsp_threadinfo*> progtable;
 	set<string> included_programs;
 	set<uint64_t> proctids;
+	unordered_map<size_t, sinsp_threadinfo*> progtable1;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -850,8 +851,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Add this thread's counters to the process ones...
 		//
+		ASSERT(it->second.m_program_hash != 0);
+		auto mtinfo = progtable1.emplace(it->second.m_program_hash, &it->second).first->second;
+		if(mtinfo->m_tid == it->second.m_tid)
+		{
+			it->second.m_ainfo->set_main_program_thread1(true);
+		}
+		else
+		{
+			it->second.m_ainfo->set_main_program_thread1(false);
+		}
+
 #ifdef ANALYZER_EMITS_PROGRAMS
-		sinsp_threadinfo* mtinfo = tinfo->m_ainfo->get_main_program_thread();
+//		sinsp_threadinfo* mtinfo = tinfo->m_ainfo->get_main_program_thread();
 #else
 		sinsp_threadinfo* mtinfo = tinfo->get_main_thread();
 #endif
@@ -909,7 +921,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// section too
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		if(tinfo->m_ainfo->is_main_program_thread())
+		if(tinfo->m_ainfo->is_main_program_thread1())
 #else
 		if(tinfo->is_main_thread())
 #endif
@@ -977,10 +989,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				draiosproto::program* prog = m_metrics->add_programs();
 				draiosproto::process* proc = prog->mutable_procinfo();
 
-				vector<int64_t>* pids = &procinfo->m_program_pids;
-				for(uint32_t jj = 0; jj < pids->size(); jj++)
+				for(int64_t pid : procinfo->m_program_pids)
 				{
-					prog->add_pids((*pids)[jj]);
+					prog->add_pids(pid);
 				}
 #else // ANALYZER_EMITS_PROGRAMS
 				draiosproto::process* proc = m_metrics->add_processes();
@@ -1135,8 +1146,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Protocol tables
 					//
-if(it->first == 49362)
-
 					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 						m_sampling_ratio);
 
@@ -1154,7 +1163,7 @@ if(it->first == 49362)
 								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
 								tinfo->m_comm.c_str(),
 								tinfo->m_tid,
-								tinfo->m_nchilds + 1,
+								(uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
 								procinfo->m_capacity_score,
 								procinfo->m_stolen_capacity_score,
 								(float)procinfo->m_cpuload,

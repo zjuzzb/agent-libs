@@ -84,7 +84,7 @@ public:
 	uint64_t m_pfminor;
 	// list of processes that are part of this program
 #ifdef ANALYZER_EMITS_PROGRAMS
-	vector<int64_t> m_program_pids;
+	set<int64_t> m_program_pids;
 #endif
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
@@ -137,6 +137,7 @@ public:
 	    AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
 	    AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 	    AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
+	    AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -152,6 +153,23 @@ public:
 	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	bool is_main_program_thread();
+	inline bool is_main_program_thread1()
+	{
+		return (m_th_analysis_flags & AF_IS_MAIN_PROGRAM_THREAD) != 0;
+	}
+
+	inline void set_main_program_thread1(bool is_main_program_thread)
+	{
+		if(is_main_program_thread)
+		{
+			m_th_analysis_flags |= AF_IS_MAIN_PROGRAM_THREAD;
+		}
+		else
+		{
+			m_th_analysis_flags &= ~AF_IS_MAIN_PROGRAM_THREAD;
+		}
+	}
+
 	sinsp_threadinfo* get_main_program_thread();
 
 	// Global state
@@ -160,7 +178,7 @@ public:
 	sinsp_threadinfo* m_tinfo;
 
 	// Flags word used by the analysis engine.
-	uint8_t m_th_analysis_flags;
+	uint16_t m_th_analysis_flags;
 	// The analyzer metrics
 	sinsp_counters m_metrics; 
 	// The transaction metrics
