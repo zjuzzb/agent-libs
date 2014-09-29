@@ -2332,15 +2332,6 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
-  // optional .draiosproto.proto_info protos = 24;
-  inline bool has_protos() const;
-  inline void clear_protos();
-  static const int kProtosFieldNumber = 24;
-  inline const ::draiosproto::proto_info& protos() const;
-  inline ::draiosproto::proto_info* mutable_protos();
-  inline ::draiosproto::proto_info* release_protos();
-  inline void set_allocated_protos(::draiosproto::proto_info* protos);
-
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -2371,8 +2362,6 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
-  inline void set_has_protos();
-  inline void clear_has_protos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2391,11 +2380,10 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
-  ::draiosproto::proto_info* protos_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2953,26 +2941,12 @@ class ipv4_connection : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 spid() const;
   inline void set_spid(::google::protobuf::uint64 value);
 
-  // optional uint64 stid = 3;
-  inline bool has_stid() const;
-  inline void clear_stid();
-  static const int kStidFieldNumber = 3;
-  inline ::google::protobuf::uint64 stid() const;
-  inline void set_stid(::google::protobuf::uint64 value);
-
   // optional uint64 dpid = 5;
   inline bool has_dpid() const;
   inline void clear_dpid();
   static const int kDpidFieldNumber = 5;
   inline ::google::protobuf::uint64 dpid() const;
   inline void set_dpid(::google::protobuf::uint64 value);
-
-  // optional uint64 dtid = 6;
-  inline bool has_dtid() const;
-  inline void clear_dtid();
-  static const int kDtidFieldNumber = 6;
-  inline ::google::protobuf::uint64 dtid() const;
-  inline void set_dtid(::google::protobuf::uint64 value);
 
   // required .draiosproto.connection_categories counters = 8;
   inline bool has_counters() const;
@@ -2989,12 +2963,8 @@ class ipv4_connection : public ::google::protobuf::Message {
   inline void clear_has_tuple();
   inline void set_has_spid();
   inline void clear_has_spid();
-  inline void set_has_stid();
-  inline void clear_has_stid();
   inline void set_has_dpid();
   inline void clear_has_dpid();
-  inline void set_has_dtid();
-  inline void clear_has_dtid();
   inline void set_has_counters();
   inline void clear_has_counters();
 
@@ -3002,13 +2972,11 @@ class ipv4_connection : public ::google::protobuf::Message {
 
   ::draiosproto::ipv4tuple* tuple_;
   ::google::protobuf::uint64 spid_;
-  ::google::protobuf::uint64 stid_;
   ::google::protobuf::uint64 dpid_;
-  ::google::protobuf::uint64 dtid_;
   ::draiosproto::connection_categories* counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -3662,6 +3630,15 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >*
       mutable_top_files();
 
+  // optional .draiosproto.proto_info protos = 20;
+  inline bool has_protos() const;
+  inline void clear_protos();
+  static const int kProtosFieldNumber = 20;
+  inline const ::draiosproto::proto_info& protos() const;
+  inline ::draiosproto::proto_info* mutable_protos();
+  inline ::draiosproto::proto_info* release_protos();
+  inline void set_allocated_protos(::draiosproto::proto_info* protos);
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -3686,6 +3663,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_hidden_processes();
   inline void set_has_version();
   inline void clear_has_version();
+  inline void set_has_protos();
+  inline void clear_has_protos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3698,18 +3677,19 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
-  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
+  ::std::string* host_tags_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat > top_files_;
+  ::draiosproto::proto_info* protos_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8118,44 +8098,6 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   }
 }
 
-// optional .draiosproto.proto_info protos = 24;
-inline bool host::has_protos() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
-}
-inline void host::set_has_protos() {
-  _has_bits_[0] |= 0x00010000u;
-}
-inline void host::clear_has_protos() {
-  _has_bits_[0] &= ~0x00010000u;
-}
-inline void host::clear_protos() {
-  if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
-  clear_has_protos();
-}
-inline const ::draiosproto::proto_info& host::protos() const {
-  return protos_ != NULL ? *protos_ : *default_instance_->protos_;
-}
-inline ::draiosproto::proto_info* host::mutable_protos() {
-  set_has_protos();
-  if (protos_ == NULL) protos_ = new ::draiosproto::proto_info;
-  return protos_;
-}
-inline ::draiosproto::proto_info* host::release_protos() {
-  clear_has_protos();
-  ::draiosproto::proto_info* temp = protos_;
-  protos_ = NULL;
-  return temp;
-}
-inline void host::set_allocated_protos(::draiosproto::proto_info* protos) {
-  delete protos_;
-  protos_ = protos;
-  if (protos) {
-    set_has_protos();
-  } else {
-    clear_has_protos();
-  }
-}
-
 // -------------------------------------------------------------------
 
 // process
@@ -8907,37 +8849,15 @@ inline void ipv4_connection::set_spid(::google::protobuf::uint64 value) {
   spid_ = value;
 }
 
-// optional uint64 stid = 3;
-inline bool ipv4_connection::has_stid() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void ipv4_connection::set_has_stid() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void ipv4_connection::clear_has_stid() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void ipv4_connection::clear_stid() {
-  stid_ = GOOGLE_ULONGLONG(0);
-  clear_has_stid();
-}
-inline ::google::protobuf::uint64 ipv4_connection::stid() const {
-  return stid_;
-}
-inline void ipv4_connection::set_stid(::google::protobuf::uint64 value) {
-  set_has_stid();
-  stid_ = value;
-}
-
 // optional uint64 dpid = 5;
 inline bool ipv4_connection::has_dpid() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void ipv4_connection::set_has_dpid() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void ipv4_connection::clear_has_dpid() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void ipv4_connection::clear_dpid() {
   dpid_ = GOOGLE_ULONGLONG(0);
@@ -8951,37 +8871,15 @@ inline void ipv4_connection::set_dpid(::google::protobuf::uint64 value) {
   dpid_ = value;
 }
 
-// optional uint64 dtid = 6;
-inline bool ipv4_connection::has_dtid() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void ipv4_connection::set_has_dtid() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void ipv4_connection::clear_has_dtid() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void ipv4_connection::clear_dtid() {
-  dtid_ = GOOGLE_ULONGLONG(0);
-  clear_has_dtid();
-}
-inline ::google::protobuf::uint64 ipv4_connection::dtid() const {
-  return dtid_;
-}
-inline void ipv4_connection::set_dtid(::google::protobuf::uint64 value) {
-  set_has_dtid();
-  dtid_ = value;
-}
-
 // required .draiosproto.connection_categories counters = 8;
 inline bool ipv4_connection::has_counters() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void ipv4_connection::set_has_counters() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void ipv4_connection::clear_has_counters() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void ipv4_connection::clear_counters() {
   if (counters_ != NULL) counters_->::draiosproto::connection_categories::Clear();
@@ -10364,6 +10262,44 @@ metrics::top_files() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat >*
 metrics::mutable_top_files() {
   return &top_files_;
+}
+
+// optional .draiosproto.proto_info protos = 20;
+inline bool metrics::has_protos() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void metrics::set_has_protos() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void metrics::clear_has_protos() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void metrics::clear_protos() {
+  if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
+  clear_has_protos();
+}
+inline const ::draiosproto::proto_info& metrics::protos() const {
+  return protos_ != NULL ? *protos_ : *default_instance_->protos_;
+}
+inline ::draiosproto::proto_info* metrics::mutable_protos() {
+  set_has_protos();
+  if (protos_ == NULL) protos_ = new ::draiosproto::proto_info;
+  return protos_;
+}
+inline ::draiosproto::proto_info* metrics::release_protos() {
+  clear_has_protos();
+  ::draiosproto::proto_info* temp = protos_;
+  protos_ = NULL;
+  return temp;
+}
+inline void metrics::set_allocated_protos(::draiosproto::proto_info* protos) {
+  delete protos_;
+  protos_ = protos;
+  if (protos) {
+    set_has_protos();
+  } else {
+    clear_has_protos();
+  }
 }
 
 // -------------------------------------------------------------------

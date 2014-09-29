@@ -184,7 +184,6 @@ message host {
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
 
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
-	optional proto_info protos = 24; // Information about protocols that have been decoded
 }
 
 //
@@ -251,14 +250,7 @@ message ipv4_connection {
     required ipv4tuple tuple = 1;
 
     optional uint64 spid = 2; // The pid of the client
-    optional uint64 stid = 3; // The tid of the client
-    // XXX is this required?
-    //optional uint64 sfd = 4; // The fd number of the client
-
     optional uint64 dpid = 5; // The pid of the server
-    optional uint64 dtid = 6; // The tid of the server
-    // XXX is this required?
-    //optional uint64 dfd = 7; // The fd number of the server
 
     required connection_categories counters = 8; // the metrics for this connection
 }
@@ -333,6 +325,7 @@ message metrics {
 	repeated command_details commands = 17; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
+    optional proto_info protos = 20; // Information about protocols that have been decoded
 }
 
 message dump_request_start {

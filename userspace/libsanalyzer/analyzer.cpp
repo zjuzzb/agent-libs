@@ -1429,9 +1429,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
 
 		conn->set_spid(acit->second.m_spid);
-		conn->set_stid(acit->second.m_stid);
 		conn->set_dpid(acit->second.m_dpid);
-		conn->set_dtid(acit->second.m_dtid);
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
@@ -1468,9 +1466,7 @@ void sinsp_analyzer::emit_full_connections()
 			tuple->set_l4proto(cit->first.m_fields.m_l4proto);
 
 			conn->set_spid(cit->second.m_spid);
-			conn->set_stid(cit->second.m_stid);
 			conn->set_dpid(cit->second.m_dpid);
-			conn->set_dtid(cit->second.m_dtid);
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
@@ -2008,7 +2004,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			int64_t used_swap;
 			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
 
-			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_hostinfo()->mutable_protos(),
+			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
 				m_sampling_ratio);
 
 			//
