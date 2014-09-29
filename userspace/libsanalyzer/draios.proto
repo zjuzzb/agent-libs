@@ -203,8 +203,6 @@ enum networkrole {
 }
 
 message process {
-    required uint64 pid = 1; // The ID of process this thread belongs to
-
     optional process_details details = 2; // names and string constants relative to this process
 
     optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.

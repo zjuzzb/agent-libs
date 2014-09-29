@@ -924,7 +924,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(tinfo->is_main_thread())
 #endif
 		{
-			int64_t pid = tinfo->m_pid;
 			sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 			if(proctids.size() != 0)
@@ -998,8 +997,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				// Basic values
 				//
-				proc->set_pid(pid);
-
 				if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
 					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 				{

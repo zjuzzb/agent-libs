@@ -2448,13 +2448,6 @@ class process : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required uint64 pid = 1;
-  inline bool has_pid() const;
-  inline void clear_pid();
-  static const int kPidFieldNumber = 1;
-  inline ::google::protobuf::uint64 pid() const;
-  inline void set_pid(::google::protobuf::uint64 value);
-
   // optional .draiosproto.process_details details = 2;
   inline bool has_details() const;
   inline void clear_details();
@@ -2585,8 +2578,6 @@ class process : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
-  inline void set_has_pid();
-  inline void clear_has_pid();
   inline void set_has_details();
   inline void clear_has_details();
   inline void set_has_is_ipv4_transaction_server();
@@ -2622,7 +2613,6 @@ class process : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::uint64 pid_;
   ::draiosproto::process_details* details_;
   bool is_ipv4_transaction_server_;
   bool is_unix_transaction_server_;
@@ -2641,7 +2631,7 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::proto_info* protos_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8102,37 +8092,15 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
 
 // process
 
-// required uint64 pid = 1;
-inline bool process::has_pid() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void process::set_has_pid() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void process::clear_has_pid() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void process::clear_pid() {
-  pid_ = GOOGLE_ULONGLONG(0);
-  clear_has_pid();
-}
-inline ::google::protobuf::uint64 process::pid() const {
-  return pid_;
-}
-inline void process::set_pid(::google::protobuf::uint64 value) {
-  set_has_pid();
-  pid_ = value;
-}
-
 // optional .draiosproto.process_details details = 2;
 inline bool process::has_details() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+  return (_has_bits_[0] & 0x00000001u) != 0;
 }
 inline void process::set_has_details() {
-  _has_bits_[0] |= 0x00000002u;
+  _has_bits_[0] |= 0x00000001u;
 }
 inline void process::clear_has_details() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000001u;
 }
 inline void process::clear_details() {
   if (details_ != NULL) details_->::draiosproto::process_details::Clear();
@@ -8164,13 +8132,13 @@ inline void process::set_allocated_details(::draiosproto::process_details* detai
 
 // optional bool is_ipv4_transaction_server = 3;
 inline bool process::has_is_ipv4_transaction_server() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000002u) != 0;
 }
 inline void process::set_has_is_ipv4_transaction_server() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000002u;
 }
 inline void process::clear_has_is_ipv4_transaction_server() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void process::clear_is_ipv4_transaction_server() {
   is_ipv4_transaction_server_ = false;
@@ -8186,13 +8154,13 @@ inline void process::set_is_ipv4_transaction_server(bool value) {
 
 // optional bool is_unix_transaction_server = 4;
 inline bool process::has_is_unix_transaction_server() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void process::set_has_is_unix_transaction_server() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void process::clear_has_is_unix_transaction_server() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void process::clear_is_unix_transaction_server() {
   is_unix_transaction_server_ = false;
@@ -8208,13 +8176,13 @@ inline void process::set_is_unix_transaction_server(bool value) {
 
 // optional bool is_ipv4_transaction_client = 10;
 inline bool process::has_is_ipv4_transaction_client() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void process::set_has_is_ipv4_transaction_client() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void process::clear_has_is_ipv4_transaction_client() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void process::clear_is_ipv4_transaction_client() {
   is_ipv4_transaction_client_ = false;
@@ -8230,13 +8198,13 @@ inline void process::set_is_ipv4_transaction_client(bool value) {
 
 // optional bool is_unix_transaction_client = 11;
 inline bool process::has_is_unix_transaction_client() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void process::set_has_is_unix_transaction_client() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void process::clear_has_is_unix_transaction_client() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void process::clear_is_unix_transaction_client() {
   is_unix_transaction_client_ = false;
@@ -8252,13 +8220,13 @@ inline void process::set_is_unix_transaction_client(bool value) {
 
 // optional uint32 netrole = 13;
 inline bool process::has_netrole() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void process::set_has_netrole() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void process::clear_has_netrole() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void process::clear_netrole() {
   netrole_ = 0u;
@@ -8274,13 +8242,13 @@ inline void process::set_netrole(::google::protobuf::uint32 value) {
 
 // optional .draiosproto.time_categories tcounters = 5;
 inline bool process::has_tcounters() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void process::set_has_tcounters() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void process::clear_has_tcounters() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void process::clear_tcounters() {
   if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
@@ -8312,13 +8280,13 @@ inline void process::set_allocated_tcounters(::draiosproto::time_categories* tco
 
 // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
 inline bool process::has_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void process::set_has_transaction_counters() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void process::clear_has_transaction_counters() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void process::clear_transaction_counters() {
   if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -8350,13 +8318,13 @@ inline void process::set_allocated_transaction_counters(::draiosproto::counter_t
 
 // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
 inline bool process::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void process::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void process::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void process::clear_min_transaction_counters() {
   if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -8388,13 +8356,13 @@ inline void process::set_allocated_min_transaction_counters(::draiosproto::count
 
 // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
 inline bool process::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void process::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void process::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void process::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -8426,13 +8394,13 @@ inline void process::set_allocated_max_transaction_counters(::draiosproto::count
 
 // optional uint64 transaction_processing_delay = 7;
 inline bool process::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void process::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void process::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void process::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -8448,13 +8416,13 @@ inline void process::set_transaction_processing_delay(::google::protobuf::uint64
 
 // optional uint64 merged_server_delay = 14;
 inline bool process::has_merged_server_delay() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void process::set_has_merged_server_delay() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void process::clear_has_merged_server_delay() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void process::clear_merged_server_delay() {
   merged_server_delay_ = GOOGLE_ULONGLONG(0);
@@ -8470,13 +8438,13 @@ inline void process::set_merged_server_delay(::google::protobuf::uint64 value) {
 
 // optional uint64 next_tiers_delay = 12;
 inline bool process::has_next_tiers_delay() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void process::set_has_next_tiers_delay() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void process::clear_has_next_tiers_delay() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void process::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -8492,13 +8460,13 @@ inline void process::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool process::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void process::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void process::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void process::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -8530,13 +8498,13 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool process::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void process::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void process::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void process::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -8568,13 +8536,13 @@ inline void process::set_allocated_syscall_errors(::draiosproto::counter_syscall
 
 // optional .draiosproto.proto_info protos = 20;
 inline bool process::has_protos() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
+  return (_has_bits_[0] & 0x00008000u) != 0;
 }
 inline void process::set_has_protos() {
-  _has_bits_[0] |= 0x00010000u;
+  _has_bits_[0] |= 0x00008000u;
 }
 inline void process::clear_has_protos() {
-  _has_bits_[0] &= ~0x00010000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline void process::clear_protos() {
   if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
