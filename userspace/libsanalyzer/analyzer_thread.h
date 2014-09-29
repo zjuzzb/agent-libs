@@ -152,13 +152,12 @@ public:
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t timeout_ns, bool is_subsampling);
 	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
-	bool is_main_program_thread();
-	inline bool is_main_program_thread1()
+	inline bool is_main_program_thread()
 	{
 		return (m_th_analysis_flags & AF_IS_MAIN_PROGRAM_THREAD) != 0;
 	}
 
-	inline void set_main_program_thread1(bool is_main_program_thread)
+	inline void set_main_program_thread(bool is_main_program_thread)
 	{
 		if(is_main_program_thread)
 		{
@@ -169,8 +168,6 @@ public:
 			m_th_analysis_flags &= ~AF_IS_MAIN_PROGRAM_THREAD;
 		}
 	}
-
-	sinsp_threadinfo* get_main_program_thread();
 
 	// Global state
 	sinsp *m_inspector;

@@ -854,11 +854,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		auto mtinfo = progtable.emplace(it->second.m_program_hash, &it->second).first->second;
 		if(mtinfo->m_tid == it->second.m_tid)
 		{
-			it->second.m_ainfo->set_main_program_thread1(true);
+			it->second.m_ainfo->set_main_program_thread(true);
 		}
 		else
 		{
-			it->second.m_ainfo->set_main_program_thread1(false);
+			it->second.m_ainfo->set_main_program_thread(false);
 		}
 
 #ifdef ANALYZER_EMITS_PROGRAMS
@@ -919,7 +919,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// section too
 		//
 #ifdef ANALYZER_EMITS_PROGRAMS
-		if(tinfo->m_ainfo->is_main_program_thread1())
+		if(tinfo->m_ainfo->is_main_program_thread())
 #else
 		if(tinfo->is_main_thread())
 #endif
