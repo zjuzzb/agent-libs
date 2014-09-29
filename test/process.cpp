@@ -99,8 +99,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				}
 
 				while (true) 
-				{
-			 
+				{			 
 					/** The buffor for read(), this structure contains information
 					 * about the signal we've read. */
 					struct signalfd_siginfo si;
@@ -134,6 +133,8 @@ TEST_F(sys_call_test, process_signalfd_kill)
 
 				/* Close the file descriptor if we no longer need it. */
 				close (sfd);
+
+				sleep(1);
 			 
 				//
 				// Remember to use _exit or the test system will get fucked!!
@@ -889,7 +890,7 @@ TEST_F(sys_call_test, procfs_globalmemory)
 		sleep(1);
 	}
 }
-
+/*
 class childthread
 {
 public:
@@ -1029,7 +1030,7 @@ TEST_F(sys_call_test, program_child_with_threads)
 //	EXPECT_EQ(2, callnum);
 	sleep(2);
 }
-
+*/
 /*
 TEST_F(sys_call_test, nested_program_childs)
 {

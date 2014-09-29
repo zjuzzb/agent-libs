@@ -105,7 +105,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((uint32_t)2, ec->m_table[SE_EFAULT].m_count);
 
 				sinsp_threadinfo* tinfo = param.m_inspector->m_thread_manager->get_thread(getpid(), true);
-				ec = &tinfo->m_ainfo->m_procinfo->m_syscall_errors;
+				ec = &tinfo->m_ainfo->m_dynstate->m_syscall_errors;
 
 				EXPECT_NE((size_t)0, ec->m_table.size());
 
@@ -117,21 +117,12 @@ TEST_F(sys_call_test, analyzer_errors)
 				uint32_t j = 0;
 				for(it = ec->m_table.begin(); it != ec->m_table.end(); ++it, j++)
 				{
-					if(j == 0)
+					if((it->first != (int32_t)SE_EBADF) &&
+						(it->first != (int32_t)SE_ENOENT) &&
+						(it->first != (int32_t)SE_EFAULT)
+						)
 					{
-						EXPECT_EQ((int32_t)SE_ENOENT, it->first);
-					}
-					else if(j == 1)
-					{
-						EXPECT_EQ((int32_t)SE_EBADF, it->first);
-					}
-					else if(j == 2)
-					{
-						EXPECT_EQ((int32_t)SE_EFAULT, it->first);
-					}
-					else
-					{
-						break;
+						FAIL();
 					}
 				}
 

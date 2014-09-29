@@ -332,11 +332,17 @@ TEST_F(sys_call_test, forking_execve)
 
 				execve("/bin/echo/", eargv, eenvp);
 				execve("/bin/echo", eargv, eenvp);
+
+				sleep(1);
+
 				_exit(0);
 			}
 			else // fork() returns new pid to the parent process
 			{
 				ptid = getpid();
+
+				sleep(1);
+
 				wait(&status);	// wait for child to exit, and store its status
 								// Use WEXITSTATUS to validate status.
 			}
