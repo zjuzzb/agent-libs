@@ -1030,6 +1030,7 @@ TEST_F(sys_call_test, program_child_with_threads)
 	sleep(2);
 }
 
+/*
 TEST_F(sys_call_test, nested_program_childs)
 {
 	int ctid;
@@ -1123,66 +1124,4 @@ TEST_F(sys_call_test, nested_program_childs)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 }
-
-TEST_F(sys_call_test, DISABLED_nested_program_childs_limit)
-{
-	//
-	// FILTER
-	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return true;
-	};
-
-	//
-	// TEST CODE
-	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		int status;
-
-		pid_t cpid = fork();
-		EXPECT_NE(-1, cpid);
-		if(cpid == 0)
-		{
-			execlp("resources/forking_nested", "resources/forking_nested", NULL);
-			perror("execlp");
-			FAIL();
-		}
-		else
-		{
-			//
-			// Father, just wait for termination
-			//
-			sleep(5);
-			wait(&status);
-		}
-	};
-
-	//
-	// OUTPUT VALDATION
-	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt* evt = param.m_evt;
-		uint16_t type = evt->get_type();
-
-		if(type == PPME_CLONE_16_X || type == PPME_CLONE_11_X)
-		{
-/*			
-printf("!!!\n");			
-			callnum++;
-
-			sinsp_threadinfo* tinfo = evt->get_thread_info(false);
-			EXPECT_NE((sinsp_threadinfo*)NULL, tinfo);
-
-			sinsp_threadinfo* ptinfo = tinfo->m_ainfo->get_main_program_thread();
-			EXPECT_EQ(getpid(), ptinfo->m_tid);			
-*/		
-		}
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-
-//	EXPECT_EQ(14, callnum);
-}
+*/

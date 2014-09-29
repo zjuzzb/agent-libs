@@ -113,7 +113,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((uint32_t)3, ec->m_table[SE_EBADF].m_count);
 				EXPECT_LE((uint32_t)2, ec->m_table[SE_EFAULT].m_count);
 
-				map<int32_t, sinsp_counter_cnt>::iterator it;
+				unordered_map<int32_t, sinsp_counter_cnt>::iterator it;
 				uint32_t j = 0;
 				for(it = ec->m_table.begin(); it != ec->m_table.end(); ++it, j++)
 				{

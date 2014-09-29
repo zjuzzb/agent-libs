@@ -10,7 +10,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(test 
-	analyzer.cpp
+	analyzer_test.cpp
 	capture_to_file_test.cpp
 	event_capture.cpp
 	forking.cpp
