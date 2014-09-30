@@ -47,11 +47,14 @@ public:
 		m_storage_cursize = 0;
 	}
 
-	inline char* copy(char* data, uint32_t size)
+	//
+	// Note: terminate_string is 1 if you want a zero at the end of the dtring
+	//
+	inline char* copy(char* data, uint32_t size, uint32_t terminate_string = 0)
 	{
 		char* res;
 
-		if(size + m_storage_cursize >= m_storage_totsize)
+		if(size + terminate_string + m_storage_cursize >= m_storage_totsize)
 		{
 			m_storage_totsize = m_storage_cursize + size + 256;
 
@@ -64,21 +67,30 @@ public:
 
 		res = m_storage + m_storage_cursize;
 		memcpy(m_storage + m_storage_cursize, data, size);
-		m_storage_cursize += size;
+		m_storage_cursize += (size + terminate_string);
+
+		if(terminate_string == 1)
+		{
+			m_storage[m_storage_cursize - 1] = 0;
+		}
+
 
 		return res;
 	}
 
 	inline char* strcopy(char* data, uint32_t maxsize)
 	{
-		uint32_t size = strnlen(data, maxsize) + 1;
+		char* res;
+		uint32_t size = strnlen(data, maxsize);
 
 		if(size > maxsize)
 		{
 			return NULL;
 		}
 
-		return this->copy(data, size);
+		res = this->copy(data, size, 1);
+
+		return res;
 	}
 
 	inline char* get_buf()

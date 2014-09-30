@@ -29,6 +29,7 @@ sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t*
 		if(is_switched)
 		{
 			m_parsed = false;
+			m_is_req_valid = false;
 			m_reassembly_buf.clear();
 
 			return sinsp_protocol_parser::MSG_REQUEST;
@@ -57,7 +58,7 @@ sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t*
 
 bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 {
-	if(buflen + m_reassembly_buf.get_size() > 36)
+	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
 		char* rbuf;
 		uint32_t rbufsize;
@@ -74,16 +75,35 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 			rbufsize = m_reassembly_buf.get_size();
 		}
 
-		if(rbuf[MYSQL_SEQ_ID_OFFSET] == 1)
+		if(rbuf[MYSQL_OFFSET_SEQ_ID] == 1)
 		{
-			//
-			// Login packet
-			//
-			m_database = m_storage.strcopy(rbuf + 36, rbufsize - 36);
-		}
+			if(buflen + m_reassembly_buf.get_size() > MYSQL_OFFSET_DBANME)
+			{
+				//
+				// Login packet
+				//
+				m_database = m_storage.strcopy(rbuf + MYSQL_OFFSET_DBANME, 
+					rbufsize - MYSQL_OFFSET_DBANME);
 
-		m_is_req_valid = false;
-		m_parsed = true;
+				m_is_req_valid = true;
+			}
+
+			m_parsed = true;
+		}
+		else
+		{
+			if(rbuf[MYSQL_OFFSET_OPCODE] == MYSQL_OPCODE_QUERY)
+			{
+				m_statement = m_storage.strcopy(rbuf + MYSQL_OFFSET_STATEMENT, 
+					rbufsize - MYSQL_OFFSET_STATEMENT);
+
+//cerr << (m_statement + string("\n\n\n"));
+
+				m_is_req_valid = true;
+			}
+
+			m_parsed = true;
+		}
 	}
 	else
 	{

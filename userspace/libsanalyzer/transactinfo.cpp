@@ -361,7 +361,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 
 			if(m_direction == DIR_UNKNOWN)
 			{
-				res = STATE_ONGOING;
+				res = STATE_SWITCHED;
 			}
 			else
 			{
@@ -423,7 +423,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 
 			if(m_direction == DIR_UNKNOWN)
 			{
-				res = STATE_ONGOING;
+				res = STATE_SWITCHED;
 			}
 			else
 			{
