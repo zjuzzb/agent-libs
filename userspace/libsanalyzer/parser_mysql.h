@@ -17,6 +17,10 @@
 #define MYSQL_OFFSET_STATEMENT 5
 #define MYSQL_OFFSET_DBANME 36
 
+#define MYSQL_OFFSET_STATUS 4
+#define MYSQL_OFFSET_ERROR_CODE 5
+#define MYSQL_OFFSET_ERROR_MESSAGE 13
+
 ///////////////////////////////////////////////////////////////////////////////
 // Opcodes
 ///////////////////////////////////////////////////////////////////////////////
@@ -28,6 +32,13 @@
 class sinsp_mysql_parser : sinsp_protocol_parser
 {
 public:
+	enum msg_type
+	{
+		MT_NONE = 0,
+		MT_LOGIN,
+		MT_QUERY,
+	};
+
 	sinsp_mysql_parser();
 	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
 		sinsp_partial_transaction::direction dir,
@@ -39,12 +50,17 @@ public:
 	char* m_query;
 
 private:
+	inline void reset();
+
 	sinsp_autobuffer m_reassembly_buf;
 	bool m_parsed;
 	sinsp_autobuffer m_storage;
 
+	msg_type m_msgtype;
 	char* m_database;
 	char* m_statement;
+	char* m_error_message;
+	uint16_t m_error_code;
 };
 
 #endif // HAS_ANALYZER
