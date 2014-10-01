@@ -62,7 +62,7 @@ sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t*
 		{
 			if(!m_parsed)
 			{
-				return sinsp_protocol_parser::MSG_REQUEST;
+				return sinsp_protocol_parser::MSG_RESPONSE;
 			}
 		}
 	}
@@ -97,16 +97,34 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 		//
 		if(rbuf[MYSQL_OFFSET_SEQ_ID] == 1)
 		{
-			if(buflen + m_reassembly_buf.get_size() > MYSQL_OFFSET_DBANME)
+			if(buflen + m_reassembly_buf.get_size() > MYSQL_OFFSET_UNAME)
 			{
 				//
 				// Login packet
 				//
-				m_database = m_storage.strcopy(rbuf + MYSQL_OFFSET_DBANME, 
-					rbufsize - MYSQL_OFFSET_DBANME);
+				char* tbuf = rbuf + MYSQL_OFFSET_OPCODE;
+				char* bufend = rbuf + rbufsize;
 
-				m_msgtype = MT_LOGIN;
-				m_is_req_valid = true;
+				uint32_t caps = *(uint32_t*)(tbuf);
+				char* user = rbuf + MYSQL_OFFSET_UNAME;
+				tbuf = user + strnlen((char *)user, rbufsize - MYSQL_OFFSET_UNAME) + 1;
+
+				if(tbuf < bufend)
+				{
+					uint32_t pass_len = (caps & CAP_SECURE_CONNECTION ? *tbuf++ : strlen((char *)tbuf));
+					tbuf += pass_len;
+
+					if(tbuf < bufend)
+					{
+						char* db = (caps & CAP_CONNECT_WITH_DB ? tbuf : "<NA>");
+
+						m_database = m_storage.strcopy(db, bufend - tbuf);
+
+						m_msgtype = MT_LOGIN;
+						m_is_req_valid = true;
+//cerr << (string("login: ") + user + " - " + m_database + string("\n\n\n"));
+					}
+				}
 			}
 
 			m_parsed = true;
