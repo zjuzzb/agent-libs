@@ -154,10 +154,31 @@ message http_info {
 }
 
 //
+// Query information
+//
+message query_details {
+	required string query = 1; 
+	required uint32 ncalls = 2;
+	required uint64 time_tot = 3;
+	required uint64 time_max = 4;
+	required uint64 bytes_in = 5;
+	required uint64 bytes_out = 6;
+}
+
+//
+// SQL protocol information
+//
+message sql_info {
+	repeated query_details server_queries = 1;
+	repeated query_details client_queries = 2;
+}
+
+//
 // General protocol information
 //
 message proto_info {
 	optional http_info http = 1;
+	optional sql_info mysql = 2;
 }
 
 //

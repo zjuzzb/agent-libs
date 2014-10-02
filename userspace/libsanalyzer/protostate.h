@@ -98,39 +98,54 @@ class sinsp_query_details : public sinsp_request_details
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// The protocol state class
+// Sorter class
 ///////////////////////////////////////////////////////////////////////////////
 typedef bool (*url_comparer)(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst);
 
-class sinsp_protostate
+template <typename T>
+class request_sorter
 {
 public:
-	void update(sinsp_partial_transaction* tr, uint64_t time_delta, bool is_server);
-
-	inline void clear()
+	//
+	// Merge two maps by adding the elements of the source to the destination
+	//
+	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta)
 	{
-		m_server_urls.clear();
-		m_client_urls.clear();
-		m_server_status_codes.clear();
-		m_client_status_codes.clear();
+		if(entry->m_ncalls == 0)
+		{
+			entry->m_ncalls = 1;
+			entry->m_time_tot = time_delta;
+			entry->m_time_max = time_delta;
+			entry->m_bytes_in = tr->m_bytes_in;
+			entry->m_bytes_out = tr->m_bytes_out;
+		}
+		else
+		{
+			entry->m_ncalls++;
+			entry->m_time_tot += time_delta;
+			entry->m_bytes_in += tr->m_bytes_in;
+			entry->m_bytes_out += tr->m_bytes_out;
+
+			if(time_delta > entry->m_time_max)
+			{
+				entry->m_time_max = time_delta;
+			}
+		}
 	}
 
-	void add(sinsp_protostate* other)
+	//
+	// Merge two maps by adding the elements of the source to the destination
+	//
+	static void merge_maps(typename unordered_map<string, T>* dst, typename unordered_map<string, T>* src)
 	{
-		unordered_map<string, sinsp_url_details>::iterator uit;
-		unordered_map<string, sinsp_url_details>* pom;
-		unordered_map<uint32_t, uint32_t>::iterator scit;
-		unordered_map<uint32_t, uint32_t>::iterator scit1;
-		unordered_map<uint32_t, uint32_t>* psc;
+		unordered_map<string, T>::iterator uit;
 
 		//
-		// Add the server URLs
+		// Add the server queries
 		//
-		pom = &(other->m_server_urls);
-
-		for(uit = pom->begin(); uit != pom->end(); ++uit)
+		for(uit = src->begin(); uit != src->end(); ++uit)
 		{
-			sinsp_url_details* entry = &(m_server_urls[uit->first]);
+			T* entry = &((*dst)[uit->first]);
 
 			if(entry->m_ncalls == 0)
 			{
@@ -149,69 +164,100 @@ public:
 				}
 			}
 		}
+	}
 
-		//
-		// Add the client URLs
-		//
-		pom = &(other->m_client_urls);
+	//
+	// Comparers for sorting
+	//
+	static bool cmp_ncalls(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	{
+		return src->second.m_ncalls > dst->second.m_ncalls;
+	}
 
-		for(uit = pom->begin(); uit != pom->end(); ++uit)
+	static bool cmp_time_avg(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	{
+		return (src->second.m_time_tot / src->second.m_ncalls) > (dst->second.m_time_tot / dst->second.m_ncalls);
+	}
+
+	static bool cmp_time_max(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	{
+		return src->second.m_time_max > dst->second.m_time_max;
+	}
+
+	static bool cmp_bytes_tot(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	{
+		return (src->second.m_bytes_in + src->second.m_bytes_out) > 
+			(dst->second.m_bytes_in + dst->second.m_bytes_out);
+	}
+
+	//
+	// Marking functions
+	//
+	static void mark_top_by(vector<typename unordered_map<string, T>::iterator>* sortable_list,
+							url_comparer comparer)
+	{
+		uint32_t j;
+
+		partial_sort(sortable_list->begin(), 
+			sortable_list->begin() + TOP_URLS_IN_SAMPLE, 
+			sortable_list->end(),
+			comparer);
+
+		for(j = 0; j < TOP_URLS_IN_SAMPLE; j++)
 		{
-			sinsp_url_details* entry = &(m_client_urls[uit->first]);
-
-			if(entry->m_ncalls == 0)
-			{
-				*entry = uit->second;
-			}
-			else
-			{
-				entry->m_ncalls += uit->second.m_ncalls;
-				entry->m_time_tot += uit->second.m_time_tot;
-				entry->m_bytes_in += uit->second.m_bytes_in;
-				entry->m_bytes_out += uit->second.m_bytes_out;
-
-				if(uit->second.m_time_max > entry->m_time_max)
-				{
-					entry->m_time_max = uit->second.m_time_max;
-				}
-			}
-		}
-
-		//
-		// Add the status codes
-		//
-		psc = &(other->m_server_status_codes);
-
-		for(scit = psc->begin(); scit != psc->end(); ++scit)
-		{
-			scit1 = m_server_status_codes.find(scit->first);
-
-			if(scit1 == m_server_status_codes.end())
-			{
-				m_server_status_codes[scit->first] = scit->second;
-			}
-			else
-			{
-				m_server_status_codes[scit->first] += scit->second;
-			}
-		}
-
-		psc = &(other->m_client_status_codes);
-
-		for(scit = psc->begin(); scit != psc->end(); ++scit)
-		{
-			scit1 = m_client_status_codes.find(scit->first);
-
-			if(scit1 == m_client_status_codes.end())
-			{
-				m_client_status_codes[scit->first] = scit->second;
-			}
-			else
-			{
-				m_client_status_codes[scit->first] += scit->second;
-			}
+			sortable_list->at(j)->second.m_flags =
+				(T::udflags)((uint32_t)sortable_list->at(j)->second.m_flags | (uint32_t)T::UF_INCLUDE_IN_SAMPLE);
 		}
 	}
+
+	static void mark_top(vector<typename unordered_map<string, T>::iterator>* sortable_list)
+	{
+		//
+		// Mark top based on number of calls
+		//
+		mark_top_by(sortable_list, 
+			cmp_ncalls);
+						
+		//
+		// Mark top based on total time
+		//
+		mark_top_by(sortable_list, 
+			cmp_time_avg);
+
+		//
+		// Mark top based on max time
+		//
+		mark_top_by(sortable_list, 
+			cmp_time_max);
+
+		//
+		// Mark top based on total bytes
+		//
+		mark_top_by(sortable_list, 
+			cmp_bytes_tot);
+	}
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// The protocol state class
+///////////////////////////////////////////////////////////////////////////////
+class sinsp_protostate
+{
+public:
+	void update(sinsp_partial_transaction* tr, uint64_t time_delta, bool is_server);
+
+	inline void clear()
+	{
+		m_server_urls.clear();
+		m_client_urls.clear();
+		m_server_status_codes.clear();
+		m_client_status_codes.clear();
+
+		m_server_queries.clear();
+		m_client_queries.clear();
+	}
+
+	void add(sinsp_protostate* other);
 
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio);
 
@@ -229,45 +275,22 @@ public:
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
 		uint64_t time_delta, bool is_server);
-
 	inline void update_mysql(sinsp_partial_transaction* tr,
 		uint64_t time_delta, bool is_server);
-
+	inline void add_http(sinsp_protostate* other);
+	inline void add_mysql(sinsp_protostate* other);
 	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_url_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
-
 	void status_code_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<uint32_t, uint32_t>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
-
-	inline void mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list, url_comparer comparer);
-
-	//
-	// Comparers for sorting
-	//
-	static bool cmp_ncalls(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
-	{
-		return src->second.m_ncalls > dst->second.m_ncalls;
-	}
-
-	static bool cmp_time_avg(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
-	{
-		return (src->second.m_time_tot / src->second.m_ncalls) > (dst->second.m_time_tot / dst->second.m_ncalls);
-	}
-
-	static bool cmp_time_max(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
-	{
-		return src->second.m_time_max > dst->second.m_time_max;
-	}
-
-	static bool cmp_bytes_tot(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst)
-	{
-		return (src->second.m_bytes_in + src->second.m_bytes_out) > 
-			(dst->second.m_bytes_in + dst->second.m_bytes_out);
-	}
+	void query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+		unordered_map<string, sinsp_query_details>* table,
+		bool is_server,
+		uint32_t sampling_ratio);
 };
 
 #endif // HAS_ANALYZER

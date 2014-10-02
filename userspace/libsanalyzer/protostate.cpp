@@ -14,6 +14,9 @@
 #include "draios.pb.h"
 #include "protostate.h"
 
+///////////////////////////////////////////////////////////////////////////////
+// Transaction table update support
+///////////////////////////////////////////////////////////////////////////////
 inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr, 
 						uint64_t time_delta, bool is_server)
 {
@@ -37,26 +40,7 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 			entry = &(m_client_urls[pp->m_url]);
 		}
 
-		if(entry->m_ncalls == 0)
-		{
-			entry->m_ncalls = 1;
-			entry->m_time_tot = time_delta;
-			entry->m_time_max = time_delta;
-			entry->m_bytes_in = tr->m_bytes_in;
-			entry->m_bytes_out = tr->m_bytes_out;
-		}
-		else
-		{
-			entry->m_ncalls++;
-			entry->m_time_tot += time_delta;
-			entry->m_bytes_in += tr->m_bytes_in;
-			entry->m_bytes_out += tr->m_bytes_out;
-
-			if(time_delta > entry->m_time_max)
-			{
-				entry->m_time_max = time_delta;
-			}
-		}
+		request_sorter<sinsp_url_details>::update(entry, tr, time_delta);
 
 		//
 		// Update the status code table
@@ -182,26 +166,70 @@ void sinsp_protostate::update(sinsp_partial_transaction* tr,
 	}
 }
 
-inline void sinsp_protostate::mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list,
-						url_comparer comparer)
+///////////////////////////////////////////////////////////////////////////////
+// Aggregation support
+///////////////////////////////////////////////////////////////////////////////
+inline void sinsp_protostate::add_http(sinsp_protostate* other)
 {
-	uint32_t j;
+	//
+	// Add the URLs
+	//
+	request_sorter<sinsp_url_details>::merge_maps(&m_server_urls, &(other->m_server_urls));
+	request_sorter<sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
 
 	//
-	// Mark top based on number of calls
+	// Add the status codes
 	//
-	partial_sort(sortable_list->begin(), 
-		sortable_list->begin() + TOP_URLS_IN_SAMPLE, 
-		sortable_list->end(),
-		comparer);
+	unordered_map<uint32_t, uint32_t>::iterator scit;
+	unordered_map<uint32_t, uint32_t>::iterator scit1;
+	unordered_map<uint32_t, uint32_t>* psc;
 
-	for(j = 0; j < TOP_URLS_IN_SAMPLE; j++)
+	psc = &(other->m_server_status_codes);
+
+	for(scit = psc->begin(); scit != psc->end(); ++scit)
 	{
-		sortable_list->at(j)->second.m_flags =
-			(sinsp_url_details::udflags)((uint32_t)sortable_list->at(j)->second.m_flags | (uint32_t)sinsp_url_details::UF_INCLUDE_IN_SAMPLE);
+		scit1 = m_server_status_codes.find(scit->first);
+
+		if(scit1 == m_server_status_codes.end())
+		{
+			m_server_status_codes[scit->first] = scit->second;
+		}
+		else
+		{
+			m_server_status_codes[scit->first] += scit->second;
+		}
+	}
+
+	psc = &(other->m_client_status_codes);
+
+	for(scit = psc->begin(); scit != psc->end(); ++scit)
+	{
+		scit1 = m_client_status_codes.find(scit->first);
+
+		if(scit1 == m_client_status_codes.end())
+		{
+			m_client_status_codes[scit->first] = scit->second;
+		}
+		else
+		{
+			m_client_status_codes[scit->first] += scit->second;
+		}
 	}
 }
 
+inline void sinsp_protostate::add_mysql(sinsp_protostate* other)
+{
+}
+
+void sinsp_protostate::add(sinsp_protostate* other)
+{
+	add_http(other);
+	add_mysql(other);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Protobuf generation
+///////////////////////////////////////////////////////////////////////////////
 void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 						   unordered_map<string, sinsp_url_details>* table,
 						   bool is_server,
@@ -224,25 +252,7 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			sortable_list.push_back(uit);
 		}
 
-		//
-		// Mark top based on number of calls
-		//
-		mark_top_by(&sortable_list, cmp_ncalls);
-						
-		//
-		// Mark top based on total time
-		//
-		mark_top_by(&sortable_list, cmp_time_avg);
-
-		//
-		// Mark top based on max time
-		//
-		mark_top_by(&sortable_list, cmp_time_max);
-
-		//
-		// Mark top based on total bytes
-		//
-		mark_top_by(&sortable_list, cmp_bytes_tot);
+		request_sorter<sinsp_url_details>::mark_top(&sortable_list);
 
 		//
 		// Go through the list and emit the marked elements
@@ -361,8 +371,18 @@ void sinsp_protostate::status_code_table_to_protobuf(draiosproto::proto_info* pr
 	}
 }
 
+void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+						   unordered_map<string, sinsp_query_details>* table,
+						   bool is_server,
+						   uint32_t sampling_ratio)
+{
+}
+
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio)
 {
+	//
+	// HTTP
+	//
 	if(m_server_urls.size() != 0)
 	{
 		url_table_to_protobuf(protobuf_msg, &m_server_urls, true, sampling_ratio);
@@ -381,6 +401,19 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	if(m_client_status_codes.size() != 0)
 	{
 		status_code_table_to_protobuf(protobuf_msg, &m_client_status_codes, false, sampling_ratio);
+	}
+
+	//
+	// mysql
+	//
+	if(m_server_queries.size() != 0)
+	{
+		query_table_to_protobuf(protobuf_msg, &m_server_queries, true, sampling_ratio);
+	}
+
+	if(m_client_queries.size() != 0)
+	{
+		query_table_to_protobuf(protobuf_msg, &m_client_queries, false, sampling_ratio);
 	}
 }
 
