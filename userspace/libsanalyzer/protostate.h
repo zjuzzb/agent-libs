@@ -64,9 +64,9 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// URL table entry
+// Table entries
 ///////////////////////////////////////////////////////////////////////////////
-class sinsp_url_details
+class sinsp_request_details
 {
 public:
 	enum udflags
@@ -75,7 +75,7 @@ public:
 		UF_INCLUDE_IN_SAMPLE = 1
 	};
 
-	sinsp_url_details()
+	sinsp_request_details()
 	{
 		m_ncalls = 0;
 		m_flags = UF_NONE;
@@ -89,6 +89,14 @@ public:
 	udflags m_flags;
 };
 
+class sinsp_url_details : public sinsp_request_details
+{
+};
+
+class sinsp_query_details : public sinsp_request_details
+{
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
 ///////////////////////////////////////////////////////////////////////////////
@@ -97,85 +105,7 @@ typedef bool (*url_comparer)(unordered_map<string, sinsp_url_details>::iterator 
 class sinsp_protostate
 {
 public:
-	inline void update(sinsp_partial_transaction* tr,
-		uint64_t time_delta,
-		bool is_server)
-	{
-		if(tr->m_type == sinsp_partial_transaction::TYPE_HTTP)
-		{
-			//ASSERT(tr->m_protoparser != NULL);
-
-			if(tr->m_protoparser->m_is_valid)
-			{
-				sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
-
-				//
-				// Update the URL table
-				//
-				sinsp_url_details* entry;
-
-				if(is_server)
-				{
-					entry = &(m_server_urls[pp->m_url]);
-				}
-				else
-				{
-					entry = &(m_client_urls[pp->m_url]);
-				}
-
-				if(entry->m_ncalls == 0)
-				{
-					entry->m_ncalls = 1;
-					entry->m_time_tot = time_delta;
-					entry->m_time_max = time_delta;
-					entry->m_bytes_in = tr->m_bytes_in;
-					entry->m_bytes_out = tr->m_bytes_out;
-				}
-				else
-				{
-					entry->m_ncalls++;
-					entry->m_time_tot += time_delta;
-					entry->m_bytes_in += tr->m_bytes_in;
-					entry->m_bytes_out += tr->m_bytes_out;
-
-					if(time_delta > entry->m_time_max)
-					{
-						entry->m_time_max = time_delta;
-					}
-				}
-
-				//
-				// Update the status code table
-				//
-				unordered_map<uint32_t, uint32_t>::iterator scit;
-
-				if(is_server)
-				{
-					scit = m_server_status_codes.find(pp->m_status_code);
-					if(scit != m_server_status_codes.end())
-					{
-						scit->second++;
-					}
-					else
-					{
-						m_server_status_codes[pp->m_status_code] = 1;
-					}
-				}
-				else
-				{
-					scit = m_client_status_codes.find(pp->m_status_code);
-					if(scit != m_client_status_codes.end())
-					{
-						scit->second++;
-					}
-					else
-					{
-						m_client_status_codes[pp->m_status_code] = 1;
-					}
-				}
-			}
-		}
-	}
+	void update(sinsp_partial_transaction* tr, uint64_t time_delta, bool is_server);
 
 	inline void clear()
 	{
@@ -290,8 +220,19 @@ public:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, uint32_t> m_server_status_codes;
 	unordered_map<uint32_t, uint32_t> m_client_status_codes;
+	// The list of mysql queries
+	unordered_map<string, sinsp_query_details> m_server_queries;
+	unordered_map<string, sinsp_query_details> m_client_queries;
+//	unordered_map<uint32_t, uint32_t> m_server_status_codes;
+//	unordered_map<uint32_t, uint32_t> m_client_status_codes;
 
 private:
+	inline void update_http(sinsp_partial_transaction* tr,
+		uint64_t time_delta, bool is_server);
+
+	inline void update_mysql(sinsp_partial_transaction* tr,
+		uint64_t time_delta, bool is_server);
+
 	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_url_details>* table,
 		bool is_server,

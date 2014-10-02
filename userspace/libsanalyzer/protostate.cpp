@@ -14,9 +14,174 @@
 #include "draios.pb.h"
 #include "protostate.h"
 
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_proto_detector implementation
-///////////////////////////////////////////////////////////////////////////////
+inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr, 
+						uint64_t time_delta, bool is_server)
+{
+	ASSERT(tr->m_protoparser != NULL);
+
+	if(tr->m_protoparser->m_is_valid)
+	{
+		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
+
+		//
+		// Update the URL table
+		//
+		sinsp_url_details* entry;
+
+		if(is_server)
+		{
+			entry = &(m_server_urls[pp->m_url]);
+		}
+		else
+		{
+			entry = &(m_client_urls[pp->m_url]);
+		}
+
+		if(entry->m_ncalls == 0)
+		{
+			entry->m_ncalls = 1;
+			entry->m_time_tot = time_delta;
+			entry->m_time_max = time_delta;
+			entry->m_bytes_in = tr->m_bytes_in;
+			entry->m_bytes_out = tr->m_bytes_out;
+		}
+		else
+		{
+			entry->m_ncalls++;
+			entry->m_time_tot += time_delta;
+			entry->m_bytes_in += tr->m_bytes_in;
+			entry->m_bytes_out += tr->m_bytes_out;
+
+			if(time_delta > entry->m_time_max)
+			{
+				entry->m_time_max = time_delta;
+			}
+		}
+
+		//
+		// Update the status code table
+		//
+		unordered_map<uint32_t, uint32_t>::iterator scit;
+
+		if(is_server)
+		{
+			scit = m_server_status_codes.find(pp->m_status_code);
+			if(scit != m_server_status_codes.end())
+			{
+				scit->second++;
+			}
+			else
+			{
+				m_server_status_codes[pp->m_status_code] = 1;
+			}
+		}
+		else
+		{
+			scit = m_client_status_codes.find(pp->m_status_code);
+			if(scit != m_client_status_codes.end())
+			{
+				scit->second++;
+			}
+			else
+			{
+				m_client_status_codes[pp->m_status_code] = 1;
+			}
+		}
+	}
+}
+
+inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr, 
+						uint64_t time_delta, bool is_server)
+{
+	ASSERT(tr->m_protoparser != NULL);
+
+	if(tr->m_protoparser->m_is_valid)
+	{
+		sinsp_mysql_parser* pp = (sinsp_mysql_parser*)tr->m_protoparser;
+
+		//
+		// Update the query table
+		//
+		sinsp_query_details* entry;
+
+		if(is_server)
+		{
+			entry = &(m_server_queries[pp->m_statement]);
+		}
+		else
+		{
+			entry = &(m_client_queries[pp->m_statement]);
+		}
+
+		if(entry->m_ncalls == 0)
+		{
+			entry->m_ncalls = 1;
+			entry->m_time_tot = time_delta;
+			entry->m_time_max = time_delta;
+			entry->m_bytes_in = tr->m_bytes_in;
+			entry->m_bytes_out = tr->m_bytes_out;
+		}
+		else
+		{
+			entry->m_ncalls++;
+			entry->m_time_tot += time_delta;
+			entry->m_bytes_in += tr->m_bytes_in;
+			entry->m_bytes_out += tr->m_bytes_out;
+
+			if(time_delta > entry->m_time_max)
+			{
+				entry->m_time_max = time_delta;
+			}
+		}
+
+		//
+		// Update the status code table
+		//
+/*
+		unordered_map<uint32_t, uint32_t>::iterator scit;
+
+		if(is_server)
+		{
+			scit = m_server_status_codes.find(pp->m_status_code);
+			if(scit != m_server_status_codes.end())
+			{
+				scit->second++;
+			}
+			else
+			{
+				m_server_status_codes[pp->m_status_code] = 1;
+			}
+		}
+		else
+		{
+			scit = m_client_status_codes.find(pp->m_status_code);
+			if(scit != m_client_status_codes.end())
+			{
+				scit->second++;
+			}
+			else
+			{
+				m_client_status_codes[pp->m_status_code] = 1;
+			}
+		}
+*/
+	}
+}
+
+void sinsp_protostate::update(sinsp_partial_transaction* tr,
+	uint64_t time_delta,
+	bool is_server)
+{
+	if(tr->m_type == sinsp_partial_transaction::TYPE_HTTP)
+	{
+		update_http(tr, time_delta, is_server);
+	}
+	else if(tr->m_type == sinsp_partial_transaction::TYPE_MYSQL)
+	{
+//		update_mysql(tr, time_delta, is_server);
+	}
+}
+
 inline void sinsp_protostate::mark_top_by(vector<unordered_map<string, sinsp_url_details>::iterator>* sortable_list,
 						url_comparer comparer)
 {

@@ -83,6 +83,8 @@ private:
 	char* m_statement;
 	char* m_error_message;
 	uint16_t m_error_code;
+
+	friend class sinsp_protostate;
 };
 
 #endif // HAS_ANALYZER
