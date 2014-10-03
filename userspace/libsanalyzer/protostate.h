@@ -81,7 +81,8 @@ public:
 		m_flags = SRF_NONE;
 	}
 
-	uint32_t m_ncalls;		// number of times this url has been served
+	uint32_t m_ncalls;		// number of times this request has been served
+	uint32_t m_nerrors;		// number of times serving this request has generated an error
 	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
@@ -110,11 +111,19 @@ public:
 	//
 	// Merge two maps by adding the elements of the source to the destination
 	//
-	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta)
+	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta, bool is_failure)
 	{
 		if(entry->m_ncalls == 0)
 		{
 			entry->m_ncalls = 1;
+			if(is_failure)
+			{
+				entry->m_nerrors = 1;
+			}
+			else
+			{
+				entry->m_nerrors = 0;
+			}
 			entry->m_time_tot = time_delta;
 			entry->m_time_max = time_delta;
 			entry->m_bytes_in = tr->m_prev_bytes_in;
@@ -123,6 +132,10 @@ public:
 		else
 		{
 			entry->m_ncalls++;
+			if(is_failure)
+			{
+				entry->m_nerrors++;
+			}
 			entry->m_time_tot += time_delta;
 			entry->m_bytes_in += tr->m_prev_bytes_in;
 			entry->m_bytes_out += tr->m_prev_bytes_out;
@@ -163,6 +176,7 @@ public:
 			else
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
+				entry->m_nerrors += uit->second.m_nerrors;
 				entry->m_time_tot += uit->second.m_time_tot;
 				entry->m_bytes_in += uit->second.m_bytes_in;
 				entry->m_bytes_out += uit->second.m_bytes_out;
@@ -181,6 +195,11 @@ public:
 	static bool cmp_ncalls(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
 	{
 		return src->second.m_ncalls > dst->second.m_ncalls;
+	}
+
+	static bool cmp_nerrors(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	{
+		return src->second.m_nerrors > dst->second.m_nerrors;
 	}
 
 	static bool cmp_time_avg(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
@@ -244,6 +263,32 @@ public:
 		//
 		mark_top_by(sortable_list, 
 			cmp_bytes_tot);
+		
+		//
+		// Mark top based on number of errors
+		// Note: we don't use mark_top_by() because there's a good chance that less than
+		//       TOP_URLS_IN_SAMPLE entries have errors, and so we add only the ones that
+		//       have m_nerrors > 0.
+		//
+		partial_sort(sortable_list->begin(), 
+			sortable_list->begin() + TOP_URLS_IN_SAMPLE, 
+			sortable_list->end(),
+			cmp_nerrors);
+
+		for(uint32_t j = 0; j < TOP_URLS_IN_SAMPLE; j++)
+		{
+			T* entry = &(sortable_list->at(j)->second);
+
+			if(entry->m_nerrors > 0)
+			{
+				entry->m_flags =
+					(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
+			}
+			else
+			{
+				break;
+			}
+		}
 	}
 };
 

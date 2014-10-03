@@ -40,7 +40,8 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 			entry = &(m_client_urls[pp->m_url]);
 		}
 
-		request_sorter<sinsp_url_details>::update(entry, tr, time_delta);
+		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
+		request_sorter<sinsp_url_details>::update(entry, tr, time_delta, is_error);
 
 		//
 		// Update the status code table
@@ -105,39 +106,8 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 			entry = &(m_client_queries[pp->m_statement]);
 		}
 
-		request_sorter<sinsp_query_details>::update(entry, tr, time_delta);
-
-/*
-		//
-		// Update the status code table
-		//
-		unordered_map<uint32_t, uint32_t>::iterator scit;
-
-		if(is_server)
-		{
-			scit = m_server_status_codes.find(pp->m_status_code);
-			if(scit != m_server_status_codes.end())
-			{
-				scit->second++;
-			}
-			else
-			{
-				m_server_status_codes[pp->m_status_code] = 1;
-			}
-		}
-		else
-		{
-			scit = m_client_status_codes.find(pp->m_status_code);
-			if(scit != m_client_status_codes.end())
-			{
-				scit->second++;
-			}
-			else
-			{
-				m_client_status_codes[pp->m_status_code] = 1;
-			}
-		}
-*/
+		bool is_error = (pp->m_error_code != 0);
+		request_sorter<sinsp_query_details>::update(entry, tr, time_delta, is_error);
 	}
 }
 
@@ -270,6 +240,7 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 				ud->set_time_max((*vit)->second.m_time_max);
 				ud->set_bytes_in((*vit)->second.m_bytes_in);
 				ud->set_bytes_out((*vit)->second.m_bytes_out);
+				ud->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
 			}
 		}
 	}
@@ -295,6 +266,7 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			ud->set_time_max(uit->second.m_time_max);
 			ud->set_bytes_in(uit->second.m_bytes_in);
 			ud->set_bytes_out(uit->second.m_bytes_out);
+			ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
 		}
 	}
 }
@@ -411,6 +383,7 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 				ud->set_time_max((*vit)->second.m_time_max);
 				ud->set_bytes_in((*vit)->second.m_bytes_in);
 				ud->set_bytes_out((*vit)->second.m_bytes_out);
+				ud->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
 			}
 		}
 	}
@@ -436,6 +409,7 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 			ud->set_time_max(uit->second.m_time_max);
 			ud->set_bytes_in(uit->second.m_bytes_in);
 			ud->set_bytes_out(uit->second.m_bytes_out);
+			ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
 		}
 	}
 }

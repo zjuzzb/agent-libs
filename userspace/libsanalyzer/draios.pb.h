@@ -1801,6 +1801,13 @@ class url_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 bytes_out() const;
   inline void set_bytes_out(::google::protobuf::uint64 value);
 
+  // required uint32 nerrors = 7;
+  inline bool has_nerrors() const;
+  inline void clear_nerrors();
+  static const int kNerrorsFieldNumber = 7;
+  inline ::google::protobuf::uint32 nerrors() const;
+  inline void set_nerrors(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.url_details)
  private:
   inline void set_has_url();
@@ -1815,18 +1822,21 @@ class url_details : public ::google::protobuf::Message {
   inline void clear_has_bytes_in();
   inline void set_has_bytes_out();
   inline void clear_has_bytes_out();
+  inline void set_has_nerrors();
+  inline void clear_has_nerrors();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* url_;
   ::google::protobuf::uint64 time_tot_;
   ::google::protobuf::uint64 time_max_;
+  ::google::protobuf::uint32 ncalls_;
+  ::google::protobuf::uint32 nerrors_;
   ::google::protobuf::uint64 bytes_in_;
   ::google::protobuf::uint64 bytes_out_;
-  ::google::protobuf::uint32 ncalls_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2154,6 +2164,13 @@ class query_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 bytes_out() const;
   inline void set_bytes_out(::google::protobuf::uint64 value);
 
+  // required uint32 nerrors = 7;
+  inline bool has_nerrors() const;
+  inline void clear_nerrors();
+  static const int kNerrorsFieldNumber = 7;
+  inline ::google::protobuf::uint32 nerrors() const;
+  inline void set_nerrors(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.query_details)
  private:
   inline void set_has_query();
@@ -2168,18 +2185,21 @@ class query_details : public ::google::protobuf::Message {
   inline void clear_has_bytes_in();
   inline void set_has_bytes_out();
   inline void clear_has_bytes_out();
+  inline void set_has_nerrors();
+  inline void clear_has_nerrors();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* query_;
   ::google::protobuf::uint64 time_tot_;
   ::google::protobuf::uint64 time_max_;
+  ::google::protobuf::uint32 ncalls_;
+  ::google::protobuf::uint32 nerrors_;
   ::google::protobuf::uint64 bytes_in_;
   ::google::protobuf::uint64 bytes_out_;
-  ::google::protobuf::uint32 ncalls_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7605,6 +7625,28 @@ inline void url_details::set_bytes_out(::google::protobuf::uint64 value) {
   bytes_out_ = value;
 }
 
+// required uint32 nerrors = 7;
+inline bool url_details::has_nerrors() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void url_details::set_has_nerrors() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void url_details::clear_has_nerrors() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void url_details::clear_nerrors() {
+  nerrors_ = 0u;
+  clear_has_nerrors();
+}
+inline ::google::protobuf::uint32 url_details::nerrors() const {
+  return nerrors_;
+}
+inline void url_details::set_nerrors(::google::protobuf::uint32 value) {
+  set_has_nerrors();
+  nerrors_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // status_code_details
@@ -7939,6 +7981,28 @@ inline ::google::protobuf::uint64 query_details::bytes_out() const {
 inline void query_details::set_bytes_out(::google::protobuf::uint64 value) {
   set_has_bytes_out();
   bytes_out_ = value;
+}
+
+// required uint32 nerrors = 7;
+inline bool query_details::has_nerrors() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void query_details::set_has_nerrors() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void query_details::clear_has_nerrors() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void query_details::clear_nerrors() {
+  nerrors_ = 0u;
+  clear_has_nerrors();
+}
+inline ::google::protobuf::uint32 query_details::nerrors() const {
+  return nerrors_;
+}
+inline void query_details::set_nerrors(::google::protobuf::uint32 value) {
+  set_has_nerrors();
+  nerrors_ = value;
 }
 
 // -------------------------------------------------------------------

@@ -136,6 +136,7 @@ message url_details {
 	required uint64 time_max = 4;
 	required uint64 bytes_in = 5;
 	required uint64 bytes_out = 6;
+	required uint32 nerrors = 7;
 }
 
 message status_code_details {
@@ -163,6 +164,7 @@ message query_details {
 	required uint64 time_max = 4;
 	required uint64 bytes_in = 5;
 	required uint64 bytes_out = 6;
+	required uint32 nerrors = 7;
 }
 
 //
