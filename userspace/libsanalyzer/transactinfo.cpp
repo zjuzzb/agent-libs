@@ -310,6 +310,8 @@ void sinsp_partial_transaction::reset()
 	m_prev_prev_start_of_transaction_time = 0;
 	m_is_active = false;
 	m_n_direction_switches = 0;
+	m_prev_bytes_in = 0;
+	m_prev_bytes_out = 0;
 }
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
@@ -368,6 +370,8 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
+				m_prev_bytes_in = m_bytes_in - len;
+				m_prev_bytes_out = m_bytes_out;
 				m_bytes_in = len;
 				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
@@ -430,6 +434,8 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 				m_prev_direction = m_direction;
 				m_prev_start_time = m_start_time;
 				m_prev_end_time = m_end_time;
+				m_prev_bytes_in = m_bytes_in;
+				m_prev_bytes_out = m_bytes_out - len;
 				m_bytes_out = len;
 				m_prev_start_of_transaction_time = m_start_of_transaction_time;
 				res = STATE_SWITCHED;
@@ -573,6 +579,8 @@ void sinsp_partial_transaction::mark_active_and_reset(sinsp_partial_transaction:
 	m_type = newtype;
 	m_bytes_in = 0;
 	m_bytes_out = 0;
+	m_prev_bytes_in = 0;
+	m_prev_bytes_out = 0;
 	m_is_active = true;
 }
 

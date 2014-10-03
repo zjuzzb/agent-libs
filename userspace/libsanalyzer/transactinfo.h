@@ -212,6 +212,8 @@ public:
 	family m_family;
 	uint32_t m_bytes_in;
 	uint32_t m_bytes_out;
+	uint32_t m_prev_bytes_in;
+	uint32_t m_prev_bytes_out;
 	int32_t m_cpuid;
 	uint32_t m_flags;
 	uint32_t m_n_direction_switches; // Number of times this transaction has switched direction 

@@ -117,8 +117,8 @@ public:
 			entry->m_ncalls = 1;
 			entry->m_time_tot = time_delta;
 			entry->m_time_max = time_delta;
-			entry->m_bytes_in = tr->m_bytes_in;
-			entry->m_bytes_out = tr->m_bytes_out;
+			entry->m_bytes_in = tr->m_prev_bytes_in;
+			entry->m_bytes_out = tr->m_prev_bytes_out;
 		}
 		else
 		{
