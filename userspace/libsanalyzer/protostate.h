@@ -66,19 +66,19 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 // Table entries
 ///////////////////////////////////////////////////////////////////////////////
+typedef enum sinsp_request_flags
+{
+	SRF_NONE = 0,
+	SRF_INCLUDE_IN_SAMPLE = 1
+}sinsp_request_flags;
+
 class sinsp_request_details
 {
 public:
-	enum udflags
-	{
-		UF_NONE = 0,
-		UF_INCLUDE_IN_SAMPLE = 1
-	};
-
 	sinsp_request_details()
 	{
 		m_ncalls = 0;
-		m_flags = UF_NONE;
+		m_flags = SRF_NONE;
 	}
 
 	uint32_t m_ncalls;		// number of times this url has been served
@@ -86,7 +86,7 @@ public:
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
-	udflags m_flags;
+	sinsp_request_flags m_flags;
 };
 
 class sinsp_url_details : public sinsp_request_details
@@ -136,9 +136,17 @@ public:
 	//
 	// Merge two maps by adding the elements of the source to the destination
 	//
+#ifdef _WIN32
 	static void merge_maps(typename unordered_map<string, T>* dst, typename unordered_map<string, T>* src)
+#else	
+	static void merge_maps(unordered_map<string, T>* dst, unordered_map<string, T>* src)
+#endif	
 	{
+#ifdef _WIN32
 		unordered_map<string, T>::iterator uit;
+#else	
+		typename unordered_map<string, T>::iterator uit;
+#endif
 
 		//
 		// Add the server queries
@@ -206,7 +214,7 @@ public:
 		for(j = 0; j < TOP_URLS_IN_SAMPLE; j++)
 		{
 			sortable_list->at(j)->second.m_flags =
-				(T::udflags)((uint32_t)sortable_list->at(j)->second.m_flags | (uint32_t)T::UF_INCLUDE_IN_SAMPLE);
+				(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
 		}
 	}
 

@@ -268,7 +268,7 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 				ud = protobuf_msg->mutable_http()->add_client_urls();
 			}
 
-			if((*vit)->second.m_flags & (uint32_t)sinsp_url_details::UF_INCLUDE_IN_SAMPLE)
+			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 			{
 				ud->set_url((*vit)->first);
 				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
