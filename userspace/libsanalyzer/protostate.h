@@ -124,8 +124,8 @@ public:
 		{
 			entry->m_ncalls++;
 			entry->m_time_tot += time_delta;
-			entry->m_bytes_in += tr->m_bytes_in;
-			entry->m_bytes_out += tr->m_bytes_out;
+			entry->m_bytes_in += tr->m_prev_bytes_in;
+			entry->m_bytes_out += tr->m_prev_bytes_out;
 
 			if((uint64_t)time_delta > entry->m_time_max)
 			{

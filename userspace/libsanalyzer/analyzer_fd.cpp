@@ -632,7 +632,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the connection
 		/////////////////////////////////////////////////////////////////////////////
-		sinsp_connection *connection = NULL; 
+		sinsp_connection* connection = NULL; 
 
 		if(evt->m_fdinfo->is_unix_socket())
 		{

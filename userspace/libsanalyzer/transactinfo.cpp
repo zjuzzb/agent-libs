@@ -487,6 +487,8 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 		m_prev_start_time = m_start_time;
 		m_prev_end_time = m_end_time;
 		m_prev_start_of_transaction_time = m_start_of_transaction_time;
+		m_prev_bytes_in = m_bytes_in;
+		m_prev_bytes_out = m_bytes_out;
 
 		m_direction = DIR_UNKNOWN;
 		return STATE_SWITCHED;
