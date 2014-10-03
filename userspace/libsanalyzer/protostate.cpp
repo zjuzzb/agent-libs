@@ -84,7 +84,15 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 		sinsp_mysql_parser* pp = (sinsp_mysql_parser*)tr->m_protoparser;
 
 		//
-		// Update the query table
+		// Make sure this is a query
+		//
+		if(pp->m_msgtype != sinsp_mysql_parser::MT_QUERY)
+		{
+			return;
+		}
+
+		//
+		// Update the URL table
 		//
 		sinsp_query_details* entry;
 
@@ -97,31 +105,12 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 			entry = &(m_client_queries[pp->m_statement]);
 		}
 
-		if(entry->m_ncalls == 0)
-		{
-			entry->m_ncalls = 1;
-			entry->m_time_tot = time_delta;
-			entry->m_time_max = time_delta;
-			entry->m_bytes_in = tr->m_bytes_in;
-			entry->m_bytes_out = tr->m_bytes_out;
-		}
-		else
-		{
-			entry->m_ncalls++;
-			entry->m_time_tot += time_delta;
-			entry->m_bytes_in += tr->m_bytes_in;
-			entry->m_bytes_out += tr->m_bytes_out;
+		request_sorter<sinsp_query_details>::update(entry, tr, time_delta);
 
-			if(time_delta > entry->m_time_max)
-			{
-				entry->m_time_max = time_delta;
-			}
-		}
-
+/*
 		//
 		// Update the status code table
 		//
-/*
 		unordered_map<uint32_t, uint32_t>::iterator scit;
 
 		if(is_server)
@@ -162,7 +151,7 @@ void sinsp_protostate::update(sinsp_partial_transaction* tr,
 	}
 	else if(tr->m_type == sinsp_partial_transaction::TYPE_MYSQL)
 	{
-//		update_mysql(tr, time_delta, is_server);
+		update_mysql(tr, time_delta, is_server);
 	}
 }
 
@@ -219,6 +208,11 @@ inline void sinsp_protostate::add_http(sinsp_protostate* other)
 
 inline void sinsp_protostate::add_mysql(sinsp_protostate* other)
 {
+	//
+	// Add the URLs
+	//
+	request_sorter<sinsp_query_details>::merge_maps(&m_server_queries, &(other->m_server_queries));
+	request_sorter<sinsp_query_details>::merge_maps(&m_client_queries, &(other->m_client_queries));
 }
 
 void sinsp_protostate::add(sinsp_protostate* other)
@@ -376,6 +370,74 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 						   bool is_server,
 						   uint32_t sampling_ratio)
 {
+	uint32_t j;
+	unordered_map<string, sinsp_query_details>::iterator uit;
+	draiosproto::query_details* ud;
+
+	if(table->size() > TOP_URLS_IN_SAMPLE)
+	{
+		//
+		// The table is big enough to require sorting
+		//
+		vector<unordered_map<string, sinsp_query_details>::iterator> sortable_list;
+		vector<unordered_map<string, sinsp_query_details>::iterator>::iterator vit;
+
+		for(uit = table->begin(); uit != table->end(); ++uit)
+		{
+			sortable_list.push_back(uit);
+		}
+
+		request_sorter<sinsp_query_details>::mark_top(&sortable_list);
+
+		//
+		// Go through the list and emit the marked elements
+		//
+		for(vit = sortable_list.begin(), j = 0; vit != sortable_list.end() && j < TOP_URLS_IN_SAMPLE; ++vit, ++j)
+		{
+			if(is_server)
+			{
+				ud = protobuf_msg->mutable_mysql()->add_server_queries();
+			}
+			else
+			{
+				ud = protobuf_msg->mutable_mysql()->add_client_queries();
+			}
+
+			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
+			{
+				ud->set_query((*vit)->first);
+				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
+				ud->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
+				ud->set_time_max((*vit)->second.m_time_max);
+				ud->set_bytes_in((*vit)->second.m_bytes_in);
+				ud->set_bytes_out((*vit)->second.m_bytes_out);
+			}
+		}
+	}
+	else
+	{
+		//
+		// The table is small enough that we don't need to sort it
+		//
+		for(uit = table->begin(); uit != table->end(); ++uit)
+		{
+			if(is_server)
+			{
+				ud = protobuf_msg->mutable_mysql()->add_server_queries();
+			}
+			else
+			{
+				ud = protobuf_msg->mutable_mysql()->add_client_queries();
+			}
+
+			ud->set_query(uit->first);
+			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+			ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->set_time_max(uit->second.m_time_max);
+			ud->set_bytes_in(uit->second.m_bytes_in);
+			ud->set_bytes_out(uit->second.m_bytes_out);
+		}
+	}
 }
 
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio)

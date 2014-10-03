@@ -100,11 +100,12 @@ class sinsp_query_details : public sinsp_request_details
 ///////////////////////////////////////////////////////////////////////////////
 // Sorter class
 ///////////////////////////////////////////////////////////////////////////////
-typedef bool (*url_comparer)(unordered_map<string, sinsp_url_details>::iterator src, unordered_map<string, sinsp_url_details>::iterator dst);
-
 template <typename T>
 class request_sorter
 {
+	typedef bool (*request_comparer)(typename unordered_map<string, T>::iterator src, 
+		typename unordered_map<string, T>::iterator dst);
+
 public:
 	//
 	// Merge two maps by adding the elements of the source to the destination
@@ -126,7 +127,7 @@ public:
 			entry->m_bytes_in += tr->m_bytes_in;
 			entry->m_bytes_out += tr->m_bytes_out;
 
-			if(time_delta > entry->m_time_max)
+			if((uint64_t)time_delta > entry->m_time_max)
 			{
 				entry->m_time_max = time_delta;
 			}
@@ -202,7 +203,7 @@ public:
 	// Marking functions
 	//
 	static void mark_top_by(vector<typename unordered_map<string, T>::iterator>* sortable_list,
-							url_comparer comparer)
+							request_comparer comparer)
 	{
 		uint32_t j;
 
