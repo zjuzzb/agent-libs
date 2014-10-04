@@ -33,10 +33,26 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 
 		if(is_server)
 		{
+			if(m_server_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				//
+				// Table limit reached
+				//
+				return;
+			}
+
 			entry = &(m_server_urls[pp->m_url]);
 		}
 		else
 		{
+			if(m_client_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				//
+				// Table limit reached
+				//
+				return;
+			}
+
 			entry = &(m_client_urls[pp->m_url]);
 		}
 
@@ -99,10 +115,26 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 
 		if(is_server)
 		{
+			if(m_server_queries.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				//
+				// Table limit reached
+				//
+				return;
+			}
+
 			entry = &(m_server_queries[pp->m_statement]);
 		}
 		else
 		{
+			if(m_client_queries.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				//
+				// Table limit reached
+				//
+				return;
+			}
+
 			entry = &(m_client_queries[pp->m_statement]);
 		}
 

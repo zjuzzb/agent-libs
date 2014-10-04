@@ -68,6 +68,11 @@
 #define TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS (3 * ONE_SECOND_IN_NS)
 
 //
+// Max size that a process' url/query... table can reach
+//
+#define MAX_THREAD_REQUEST_TABLE_SIZE 1024
+
+//
 // Process health score calculation constants
 //
 #define MAX_HEALTH_CONCURRENCY 16
