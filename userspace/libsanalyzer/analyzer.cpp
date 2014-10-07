@@ -2184,15 +2184,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Run the periodic connection and thread table cleanup
 	//
 	remove_expired_connections(ts);
-	if(m_inspector->m_thread_manager->remove_inactive_threads() == true)
-	{
-		//
-		// The thread tabl cleanup process might remove this thread and
-		// that would cause evt->m_tinfo to become invalid.
-		// To avoid that, we refresh evt->m_tinfo.
-		//
-		evt->m_tinfo = evt->get_thread_info();
-	}
+	m_inspector->m_thread_manager->remove_inactive_threads();
 	
 	if(evt)
 	{
@@ -2209,6 +2201,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		}
 
 		m_prev_sample_evtnum = evt->get_num();
+
+		//
+		// This thread might be removed, either by a procexit or by thread table
+		// cleanup process
+		// In either case, evt->m_tinfo would become invalid.
+		// To avoid that, we refresh evt->m_tinfo.
+		//
+		evt->m_tinfo = NULL;	// This is important to avoid using a stale cached value!
+		evt->m_tinfo = evt->get_thread_info();
 	}
 }
 
@@ -2404,8 +2405,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	// The following code is executed for every event
 	//
 	if(evt->m_tinfo == NULL || 
-		evt->get_type() == PPME_SCHEDSWITCH_1_E ||
-		evt->get_type() == PPME_SCHEDSWITCH_6_E)
+		etype == PPME_SCHEDSWITCH_1_E ||
+		etype == PPME_SCHEDSWITCH_6_E)
 	{
 		//
 		// No thread associated to this event, nothing to do
