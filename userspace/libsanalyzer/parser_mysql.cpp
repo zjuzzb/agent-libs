@@ -28,20 +28,20 @@ const char* sql_toks[] = {"SELECT",
 		"UNLOCK",
 		"ALTER"};
 
-uint32_t sql_toklens[] = {sizeof(sql_toks[0]) - 2,
-	sizeof(sql_toks[1]) - 2,
-	sizeof(sql_toks[2]) - 2,
-	sizeof(sql_toks[3]) - 2,
-	sizeof(sql_toks[4]) - 2,
-	sizeof(sql_toks[5]) - 2,
-	sizeof(sql_toks[6]) - 2,
-	sizeof(sql_toks[7]) - 2,
-	sizeof(sql_toks[8]) - 2,
-	sizeof(sql_toks[9]) - 2,
-	sizeof(sql_toks[10]) - 2,
-	sizeof(sql_toks[11]) - 2,
-	sizeof(sql_toks[12]) - 2,
-	sizeof(sql_toks[13]) - 2};
+uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
+	sizeof("INSERT") - 1,
+	sizeof("SET") - 1,
+	sizeof("CREATE") - 1,
+	sizeof("DELETE") - 1,
+	sizeof("DROP") - 1,
+	sizeof("REPLACE") - 1,
+	sizeof("UPDATE") - 1,
+	sizeof("USE") - 1,
+	sizeof("SHOW") - 1,
+	sizeof("SET") - 1,
+	sizeof("LOCK") - 1,
+	sizeof("UNLOCK") - 1,
+	sizeof("ALTER") - 1};
 
 inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped)
 {
