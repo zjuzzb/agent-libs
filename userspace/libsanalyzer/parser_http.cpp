@@ -41,27 +41,6 @@ sinsp_http_parser::~sinsp_http_parser()
 	}
 }
 
-inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
-{
-	uint32_t j = count;
-
-	while(--j)
-	{
-		//
-		// Note: '| 0x20' converts to lowercase
-		//
-		if(((*buf1) | 0x20) != ((*buf2) | 0x20))
-		{
-			return false;
-		}
-
-		buf1++;
-		buf2++;
-	}
-
-	return true;
-}
-
 inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 												 char* tosearch, uint32_t tosearchlen,
 												 OUT uint32_t* reslen)

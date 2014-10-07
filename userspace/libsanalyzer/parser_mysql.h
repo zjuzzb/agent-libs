@@ -51,6 +51,34 @@
 ///////////////////////////////////////////////////////////////////////////////
 // HTTP parser
 ///////////////////////////////////////////////////////////////////////////////
+class sinsp_slq_query_parser
+{
+public:	
+	enum operation_type
+	{
+		OT_NONE = 0,
+		OT_SELECT = 1,
+		OT_INSERT = 2,
+		OT_SET = 3,
+		OT_CREATE = 4,
+		OT_DELETE = 5,
+		OT_DROP = 6,
+		OT_REPLACE = 7,
+		OT_UPDATE = 8,
+		OT_USE = 9,
+		OT_SHOW = 10,
+		OT_LOCK = 11,
+		OT_UNLOCK = 12,
+		OT_ALTER = 13,
+	};
+
+	void parse(char* query, uint32_t querylen);
+
+	const char* get_operation_type_string();
+
+	operation_type m_operation_type;
+};
+
 class sinsp_mysql_parser : sinsp_protocol_parser
 {
 public:

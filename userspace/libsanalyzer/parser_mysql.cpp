@@ -13,6 +13,158 @@
 
 #ifdef HAS_ANALYZER
 
+const char* sql_toks[] = {"SELECT",
+		"INSERT",
+		"SET",
+		"CREATE",
+		"DELETE",
+		"DROP",
+		"REPLACE",
+		"UPDATE",
+		"USE",
+		"SHOW",
+		"SET",
+		"LOCK",
+		"UNLOCK",
+		"ALTER"};
+
+uint32_t sql_toklens[] = {sizeof(sql_toks[0]) - 2,
+	sizeof(sql_toks[1]) - 2,
+	sizeof(sql_toks[2]) - 2,
+	sizeof(sql_toks[3]) - 2,
+	sizeof(sql_toks[4]) - 2,
+	sizeof(sql_toks[5]) - 2,
+	sizeof(sql_toks[6]) - 2,
+	sizeof(sql_toks[7]) - 2,
+	sizeof(sql_toks[8]) - 2,
+	sizeof(sql_toks[9]) - 2,
+	sizeof(sql_toks[10]) - 2,
+	sizeof(sql_toks[11]) - 2,
+	sizeof(sql_toks[12]) - 2,
+	sizeof(sql_toks[13]) - 2};
+
+inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped)
+{
+	uint32_t j;
+	int32_t res = -1;
+	const char* p = src;
+	const char* pend = src + srclen;
+	*nskipped = 0;
+
+	//
+	// Find the end of the word
+	//
+	while(*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n')
+	{
+		if(p == pend)
+		{
+			return -1;
+		}
+
+		p++;
+	}
+
+	//
+	// Do the comparison
+	//
+	uint32_t toklen = (uint32_t)(p - src);
+
+	for(j = 0; j < ntoks; j++)
+	{
+		if(toklen == toklens[j])
+		{
+			if(sinsp_strcmpi((char*)src, toks[j], toklen))
+			{
+				return j;
+			}
+		}
+	}
+
+	//
+	// Skip next spaces
+	//
+	while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+	{
+		if(p == pend)
+		{
+			return -1;
+		}
+
+		p++;
+	}
+
+	*nskipped = (uint32_t)(p - src);
+
+	return res;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_slq_query_parser implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
+{
+	char* p = query;
+	char* pend = query + querylen;
+
+	//
+	// Trim leading whitespaces
+	//
+	while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+	{
+		if(p == pend)
+		{
+			m_operation_type = OT_NONE;
+			return;
+		}
+
+		p++;
+	}
+
+	//
+	// Find the first statement type token
+	//
+	uint32_t nskips = 1;
+	m_operation_type = OT_NONE;
+	char* src = query;
+	uint32_t srclen = querylen;
+
+	while(nskips != 0)
+	{
+		int32_t id = sinsp_tokens_match(src, 
+			srclen, 
+			sizeof(sql_toks) / sizeof(sql_toks[0]), 
+			(char**)sql_toks,
+			sql_toklens,
+			&nskips);
+
+		if(id != -1)
+		{
+			m_operation_type = (operation_type)(id + 1);
+			break;
+		}
+
+		src += nskips;
+		srclen -= nskips;
+	}
+}
+
+const char* sinsp_slq_query_parser::get_operation_type_string()
+{
+	ASSERT(m_operation_type <= OT_ALTER);
+
+	if(m_operation_type == 0)
+	{
+		return "<NA>";
+	}
+	else
+	{
+		return sql_toks[m_operation_type - 1];
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_mysql_parser implementation
+///////////////////////////////////////////////////////////////////////////////
 sinsp_mysql_parser::sinsp_mysql_parser()
 {
 	m_database = NULL;

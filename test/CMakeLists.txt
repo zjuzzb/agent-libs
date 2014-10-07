@@ -7,6 +7,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(test 
@@ -20,6 +21,7 @@ add_executable(test
 	pipe.cpp
 	process.cpp
 	socketpair.cpp
+	sql.cpp
 	sys_call_test.cpp
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
@@ -34,7 +36,8 @@ target_link_libraries(test
 	sanalyzer 
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/libgtest.a) 
+	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/libgtest.a
+	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a) 
 
 add_executable(resources/forking_main_thread_exit
 	resources/forking_main_thread_exit.c)

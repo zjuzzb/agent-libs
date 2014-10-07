@@ -83,6 +83,27 @@ struct unixt_cmp
 	}
 };
 
+inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
+{
+	size_t j = count;
+
+	while(--j)
+	{
+		//
+		// Note: '| 0x20' converts to lowercase
+		//
+		if(((*buf1) | 0x20) != ((*buf2) | 0x20))
+		{
+			return false;
+		}
+
+		buf1++;
+		buf2++;
+	}
+
+	return true;
+}
+
 #ifdef SIMULATE_DROP_MODE
 bool should_drop(sinsp_evt *evt);
 #endif
