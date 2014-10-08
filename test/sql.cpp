@@ -67,7 +67,7 @@ TEST_F(sys_call_test, sql_operation)
 		if(p.m_operation_type == sinsp_slq_query_parser::OT_UPDATE)
 		{
 			printf("%s\t%s\n", line,
-				p.get_operation_type_string());
+				p.get_statement_type_string());
 		}
 */		
 /*
@@ -75,7 +75,7 @@ TEST_F(sys_call_test, sql_operation)
 		
 		opset.insert(line);
 */		
-		string ops = p.get_operation_type_string();
+		string ops = p.get_statement_type_string();
 		if(opmap.find(ops) == opmap.end())
 		{
 			opmap[ops] = 1;
