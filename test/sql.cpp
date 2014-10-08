@@ -39,7 +39,7 @@ using Poco::Path;
 /////////////////////////////////////////////////////////////////////////////////////
 // creat/unlink
 /////////////////////////////////////////////////////////////////////////////////////
-TEST_F(sys_call_test, sql_extract_statement)
+TEST_F(sys_call_test, sql_operation)
 {
 	char line[1024 * 16];
 
@@ -54,43 +54,69 @@ TEST_F(sys_call_test, sql_extract_statement)
 	}
 
 	sinsp_slq_query_parser p;
-	set<string> opset;
+//	set<string> opset;
+	map<string, uint64_t> opmap;
 	double duration = ((double)clock()) / CLOCKS_PER_SEC;
-	uint32_t j = 0;
+	uint64_t j = 0;
 
 
 	while(gzgets(zf, line, sizeof(line)))
 	{
 		p.parse(line, strlen(line));
 /*
-		if(p.m_operation_type != sinsp_slq_query_parser::OT_SELECT)
+		if(p.m_operation_type == sinsp_slq_query_parser::OT_UPDATE)
 		{
 			printf("%s\t%s\n", line,
 				p.get_operation_type_string());
 		}
 */		
-/*		
-		if(strstr(line, "IF") == line)
-		{
-			printf("%s", line);
-		}
-*/
 /*
 		p.parse(line, strlen(line));
 		
 		opset.insert(line);
 */		
+		string ops = p.get_operation_type_string();
+		if(opmap.find(ops) == opmap.end())
+		{
+			opmap[ops] = 1;
+		}
+		else
+		{
+			opmap[ops]++;
+		}
+
 		j++;
 	}
 
 	duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 
-	printf("*%d\n", j);
-
+	printf("#queries: %" PRIu64 "\n", j);
+/*
 	for(auto it = opset.begin(); it != opset.end(); ++it)
 	{
 		printf("%s\n", it->c_str());
 	}
+*/
+
+	uint64_t tot = 0;
+	for(auto it = opmap.begin(); it != opmap.end(); ++it)
+	{
+		printf("%s: %" PRIu64 "\n", it->first.c_str(), it->second);
+		tot += it->second;
+	}
+
+	EXPECT_EQ(tot, j);
+	EXPECT_EQ(opmap["CREATE"], 39846);
+	EXPECT_EQ(opmap["DELETE"], 19880);
+	EXPECT_EQ(opmap["DROP"], 34687);
+	EXPECT_EQ(opmap["INSERT"], 118130);
+	EXPECT_EQ(opmap["LOCK"], 19);
+	EXPECT_EQ(opmap["REPLACE"], 3);
+	EXPECT_EQ(opmap["SELECT"], 7213343);
+	EXPECT_EQ(opmap["SET"], 11);
+	EXPECT_EQ(opmap["SHOW"], 60);
+	EXPECT_EQ(opmap["UNLOCK"], 19);
+	EXPECT_EQ(opmap["UPDATE"], 16);
 
 	printf("Elapsed time: %.3lf\n", duration);
 
