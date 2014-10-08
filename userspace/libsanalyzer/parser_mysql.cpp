@@ -54,7 +54,7 @@ inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t nto
 	//
 	// Find the end of the word
 	//
-	while(*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n')
+	while(*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '(' && *p != ')')
 	{
 		if(p == pend)
 		{
@@ -83,7 +83,7 @@ inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t nto
 	//
 	// Skip next spaces
 	//
-	while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+	while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == '(' || *p == ')')
 	{
 		if(p == pend)
 		{
