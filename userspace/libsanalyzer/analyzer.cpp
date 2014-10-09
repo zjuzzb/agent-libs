@@ -443,7 +443,10 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			ts / 1000000000,
 			buflen, nevts);
 
-		m_n_old_serialize_evtnum = evt->get_num();
+		if(evt)
+		{
+			m_n_old_serialize_evtnum = evt->get_num();
+		}
 
 		if(!buf)
 		{
