@@ -413,24 +413,23 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 
 void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 {
+	uint64_t nevts = 0;
+
+	if(evt)
+	{
+		nevts = evt->get_num() - m_n_old_serialize_evtnum;
+		m_n_old_serialize_evtnum = evt->get_num();
+	}
+
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, m_metrics);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics);
 	}
 
 	if(m_configuration->get_emit_metrics_to_file())
 	{
 		char fname[128];
 		uint32_t buflen;
-
-		//
-		// Calculate the 
-		//
-		uint64_t nevts = 0;
-		if(evt)
-		{
-			nevts = evt->get_num() - m_n_old_serialize_evtnum;
-		}
 
 		//
 		// Serialize the protobuf
@@ -442,11 +441,6 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64,
 			ts / 1000000000,
 			buflen, nevts);
-
-		if(evt)
-		{
-			m_n_old_serialize_evtnum = evt->get_num();
-		}
 
 		if(!buf)
 		{

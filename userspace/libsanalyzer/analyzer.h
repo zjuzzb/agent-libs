@@ -8,7 +8,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);

@@ -12,7 +12,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::metrics* metrics)
+void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics)
 {
 	if(!m_connection_manager->is_connected())
 	{
@@ -37,9 +37,10 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, draiosproto::
 		return;
 	}
 
-	g_log->information("serialization info: ts=" 
+	g_log->information("ts=" 
 		+ NumberFormatter::format(ts_ns / 1000000000) 
-		+ ", len=" + NumberFormatter::format(buffer->size()));
+		+ ", len=" + NumberFormatter::format(buffer->size()),
+		+ ", ne=" + NumberFormatter::format(nevts));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
