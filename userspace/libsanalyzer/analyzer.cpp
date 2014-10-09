@@ -46,6 +46,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_n_flushes = 0;
+	m_n_old_serialize_evtnum = 0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -410,7 +411,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	}
 }
 
-void sinsp_analyzer::serialize(uint64_t ts)
+void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 {
 	if(m_sample_callback != NULL)
 	{
@@ -423,15 +424,26 @@ void sinsp_analyzer::serialize(uint64_t ts)
 		uint32_t buflen;
 
 		//
+		// Calculate the 
+		//
+		uint64_t nevts = 0;
+		if(evt)
+		{
+			nevts = evt->get_num() - m_n_old_serialize_evtnum;
+		}
+
+		//
 		// Serialize the protobuf
 		//
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"serialization info: ts=%" PRIu64 ", len=%" PRIu32,
+			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64,
 			ts / 1000000000,
-			buflen);
+			buflen, nevts);
+
+		m_n_old_serialize_evtnum = evt->get_num();
 
 		if(!buf)
 		{
@@ -2124,7 +2136,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				serialize(m_prev_flush_time_ns);
+				serialize(evt, m_prev_flush_time_ns);
 			}
 
 			//

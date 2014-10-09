@@ -182,7 +182,7 @@ VISIBILITY_PRIVATE
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	void filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
-	void serialize(uint64_t ts);
+	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
 	void emit_aggregated_connections();
 	void emit_full_connections();
@@ -195,6 +195,7 @@ VISIBILITY_PRIVATE
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
+	uint64_t m_n_old_serialize_evtnum;
 
 	uint64_t m_prev_sample_evtnum;
 	
