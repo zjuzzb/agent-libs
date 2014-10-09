@@ -376,7 +376,7 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 {
 	uint32_t j;
 	unordered_map<string, sinsp_query_details>::iterator uit;
-	draiosproto::query_details* ud;
+	draiosproto::sql_query_details* ud;
 
 	if(table->size() > TOP_URLS_IN_SAMPLE)
 	{

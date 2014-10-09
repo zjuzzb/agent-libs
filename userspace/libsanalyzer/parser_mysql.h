@@ -54,7 +54,7 @@
 class sinsp_slq_query_parser
 {
 public:	
-	enum operation_type
+	enum statement_type
 	{
 		OT_NONE = 0,
 		OT_SELECT = 1,
@@ -74,9 +74,9 @@ public:
 
 	void parse(char* query, uint32_t querylen);
 
-	const char* get_operation_type_string();
+	const char* get_statement_type_string();
 
-	operation_type m_operation_type;
+	statement_type m_statement_type;
 };
 
 class sinsp_mysql_parser : sinsp_protocol_parser
@@ -111,6 +111,8 @@ private:
 	char* m_statement;
 	char* m_error_message;
 	uint16_t m_error_code;
+
+	sinsp_slq_query_parser m_query_parser;
 
 	friend class sinsp_protostate;
 };

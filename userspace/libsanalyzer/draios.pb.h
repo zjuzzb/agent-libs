@@ -48,7 +48,8 @@ class command_details;
 class url_details;
 class status_code_details;
 class http_info;
-class query_details;
+class sql_query_details;
+class sql_query_type_details;
 class sql_info;
 class proto_info;
 class host;
@@ -69,6 +70,37 @@ class ssh_close_channel;
 class auto_update_request;
 class dirty_shutdown_report;
 
+enum sql_statement_type {
+  SOP_NONE = 0,
+  SOP_SELECT = 1,
+  SOP_INSERT = 2,
+  SOP_SET = 3,
+  SOP_CREATE = 4,
+  SOP_DELETE = 5,
+  SOP_DROP = 6,
+  SOP_REPLACE = 7,
+  SOP_UPDATE = 8,
+  SOP_USE = 9,
+  SOP_SHOW = 10,
+  SOP_LOCK = 11,
+  SOP_UNLOCK = 12,
+  SOP_ALTER = 13
+};
+bool sql_statement_type_IsValid(int value);
+const sql_statement_type sql_statement_type_MIN = SOP_NONE;
+const sql_statement_type sql_statement_type_MAX = SOP_ALTER;
+const int sql_statement_type_ARRAYSIZE = sql_statement_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* sql_statement_type_descriptor();
+inline const ::std::string& sql_statement_type_Name(sql_statement_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    sql_statement_type_descriptor(), value);
+}
+inline bool sql_statement_type_Parse(
+    const ::std::string& name, sql_statement_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<sql_statement_type>(
+    sql_statement_type_descriptor(), name, value);
+}
 enum networkrole {
   NONE = 0,
   IS_LOCAL_IPV4_SERVER = 1,
@@ -2063,14 +2095,14 @@ class http_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class query_details : public ::google::protobuf::Message {
+class sql_query_details : public ::google::protobuf::Message {
  public:
-  query_details();
-  virtual ~query_details();
+  sql_query_details();
+  virtual ~sql_query_details();
 
-  query_details(const query_details& from);
+  sql_query_details(const sql_query_details& from);
 
-  inline query_details& operator=(const query_details& from) {
+  inline sql_query_details& operator=(const sql_query_details& from) {
     CopyFrom(from);
     return *this;
   }
@@ -2084,17 +2116,17 @@ class query_details : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const query_details& default_instance();
+  static const sql_query_details& default_instance();
 
-  void Swap(query_details* other);
+  void Swap(sql_query_details* other);
 
   // implements Message ----------------------------------------------
 
-  query_details* New() const;
+  sql_query_details* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const query_details& from);
-  void MergeFrom(const query_details& from);
+  void CopyFrom(const sql_query_details& from);
+  void MergeFrom(const sql_query_details& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -2171,7 +2203,7 @@ class query_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 nerrors() const;
   inline void set_nerrors(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:draiosproto.query_details)
+  // @@protoc_insertion_point(class_scope:draiosproto.sql_query_details)
  private:
   inline void set_has_query();
   inline void clear_has_query();
@@ -2206,7 +2238,149 @@ class query_details : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_draios_2eproto();
 
   void InitAsDefaultInstance();
-  static query_details* default_instance_;
+  static sql_query_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class sql_query_type_details : public ::google::protobuf::Message {
+ public:
+  sql_query_type_details();
+  virtual ~sql_query_type_details();
+
+  sql_query_type_details(const sql_query_type_details& from);
+
+  inline sql_query_type_details& operator=(const sql_query_type_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const sql_query_type_details& default_instance();
+
+  void Swap(sql_query_type_details* other);
+
+  // implements Message ----------------------------------------------
+
+  sql_query_type_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const sql_query_type_details& from);
+  void MergeFrom(const sql_query_type_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.sql_statement_type type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline ::draiosproto::sql_statement_type type() const;
+  inline void set_type(::draiosproto::sql_statement_type value);
+
+  // required uint32 ncalls = 2;
+  inline bool has_ncalls() const;
+  inline void clear_ncalls();
+  static const int kNcallsFieldNumber = 2;
+  inline ::google::protobuf::uint32 ncalls() const;
+  inline void set_ncalls(::google::protobuf::uint32 value);
+
+  // required uint64 time_tot = 3;
+  inline bool has_time_tot() const;
+  inline void clear_time_tot();
+  static const int kTimeTotFieldNumber = 3;
+  inline ::google::protobuf::uint64 time_tot() const;
+  inline void set_time_tot(::google::protobuf::uint64 value);
+
+  // required uint64 time_max = 4;
+  inline bool has_time_max() const;
+  inline void clear_time_max();
+  static const int kTimeMaxFieldNumber = 4;
+  inline ::google::protobuf::uint64 time_max() const;
+  inline void set_time_max(::google::protobuf::uint64 value);
+
+  // required uint64 bytes_in = 5;
+  inline bool has_bytes_in() const;
+  inline void clear_bytes_in();
+  static const int kBytesInFieldNumber = 5;
+  inline ::google::protobuf::uint64 bytes_in() const;
+  inline void set_bytes_in(::google::protobuf::uint64 value);
+
+  // required uint64 bytes_out = 6;
+  inline bool has_bytes_out() const;
+  inline void clear_bytes_out();
+  static const int kBytesOutFieldNumber = 6;
+  inline ::google::protobuf::uint64 bytes_out() const;
+  inline void set_bytes_out(::google::protobuf::uint64 value);
+
+  // required uint32 nerrors = 7;
+  inline bool has_nerrors() const;
+  inline void clear_nerrors();
+  static const int kNerrorsFieldNumber = 7;
+  inline ::google::protobuf::uint32 nerrors() const;
+  inline void set_nerrors(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.sql_query_type_details)
+ private:
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_ncalls();
+  inline void clear_has_ncalls();
+  inline void set_has_time_tot();
+  inline void clear_has_time_tot();
+  inline void set_has_time_max();
+  inline void clear_has_time_max();
+  inline void set_has_bytes_in();
+  inline void clear_has_bytes_in();
+  inline void set_has_bytes_out();
+  inline void clear_has_bytes_out();
+  inline void set_has_nerrors();
+  inline void clear_has_nerrors();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  int type_;
+  ::google::protobuf::uint32 ncalls_;
+  ::google::protobuf::uint64 time_tot_;
+  ::google::protobuf::uint64 time_max_;
+  ::google::protobuf::uint64 bytes_in_;
+  ::google::protobuf::uint64 bytes_out_;
+  ::google::protobuf::uint32 nerrors_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static sql_query_type_details* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -2264,40 +2438,66 @@ class sql_info : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .draiosproto.query_details server_queries = 1;
+  // repeated .draiosproto.sql_query_details server_queries = 1;
   inline int server_queries_size() const;
   inline void clear_server_queries();
   static const int kServerQueriesFieldNumber = 1;
-  inline const ::draiosproto::query_details& server_queries(int index) const;
-  inline ::draiosproto::query_details* mutable_server_queries(int index);
-  inline ::draiosproto::query_details* add_server_queries();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >&
+  inline const ::draiosproto::sql_query_details& server_queries(int index) const;
+  inline ::draiosproto::sql_query_details* mutable_server_queries(int index);
+  inline ::draiosproto::sql_query_details* add_server_queries();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
       server_queries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >*
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
       mutable_server_queries();
 
-  // repeated .draiosproto.query_details client_queries = 2;
+  // repeated .draiosproto.sql_query_details client_queries = 2;
   inline int client_queries_size() const;
   inline void clear_client_queries();
   static const int kClientQueriesFieldNumber = 2;
-  inline const ::draiosproto::query_details& client_queries(int index) const;
-  inline ::draiosproto::query_details* mutable_client_queries(int index);
-  inline ::draiosproto::query_details* add_client_queries();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >&
+  inline const ::draiosproto::sql_query_details& client_queries(int index) const;
+  inline ::draiosproto::sql_query_details* mutable_client_queries(int index);
+  inline ::draiosproto::sql_query_details* add_client_queries();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
       client_queries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >*
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
       mutable_client_queries();
+
+  // repeated .draiosproto.sql_query_type_details server_query_types = 3;
+  inline int server_query_types_size() const;
+  inline void clear_server_query_types();
+  static const int kServerQueryTypesFieldNumber = 3;
+  inline const ::draiosproto::sql_query_type_details& server_query_types(int index) const;
+  inline ::draiosproto::sql_query_type_details* mutable_server_query_types(int index);
+  inline ::draiosproto::sql_query_type_details* add_server_query_types();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >&
+      server_query_types() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
+      mutable_server_query_types();
+
+  // repeated .draiosproto.sql_query_type_details client_query_types = 4;
+  inline int client_query_types_size() const;
+  inline void clear_client_query_types();
+  static const int kClientQueryTypesFieldNumber = 4;
+  inline const ::draiosproto::sql_query_type_details& client_query_types(int index) const;
+  inline ::draiosproto::sql_query_type_details* mutable_client_query_types(int index);
+  inline ::draiosproto::sql_query_type_details* add_client_query_types();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >&
+      client_query_types() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
+      mutable_client_query_types();
 
   // @@protoc_insertion_point(class_scope:draiosproto.sql_info)
  private:
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details > server_queries_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details > client_queries_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details > server_queries_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details > client_queries_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details > server_query_types_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details > client_query_types_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7801,56 +8001,56 @@ http_info::mutable_server_status_codes() {
 
 // -------------------------------------------------------------------
 
-// query_details
+// sql_query_details
 
 // required string query = 1;
-inline bool query_details::has_query() const {
+inline bool sql_query_details::has_query() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void query_details::set_has_query() {
+inline void sql_query_details::set_has_query() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void query_details::clear_has_query() {
+inline void sql_query_details::clear_has_query() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void query_details::clear_query() {
+inline void sql_query_details::clear_query() {
   if (query_ != &::google::protobuf::internal::kEmptyString) {
     query_->clear();
   }
   clear_has_query();
 }
-inline const ::std::string& query_details::query() const {
+inline const ::std::string& sql_query_details::query() const {
   return *query_;
 }
-inline void query_details::set_query(const ::std::string& value) {
+inline void sql_query_details::set_query(const ::std::string& value) {
   set_has_query();
   if (query_ == &::google::protobuf::internal::kEmptyString) {
     query_ = new ::std::string;
   }
   query_->assign(value);
 }
-inline void query_details::set_query(const char* value) {
+inline void sql_query_details::set_query(const char* value) {
   set_has_query();
   if (query_ == &::google::protobuf::internal::kEmptyString) {
     query_ = new ::std::string;
   }
   query_->assign(value);
 }
-inline void query_details::set_query(const char* value, size_t size) {
+inline void sql_query_details::set_query(const char* value, size_t size) {
   set_has_query();
   if (query_ == &::google::protobuf::internal::kEmptyString) {
     query_ = new ::std::string;
   }
   query_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* query_details::mutable_query() {
+inline ::std::string* sql_query_details::mutable_query() {
   set_has_query();
   if (query_ == &::google::protobuf::internal::kEmptyString) {
     query_ = new ::std::string;
   }
   return query_;
 }
-inline ::std::string* query_details::release_query() {
+inline ::std::string* sql_query_details::release_query() {
   clear_has_query();
   if (query_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -7860,7 +8060,7 @@ inline ::std::string* query_details::release_query() {
     return temp;
   }
 }
-inline void query_details::set_allocated_query(::std::string* query) {
+inline void sql_query_details::set_allocated_query(::std::string* query) {
   if (query_ != &::google::protobuf::internal::kEmptyString) {
     delete query_;
   }
@@ -7874,133 +8074,292 @@ inline void query_details::set_allocated_query(::std::string* query) {
 }
 
 // required uint32 ncalls = 2;
-inline bool query_details::has_ncalls() const {
+inline bool sql_query_details::has_ncalls() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void query_details::set_has_ncalls() {
+inline void sql_query_details::set_has_ncalls() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void query_details::clear_has_ncalls() {
+inline void sql_query_details::clear_has_ncalls() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void query_details::clear_ncalls() {
+inline void sql_query_details::clear_ncalls() {
   ncalls_ = 0u;
   clear_has_ncalls();
 }
-inline ::google::protobuf::uint32 query_details::ncalls() const {
+inline ::google::protobuf::uint32 sql_query_details::ncalls() const {
   return ncalls_;
 }
-inline void query_details::set_ncalls(::google::protobuf::uint32 value) {
+inline void sql_query_details::set_ncalls(::google::protobuf::uint32 value) {
   set_has_ncalls();
   ncalls_ = value;
 }
 
 // required uint64 time_tot = 3;
-inline bool query_details::has_time_tot() const {
+inline bool sql_query_details::has_time_tot() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void query_details::set_has_time_tot() {
+inline void sql_query_details::set_has_time_tot() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void query_details::clear_has_time_tot() {
+inline void sql_query_details::clear_has_time_tot() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void query_details::clear_time_tot() {
+inline void sql_query_details::clear_time_tot() {
   time_tot_ = GOOGLE_ULONGLONG(0);
   clear_has_time_tot();
 }
-inline ::google::protobuf::uint64 query_details::time_tot() const {
+inline ::google::protobuf::uint64 sql_query_details::time_tot() const {
   return time_tot_;
 }
-inline void query_details::set_time_tot(::google::protobuf::uint64 value) {
+inline void sql_query_details::set_time_tot(::google::protobuf::uint64 value) {
   set_has_time_tot();
   time_tot_ = value;
 }
 
 // required uint64 time_max = 4;
-inline bool query_details::has_time_max() const {
+inline bool sql_query_details::has_time_max() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void query_details::set_has_time_max() {
+inline void sql_query_details::set_has_time_max() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void query_details::clear_has_time_max() {
+inline void sql_query_details::clear_has_time_max() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void query_details::clear_time_max() {
+inline void sql_query_details::clear_time_max() {
   time_max_ = GOOGLE_ULONGLONG(0);
   clear_has_time_max();
 }
-inline ::google::protobuf::uint64 query_details::time_max() const {
+inline ::google::protobuf::uint64 sql_query_details::time_max() const {
   return time_max_;
 }
-inline void query_details::set_time_max(::google::protobuf::uint64 value) {
+inline void sql_query_details::set_time_max(::google::protobuf::uint64 value) {
   set_has_time_max();
   time_max_ = value;
 }
 
 // required uint64 bytes_in = 5;
-inline bool query_details::has_bytes_in() const {
+inline bool sql_query_details::has_bytes_in() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void query_details::set_has_bytes_in() {
+inline void sql_query_details::set_has_bytes_in() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void query_details::clear_has_bytes_in() {
+inline void sql_query_details::clear_has_bytes_in() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void query_details::clear_bytes_in() {
+inline void sql_query_details::clear_bytes_in() {
   bytes_in_ = GOOGLE_ULONGLONG(0);
   clear_has_bytes_in();
 }
-inline ::google::protobuf::uint64 query_details::bytes_in() const {
+inline ::google::protobuf::uint64 sql_query_details::bytes_in() const {
   return bytes_in_;
 }
-inline void query_details::set_bytes_in(::google::protobuf::uint64 value) {
+inline void sql_query_details::set_bytes_in(::google::protobuf::uint64 value) {
   set_has_bytes_in();
   bytes_in_ = value;
 }
 
 // required uint64 bytes_out = 6;
-inline bool query_details::has_bytes_out() const {
+inline bool sql_query_details::has_bytes_out() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void query_details::set_has_bytes_out() {
+inline void sql_query_details::set_has_bytes_out() {
   _has_bits_[0] |= 0x00000020u;
 }
-inline void query_details::clear_has_bytes_out() {
+inline void sql_query_details::clear_has_bytes_out() {
   _has_bits_[0] &= ~0x00000020u;
 }
-inline void query_details::clear_bytes_out() {
+inline void sql_query_details::clear_bytes_out() {
   bytes_out_ = GOOGLE_ULONGLONG(0);
   clear_has_bytes_out();
 }
-inline ::google::protobuf::uint64 query_details::bytes_out() const {
+inline ::google::protobuf::uint64 sql_query_details::bytes_out() const {
   return bytes_out_;
 }
-inline void query_details::set_bytes_out(::google::protobuf::uint64 value) {
+inline void sql_query_details::set_bytes_out(::google::protobuf::uint64 value) {
   set_has_bytes_out();
   bytes_out_ = value;
 }
 
 // required uint32 nerrors = 7;
-inline bool query_details::has_nerrors() const {
+inline bool sql_query_details::has_nerrors() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void query_details::set_has_nerrors() {
+inline void sql_query_details::set_has_nerrors() {
   _has_bits_[0] |= 0x00000040u;
 }
-inline void query_details::clear_has_nerrors() {
+inline void sql_query_details::clear_has_nerrors() {
   _has_bits_[0] &= ~0x00000040u;
 }
-inline void query_details::clear_nerrors() {
+inline void sql_query_details::clear_nerrors() {
   nerrors_ = 0u;
   clear_has_nerrors();
 }
-inline ::google::protobuf::uint32 query_details::nerrors() const {
+inline ::google::protobuf::uint32 sql_query_details::nerrors() const {
   return nerrors_;
 }
-inline void query_details::set_nerrors(::google::protobuf::uint32 value) {
+inline void sql_query_details::set_nerrors(::google::protobuf::uint32 value) {
+  set_has_nerrors();
+  nerrors_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// sql_query_type_details
+
+// required .draiosproto.sql_statement_type type = 1;
+inline bool sql_query_type_details::has_type() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void sql_query_type_details::set_has_type() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void sql_query_type_details::clear_has_type() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void sql_query_type_details::clear_type() {
+  type_ = 0;
+  clear_has_type();
+}
+inline ::draiosproto::sql_statement_type sql_query_type_details::type() const {
+  return static_cast< ::draiosproto::sql_statement_type >(type_);
+}
+inline void sql_query_type_details::set_type(::draiosproto::sql_statement_type value) {
+  assert(::draiosproto::sql_statement_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// required uint32 ncalls = 2;
+inline bool sql_query_type_details::has_ncalls() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void sql_query_type_details::set_has_ncalls() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void sql_query_type_details::clear_has_ncalls() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void sql_query_type_details::clear_ncalls() {
+  ncalls_ = 0u;
+  clear_has_ncalls();
+}
+inline ::google::protobuf::uint32 sql_query_type_details::ncalls() const {
+  return ncalls_;
+}
+inline void sql_query_type_details::set_ncalls(::google::protobuf::uint32 value) {
+  set_has_ncalls();
+  ncalls_ = value;
+}
+
+// required uint64 time_tot = 3;
+inline bool sql_query_type_details::has_time_tot() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void sql_query_type_details::set_has_time_tot() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void sql_query_type_details::clear_has_time_tot() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void sql_query_type_details::clear_time_tot() {
+  time_tot_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_tot();
+}
+inline ::google::protobuf::uint64 sql_query_type_details::time_tot() const {
+  return time_tot_;
+}
+inline void sql_query_type_details::set_time_tot(::google::protobuf::uint64 value) {
+  set_has_time_tot();
+  time_tot_ = value;
+}
+
+// required uint64 time_max = 4;
+inline bool sql_query_type_details::has_time_max() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void sql_query_type_details::set_has_time_max() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void sql_query_type_details::clear_has_time_max() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void sql_query_type_details::clear_time_max() {
+  time_max_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_max();
+}
+inline ::google::protobuf::uint64 sql_query_type_details::time_max() const {
+  return time_max_;
+}
+inline void sql_query_type_details::set_time_max(::google::protobuf::uint64 value) {
+  set_has_time_max();
+  time_max_ = value;
+}
+
+// required uint64 bytes_in = 5;
+inline bool sql_query_type_details::has_bytes_in() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void sql_query_type_details::set_has_bytes_in() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void sql_query_type_details::clear_has_bytes_in() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void sql_query_type_details::clear_bytes_in() {
+  bytes_in_ = GOOGLE_ULONGLONG(0);
+  clear_has_bytes_in();
+}
+inline ::google::protobuf::uint64 sql_query_type_details::bytes_in() const {
+  return bytes_in_;
+}
+inline void sql_query_type_details::set_bytes_in(::google::protobuf::uint64 value) {
+  set_has_bytes_in();
+  bytes_in_ = value;
+}
+
+// required uint64 bytes_out = 6;
+inline bool sql_query_type_details::has_bytes_out() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void sql_query_type_details::set_has_bytes_out() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void sql_query_type_details::clear_has_bytes_out() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void sql_query_type_details::clear_bytes_out() {
+  bytes_out_ = GOOGLE_ULONGLONG(0);
+  clear_has_bytes_out();
+}
+inline ::google::protobuf::uint64 sql_query_type_details::bytes_out() const {
+  return bytes_out_;
+}
+inline void sql_query_type_details::set_bytes_out(::google::protobuf::uint64 value) {
+  set_has_bytes_out();
+  bytes_out_ = value;
+}
+
+// required uint32 nerrors = 7;
+inline bool sql_query_type_details::has_nerrors() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void sql_query_type_details::set_has_nerrors() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void sql_query_type_details::clear_has_nerrors() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void sql_query_type_details::clear_nerrors() {
+  nerrors_ = 0u;
+  clear_has_nerrors();
+}
+inline ::google::protobuf::uint32 sql_query_type_details::nerrors() const {
+  return nerrors_;
+}
+inline void sql_query_type_details::set_nerrors(::google::protobuf::uint32 value) {
   set_has_nerrors();
   nerrors_ = value;
 }
@@ -8009,54 +8368,104 @@ inline void query_details::set_nerrors(::google::protobuf::uint32 value) {
 
 // sql_info
 
-// repeated .draiosproto.query_details server_queries = 1;
+// repeated .draiosproto.sql_query_details server_queries = 1;
 inline int sql_info::server_queries_size() const {
   return server_queries_.size();
 }
 inline void sql_info::clear_server_queries() {
   server_queries_.Clear();
 }
-inline const ::draiosproto::query_details& sql_info::server_queries(int index) const {
+inline const ::draiosproto::sql_query_details& sql_info::server_queries(int index) const {
   return server_queries_.Get(index);
 }
-inline ::draiosproto::query_details* sql_info::mutable_server_queries(int index) {
+inline ::draiosproto::sql_query_details* sql_info::mutable_server_queries(int index) {
   return server_queries_.Mutable(index);
 }
-inline ::draiosproto::query_details* sql_info::add_server_queries() {
+inline ::draiosproto::sql_query_details* sql_info::add_server_queries() {
   return server_queries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >&
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
 sql_info::server_queries() const {
   return server_queries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >*
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
 sql_info::mutable_server_queries() {
   return &server_queries_;
 }
 
-// repeated .draiosproto.query_details client_queries = 2;
+// repeated .draiosproto.sql_query_details client_queries = 2;
 inline int sql_info::client_queries_size() const {
   return client_queries_.size();
 }
 inline void sql_info::clear_client_queries() {
   client_queries_.Clear();
 }
-inline const ::draiosproto::query_details& sql_info::client_queries(int index) const {
+inline const ::draiosproto::sql_query_details& sql_info::client_queries(int index) const {
   return client_queries_.Get(index);
 }
-inline ::draiosproto::query_details* sql_info::mutable_client_queries(int index) {
+inline ::draiosproto::sql_query_details* sql_info::mutable_client_queries(int index) {
   return client_queries_.Mutable(index);
 }
-inline ::draiosproto::query_details* sql_info::add_client_queries() {
+inline ::draiosproto::sql_query_details* sql_info::add_client_queries() {
   return client_queries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >&
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
 sql_info::client_queries() const {
   return client_queries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::query_details >*
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
 sql_info::mutable_client_queries() {
   return &client_queries_;
+}
+
+// repeated .draiosproto.sql_query_type_details server_query_types = 3;
+inline int sql_info::server_query_types_size() const {
+  return server_query_types_.size();
+}
+inline void sql_info::clear_server_query_types() {
+  server_query_types_.Clear();
+}
+inline const ::draiosproto::sql_query_type_details& sql_info::server_query_types(int index) const {
+  return server_query_types_.Get(index);
+}
+inline ::draiosproto::sql_query_type_details* sql_info::mutable_server_query_types(int index) {
+  return server_query_types_.Mutable(index);
+}
+inline ::draiosproto::sql_query_type_details* sql_info::add_server_query_types() {
+  return server_query_types_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >&
+sql_info::server_query_types() const {
+  return server_query_types_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
+sql_info::mutable_server_query_types() {
+  return &server_query_types_;
+}
+
+// repeated .draiosproto.sql_query_type_details client_query_types = 4;
+inline int sql_info::client_query_types_size() const {
+  return client_query_types_.size();
+}
+inline void sql_info::clear_client_query_types() {
+  client_query_types_.Clear();
+}
+inline const ::draiosproto::sql_query_type_details& sql_info::client_query_types(int index) const {
+  return client_query_types_.Get(index);
+}
+inline ::draiosproto::sql_query_type_details* sql_info::mutable_client_query_types(int index) {
+  return client_query_types_.Mutable(index);
+}
+inline ::draiosproto::sql_query_type_details* sql_info::add_client_query_types() {
+  return client_query_types_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >&
+sql_info::client_query_types() const {
+  return client_query_types_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
+sql_info::mutable_client_query_types() {
+  return &client_query_types_;
 }
 
 // -------------------------------------------------------------------
@@ -13492,6 +13901,10 @@ inline void dirty_shutdown_report::set_allocated_log(::std::string* log) {
 namespace google {
 namespace protobuf {
 
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::sql_statement_type>() {
+  return ::draiosproto::sql_statement_type_descriptor();
+}
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
   return ::draiosproto::networkrole_descriptor();

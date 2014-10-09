@@ -155,10 +155,40 @@ message http_info {
 }
 
 //
-// Query information
+// SQL query information
 //
-message query_details {
+message sql_query_details {
 	required string query = 1; 
+	required uint32 ncalls = 2;
+	required uint64 time_tot = 3;
+	required uint64 time_max = 4;
+	required uint64 bytes_in = 5;
+	required uint64 bytes_out = 6;
+	required uint32 nerrors = 7;
+}
+
+//
+// SQL statement information
+//
+enum sql_statement_type {
+	SOP_NONE = 0;
+	SOP_SELECT = 1;
+	SOP_INSERT = 2;
+	SOP_SET = 3;
+	SOP_CREATE = 4;
+	SOP_DELETE = 5;
+	SOP_DROP = 6;
+	SOP_REPLACE = 7;
+	SOP_UPDATE = 8;
+	SOP_USE = 9;
+	SOP_SHOW = 10;
+	SOP_LOCK = 11;
+	SOP_UNLOCK = 12;
+	SOP_ALTER = 13;
+}
+
+message sql_query_type_details {
+	required sql_statement_type type = 1; 
 	required uint32 ncalls = 2;
 	required uint64 time_tot = 3;
 	required uint64 time_max = 4;
@@ -171,8 +201,10 @@ message query_details {
 // SQL protocol information
 //
 message sql_info {
-	repeated query_details server_queries = 1;
-	repeated query_details client_queries = 2;
+	repeated sql_query_details server_queries = 1;	// the top server-side queries
+	repeated sql_query_details client_queries = 2;	// the top client-side queries
+	repeated sql_query_type_details server_query_types = 3;	// the top server-side query types (e.g. SELECT, INSERT...)
+	repeated sql_query_type_details client_query_types = 4;	// the top client-side query types (e.g. SELECT, INSERT...)
 }
 
 //

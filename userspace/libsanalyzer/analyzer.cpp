@@ -1786,7 +1786,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Update the times
 			//
 			m_prev_flush_time_ns = ts - ts % sample_duration;
-//			m_prev_flush_time_ns = m_next_flush_time_ns;
 			m_next_flush_time_ns = m_prev_flush_time_ns + sample_duration;
 
 			ASSERT(m_next_flush_time_ns / sample_duration * sample_duration == m_next_flush_time_ns);

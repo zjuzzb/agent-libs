@@ -111,7 +111,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	{
 		if(p == pend)
 		{
-			m_operation_type = OT_NONE;
+			m_statement_type = OT_NONE;
 			return;
 		}
 
@@ -122,7 +122,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	// Find the first statement type token
 	//
 	uint32_t nskips = 1;
-	m_operation_type = OT_NONE;
+	m_statement_type = OT_NONE;
 	char* src = query;
 	uint32_t srclen = querylen;
 
@@ -137,7 +137,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 
 		if(id != -1)
 		{
-			m_operation_type = (operation_type)(id + 1);
+			m_statement_type = (statement_type)(id + 1);
 			break;
 		}
 
@@ -146,17 +146,17 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	}
 }
 
-const char* sinsp_slq_query_parser::get_operation_type_string()
+const char* sinsp_slq_query_parser::get_statement_type_string()
 {
-	ASSERT(m_operation_type <= OT_ALTER);
+	ASSERT(m_statement_type <= OT_ALTER);
 
-	if(m_operation_type == 0)
+	if(m_statement_type == 0)
 	{
 		return "<NA>";
 	}
 	else
 	{
-		return sql_toks[m_operation_type - 1];
+		return sql_toks[m_statement_type - 1];
 	}
 }
 
@@ -283,10 +283,15 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 		{
 			if(rbuf[MYSQL_OFFSET_OPCODE] == MYSQL_OPCODE_QUERY)
 			{
-				m_statement = m_storage.strcopy(rbuf + MYSQL_OFFSET_STATEMENT, 
-					rbufsize - MYSQL_OFFSET_STATEMENT);
+				//
+				// Query packet
+				//
+				uint32_t querylen = rbufsize - MYSQL_OFFSET_STATEMENT;
 
-//cerr << (m_statement + string("\n\n"));
+				m_statement = m_storage.strcopy(rbuf + MYSQL_OFFSET_STATEMENT, 
+					querylen);
+
+				m_query_parser.parse(m_statement, querylen);
 
 				m_msgtype = MT_QUERY;
 				m_is_req_valid = true;
@@ -298,7 +303,7 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 	else
 	{
 		//
-		// If the buffer is smaller than 20 bytes, we assume that it's a fragment
+		// If the buffer is smaller than 4 bytes, we assume that it's a fragment
 		// and we store it for successive analysis
 		//
 		m_reassembly_buf.copy(buf, buflen);
@@ -361,7 +366,7 @@ bool sinsp_mysql_parser::parse_response(char* buf, uint32_t buflen)
 	else
 	{
 		//
-		// If the buffer is smaller than 20 bytes, we assume that it's a fragment
+		// If the buffer is smaller than 4 bytes, we assume that it's a fragment
 		// and we store it for successive analysis
 		//
 		m_reassembly_buf.copy(buf, buflen);
