@@ -48,7 +48,7 @@ void crash_handler::log_crashdump_message(const char* message)
 	int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
 	if(fd != -1)
 	{
-		write(fd, message, strlen(message));
+		int ignore = write(fd, message, strlen(message));
 		close(fd);
 	}
 	else
@@ -56,7 +56,7 @@ void crash_handler::log_crashdump_message(const char* message)
 		ASSERT(false);
 	}
 
-	write(1, message, strlen(message));	
+	int ignore = write(1, message, strlen(message));	
 }
 
 bool crash_handler::initialize()
