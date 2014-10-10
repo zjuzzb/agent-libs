@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <endian.h>
+#include <sys/syscall.h>
 #endif // _WIN32
 #include <google/protobuf/io/coded_stream.h>
 #ifndef _WIN32
@@ -46,7 +47,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_n_flushes = 0;
-	m_n_old_serialize_evtnum = 0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -92,7 +92,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_configuration = new sinsp_configuration();
 
-	m_mypid = getpid();
+	m_mypid = -1;
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
@@ -417,8 +417,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(evt)
 	{
-		nevts = evt->get_num() - m_n_old_serialize_evtnum;
-		m_n_old_serialize_evtnum = evt->get_num();
+		nevts = evt->get_num() - m_prev_sample_evtnum;
 	}
 
 	if(m_sample_callback != NULL)
@@ -837,7 +836,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			if(tinfo->is_main_thread() || it->first == m_mypid)
+			if(tinfo->is_main_thread())
 			{
 				if(m_inspector->m_islive)
 				{
@@ -894,7 +893,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			if(it->first == m_mypid)
 			{
-				m_my_cpuload = mtinfo->m_ainfo->m_cpuload;
+				m_my_cpuload = tinfo->m_ainfo->m_cpuload;
 			}
 		}
 	}
@@ -1533,7 +1532,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+			g_logger.format(sinsp_logger::SEV_ERROR, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
 				(int)m_configuration->get_drop_upper_threshold(), m_seconds_above_thresholds, 
 				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
@@ -1750,10 +1749,25 @@ void sinsp_analyzer::emit_executed_commands()
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	uint32_t j;
+	uint64_t nevts_in_last_sample;
+
+	if(evt != NULL)
+	{
+		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
+	}
+	else
+	{
+		nevts_in_last_sample = 0;
+	}
 
 	if(flshflags == DF_FORCE_NOFLUSH)
 	{
 		return;
+	}
+
+	if(m_mypid == -1)
+	{
+		m_mypid = getpid();
 	}
 
 	for(j = 0; ; j++)
@@ -2145,8 +2159,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	}
 
 	///////////////////////////////////////////////////////////////////////////
-	// END OF SAMPLE CLEANUPS
+	// CLEANUPS
 	///////////////////////////////////////////////////////////////////////////
+
+	if(m_configuration->get_autodrop_enabled())
+	{
+		tune_drop_mode(flshflags, m_my_cpuload);
+	}
 
 	//
 	// Clear the transaction state
@@ -2196,16 +2215,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	
 	if(evt)
 	{
-		uint64_t nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
-
 		if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
-		}
-
-		if(m_configuration->get_autodrop_enabled())
-		{
-			tune_drop_mode(flshflags, m_my_cpuload);
 		}
 
 		m_prev_sample_evtnum = evt->get_num();

@@ -195,7 +195,6 @@ VISIBILITY_PRIVATE
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
-	uint64_t m_n_old_serialize_evtnum;
 
 	uint64_t m_prev_sample_evtnum;
 	
