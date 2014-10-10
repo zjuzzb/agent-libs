@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:qr:s:vw:W:")) != -1)
+		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:p:qr:s:vw:W:")) != -1)
 		{
 			switch (op)
 			{
@@ -470,6 +470,9 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_machine_id(optarg);
 #endif
+				break;
+			case 'p':
+				inspector->set_min_log_severity((sinsp_logger::severity)atoi(optarg));
 				break;
 			case 'r':
 				infile = optarg;
