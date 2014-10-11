@@ -25,6 +25,7 @@ sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* analyzer)
 {
 	m_analyzer = analyzer;
 	m_sched_analyzer2 = NULL;
+	m_last_drop_was_enter = false;
 }
 
 void sinsp_analyzer_parsers::on_capture_start()
@@ -61,25 +62,35 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		parse_execve_exit(evt);
 		return true;
 	case PPME_DROP_E:
-		parse_drop(evt);
+		if(!m_last_drop_was_enter)
+		{
+			parse_drop(evt);
 
-		//
-		// Set dropping mode
-		//
-		m_analyzer->m_inspector->m_isdropping = true;
+			//
+			// Set dropping mode
+			//
+			m_analyzer->m_inspector->m_isdropping = true;
 
-		m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
+			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
+
+			m_last_drop_was_enter = true;
+		}
 
 		return false;
 	case PPME_DROP_X:
-		parse_drop(evt);
+		if(m_last_drop_was_enter)
+		{
+			parse_drop(evt);
 
-		//
-		// Turn off dropping mode
-		//
-		m_analyzer->m_inspector->m_isdropping = false;
+			//
+			// Turn off dropping mode
+			//
+			m_analyzer->m_inspector->m_isdropping = false;
 
-		m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+
+			m_last_drop_was_enter = false;
+		}
 
 		return false;
 	default:

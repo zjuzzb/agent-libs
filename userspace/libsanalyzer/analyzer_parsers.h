@@ -25,6 +25,7 @@ private:
 
 	sinsp_analyzer* m_analyzer;
 	sinsp_sched_analyzer2* m_sched_analyzer2;
+	bool m_last_drop_was_enter;
 };
 
 #endif // HAS_ANALYZER

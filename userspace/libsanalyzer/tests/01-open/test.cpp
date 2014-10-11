@@ -210,7 +210,7 @@ captureinfo do_inspect(sinsp* inspector,
 #if 0
 		uint32_t evtype = (uint32_t)ev->get_type();
 
-		if(evtype < 2 || evtype > 5)
+		if(evtype != PPME_DROP_E && evtype != PPME_DROP_X)
 		{
 			continue;
 		}
