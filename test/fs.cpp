@@ -42,7 +42,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 	int callnum = 0;
 	char bcwd[1024];
 
-	getcwd(bcwd, 1024);
+	if(getcwd(bcwd, 1024));
 	string cwd(bcwd);
 	cwd += "/";
 
@@ -67,7 +67,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 			FAIL();
 		}
 
-		write(fd, "fica", sizeof("fica"));
+		if(write(fd, "fica", sizeof("fica")));
 		close(fd);
 		unlink(FILENAME);
 		unlink(FILENAME);
@@ -165,7 +165,7 @@ TEST_F(sys_call_test, fs_link)
 			FAIL();
 		}
 
-		write(fd, "fica", sizeof("fica"));
+		if(write(fd, "fica", sizeof("fica")));
 		close(fd);
 
 		if(link(FILENAME, FILENAME1) != 0)
@@ -773,7 +773,7 @@ TEST_F(sys_call_test, fs_readv)
 			if(callnum == 1)
 			{
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_EQ("aaaaa", e->get_param_value_str("data"));
+				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
 				callnum++;
 			}
 		}
@@ -787,7 +787,7 @@ TEST_F(sys_call_test, fs_readv)
 			if(callnum == 3)
 			{
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_EQ("aaaaabbbbb", e->get_param_value_str("data"));
+				EXPECT_EQ("aaaaabbbbbccccc", (e->get_param_value_str("data")).substr(0, 15));
 				EXPECT_EQ(30, NumberParser::parse(e->get_param_value_str("size")));
 				callnum++;
 			}
@@ -913,13 +913,13 @@ TEST_F(sys_call_test, fs_preadv)
 					EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				}
 
-				EXPECT_EQ("aaaaa", e->get_param_value_str("data"));
+				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
 				callnum++;
 			}
 			else
 			{
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_EQ("aaaaa", e->get_param_value_str("data"));
+				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
 				callnum++;				
 			}
 		}
