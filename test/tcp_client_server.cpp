@@ -645,7 +645,7 @@ void runtest(iotype iot,
 		else if(evt->get_type() == PPME_SYSCALL_READV_X)
 		{
 			string ds = evt->get_param_value_str("data");
-			ds = ds.substr(0, BUFFER_LENGTH / 3);
+			//ds = ds.substr(0, BUFFER_LENGTH / 3);
 
 			EXPECT_EQ(ds, evt->get_param_value_str("data"));
 
