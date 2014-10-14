@@ -127,7 +127,7 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 			}
 
 			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
-			request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
+			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
 		}
 		else
 		{
@@ -141,7 +141,7 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 			}
 
 			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
-			request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
+			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
 		}
 	}
 }
@@ -216,8 +216,8 @@ inline void sinsp_protostate::add_mysql(sinsp_protostate* other)
 	request_sorter<string, sinsp_query_details>::merge_maps(&m_server_queries, &(other->m_server_queries));
 	request_sorter<string, sinsp_query_details>::merge_maps(&m_client_queries, &(other->m_client_queries));
 
-	request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
-	request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
+	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
+	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
 }
 
 void sinsp_protostate::add(sinsp_protostate* other)
@@ -450,7 +450,7 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 }
 
 void sinsp_protostate::query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-						   unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details>* table,
+						   unordered_map<uint32_t, sinsp_query_details>* table,
 						   bool is_server,
 						   uint32_t sampling_ratio)
 {

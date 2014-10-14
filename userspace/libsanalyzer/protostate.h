@@ -153,13 +153,13 @@ public:
 #ifdef _WIN32
 	static void merge_maps(typename unordered_map<KT, T>* dst, typename unordered_map<KT, T>* src)
 #else	
-	static void merge_maps(unordered_map<string, T>* dst, unordered_map<string, T>* src)
+	static void merge_maps(unordered_map<KT, T>* dst, unordered_map<KT, T>* src)
 #endif	
 	{
 #ifdef _WIN32
 		unordered_map<KT, T>::iterator uit;
 #else	
-		typename unordered_map<string, T>::iterator uit;
+		typename unordered_map<KT, T>::iterator uit;
 #endif
 
 		//
@@ -325,8 +325,8 @@ public:
 	// The list of mysql queries
 	unordered_map<string, sinsp_query_details> m_server_queries;
 	unordered_map<string, sinsp_query_details> m_client_queries;
-	unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details> m_server_query_types;
-	unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details> m_client_query_types;
+	unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
+	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
 
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
@@ -348,7 +348,7 @@ private:
 		bool is_server,
 		uint32_t sampling_ratio);
 	void query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-		unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details>* table,
+		unordered_map<uint32_t, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
 };
