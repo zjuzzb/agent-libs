@@ -305,6 +305,7 @@ VISIBILITY_PRIVATE
 	//
 	// Subsampling-related stuff
 	//
+	bool m_is_sampling;
 	uint32_t m_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;

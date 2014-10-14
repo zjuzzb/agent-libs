@@ -82,6 +82,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_pipe_connections = NULL;
 #endif
 	m_trans_table = NULL;
+	m_is_sampling = false;
 	m_sampling_ratio = 1;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
@@ -1529,7 +1530,6 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold())
-//		if(true)
 		{
 			m_seconds_above_thresholds++;
 
@@ -1548,8 +1548,20 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 			if(m_sampling_ratio < 128)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp ++ Setting drop mode to %" PRIu32, m_sampling_ratio * 2);
-				m_inspector->start_dropping_mode(m_sampling_ratio * 2);
+				uint32_t new_sampling_ratio;
+
+				if(!m_is_sampling)
+				{
+					new_sampling_ratio = 1;
+					m_is_sampling = true;
+				}
+				else
+				{
+					new_sampling_ratio = m_sampling_ratio * 2;
+				}
+
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp ++ Setting drop mode to %" PRIu32, new_sampling_ratio);
+				m_inspector->start_dropping_mode(new_sampling_ratio);
 			}
 			else
 			{
@@ -1561,7 +1573,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		{
 			m_seconds_below_thresholds++;
 	
-			if(m_sampling_ratio > 1)
+			if(m_is_sampling)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
 					(int)m_configuration->get_drop_lower_threshold(), m_seconds_below_thresholds, 
@@ -1574,11 +1586,18 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		}
 
 		if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
-			m_sampling_ratio > 1)
+			m_is_sampling)
 		{
 			m_seconds_below_thresholds = 0;
+			uint32_t new_sampling_ratio = m_sampling_ratio / 2;
 
-			if(m_sampling_ratio > 2)
+			if(new_sampling_ratio == 0)
+			{
+				new_sampling_ratio = 1;
+				m_is_sampling = false;
+			}
+
+			if(m_is_sampling)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
