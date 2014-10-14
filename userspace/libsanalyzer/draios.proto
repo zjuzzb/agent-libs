@@ -114,6 +114,18 @@ message command_details {
 }
 
 //
+// Counters for a protocol-related dimension, like a URL or a query
+//
+message counter_proto_entry {
+	required uint32 ncalls = 1;
+	required uint64 time_tot = 2;
+	required uint64 time_max = 3;
+	required uint64 bytes_in = 4;
+	required uint64 bytes_out = 5;
+	required uint32 nerrors = 6;
+}
+
+//
 // URL information
 //
 message url_details {
@@ -131,12 +143,7 @@ message url_details {
 	//   c for CONNECT
 	//
 	required string url = 1; 
-	required uint32 ncalls = 2;
-	required uint64 time_tot = 3;
-	required uint64 time_max = 4;
-	required uint64 bytes_in = 5;
-	required uint64 bytes_out = 6;
-	required uint32 nerrors = 7;
+	required counter_proto_entry counters = 2;
 }
 
 message status_code_details {
@@ -159,12 +166,7 @@ message http_info {
 //
 message sql_query_details {
 	required string query = 1; 
-	required uint32 ncalls = 2;
-	required uint64 time_tot = 3;
-	required uint64 time_max = 4;
-	required uint64 bytes_in = 5;
-	required uint64 bytes_out = 6;
-	required uint32 nerrors = 7;
+	required counter_proto_entry counters = 2;
 }
 
 //
@@ -189,12 +191,7 @@ enum sql_statement_type {
 
 message sql_query_type_details {
 	required sql_statement_type type = 1; 
-	required uint32 ncalls = 2;
-	required uint64 time_tot = 3;
-	required uint64 time_max = 4;
-	required uint64 bytes_in = 5;
-	required uint64 bytes_out = 6;
-	required uint32 nerrors = 7;
+	required counter_proto_entry counters = 2;
 }
 
 //

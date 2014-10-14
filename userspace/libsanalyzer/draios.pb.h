@@ -45,6 +45,7 @@ class resource_categories;
 class connection_categories;
 class process_details;
 class command_details;
+class counter_proto_entry;
 class url_details;
 class status_code_details;
 class http_info;
@@ -1732,6 +1733,138 @@ class command_details : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class counter_proto_entry : public ::google::protobuf::Message {
+ public:
+  counter_proto_entry();
+  virtual ~counter_proto_entry();
+
+  counter_proto_entry(const counter_proto_entry& from);
+
+  inline counter_proto_entry& operator=(const counter_proto_entry& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_proto_entry& default_instance();
+
+  void Swap(counter_proto_entry* other);
+
+  // implements Message ----------------------------------------------
+
+  counter_proto_entry* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const counter_proto_entry& from);
+  void MergeFrom(const counter_proto_entry& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 ncalls = 1;
+  inline bool has_ncalls() const;
+  inline void clear_ncalls();
+  static const int kNcallsFieldNumber = 1;
+  inline ::google::protobuf::uint32 ncalls() const;
+  inline void set_ncalls(::google::protobuf::uint32 value);
+
+  // required uint64 time_tot = 2;
+  inline bool has_time_tot() const;
+  inline void clear_time_tot();
+  static const int kTimeTotFieldNumber = 2;
+  inline ::google::protobuf::uint64 time_tot() const;
+  inline void set_time_tot(::google::protobuf::uint64 value);
+
+  // required uint64 time_max = 3;
+  inline bool has_time_max() const;
+  inline void clear_time_max();
+  static const int kTimeMaxFieldNumber = 3;
+  inline ::google::protobuf::uint64 time_max() const;
+  inline void set_time_max(::google::protobuf::uint64 value);
+
+  // required uint64 bytes_in = 4;
+  inline bool has_bytes_in() const;
+  inline void clear_bytes_in();
+  static const int kBytesInFieldNumber = 4;
+  inline ::google::protobuf::uint64 bytes_in() const;
+  inline void set_bytes_in(::google::protobuf::uint64 value);
+
+  // required uint64 bytes_out = 5;
+  inline bool has_bytes_out() const;
+  inline void clear_bytes_out();
+  static const int kBytesOutFieldNumber = 5;
+  inline ::google::protobuf::uint64 bytes_out() const;
+  inline void set_bytes_out(::google::protobuf::uint64 value);
+
+  // required uint32 nerrors = 6;
+  inline bool has_nerrors() const;
+  inline void clear_nerrors();
+  static const int kNerrorsFieldNumber = 6;
+  inline ::google::protobuf::uint32 nerrors() const;
+  inline void set_nerrors(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.counter_proto_entry)
+ private:
+  inline void set_has_ncalls();
+  inline void clear_has_ncalls();
+  inline void set_has_time_tot();
+  inline void clear_has_time_tot();
+  inline void set_has_time_max();
+  inline void clear_has_time_max();
+  inline void set_has_bytes_in();
+  inline void clear_has_bytes_in();
+  inline void set_has_bytes_out();
+  inline void clear_has_bytes_out();
+  inline void set_has_nerrors();
+  inline void clear_has_nerrors();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 time_tot_;
+  ::google::protobuf::uint64 time_max_;
+  ::google::protobuf::uint32 ncalls_;
+  ::google::protobuf::uint32 nerrors_;
+  ::google::protobuf::uint64 bytes_in_;
+  ::google::protobuf::uint64 bytes_out_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static counter_proto_entry* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class url_details : public ::google::protobuf::Message {
  public:
   url_details();
@@ -1798,77 +1931,29 @@ class url_details : public ::google::protobuf::Message {
   inline ::std::string* release_url();
   inline void set_allocated_url(::std::string* url);
 
-  // required uint32 ncalls = 2;
-  inline bool has_ncalls() const;
-  inline void clear_ncalls();
-  static const int kNcallsFieldNumber = 2;
-  inline ::google::protobuf::uint32 ncalls() const;
-  inline void set_ncalls(::google::protobuf::uint32 value);
-
-  // required uint64 time_tot = 3;
-  inline bool has_time_tot() const;
-  inline void clear_time_tot();
-  static const int kTimeTotFieldNumber = 3;
-  inline ::google::protobuf::uint64 time_tot() const;
-  inline void set_time_tot(::google::protobuf::uint64 value);
-
-  // required uint64 time_max = 4;
-  inline bool has_time_max() const;
-  inline void clear_time_max();
-  static const int kTimeMaxFieldNumber = 4;
-  inline ::google::protobuf::uint64 time_max() const;
-  inline void set_time_max(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_in = 5;
-  inline bool has_bytes_in() const;
-  inline void clear_bytes_in();
-  static const int kBytesInFieldNumber = 5;
-  inline ::google::protobuf::uint64 bytes_in() const;
-  inline void set_bytes_in(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_out = 6;
-  inline bool has_bytes_out() const;
-  inline void clear_bytes_out();
-  static const int kBytesOutFieldNumber = 6;
-  inline ::google::protobuf::uint64 bytes_out() const;
-  inline void set_bytes_out(::google::protobuf::uint64 value);
-
-  // required uint32 nerrors = 7;
-  inline bool has_nerrors() const;
-  inline void clear_nerrors();
-  static const int kNerrorsFieldNumber = 7;
-  inline ::google::protobuf::uint32 nerrors() const;
-  inline void set_nerrors(::google::protobuf::uint32 value);
+  // required .draiosproto.counter_proto_entry counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::counter_proto_entry& counters() const;
+  inline ::draiosproto::counter_proto_entry* mutable_counters();
+  inline ::draiosproto::counter_proto_entry* release_counters();
+  inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
 
   // @@protoc_insertion_point(class_scope:draiosproto.url_details)
  private:
   inline void set_has_url();
   inline void clear_has_url();
-  inline void set_has_ncalls();
-  inline void clear_has_ncalls();
-  inline void set_has_time_tot();
-  inline void clear_has_time_tot();
-  inline void set_has_time_max();
-  inline void clear_has_time_max();
-  inline void set_has_bytes_in();
-  inline void clear_has_bytes_in();
-  inline void set_has_bytes_out();
-  inline void clear_has_bytes_out();
-  inline void set_has_nerrors();
-  inline void clear_has_nerrors();
+  inline void set_has_counters();
+  inline void clear_has_counters();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* url_;
-  ::google::protobuf::uint64 time_tot_;
-  ::google::protobuf::uint64 time_max_;
-  ::google::protobuf::uint32 ncalls_;
-  ::google::protobuf::uint32 nerrors_;
-  ::google::protobuf::uint64 bytes_in_;
-  ::google::protobuf::uint64 bytes_out_;
+  ::draiosproto::counter_proto_entry* counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2161,77 +2246,29 @@ class sql_query_details : public ::google::protobuf::Message {
   inline ::std::string* release_query();
   inline void set_allocated_query(::std::string* query);
 
-  // required uint32 ncalls = 2;
-  inline bool has_ncalls() const;
-  inline void clear_ncalls();
-  static const int kNcallsFieldNumber = 2;
-  inline ::google::protobuf::uint32 ncalls() const;
-  inline void set_ncalls(::google::protobuf::uint32 value);
-
-  // required uint64 time_tot = 3;
-  inline bool has_time_tot() const;
-  inline void clear_time_tot();
-  static const int kTimeTotFieldNumber = 3;
-  inline ::google::protobuf::uint64 time_tot() const;
-  inline void set_time_tot(::google::protobuf::uint64 value);
-
-  // required uint64 time_max = 4;
-  inline bool has_time_max() const;
-  inline void clear_time_max();
-  static const int kTimeMaxFieldNumber = 4;
-  inline ::google::protobuf::uint64 time_max() const;
-  inline void set_time_max(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_in = 5;
-  inline bool has_bytes_in() const;
-  inline void clear_bytes_in();
-  static const int kBytesInFieldNumber = 5;
-  inline ::google::protobuf::uint64 bytes_in() const;
-  inline void set_bytes_in(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_out = 6;
-  inline bool has_bytes_out() const;
-  inline void clear_bytes_out();
-  static const int kBytesOutFieldNumber = 6;
-  inline ::google::protobuf::uint64 bytes_out() const;
-  inline void set_bytes_out(::google::protobuf::uint64 value);
-
-  // required uint32 nerrors = 7;
-  inline bool has_nerrors() const;
-  inline void clear_nerrors();
-  static const int kNerrorsFieldNumber = 7;
-  inline ::google::protobuf::uint32 nerrors() const;
-  inline void set_nerrors(::google::protobuf::uint32 value);
+  // required .draiosproto.counter_proto_entry counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::counter_proto_entry& counters() const;
+  inline ::draiosproto::counter_proto_entry* mutable_counters();
+  inline ::draiosproto::counter_proto_entry* release_counters();
+  inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
 
   // @@protoc_insertion_point(class_scope:draiosproto.sql_query_details)
  private:
   inline void set_has_query();
   inline void clear_has_query();
-  inline void set_has_ncalls();
-  inline void clear_has_ncalls();
-  inline void set_has_time_tot();
-  inline void clear_has_time_tot();
-  inline void set_has_time_max();
-  inline void clear_has_time_max();
-  inline void set_has_bytes_in();
-  inline void clear_has_bytes_in();
-  inline void set_has_bytes_out();
-  inline void clear_has_bytes_out();
-  inline void set_has_nerrors();
-  inline void clear_has_nerrors();
+  inline void set_has_counters();
+  inline void clear_has_counters();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* query_;
-  ::google::protobuf::uint64 time_tot_;
-  ::google::protobuf::uint64 time_max_;
-  ::google::protobuf::uint32 ncalls_;
-  ::google::protobuf::uint32 nerrors_;
-  ::google::protobuf::uint64 bytes_in_;
-  ::google::protobuf::uint64 bytes_out_;
+  ::draiosproto::counter_proto_entry* counters_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -2303,77 +2340,29 @@ class sql_query_type_details : public ::google::protobuf::Message {
   inline ::draiosproto::sql_statement_type type() const;
   inline void set_type(::draiosproto::sql_statement_type value);
 
-  // required uint32 ncalls = 2;
-  inline bool has_ncalls() const;
-  inline void clear_ncalls();
-  static const int kNcallsFieldNumber = 2;
-  inline ::google::protobuf::uint32 ncalls() const;
-  inline void set_ncalls(::google::protobuf::uint32 value);
-
-  // required uint64 time_tot = 3;
-  inline bool has_time_tot() const;
-  inline void clear_time_tot();
-  static const int kTimeTotFieldNumber = 3;
-  inline ::google::protobuf::uint64 time_tot() const;
-  inline void set_time_tot(::google::protobuf::uint64 value);
-
-  // required uint64 time_max = 4;
-  inline bool has_time_max() const;
-  inline void clear_time_max();
-  static const int kTimeMaxFieldNumber = 4;
-  inline ::google::protobuf::uint64 time_max() const;
-  inline void set_time_max(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_in = 5;
-  inline bool has_bytes_in() const;
-  inline void clear_bytes_in();
-  static const int kBytesInFieldNumber = 5;
-  inline ::google::protobuf::uint64 bytes_in() const;
-  inline void set_bytes_in(::google::protobuf::uint64 value);
-
-  // required uint64 bytes_out = 6;
-  inline bool has_bytes_out() const;
-  inline void clear_bytes_out();
-  static const int kBytesOutFieldNumber = 6;
-  inline ::google::protobuf::uint64 bytes_out() const;
-  inline void set_bytes_out(::google::protobuf::uint64 value);
-
-  // required uint32 nerrors = 7;
-  inline bool has_nerrors() const;
-  inline void clear_nerrors();
-  static const int kNerrorsFieldNumber = 7;
-  inline ::google::protobuf::uint32 nerrors() const;
-  inline void set_nerrors(::google::protobuf::uint32 value);
+  // required .draiosproto.counter_proto_entry counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::counter_proto_entry& counters() const;
+  inline ::draiosproto::counter_proto_entry* mutable_counters();
+  inline ::draiosproto::counter_proto_entry* release_counters();
+  inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
 
   // @@protoc_insertion_point(class_scope:draiosproto.sql_query_type_details)
  private:
   inline void set_has_type();
   inline void clear_has_type();
-  inline void set_has_ncalls();
-  inline void clear_has_ncalls();
-  inline void set_has_time_tot();
-  inline void clear_has_time_tot();
-  inline void set_has_time_max();
-  inline void clear_has_time_max();
-  inline void set_has_bytes_in();
-  inline void clear_has_bytes_in();
-  inline void set_has_bytes_out();
-  inline void clear_has_bytes_out();
-  inline void set_has_nerrors();
-  inline void clear_has_nerrors();
+  inline void set_has_counters();
+  inline void clear_has_counters();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
+  ::draiosproto::counter_proto_entry* counters_;
   int type_;
-  ::google::protobuf::uint32 ncalls_;
-  ::google::protobuf::uint64 time_tot_;
-  ::google::protobuf::uint64 time_max_;
-  ::google::protobuf::uint64 bytes_in_;
-  ::google::protobuf::uint64 bytes_out_;
-  ::google::protobuf::uint32 nerrors_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7643,6 +7632,142 @@ inline void command_details::set_allocated_parentcomm(::std::string* parentcomm)
 
 // -------------------------------------------------------------------
 
+// counter_proto_entry
+
+// required uint32 ncalls = 1;
+inline bool counter_proto_entry::has_ncalls() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void counter_proto_entry::set_has_ncalls() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void counter_proto_entry::clear_has_ncalls() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void counter_proto_entry::clear_ncalls() {
+  ncalls_ = 0u;
+  clear_has_ncalls();
+}
+inline ::google::protobuf::uint32 counter_proto_entry::ncalls() const {
+  return ncalls_;
+}
+inline void counter_proto_entry::set_ncalls(::google::protobuf::uint32 value) {
+  set_has_ncalls();
+  ncalls_ = value;
+}
+
+// required uint64 time_tot = 2;
+inline bool counter_proto_entry::has_time_tot() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void counter_proto_entry::set_has_time_tot() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void counter_proto_entry::clear_has_time_tot() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void counter_proto_entry::clear_time_tot() {
+  time_tot_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_tot();
+}
+inline ::google::protobuf::uint64 counter_proto_entry::time_tot() const {
+  return time_tot_;
+}
+inline void counter_proto_entry::set_time_tot(::google::protobuf::uint64 value) {
+  set_has_time_tot();
+  time_tot_ = value;
+}
+
+// required uint64 time_max = 3;
+inline bool counter_proto_entry::has_time_max() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void counter_proto_entry::set_has_time_max() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void counter_proto_entry::clear_has_time_max() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void counter_proto_entry::clear_time_max() {
+  time_max_ = GOOGLE_ULONGLONG(0);
+  clear_has_time_max();
+}
+inline ::google::protobuf::uint64 counter_proto_entry::time_max() const {
+  return time_max_;
+}
+inline void counter_proto_entry::set_time_max(::google::protobuf::uint64 value) {
+  set_has_time_max();
+  time_max_ = value;
+}
+
+// required uint64 bytes_in = 4;
+inline bool counter_proto_entry::has_bytes_in() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void counter_proto_entry::set_has_bytes_in() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void counter_proto_entry::clear_has_bytes_in() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void counter_proto_entry::clear_bytes_in() {
+  bytes_in_ = GOOGLE_ULONGLONG(0);
+  clear_has_bytes_in();
+}
+inline ::google::protobuf::uint64 counter_proto_entry::bytes_in() const {
+  return bytes_in_;
+}
+inline void counter_proto_entry::set_bytes_in(::google::protobuf::uint64 value) {
+  set_has_bytes_in();
+  bytes_in_ = value;
+}
+
+// required uint64 bytes_out = 5;
+inline bool counter_proto_entry::has_bytes_out() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void counter_proto_entry::set_has_bytes_out() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void counter_proto_entry::clear_has_bytes_out() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void counter_proto_entry::clear_bytes_out() {
+  bytes_out_ = GOOGLE_ULONGLONG(0);
+  clear_has_bytes_out();
+}
+inline ::google::protobuf::uint64 counter_proto_entry::bytes_out() const {
+  return bytes_out_;
+}
+inline void counter_proto_entry::set_bytes_out(::google::protobuf::uint64 value) {
+  set_has_bytes_out();
+  bytes_out_ = value;
+}
+
+// required uint32 nerrors = 6;
+inline bool counter_proto_entry::has_nerrors() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void counter_proto_entry::set_has_nerrors() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void counter_proto_entry::clear_has_nerrors() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void counter_proto_entry::clear_nerrors() {
+  nerrors_ = 0u;
+  clear_has_nerrors();
+}
+inline ::google::protobuf::uint32 counter_proto_entry::nerrors() const {
+  return nerrors_;
+}
+inline void counter_proto_entry::set_nerrors(::google::protobuf::uint32 value) {
+  set_has_nerrors();
+  nerrors_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // url_details
 
 // required string url = 1;
@@ -7715,136 +7840,42 @@ inline void url_details::set_allocated_url(::std::string* url) {
   }
 }
 
-// required uint32 ncalls = 2;
-inline bool url_details::has_ncalls() const {
+// required .draiosproto.counter_proto_entry counters = 2;
+inline bool url_details::has_counters() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void url_details::set_has_ncalls() {
+inline void url_details::set_has_counters() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void url_details::clear_has_ncalls() {
+inline void url_details::clear_has_counters() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void url_details::clear_ncalls() {
-  ncalls_ = 0u;
-  clear_has_ncalls();
+inline void url_details::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+  clear_has_counters();
 }
-inline ::google::protobuf::uint32 url_details::ncalls() const {
-  return ncalls_;
+inline const ::draiosproto::counter_proto_entry& url_details::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
 }
-inline void url_details::set_ncalls(::google::protobuf::uint32 value) {
-  set_has_ncalls();
-  ncalls_ = value;
+inline ::draiosproto::counter_proto_entry* url_details::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
+  return counters_;
 }
-
-// required uint64 time_tot = 3;
-inline bool url_details::has_time_tot() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+inline ::draiosproto::counter_proto_entry* url_details::release_counters() {
+  clear_has_counters();
+  ::draiosproto::counter_proto_entry* temp = counters_;
+  counters_ = NULL;
+  return temp;
 }
-inline void url_details::set_has_time_tot() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void url_details::clear_has_time_tot() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void url_details::clear_time_tot() {
-  time_tot_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_tot();
-}
-inline ::google::protobuf::uint64 url_details::time_tot() const {
-  return time_tot_;
-}
-inline void url_details::set_time_tot(::google::protobuf::uint64 value) {
-  set_has_time_tot();
-  time_tot_ = value;
-}
-
-// required uint64 time_max = 4;
-inline bool url_details::has_time_max() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void url_details::set_has_time_max() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void url_details::clear_has_time_max() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void url_details::clear_time_max() {
-  time_max_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_max();
-}
-inline ::google::protobuf::uint64 url_details::time_max() const {
-  return time_max_;
-}
-inline void url_details::set_time_max(::google::protobuf::uint64 value) {
-  set_has_time_max();
-  time_max_ = value;
-}
-
-// required uint64 bytes_in = 5;
-inline bool url_details::has_bytes_in() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void url_details::set_has_bytes_in() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void url_details::clear_has_bytes_in() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void url_details::clear_bytes_in() {
-  bytes_in_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_in();
-}
-inline ::google::protobuf::uint64 url_details::bytes_in() const {
-  return bytes_in_;
-}
-inline void url_details::set_bytes_in(::google::protobuf::uint64 value) {
-  set_has_bytes_in();
-  bytes_in_ = value;
-}
-
-// required uint64 bytes_out = 6;
-inline bool url_details::has_bytes_out() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void url_details::set_has_bytes_out() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void url_details::clear_has_bytes_out() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void url_details::clear_bytes_out() {
-  bytes_out_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_out();
-}
-inline ::google::protobuf::uint64 url_details::bytes_out() const {
-  return bytes_out_;
-}
-inline void url_details::set_bytes_out(::google::protobuf::uint64 value) {
-  set_has_bytes_out();
-  bytes_out_ = value;
-}
-
-// required uint32 nerrors = 7;
-inline bool url_details::has_nerrors() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void url_details::set_has_nerrors() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void url_details::clear_has_nerrors() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-inline void url_details::clear_nerrors() {
-  nerrors_ = 0u;
-  clear_has_nerrors();
-}
-inline ::google::protobuf::uint32 url_details::nerrors() const {
-  return nerrors_;
-}
-inline void url_details::set_nerrors(::google::protobuf::uint32 value) {
-  set_has_nerrors();
-  nerrors_ = value;
+inline void url_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
 }
 
 // -------------------------------------------------------------------
@@ -8073,136 +8104,42 @@ inline void sql_query_details::set_allocated_query(::std::string* query) {
   }
 }
 
-// required uint32 ncalls = 2;
-inline bool sql_query_details::has_ncalls() const {
+// required .draiosproto.counter_proto_entry counters = 2;
+inline bool sql_query_details::has_counters() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void sql_query_details::set_has_ncalls() {
+inline void sql_query_details::set_has_counters() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void sql_query_details::clear_has_ncalls() {
+inline void sql_query_details::clear_has_counters() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void sql_query_details::clear_ncalls() {
-  ncalls_ = 0u;
-  clear_has_ncalls();
+inline void sql_query_details::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+  clear_has_counters();
 }
-inline ::google::protobuf::uint32 sql_query_details::ncalls() const {
-  return ncalls_;
+inline const ::draiosproto::counter_proto_entry& sql_query_details::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
 }
-inline void sql_query_details::set_ncalls(::google::protobuf::uint32 value) {
-  set_has_ncalls();
-  ncalls_ = value;
+inline ::draiosproto::counter_proto_entry* sql_query_details::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
+  return counters_;
 }
-
-// required uint64 time_tot = 3;
-inline bool sql_query_details::has_time_tot() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+inline ::draiosproto::counter_proto_entry* sql_query_details::release_counters() {
+  clear_has_counters();
+  ::draiosproto::counter_proto_entry* temp = counters_;
+  counters_ = NULL;
+  return temp;
 }
-inline void sql_query_details::set_has_time_tot() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void sql_query_details::clear_has_time_tot() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void sql_query_details::clear_time_tot() {
-  time_tot_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_tot();
-}
-inline ::google::protobuf::uint64 sql_query_details::time_tot() const {
-  return time_tot_;
-}
-inline void sql_query_details::set_time_tot(::google::protobuf::uint64 value) {
-  set_has_time_tot();
-  time_tot_ = value;
-}
-
-// required uint64 time_max = 4;
-inline bool sql_query_details::has_time_max() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void sql_query_details::set_has_time_max() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void sql_query_details::clear_has_time_max() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void sql_query_details::clear_time_max() {
-  time_max_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_max();
-}
-inline ::google::protobuf::uint64 sql_query_details::time_max() const {
-  return time_max_;
-}
-inline void sql_query_details::set_time_max(::google::protobuf::uint64 value) {
-  set_has_time_max();
-  time_max_ = value;
-}
-
-// required uint64 bytes_in = 5;
-inline bool sql_query_details::has_bytes_in() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void sql_query_details::set_has_bytes_in() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void sql_query_details::clear_has_bytes_in() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void sql_query_details::clear_bytes_in() {
-  bytes_in_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_in();
-}
-inline ::google::protobuf::uint64 sql_query_details::bytes_in() const {
-  return bytes_in_;
-}
-inline void sql_query_details::set_bytes_in(::google::protobuf::uint64 value) {
-  set_has_bytes_in();
-  bytes_in_ = value;
-}
-
-// required uint64 bytes_out = 6;
-inline bool sql_query_details::has_bytes_out() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void sql_query_details::set_has_bytes_out() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void sql_query_details::clear_has_bytes_out() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void sql_query_details::clear_bytes_out() {
-  bytes_out_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_out();
-}
-inline ::google::protobuf::uint64 sql_query_details::bytes_out() const {
-  return bytes_out_;
-}
-inline void sql_query_details::set_bytes_out(::google::protobuf::uint64 value) {
-  set_has_bytes_out();
-  bytes_out_ = value;
-}
-
-// required uint32 nerrors = 7;
-inline bool sql_query_details::has_nerrors() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void sql_query_details::set_has_nerrors() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void sql_query_details::clear_has_nerrors() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-inline void sql_query_details::clear_nerrors() {
-  nerrors_ = 0u;
-  clear_has_nerrors();
-}
-inline ::google::protobuf::uint32 sql_query_details::nerrors() const {
-  return nerrors_;
-}
-inline void sql_query_details::set_nerrors(::google::protobuf::uint32 value) {
-  set_has_nerrors();
-  nerrors_ = value;
+inline void sql_query_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
 }
 
 // -------------------------------------------------------------------
@@ -8232,136 +8169,42 @@ inline void sql_query_type_details::set_type(::draiosproto::sql_statement_type v
   type_ = value;
 }
 
-// required uint32 ncalls = 2;
-inline bool sql_query_type_details::has_ncalls() const {
+// required .draiosproto.counter_proto_entry counters = 2;
+inline bool sql_query_type_details::has_counters() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void sql_query_type_details::set_has_ncalls() {
+inline void sql_query_type_details::set_has_counters() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void sql_query_type_details::clear_has_ncalls() {
+inline void sql_query_type_details::clear_has_counters() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void sql_query_type_details::clear_ncalls() {
-  ncalls_ = 0u;
-  clear_has_ncalls();
+inline void sql_query_type_details::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+  clear_has_counters();
 }
-inline ::google::protobuf::uint32 sql_query_type_details::ncalls() const {
-  return ncalls_;
+inline const ::draiosproto::counter_proto_entry& sql_query_type_details::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
 }
-inline void sql_query_type_details::set_ncalls(::google::protobuf::uint32 value) {
-  set_has_ncalls();
-  ncalls_ = value;
+inline ::draiosproto::counter_proto_entry* sql_query_type_details::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
+  return counters_;
 }
-
-// required uint64 time_tot = 3;
-inline bool sql_query_type_details::has_time_tot() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+inline ::draiosproto::counter_proto_entry* sql_query_type_details::release_counters() {
+  clear_has_counters();
+  ::draiosproto::counter_proto_entry* temp = counters_;
+  counters_ = NULL;
+  return temp;
 }
-inline void sql_query_type_details::set_has_time_tot() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void sql_query_type_details::clear_has_time_tot() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void sql_query_type_details::clear_time_tot() {
-  time_tot_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_tot();
-}
-inline ::google::protobuf::uint64 sql_query_type_details::time_tot() const {
-  return time_tot_;
-}
-inline void sql_query_type_details::set_time_tot(::google::protobuf::uint64 value) {
-  set_has_time_tot();
-  time_tot_ = value;
-}
-
-// required uint64 time_max = 4;
-inline bool sql_query_type_details::has_time_max() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void sql_query_type_details::set_has_time_max() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void sql_query_type_details::clear_has_time_max() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void sql_query_type_details::clear_time_max() {
-  time_max_ = GOOGLE_ULONGLONG(0);
-  clear_has_time_max();
-}
-inline ::google::protobuf::uint64 sql_query_type_details::time_max() const {
-  return time_max_;
-}
-inline void sql_query_type_details::set_time_max(::google::protobuf::uint64 value) {
-  set_has_time_max();
-  time_max_ = value;
-}
-
-// required uint64 bytes_in = 5;
-inline bool sql_query_type_details::has_bytes_in() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void sql_query_type_details::set_has_bytes_in() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void sql_query_type_details::clear_has_bytes_in() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void sql_query_type_details::clear_bytes_in() {
-  bytes_in_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_in();
-}
-inline ::google::protobuf::uint64 sql_query_type_details::bytes_in() const {
-  return bytes_in_;
-}
-inline void sql_query_type_details::set_bytes_in(::google::protobuf::uint64 value) {
-  set_has_bytes_in();
-  bytes_in_ = value;
-}
-
-// required uint64 bytes_out = 6;
-inline bool sql_query_type_details::has_bytes_out() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void sql_query_type_details::set_has_bytes_out() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void sql_query_type_details::clear_has_bytes_out() {
-  _has_bits_[0] &= ~0x00000020u;
-}
-inline void sql_query_type_details::clear_bytes_out() {
-  bytes_out_ = GOOGLE_ULONGLONG(0);
-  clear_has_bytes_out();
-}
-inline ::google::protobuf::uint64 sql_query_type_details::bytes_out() const {
-  return bytes_out_;
-}
-inline void sql_query_type_details::set_bytes_out(::google::protobuf::uint64 value) {
-  set_has_bytes_out();
-  bytes_out_ = value;
-}
-
-// required uint32 nerrors = 7;
-inline bool sql_query_type_details::has_nerrors() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void sql_query_type_details::set_has_nerrors() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void sql_query_type_details::clear_has_nerrors() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-inline void sql_query_type_details::clear_nerrors() {
-  nerrors_ = 0u;
-  clear_has_nerrors();
-}
-inline ::google::protobuf::uint32 sql_query_type_details::nerrors() const {
-  return nerrors_;
-}
-inline void sql_query_type_details::set_nerrors(::google::protobuf::uint32 value) {
-  set_has_nerrors();
-  nerrors_ = value;
+inline void sql_query_type_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
 }
 
 // -------------------------------------------------------------------

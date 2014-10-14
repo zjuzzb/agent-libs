@@ -270,12 +270,12 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 			{
 				ud->set_url((*vit)->first);
-				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
-				ud->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
-				ud->set_time_max((*vit)->second.m_time_max);
-				ud->set_bytes_in((*vit)->second.m_bytes_in);
-				ud->set_bytes_out((*vit)->second.m_bytes_out);
-				ud->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
+				ud->mutable_counters()->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
+				ud->mutable_counters()->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
+				ud->mutable_counters()->set_time_max((*vit)->second.m_time_max);
+				ud->mutable_counters()->set_bytes_in((*vit)->second.m_bytes_in);
+				ud->mutable_counters()->set_bytes_out((*vit)->second.m_bytes_out);
+				ud->mutable_counters()->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
 			}
 		}
 	}
@@ -296,12 +296,12 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			}
 
 			ud->set_url(uit->first);
-			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
-			ud->set_time_max(uit->second.m_time_max);
-			ud->set_bytes_in(uit->second.m_bytes_in);
-			ud->set_bytes_out(uit->second.m_bytes_out);
-			ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
+			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
+			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in);
+			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out);
+			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
 		}
 	}
 }
@@ -413,12 +413,12 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 			{
 				ud->set_query((*vit)->first);
-				ud->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
-				ud->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
-				ud->set_time_max((*vit)->second.m_time_max);
-				ud->set_bytes_in((*vit)->second.m_bytes_in);
-				ud->set_bytes_out((*vit)->second.m_bytes_out);
-				ud->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
+				ud->mutable_counters()->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
+				ud->mutable_counters()->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
+				ud->mutable_counters()->set_time_max((*vit)->second.m_time_max);
+				ud->mutable_counters()->set_bytes_in((*vit)->second.m_bytes_in);
+				ud->mutable_counters()->set_bytes_out((*vit)->second.m_bytes_out);
+				ud->mutable_counters()->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
 			}
 		}
 	}
@@ -439,12 +439,12 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 			}
 
 			ud->set_query(uit->first);
-			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
-			ud->set_time_max(uit->second.m_time_max);
-			ud->set_bytes_in(uit->second.m_bytes_in);
-			ud->set_bytes_out(uit->second.m_bytes_out);
-			ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
+			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
+			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in);
+			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out);
+			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
 		}
 	}
 }
@@ -471,12 +471,12 @@ void sinsp_protostate::query_type_table_to_protobuf(draiosproto::proto_info* pro
 		}
 
 		ud->set_type((draiosproto::sql_statement_type)uit->first);
-		ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-		ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
-		ud->set_time_max(uit->second.m_time_max);
-		ud->set_bytes_in(uit->second.m_bytes_in);
-		ud->set_bytes_out(uit->second.m_bytes_out);
-		ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
+		ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+		ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+		ud->mutable_counters()->set_time_max(uit->second.m_time_max);
+		ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in);
+		ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out);
+		ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
 	}
 }
 

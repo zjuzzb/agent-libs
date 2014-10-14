@@ -144,6 +144,10 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 		src += nskips;
 		srclen -= nskips;
 	}
+
+	if(m_statement_type == OT_SELECT)
+	{
+	}
 }
 
 const char* sinsp_slq_query_parser::get_statement_type_string()
