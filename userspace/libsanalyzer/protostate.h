@@ -101,7 +101,7 @@ class sinsp_query_details : public sinsp_request_details
 ///////////////////////////////////////////////////////////////////////////////
 // Sorter class
 ///////////////////////////////////////////////////////////////////////////////
-template <typename T>
+template <typename KT, typename T>
 class request_sorter
 {
 	typedef bool (*request_comparer)(typename unordered_map<string, T>::iterator src, 
@@ -151,13 +151,13 @@ public:
 	// Merge two maps by adding the elements of the source to the destination
 	//
 #ifdef _WIN32
-	static void merge_maps(typename unordered_map<string, T>* dst, typename unordered_map<string, T>* src)
+	static void merge_maps(typename unordered_map<KT, T>* dst, typename unordered_map<KT, T>* src)
 #else	
 	static void merge_maps(unordered_map<string, T>* dst, unordered_map<string, T>* src)
 #endif	
 	{
 #ifdef _WIN32
-		unordered_map<string, T>::iterator uit;
+		unordered_map<KT, T>::iterator uit;
 #else	
 		typename unordered_map<string, T>::iterator uit;
 #endif
@@ -309,6 +309,8 @@ public:
 
 		m_server_queries.clear();
 		m_client_queries.clear();
+		m_server_query_types.clear();
+		m_client_query_types.clear();
 	}
 
 	void add(sinsp_protostate* other);
@@ -323,8 +325,8 @@ public:
 	// The list of mysql queries
 	unordered_map<string, sinsp_query_details> m_server_queries;
 	unordered_map<string, sinsp_query_details> m_client_queries;
-//	unordered_map<uint32_t, uint32_t> m_server_status_codes;
-//	unordered_map<uint32_t, uint32_t> m_client_status_codes;
+	unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details> m_server_query_types;
+	unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details> m_client_query_types;
 
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
@@ -343,6 +345,10 @@ private:
 		uint32_t sampling_ratio);
 	void query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_query_details>* table,
+		bool is_server,
+		uint32_t sampling_ratio);
+	void query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+		unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
 };

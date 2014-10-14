@@ -57,7 +57,7 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 		}
 
 		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
-		request_sorter<sinsp_url_details>::update(entry, tr, time_delta, is_error);
+		request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error);
 
 		//
 		// Update the status code table
@@ -99,6 +99,7 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 	if(tr->m_protoparser->m_is_valid)
 	{
 		sinsp_mysql_parser* pp = (sinsp_mysql_parser*)tr->m_protoparser;
+		bool is_error = (pp->m_error_code != 0);
 
 		//
 		// Make sure this is a query
@@ -109,37 +110,39 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 		}
 
 		//
-		// Update the URL table
+		// Update the query table
 		//
 		sinsp_query_details* entry;
+		sinsp_query_details* type_entry;
 
 		if(is_server)
 		{
-			if(m_server_queries.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				//
 				// Table limit reached
 				//
-				return;
+				entry = &(m_server_queries[pp->m_statement]);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
-			entry = &(m_server_queries[pp->m_statement]);
+			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
+			request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
 		}
 		else
 		{
-			if(m_client_queries.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				//
 				// Table limit reached
 				//
-				return;
+				entry = &(m_client_queries[pp->m_statement]);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
-			entry = &(m_client_queries[pp->m_statement]);
+			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
+			request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
 		}
-
-		bool is_error = (pp->m_error_code != 0);
-		request_sorter<sinsp_query_details>::update(entry, tr, time_delta, is_error);
 	}
 }
 
@@ -165,8 +168,8 @@ inline void sinsp_protostate::add_http(sinsp_protostate* other)
 	//
 	// Add the URLs
 	//
-	request_sorter<sinsp_url_details>::merge_maps(&m_server_urls, &(other->m_server_urls));
-	request_sorter<sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
+	request_sorter<string, sinsp_url_details>::merge_maps(&m_server_urls, &(other->m_server_urls));
+	request_sorter<string, sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
 
 	//
 	// Add the status codes
@@ -210,11 +213,11 @@ inline void sinsp_protostate::add_http(sinsp_protostate* other)
 
 inline void sinsp_protostate::add_mysql(sinsp_protostate* other)
 {
-	//
-	// Add the URLs
-	//
-	request_sorter<sinsp_query_details>::merge_maps(&m_server_queries, &(other->m_server_queries));
-	request_sorter<sinsp_query_details>::merge_maps(&m_client_queries, &(other->m_client_queries));
+	request_sorter<string, sinsp_query_details>::merge_maps(&m_server_queries, &(other->m_server_queries));
+	request_sorter<string, sinsp_query_details>::merge_maps(&m_client_queries, &(other->m_client_queries));
+
+	request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
+	request_sorter<sinsp_slq_query_parser::statement_type, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
 }
 
 void sinsp_protostate::add(sinsp_protostate* other)
@@ -248,7 +251,7 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 			sortable_list.push_back(uit);
 		}
 
-		request_sorter<sinsp_url_details>::mark_top(&sortable_list);
+		request_sorter<string, sinsp_url_details>::mark_top(&sortable_list);
 
 		//
 		// Go through the list and emit the marked elements
@@ -391,7 +394,7 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 			sortable_list.push_back(uit);
 		}
 
-		request_sorter<sinsp_query_details>::mark_top(&sortable_list);
+		request_sorter<string, sinsp_query_details>::mark_top(&sortable_list);
 
 		//
 		// Go through the list and emit the marked elements
@@ -446,6 +449,37 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 	}
 }
 
+void sinsp_protostate::query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
+						   unordered_map<sinsp_slq_query_parser::statement_type, sinsp_query_details>* table,
+						   bool is_server,
+						   uint32_t sampling_ratio)
+{
+	draiosproto::sql_query_type_details* ud;
+
+	//
+	// The table is small enough that we don't need to sort it
+	//
+	for(auto uit = table->begin(); uit != table->end(); ++uit)
+	{
+		if(is_server)
+		{
+			ud = protobuf_msg->mutable_mysql()->add_server_query_types();
+		}
+		else
+		{
+			ud = protobuf_msg->mutable_mysql()->add_client_query_types();
+		}
+
+		ud->set_type((draiosproto::sql_statement_type)uit->first);
+		ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+		ud->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+		ud->set_time_max(uit->second.m_time_max);
+		ud->set_bytes_in(uit->second.m_bytes_in);
+		ud->set_bytes_out(uit->second.m_bytes_out);
+		ud->set_nerrors(uit->second.m_nerrors * sampling_ratio);
+	}
+}
+
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio)
 {
 	//
@@ -477,11 +511,13 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	if(m_server_queries.size() != 0)
 	{
 		query_table_to_protobuf(protobuf_msg, &m_server_queries, true, sampling_ratio);
+		query_type_table_to_protobuf(protobuf_msg, &m_server_query_types, true, sampling_ratio);
 	}
 
 	if(m_client_queries.size() != 0)
 	{
 		query_table_to_protobuf(protobuf_msg, &m_client_queries, false, sampling_ratio);
+		query_type_table_to_protobuf(protobuf_msg, &m_client_query_types, false, sampling_ratio);
 	}
 }
 
