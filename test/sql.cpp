@@ -296,14 +296,9 @@ TEST_F(sys_call_test, sql_table_insert)
 	{
 		p.parse(line, strlen(line));
 
-if(p.m_statement_type == sinsp_slq_query_parser::OT_INSERT)
-{
-	printf("!\n");		
-}
-
 		if(p.m_table && p.m_statement_type == sinsp_slq_query_parser::OT_INSERT)
 		{
-			printf("%s\n", p.m_table);
+//			printf("%s\n", p.m_table);
 			string table = p.m_table;
 
 			if(opmap.find(table) == opmap.end())
@@ -340,9 +335,149 @@ if(p.m_statement_type == sinsp_slq_query_parser::OT_INSERT)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["tab1"], 3979);
-	EXPECT_EQ(opmap["tab4"], 3973);
+	EXPECT_EQ(opmap["tab1"], 1167);
+	EXPECT_EQ(opmap["tab0"], 107009);
 	EXPECT_EQ(opmap["view1"], 3);
+
+	printf("Elapsed time: %.3lf\n", duration);
+
+	gzclose(zf);
+}
+
+TEST_F(sys_call_test, sql_table_replace)
+{
+	char line[1024 * 16];
+	gzFile zf;
+	sinsp_autobuffer m_storage;
+	sinsp_slq_query_parser p(&m_storage);
+
+	zf = gzopen("sql.txt.gz", "rb");
+	if(zf == NULL)
+	{
+		printf("sql.txt.gz not found, skipping test");
+
+		return;
+	}
+
+	map<string, uint64_t> opmap;
+	double duration = ((double)clock()) / CLOCKS_PER_SEC;
+	uint64_t j = 0;
+
+
+	while(gzgets(zf, line, sizeof(line)))
+	{
+		p.parse(line, strlen(line));
+
+		if(p.m_table && p.m_statement_type == sinsp_slq_query_parser::OT_REPLACE)
+		{
+			//printf("%s\n", p.m_table);
+			string table = p.m_table;
+
+			if(opmap.find(table) == opmap.end())
+			{
+				opmap[table] = 1;
+			}
+			else
+			{
+				opmap[table]++;
+			}
+
+			j++;
+		}
+	}
+
+	duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+
+	printf("#queries: %" PRIu64 "\n", j);
+
+	uint64_t tot = 0;
+	map<uint64_t, string> sorted_map;
+
+	for(auto it = opmap.begin(); it != opmap.end(); ++it)
+	{
+		//printf("%s: %" PRIu64 "\n", it->first.c_str(), it->second);
+		sorted_map[it->second] = it->first;
+		tot += it->second;
+	}
+/*
+	for(auto it = sorted_map.begin(); it != sorted_map.end(); ++it)
+	{
+		printf("%" PRIu64 " - %s\n", it->first, it->second.c_str());
+	}
+*/
+
+	EXPECT_EQ(tot, j);
+	EXPECT_EQ(opmap["t1"], 2);
+
+	printf("Elapsed time: %.3lf\n", duration);
+
+	gzclose(zf);
+}
+
+TEST_F(sys_call_test, sql_table_update)
+{
+	char line[1024 * 16];
+	gzFile zf;
+	sinsp_autobuffer m_storage;
+	sinsp_slq_query_parser p(&m_storage);
+
+	zf = gzopen("sql.txt.gz", "rb");
+	if(zf == NULL)
+	{
+		printf("sql.txt.gz not found, skipping test");
+
+		return;
+	}
+
+	map<string, uint64_t> opmap;
+	double duration = ((double)clock()) / CLOCKS_PER_SEC;
+	uint64_t j = 0;
+
+
+	while(gzgets(zf, line, sizeof(line)))
+	{
+		p.parse(line, strlen(line));
+
+		if(p.m_table && p.m_statement_type == sinsp_slq_query_parser::OT_UPDATE)
+		{
+			//printf("%s\n", p.m_table);
+			string table = p.m_table;
+
+			if(opmap.find(table) == opmap.end())
+			{
+				opmap[table] = 1;
+			}
+			else
+			{
+				opmap[table]++;
+			}
+
+			j++;
+		}
+	}
+
+	duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+
+	printf("#queries: %" PRIu64 "\n", j);
+
+	uint64_t tot = 0;
+	map<uint64_t, string> sorted_map;
+
+	for(auto it = opmap.begin(); it != opmap.end(); ++it)
+	{
+		printf("%s: %" PRIu64 "\n", it->first.c_str(), it->second);
+		sorted_map[it->second] = it->first;
+		tot += it->second;
+	}
+/*
+	for(auto it = sorted_map.begin(); it != sorted_map.end(); ++it)
+	{
+		printf("%" PRIu64 " - %s\n", it->first, it->second.c_str());
+	}
+*/
+
+	EXPECT_EQ(tot, j);
+	EXPECT_EQ(opmap["t1"], 2);
 
 	printf("Elapsed time: %.3lf\n", duration);
 
