@@ -48,7 +48,7 @@ public:
 	}
 
 	//
-	// Note: terminate_string is 1 if you want a zero at the end of the dtring
+	// Note: terminate_string is 1 if you want a zero at the end of the string
 	//
 	inline char* copy(char* data, uint32_t size, uint32_t terminate_string = 0)
 	{
@@ -91,6 +91,44 @@ public:
 		res = this->copy(data, size, 1);
 
 		return res;
+	}
+
+	inline char* copy_and_trim(char* data, uint32_t size, uint32_t terminate_string = 0)
+	{
+		//
+		// Skip initial spaces
+		//
+		while(*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n')
+		{
+			data++;
+			size--;
+
+			if(size == 0)
+			{
+				return NULL;
+			}
+		}
+
+		//
+		// Skip initial spaces
+		//
+		char* end = data + size - 1;
+
+		while(*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')
+		{
+			end--;
+			size--;
+
+			if(size == 0)
+			{
+				return NULL;
+			}
+		}
+
+		//
+		// Copy the string
+		//
+		return copy(data, size, terminate_string);
 	}
 
 	inline char* get_buf()

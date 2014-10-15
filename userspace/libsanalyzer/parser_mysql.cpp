@@ -13,6 +13,9 @@
 
 #ifdef HAS_ANALYZER
 
+//
+// Type of queries
+//
 const char* sql_toks[] = {"SELECT",
 		"INSERT",
 		"SET",
@@ -41,7 +44,19 @@ uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
 	sizeof("UNLOCK") - 1,
 	sizeof("ALTER") - 1};
 
-inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped)
+//
+// Tokens that denote the end of a select
+//
+const char* selectend_toks[] = {"WHERE",
+		"AS"};
+
+uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
+	sizeof("AS") - 1};
+
+///////////////////////////////////////////////////////////////////////////////
+// sinsp_slq_query_parser implementation
+///////////////////////////////////////////////////////////////////////////////
+inline int32_t sinsp_slq_query_parser::find_tokens(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped)
 {
 	uint32_t j;
 	int32_t res = -1;
@@ -65,15 +80,18 @@ inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t nto
 	//
 	// Do the comparison
 	//
-	uint32_t toklen = (uint32_t)(p - src);
-
-	for(j = 0; j < ntoks; j++)
+	if(m_braket_level == 0)
 	{
-		if(toklen == toklens[j])
+		uint32_t toklen = (uint32_t)(p - src);
+
+		for(j = 0; j < ntoks; j++)
 		{
-			if(sinsp_strcmpi((char*)src, toks[j], toklen))
+			if(toklen == toklens[j])
 			{
-				return j;
+				if(sinsp_strcmpi((char*)src, toks[j], toklen))
+				{
+					res = j;
+				}
 			}
 		}
 	}
@@ -88,6 +106,17 @@ inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t nto
 			return -1;
 		}
 
+		if(*p == '(')
+		{
+			m_braket_level++;
+		}
+
+		if(*p == ')')
+		{
+			m_braket_level--;
+			ASSERT(m_braket_level >= 0);
+		}
+
 		p++;
 	}
 
@@ -96,9 +125,42 @@ inline int32_t sinsp_tokens_match(const char* src, uint32_t srclen, uint32_t nto
 	return res;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// sinsp_slq_query_parser implementation
-///////////////////////////////////////////////////////////////////////////////
+inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t strlen,
+													  const char* tofind, uint32_t tofind_len)
+{
+	const char* last = str + strlen - tofind_len - 1;
+	
+	if(last <= str)
+	{
+		ASSERT(false);
+		return NULL;
+	}
+
+	for(; str <= last; str++)
+	{
+		if(*str == '(')
+		{
+			m_braket_level++;
+		}
+
+		if(*str == ')')
+		{
+			m_braket_level--;
+			ASSERT(m_braket_level >= 0);
+		}
+
+		if(m_braket_level == 0)
+		{
+			if(sinsp_strcmpi((char*)str, (char*)tofind, tofind_len))
+			{
+				return str;
+			}
+		}
+	}
+
+	return NULL;
+}
+
 void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 {
 	char* p = query;
@@ -123,30 +185,65 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	//
 	uint32_t nskips = 1;
 	m_statement_type = OT_NONE;
+	m_braket_level = 0;
 	char* src = query;
 	uint32_t srclen = querylen;
 
 	while(nskips != 0)
 	{
-		int32_t id = sinsp_tokens_match(src, 
+		int32_t id = find_tokens(src, 
 			srclen, 
 			sizeof(sql_toks) / sizeof(sql_toks[0]), 
 			(char**)sql_toks,
 			sql_toklens,
 			&nskips);
 
+		src += nskips;
+		srclen -= nskips;
+
 		if(id != -1)
 		{
 			m_statement_type = (statement_type)(id + 1);
 			break;
 		}
-
-		src += nskips;
-		srclen -= nskips;
 	}
 
 	if(m_statement_type == OT_SELECT)
 	{
+		const char* sfrom = find_token(src, srclen, "from", sizeof("from") - 1);
+		uint32_t fromlen = 0;
+
+		ASSERT(sfrom < pend);
+
+		sfrom = sfrom + sizeof("from") - 1;
+		src = (char*)sfrom;
+		srclen = pend - src;
+
+		ASSERT(src < pend);
+
+		uint32_t nskips = 1;
+		ASSERT(m_braket_level == 0);
+
+		while(nskips != 0)
+		{
+			int32_t id = find_tokens(src, 
+				srclen, 
+				sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
+				(char**)selectend_toks,
+				selectend_toklens,
+				&nskips);
+
+			src += nskips;
+			srclen -= nskips;
+
+			if(id != -1)
+			{
+				m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
+				break;
+			}
+
+			fromlen += nskips;
+		}
 	}
 }
 
@@ -167,7 +264,8 @@ const char* sinsp_slq_query_parser::get_statement_type_string()
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_mysql_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_mysql_parser::sinsp_mysql_parser()
+sinsp_mysql_parser::sinsp_mysql_parser() :
+	m_query_parser(&m_storage)
 {
 	m_database = NULL;
 }

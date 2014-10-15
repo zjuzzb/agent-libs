@@ -71,12 +71,26 @@ public:
 		OT_UNLOCK = 12,
 		OT_ALTER = 13,
 	};
+	
+	sinsp_slq_query_parser(sinsp_autobuffer* str_storage)
+	{
+		m_str_storage = str_storage;
+		m_table = NULL;
+	}
 
 	void parse(char* query, uint32_t querylen);
 
 	const char* get_statement_type_string();
 
 	statement_type m_statement_type;
+	char* m_table;
+
+private:
+	inline int32_t find_tokens(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped);
+	inline const char* find_token(const char* str, uint32_t strlen, const char* tofind, uint32_t tofind_len);
+	
+	int32_t m_braket_level;
+	sinsp_autobuffer* m_str_storage;
 };
 
 class sinsp_mysql_parser : sinsp_protocol_parser
