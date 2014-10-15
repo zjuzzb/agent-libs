@@ -88,6 +88,7 @@ public:
 private:
 	inline int32_t find_tokens(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped);
 	inline const char* find_token(const char* str, uint32_t strlen, const char* tofind, uint32_t tofind_len);
+	void extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len, const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens);
 	
 	int32_t m_braket_level;
 	sinsp_autobuffer* m_str_storage;

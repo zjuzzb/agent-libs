@@ -53,6 +53,13 @@ const char* selectend_toks[] = {"WHERE",
 uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
 	sizeof("AS") - 1};
 
+//
+// Tokens that denote the end of an insert
+//
+const char* insertend_toks[] = {"VALUES"};
+
+uint32_t insertend_toklens[] = {sizeof("VALUES") - 1};
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_slq_query_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -161,6 +168,51 @@ inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t 
 	return NULL;
 }
 
+void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len,
+	const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens)
+{
+	char* pend = src + srclen;
+
+	const char* sfrom = find_token(src, srclen, start_token, start_token_len);
+
+	if(sfrom != NULL)
+	{
+		uint32_t fromlen = 0;
+
+		ASSERT(sfrom < pend);
+
+		sfrom = sfrom + start_token_len;
+		src = (char*)sfrom;
+		srclen = pend - src;
+
+		ASSERT(src < pend);
+
+		uint32_t nskips = 1;
+		ASSERT(m_braket_level == 0);
+
+		while(nskips != 0)
+		{
+			int32_t id = find_tokens(src, 
+				srclen, 
+				sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
+				(char**)selectend_toks,
+				selectend_toklens,
+				&nskips);
+
+			src += nskips;
+			srclen -= nskips;
+
+			if(id != -1)
+			{
+				m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
+				break;
+			}
+
+			fromlen += nskips;
+		}
+	}
+}
+
 void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 {
 	char* p = query;
@@ -211,45 +263,16 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 
 	if(m_statement_type == OT_SELECT || m_statement_type == OT_DELETE)
 	{
-		const char* sfrom = find_token(src, srclen, "from", sizeof("from") - 1);
-
-		if(sfrom != NULL)
-		{
-			uint32_t fromlen = 0;
-
-			ASSERT(sfrom < pend);
-
-			sfrom = sfrom + sizeof("from") - 1;
-			src = (char*)sfrom;
-			srclen = pend - src;
-
-			ASSERT(src < pend);
-
-			uint32_t nskips = 1;
-			ASSERT(m_braket_level == 0);
-
-			while(nskips != 0)
-			{
-				int32_t id = find_tokens(src, 
-					srclen, 
-					sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
-					(char**)selectend_toks,
-					selectend_toklens,
-					&nskips);
-
-				src += nskips;
-				srclen -= nskips;
-
-				if(id != -1)
-				{
-					m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
-					break;
-				}
-
-				fromlen += nskips;
-			}
-		}
-	}	
+		extract_table(src, srclen, (char*)"from", sizeof("from") - 1,
+			selectend_toks, selectend_toklens, 
+			sizeof(selectend_toks) / sizeof(selectend_toks[0]));
+	}
+	else if(m_statement_type == OT_INSERT)
+	{
+		extract_table(src, srclen, (char*)"into", sizeof("into") - 1,
+			insertend_toks, insertend_toklens, 
+			sizeof(insertend_toks) / sizeof(insertend_toks[0]));
+	}
 }
 
 const char* sinsp_slq_query_parser::get_statement_type_string()
