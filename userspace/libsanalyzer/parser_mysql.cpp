@@ -249,7 +249,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 				fromlen += nskips;
 			}
 		}
-	}
+	}	
 }
 
 const char* sinsp_slq_query_parser::get_statement_type_string()
