@@ -194,9 +194,9 @@ void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* star
 		{
 			int32_t id = find_tokens(src, 
 				srclen, 
-				sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
-				(char**)selectend_toks,
-				selectend_toklens,
+				n_end_tokens, 
+				(char**)end_tokens,
+				end_toklens,
 				&nskips);
 
 			src += nskips;
