@@ -57,8 +57,13 @@ uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
 // Tokens that denote the end of an insert
 //
 const char* insertend_toks[] = {"VALUES"};
-
 uint32_t insertend_toklens[] = {sizeof("VALUES") - 1};
+
+//
+// Tokens that denote the end of an update
+//
+const char* updateend_toks[] = {"SET"};
+uint32_t updateend_toklens[] = {sizeof("SET") - 1};
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_slq_query_parser implementation
@@ -172,8 +177,16 @@ void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* star
 	const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens)
 {
 	char* pend = src + srclen;
+	const char* sfrom;
 
-	const char* sfrom = find_token(src, srclen, start_token, start_token_len);
+	if(start_token != NULL)
+	{
+		sfrom = find_token(src, srclen, start_token, start_token_len);
+	}
+	else
+	{
+		sfrom = src;
+	}
 
 	if(sfrom != NULL)
 	{
@@ -261,17 +274,27 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 		}
 	}
 
-	if(m_statement_type == OT_SELECT || m_statement_type == OT_DELETE)
+	switch(m_statement_type)
 	{
+	case OT_SELECT:
+	case OT_DELETE:
 		extract_table(src, srclen, (char*)"from", sizeof("from") - 1,
 			selectend_toks, selectend_toklens, 
 			sizeof(selectend_toks) / sizeof(selectend_toks[0]));
-	}
-	else if(m_statement_type == OT_INSERT)
-	{
+		break;
+	case OT_INSERT:
+	case OT_REPLACE:
 		extract_table(src, srclen, (char*)"into", sizeof("into") - 1,
 			insertend_toks, insertend_toklens, 
 			sizeof(insertend_toks) / sizeof(insertend_toks[0]));
+		break;
+	case OT_UPDATE:
+		extract_table(src, srclen, NULL, 0,
+			updateend_toks, updateend_toklens, 
+			sizeof(updateend_toks) / sizeof(updateend_toks[0]));
+		break;
+	default:
+		break;
 	}
 }
 

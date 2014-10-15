@@ -57,14 +57,14 @@ public:
 	enum statement_type
 	{
 		OT_NONE = 0,
-		OT_SELECT = 1,
-		OT_INSERT = 2,
-		OT_SET = 3,
-		OT_CREATE = 4,
-		OT_DELETE = 5,
-		OT_DROP = 6,
-		OT_REPLACE = 7,
-		OT_UPDATE = 8,
+		OT_SELECT = 1, //
+		OT_INSERT = 2, //
+		OT_SET = 3, //
+		OT_CREATE = 4, //
+		OT_DELETE = 5, //
+		OT_DROP = 6, //
+		OT_REPLACE = 7, // 
+		OT_UPDATE = 8, //
 		OT_USE = 9,
 		OT_SHOW = 10,
 		OT_LOCK = 11,
