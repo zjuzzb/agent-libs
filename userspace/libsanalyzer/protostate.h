@@ -311,6 +311,8 @@ public:
 		m_client_queries.clear();
 		m_server_query_types.clear();
 		m_client_query_types.clear();
+		m_server_tables.clear();
+		m_client_tables.clear();
 	}
 
 	void add(sinsp_protostate* other);
@@ -327,6 +329,8 @@ public:
 	unordered_map<string, sinsp_query_details> m_client_queries;
 	unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
 	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
+	unordered_map<string, sinsp_query_details> m_server_tables;
+	unordered_map<string, sinsp_query_details> m_client_tables;
 
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
@@ -346,7 +350,8 @@ private:
 	void query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_query_details>* table,
 		bool is_server,
-		uint32_t sampling_ratio);
+		uint32_t sampling_ratio,
+		bool is_query_table);
 	void query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<uint32_t, sinsp_query_details>* table,
 		bool is_server,

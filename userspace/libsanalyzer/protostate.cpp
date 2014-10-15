@@ -110,19 +110,24 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 		}
 
 		//
-		// Update the query table
+		// Update the tables
 		//
 		sinsp_query_details* entry;
 		sinsp_query_details* type_entry;
+		char* tablename = pp->m_query_parser.m_table;
 
 		if(is_server)
 		{
 			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				//
-				// Table limit reached
-				//
 				entry = &(m_server_queries[pp->m_statement]);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+			}
+
+			if(tablename != NULL &&
+				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				entry = &(m_server_tables[pp->m_query_parser.m_table]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -133,10 +138,14 @@ inline void sinsp_protostate::update_mysql(sinsp_partial_transaction* tr,
 		{
 			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				//
-				// Table limit reached
-				//
 				entry = &(m_client_queries[pp->m_statement]);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+			}
+
+			if(tablename != NULL &&
+				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			{
+				entry = &(m_client_tables[pp->m_query_parser.m_table]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -215,6 +224,9 @@ inline void sinsp_protostate::add_mysql(sinsp_protostate* other)
 {
 	request_sorter<string, sinsp_query_details>::merge_maps(&m_server_queries, &(other->m_server_queries));
 	request_sorter<string, sinsp_query_details>::merge_maps(&m_client_queries, &(other->m_client_queries));
+
+	request_sorter<string, sinsp_query_details>::merge_maps(&m_server_tables, &(other->m_server_tables));
+	request_sorter<string, sinsp_query_details>::merge_maps(&m_client_tables, &(other->m_client_tables));
 
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
@@ -375,11 +387,12 @@ void sinsp_protostate::status_code_table_to_protobuf(draiosproto::proto_info* pr
 void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 						   unordered_map<string, sinsp_query_details>* table,
 						   bool is_server,
-						   uint32_t sampling_ratio)
+						   uint32_t sampling_ratio,
+						   bool is_query_table)
 {
 	uint32_t j;
 	unordered_map<string, sinsp_query_details>::iterator uit;
-	draiosproto::sql_query_details* ud;
+	draiosproto::sql_entry_details* ud;
 
 	if(table->size() > TOP_URLS_IN_SAMPLE)
 	{
@@ -401,18 +414,32 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 		//
 		for(vit = sortable_list.begin(), j = 0; vit != sortable_list.end() && j < TOP_URLS_IN_SAMPLE; ++vit, ++j)
 		{
-			if(is_server)
+			if(is_query_table)
 			{
-				ud = protobuf_msg->mutable_mysql()->add_server_queries();
+				if(is_server)
+				{
+					ud = protobuf_msg->mutable_mysql()->add_server_queries();
+				}
+				else
+				{
+					ud = protobuf_msg->mutable_mysql()->add_client_queries();
+				}
 			}
 			else
 			{
-				ud = protobuf_msg->mutable_mysql()->add_client_queries();
+				if(is_server)
+				{
+					ud = protobuf_msg->mutable_mysql()->add_server_tables();
+				}
+				else
+				{
+					ud = protobuf_msg->mutable_mysql()->add_client_tables();
+				}
 			}
 
 			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 			{
-				ud->set_query((*vit)->first);
+				ud->set_name((*vit)->first);
 				ud->mutable_counters()->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
 				ud->mutable_counters()->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
 				ud->mutable_counters()->set_time_max((*vit)->second.m_time_max);
@@ -429,16 +456,30 @@ void sinsp_protostate::query_table_to_protobuf(draiosproto::proto_info* protobuf
 		//
 		for(uit = table->begin(); uit != table->end(); ++uit)
 		{
-			if(is_server)
+			if(is_query_table)
 			{
-				ud = protobuf_msg->mutable_mysql()->add_server_queries();
+				if(is_server)
+				{
+					ud = protobuf_msg->mutable_mysql()->add_server_queries();
+				}
+				else
+				{
+					ud = protobuf_msg->mutable_mysql()->add_client_queries();
+				}
 			}
 			else
 			{
-				ud = protobuf_msg->mutable_mysql()->add_client_queries();
+				if(is_server)
+				{
+					ud = protobuf_msg->mutable_mysql()->add_server_tables();
+				}
+				else
+				{
+					ud = protobuf_msg->mutable_mysql()->add_client_tables();
+				}
 			}
 
-			ud->set_query(uit->first);
+			ud->set_name(uit->first);
 			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
 			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
 			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
@@ -510,13 +551,15 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	//
 	if(m_server_queries.size() != 0)
 	{
-		query_table_to_protobuf(protobuf_msg, &m_server_queries, true, sampling_ratio);
+		query_table_to_protobuf(protobuf_msg, &m_server_queries, true, sampling_ratio, true);
+		query_table_to_protobuf(protobuf_msg, &m_server_tables, true, sampling_ratio, false);
 		query_type_table_to_protobuf(protobuf_msg, &m_server_query_types, true, sampling_ratio);
 	}
 
 	if(m_client_queries.size() != 0)
 	{
-		query_table_to_protobuf(protobuf_msg, &m_client_queries, false, sampling_ratio);
+		query_table_to_protobuf(protobuf_msg, &m_client_queries, false, sampling_ratio, true);
+		query_table_to_protobuf(protobuf_msg, &m_client_tables, false, sampling_ratio, false);
 		query_type_table_to_protobuf(protobuf_msg, &m_client_query_types, false, sampling_ratio);
 	}
 }

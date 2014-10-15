@@ -65,9 +65,9 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* http_info_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   http_info_reflection_ = NULL;
-const ::google::protobuf::Descriptor* sql_query_details_descriptor_ = NULL;
+const ::google::protobuf::Descriptor* sql_entry_details_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
-  sql_query_details_reflection_ = NULL;
+  sql_entry_details_reflection_ = NULL;
 const ::google::protobuf::Descriptor* sql_query_type_details_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   sql_query_type_details_reflection_ = NULL;
@@ -435,22 +435,22 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(http_info));
-  sql_query_details_descriptor_ = file->message_type(15);
-  static const int sql_query_details_offsets_[2] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_query_details, query_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_query_details, counters_),
+  sql_entry_details_descriptor_ = file->message_type(15);
+  static const int sql_entry_details_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_entry_details, name_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_entry_details, counters_),
   };
-  sql_query_details_reflection_ =
+  sql_entry_details_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
-      sql_query_details_descriptor_,
-      sql_query_details::default_instance_,
-      sql_query_details_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_query_details, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_query_details, _unknown_fields_),
+      sql_entry_details_descriptor_,
+      sql_entry_details::default_instance_,
+      sql_entry_details_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_entry_details, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_entry_details, _unknown_fields_),
       -1,
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(sql_query_details));
+      sizeof(sql_entry_details));
   sql_query_type_details_descriptor_ = file->message_type(16);
   static const int sql_query_type_details_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_query_type_details, type_),
@@ -468,11 +468,13 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(sql_query_type_details));
   sql_info_descriptor_ = file->message_type(17);
-  static const int sql_info_offsets_[4] = {
+  static const int sql_info_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, server_queries_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, client_queries_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, server_query_types_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, client_query_types_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, server_tables_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(sql_info, client_tables_),
   };
   sql_info_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -910,7 +912,7 @@ void protobuf_RegisterTypes(const ::std::string&) {
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     http_info_descriptor_, &http_info::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    sql_query_details_descriptor_, &sql_query_details::default_instance());
+    sql_entry_details_descriptor_, &sql_entry_details::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     sql_query_type_details_descriptor_, &sql_query_type_details::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
@@ -986,8 +988,8 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete status_code_details_reflection_;
   delete http_info::default_instance_;
   delete http_info_reflection_;
-  delete sql_query_details::default_instance_;
-  delete sql_query_details_reflection_;
+  delete sql_entry_details::default_instance_;
+  delete sql_entry_details_reflection_;
   delete sql_query_type_details::default_instance_;
   delete sql_query_type_details_reflection_;
   delete sql_info::default_instance_;
@@ -1111,132 +1113,135 @@ void protobuf_AddDesc_draios_2eproto() {
     "oto.url_details\022=\n\023client_status_codes\030\003"
     " \003(\0132 .draiosproto.status_code_details\022="
     "\n\023server_status_codes\030\004 \003(\0132 .draiosprot"
-    "o.status_code_details\"V\n\021sql_query_detai"
-    "ls\022\r\n\005query\030\001 \002(\t\0222\n\010counters\030\002 \002(\0132 .dr"
-    "aiosproto.counter_proto_entry\"{\n\026sql_que"
-    "ry_type_details\022-\n\004type\030\001 \002(\0162\037.draiospr"
-    "oto.sql_statement_type\0222\n\010counters\030\002 \002(\013"
-    "2 .draiosproto.counter_proto_entry\"\374\001\n\010s"
-    "ql_info\0226\n\016server_queries\030\001 \003(\0132\036.draios"
-    "proto.sql_query_details\0226\n\016client_querie"
-    "s\030\002 \003(\0132\036.draiosproto.sql_query_details\022"
-    "\?\n\022server_query_types\030\003 \003(\0132#.draiosprot"
-    "o.sql_query_type_details\022\?\n\022client_query"
-    "_types\030\004 \003(\0132#.draiosproto.sql_query_typ"
-    "e_details\"X\n\nproto_info\022$\n\004http\030\001 \001(\0132\026."
-    "draiosproto.http_info\022$\n\005mysql\030\002 \001(\0132\025.d"
-    "raiosproto.sql_info\"\327\005\n\004host\022\020\n\010hostname"
-    "\030\001 \001(\t\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 "
-    "\003(\r\022\021\n\tcpu_steal\030\013 \003(\r\022\"\n\032physical_memor"
-    "y_size_bytes\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034."
-    "draiosproto.time_categories\022B\n\013reqcounte"
-    "rs\030\014 \001(\0132-.draiosproto.transaction_break"
-    "down_categories\022E\n\024transaction_counters\030"
-    "\006 \001(\0132\'.draiosproto.counter_time_bidirec"
-    "tional\022I\n\030min_transaction_counters\030\026 \001(\013"
-    "2\'.draiosproto.counter_time_bidirectiona"
-    "l\022I\n\030max_transaction_counters\030\027 \001(\0132\'.dr"
-    "aiosproto.counter_time_bidirectional\022$\n\034"
-    "transaction_processing_delay\030\007 \001(\004\022\033\n\023me"
-    "rged_server_delay\030\016 \001(\004\022\030\n\020next_tiers_de"
-    "lay\030\r \001(\004\022;\n\021resource_counters\030\010 \001(\0132 .d"
-    "raiosproto.resource_categories\022;\n\016syscal"
-    "l_errors\030\t \001(\0132#.draiosproto.counter_sys"
-    "call_errors\0228\n\017external_io_net\030\n \001(\0132\037.d"
-    "raiosproto.counter_time_bytes\"\347\005\n\007proces"
-    "s\022-\n\007details\030\002 \001(\0132\034.draiosproto.process"
-    "_details\022\"\n\032is_ipv4_transaction_server\030\003"
-    " \001(\010\022\"\n\032is_unix_transaction_server\030\004 \001(\010"
-    "\022\"\n\032is_ipv4_transaction_client\030\n \001(\010\022\"\n\032"
-    "is_unix_transaction_client\030\013 \001(\010\022\017\n\007netr"
-    "ole\030\r \001(\r\022/\n\ttcounters\030\005 \001(\0132\034.draiospro"
-    "to.time_categories\022E\n\024transaction_counte"
-    "rs\030\006 \001(\0132\'.draiosproto.counter_time_bidi"
-    "rectional\022I\n\030min_transaction_counters\030\022 "
-    "\001(\0132\'.draiosproto.counter_time_bidirecti"
-    "onal\022I\n\030max_transaction_counters\030\023 \001(\0132\'"
-    ".draiosproto.counter_time_bidirectional\022"
-    "$\n\034transaction_processing_delay\030\007 \001(\004\022\033\n"
-    "\023merged_server_delay\030\016 \001(\004\022\030\n\020next_tiers"
-    "_delay\030\014 \001(\004\022;\n\021resource_counters\030\010 \001(\0132"
-    " .draiosproto.resource_categories\022;\n\016sys"
-    "call_errors\030\t \001(\0132#.draiosproto.counter_"
-    "syscall_errors\022\'\n\006protos\030\024 \001(\0132\027.draiosp"
-    "roto.proto_info\"\?\n\007program\022&\n\010procinfo\030\001"
-    " \002(\0132\024.draiosproto.process\022\014\n\004pids\030\002 \003(\004"
-    "\"T\n\tipv4tuple\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip\030\002 \002(\r\022"
-    "\r\n\005sport\030\003 \002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007l4proto"
-    "\030\005 \002(\r\"\212\001\n\017ipv4_connection\022%\n\005tuple\030\001 \002("
-    "\0132\026.draiosproto.ipv4tuple\022\014\n\004spid\030\002 \001(\004\022"
-    "\014\n\004dpid\030\005 \001(\004\0224\n\010counters\030\010 \002(\0132\".draios"
-    "proto.connection_categories\"T\n\026ipv4_netw"
-    "ork_interface\022\014\n\004name\030\001 \002(\t\022\014\n\004addr\030\002 \002("
-    "\r\022\017\n\007netmask\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"~\n\nmou"
-    "nted_fs\022\016\n\006device\030\001 \002(\t\022\021\n\tmount_dir\030\002 \002"
-    "(\t\022\014\n\004type\030\003 \002(\t\022\022\n\nsize_bytes\030\004 \002(\004\022\022\n\n"
-    "used_bytes\030\005 \002(\004\022\027\n\017available_bytes\030\006 \002("
-    "\004\"]\n\tfile_stat\022\014\n\004name\030\001 \002(\t\022\r\n\005bytes\030\002 "
-    "\002(\r\022\017\n\007time_ns\030\003 \002(\004\022\022\n\nopen_count\030\004 \002(\r"
-    "\022\016\n\006errors\030\005 \002(\r\"\212\005\n\007metrics\022\024\n\014timestam"
+    "o.status_code_details\"U\n\021sql_entry_detai"
+    "ls\022\014\n\004name\030\001 \002(\t\0222\n\010counters\030\002 \002(\0132 .dra"
+    "iosproto.counter_proto_entry\"{\n\026sql_quer"
+    "y_type_details\022-\n\004type\030\001 \002(\0162\037.draiospro"
+    "to.sql_statement_type\0222\n\010counters\030\002 \002(\0132"
+    " .draiosproto.counter_proto_entry\"\352\002\n\010sq"
+    "l_info\0226\n\016server_queries\030\001 \003(\0132\036.draiosp"
+    "roto.sql_entry_details\0226\n\016client_queries"
+    "\030\002 \003(\0132\036.draiosproto.sql_entry_details\022\?"
+    "\n\022server_query_types\030\003 \003(\0132#.draiosproto"
+    ".sql_query_type_details\022\?\n\022client_query_"
+    "types\030\004 \003(\0132#.draiosproto.sql_query_type"
+    "_details\0225\n\rserver_tables\030\005 \003(\0132\036.draios"
+    "proto.sql_entry_details\0225\n\rclient_tables"
+    "\030\006 \003(\0132\036.draiosproto.sql_entry_details\"X"
+    "\n\nproto_info\022$\n\004http\030\001 \001(\0132\026.draiosproto"
+    ".http_info\022$\n\005mysql\030\002 \001(\0132\025.draiosproto."
+    "sql_info\"\327\005\n\004host\022\020\n\010hostname\030\001 \001(\t\022\020\n\010n"
+    "um_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n\tcpu_"
+    "steal\030\013 \003(\r\022\"\n\032physical_memory_size_byte"
+    "s\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto"
+    ".time_categories\022B\n\013reqcounters\030\014 \001(\0132-."
+    "draiosproto.transaction_breakdown_catego"
+    "ries\022E\n\024transaction_counters\030\006 \001(\0132\'.dra"
+    "iosproto.counter_time_bidirectional\022I\n\030m"
+    "in_transaction_counters\030\026 \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\022I\n\030max_tr"
+    "ansaction_counters\030\027 \001(\0132\'.draiosproto.c"
+    "ounter_time_bidirectional\022$\n\034transaction"
+    "_processing_delay\030\007 \001(\004\022\033\n\023merged_server"
+    "_delay\030\016 \001(\004\022\030\n\020next_tiers_delay\030\r \001(\004\022;"
+    "\n\021resource_counters\030\010 \001(\0132 .draiosproto."
+    "resource_categories\022;\n\016syscall_errors\030\t "
+    "\001(\0132#.draiosproto.counter_syscall_errors"
+    "\0228\n\017external_io_net\030\n \001(\0132\037.draiosproto."
+    "counter_time_bytes\"\347\005\n\007process\022-\n\007detail"
+    "s\030\002 \001(\0132\034.draiosproto.process_details\022\"\n"
+    "\032is_ipv4_transaction_server\030\003 \001(\010\022\"\n\032is_"
+    "unix_transaction_server\030\004 \001(\010\022\"\n\032is_ipv4"
+    "_transaction_client\030\n \001(\010\022\"\n\032is_unix_tra"
+    "nsaction_client\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/"
+    "\n\ttcounters\030\005 \001(\0132\034.draiosproto.time_cat"
+    "egories\022E\n\024transaction_counters\030\006 \001(\0132\'."
+    "draiosproto.counter_time_bidirectional\022I"
+    "\n\030min_transaction_counters\030\022 \001(\0132\'.draio"
+    "sproto.counter_time_bidirectional\022I\n\030max"
+    "_transaction_counters\030\023 \001(\0132\'.draiosprot"
+    "o.counter_time_bidirectional\022$\n\034transact"
+    "ion_processing_delay\030\007 \001(\004\022\033\n\023merged_ser"
+    "ver_delay\030\016 \001(\004\022\030\n\020next_tiers_delay\030\014 \001("
+    "\004\022;\n\021resource_counters\030\010 \001(\0132 .draiospro"
+    "to.resource_categories\022;\n\016syscall_errors"
+    "\030\t \001(\0132#.draiosproto.counter_syscall_err"
+    "ors\022\'\n\006protos\030\024 \001(\0132\027.draiosproto.proto_"
+    "info\"\?\n\007program\022&\n\010procinfo\030\001 \002(\0132\024.drai"
+    "osproto.process\022\014\n\004pids\030\002 \003(\004\"T\n\tipv4tup"
+    "le\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip\030\002 \002(\r\022\r\n\005sport\030\003 "
+    "\002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007l4proto\030\005 \002(\r\"\212\001\n\017"
+    "ipv4_connection\022%\n\005tuple\030\001 \002(\0132\026.draiosp"
+    "roto.ipv4tuple\022\014\n\004spid\030\002 \001(\004\022\014\n\004dpid\030\005 \001"
+    "(\004\0224\n\010counters\030\010 \002(\0132\".draiosproto.conne"
+    "ction_categories\"T\n\026ipv4_network_interfa"
+    "ce\022\014\n\004name\030\001 \002(\t\022\014\n\004addr\030\002 \002(\r\022\017\n\007netmas"
+    "k\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"~\n\nmounted_fs\022\016\n\006"
+    "device\030\001 \002(\t\022\021\n\tmount_dir\030\002 \002(\t\022\014\n\004type\030"
+    "\003 \002(\t\022\022\n\nsize_bytes\030\004 \002(\004\022\022\n\nused_bytes\030"
+    "\005 \002(\004\022\027\n\017available_bytes\030\006 \002(\004\"]\n\tfile_s"
+    "tat\022\014\n\004name\030\001 \002(\t\022\r\n\005bytes\030\002 \002(\r\022\017\n\007time"
+    "_ns\030\003 \002(\004\022\022\n\nopen_count\030\004 \002(\r\022\016\n\006errors\030"
+    "\005 \002(\r\"\212\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022"
+    "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
+    "\022#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.host\022&\n"
+    "\010programs\030\t \003(\0132\024.draiosproto.program\022\'\n"
+    "\tprocesses\030\005 \003(\0132\024.draiosproto.process\0226"
+    "\n\020ipv4_connections\030\007 \003(\0132\034.draiosproto.i"
+    "pv4_connection\022D\n\027ipv4_network_interface"
+    "s\030\010 \003(\0132#.draiosproto.ipv4_network_inter"
+    "face\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_cus"
+    "tom_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027\n\017hos"
+    "t_custom_map\030\r \001(\t\022\026\n\016is_host_hidden\030\016 \001"
+    "(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007version\030"
+    "\020 \001(\t\022.\n\010commands\030\021 \003(\0132\034.draiosproto.co"
+    "mmand_details\022\'\n\006mounts\030\022 \003(\0132\027.draiospr"
+    "oto.mounted_fs\022)\n\ttop_files\030\023 \003(\0132\026.drai"
+    "osproto.file_stat\022\'\n\006protos\030\024 \001(\0132\027.drai"
+    "osproto.proto_info\"\232\001\n\022dump_request_star"
+    "t\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
+    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030"
+    "\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004"
+    "\022\r\n\005token\030\006 \002(\t\"a\n\021dump_request_stop\022\024\n\014"
+    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
+    "\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rd"
+    "ump_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nma"
+    "chine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010c"
+    "hunk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nke"
+    "ep_alive\030\t \001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020final"
+    "_size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005toke"
+    "n\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timestam"
     "p_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custom"
-    "er_id\030\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021.draiospr"
-    "oto.host\022&\n\010programs\030\t \003(\0132\024.draiosproto"
-    ".program\022\'\n\tprocesses\030\005 \003(\0132\024.draiosprot"
-    "o.process\0226\n\020ipv4_connections\030\007 \003(\0132\034.dr"
-    "aiosproto.ipv4_connection\022D\n\027ipv4_networ"
-    "k_interfaces\030\010 \003(\0132#.draiosproto.ipv4_ne"
-    "twork_interface\022\026\n\016sampling_ratio\030\n \001(\r\022"
-    "\030\n\020host_custom_name\030\013 \001(\t\022\021\n\thost_tags\030\014"
-    " \001(\t\022\027\n\017host_custom_map\030\r \001(\t\022\026\n\016is_host"
-    "_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001(\t\022"
-    "\017\n\007version\030\020 \001(\t\022.\n\010commands\030\021 \003(\0132\034.dra"
-    "iosproto.command_details\022\'\n\006mounts\030\022 \003(\013"
-    "2\027.draiosproto.mounted_fs\022)\n\ttop_files\030\023"
-    " \003(\0132\026.draiosproto.file_stat\022\'\n\006protos\030\024"
-    " \001(\0132\027.draiosproto.proto_info\"\232\001\n\022dump_r"
-    "equest_start\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nma"
-    "chine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013d"
-    "uration_ns\030\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max"
-    "_size\030\007 \001(\004\022\r\n\005token\030\006 \002(\t\"a\n\021dump_reque"
-    "st_stop\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
-    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030"
-    "\004 \002(\t\"\322\001\n\rdump_response\022\024\n\014timestamp_ns\030"
-    "\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id"
-    "\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022\023\n\013final_chunk\030"
-    "\010 \001(\010\022\022\n\nkeep_alive\030\t \001(\010\022\017\n\007content\030\004 \001"
-    "(\014\022\030\n\020final_size_bytes\030\n \001(\004\022\r\n\005error\030\005 "
-    "\001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022"
-    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
-    "\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n"
-    "\004user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001"
-    "(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n"
-    "\010ssh_data\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachi"
-    "ne_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005toke"
-    "n\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013"
-    "exit_status\030\007 \001(\005\"a\n\021ssh_close_channel\022\024"
+    "er_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t"
+    "\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassp"
+    "hrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024"
     "\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t"
-    "\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023"
-    "auto_update_request\022\024\n\014timestamp_ns\030\001 \002("
-    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
-    "(\t\"c\n\025dirty_shutdown_report\022\024\n\014timestamp"
+    "\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004"
+    "data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status"
+    "\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestamp"
     "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
-    "r_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346\001\n\022sql_statemen"
-    "t_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\n"
-    "SOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020"
-    "\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_R"
-    "EPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n"
-    "\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020"
-    "\014\022\r\n\tSOP_ALTER\020\r*\251\001\n\013networkrole\022\010\n\004NONE"
-    "\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOT"
-    "E_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024I"
-    "S_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_"
-    "CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014message"
-    "_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_START"
-    "\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPON"
-    "SE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_"
-    "CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_R"
-    "EQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\nB$\n\031c"
-    "om.draios.model.protobufB\005AgentH\001", 7993);
+    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_update"
+    "_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachin"
+    "e_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025dirty"
+    "_shutdown_report\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
+    "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
+    "\013\n\003log\030\004 \002(\t*\346\001\n\022sql_statement_type\022\014\n\010S"
+    "OP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSERT\020"
+    "\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DE"
+    "LETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n"
+    "\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n"
+    "\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_AL"
+    "TER\020\r*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LO"
+    "CAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERV"
+    "ER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV"
+    "4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n"
+    "\016IS_UNIX_CLIENT\020 *\314\001\n\014message_type\022\013\n\007ME"
+    "TRICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_"
+    "REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH"
+    "_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014"
+    "\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n"
+    "\025DIRTY_SHUTDOWN_REPORT\020\nB$\n\031com.draios.m"
+    "odel.protobufB\005AgentH\001", 8102);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -1254,7 +1259,7 @@ void protobuf_AddDesc_draios_2eproto() {
   url_details::default_instance_ = new url_details();
   status_code_details::default_instance_ = new status_code_details();
   http_info::default_instance_ = new http_info();
-  sql_query_details::default_instance_ = new sql_query_details();
+  sql_entry_details::default_instance_ = new sql_entry_details();
   sql_query_type_details::default_instance_ = new sql_query_type_details();
   sql_info::default_instance_ = new sql_info();
   proto_info::default_instance_ = new proto_info();
@@ -1290,7 +1295,7 @@ void protobuf_AddDesc_draios_2eproto() {
   url_details::default_instance_->InitAsDefaultInstance();
   status_code_details::default_instance_->InitAsDefaultInstance();
   http_info::default_instance_->InitAsDefaultInstance();
-  sql_query_details::default_instance_->InitAsDefaultInstance();
+  sql_entry_details::default_instance_->InitAsDefaultInstance();
   sql_query_type_details::default_instance_->InitAsDefaultInstance();
   sql_info::default_instance_->InitAsDefaultInstance();
   proto_info::default_instance_->InitAsDefaultInstance();
@@ -7645,71 +7650,71 @@ void http_info::Swap(http_info* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int sql_query_details::kQueryFieldNumber;
-const int sql_query_details::kCountersFieldNumber;
+const int sql_entry_details::kNameFieldNumber;
+const int sql_entry_details::kCountersFieldNumber;
 #endif  // !_MSC_VER
 
-sql_query_details::sql_query_details()
+sql_entry_details::sql_entry_details()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void sql_query_details::InitAsDefaultInstance() {
+void sql_entry_details::InitAsDefaultInstance() {
   counters_ = const_cast< ::draiosproto::counter_proto_entry*>(&::draiosproto::counter_proto_entry::default_instance());
 }
 
-sql_query_details::sql_query_details(const sql_query_details& from)
+sql_entry_details::sql_entry_details(const sql_entry_details& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void sql_query_details::SharedCtor() {
+void sql_entry_details::SharedCtor() {
   _cached_size_ = 0;
-  query_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   counters_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-sql_query_details::~sql_query_details() {
+sql_entry_details::~sql_entry_details() {
   SharedDtor();
 }
 
-void sql_query_details::SharedDtor() {
-  if (query_ != &::google::protobuf::internal::kEmptyString) {
-    delete query_;
+void sql_entry_details::SharedDtor() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
   }
   if (this != default_instance_) {
     delete counters_;
   }
 }
 
-void sql_query_details::SetCachedSize(int size) const {
+void sql_entry_details::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* sql_query_details::descriptor() {
+const ::google::protobuf::Descriptor* sql_entry_details::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return sql_query_details_descriptor_;
+  return sql_entry_details_descriptor_;
 }
 
-const sql_query_details& sql_query_details::default_instance() {
+const sql_entry_details& sql_entry_details::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
   return *default_instance_;
 }
 
-sql_query_details* sql_query_details::default_instance_ = NULL;
+sql_entry_details* sql_entry_details::default_instance_ = NULL;
 
-sql_query_details* sql_query_details::New() const {
-  return new sql_query_details;
+sql_entry_details* sql_entry_details::New() const {
+  return new sql_entry_details;
 }
 
-void sql_query_details::Clear() {
+void sql_entry_details::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (has_query()) {
-      if (query_ != &::google::protobuf::internal::kEmptyString) {
-        query_->clear();
+    if (has_name()) {
+      if (name_ != &::google::protobuf::internal::kEmptyString) {
+        name_->clear();
       }
     }
     if (has_counters()) {
@@ -7720,20 +7725,20 @@ void sql_query_details::Clear() {
   mutable_unknown_fields()->Clear();
 }
 
-bool sql_query_details::MergePartialFromCodedStream(
+bool sql_entry_details::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required string query = 1;
+      // required string name = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_query()));
+                input, this->mutable_name()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->query().data(), this->query().length(),
+            this->name().data(), this->name().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
@@ -7772,15 +7777,15 @@ bool sql_query_details::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void sql_query_details::SerializeWithCachedSizes(
+void sql_entry_details::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required string query = 1;
-  if (has_query()) {
+  // required string name = 1;
+  if (has_name()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->query().data(), this->query().length(),
+      this->name().data(), this->name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      1, this->query(), output);
+      1, this->name(), output);
   }
 
   // required .draiosproto.counter_proto_entry counters = 2;
@@ -7795,16 +7800,16 @@ void sql_query_details::SerializeWithCachedSizes(
   }
 }
 
-::google::protobuf::uint8* sql_query_details::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* sql_entry_details::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // required string query = 1;
-  if (has_query()) {
+  // required string name = 1;
+  if (has_name()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->query().data(), this->query().length(),
+      this->name().data(), this->name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->query(), target);
+        1, this->name(), target);
   }
 
   // required .draiosproto.counter_proto_entry counters = 2;
@@ -7821,15 +7826,15 @@ void sql_query_details::SerializeWithCachedSizes(
   return target;
 }
 
-int sql_query_details::ByteSize() const {
+int sql_entry_details::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required string query = 1;
-    if (has_query()) {
+    // required string name = 1;
+    if (has_name()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->query());
+          this->name());
     }
 
     // required .draiosproto.counter_proto_entry counters = 2;
@@ -7851,10 +7856,10 @@ int sql_query_details::ByteSize() const {
   return total_size;
 }
 
-void sql_query_details::MergeFrom(const ::google::protobuf::Message& from) {
+void sql_entry_details::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const sql_query_details* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const sql_query_details*>(
+  const sql_entry_details* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const sql_entry_details*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -7863,11 +7868,11 @@ void sql_query_details::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void sql_query_details::MergeFrom(const sql_query_details& from) {
+void sql_entry_details::MergeFrom(const sql_entry_details& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_query()) {
-      set_query(from.query());
+    if (from.has_name()) {
+      set_name(from.name());
     }
     if (from.has_counters()) {
       mutable_counters()->::draiosproto::counter_proto_entry::MergeFrom(from.counters());
@@ -7876,19 +7881,19 @@ void sql_query_details::MergeFrom(const sql_query_details& from) {
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void sql_query_details::CopyFrom(const ::google::protobuf::Message& from) {
+void sql_entry_details::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void sql_query_details::CopyFrom(const sql_query_details& from) {
+void sql_entry_details::CopyFrom(const sql_entry_details& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool sql_query_details::IsInitialized() const {
+bool sql_entry_details::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   if (has_counters()) {
@@ -7897,9 +7902,9 @@ bool sql_query_details::IsInitialized() const {
   return true;
 }
 
-void sql_query_details::Swap(sql_query_details* other) {
+void sql_entry_details::Swap(sql_entry_details* other) {
   if (other != this) {
-    std::swap(query_, other->query_);
+    std::swap(name_, other->name_);
     std::swap(counters_, other->counters_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
@@ -7907,11 +7912,11 @@ void sql_query_details::Swap(sql_query_details* other) {
   }
 }
 
-::google::protobuf::Metadata sql_query_details::GetMetadata() const {
+::google::protobuf::Metadata sql_entry_details::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = sql_query_details_descriptor_;
-  metadata.reflection = sql_query_details_reflection_;
+  metadata.descriptor = sql_entry_details_descriptor_;
+  metadata.reflection = sql_entry_details_reflection_;
   return metadata;
 }
 
@@ -8186,6 +8191,8 @@ const int sql_info::kServerQueriesFieldNumber;
 const int sql_info::kClientQueriesFieldNumber;
 const int sql_info::kServerQueryTypesFieldNumber;
 const int sql_info::kClientQueryTypesFieldNumber;
+const int sql_info::kServerTablesFieldNumber;
+const int sql_info::kClientTablesFieldNumber;
 #endif  // !_MSC_VER
 
 sql_info::sql_info()
@@ -8242,6 +8249,8 @@ void sql_info::Clear() {
   client_queries_.Clear();
   server_query_types_.Clear();
   client_query_types_.Clear();
+  server_tables_.Clear();
+  client_tables_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -8252,7 +8261,7 @@ bool sql_info::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // repeated .draiosproto.sql_query_details server_queries = 1;
+      // repeated .draiosproto.sql_entry_details server_queries = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -8267,7 +8276,7 @@ bool sql_info::MergePartialFromCodedStream(
         break;
       }
 
-      // repeated .draiosproto.sql_query_details client_queries = 2;
+      // repeated .draiosproto.sql_entry_details client_queries = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -8308,6 +8317,36 @@ bool sql_info::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(34)) goto parse_client_query_types;
+        if (input->ExpectTag(42)) goto parse_server_tables;
+        break;
+      }
+
+      // repeated .draiosproto.sql_entry_details server_tables = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_server_tables:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_server_tables()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(42)) goto parse_server_tables;
+        if (input->ExpectTag(50)) goto parse_client_tables;
+        break;
+      }
+
+      // repeated .draiosproto.sql_entry_details client_tables = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_tables:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_client_tables()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_client_tables;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -8330,13 +8369,13 @@ bool sql_info::MergePartialFromCodedStream(
 
 void sql_info::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // repeated .draiosproto.sql_query_details server_queries = 1;
+  // repeated .draiosproto.sql_entry_details server_queries = 1;
   for (int i = 0; i < this->server_queries_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       1, this->server_queries(i), output);
   }
 
-  // repeated .draiosproto.sql_query_details client_queries = 2;
+  // repeated .draiosproto.sql_entry_details client_queries = 2;
   for (int i = 0; i < this->client_queries_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       2, this->client_queries(i), output);
@@ -8354,6 +8393,18 @@ void sql_info::SerializeWithCachedSizes(
       4, this->client_query_types(i), output);
   }
 
+  // repeated .draiosproto.sql_entry_details server_tables = 5;
+  for (int i = 0; i < this->server_tables_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      5, this->server_tables(i), output);
+  }
+
+  // repeated .draiosproto.sql_entry_details client_tables = 6;
+  for (int i = 0; i < this->client_tables_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      6, this->client_tables(i), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -8362,14 +8413,14 @@ void sql_info::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* sql_info::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // repeated .draiosproto.sql_query_details server_queries = 1;
+  // repeated .draiosproto.sql_entry_details server_queries = 1;
   for (int i = 0; i < this->server_queries_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         1, this->server_queries(i), target);
   }
 
-  // repeated .draiosproto.sql_query_details client_queries = 2;
+  // repeated .draiosproto.sql_entry_details client_queries = 2;
   for (int i = 0; i < this->client_queries_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -8390,6 +8441,20 @@ void sql_info::SerializeWithCachedSizes(
         4, this->client_query_types(i), target);
   }
 
+  // repeated .draiosproto.sql_entry_details server_tables = 5;
+  for (int i = 0; i < this->server_tables_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        5, this->server_tables(i), target);
+  }
+
+  // repeated .draiosproto.sql_entry_details client_tables = 6;
+  for (int i = 0; i < this->client_tables_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        6, this->client_tables(i), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -8400,7 +8465,7 @@ void sql_info::SerializeWithCachedSizes(
 int sql_info::ByteSize() const {
   int total_size = 0;
 
-  // repeated .draiosproto.sql_query_details server_queries = 1;
+  // repeated .draiosproto.sql_entry_details server_queries = 1;
   total_size += 1 * this->server_queries_size();
   for (int i = 0; i < this->server_queries_size(); i++) {
     total_size +=
@@ -8408,7 +8473,7 @@ int sql_info::ByteSize() const {
         this->server_queries(i));
   }
 
-  // repeated .draiosproto.sql_query_details client_queries = 2;
+  // repeated .draiosproto.sql_entry_details client_queries = 2;
   total_size += 1 * this->client_queries_size();
   for (int i = 0; i < this->client_queries_size(); i++) {
     total_size +=
@@ -8430,6 +8495,22 @@ int sql_info::ByteSize() const {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
         this->client_query_types(i));
+  }
+
+  // repeated .draiosproto.sql_entry_details server_tables = 5;
+  total_size += 1 * this->server_tables_size();
+  for (int i = 0; i < this->server_tables_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->server_tables(i));
+  }
+
+  // repeated .draiosproto.sql_entry_details client_tables = 6;
+  total_size += 1 * this->client_tables_size();
+  for (int i = 0; i < this->client_tables_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->client_tables(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -8461,6 +8542,8 @@ void sql_info::MergeFrom(const sql_info& from) {
   client_queries_.MergeFrom(from.client_queries_);
   server_query_types_.MergeFrom(from.server_query_types_);
   client_query_types_.MergeFrom(from.client_query_types_);
+  server_tables_.MergeFrom(from.server_tables_);
+  client_tables_.MergeFrom(from.client_tables_);
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
@@ -8490,6 +8573,12 @@ bool sql_info::IsInitialized() const {
   for (int i = 0; i < client_query_types_size(); i++) {
     if (!this->client_query_types(i).IsInitialized()) return false;
   }
+  for (int i = 0; i < server_tables_size(); i++) {
+    if (!this->server_tables(i).IsInitialized()) return false;
+  }
+  for (int i = 0; i < client_tables_size(); i++) {
+    if (!this->client_tables(i).IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -8499,6 +8588,8 @@ void sql_info::Swap(sql_info* other) {
     client_queries_.Swap(&other->client_queries_);
     server_query_types_.Swap(&other->server_query_types_);
     client_query_types_.Swap(&other->client_query_types_);
+    server_tables_.Swap(&other->server_tables_);
+    client_tables_.Swap(&other->client_tables_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

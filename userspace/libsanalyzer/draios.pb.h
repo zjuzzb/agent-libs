@@ -49,7 +49,7 @@ class counter_proto_entry;
 class url_details;
 class status_code_details;
 class http_info;
-class sql_query_details;
+class sql_entry_details;
 class sql_query_type_details;
 class sql_info;
 class proto_info;
@@ -2180,14 +2180,14 @@ class http_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class sql_query_details : public ::google::protobuf::Message {
+class sql_entry_details : public ::google::protobuf::Message {
  public:
-  sql_query_details();
-  virtual ~sql_query_details();
+  sql_entry_details();
+  virtual ~sql_entry_details();
 
-  sql_query_details(const sql_query_details& from);
+  sql_entry_details(const sql_entry_details& from);
 
-  inline sql_query_details& operator=(const sql_query_details& from) {
+  inline sql_entry_details& operator=(const sql_entry_details& from) {
     CopyFrom(from);
     return *this;
   }
@@ -2201,17 +2201,17 @@ class sql_query_details : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const sql_query_details& default_instance();
+  static const sql_entry_details& default_instance();
 
-  void Swap(sql_query_details* other);
+  void Swap(sql_entry_details* other);
 
   // implements Message ----------------------------------------------
 
-  sql_query_details* New() const;
+  sql_entry_details* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const sql_query_details& from);
-  void MergeFrom(const sql_query_details& from);
+  void CopyFrom(const sql_entry_details& from);
+  void MergeFrom(const sql_entry_details& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -2234,17 +2234,17 @@ class sql_query_details : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required string query = 1;
-  inline bool has_query() const;
-  inline void clear_query();
-  static const int kQueryFieldNumber = 1;
-  inline const ::std::string& query() const;
-  inline void set_query(const ::std::string& value);
-  inline void set_query(const char* value);
-  inline void set_query(const char* value, size_t size);
-  inline ::std::string* mutable_query();
-  inline ::std::string* release_query();
-  inline void set_allocated_query(::std::string* query);
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
 
   // required .draiosproto.counter_proto_entry counters = 2;
   inline bool has_counters() const;
@@ -2255,16 +2255,16 @@ class sql_query_details : public ::google::protobuf::Message {
   inline ::draiosproto::counter_proto_entry* release_counters();
   inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
 
-  // @@protoc_insertion_point(class_scope:draiosproto.sql_query_details)
+  // @@protoc_insertion_point(class_scope:draiosproto.sql_entry_details)
  private:
-  inline void set_has_query();
-  inline void clear_has_query();
+  inline void set_has_name();
+  inline void clear_has_name();
   inline void set_has_counters();
   inline void clear_has_counters();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::std::string* query_;
+  ::std::string* name_;
   ::draiosproto::counter_proto_entry* counters_;
 
   mutable int _cached_size_;
@@ -2275,7 +2275,7 @@ class sql_query_details : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_draios_2eproto();
 
   void InitAsDefaultInstance();
-  static sql_query_details* default_instance_;
+  static sql_entry_details* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -2427,28 +2427,28 @@ class sql_info : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .draiosproto.sql_query_details server_queries = 1;
+  // repeated .draiosproto.sql_entry_details server_queries = 1;
   inline int server_queries_size() const;
   inline void clear_server_queries();
   static const int kServerQueriesFieldNumber = 1;
-  inline const ::draiosproto::sql_query_details& server_queries(int index) const;
-  inline ::draiosproto::sql_query_details* mutable_server_queries(int index);
-  inline ::draiosproto::sql_query_details* add_server_queries();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
+  inline const ::draiosproto::sql_entry_details& server_queries(int index) const;
+  inline ::draiosproto::sql_entry_details* mutable_server_queries(int index);
+  inline ::draiosproto::sql_entry_details* add_server_queries();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
       server_queries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
       mutable_server_queries();
 
-  // repeated .draiosproto.sql_query_details client_queries = 2;
+  // repeated .draiosproto.sql_entry_details client_queries = 2;
   inline int client_queries_size() const;
   inline void clear_client_queries();
   static const int kClientQueriesFieldNumber = 2;
-  inline const ::draiosproto::sql_query_details& client_queries(int index) const;
-  inline ::draiosproto::sql_query_details* mutable_client_queries(int index);
-  inline ::draiosproto::sql_query_details* add_client_queries();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
+  inline const ::draiosproto::sql_entry_details& client_queries(int index) const;
+  inline ::draiosproto::sql_entry_details* mutable_client_queries(int index);
+  inline ::draiosproto::sql_entry_details* add_client_queries();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
       client_queries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
       mutable_client_queries();
 
   // repeated .draiosproto.sql_query_type_details server_query_types = 3;
@@ -2475,18 +2475,44 @@ class sql_info : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
       mutable_client_query_types();
 
+  // repeated .draiosproto.sql_entry_details server_tables = 5;
+  inline int server_tables_size() const;
+  inline void clear_server_tables();
+  static const int kServerTablesFieldNumber = 5;
+  inline const ::draiosproto::sql_entry_details& server_tables(int index) const;
+  inline ::draiosproto::sql_entry_details* mutable_server_tables(int index);
+  inline ::draiosproto::sql_entry_details* add_server_tables();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
+      server_tables() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
+      mutable_server_tables();
+
+  // repeated .draiosproto.sql_entry_details client_tables = 6;
+  inline int client_tables_size() const;
+  inline void clear_client_tables();
+  static const int kClientTablesFieldNumber = 6;
+  inline const ::draiosproto::sql_entry_details& client_tables(int index) const;
+  inline ::draiosproto::sql_entry_details* mutable_client_tables(int index);
+  inline ::draiosproto::sql_entry_details* add_client_tables();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
+      client_tables() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
+      mutable_client_tables();
+
   // @@protoc_insertion_point(class_scope:draiosproto.sql_info)
  private:
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details > server_queries_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details > client_queries_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details > server_queries_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details > client_queries_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details > server_query_types_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details > client_query_types_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details > server_tables_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details > client_tables_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8032,107 +8058,107 @@ http_info::mutable_server_status_codes() {
 
 // -------------------------------------------------------------------
 
-// sql_query_details
+// sql_entry_details
 
-// required string query = 1;
-inline bool sql_query_details::has_query() const {
+// required string name = 1;
+inline bool sql_entry_details::has_name() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void sql_query_details::set_has_query() {
+inline void sql_entry_details::set_has_name() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void sql_query_details::clear_has_query() {
+inline void sql_entry_details::clear_has_name() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void sql_query_details::clear_query() {
-  if (query_ != &::google::protobuf::internal::kEmptyString) {
-    query_->clear();
+inline void sql_entry_details::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
   }
-  clear_has_query();
+  clear_has_name();
 }
-inline const ::std::string& sql_query_details::query() const {
-  return *query_;
+inline const ::std::string& sql_entry_details::name() const {
+  return *name_;
 }
-inline void sql_query_details::set_query(const ::std::string& value) {
-  set_has_query();
-  if (query_ == &::google::protobuf::internal::kEmptyString) {
-    query_ = new ::std::string;
+inline void sql_entry_details::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
   }
-  query_->assign(value);
+  name_->assign(value);
 }
-inline void sql_query_details::set_query(const char* value) {
-  set_has_query();
-  if (query_ == &::google::protobuf::internal::kEmptyString) {
-    query_ = new ::std::string;
+inline void sql_entry_details::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
   }
-  query_->assign(value);
+  name_->assign(value);
 }
-inline void sql_query_details::set_query(const char* value, size_t size) {
-  set_has_query();
-  if (query_ == &::google::protobuf::internal::kEmptyString) {
-    query_ = new ::std::string;
+inline void sql_entry_details::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
   }
-  query_->assign(reinterpret_cast<const char*>(value), size);
+  name_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* sql_query_details::mutable_query() {
-  set_has_query();
-  if (query_ == &::google::protobuf::internal::kEmptyString) {
-    query_ = new ::std::string;
+inline ::std::string* sql_entry_details::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
   }
-  return query_;
+  return name_;
 }
-inline ::std::string* sql_query_details::release_query() {
-  clear_has_query();
-  if (query_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* sql_entry_details::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = query_;
-    query_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void sql_query_details::set_allocated_query(::std::string* query) {
-  if (query_ != &::google::protobuf::internal::kEmptyString) {
-    delete query_;
+inline void sql_entry_details::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
   }
-  if (query) {
-    set_has_query();
-    query_ = query;
+  if (name) {
+    set_has_name();
+    name_ = name;
   } else {
-    clear_has_query();
-    query_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
 // required .draiosproto.counter_proto_entry counters = 2;
-inline bool sql_query_details::has_counters() const {
+inline bool sql_entry_details::has_counters() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void sql_query_details::set_has_counters() {
+inline void sql_entry_details::set_has_counters() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void sql_query_details::clear_has_counters() {
+inline void sql_entry_details::clear_has_counters() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void sql_query_details::clear_counters() {
+inline void sql_entry_details::clear_counters() {
   if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
   clear_has_counters();
 }
-inline const ::draiosproto::counter_proto_entry& sql_query_details::counters() const {
+inline const ::draiosproto::counter_proto_entry& sql_entry_details::counters() const {
   return counters_ != NULL ? *counters_ : *default_instance_->counters_;
 }
-inline ::draiosproto::counter_proto_entry* sql_query_details::mutable_counters() {
+inline ::draiosproto::counter_proto_entry* sql_entry_details::mutable_counters() {
   set_has_counters();
   if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
   return counters_;
 }
-inline ::draiosproto::counter_proto_entry* sql_query_details::release_counters() {
+inline ::draiosproto::counter_proto_entry* sql_entry_details::release_counters() {
   clear_has_counters();
   ::draiosproto::counter_proto_entry* temp = counters_;
   counters_ = NULL;
   return temp;
 }
-inline void sql_query_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+inline void sql_entry_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
   delete counters_;
   counters_ = counters;
   if (counters) {
@@ -8211,52 +8237,52 @@ inline void sql_query_type_details::set_allocated_counters(::draiosproto::counte
 
 // sql_info
 
-// repeated .draiosproto.sql_query_details server_queries = 1;
+// repeated .draiosproto.sql_entry_details server_queries = 1;
 inline int sql_info::server_queries_size() const {
   return server_queries_.size();
 }
 inline void sql_info::clear_server_queries() {
   server_queries_.Clear();
 }
-inline const ::draiosproto::sql_query_details& sql_info::server_queries(int index) const {
+inline const ::draiosproto::sql_entry_details& sql_info::server_queries(int index) const {
   return server_queries_.Get(index);
 }
-inline ::draiosproto::sql_query_details* sql_info::mutable_server_queries(int index) {
+inline ::draiosproto::sql_entry_details* sql_info::mutable_server_queries(int index) {
   return server_queries_.Mutable(index);
 }
-inline ::draiosproto::sql_query_details* sql_info::add_server_queries() {
+inline ::draiosproto::sql_entry_details* sql_info::add_server_queries() {
   return server_queries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
 sql_info::server_queries() const {
   return server_queries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
 sql_info::mutable_server_queries() {
   return &server_queries_;
 }
 
-// repeated .draiosproto.sql_query_details client_queries = 2;
+// repeated .draiosproto.sql_entry_details client_queries = 2;
 inline int sql_info::client_queries_size() const {
   return client_queries_.size();
 }
 inline void sql_info::clear_client_queries() {
   client_queries_.Clear();
 }
-inline const ::draiosproto::sql_query_details& sql_info::client_queries(int index) const {
+inline const ::draiosproto::sql_entry_details& sql_info::client_queries(int index) const {
   return client_queries_.Get(index);
 }
-inline ::draiosproto::sql_query_details* sql_info::mutable_client_queries(int index) {
+inline ::draiosproto::sql_entry_details* sql_info::mutable_client_queries(int index) {
   return client_queries_.Mutable(index);
 }
-inline ::draiosproto::sql_query_details* sql_info::add_client_queries() {
+inline ::draiosproto::sql_entry_details* sql_info::add_client_queries() {
   return client_queries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >&
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
 sql_info::client_queries() const {
   return client_queries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_details >*
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
 sql_info::mutable_client_queries() {
   return &client_queries_;
 }
@@ -8309,6 +8335,56 @@ sql_info::client_query_types() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_query_type_details >*
 sql_info::mutable_client_query_types() {
   return &client_query_types_;
+}
+
+// repeated .draiosproto.sql_entry_details server_tables = 5;
+inline int sql_info::server_tables_size() const {
+  return server_tables_.size();
+}
+inline void sql_info::clear_server_tables() {
+  server_tables_.Clear();
+}
+inline const ::draiosproto::sql_entry_details& sql_info::server_tables(int index) const {
+  return server_tables_.Get(index);
+}
+inline ::draiosproto::sql_entry_details* sql_info::mutable_server_tables(int index) {
+  return server_tables_.Mutable(index);
+}
+inline ::draiosproto::sql_entry_details* sql_info::add_server_tables() {
+  return server_tables_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
+sql_info::server_tables() const {
+  return server_tables_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
+sql_info::mutable_server_tables() {
+  return &server_tables_;
+}
+
+// repeated .draiosproto.sql_entry_details client_tables = 6;
+inline int sql_info::client_tables_size() const {
+  return client_tables_.size();
+}
+inline void sql_info::clear_client_tables() {
+  client_tables_.Clear();
+}
+inline const ::draiosproto::sql_entry_details& sql_info::client_tables(int index) const {
+  return client_tables_.Get(index);
+}
+inline ::draiosproto::sql_entry_details* sql_info::mutable_client_tables(int index) {
+  return client_tables_.Mutable(index);
+}
+inline ::draiosproto::sql_entry_details* sql_info::add_client_tables() {
+  return client_tables_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >&
+sql_info::client_tables() const {
+  return client_tables_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::sql_entry_details >*
+sql_info::mutable_client_tables() {
+  return &client_tables_;
 }
 
 // -------------------------------------------------------------------

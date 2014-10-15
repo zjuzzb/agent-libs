@@ -164,8 +164,8 @@ message http_info {
 //
 // SQL query information
 //
-message sql_query_details {
-	required string query = 1; 
+message sql_entry_details {
+	required string name = 1; 
 	required counter_proto_entry counters = 2;
 }
 
@@ -198,10 +198,12 @@ message sql_query_type_details {
 // SQL protocol information
 //
 message sql_info {
-	repeated sql_query_details server_queries = 1;	// the top server-side queries
-	repeated sql_query_details client_queries = 2;	// the top client-side queries
+	repeated sql_entry_details server_queries = 1;	// the top server-side queries
+	repeated sql_entry_details client_queries = 2;	// the top client-side queries
 	repeated sql_query_type_details server_query_types = 3;	// the top server-side query types (e.g. SELECT, INSERT...)
 	repeated sql_query_type_details client_query_types = 4;	// the top client-side query types (e.g. SELECT, INSERT...)
+	repeated sql_entry_details server_tables = 5;	// the top server-side queries
+	repeated sql_entry_details client_tables = 6;	// the top client-side queries
 }
 
 //
