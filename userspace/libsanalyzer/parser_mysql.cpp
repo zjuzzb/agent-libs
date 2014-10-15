@@ -165,6 +165,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 {
 	char* p = query;
 	char* pend = query + querylen;
+	m_table = NULL;
 
 	//
 	// Trim leading whitespaces
@@ -211,38 +212,42 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	if(m_statement_type == OT_SELECT)
 	{
 		const char* sfrom = find_token(src, srclen, "from", sizeof("from") - 1);
-		uint32_t fromlen = 0;
 
-		ASSERT(sfrom < pend);
-
-		sfrom = sfrom + sizeof("from") - 1;
-		src = (char*)sfrom;
-		srclen = pend - src;
-
-		ASSERT(src < pend);
-
-		uint32_t nskips = 1;
-		ASSERT(m_braket_level == 0);
-
-		while(nskips != 0)
+		if(sfrom != NULL)
 		{
-			int32_t id = find_tokens(src, 
-				srclen, 
-				sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
-				(char**)selectend_toks,
-				selectend_toklens,
-				&nskips);
+			uint32_t fromlen = 0;
 
-			src += nskips;
-			srclen -= nskips;
+			ASSERT(sfrom < pend);
 
-			if(id != -1)
+			sfrom = sfrom + sizeof("from") - 1;
+			src = (char*)sfrom;
+			srclen = pend - src;
+
+			ASSERT(src < pend);
+
+			uint32_t nskips = 1;
+			ASSERT(m_braket_level == 0);
+
+			while(nskips != 0)
 			{
-				m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
-				break;
-			}
+				int32_t id = find_tokens(src, 
+					srclen, 
+					sizeof(selectend_toks) / sizeof(selectend_toks[0]), 
+					(char**)selectend_toks,
+					selectend_toklens,
+					&nskips);
 
-			fromlen += nskips;
+				src += nskips;
+				srclen -= nskips;
+
+				if(id != -1)
+				{
+					m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
+					break;
+				}
+
+				fromlen += nskips;
+			}
 		}
 	}
 }
