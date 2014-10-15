@@ -209,7 +209,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 		}
 	}
 
-	if(m_statement_type == OT_SELECT)
+	if(m_statement_type == OT_SELECT || m_statement_type == OT_DELETE)
 	{
 		const char* sfrom = find_token(src, srclen, "from", sizeof("from") - 1);
 
