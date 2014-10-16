@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
-set(DRAIOS_DEBUG_FLAGS "-D_DEBUG -DNDEBUG")
+set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
 set(CMAKE_C_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
