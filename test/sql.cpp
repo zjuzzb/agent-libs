@@ -43,8 +43,7 @@ TEST_F(sys_call_test, sql_operation)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -130,8 +129,7 @@ TEST_F(sys_call_test, sql_table_select)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -188,7 +186,7 @@ TEST_F(sys_call_test, sql_table_select)
 	}
 */
 
-	EXPECT_EQ(opmap["tab4"], 372459);
+	EXPECT_EQ(opmap["tab4"], 368486);
 	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab0 WHERE (((((col0 < 94))))) )"], 1);
 	EXPECT_EQ(opmap["( tab0 AS cor0 CROSS JOIN tab0 AS cor1 )"], 52);
 	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab4 WHERE col3 IS NULL OR (col3 >= 422 OR (col3 > 734 AND (col3 < 813 OR col1 BETWEEN 30.88 AND 73.78) OR col4 >= 799.72)) AND (col3 >= 948) AND ((col3 > 52)) OR (col0 > 298) OR col1 < 283.19 OR col4 = 879.38 )"], 1);
@@ -204,8 +202,7 @@ TEST_F(sys_call_test, sql_table_delete)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -276,8 +273,7 @@ TEST_F(sys_call_test, sql_table_insert)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -348,8 +344,7 @@ TEST_F(sys_call_test, sql_table_replace)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -418,8 +413,7 @@ TEST_F(sys_call_test, sql_table_update)
 {
 	char line[1024 * 16];
 	gzFile zf;
-	sinsp_autobuffer m_storage;
-	sinsp_slq_query_parser p(&m_storage);
+	sinsp_slq_query_parser p;
 
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
@@ -477,7 +471,8 @@ TEST_F(sys_call_test, sql_table_update)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["t1"], 2);
+	EXPECT_EQ(opmap["t1"], 13);
+	EXPECT_EQ(opmap["view1"], 3);
 
 	printf("Elapsed time: %.3lf\n", duration);
 

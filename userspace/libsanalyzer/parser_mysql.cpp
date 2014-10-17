@@ -420,8 +420,7 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 
 					if(tbuf < bufend)
 					{
-						char* db = (caps & CAP_CONNECT_WITH_DB ? tbuf : (char*)"<NA>");
-
+						//char* db = (caps & CAP_CONNECT_WITH_DB ? tbuf : (char*)"<NA>");
 						//m_database = m_storage.strcopy(db, bufend - tbuf);
 
 						m_msgtype = MT_LOGIN;

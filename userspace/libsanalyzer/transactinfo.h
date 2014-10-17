@@ -85,6 +85,7 @@ public:
 
 		if(size > maxsize)
 		{
+			*copied_size = 0;
 			return NULL;
 		}
 

@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <ifaddrs.h>
+#include <time.h>
 
 #define SERVER_PORT     3557
 #define BUFFER_LENGTH   sizeof("A CLIENT REQUEST")
@@ -54,6 +55,8 @@ void main(int argc, char *argv[])
 	int    serveraddrlen = sizeof(serveraddr);
 	struct sockaddr_in sa;
 	int    len = sizeof(struct sockaddr);
+	int j;
+	double duration;
 
 	do
 	{
@@ -101,19 +104,29 @@ void main(int argc, char *argv[])
 		/********************************************************************/
 		/* Use the sendto() function to send the data to the server.        */
 		/********************************************************************/
-		rc = sendto(sd, buffer, sizeof(buffer), 0,
-		            (struct sockaddr *)&serveraddr,
-		            sizeof(serveraddr));
-		if (rc < 0)
-		{
-			perror("sendto() failed");
-			break;
+		duration = ((double)clock()) / CLOCKS_PER_SEC;
+
+		for(j = 0; j < 1500000; j++)
+		{		
+			rc = sendto(sd, buffer, sizeof(buffer), 0,
+			            (struct sockaddr *)&serveraddr,
+			            sizeof(serveraddr));
+			if (rc < 0)
+			{
+				perror("sendto() failed");
+				break;
+			}
 		}
+
+		duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+
+		printf("%.3lf\n", duration);
 
 		/********************************************************************/
 		/* Use the recvfrom() function to receive the data back from the    */
 		/* server.                                                          */
 		/********************************************************************/
+/*
 		rc = recvfrom(sd, buffer, sizeof(buffer), 0,
 		              (struct sockaddr *)&serveraddr,
 		              & serveraddrlen);
@@ -130,6 +143,7 @@ void main(int argc, char *argv[])
 		printf("from port %d, from address %s\n",
 		       ntohs(serveraddr.sin_port),
 		       inet_ntoa(serveraddr.sin_addr));
+*/		       
 	}
 	while (FALSE);
 
