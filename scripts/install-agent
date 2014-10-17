@@ -40,7 +40,7 @@ function install_rpm {
 		yum -q -y install kernel-devel-$KERNEL_VERSION || kernel_warning
 	fi
 	echo "* Installing Draios agent"
-	yum -q -y install draios-agent
+	yum -q -y install draios-agent sysdig
 	service dragent start
 }
 
@@ -60,7 +60,7 @@ function install_deb {
 	echo "* Installing kernel headers"
 	apt-get -qq -y install linux-headers-$(uname -r) < /dev/null || kernel_warning
 	echo "* Installing Draios agent"
-	apt-get -qq -y install draios-agent < /dev/null
+	apt-get -qq -y install draios-agent sysdig < /dev/null
 }
 
 function unsupported {
