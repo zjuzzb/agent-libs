@@ -72,9 +72,8 @@ public:
 		OT_ALTER = 13,
 	};
 	
-	sinsp_slq_query_parser(sinsp_autobuffer* str_storage)
+	sinsp_slq_query_parser()
 	{
-		m_str_storage = str_storage;
 		m_table = NULL;
 	}
 
@@ -91,7 +90,7 @@ private:
 	void extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len, const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens);
 	
 	int32_t m_braket_level;
-	sinsp_autobuffer* m_str_storage;
+	sinsp_autobuffer m_str_storage;
 };
 
 class sinsp_mysql_parser : sinsp_protocol_parser

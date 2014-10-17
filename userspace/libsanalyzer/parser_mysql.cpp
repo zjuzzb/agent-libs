@@ -217,7 +217,7 @@ void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* star
 
 			if(id != -1)
 			{
-				m_table = m_str_storage->copy_and_trim((char*)sfrom, fromlen, 1);
+				m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
 				break;
 			}
 
@@ -231,6 +231,7 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	char* p = query;
 	char* pend = query + querylen;
 	m_table = NULL;
+	m_str_storage.clear();
 
 	//
 	// Trim leading whitespaces
@@ -315,8 +316,7 @@ const char* sinsp_slq_query_parser::get_statement_type_string()
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_mysql_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_mysql_parser::sinsp_mysql_parser() :
-	m_query_parser(&m_storage)
+sinsp_mysql_parser::sinsp_mysql_parser()
 {
 	m_database = NULL;
 }
