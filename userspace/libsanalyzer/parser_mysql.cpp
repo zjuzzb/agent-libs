@@ -327,6 +327,7 @@ inline void sinsp_mysql_parser::reset()
 	m_is_valid = false;
 	m_is_req_valid = false;
 	m_reassembly_buf.clear();
+	//m_storage.clear();
 	m_error_code = 0;
 	m_msgtype = MT_NONE;
 }
@@ -421,11 +422,10 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 					{
 						char* db = (caps & CAP_CONNECT_WITH_DB ? tbuf : (char*)"<NA>");
 
-						m_database = m_storage.strcopy(db, bufend - tbuf);
+						//m_database = m_storage.strcopy(db, bufend - tbuf);
 
 						m_msgtype = MT_LOGIN;
 						m_is_req_valid = true;
-//cerr << (string("login: ") + user + " - " + m_database + string("\n\n\n"));
 					}
 				}
 			}
@@ -440,11 +440,12 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 				// Query packet
 				//
 				uint32_t querylen = rbufsize - MYSQL_OFFSET_STATEMENT;
+				uint32_t copied_size;
 
 				m_statement = m_storage.strcopy(rbuf + MYSQL_OFFSET_STATEMENT, 
-					querylen);
+					querylen, &copied_size);
 
-				m_query_parser.parse(m_statement, querylen);
+				m_query_parser.parse(m_statement, copied_size);
 
 				m_msgtype = MT_QUERY;
 				m_is_req_valid = true;
@@ -497,10 +498,11 @@ bool sinsp_mysql_parser::parse_response(char* buf, uint32_t buflen)
 			//
 			if(buflen + m_reassembly_buf.get_size() > MYSQL_OFFSET_ERROR_MESSAGE)
 			{
+				uint32_t copied_size;
 				m_error_code = *(uint16_t*)(rbuf + MYSQL_OFFSET_ERROR_CODE);
 
 				m_error_message = m_storage.strcopy(rbuf + MYSQL_OFFSET_ERROR_MESSAGE , 
-					rbufsize - MYSQL_OFFSET_ERROR_MESSAGE);
+					rbufsize - MYSQL_OFFSET_ERROR_MESSAGE, &copied_size);
 
 				m_is_valid = true;
 			}
