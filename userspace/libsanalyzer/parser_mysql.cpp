@@ -327,7 +327,7 @@ inline void sinsp_mysql_parser::reset()
 	m_is_valid = false;
 	m_is_req_valid = false;
 	m_reassembly_buf.clear();
-	//m_storage.clear();
+	m_storage.clear();
 	m_error_code = 0;
 	m_msgtype = MT_NONE;
 }
@@ -525,17 +525,6 @@ bool sinsp_mysql_parser::parse_response(char* buf, uint32_t buflen)
 		//
 		m_reassembly_buf.copy(buf, buflen);
 	}
-
-/*
-if(m_error_code != 0)
-{
-	cerr << (string("status: ") + to_string(m_error_code) + " - " + m_error_message + string("\n\n\n"));
-}
-else
-{
-	cerr << (string("status: ") + to_string(m_error_code) + string("\n\n\n"));
-}
-*/
 
 	return true;
 }
