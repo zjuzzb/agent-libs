@@ -331,10 +331,10 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 			if(it->second.is_transaction())
 			{
-				if((it->second.is_role_server() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_OUT) ||
-					(it->second.is_role_client() && it->second.m_usrstate.m_direction == sinsp_partial_transaction::DIR_IN))
+				if((it->second.is_role_server() && it->second.m_usrstate->m_direction == sinsp_partial_transaction::DIR_OUT) ||
+					(it->second.is_role_client() && it->second.m_usrstate->m_direction == sinsp_partial_transaction::DIR_IN))
 				{
-					if(it->second.m_usrstate.m_end_time >= endtime)
+					if(it->second.m_usrstate->m_end_time >= endtime)
 					{
 						//
 						// This happens when the sample-generating event is a read or write on a transaction FD.
@@ -347,7 +347,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 					// Note: if the thread has exited, we don't care about the timeout and we flush the connection
 					//       no matter what. We can safely assume it's ended.
 					//
-					if(has_thread_exited || (endtime - it->second.m_usrstate.m_end_time > timeout_ns))
+					if(has_thread_exited || (endtime - it->second.m_usrstate->m_end_time > timeout_ns))
 					{
 						sinsp_connection *connection;
 
@@ -377,7 +377,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 						if(connection != NULL)
 						{
-							sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
+							sinsp_partial_transaction *trinfo = it->second.m_usrstate;
 
 							trinfo->update(m_analyzer,
 								m_tinfo,
@@ -403,7 +403,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 				if(is_subsampling)
 				{
-					sinsp_partial_transaction *trinfo = &(it->second.m_usrstate);
+					sinsp_partial_transaction *trinfo = it->second.m_usrstate;
 					trinfo->reset();
 				}
 			}

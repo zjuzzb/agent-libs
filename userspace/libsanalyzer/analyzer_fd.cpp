@@ -549,8 +549,14 @@ r_conn_creation_done:
 		// NOTE: after two turns, we give up discovering the protocol and we consider this
 		//       to be just IP.
 		//
-//BRK(15178);
-		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
+		sinsp_partial_transaction *trinfo = evt->m_fdinfo->m_usrstate;
+
+		if(trinfo == NULL)
+		{
+			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
+			trinfo = evt->m_fdinfo->m_usrstate;
+		}
+
 		if(!trinfo->is_active() ||
 			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
@@ -566,7 +572,6 @@ r_conn_creation_done:
 					(uint8_t*)data, len);
 
 				trinfo->mark_active_and_reset(type);
-				evt->m_fdinfo->set_is_transaction();
 			}
 			else
 			{
@@ -882,8 +887,13 @@ w_conn_creation_done:
 		// NOTE: after two turns, we give up discovering the protocol and we consider this
 		//       to be just IP.
 		//
-//BRK(15899);
-		sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
+		sinsp_partial_transaction *trinfo = evt->m_fdinfo->m_usrstate;
+
+		if(trinfo == NULL)
+		{
+			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
+			trinfo = evt->m_fdinfo->m_usrstate;
+		}
 
 		if(!trinfo->is_active() ||
 			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
@@ -900,7 +910,6 @@ w_conn_creation_done:
 						(uint8_t*)data, len);
 
 				trinfo->mark_active_and_reset(type);
-				evt->m_fdinfo->set_is_transaction();
 			}
 			else
 			{
@@ -958,7 +967,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		//
 		// Mark this fd as a transaction
 		//
-		evt->m_fdinfo->set_is_transaction();
+		ASSERT(evt->m_fdinfo->m_usrstate == NULL);
+		evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
 
 		//
 		// Lookup the connection
@@ -1081,7 +1091,8 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	//
 	// Mark this fd as a transaction
 	//
-	new_fdinfo->set_is_transaction();
+	ASSERT(new_fdinfo->m_usrstate == NULL);
+	new_fdinfo->m_usrstate = new sinsp_partial_transaction();
 }
 
 void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
@@ -1092,7 +1103,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_transaction())
 	{
 		sinsp_connection *connection;
-		bool do_remove_transaction = params->m_fdinfo->m_usrstate.is_active();
+		bool do_remove_transaction = params->m_fdinfo->m_usrstate->is_active();
 
 		if(do_remove_transaction)
 		{
@@ -1117,7 +1128,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 
 		if(do_remove_transaction)
 		{
-			params->m_fdinfo->m_usrstate.update(params->m_inspector->m_analyzer,
+			params->m_fdinfo->m_usrstate->update(params->m_inspector->m_analyzer,
 				params->m_tinfo,
 				params->m_fdinfo,
 				connection,
@@ -1134,7 +1145,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 				0);
 		}
 
-		params->m_fdinfo->m_usrstate.mark_inactive();			
+		params->m_fdinfo->m_usrstate->mark_inactive();			
 	}
 
 	//
@@ -1159,7 +1170,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 	//
 	// If this fd has an active transaction, update it and then mark it as unititialized
 	//
-	if(evt->m_fdinfo->m_usrstate.is_active())
+	if(evt->m_fdinfo->is_transaction() && evt->m_fdinfo->m_usrstate->is_active())
 	{
 		sinsp_connection* connection = NULL;
 
@@ -1174,7 +1185,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 		}
 #endif
 
-		evt->m_fdinfo->m_usrstate.update(m_inspector->m_analyzer,
+		evt->m_fdinfo->m_usrstate->update(m_inspector->m_analyzer,
 			evt->m_tinfo,
 			evt->m_fdinfo,
 			connection,
@@ -1190,7 +1201,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 			0,
 			0);
 
-		evt->m_fdinfo->m_usrstate.mark_inactive();
+		evt->m_fdinfo->m_usrstate->mark_inactive();
 	}
 }
 
