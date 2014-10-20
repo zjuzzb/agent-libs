@@ -967,8 +967,10 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		//
 		// Mark this fd as a transaction
 		//
-		ASSERT(evt->m_fdinfo->m_usrstate == NULL);
-		evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
+		if(evt->m_fdinfo->m_usrstate == NULL)
+		{
+			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
+		}
 
 		//
 		// Lookup the connection
