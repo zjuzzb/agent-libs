@@ -763,6 +763,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
+		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
 		//
 		// Attribute the last pending event to this second
@@ -790,7 +791,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				cat = &tcat;
 			}
 
-			add_syscall_time(&tinfo->m_ainfo->m_metrics, 
+			add_syscall_time(&ainfo->m_metrics, 
 				cat, 
 				delta,
 				0,
@@ -799,7 +800,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
+			ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
 		}
 
 		//
@@ -807,7 +808,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
-		tinfo->m_ainfo->m_metrics.get_total(&ttot);
+		ainfo->m_metrics.get_total(&ttot);
 		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
 #endif
 
@@ -828,12 +829,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			is_subsampling = true;
 		}
 
-		tinfo->m_ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+		ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
 
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
-		tinfo->m_ainfo->m_cpuload = 0;
+		ainfo->m_cpuload = 0;
 
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -846,55 +847,53 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					if((tinfo->m_flags & PPM_CL_CLOSED) == 0)
 					{
-						tinfo->m_ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, 
-							&tinfo->m_ainfo->m_old_proc_jiffies, 
+						ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, 
+							&ainfo->m_old_proc_jiffies, 
 							cur_global_total_jiffies - m_old_global_total_jiffies);
 
-						m_total_process_cpu += tinfo->m_ainfo->m_cpuload;
+						m_total_process_cpu += ainfo->m_cpuload;
 					}
 				}
 			}
 		}
-
+		
 		//
 		// Add this thread's counters to the process ones...
 		//
-		ASSERT(it->second.m_program_hash != 0);
-		auto mtinfo = progtable.emplace(it->second.m_program_hash, &it->second).first->second;
-		if(mtinfo->m_tid == it->second.m_tid)
+		ASSERT(tinfo->m_program_hash != 0);
+
+		auto mtinfo = progtable.emplace(tinfo->m_program_hash, &it->second).first->second;
+		if(mtinfo->m_tid == tinfo->m_tid)
 		{
-			it->second.m_ainfo->set_main_program_thread(true);
+			ainfo->set_main_program_thread(true);
 		}
 		else
 		{
-			it->second.m_ainfo->set_main_program_thread(false);
+			ainfo->set_main_program_thread(false);
 		}
 
-#ifdef ANALYZER_EMITS_PROGRAMS
-//		sinsp_threadinfo* mtinfo = tinfo->m_ainfo->get_main_program_thread();
-#else
-		sinsp_threadinfo* mtinfo = tinfo->get_main_thread();
-#endif
 		ASSERT(mtinfo != NULL);
 
-		mtinfo->m_ainfo->add_all_metrics(tinfo->m_ainfo);
+		ainfo->m_main_thread_pid = mtinfo->m_pid;
+
+		mtinfo->m_ainfo->add_all_metrics(ainfo);
 
 		//
 		// ... And to the host ones
 		//
-		m_host_transaction_counters.add(&tinfo->m_ainfo->m_external_transaction_metrics);
+		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
 
 		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 		{
 			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += tinfo->m_ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
+			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
 		}
 
 		if(m_inspector->m_islive)
 		{
 			if(it->first == m_mypid)
 			{
-				m_my_cpuload = tinfo->m_ainfo->m_cpuload;
+				m_my_cpuload = ainfo->m_cpuload;
 			}
 		}
 	}
@@ -995,10 +994,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				draiosproto::program* prog = m_metrics->add_programs();
 				draiosproto::process* proc = prog->mutable_procinfo();
 
-				for(int64_t pid : procinfo->m_program_pids)
-				{
-					prog->add_pids(pid);
-				}
+				//for(int64_t pid : procinfo->m_program_pids)
+				//{
+				//	prog->add_pids(pid);
+				//}
+				prog->add_pids(it->second.m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
 				draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
@@ -1423,6 +1423,42 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 
 		//
+		// Find the main program pids
+		//
+		int64_t prog_spid = 0;
+		int64_t prog_dpid = 0;
+
+		if(acit->second.m_spid != 0)
+		{
+			auto tinfo = m_inspector->get_thread(acit->second.m_spid, false, true);
+			if(tinfo == NULL)
+			{
+				//
+				// No thread info for this connection?
+				//
+				ASSERT(false);
+				continue;
+			}
+
+			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+		}
+
+		if(acit->second.m_dpid != 0)
+		{
+			auto tinfo = m_inspector->get_thread(acit->second.m_dpid, false, true);
+			if(tinfo == NULL)
+			{
+				//
+				// No thread info for this connection?
+				//
+				ASSERT(false);
+				continue;
+			}
+
+			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+		}
+
+		//
 		// Add the connection to the protobuf
 		//
 		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
@@ -1434,8 +1470,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple->set_dport(acit->first.m_fields.m_dport);
 		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
 
-		conn->set_spid(acit->second.m_spid);
-		conn->set_dpid(acit->second.m_dpid);
+		conn->set_spid(prog_spid);
+		conn->set_dpid(prog_dpid);
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),

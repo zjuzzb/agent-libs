@@ -173,6 +173,7 @@ public:
 	sinsp *m_inspector;
 	sinsp_analyzer* m_analyzer;
 	sinsp_threadinfo* m_tinfo;
+	int64_t m_main_thread_pid;
 
 	// Flags word used by the analysis engine.
 	uint16_t m_th_analysis_flags;
