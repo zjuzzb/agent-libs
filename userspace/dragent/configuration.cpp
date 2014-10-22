@@ -120,7 +120,7 @@ void dragent_configuration::init(Application* app)
 
 	if(m_server_addr.empty())
 	{
-		m_server_addr = config.getString("server.address", "collector.draios.com");
+		m_server_addr = config.getString("server.address", "collector.sysdigcloud.com");
 	}
 
 	if(m_server_port == 0)
