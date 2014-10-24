@@ -170,6 +170,8 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 256);
 	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 30 * 1024);
 	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
+
+	refresh_aws_metadata();
 }
 
 void dragent_configuration::print_configuration()
@@ -206,44 +208,59 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 	g_log->information("dirty_shutdown.report.log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture.dragent.events: " + bool_as_text(m_capture_dragent_events));
+	
+	if(m_aws_metadata.m_valid)
+	{
+		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
+		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
+	}
 }
 
-bool dragent_configuration::get_aws_metadata(aws_metadata* metadata)
+void dragent_configuration::refresh_aws_metadata()
 {
 	try 
 	{
 		HTTPClientSession client("169.254.169.254", 80);
 		client.setTimeout(1000000);
 
-		HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
-		client.sendRequest(request);
+		{
+			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
+			client.sendRequest(request);
 
-		HTTPResponse response; 
-		std::istream& rs = client.receiveResponse(response); 
+			HTTPResponse response; 
+			std::istream& rs = client.receiveResponse(response); 
 
-		string s;
-		StreamCopier::copyToString(rs, s);
+			string s;
+			StreamCopier::copyToString(rs, s);
 
 #ifndef _WIN32
-		struct in_addr addr;
+			struct in_addr addr;
 
-		if(inet_aton(s.c_str(), &addr) == 0)
-		{
-			g_log->information("Received invalid AWS public-ipv4: '" + s + "'");
-			return false;
+			if(inet_aton(s.c_str(), &addr) == 0)
+			{
+				m_aws_metadata.m_valid = false;
+				return;
+			}
+
+			m_aws_metadata.m_public_ipv4 = addr.s_addr;
+#endif
 		}
 
-		metadata->m_public_ipv4 = addr.s_addr;
-#endif
+		{
+			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/instance-id");
+			client.sendRequest(request);
 
-		g_log->information("AWS public-ipv4: " + s);
+			HTTPResponse response; 
+			std::istream& rs = client.receiveResponse(response); 
 
-		return true;
+			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
+		}
+
+		m_aws_metadata.m_valid = true;
 	}
 	catch(Poco::Exception& e)
 	{
-		g_log->information("Cannot get AWS metadata: " + e.displayText());
-		return false;
+		m_aws_metadata.m_valid = false;
 	}
 }
 

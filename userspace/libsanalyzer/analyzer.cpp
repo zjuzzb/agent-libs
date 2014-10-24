@@ -2041,6 +2041,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
 			m_metrics->set_host_custom_map(m_configuration->get_host_custom_map());
 			m_metrics->set_version(m_configuration->get_version());
+			if(!m_configuration->get_instance_id().empty())
+			{
+				m_metrics->set_instance_id(m_configuration->get_instance_id());
+			}
 
 			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());

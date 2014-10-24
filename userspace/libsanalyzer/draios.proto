@@ -374,6 +374,7 @@ message metrics {
     optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
     optional string version = 16; // Agent/libsanalyzer/sysdig version
+    optional string instance_id = 21; // AWS instance id
 	repeated command_details commands = 17; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files

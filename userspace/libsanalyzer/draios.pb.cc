@@ -674,7 +674,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(file_stat));
   metrics_descriptor_ = file->message_type(27);
-  static const int metrics_offsets_[19] = {
+  static const int metrics_offsets_[20] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, customer_id_),
@@ -690,6 +690,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, is_host_hidden_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, hidden_processes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, version_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, instance_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, commands_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, mounts_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, top_files_),
@@ -1182,7 +1183,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "\005 \002(\004\022\027\n\017available_bytes\030\006 \002(\004\"]\n\tfile_s"
     "tat\022\014\n\004name\030\001 \002(\t\022\r\n\005bytes\030\002 \002(\r\022\017\n\007time"
     "_ns\030\003 \002(\004\022\022\n\nopen_count\030\004 \002(\r\022\016\n\006errors\030"
-    "\005 \002(\r\"\212\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022"
+    "\005 \002(\r\"\237\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022"
     "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
     "\022#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.host\022&\n"
     "\010programs\030\t \003(\0132\024.draiosproto.program\022\'\n"
@@ -1194,54 +1195,55 @@ void protobuf_AddDesc_draios_2eproto() {
     "tom_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027\n\017hos"
     "t_custom_map\030\r \001(\t\022\026\n\016is_host_hidden\030\016 \001"
     "(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007version\030"
-    "\020 \001(\t\022.\n\010commands\030\021 \003(\0132\034.draiosproto.co"
-    "mmand_details\022\'\n\006mounts\030\022 \003(\0132\027.draiospr"
-    "oto.mounted_fs\022)\n\ttop_files\030\023 \003(\0132\026.drai"
-    "osproto.file_stat\022\'\n\006protos\030\024 \001(\0132\027.drai"
-    "osproto.proto_info\"\232\001\n\022dump_request_star"
-    "t\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
-    "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030"
-    "\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004"
-    "\022\r\n\005token\030\006 \002(\t\"a\n\021dump_request_stop\022\024\n\014"
-    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
-    "\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rd"
-    "ump_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nma"
-    "chine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010c"
-    "hunk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nke"
-    "ep_alive\030\t \001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020final"
-    "_size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005toke"
-    "n\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timestam"
-    "p_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custom"
-    "er_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t"
-    "\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassp"
-    "hrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024"
-    "\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t"
-    "\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004"
-    "data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status"
-    "\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestamp"
-    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
-    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_update"
-    "_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachin"
-    "e_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025dirty"
-    "_shutdown_report\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
-    "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
-    "\013\n\003log\030\004 \002(\t*\346\001\n\022sql_statement_type\022\014\n\010S"
-    "OP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSERT\020"
-    "\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DE"
-    "LETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n"
-    "\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n"
-    "\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_AL"
-    "TER\020\r*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LO"
-    "CAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERV"
-    "ER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV"
-    "4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n"
-    "\016IS_UNIX_CLIENT\020 *\314\001\n\014message_type\022\013\n\007ME"
-    "TRICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_"
-    "REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH"
-    "_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014"
-    "\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n"
-    "\025DIRTY_SHUTDOWN_REPORT\020\nB$\n\031com.draios.m"
-    "odel.protobufB\005AgentH\001", 8102);
+    "\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022.\n\010commands\030\021"
+    " \003(\0132\034.draiosproto.command_details\022\'\n\006mo"
+    "unts\030\022 \003(\0132\027.draiosproto.mounted_fs\022)\n\tt"
+    "op_files\030\023 \003(\0132\026.draiosproto.file_stat\022\'"
+    "\n\006protos\030\024 \001(\0132\027.draiosproto.proto_info\""
+    "\232\001\n\022dump_request_start\022\024\n\014timestamp_ns\030\001"
+    " \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030"
+    "\003 \001(\t\022\023\n\013duration_ns\030\004 \001(\004\022\017\n\007filters\030\005 "
+    "\001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006 \002(\t\"a\n\021"
+    "dump_request_stop\022\024\n\014timestamp_ns\030\001 \002(\004\022"
+    "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
+    "\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_response\022\024\n\014tim"
+    "estamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013c"
+    "ustomer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022\023\n\013fi"
+    "nal_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t \001(\010\022\017\n\007c"
+    "ontent\030\004 \001(\014\022\030\n\020final_size_bytes\030\n \001(\004\022\r"
+    "\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_ope"
+    "n_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachi"
+    "ne_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005toke"
+    "n\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022"
+    "\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port"
+    "\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns\030\001 \002("
+    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
+    "(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error"
+    "\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_close"
+    "_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachin"
+    "e_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token"
+    "\030\004 \002(\t\"T\n\023auto_update_request\022\024\n\014timesta"
+    "mp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custo"
+    "mer_id\030\003 \001(\t\"c\n\025dirty_shutdown_report\022\024\n"
+    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
+    "\023\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346\001\n\022sq"
+    "l_statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SE"
+    "LECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nS"
+    "OP_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020"
+    "\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SO"
+    "P_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nS"
+    "OP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\251\001\n\013networkro"
+    "le\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031"
+    "\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SER"
+    "VER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_RE"
+    "MOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314"
+    "\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQ"
+    "UEST_START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rD"
+    "UMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021"
+    "SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUT"
+    "O_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REP"
+    "ORT\020\nB$\n\031com.draios.model.protobufB\005Agen"
+    "tH\001", 8123);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -12834,6 +12836,7 @@ const int metrics::kHostCustomMapFieldNumber;
 const int metrics::kIsHostHiddenFieldNumber;
 const int metrics::kHiddenProcessesFieldNumber;
 const int metrics::kVersionFieldNumber;
+const int metrics::kInstanceIdFieldNumber;
 const int metrics::kCommandsFieldNumber;
 const int metrics::kMountsFieldNumber;
 const int metrics::kTopFilesFieldNumber;
@@ -12869,6 +12872,7 @@ void metrics::SharedCtor() {
   is_host_hidden_ = false;
   hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  instance_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   protos_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -12898,6 +12902,9 @@ void metrics::SharedDtor() {
   }
   if (version_ != &::google::protobuf::internal::kEmptyString) {
     delete version_;
+  }
+  if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete instance_id_;
   }
   if (this != default_instance_) {
     delete hostinfo_;
@@ -12971,8 +12978,13 @@ void metrics::Clear() {
         version_->clear();
       }
     }
+    if (has_instance_id()) {
+      if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
+        instance_id_->clear();
+      }
+    }
   }
-  if (_has_bits_[18 / 32] & (0xffu << (18 % 32))) {
+  if (_has_bits_[19 / 32] & (0xffu << (19 % 32))) {
     if (has_protos()) {
       if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
     }
@@ -13289,6 +13301,23 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(170)) goto parse_instance_id;
+        break;
+      }
+
+      // optional string instance_id = 21;
+      case 21: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_instance_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_instance_id()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->instance_id().data(), this->instance_id().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -13441,6 +13470,15 @@ void metrics::SerializeWithCachedSizes(
   if (has_protos()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       20, this->protos(), output);
+  }
+
+  // optional string instance_id = 21;
+  if (has_instance_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->instance_id().data(), this->instance_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      21, this->instance_id(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -13599,6 +13637,16 @@ void metrics::SerializeWithCachedSizes(
         20, this->protos(), target);
   }
 
+  // optional string instance_id = 21;
+  if (has_instance_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->instance_id().data(), this->instance_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        21, this->instance_id(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -13687,8 +13735,15 @@ int metrics::ByteSize() const {
           this->version());
     }
 
+    // optional string instance_id = 21;
+    if (has_instance_id()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->instance_id());
+    }
+
   }
-  if (_has_bits_[18 / 32] & (0xffu << (18 % 32))) {
+  if (_has_bits_[19 / 32] & (0xffu << (19 % 32))) {
     // optional .draiosproto.proto_info protos = 20;
     if (has_protos()) {
       total_size += 2 +
@@ -13821,8 +13876,11 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_version()) {
       set_version(from.version());
     }
+    if (from.has_instance_id()) {
+      set_instance_id(from.instance_id());
+    }
   }
-  if (from._has_bits_[18 / 32] & (0xffu << (18 % 32))) {
+  if (from._has_bits_[19 / 32] & (0xffu << (19 % 32))) {
     if (from.has_protos()) {
       mutable_protos()->::draiosproto::proto_info::MergeFrom(from.protos());
     }
@@ -13892,6 +13950,7 @@ void metrics::Swap(metrics* other) {
     std::swap(is_host_hidden_, other->is_host_hidden_);
     std::swap(hidden_processes_, other->hidden_processes_);
     std::swap(version_, other->version_);
+    std::swap(instance_id_, other->instance_id_);
     commands_.Swap(&other->commands_);
     mounts_.Swap(&other->mounts_);
     top_files_.Swap(&other->top_files_);

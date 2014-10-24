@@ -4068,6 +4068,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* release_version();
   inline void set_allocated_version(::std::string* version);
 
+  // optional string instance_id = 21;
+  inline bool has_instance_id() const;
+  inline void clear_instance_id();
+  static const int kInstanceIdFieldNumber = 21;
+  inline const ::std::string& instance_id() const;
+  inline void set_instance_id(const ::std::string& value);
+  inline void set_instance_id(const char* value);
+  inline void set_instance_id(const char* value, size_t size);
+  inline ::std::string* mutable_instance_id();
+  inline ::std::string* release_instance_id();
+  inline void set_allocated_instance_id(::std::string* instance_id);
+
   // repeated .draiosproto.command_details commands = 17;
   inline int commands_size() const;
   inline void clear_commands();
@@ -4137,6 +4149,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_hidden_processes();
   inline void set_has_version();
   inline void clear_has_version();
+  inline void set_has_instance_id();
+  inline void clear_has_instance_id();
   inline void set_has_protos();
   inline void clear_has_protos();
 
@@ -4151,19 +4165,20 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
-  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
+  ::std::string* host_tags_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
+  ::std::string* instance_id_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat > top_files_;
   ::draiosproto::proto_info* protos_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11074,6 +11089,76 @@ inline void metrics::set_allocated_version(::std::string* version) {
   }
 }
 
+// optional string instance_id = 21;
+inline bool metrics::has_instance_id() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void metrics::set_has_instance_id() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void metrics::clear_has_instance_id() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void metrics::clear_instance_id() {
+  if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
+    instance_id_->clear();
+  }
+  clear_has_instance_id();
+}
+inline const ::std::string& metrics::instance_id() const {
+  return *instance_id_;
+}
+inline void metrics::set_instance_id(const ::std::string& value) {
+  set_has_instance_id();
+  if (instance_id_ == &::google::protobuf::internal::kEmptyString) {
+    instance_id_ = new ::std::string;
+  }
+  instance_id_->assign(value);
+}
+inline void metrics::set_instance_id(const char* value) {
+  set_has_instance_id();
+  if (instance_id_ == &::google::protobuf::internal::kEmptyString) {
+    instance_id_ = new ::std::string;
+  }
+  instance_id_->assign(value);
+}
+inline void metrics::set_instance_id(const char* value, size_t size) {
+  set_has_instance_id();
+  if (instance_id_ == &::google::protobuf::internal::kEmptyString) {
+    instance_id_ = new ::std::string;
+  }
+  instance_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* metrics::mutable_instance_id() {
+  set_has_instance_id();
+  if (instance_id_ == &::google::protobuf::internal::kEmptyString) {
+    instance_id_ = new ::std::string;
+  }
+  return instance_id_;
+}
+inline ::std::string* metrics::release_instance_id() {
+  clear_has_instance_id();
+  if (instance_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = instance_id_;
+    instance_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void metrics::set_allocated_instance_id(::std::string* instance_id) {
+  if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete instance_id_;
+  }
+  if (instance_id) {
+    set_has_instance_id();
+    instance_id_ = instance_id;
+  } else {
+    clear_has_instance_id();
+    instance_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 // repeated .draiosproto.command_details commands = 17;
 inline int metrics::commands_size() const {
   return commands_.size();
@@ -11151,13 +11236,13 @@ metrics::mutable_top_files() {
 
 // optional .draiosproto.proto_info protos = 20;
 inline bool metrics::has_protos() const {
-  return (_has_bits_[0] & 0x00040000u) != 0;
+  return (_has_bits_[0] & 0x00080000u) != 0;
 }
 inline void metrics::set_has_protos() {
-  _has_bits_[0] |= 0x00040000u;
+  _has_bits_[0] |= 0x00080000u;
 }
 inline void metrics::clear_has_protos() {
-  _has_bits_[0] &= ~0x00040000u;
+  _has_bits_[0] &= ~0x00080000u;
 }
 inline void metrics::clear_protos() {
   if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();

@@ -263,4 +263,14 @@ void sinsp_configuration::set_version(const string& version)
 	m_version = version;
 }
 
+const string& sinsp_configuration::get_instance_id() const
+{
+	return m_instance_id;
+}
+
+void sinsp_configuration::set_instance_id(const string& instance_id)
+{
+	m_instance_id = instance_id;
+}
+
 #endif // HAS_ANALYZER
