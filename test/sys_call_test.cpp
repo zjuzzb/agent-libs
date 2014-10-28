@@ -48,10 +48,17 @@ uint32_t get_server_address()
 	}
 	for(tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next)
 	{
+		if(tempIfAddr->ifa_addr == NULL)
+		{
+			// "eql" interface like on EC2
+			continue;
+		}
+
 		if(tempIfAddr->ifa_addr->sa_family != AF_INET)
 		{
 			continue;
 		}
+		
 		if(0 == strcmp("lo",tempIfAddr->ifa_name))
 		{
 			continue;
