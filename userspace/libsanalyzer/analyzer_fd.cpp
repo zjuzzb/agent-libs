@@ -24,6 +24,20 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
 ///////////////////////////////////////////////////////////////////////////////
+const char* mysql_querystart_toks[] = {"\3SELECT",
+		"\3INSERT",
+		"\3SET",
+		"\3CREATE",
+		"\3DELETE",
+		"\3DROP",
+		"\3REPLACE",
+		"\3UPDATE",
+		"\3USE",
+		"\3SHOW",
+		"\3LOCK",
+		"\3UNLOCK",
+		"\3ALTER"};
+
 sinsp_proto_detector::sinsp_proto_detector()
 {
 	m_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
@@ -88,14 +102,61 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				tbuflen = buflen;
 			}
 
-			if(tbuflen > 5	// min length
-				&& *(uint16_t*)tbuf == tbuflen - 4 // first 3 bytes are length
-				&& tbuf[2] == 0x00 // 3rd byte of packet length
-				&& tbuf[3] == 0) // Sequence number is zero for the beginning of a query
+			if(tbuflen > 5)	// min length
 			{
-				sinsp_mysql_parser* st = new sinsp_mysql_parser;
-				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-				return sinsp_partial_transaction::TYPE_MYSQL;
+				//
+				// This detects a server greetings message, which is the first message sent by the server
+				//
+				if(*(uint16_t*)tbuf == tbuflen - 4 // first 3 bytes are length
+					&& tbuf[2] == 0x00 // 3rd byte of packet length
+					&& tbuf[3] == 0) // Sequence number is zero for the beginning of a query
+				{
+					sinsp_mysql_parser* st = new sinsp_mysql_parser;
+					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+					return sinsp_partial_transaction::TYPE_MYSQL;
+				}
+				else
+				{
+					//
+					// This detects a query that is received as a fragmented buffer.
+					// Usually this happens server side, since the server starts with a 4 byte read 
+					// to detect the message and then reads the rest of the payload.
+					//
+					if(tbuf[0] == 3)
+					{
+						for(uint32_t j = 0; 
+							j < sizeof(mysql_querystart_toks) / sizeof(mysql_querystart_toks[0]); 
+							j++)
+						{
+							if(*(uint32_t*)tbuf == *(uint32_t*)mysql_querystart_toks[j])
+							{
+								sinsp_mysql_parser* st = new sinsp_mysql_parser;
+								trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+								return sinsp_partial_transaction::TYPE_MYSQL;
+							}
+						}
+					}
+					else if(tbuflen > 8)
+					{
+						//
+						// This detects a query that is received as a NON fragmented buffer.
+						//
+						if(tbuf[4] == 3)
+						{
+							for(uint32_t j = 0; 
+								j < sizeof(mysql_querystart_toks) / sizeof(mysql_querystart_toks[0]); 
+								j++)
+							{
+								if(*(uint32_t*)(tbuf + 4) == *(uint32_t*)mysql_querystart_toks[j])
+								{
+									sinsp_mysql_parser* st = new sinsp_mysql_parser;
+									trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+									return sinsp_partial_transaction::TYPE_MYSQL;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 		else
@@ -558,7 +619,7 @@ r_conn_creation_done:
 		}
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
+			(trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
@@ -896,7 +957,7 @@ w_conn_creation_done:
 		}
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_n_direction_switches < 2 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
+			(trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
