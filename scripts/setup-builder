@@ -10,6 +10,7 @@ export AWS_DEFAULT_REGION="us-east-1"
 # Update the system
 #
 yum -y update
+reboot
 
 #
 # Setup repos 
