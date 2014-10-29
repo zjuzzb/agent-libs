@@ -61,3 +61,7 @@ aws s3 cp s3://draios-builder/jenkins-github-agent.pem ~/.ssh
 aws s3 cp s3://draios-builder/jenkins-github-sysdig.pem ~/.ssh
 aws s3 cp s3://draios-builder/jenkins-github-sysdig-private.pem ~/.ssh
 chmod 600 ~/.ssh/*
+
+mkfs -t ext4 /dev/xvdf
+echo "/dev/xvdf /mnt ext4 defaults,nofail 0 2" >> /etc/fstab
+mount -a
