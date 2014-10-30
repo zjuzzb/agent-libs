@@ -41,6 +41,15 @@ void run_monitor(const string& pidfile)
 	//
 	// Father. It will be the monitor process
 	//
+	{
+		std::ofstream ostr(pidfile);
+		if(ostr.good())
+		{
+			ostr << Poco::Process::id() << std::endl;
+		}
+		Poco::TemporaryFile::registerForDeletion(pidfile);
+	}
+
 	while(g_signal_received == 0)
 	{
 		int status = 0;
@@ -72,24 +81,6 @@ void run_monitor(const string& pidfile)
 
 		//
 		// Process terminated abnormally, restart it
-		//
-
-		//
-		// Since both child and father are run with --daemon option,
-		// Poco can get confused and can delete the pidfile even if
-		// the monitor doesn't die.
-		//
-		if(!pidfile.empty())
-		{
-			std::ofstream ostr(pidfile);
-			if(ostr.good())
-			{
-				ostr << Poco::Process::id() << std::endl;
-			}
-		}
-
-		//
-		// Sleep for a bit and run another dragent
 		//
 		sleep(1);
 

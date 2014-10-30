@@ -101,6 +101,12 @@ void dragent_app::defineOptions(OptionSet& options)
 			.required(false)
 			.repeatable(false)
 			.argument("port"));
+
+	options.addOption(
+		Option("dragentpid", "", "pid file.")
+			.required(false)
+			.repeatable(false)
+			.argument("dragentpid"));
 }
 
 void dragent_app::handleOption(const std::string& name, const std::string& value)
@@ -139,7 +145,7 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_configuration.m_server_port = (uint16_t)NumberParser::parse(value);
 	}
-	else if(name == "pidfile")
+	else if(name == "dragentpid")
 	{
 		m_pidfile = value;
 	}
