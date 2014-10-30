@@ -1,5 +1,6 @@
 #include "monitor.h"
 #include "configuration.h"
+#include "Poco/Exception.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -11,6 +12,27 @@ static void g_monitor_signal_callback(int sig)
 	if(g_signal_received == 0)
 	{
 		g_signal_received = sig;
+	}
+}
+
+static void create_pid_file(const string& pidfile)
+{
+	std::ofstream ostr(pidfile);
+	if(ostr.good())
+	{
+		ostr << Poco::Process::id() << std::endl;
+	}
+}
+
+static void delete_pid_file(const string& pidfile)
+{
+	try
+	{
+		File f(pidfile);
+		f.remove(true);
+	}
+	catch(Poco::Exception&)
+	{
 	}
 }
 
@@ -41,14 +63,7 @@ void run_monitor(const string& pidfile)
 	//
 	// Father. It will be the monitor process
 	//
-	{
-		std::ofstream ostr(pidfile);
-		if(ostr.good())
-		{
-			ostr << Poco::Process::id() << std::endl;
-		}
-		Poco::TemporaryFile::registerForDeletion(pidfile);
-	}
+	create_pid_file(pidfile);
 
 	while(g_signal_received == 0)
 	{
@@ -57,6 +72,7 @@ void run_monitor(const string& pidfile)
 
 		if(waited_pid < 0)
 		{
+			delete_pid_file(pidfile);
 			exit(EXIT_FAILURE);
 		}
 
@@ -76,6 +92,7 @@ void run_monitor(const string& pidfile)
 			//
 			// Process terminated cleanly
 			//
+			delete_pid_file(pidfile);
 			exit(EXIT_SUCCESS);
 		}
 
@@ -87,6 +104,7 @@ void run_monitor(const string& pidfile)
 		child_pid = fork();
 		if(child_pid < 0)
 		{
+			delete_pid_file(pidfile);
 			exit(EXIT_FAILURE);
 		}
 
@@ -107,11 +125,13 @@ void run_monitor(const string& pidfile)
 		//
 		if(kill(child_pid, g_signal_received) != 0)
 		{
+			delete_pid_file(pidfile);
 			exit(EXIT_FAILURE);
 		}
 
 		waitpid(child_pid, NULL, 0);
 	}
 
+	delete_pid_file(pidfile);
 	exit(EXIT_SUCCESS);
 }
