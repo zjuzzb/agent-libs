@@ -282,8 +282,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 {
 	if(evt->m_fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
-		ASSERT(file_stat);
+		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
 		if(file_stat)
 		{
 			file_stat->m_bytes += original_len;
@@ -682,8 +681,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 {
 	if(evt->m_fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
-		ASSERT(file_stat);
+		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
 		if(file_stat)
 		{
 			file_stat->m_bytes += original_len;
@@ -1270,9 +1268,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 
 void sinsp_analyzer_fd_listener::on_file_create(sinsp_evt* evt, const string& fullpath)
 {
-	analyzer_file_stat* file_stat = get_file_stat(fullpath);
-	ASSERT(file_stat);
-
+	analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fullpath);
 	if(evt->m_fdinfo)
 	{
 		ASSERT(evt->m_fdinfo->is_file());
@@ -1300,8 +1296,7 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 	ASSERT(evt->m_errorcode != 0);
 	if(evt->m_fdinfo && evt->m_fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->m_fdinfo->m_name);
-		ASSERT(file_stat);
+		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
 		if(file_stat)
 		{
 			++file_stat->m_errors;
@@ -1309,8 +1304,16 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 	}
 }
 
-analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const string& name)
+analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_threadinfo* tinfo, const string& name)
 {
+	//
+	// Exclude dragent files to be consistent with everything else
+	//
+	if(tinfo->m_pid == m_analyzer->m_mypid)
+	{
+		return NULL;
+	}
+
 	unordered_map<string, analyzer_file_stat>::iterator it = 
 		m_files_stat.find(name);
 

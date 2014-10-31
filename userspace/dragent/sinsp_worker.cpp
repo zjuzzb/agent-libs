@@ -150,6 +150,7 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
+	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	
 	//
 	// Start the capture with sinsp
@@ -164,10 +165,10 @@ void sinsp_worker::init()
 		m_inspector->open("");
 	}
 
-	aws_metadata metadata;
-	if(m_configuration->get_aws_metadata(&metadata))
+	if(m_configuration->m_aws_metadata.m_valid)
 	{
-		sinsp_ipv4_ifinfo aws_interface(metadata.m_public_ipv4, metadata.m_public_ipv4, metadata.m_public_ipv4, "aws");
+		sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4, 
+			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
 }

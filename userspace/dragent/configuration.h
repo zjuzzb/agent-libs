@@ -20,7 +20,9 @@
 class aws_metadata
 {
 public:
-	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4 
+	bool m_valid;
+	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
+	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
 
 class dragent_configuration
@@ -31,7 +33,6 @@ public:
 	void init(Application* app);
 	void print_configuration();
 	static Message::Priority string_to_priority(const string& priostr);
-	static bool get_aws_metadata(aws_metadata* metadata);
 	static uint64_t get_current_time_ns();
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
@@ -75,4 +76,8 @@ public:
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	bool m_capture_dragent_events;
+	aws_metadata m_aws_metadata;
+
+private:
+	void refresh_aws_metadata();
 };

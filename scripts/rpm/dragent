@@ -34,7 +34,7 @@ start() {
     # [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     /sbin/modprobe sysdig-probe || return $?
-    daemon $exec --daemon --pidfile=/var/run/dragent.pid
+    daemon $exec --daemon --dragentpid=/var/run/dragent.pid
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile

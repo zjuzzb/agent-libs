@@ -52,7 +52,7 @@ function smoke_tests {
 	rm -rf /opt/draios/bin/dragent.properties
 	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
 	cp /etc/hosts /etc/hosts.bak
-	echo "127.0.0.1 collector.draios.com" >> /etc/hosts
+	echo "127.0.0.1 collector.sysdigcloud.com" >> /etc/hosts
 	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
 	service dragent start

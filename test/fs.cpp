@@ -578,7 +578,7 @@ TEST_F(sys_call_test, fs_pread)
 			FAIL();
 		}
 
-		pread(fd1, buf, 32, 4);
+		pread(fd1, buf, 4, 4);
 
 		close(fd1);
 
@@ -660,7 +660,7 @@ TEST_F(sys_call_test, fs_pread)
 			}
 			else if(callnum == 8)
 			{
-				EXPECT_EQ("32", e->get_param_value_str("size"));
+				EXPECT_EQ("4", e->get_param_value_str("size"));
 				EXPECT_EQ("4", e->get_param_value_str("pos"));
 				callnum++;
 			}

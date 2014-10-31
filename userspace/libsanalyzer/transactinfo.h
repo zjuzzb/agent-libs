@@ -332,8 +332,6 @@ class SINSP_PUBLIC sinsp_transaction_table
 public:
 	sinsp_transaction_table(sinsp* inspector);
 	~sinsp_transaction_table();
-	uint32_t get_size();
-	void clear();
 
 	void emit(sinsp_threadinfo* ptinfo, 
 		void* fdinfo,
@@ -350,7 +348,6 @@ public:
 	// Stores the global list of transactions.
 	// Key is the tid
 	//
-	unordered_map<int64_t, vector<sinsp_transaction > > m_table;
 	uint32_t m_n_client_transactions;
 	uint32_t m_n_server_transactions;
 

@@ -265,25 +265,6 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 	}
 }
 
-uint32_t sinsp_transaction_table::get_size()
-{
-	uint32_t res = 0;
-	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
-
-	// first try to find exact match
-	for(it = m_table.begin(); it != m_table.end(); it++)
-	{
-		res += (uint32_t)it->second.size();
-	}
-
-	return res;
-}
-
-void sinsp_transaction_table::clear()
-{
-	m_table.clear();
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transactinfo implementation
 ///////////////////////////////////////////////////////////////////////////////

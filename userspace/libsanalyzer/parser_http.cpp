@@ -41,6 +41,11 @@ sinsp_http_parser::~sinsp_http_parser()
 	}
 }
 
+sinsp_http_parser::proto sinsp_http_parser::get_type()
+{
+	return sinsp_protocol_parser::PROTO_HTTP;
+}
+
 inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 												 char* tosearch, uint32_t tosearchlen,
 												 OUT uint32_t* reslen)

@@ -39,6 +39,7 @@ public:
 		char* buf, uint32_t buflen);
 	bool parse_request(char* buf, uint32_t buflen);
 	bool parse_response(char* buf, uint32_t buflen);
+	proto get_type();
 
 	char* m_path;
 	char* m_url;

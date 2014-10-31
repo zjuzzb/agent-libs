@@ -73,7 +73,7 @@ public:
 	unordered_map<string, analyzer_file_stat> m_files_stat;
 
 private:
-	analyzer_file_stat* get_file_stat(const string& name);
+	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
 
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
