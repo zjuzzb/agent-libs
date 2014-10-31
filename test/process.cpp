@@ -890,6 +890,107 @@ TEST_F(sys_call_test, procfs_globalmemory)
 		sleep(1);
 	}
 }
+
+TEST_F(sys_call_test, process_scap_proc_get)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		usleep(1000);
+
+		int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+		EXPECT_LT(0, s);
+
+		int s1 = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+		EXPECT_LT(0, s);
+
+		usleep(1000000);
+
+		close(s);
+		close(s1);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_NANOSLEEP_E)
+		{
+			if(callnum == 0)
+			{
+				scap_threadinfo* scap_proc;
+
+				scap_proc = scap_proc_get(param.m_inspector->m_h, 0, false);
+				EXPECT_EQ(NULL, (void*)scap_proc);
+				
+				int64_t tid = e->get_tid();
+				scap_proc = scap_proc_get(param.m_inspector->m_h, tid, false);
+				EXPECT_NE((void*)NULL, (void*)scap_proc);
+			}
+			else
+			{
+				scap_threadinfo* scap_proc;
+				scap_fdinfo *fdi;
+				scap_fdinfo *tfdi;
+				uint32_t nsocks = 0;
+				int64_t tid = e->get_tid();
+
+				//
+				// try with scan_sockets=true
+				//
+				scap_proc = scap_proc_get(param.m_inspector->m_h, tid, false);
+				EXPECT_NE((void*)NULL, (void*)scap_proc);
+
+				HASH_ITER(hh, scap_proc->fdlist, fdi, tfdi)
+				{
+					if(fdi->type == SCAP_FD_IPV4_SOCK)
+					{
+						nsocks++;
+					}
+				}
+
+				EXPECT_EQ(0, nsocks);
+
+				//
+				// try with scan_sockets=false
+				//
+				scap_proc = scap_proc_get(param.m_inspector->m_h, tid, true);
+				EXPECT_NE((void*)NULL, (void*)scap_proc);
+
+				HASH_ITER(hh, scap_proc->fdlist, fdi, tfdi)
+				{
+					if(fdi->type == SCAP_FD_IPV4_SOCK)
+					{
+						nsocks++;
+					}
+				}
+
+				EXPECT_EQ(0, nsocks);
+			}
+
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+}
+
 /*
 class childthread
 {
