@@ -415,7 +415,6 @@ TEST_F(sys_call_test, DISABLED_unix_client_server_with_server_starting_before_ca
 		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->get_comm(), "unix_server.py"))
 		{
 			state = 1;
-			ASSERT_EQ(1, (int)param.m_inspector->m_analyzer->m_trans_table->m_table[evt->get_tid()].size());
 		}
 	};
 
@@ -462,7 +461,6 @@ TEST_F(sys_call_test, DISABLED_unix_client_server_with_connection_before_capturi
 		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && evt->get_tid() == server.get_tid())
 		{
 			state = 1;
-			ASSERT_EQ(1, (int)param.m_inspector->m_analyzer->m_trans_table->m_table[evt->get_tid()].size());
 		}
 	};
 
