@@ -2803,6 +2803,14 @@ void sinsp_analyzer::emit_top_files()
 			files_sortable_list[j]->m_exclude_from_sample = false;
 		}
 	}
+	else
+	{
+		for(vector<analyzer_file_stat*>::const_iterator it = files_sortable_list.begin();
+			it != files_sortable_list.end(); ++it)
+		{
+			(*it)->m_exclude_from_sample = false;
+		}
+	}
 
 	for(vector<analyzer_file_stat*>::const_iterator it = files_sortable_list.begin();
 		it != files_sortable_list.end(); ++it)
