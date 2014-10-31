@@ -3,8 +3,10 @@
 #include <execinfo.h>
 
 #include "logger.h"
+#include "sinsp_worker.h"
 
 string crash_handler::m_crashdump_file;
+const sinsp_worker* crash_handler::m_sinsp_worker = NULL;
 
 static const int g_crash_signals[] = 
 {
@@ -22,6 +24,13 @@ void crash_handler::run(int sig)
 		char line[128];
 		snprintf(line, sizeof(line), "Received signal %d\n", sig);
 		log_crashdump_message(line);
+
+		if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
+		{
+			char buf[1024];
+			m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+			log_crashdump_message(buf);
+		}
 
 		void *array[NUM_FRAMES];
 		int frames = backtrace(array, NUM_FRAMES);
@@ -57,6 +66,7 @@ void crash_handler::log_crashdump_message(const char* message)
 	}
 
 	write(1, message, strlen(message));	
+	close(fd);
 }
 
 bool crash_handler::initialize()

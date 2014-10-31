@@ -2963,10 +2963,6 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 							break;
 						}
 					}
-					else
-					{
-						int a = 0;
-					}
 				}
 			}
 		}

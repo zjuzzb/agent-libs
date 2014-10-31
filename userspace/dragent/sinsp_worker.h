@@ -47,7 +47,7 @@ public:
 
 	void run();
 	void queue_job_request(SharedPtr<dump_job_request> job_request);
-	uint64_t get_last_loop_ns()
+	uint64_t get_last_loop_ns() const
 	{
 		return m_last_loop_ns;
 	}
@@ -55,6 +55,11 @@ public:
 	pthread_t get_pthread_id()
 	{
 		return m_pthread_id;
+	}
+
+	const sinsp* get_inspector() const
+	{
+		return m_inspector;
 	}
 
 private:

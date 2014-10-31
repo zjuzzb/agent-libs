@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+class sinsp_worker;
+
 class crash_handler
 {
 public:
@@ -10,6 +12,10 @@ public:
 	static void set_crashdump_file(const string& crashdump_file)
 	{
 		m_crashdump_file = crashdump_file;
+	}
+	static void set_sinsp_worker(const sinsp_worker* sinsp_worker)
+	{
+		m_sinsp_worker = sinsp_worker;
 	}
 
 	//
@@ -20,4 +26,5 @@ public:
 private:
 	static const int NUM_FRAMES = 20;
 	static string m_crashdump_file;
+	static const sinsp_worker* m_sinsp_worker;
 };

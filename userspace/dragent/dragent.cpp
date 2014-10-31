@@ -353,6 +353,14 @@ void dragent_app::watchdog_check()
 			char line[128];
 			snprintf(line, sizeof(line), "watchdog: High memory usage, %" PRId64 " MB\n", memory);
 			crash_handler::log_crashdump_message(line);
+
+			if(m_sinsp_worker.get_last_loop_ns())
+			{
+				char buf[1024];
+				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+				crash_handler::log_crashdump_message(buf);
+			}
+
 			to_kill = true;
 		}
 	}
@@ -488,6 +496,7 @@ void dragent_app::initialize_logging()
 	string logsdir = p.toString();
 
 	crash_handler::set_crashdump_file(p.toString());
+	crash_handler::set_sinsp_worker(&m_sinsp_worker);
 	
 	//
 	// Setup the logging
