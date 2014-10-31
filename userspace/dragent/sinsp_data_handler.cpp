@@ -14,6 +14,11 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics)
 {
+	if(m_configuration->m_print_protobuf)
+	{
+		g_log->information(metrics->DebugString());
+	}
+
 	if(!m_connection_manager->is_connected())
 	{
 		g_log->information("Agent not connected, skipping metric ts=" 
@@ -25,11 +30,6 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		draiosproto::message_type::METRICS, 
 		*metrics, 
 		m_configuration->m_compression_enabled);
-
-	if(m_configuration->m_print_protobuf)
-	{
-		g_log->information(metrics->DebugString());
-	}
 
 	if(buffer.isNull())
 	{
