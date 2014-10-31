@@ -315,6 +315,7 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	char line[512];
 	char tmps[32];
 	double res = -1;
+
 	string path = string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
 	uint64_t tval, val1, val2, val3, val4;
 

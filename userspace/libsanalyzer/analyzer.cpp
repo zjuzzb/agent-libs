@@ -761,7 +761,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
+	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
@@ -809,7 +809,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
 		ainfo->m_metrics.get_total(&ttot);
-		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+		if(!m_inspector->m_islive)
+		{
+			ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+		}
 #endif
 
 		//
@@ -948,7 +951,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(procinfo != NULL);
 
 			procinfo->m_proc_metrics.get_total(&tot);
-			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+			if(!m_inspector->m_islive)
+			{
+				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+			}
 
 			//
 			// Inclusion logic
