@@ -332,6 +332,11 @@ inline void sinsp_mysql_parser::reset()
 	m_msgtype = MT_NONE;
 }
 
+sinsp_mysql_parser::proto sinsp_mysql_parser::get_type()
+{
+	return sinsp_protocol_parser::PROTO_MYSQL;
+}
+
 sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
 																 sinsp_partial_transaction::direction dir,
 																 bool is_switched,

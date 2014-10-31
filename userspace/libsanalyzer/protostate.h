@@ -17,6 +17,13 @@ public:
 		MSG_RESPONSE,
 	};
 
+	enum proto
+	{
+		PROTO_NONE = 0,
+		PROTO_HTTP,
+		PROTO_MYSQL,
+	};
+
 	sinsp_protocol_parser();
 	virtual ~sinsp_protocol_parser();
 	virtual msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
@@ -25,6 +32,7 @@ public:
 		char* buf, uint32_t buflen) = 0;
 	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
 	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
+	virtual proto get_type() = 0;
 
 	bool m_is_valid;
 	bool m_is_req_valid;

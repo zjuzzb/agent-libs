@@ -2830,4 +2830,222 @@ void sinsp_analyzer::emit_top_files()
 	m_fd_listener->m_files_stat.clear();
 }
 
+#define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
+
+int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen)
+{
+	int len;
+	uint32_t pos = 0;
+	uint32_t nfds = 0;
+	uint32_t nfds_file = 0;
+	uint32_t nfds_ipv4 = 0;
+	uint32_t nfds_ipv6 = 0;
+	uint32_t nfds_dir = 0;
+	uint32_t nfds_ipv4s = 0;
+	uint32_t nfds_ipv6s = 0;
+	uint32_t nfds_fifo = 0;
+	uint32_t nfds_unix = 0;
+	uint32_t nfds_event = 0;
+	uint32_t nfds_unknown = 0;
+	uint32_t nfds_unsupported = 0;
+	uint32_t nfds_signal = 0;
+	uint32_t nfds_evtpoll = 0;
+	uint32_t nfds_inotify = 0;
+	uint32_t nfds_timerfd = 0;
+	uint32_t ntransactions = 0;
+	uint32_t ntransactions_http = 0;
+	uint32_t ntransactions_mysql = 0;
+	uint32_t nqueuedtransactions_client = 0;
+	uint32_t nqueuedtransactions_server = 0;
+	uint32_t nqueuedtransactions_client_capacity = 0;
+	uint32_t nqueuedtransactions_server_capacity = 0;
+
+	len = snprintf(reportbuf + pos, reportbuflen - pos, 
+		"threads: %d\n", (int)m_inspector->m_thread_manager->m_threadtable.size());
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"connections: %d\n", (int)m_ipv4_connections->size());
+	MR_UPDATE_POS;
+
+	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
+	{
+		thread_analyzer_info* ainfo = it->second.m_ainfo;
+
+		for(uint32_t j = 0; j < ainfo->m_dynstate->m_server_transactions_per_cpu.size(); j++)
+		{
+			nqueuedtransactions_server += ainfo->m_dynstate->m_server_transactions_per_cpu[j].size();
+			nqueuedtransactions_server_capacity += 
+				ainfo->m_dynstate->m_server_transactions_per_cpu[j].capacity();
+		}
+
+		for(uint32_t j = 0; j < ainfo->m_dynstate->m_client_transactions_per_cpu.size(); j++)
+		{
+			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
+			nqueuedtransactions_client_capacity += 
+				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
+		}
+
+		for(auto fdit = it->second.m_fdtable.m_table.begin(); 
+			fdit != it->second.m_fdtable.m_table.end(); ++fdit)
+		{
+			nfds++;
+
+			switch(fdit->second.m_type)
+			{
+				case SCAP_FD_FILE:
+					nfds_file++;
+					break;
+				case SCAP_FD_IPV4_SOCK:
+					nfds_ipv4++;
+					break;
+				case SCAP_FD_IPV6_SOCK:
+					nfds_ipv6++;
+					break;
+				case SCAP_FD_DIRECTORY:
+					nfds_dir++;
+					break;
+				case SCAP_FD_IPV4_SERVSOCK:
+					nfds_ipv4s++;
+					break;
+				case SCAP_FD_IPV6_SERVSOCK:
+					nfds_ipv6s++;
+					break;
+				case SCAP_FD_FIFO:
+					nfds_fifo++;
+					break;
+				case SCAP_FD_UNIX_SOCK:
+					nfds_unix++;
+					break;
+				case SCAP_FD_EVENT:
+					nfds_event++;
+					break;
+				case SCAP_FD_UNKNOWN:
+					nfds_unknown++;
+					break;
+				case SCAP_FD_UNSUPPORTED:
+					nfds_unsupported++;
+					break;
+				case SCAP_FD_SIGNALFD:
+					nfds_signal++;
+					break;
+				case SCAP_FD_EVENTPOLL:
+					nfds_evtpoll++;
+					break;
+				case SCAP_FD_INOTIFY:
+					nfds_inotify++;
+					break;
+				case SCAP_FD_TIMERFD:
+					nfds_timerfd++;
+					break;
+				default:
+					nfds_unknown++;
+			}
+
+			if(fdit->second.is_transaction())
+			{
+				ntransactions++;
+
+				if(fdit->second.m_usrstate != NULL)
+				{
+					if(fdit->second.m_usrstate->m_protoparser != NULL)
+					{
+						switch(fdit->second.m_usrstate->m_protoparser->get_type())
+						{
+						case sinsp_protocol_parser::PROTO_HTTP:
+							ntransactions_http++;
+							break;
+						case sinsp_protocol_parser::PROTO_MYSQL:
+							ntransactions_mysql++;
+							break;
+						default:
+							ASSERT(false);
+							break;
+						}
+					}
+					else
+					{
+						int a = 0;
+					}
+				}
+			}
+		}
+	}
+
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"FDs: %d\n", (int)nfds);
+	MR_UPDATE_POS;
+
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  ipv4: %d\n", (int)nfds_ipv4);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  ipv6: %d\n", (int)nfds_ipv6);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  dir: %d\n", (int)nfds_dir);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  ipv4s: %d\n", (int)nfds_ipv4s);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  ipv6s: %d\n", (int)nfds_ipv6s);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  fifo: %d\n", (int)nfds_fifo);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  unix: %d\n", (int)nfds_unix);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  event: %d\n", (int)nfds_event);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  file: %d\n", (int)nfds_file);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  unknown: %d\n", (int)nfds_unknown);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  unsupported: %d\n", (int)nfds_unsupported);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  signal: %d\n", (int)nfds_signal);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  evtpoll: %d\n", (int)nfds_evtpoll);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  inotify: %d\n", (int)nfds_inotify);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  timerfd: %d\n", (int)nfds_timerfd);
+	MR_UPDATE_POS;
+
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"transactions: %d\n", (int)ntransactions);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  http: %d\n", (int)ntransactions_http);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  mysql: %d\n", (int)ntransactions_mysql);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  queued client: %d\n", (int)nqueuedtransactions_client);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  queued server: %d\n", (int)nqueuedtransactions_server);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  queue client capacity: %d\n", (int)nqueuedtransactions_client_capacity);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+		"  queue server capacity: %d\n", (int)nqueuedtransactions_server_capacity);
+	MR_UPDATE_POS;
+
+	//fprintf(stdout, "%s", reportbuf);
+	return pos;
+}
+
 #endif // HAS_ANALYZER
