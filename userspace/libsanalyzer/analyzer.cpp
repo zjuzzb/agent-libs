@@ -2838,7 +2838,7 @@ void sinsp_analyzer::emit_top_files()
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
 
-int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen)
+int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report)
 {
 	int len;
 	uint32_t pos = 0;
@@ -2890,6 +2890,13 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
 			nqueuedtransactions_client_capacity += 
 				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
+		}
+
+		if(do_complete_report)
+		{
+			len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second.m_comm.c_str(), (int)it->second.m_fdtable.size());
+			MR_UPDATE_POS;
 		}
 
 		for(auto fdit = it->second.m_fdtable.m_table.begin(); 

@@ -181,7 +181,7 @@ public:
 	// Fills the given buffer with a string contaning the memory usage report.
 	// Returns the size of the string, or -1 if the given buffer is too small.
 	//
-	int32_t generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen);
+	int32_t generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report = false);
 
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
