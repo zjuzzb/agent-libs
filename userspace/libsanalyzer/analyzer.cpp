@@ -761,7 +761,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
+	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
@@ -809,7 +809,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
 		ainfo->m_metrics.get_total(&ttot);
-		ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+		if(!m_inspector->m_islive)
+		{
+			ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+		}
 #endif
 
 		//
@@ -948,7 +951,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			ASSERT(procinfo != NULL);
 
 			procinfo->m_proc_metrics.get_total(&tot);
-			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+			if(!m_inspector->m_islive)
+			{
+				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+			}
 
 			//
 			// Inclusion logic
@@ -1436,7 +1442,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				// No thread info for this connection?
 				//
-				ASSERT(false);
+				ASSERT(acit->second.m_analysis_flags & sinsp_connection::AF_CLOSED);
 				continue;
 			}
 
@@ -2832,7 +2838,7 @@ void sinsp_analyzer::emit_top_files()
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
 
-int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen)
+int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report)
 {
 	int len;
 	uint32_t pos = 0;
@@ -2884,6 +2890,13 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
 			nqueuedtransactions_client_capacity += 
 				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
+		}
+
+		if(do_complete_report)
+		{
+			len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second.m_comm.c_str(), (int)it->second.m_fdtable.size());
+			MR_UPDATE_POS;
 		}
 
 		for(auto fdit = it->second.m_fdtable.m_table.begin(); 

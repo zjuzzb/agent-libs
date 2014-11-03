@@ -593,6 +593,10 @@ int main(int argc, char **argv)
 				dumpfile);
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
+
+			char mrbuf[4096];
+			inspector->m_analyzer->generate_memory_report(mrbuf, sizeof(mrbuf));
+			fprintf(stderr, "%s", mrbuf);
 		}
 		catch(sinsp_exception e)
 		{

@@ -48,10 +48,12 @@ uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
 // Tokens that denote the end of a select
 //
 const char* selectend_toks[] = {"WHERE",
-		"AS"};
+		"AS",
+		"LIMIT"};
 
 uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
-	sizeof("AS") - 1};
+	sizeof("AS") - 1,
+	sizeof("LIMIT") - 1};
 
 //
 // Tokens that denote the end of an insert
@@ -83,6 +85,7 @@ inline int32_t sinsp_slq_query_parser::find_tokens(const char* src, uint32_t src
 	{
 		if(p == pend)
 		{
+			*nskipped = (uint32_t)(p - src);
 			return -1;
 		}
 
@@ -115,6 +118,7 @@ inline int32_t sinsp_slq_query_parser::find_tokens(const char* src, uint32_t src
 	{
 		if(p == pend)
 		{
+			*nskipped = (uint32_t)(p - src);
 			return -1;
 		}
 
@@ -217,6 +221,12 @@ void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* star
 
 			if(id != -1)
 			{
+				m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
+				break;
+			}
+			else if(*src == 0)
+			{
+				fromlen += nskips;
 				m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
 				break;
 			}
