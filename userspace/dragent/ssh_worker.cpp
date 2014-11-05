@@ -183,14 +183,18 @@ void ssh_worker::run()
 
 		if(output.size())
 		{
-			draiosproto::ssh_data response;
-			prepare_response(&response);
-			response.set_data(output);
+			for(uint64_t j=0; j < output.size(); j+=m_ssh_data_chunk_size)
+			{
+				string chunk = output.substr(j, m_ssh_data_chunk_size);
+				draiosproto::ssh_data response;
+				prepare_response(&response);
+				response.set_data(chunk);
 
-			g_log->debug(m_name + ": Sending partial output (" 
-				+ NumberFormatter::format(output.size()) + ")");
+				g_log->debug(m_name + ": Sending partial output ("
+				+ NumberFormatter::format(chunk.size()) + ")");
 
-			queue_response(response);
+				queue_response(response);
+			}
 		}
 
 		Thread::sleep(100);

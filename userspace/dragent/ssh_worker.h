@@ -65,7 +65,7 @@ private:
 	static map<string, pending_message> m_pending_messages;
 
 	static const uint64_t m_session_timeout_ns = 600 * 1000000000LL;
-
+	static const uint64_t m_ssh_data_chunk_size = 100000; // 100kb
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	string m_token;
