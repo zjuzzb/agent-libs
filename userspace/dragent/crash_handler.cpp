@@ -25,13 +25,6 @@ void crash_handler::run(int sig)
 		snprintf(line, sizeof(line), "Received signal %d\n", sig);
 		log_crashdump_message(line);
 
-		if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
-		{
-			char buf[1024];
-			m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
-			log_crashdump_message(buf);
-		}
-
 		void *array[NUM_FRAMES];
 		int frames = backtrace(array, NUM_FRAMES);
 		int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
@@ -46,6 +39,13 @@ void crash_handler::run(int sig)
 		}
 
 		backtrace_symbols_fd(array, frames, 1);
+
+		if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
+		{
+			char buf[1024];
+			m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+			log_crashdump_message(buf);
+		}
 	}
 
 	signal(sig, SIG_DFL);
