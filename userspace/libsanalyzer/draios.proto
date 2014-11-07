@@ -70,11 +70,11 @@ message transaction_breakdown_categories {
 }
 
 message counter_syscall_errors {
-    required uint32 count = 1;	// Syscall errors count
+    required uint32 count = 1;  // Syscall errors count
     repeated uint32 top_error_codes = 2; // Error codes that were generated the most
-    optional uint32 count_file = 3;	// Number of file errors
-    optional uint32 count_file_open = 4;	// Number of file open errors
-    optional uint32 count_net = 5;	// Number of network errors
+    optional uint32 count_file = 3; // Number of file errors
+    optional uint32 count_file_open = 4;    // Number of file open errors
+    optional uint32 count_net = 5;  // Number of network errors
 }
 
 message resource_categories {
@@ -101,7 +101,7 @@ message connection_categories {
 }
 
 message process_details {
-    required string comm = 1;	// Command name (e.g. "top")
+    required string comm = 1;   // Command name (e.g. "top")
     required string exe = 2; // Full command name (e.g. "/bin/top")
     repeated string args = 3; // Command line arguments (e.g. "-d1")
 }
@@ -110,7 +110,7 @@ message process_details {
 // Description of a command executed on the machine
 //
 message command_details {
-	required uint64 timestamp = 1;
+    required uint64 timestamp = 1;
     required uint32 count = 2; // How many times this command has been repeated during the sample interval
     required string cmdline = 3; // Program command line (e.g. "top -d1")
     required string exe = 4; // Full executable name (e.g. "/bin/top")
@@ -121,101 +121,101 @@ message command_details {
 // Counters for a protocol-related dimension, like a URL or a query
 //
 message counter_proto_entry {
-	required uint32 ncalls = 1;
-	required uint64 time_tot = 2;
-	required uint64 time_max = 3;
-	required uint64 bytes_in = 4;
-	required uint64 bytes_out = 5;
-	required uint32 nerrors = 6;
+    required uint32 ncalls = 1;
+    required uint64 time_tot = 2;
+    required uint64 time_max = 3;
+    required uint64 bytes_in = 4;
+    required uint64 bytes_out = 5;
+    required uint32 nerrors = 6;
 }
 
 //
 // URL information
 //
 message url_details {
-	//
-	// The URL, in the following format "TYPEADDR<:PORT>/PATH", e.g. "p172.16.189.128:9000/api/data".
-	// Note: possible values foy type are:
-	//   n for NONE
-	//   g for GET
-	//   p for POST
-	//   o for OPTIONS
-	//   h for HEAD
-	//   P for PUT
-	//   d for DELETE
-	//   t for TRACE
-	//   c for CONNECT
-	//
-	required string url = 1; 
-	required counter_proto_entry counters = 2;
+    //
+    // The URL, in the following format "TYPEADDR<:PORT>/PATH", e.g. "p172.16.189.128:9000/api/data".
+    // Note: possible values foy type are:
+    //   n for NONE
+    //   g for GET
+    //   p for POST
+    //   o for OPTIONS
+    //   h for HEAD
+    //   P for PUT
+    //   d for DELETE
+    //   t for TRACE
+    //   c for CONNECT
+    //
+    required string url = 1; 
+    required counter_proto_entry counters = 2;
 }
 
 message status_code_details {
-	required uint32 status_code = 1; 
-	required uint32 ncalls = 2;
+    required uint32 status_code = 1;
+    required uint32 ncalls = 2;
 }
 
 //
 // HTTP protocol information
 //
 message http_info {
-	repeated url_details server_urls = 1;
-	repeated url_details client_urls = 2;
-	repeated status_code_details client_status_codes = 3;
-	repeated status_code_details server_status_codes = 4;
+    repeated url_details server_urls = 1;
+    repeated url_details client_urls = 2;
+    repeated status_code_details client_status_codes = 3;
+    repeated status_code_details server_status_codes = 4;
 }
 
 //
 // SQL query information
 //
 message sql_entry_details {
-	required string name = 1; 
-	required counter_proto_entry counters = 2;
+    required string name = 1;
+    required counter_proto_entry counters = 2;
 }
 
 //
 // SQL statement information
 //
 enum sql_statement_type {
-	SOP_NONE = 0;
-	SOP_SELECT = 1;
-	SOP_INSERT = 2;
-	SOP_SET = 3;
-	SOP_CREATE = 4;
-	SOP_DELETE = 5;
-	SOP_DROP = 6;
-	SOP_REPLACE = 7;
-	SOP_UPDATE = 8;
-	SOP_USE = 9;
-	SOP_SHOW = 10;
-	SOP_LOCK = 11;
-	SOP_UNLOCK = 12;
-	SOP_ALTER = 13;
+    SOP_NONE = 0;
+    SOP_SELECT = 1;
+    SOP_INSERT = 2;
+    SOP_SET = 3;
+    SOP_CREATE = 4;
+    SOP_DELETE = 5;
+    SOP_DROP = 6;
+    SOP_REPLACE = 7;
+    SOP_UPDATE = 8;
+    SOP_USE = 9;
+    SOP_SHOW = 10;
+    SOP_LOCK = 11;
+    SOP_UNLOCK = 12;
+    SOP_ALTER = 13;
 }
 
 message sql_query_type_details {
-	required sql_statement_type type = 1; 
-	required counter_proto_entry counters = 2;
+    required sql_statement_type type = 1;
+    required counter_proto_entry counters = 2;
 }
 
 //
 // SQL protocol information
 //
 message sql_info {
-	repeated sql_entry_details server_queries = 1;	// the top server-side queries
-	repeated sql_entry_details client_queries = 2;	// the top client-side queries
-	repeated sql_query_type_details server_query_types = 3;	// the top server-side query types (e.g. SELECT, INSERT...)
-	repeated sql_query_type_details client_query_types = 4;	// the top client-side query types (e.g. SELECT, INSERT...)
-	repeated sql_entry_details server_tables = 5;	// the top server-side queries
-	repeated sql_entry_details client_tables = 6;	// the top client-side queries
+    repeated sql_entry_details server_queries = 1; // the top server-side queries
+    repeated sql_entry_details client_queries = 2; // the top client-side queries
+    repeated sql_query_type_details server_query_types = 3; // the top server-side query types (e.g. SELECT, INSERT...)
+    repeated sql_query_type_details client_query_types = 4; // the top client-side query types (e.g. SELECT, INSERT...)
+    repeated sql_entry_details server_tables = 5; // the top server-side queries
+    repeated sql_entry_details client_tables = 6; // the top client-side queries
 }
 
 //
 // General protocol information
 //
 message proto_info {
-	optional http_info http = 1;
-	optional sql_info mysql = 2;
+    optional http_info http = 1;
+    optional sql_info mysql = 2;
 }
 
 //
@@ -224,19 +224,19 @@ message proto_info {
 //
 message host {
     optional string hostname = 1; // The name of the host sending the data
-    optional uint32 num_cpus = 2;	// Number of CPUs in the system
-    repeated uint32 cpu_loads = 3;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the
-    repeated uint32 cpu_steal = 11;	// Array of CPU loads (0 to 100), with an entry for each CPU, with the
-    required uint64 physical_memory_size_bytes = 4;	// Physical RAM size
+    optional uint32 num_cpus = 2;   // Number of CPUs in the system
+    repeated uint32 cpu_loads = 3;  // Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    required uint64 physical_memory_size_bytes = 4; // Physical RAM size
 
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
     optional counter_time_bidirectional min_transaction_counters = 22; // The fastest transaction counters for the whole host
     optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
-    optional uint64 transaction_processing_delay = 7;	// the delay introduced by this host when processing transactions.
+    optional uint64 transaction_processing_delay = 7;   // the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
-    optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests.
+    optional uint64 merged_server_delay = 14;   // the total merged time of all the incoming requests.
     optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions.
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
@@ -273,13 +273,13 @@ message process {
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
     optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this process.
     optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
-    optional uint64 transaction_processing_delay = 7;	// the delay introduced by this process when processing transactions.
+    optional uint64 transaction_processing_delay = 7;   // the delay introduced by this process when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
-    optional uint64 merged_server_delay = 14;	// the total merged time of all the incoming requests.
+    optional uint64 merged_server_delay = 14;   // the total merged time of all the incoming requests.
     optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions.
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
-	optional proto_info protos = 20; // Information about protocols that have been decoded
+    optional proto_info protos = 20; // Information about protocols that have been decoded
 }
 
 //
@@ -379,7 +379,7 @@ message metrics {
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
     optional string version = 16; // Agent/libsanalyzer/sysdig version
     optional string instance_id = 21; // AWS instance id
-	repeated command_details commands = 17; // List of commands executed during the sample.
+    repeated command_details commands = 17; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
