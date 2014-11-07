@@ -228,9 +228,42 @@ private:
 class sinsp_error_counters
 {
 public:
-	unordered_map<int32_t, sinsp_counter_cnt> m_table;
+//	unordered_map<int32_t, sinsp_counter_cnt> m_table;
+	uint32_t m_count; // Syscall errors count
+    uint32_t m_count_file;	// Number of file errors
+    uint32_t m_count_file_open;	// Number of file open errors
+    uint32_t m_count_net;	// Number of network errors
 
 	void clear();
+	inline void add(sinsp_evt* evt)
+	{
+		m_count++;
+
+		sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
+
+		if(fdinfo != NULL)
+		{
+			scap_fd_type fdtype = fdinfo->m_type;
+
+			if(fdtype == fdtype == SCAP_FD_FILE)
+			{
+				uint16_t etype = evt->get_type();
+
+				m_count_file++;
+
+				if(etype == PPME_SYSCALL_OPEN_X ||
+					etype == PPME_SYSCALL_CREAT_X ||
+					etype == PPME_SYSCALL_OPENAT_X)
+				{
+					m_count_file_open++;
+				}
+			}
+			else if(fdtype == SCAP_FD_IPV4_SOCK || fdtype == SCAP_FD_IPV6_SOCK)
+			{
+				m_count_net++;
+			}
+		}
+	}
 	void add(sinsp_error_counters* other);
 	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio);
 };

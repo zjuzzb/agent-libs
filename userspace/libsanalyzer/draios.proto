@@ -72,6 +72,9 @@ message transaction_breakdown_categories {
 message counter_syscall_errors {
     required uint32 count = 1;	// Syscall errors count
     repeated uint32 top_error_codes = 2; // Error codes that were generated the most
+    optional uint32 count_file = 3;	// Number of file errors
+    optional uint32 count_file_open = 4;	// Number of file open errors
+    optional uint32 count_net = 5;	// Number of network errors
 }
 
 message resource_categories {

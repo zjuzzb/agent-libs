@@ -701,55 +701,39 @@ void sinsp_connection_counters::add(sinsp_connection_counters* other)
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_error_counters::clear()
 {
-	m_table.clear();
+	m_count = 0;
+	m_count_file = 0;
+	m_count_file_open = 0;
+	m_count_net = 0;
 }
 
 void sinsp_error_counters::add(sinsp_error_counters* other)
 {
-	unordered_map<int32_t, sinsp_counter_cnt>::iterator uit;
-	unordered_map<int32_t, sinsp_counter_cnt>* pom;
-
-	//
-	// Add the server URLs
-	//
-	pom = &(other->m_table);
-
-	for(uit = pom->begin(); uit != pom->end(); ++uit)
-	{
-		sinsp_counter_cnt* entry = &(m_table[uit->first]);
-
-		if(entry->m_count == 0)
-		{
-			entry->m_count = uit->second.m_count;
-		}
-		else
-		{
-			entry->m_count += uit->second.m_count;
-		}
-	}
+	m_count += other->m_count;
+	m_count_file += other->m_count_file;
+	m_count_file_open += other->m_count_file_open;
+	m_count_net += other->m_count_net;
 }
 
 
 void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio)
 {
-	uint32_t tot = 0;
+	protobuf_msg->set_count(m_count * sampling_ratio);
 
-	unordered_map<int32_t, sinsp_counter_cnt>::iterator it;
-
-	uint32_t j;
-
-	for(it = m_table.begin(), j = 0; it != m_table.end(); ++it, j++)
+	if(m_count_file != 0)
 	{
-		if(j >= MAX_N_ERROR_CODES_IN_PROTO)
-		{
-			break;
-		}
-
-		protobuf_msg->add_top_error_codes(it->first);
-		tot += it->second.m_count;
+		protobuf_msg->set_count_file(m_count_file * sampling_ratio);
 	}
 
-	protobuf_msg->set_count(tot * sampling_ratio);
+	if(m_count_file_open != 0)
+	{
+		protobuf_msg->set_count_file_open(m_count_file_open * sampling_ratio);
+	}
+
+	if(m_count_net != 0)
+	{
+		protobuf_msg->set_count_net(m_count_net * sampling_ratio);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

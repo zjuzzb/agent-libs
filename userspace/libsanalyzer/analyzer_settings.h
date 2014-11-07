@@ -79,12 +79,6 @@
 #define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
 
 //
-// When returning the top error codes for a host or a process,
-// this is the max number of entries in the list.
-//
-#define MAX_N_ERROR_CODES_IN_PROTO 5
-
-//
 // Number of samples after which the process information *of every process* is included in the sample.
 // Usually, the sample includes only process information for processes that have been created
 // during the sample or that did an execve during the sample.

@@ -105,6 +105,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	ASSERT(m_inspector->get_machine_info() != NULL);
 	m_dynstate->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_dynstate->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_dynstate->m_syscall_errors.clear();
 }
 
 void thread_analyzer_info::destroy()

@@ -1141,18 +1141,48 @@ class counter_syscall_errors : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_top_error_codes();
 
+  // optional uint32 count_file = 3;
+  inline bool has_count_file() const;
+  inline void clear_count_file();
+  static const int kCountFileFieldNumber = 3;
+  inline ::google::protobuf::uint32 count_file() const;
+  inline void set_count_file(::google::protobuf::uint32 value);
+
+  // optional uint32 count_file_open = 4;
+  inline bool has_count_file_open() const;
+  inline void clear_count_file_open();
+  static const int kCountFileOpenFieldNumber = 4;
+  inline ::google::protobuf::uint32 count_file_open() const;
+  inline void set_count_file_open(::google::protobuf::uint32 value);
+
+  // optional uint32 count_net = 5;
+  inline bool has_count_net() const;
+  inline void clear_count_net();
+  static const int kCountNetFieldNumber = 5;
+  inline ::google::protobuf::uint32 count_net() const;
+  inline void set_count_net(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.counter_syscall_errors)
  private:
   inline void set_has_count();
   inline void clear_has_count();
+  inline void set_has_count_file();
+  inline void clear_has_count_file();
+  inline void set_has_count_file_open();
+  inline void clear_has_count_file_open();
+  inline void set_has_count_net();
+  inline void clear_has_count_net();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > top_error_codes_;
   ::google::protobuf::uint32 count_;
+  ::google::protobuf::uint32 count_file_;
+  ::google::protobuf::uint32 count_file_open_;
+  ::google::protobuf::uint32 count_net_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4165,9 +4195,9 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
+  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
-  ::std::string* host_tags_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
@@ -6783,6 +6813,72 @@ counter_syscall_errors::top_error_codes() const {
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
 counter_syscall_errors::mutable_top_error_codes() {
   return &top_error_codes_;
+}
+
+// optional uint32 count_file = 3;
+inline bool counter_syscall_errors::has_count_file() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void counter_syscall_errors::set_has_count_file() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void counter_syscall_errors::clear_has_count_file() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void counter_syscall_errors::clear_count_file() {
+  count_file_ = 0u;
+  clear_has_count_file();
+}
+inline ::google::protobuf::uint32 counter_syscall_errors::count_file() const {
+  return count_file_;
+}
+inline void counter_syscall_errors::set_count_file(::google::protobuf::uint32 value) {
+  set_has_count_file();
+  count_file_ = value;
+}
+
+// optional uint32 count_file_open = 4;
+inline bool counter_syscall_errors::has_count_file_open() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void counter_syscall_errors::set_has_count_file_open() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void counter_syscall_errors::clear_has_count_file_open() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void counter_syscall_errors::clear_count_file_open() {
+  count_file_open_ = 0u;
+  clear_has_count_file_open();
+}
+inline ::google::protobuf::uint32 counter_syscall_errors::count_file_open() const {
+  return count_file_open_;
+}
+inline void counter_syscall_errors::set_count_file_open(::google::protobuf::uint32 value) {
+  set_has_count_file_open();
+  count_file_open_ = value;
+}
+
+// optional uint32 count_net = 5;
+inline bool counter_syscall_errors::has_count_net() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void counter_syscall_errors::set_has_count_net() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void counter_syscall_errors::clear_has_count_net() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void counter_syscall_errors::clear_count_net() {
+  count_net_ = 0u;
+  clear_has_count_net();
+}
+inline ::google::protobuf::uint32 counter_syscall_errors::count_net() const {
+  return count_net_;
+}
+inline void counter_syscall_errors::set_count_net(::google::protobuf::uint32 value) {
+  set_has_count_net();
+  count_net_ = value;
 }
 
 // -------------------------------------------------------------------
