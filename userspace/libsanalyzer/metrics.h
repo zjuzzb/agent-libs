@@ -245,22 +245,33 @@ public:
 		{
 			scap_fd_type fdtype = fdinfo->m_type;
 
-			if(fdtype == fdtype == SCAP_FD_FILE)
+			if(fdtype == SCAP_FD_FILE)
 			{
-				uint16_t etype = evt->get_type();
-
 				m_count_file++;
-
-				if(etype == PPME_SYSCALL_OPEN_X ||
-					etype == PPME_SYSCALL_CREAT_X ||
-					etype == PPME_SYSCALL_OPENAT_X)
-				{
-					m_count_file_open++;
-				}
 			}
 			else if(fdtype == SCAP_FD_IPV4_SOCK || fdtype == SCAP_FD_IPV6_SOCK)
 			{
 				m_count_net++;
+			}
+		}
+		else
+		{
+			uint16_t etype = evt->get_type();
+
+			if(etype == PPME_SYSCALL_OPEN_X ||
+				etype == PPME_SYSCALL_CREAT_X ||
+				etype == PPME_SYSCALL_OPENAT_X)
+			{
+				m_count_file_open++;
+				m_count_file++;
+			}
+			else if(etype == PPME_SOCKET_ACCEPT_X ||
+				etype == PPME_SOCKET_ACCEPT4_X ||
+				etype == PPME_SOCKET_CONNECT_X ||
+				etype == PPME_SOCKET_BIND_X)
+			{
+				m_count_file_open++;
+				m_count_file++;
 			}
 		}
 	}

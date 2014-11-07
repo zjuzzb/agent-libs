@@ -2613,10 +2613,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			ASSERT(evt->m_tinfo);
 			ASSERT(evt->m_tinfo->m_ainfo);
 
-if(evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.m_count_net > 100000)
-{
-	int a = 0;
-}
 			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
 		}
 	}
