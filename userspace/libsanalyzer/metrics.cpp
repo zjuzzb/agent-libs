@@ -764,6 +764,7 @@ void sinsp_host_metrics::clear()
 	m_pfmajor = 0;
 	m_pfminor = 0;
 	m_protostate->clear();
+	m_fd_count = 0;
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -786,6 +787,8 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_pfminor += pinfo->m_pfminor;
 
 	m_protostate->add(&(pinfo->m_protostate));
+
+	m_fd_count += pinfo->m_fd_count;
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

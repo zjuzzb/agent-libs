@@ -304,6 +304,7 @@ public:
 	uint64_t m_pfmajor;
 	uint64_t m_pfminor;
 	sinsp_protostate* m_protostate;
+	uint32_t m_fd_count; // Number of FDs
 
 private:
 	double m_tot_capacity_score;

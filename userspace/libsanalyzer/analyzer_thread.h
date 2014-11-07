@@ -101,6 +101,8 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
+	// Number of FDs
+	uint32_t m_fd_count;
 };
 
 class thread_analyzer_dyn_state

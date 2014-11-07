@@ -88,6 +88,7 @@ message resource_categories {
     optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
+    optional uint32 fd_count = 17; // Total number of FDs
 }
 
 message connection_categories {

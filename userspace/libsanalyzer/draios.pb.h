@@ -1317,6 +1317,13 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 minor_pagefaults() const;
   inline void set_minor_pagefaults(::google::protobuf::uint64 value);
 
+  // optional uint32 fd_count = 17;
+  inline bool has_fd_count() const;
+  inline void clear_fd_count();
+  static const int kFdCountFieldNumber = 17;
+  inline ::google::protobuf::uint32 fd_count() const;
+  inline void set_fd_count(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1339,6 +1346,8 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_major_pagefaults();
   inline void set_has_minor_pagefaults();
   inline void clear_has_minor_pagefaults();
+  inline void set_has_fd_count();
+  inline void clear_has_fd_count();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1352,9 +1361,10 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 swap_memory_usage_kb_;
   ::google::protobuf::uint64 major_pagefaults_;
   ::google::protobuf::uint64 minor_pagefaults_;
+  ::google::protobuf::uint32 fd_count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7103,6 +7113,28 @@ inline ::google::protobuf::uint64 resource_categories::minor_pagefaults() const 
 inline void resource_categories::set_minor_pagefaults(::google::protobuf::uint64 value) {
   set_has_minor_pagefaults();
   minor_pagefaults_ = value;
+}
+
+// optional uint32 fd_count = 17;
+inline bool resource_categories::has_fd_count() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void resource_categories::set_has_fd_count() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void resource_categories::clear_has_fd_count() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void resource_categories::clear_fd_count() {
+  fd_count_ = 0u;
+  clear_has_fd_count();
+}
+inline ::google::protobuf::uint32 resource_categories::fd_count() const {
+  return fd_count_;
+}
+inline void resource_categories::set_fd_count(::google::protobuf::uint32 value) {
+  set_has_fd_count();
+  fd_count_ = value;
 }
 
 // -------------------------------------------------------------------

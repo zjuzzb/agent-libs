@@ -69,6 +69,7 @@ void sinsp_procinfo::clear()
 	}
 
 	m_protostate.clear();
+	m_fd_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -265,6 +266,8 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	}
 
 	m_procinfo->m_protostate.add(&other->m_dynstate->m_protostate);
+
+	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
 }
 
 void thread_analyzer_info::clear_all_metrics()
