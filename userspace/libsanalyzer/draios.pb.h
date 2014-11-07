@@ -1141,24 +1141,24 @@ class counter_syscall_errors : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_top_error_codes();
 
-  // optional uint32 count_file = 3;
+  // optional uint32 count_file = 4;
   inline bool has_count_file() const;
   inline void clear_count_file();
-  static const int kCountFileFieldNumber = 3;
+  static const int kCountFileFieldNumber = 4;
   inline ::google::protobuf::uint32 count_file() const;
   inline void set_count_file(::google::protobuf::uint32 value);
 
-  // optional uint32 count_file_open = 4;
+  // optional uint32 count_file_open = 5;
   inline bool has_count_file_open() const;
   inline void clear_count_file_open();
-  static const int kCountFileOpenFieldNumber = 4;
+  static const int kCountFileOpenFieldNumber = 5;
   inline ::google::protobuf::uint32 count_file_open() const;
   inline void set_count_file_open(::google::protobuf::uint32 value);
 
-  // optional uint32 count_net = 5;
+  // optional uint32 count_net = 6;
   inline bool has_count_net() const;
   inline void clear_count_net();
-  static const int kCountNetFieldNumber = 5;
+  static const int kCountNetFieldNumber = 6;
   inline ::google::protobuf::uint32 count_net() const;
   inline void set_count_net(::google::protobuf::uint32 value);
 
@@ -1317,10 +1317,10 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 minor_pagefaults() const;
   inline void set_minor_pagefaults(::google::protobuf::uint64 value);
 
-  // optional uint32 fd_count = 17;
+  // optional uint32 fd_count = 21;
   inline bool has_fd_count() const;
   inline void clear_fd_count();
-  static const int kFdCountFieldNumber = 17;
+  static const int kFdCountFieldNumber = 21;
   inline ::google::protobuf::uint32 fd_count() const;
   inline void set_fd_count(::google::protobuf::uint32 value);
 
@@ -6825,7 +6825,7 @@ counter_syscall_errors::mutable_top_error_codes() {
   return &top_error_codes_;
 }
 
-// optional uint32 count_file = 3;
+// optional uint32 count_file = 4;
 inline bool counter_syscall_errors::has_count_file() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -6847,7 +6847,7 @@ inline void counter_syscall_errors::set_count_file(::google::protobuf::uint32 va
   count_file_ = value;
 }
 
-// optional uint32 count_file_open = 4;
+// optional uint32 count_file_open = 5;
 inline bool counter_syscall_errors::has_count_file_open() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -6869,7 +6869,7 @@ inline void counter_syscall_errors::set_count_file_open(::google::protobuf::uint
   count_file_open_ = value;
 }
 
-// optional uint32 count_net = 5;
+// optional uint32 count_net = 6;
 inline bool counter_syscall_errors::has_count_net() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
@@ -7115,7 +7115,7 @@ inline void resource_categories::set_minor_pagefaults(::google::protobuf::uint64
   minor_pagefaults_ = value;
 }
 
-// optional uint32 fd_count = 17;
+// optional uint32 fd_count = 21;
 inline bool resource_categories::has_fd_count() const {
   return (_has_bits_[0] & 0x00000400u) != 0;
 }

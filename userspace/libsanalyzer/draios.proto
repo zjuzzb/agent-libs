@@ -70,11 +70,11 @@ message transaction_breakdown_categories {
 }
 
 message counter_syscall_errors {
-    required uint32 count = 1;  // Syscall errors count
+    required uint32 count = 1; // Syscall errors count
     repeated uint32 top_error_codes = 2; // Error codes that were generated the most
-    optional uint32 count_file = 3; // Number of file errors
-    optional uint32 count_file_open = 4;    // Number of file open errors
-    optional uint32 count_net = 5;  // Number of network errors
+    optional uint32 count_file = 4; // Number of file errors
+    optional uint32 count_file_open = 5;    // Number of file open errors
+    optional uint32 count_net = 6;  // Number of network errors
 }
 
 message resource_categories {
@@ -88,7 +88,7 @@ message resource_categories {
     optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
-    optional uint32 fd_count = 17; // Total number of FDs
+    optional uint32 fd_count = 21; // Total number of FDs
 }
 
 message connection_categories {
@@ -101,7 +101,7 @@ message connection_categories {
 }
 
 message process_details {
-    required string comm = 1;   // Command name (e.g. "top")
+    required string comm = 1; // Command name (e.g. "top")
     required string exe = 2; // Full command name (e.g. "/bin/top")
     repeated string args = 3; // Command line arguments (e.g. "-d1")
 }
@@ -224,23 +224,21 @@ message proto_info {
 //
 message host {
     optional string hostname = 1; // The name of the host sending the data
-    optional uint32 num_cpus = 2;   // Number of CPUs in the system
-    repeated uint32 cpu_loads = 3;  // Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    optional uint32 num_cpus = 2; // Number of CPUs in the system
+    repeated uint32 cpu_loads = 3; // Array of CPU loads (0 to 100), with an entry for each CPU, with the
     repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU, with the
     required uint64 physical_memory_size_bytes = 4; // Physical RAM size
-
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
     optional counter_time_bidirectional min_transaction_counters = 22; // The fastest transaction counters for the whole host
     optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
-    optional uint64 transaction_processing_delay = 7;   // the delay introduced by this host when processing transactions.
+    optional uint64 transaction_processing_delay = 7; // the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
-    optional uint64 merged_server_delay = 14;   // the total merged time of all the incoming requests.
+    optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
     optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions.
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
-
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
 }
 
@@ -262,21 +260,19 @@ enum networkrole {
 
 message process {
     optional process_details details = 2; // names and string constants relative to this process
-
     optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
     optional bool is_unix_transaction_server = 4; // True if this process has served at least one unix transaction.
     optional bool is_ipv4_transaction_client = 10; // True if this process has been the client for at least one IPv4 transaction.
     optional bool is_unix_transaction_client = 11; // True if this process has been the client for at least one unix transaction.
     optional uint32 netrole = 13;
-
     optional time_categories tcounters = 5; // The time counters for this thread.
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
     optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this process.
     optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
-    optional uint64 transaction_processing_delay = 7;   // the delay introduced by this process when processing transactions.
+    optional uint64 transaction_processing_delay = 7; // the delay introduced by this process when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
-    optional uint64 merged_server_delay = 14;   // the total merged time of all the incoming requests.
-    optional uint64 next_tiers_delay = 12;  // the delay introduced by this process' next tiers when processing transactions.
+    optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
+    optional uint64 next_tiers_delay = 12; // the delay introduced by this process' next tiers when processing transactions.
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded

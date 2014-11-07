@@ -1085,8 +1085,8 @@ void protobuf_AddDesc_draios_2eproto() {
     "time_bytes\022-\n\nprocessing\030\021 \001(\0132\031.draiosp"
     "roto.counter_time\"\200\001\n\026counter_syscall_er"
     "rors\022\r\n\005count\030\001 \002(\r\022\027\n\017top_error_codes\030\002"
-    " \003(\r\022\022\n\ncount_file\030\003 \001(\r\022\027\n\017count_file_o"
-    "pen\030\004 \001(\r\022\021\n\tcount_net\030\005 \001(\r\"\276\002\n\023resourc"
+    " \003(\r\022\022\n\ncount_file\030\004 \001(\r\022\027\n\017count_file_o"
+    "pen\030\005 \001(\r\022\021\n\tcount_net\030\006 \001(\r\"\276\002\n\023resourc"
     "e_categories\022\026\n\016capacity_score\030\001 \001(\r\022\035\n\025"
     "stolen_capacity_score\030\006 \001(\r\022\"\n\032connectio"
     "n_queue_usage_pct\030\002 \001(\r\022\024\n\014fd_usage_pct\030"
@@ -1094,7 +1094,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "y_usage_kb\030\005 \001(\r\022\037\n\027virtual_memory_usage"
     "_kb\030\r \001(\r\022\034\n\024swap_memory_usage_kb\030\016 \001(\r\022"
     "\030\n\020major_pagefaults\030\017 \001(\004\022\030\n\020minor_pagef"
-    "aults\030\020 \001(\004\022\020\n\010fd_count\030\021 \001(\r\"\356\002\n\025connec"
+    "aults\030\020 \001(\004\022\020\n\010fd_count\030\025 \001(\r\"\356\002\n\025connec"
     "tion_categories\022*\n\006server\030\001 \001(\0132\032.draios"
     "proto.counter_bytes\022*\n\006client\030\002 \001(\0132\032.dr"
     "aiosproto.counter_bytes\022E\n\024transaction_c"
@@ -4472,12 +4472,12 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(16)) goto parse_top_error_codes;
-        if (input->ExpectTag(24)) goto parse_count_file;
+        if (input->ExpectTag(32)) goto parse_count_file;
         break;
       }
 
-      // optional uint32 count_file = 3;
-      case 3: {
+      // optional uint32 count_file = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_count_file:
@@ -4488,12 +4488,12 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(32)) goto parse_count_file_open;
+        if (input->ExpectTag(40)) goto parse_count_file_open;
         break;
       }
 
-      // optional uint32 count_file_open = 4;
-      case 4: {
+      // optional uint32 count_file_open = 5;
+      case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_count_file_open:
@@ -4504,12 +4504,12 @@ bool counter_syscall_errors::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(40)) goto parse_count_net;
+        if (input->ExpectTag(48)) goto parse_count_net;
         break;
       }
 
-      // optional uint32 count_net = 5;
-      case 5: {
+      // optional uint32 count_net = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_count_net:
@@ -4553,19 +4553,19 @@ void counter_syscall_errors::SerializeWithCachedSizes(
       2, this->top_error_codes(i), output);
   }
 
-  // optional uint32 count_file = 3;
+  // optional uint32 count_file = 4;
   if (has_count_file()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->count_file(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->count_file(), output);
   }
 
-  // optional uint32 count_file_open = 4;
+  // optional uint32 count_file_open = 5;
   if (has_count_file_open()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->count_file_open(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(5, this->count_file_open(), output);
   }
 
-  // optional uint32 count_net = 5;
+  // optional uint32 count_net = 6;
   if (has_count_net()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(5, this->count_net(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(6, this->count_net(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -4587,19 +4587,19 @@ void counter_syscall_errors::SerializeWithCachedSizes(
       WriteUInt32ToArray(2, this->top_error_codes(i), target);
   }
 
-  // optional uint32 count_file = 3;
+  // optional uint32 count_file = 4;
   if (has_count_file()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->count_file(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(4, this->count_file(), target);
   }
 
-  // optional uint32 count_file_open = 4;
+  // optional uint32 count_file_open = 5;
   if (has_count_file_open()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(4, this->count_file_open(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(5, this->count_file_open(), target);
   }
 
-  // optional uint32 count_net = 5;
+  // optional uint32 count_net = 6;
   if (has_count_net()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(5, this->count_net(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(6, this->count_net(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -4620,21 +4620,21 @@ int counter_syscall_errors::ByteSize() const {
           this->count());
     }
 
-    // optional uint32 count_file = 3;
+    // optional uint32 count_file = 4;
     if (has_count_file()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->count_file());
     }
 
-    // optional uint32 count_file_open = 4;
+    // optional uint32 count_file_open = 5;
     if (has_count_file_open()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->count_file_open());
     }
 
-    // optional uint32 count_net = 5;
+    // optional uint32 count_net = 6;
     if (has_count_net()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
@@ -4992,12 +4992,12 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(136)) goto parse_fd_count;
+        if (input->ExpectTag(168)) goto parse_fd_count;
         break;
       }
 
-      // optional uint32 fd_count = 17;
-      case 17: {
+      // optional uint32 fd_count = 21;
+      case 21: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_fd_count:
@@ -5080,9 +5080,9 @@ void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(16, this->minor_pagefaults(), output);
   }
 
-  // optional uint32 fd_count = 17;
+  // optional uint32 fd_count = 21;
   if (has_fd_count()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(17, this->fd_count(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(21, this->fd_count(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -5143,9 +5143,9 @@ void resource_categories::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(16, this->minor_pagefaults(), target);
   }
 
-  // optional uint32 fd_count = 17;
+  // optional uint32 fd_count = 21;
   if (has_fd_count()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(17, this->fd_count(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(21, this->fd_count(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -5231,7 +5231,7 @@ int resource_categories::ByteSize() const {
           this->minor_pagefaults());
     }
 
-    // optional uint32 fd_count = 17;
+    // optional uint32 fd_count = 21;
     if (has_fd_count()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
