@@ -98,35 +98,18 @@ TEST_F(sys_call_test, analyzer_errors)
 			{
 				sinsp_error_counters* ec = &param.m_inspector->m_analyzer->m_host_metrics.m_syscall_errors;
 
-				EXPECT_NE((size_t)0, ec->m_table.size());
-
-				EXPECT_LE((uint32_t)5, ec->m_table[SE_ENOENT].m_count);
-				EXPECT_LE((uint32_t)3, ec->m_table[SE_EBADF].m_count);
-				EXPECT_LE((uint32_t)2, ec->m_table[SE_EFAULT].m_count);
+				EXPECT_LT((size_t)10, ec->m_count);
+				EXPECT_LT((size_t)10, ec->m_count_file);
+				EXPECT_LT((size_t)10, ec->m_count_file_open);
+				EXPECT_LE((size_t)0, ec->m_count_net);
 
 				sinsp_threadinfo* tinfo = param.m_inspector->m_thread_manager->get_thread(getpid(), true);
 				ec = &tinfo->m_ainfo->m_dynstate->m_syscall_errors;
 
-				EXPECT_NE((size_t)0, ec->m_table.size());
-
-				EXPECT_LE((uint32_t)5, ec->m_table[SE_ENOENT].m_count);
-				EXPECT_LE((uint32_t)3, ec->m_table[SE_EBADF].m_count);
-				EXPECT_LE((uint32_t)2, ec->m_table[SE_EFAULT].m_count);
-
-				unordered_map<int32_t, sinsp_counter_cnt>::iterator it;
-				uint32_t j = 0;
-				for(it = ec->m_table.begin(); it != ec->m_table.end(); ++it, j++)
-				{
-					if((it->first != (int32_t)SE_EBADF) &&
-						(it->first != (int32_t)SE_ENOENT) &&
-						(it->first != (int32_t)SE_EFAULT)
-						)
-					{
-						FAIL();
-					}
-				}
-
-				EXPECT_LE((uint32_t)3, j);
+				EXPECT_LE((size_t)10, ec->m_count);
+				EXPECT_LE((size_t)5, ec->m_count_file);
+				EXPECT_LE((size_t)5, ec->m_count_file_open);
+				EXPECT_LE((size_t)0, ec->m_count_net);
 			}
 		}
 	};
