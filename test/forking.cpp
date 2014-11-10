@@ -996,7 +996,7 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 				++callnum;
 			}
 		}
-		else if(param.m_evt->get_type() == PPME_PROCEXIT_E && param.m_evt->get_tid() == cpid)
+		else if(param.m_evt->get_type() == PPME_PROCEXIT_1_E && param.m_evt->get_tid() == cpid)
 		{
 			++callnum;
 		}

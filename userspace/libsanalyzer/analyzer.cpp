@@ -1258,7 +1258,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			tinfo->m_ainfo->clear_all_metrics();
 
-			if(evt != NULL && evt->get_type() == PPME_PROCEXIT_E && evt->m_tinfo == tinfo)
+			if(evt != NULL && 
+				(evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
+				&& evt->m_tinfo == tinfo)
 			{
 				++it;
 			}
