@@ -1,5 +1,12 @@
 #define VISIBILITY_PRIVATE
 
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/sendfile.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <sinsp.h>
 #include <sinsp_int.h>
 
@@ -1168,4 +1175,260 @@ TEST_F(sys_call_test, fs_fcntl)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 	EXPECT_EQ(4, callnum);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// sendfile
+/////////////////////////////////////////////////////////////////////////////////////
+TEST_F(sys_call_test, fs_sendfile)
+{
+	int callnum = 0;
+	int read_fd;
+	int write_fd;
+	int size;
+	off_t offset = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct stat stat_buf;
+
+		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		EXPECT_LE(0, read_fd);
+
+		fstat (read_fd, &stat_buf);
+
+		write_fd = open ("out.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
+		EXPECT_LE(0, write_fd);
+
+		size = stat_buf.st_size;
+		int res = sendfile(write_fd, read_fd, &offset, size);
+		EXPECT_LE(0, res);
+
+		close (read_fd);
+		close (write_fd);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_SENDFILE_E)
+		{
+			EXPECT_EQ(write_fd, NumberParser::parse(e->get_param_value_str("out_fd", false)));
+			EXPECT_EQ(read_fd, NumberParser::parse(e->get_param_value_str("in_fd", false)));
+			EXPECT_EQ(size, NumberParser::parse(e->get_param_value_str("size", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_SENDFILE_X)
+		{
+			EXPECT_LE(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ(offset, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(2, callnum);
+}
+
+TEST_F(sys_call_test, fs_sendfile_nulloff)
+{
+	int callnum = 0;
+	int read_fd;
+	int write_fd;
+	int size;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct stat stat_buf;
+
+		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		EXPECT_LE(0, read_fd);
+
+		fstat (read_fd, &stat_buf);
+
+		write_fd = open ("out.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
+		EXPECT_LE(0, write_fd);
+
+		size = stat_buf.st_size;
+		int res = sendfile(write_fd, read_fd, NULL, size);
+		EXPECT_LE(0, res);
+
+		close (read_fd);
+		close (write_fd);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_SENDFILE_E)
+		{
+			EXPECT_EQ(write_fd, NumberParser::parse(e->get_param_value_str("out_fd", false)));
+			EXPECT_EQ(read_fd, NumberParser::parse(e->get_param_value_str("in_fd", false)));
+			EXPECT_EQ(size, NumberParser::parse(e->get_param_value_str("size", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_SENDFILE_X)
+		{
+			EXPECT_LE(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(2, callnum);
+}
+
+TEST_F(sys_call_test, fs_sendfile_failed)
+{
+	int callnum = 0;
+	int size;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		int res = sendfile(-1, -2, NULL, 444);
+		EXPECT_GT(0, res);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_SENDFILE_E)
+		{
+			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("out_fd", false)));
+			EXPECT_EQ(-2, NumberParser::parse(e->get_param_value_str("in_fd", false)));
+			EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_SENDFILE_X)
+		{
+			EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(2, callnum);
+}
+
+TEST_F(sys_call_test, fs_sendfile_invalidoff)
+{
+	int callnum = 0;
+	int read_fd;
+	int write_fd;
+	int size;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct stat stat_buf;
+
+		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		EXPECT_LE(0, read_fd);
+
+		fstat (read_fd, &stat_buf);
+
+		write_fd = open ("out.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
+		EXPECT_LE(0, write_fd);
+
+		size = stat_buf.st_size;
+		int res = sendfile(write_fd, read_fd, (off_t*)3333, size);
+		EXPECT_GT(0, res);
+
+		close (read_fd);
+		close (write_fd);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_SENDFILE_E)
+		{
+			EXPECT_EQ(write_fd, NumberParser::parse(e->get_param_value_str("out_fd", false)));
+			EXPECT_EQ(read_fd, NumberParser::parse(e->get_param_value_str("in_fd", false)));
+			EXPECT_EQ(size, NumberParser::parse(e->get_param_value_str("size", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_SENDFILE_X)
+		{
+			EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(2, callnum);
 }
