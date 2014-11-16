@@ -278,11 +278,12 @@ wildass_guess:
 	return true;
 }
 
-void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
+										 char *data, uint32_t original_len, uint32_t len)
 {
-	if(evt->m_fdinfo->is_file())
+	if(fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
+		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
 		if(file_stat)
 		{
 			file_stat->m_bytes += original_len;
@@ -292,23 +293,23 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 	evt->set_iosize(original_len);
 
-	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
+	if(fdinfo->is_ipv4_socket() || fdinfo->is_unix_socket())
 	{
 		sinsp_connection *connection = NULL;
 
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the connection
 		/////////////////////////////////////////////////////////////////////////////
-		if(evt->m_fdinfo->is_unix_socket())
+		if(fdinfo->is_unix_socket())
 		{
 #ifdef HAS_UNIX_CONNECTIONS
 			// ignore invalid destination addresses
-			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
+			if(0 == fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
 //				return;
 			}
 
-			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
+			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
 			if(connection == NULL)
 			{
 				//
@@ -316,14 +317,14 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				// Create a connection entry here and make an assumption this is the server FD.
 				// (we assume that a server usually starts with a read).
 				//
-				evt->m_fdinfo->set_role_server();
+				fdinfo->set_role_server();
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
+				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -342,22 +343,22 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_server();
+					fdinfo->set_role_server();
 				}
 				else
 				{
 					if(connection->is_server_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_client();
+							fdinfo->set_role_client();
 						}
 					}
 					else if(connection->is_client_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_server();
+							fdinfo->set_role_server();
 						}
 					}
 					else
@@ -368,11 +369,11 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						// just on of the endpoints has been closed.
 						// Jusr recycle the connection.
 						//
-						if(evt->m_fdinfo->is_role_server())
+						if(fdinfo->is_role_server())
 						{
 							connection->reset_server();
 						}
-						else if(evt->m_fdinfo->is_role_client())
+						else if(fdinfo->is_role_client())
 						{
 							connection->reset_client();
 						}
@@ -382,17 +383,17 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						}
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_server();
+						fdinfo->set_role_server();
 					}
 				}
 
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
+				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 #else
@@ -400,9 +401,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 #endif // HAS_UNIX_CONNECTIONS
 
 		}
-		else if(evt->m_fdinfo->is_ipv4_socket())
+		else if(fdinfo->is_ipv4_socket())
 		{
-			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
+			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 			
 			if(connection == NULL)
 			{
@@ -412,9 +413,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				//  - a TCP socket for which we dropped the accept() or connect()
 				// Create a connection entry here and try to automatically detect if this is the client or the server.
 				//
-				if(evt->m_fdinfo->is_role_none())
+				if(fdinfo->is_role_none())
 				{
-					if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
+					if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
 					{
 						goto r_conn_creation_done;
 					}
@@ -422,12 +423,12 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 				string scomm = evt->m_tinfo->get_comm();
 				
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -447,9 +448,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-					if(evt->m_fdinfo->is_role_none())
+					if(fdinfo->is_role_none())
 					{
-						if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
+						if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
 						{
 							goto r_conn_creation_done;
 						}
@@ -459,16 +460,16 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				{
 					if(connection->is_server_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_client();
+							fdinfo->set_role_client();
 						}
 					}
 					else if(connection->is_client_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_server();
+							fdinfo->set_role_server();
 						}
 					}
 					else
@@ -478,11 +479,11 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						// This can happen in case of event drops, or when a connection
 						// is accepted by a process and served by another one.
 						//
-						if(evt->m_fdinfo->is_role_server())
+						if(fdinfo->is_role_server())
 						{
 							connection->reset_server();
 						}
-						else if(evt->m_fdinfo->is_role_client())
+						else if(fdinfo->is_role_client())
 						{
 							connection->reset_client();
 						}
@@ -493,9 +494,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, true) == false)
+							if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
 							{
 								goto r_conn_creation_done;
 							}
@@ -504,12 +505,12 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 				}
 
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 		}
@@ -527,11 +528,11 @@ r_conn_creation_done:
 			return;
 		}
 
-		if(evt->m_fdinfo->is_role_server())
+		if(fdinfo->is_role_server())
 		{
 			connection->m_metrics.m_server.add_in(1, original_len);
 		}
-		else if (evt->m_fdinfo->is_role_client())
+		else if (fdinfo->is_role_client())
 		{
 			connection->m_metrics.m_client.add_in(1, original_len);
 		}
@@ -544,12 +545,12 @@ r_conn_creation_done:
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
 /*
-		if(evt->m_fdinfo->is_role_server())
+		if(fdinfo->is_role_server())
 		{
 			//
 			// See if there's already a transaction
 			//
- 			sinsp_partial_transaction *trinfo = &(evt->m_fdinfo->m_usrstate);
+ 			sinsp_partial_transaction *trinfo = &(fdinfo->m_usrstate);
 			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
 			{
 				//
@@ -609,12 +610,12 @@ r_conn_creation_done:
 		// NOTE: after two turns, we give up discovering the protocol and we consider this
 		//       to be just IP.
 		//
-		sinsp_partial_transaction *trinfo = evt->m_fdinfo->m_usrstate;
+		sinsp_partial_transaction *trinfo = fdinfo->m_usrstate;
 
 		if(trinfo == NULL)
 		{
-			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
-			trinfo = evt->m_fdinfo->m_usrstate;
+			fdinfo->m_usrstate = new sinsp_partial_transaction();
+			trinfo = fdinfo->m_usrstate;
 		}
 
 		if(!trinfo->is_active() ||
@@ -644,7 +645,7 @@ r_conn_creation_done:
 		//
 		trinfo->update(m_analyzer,
 			evt->m_tinfo,
-			evt->m_fdinfo,
+			fdinfo,
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
@@ -659,13 +660,13 @@ r_conn_creation_done:
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
-	else if(evt->m_fdinfo->is_pipe())
+	else if(fdinfo->is_pipe())
 	{
-		sinsp_connection *connection = m_analyzer->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
+		sinsp_connection *connection = m_analyzer->get_connection(fdinfo->m_ino, evt->get_ts());
 		if(NULL == connection || connection->is_server_only())
 		{
 			string scomm = evt->m_tinfo->get_comm();
-			m_analyzer->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
+			m_analyzer->m_pipe_connections->add_connection(fdinfo->m_ino,
 				&scomm,
 				evt->m_tinfo->m_pid,
 			    tid,
@@ -677,11 +678,12 @@ r_conn_creation_done:
 #endif
 }
 
-void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
+										  char *data, uint32_t original_len, uint32_t len)
 {
-	if(evt->m_fdinfo->is_file())
+	if(fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
+		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
 		if(file_stat)
 		{
 			file_stat->m_bytes += original_len;
@@ -691,23 +693,23 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 	
 	evt->set_iosize(original_len);
 
-	if(evt->m_fdinfo->is_ipv4_socket() || evt->m_fdinfo->is_unix_socket())
+	if(fdinfo->is_ipv4_socket() || fdinfo->is_unix_socket())
 	{
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the connection
 		/////////////////////////////////////////////////////////////////////////////
 		sinsp_connection* connection = NULL; 
 
-		if(evt->m_fdinfo->is_unix_socket())
+		if(fdinfo->is_unix_socket())
 		{
 #ifdef HAS_UNIX_CONNECTIONS
 			// ignore invalid destination addresses
-			if(0 == evt->m_fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
+			if(0 == fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
 			{
 //				return;
 			}
 
-			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
+			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
 			if(connection == NULL)
 			{
 				//
@@ -715,14 +717,14 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// Create a connection entry here and make an assumption this is the client FD
 				// (we assume that a client usually starts with a write)
 				//
-				evt->m_fdinfo->set_role_client();
+				fdinfo->set_role_client();
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
+				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
 					&scomm,
 					evt->m_tinfo->m_pid,
 				    tid,
 				    fd,
-				    evt->m_fdinfo->is_role_client(),
+				    fdinfo->is_role_client(),
 				    evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -740,22 +742,22 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					//
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					evt->m_fdinfo->set_role_client();
+					fdinfo->set_role_client();
 				}
 				else
 				{
 					if(connection->is_server_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_client();
+							fdinfo->set_role_client();
 						}
 					}
 					else if(connection->is_client_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_server();
+							fdinfo->set_role_server();
 						}
 					}
 					else
@@ -766,11 +768,11 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						// just on of the endpoints has been closed.
 						// Jusr recycle the connection.
 						//
-						if(evt->m_fdinfo->is_role_server())
+						if(fdinfo->is_role_server())
 						{
 							connection->reset_server();
 						}
-						else if(evt->m_fdinfo->is_role_client())
+						else if(fdinfo->is_role_client())
 						{
 							connection->reset_client();
 						}
@@ -780,26 +782,26 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						}
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						evt->m_fdinfo->set_role_client();
+						fdinfo->set_role_client();
 					}
 				}
 
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
+				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 #else
 			return;
 #endif // HAS_UNIX_CONNECTIONS
 		}
-		else if(evt->m_fdinfo->is_ipv4_socket())
+		else if(fdinfo->is_ipv4_socket())
 		{
-			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
+			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 
 			if(connection == NULL)
 			{
@@ -811,21 +813,21 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// at the ports.
 				// (we assume that a client usually starts with a write)
 				//
-				if(evt->m_fdinfo->is_role_none())
+				if(fdinfo->is_role_none())
 				{
-					if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
+					if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
 					{
 						goto w_conn_creation_done;
 					}
 				}
 
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
@@ -844,9 +846,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					connection->reset();
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-					if(evt->m_fdinfo->is_role_none())
+					if(fdinfo->is_role_none())
 					{
-						if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
+						if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
 						{
 							goto w_conn_creation_done;
 						}
@@ -856,16 +858,16 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				{
 					if(connection->is_server_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_client();
+							fdinfo->set_role_client();
 						}
 					}
 					else if(connection->is_client_only())
 					{
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							evt->m_fdinfo->set_role_server();
+							fdinfo->set_role_server();
 						}
 					}
 					else
@@ -875,11 +877,11 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						// This can happen in case of event drops, or when a commection
 						// is accepted by a process and served by another one.
 						//
-						if(evt->m_fdinfo->is_role_server())
+						if(fdinfo->is_role_server())
 						{
 							connection->reset_server();
 						}
-						else if(evt->m_fdinfo->is_role_client())
+						else if(fdinfo->is_role_client())
 						{
 							connection->reset_client();
 						}
@@ -890,9 +892,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-						if(evt->m_fdinfo->is_role_none())
+						if(fdinfo->is_role_none())
 						{
-							if(patch_network_role(evt->m_tinfo, evt->m_fdinfo, false) == false)
+							if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
 							{
 								goto w_conn_creation_done;
 							}
@@ -901,12 +903,12 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				}
 
 				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
 					&scomm,
 					evt->m_tinfo->m_pid,
 					tid,
 					fd,
-					evt->m_fdinfo->is_role_client(),
+					fdinfo->is_role_client(),
 					evt->get_ts());
 			}
 		}
@@ -924,11 +926,11 @@ w_conn_creation_done:
 			return;
 		}
 
-		if(evt->m_fdinfo->is_role_server())
+		if(fdinfo->is_role_server())
 		{
 			connection->m_metrics.m_server.add_out(1, original_len);
 		}
-		else if(evt->m_fdinfo->is_role_client())
+		else if(fdinfo->is_role_client())
 		{
 			connection->m_metrics.m_client.add_out(1, original_len);
 		}
@@ -946,12 +948,12 @@ w_conn_creation_done:
 		// NOTE: after two turns, we give up discovering the protocol and we consider this
 		//       to be just IP.
 		//
-		sinsp_partial_transaction *trinfo = evt->m_fdinfo->m_usrstate;
+		sinsp_partial_transaction *trinfo = fdinfo->m_usrstate;
 
 		if(trinfo == NULL)
 		{
-			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
-			trinfo = evt->m_fdinfo->m_usrstate;
+			fdinfo->m_usrstate = new sinsp_partial_transaction();
+			trinfo = fdinfo->m_usrstate;
 		}
 
 		if(!trinfo->is_active() ||
@@ -981,7 +983,7 @@ w_conn_creation_done:
 		//
 		trinfo->update(m_analyzer,
 			evt->m_tinfo,
-			evt->m_fdinfo,
+			fdinfo,
 			connection,
 			evt->m_tinfo->m_lastevent_ts, 
 			evt->get_ts(), 
@@ -996,14 +998,14 @@ w_conn_creation_done:
 			len);
 	}
 #ifdef HAS_PIPE_CONNECTIONS
-	else if(evt->m_fdinfo->is_pipe())
+	else if(fdinfo->is_pipe())
 	{
-		sinsp_connection *connection = m_analyzer->get_connection(evt->m_fdinfo->m_ino, evt->get_ts());
+		sinsp_connection *connection = m_analyzer->get_connection(fdinfo->m_ino, evt->get_ts());
 
 		if(NULL == connection || connection->is_client_only())
 		{
 			string scomm = evt->m_tinfo->get_comm();
-			m_analyzer->m_pipe_connections->add_connection(evt->m_fdinfo->m_ino,
+			m_analyzer->m_pipe_connections->add_connection(fdinfo->m_ino,
 				&scomm,
 				evt->m_tinfo->m_pid,
 			    tid,
@@ -1013,6 +1015,23 @@ w_conn_creation_done:
 		}
 	}
 #endif
+}
+
+void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len)
+{
+	int64_t tid = evt->get_tid();
+
+	on_write(evt, tid, evt->m_tinfo->m_lastevent_fd, evt->m_fdinfo, 
+		NULL, len, 0);
+
+	sinsp_fdinfo_t* fdinfoin = evt->m_tinfo->get_fd(fdin);
+	if(fdinfoin == NULL)
+	{
+		return;
+	}
+
+	on_read(evt, tid, fdin, fdinfoin, 
+		NULL, len, 0);
 }
 
 void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
