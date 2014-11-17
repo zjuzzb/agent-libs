@@ -1171,8 +1171,10 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	//
 	// Mark this fd as a transaction
 	//
-	ASSERT(new_fdinfo->m_usrstate == NULL);
-	new_fdinfo->m_usrstate = new sinsp_partial_transaction();
+	if(evt->m_fdinfo->m_usrstate == NULL)
+	{
+		new_fdinfo->m_usrstate = new sinsp_partial_transaction();
+	}
 }
 
 void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)

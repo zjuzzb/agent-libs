@@ -456,7 +456,6 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 	ttot.add(&m_processing);
 	ttot.add(&m_unknown);
 	ttot.m_time_ns += m_io_net.m_time_ns_in;
-//	ASSERT(ttot.m_time_ns % 500000000 == 0);
 #endif
 }
 
