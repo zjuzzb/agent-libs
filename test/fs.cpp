@@ -6,6 +6,7 @@
 #include <sys/sendfile.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 #include <sinsp.h>
 #include <sinsp_int.h>
@@ -1432,3 +1433,73 @@ TEST_F(sys_call_test, fs_sendfile_invalidoff)
 
 	EXPECT_EQ(2, callnum);
 }
+
+#ifdef __i386__
+TEST_F(sys_call_test, fs_sendfile64)
+{
+	int callnum = 0;
+	int read_fd;
+	int write_fd;
+	int size;
+	loff_t offset = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		struct stat stat_buf;
+
+		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		EXPECT_LE(0, read_fd);
+
+		fstat (read_fd, &stat_buf);
+
+		write_fd = open ("out.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
+		EXPECT_LE(0, write_fd);
+
+		size = stat_buf.st_size;
+		int res = syscall(SYS_sendfile64, write_fd, read_fd, &offset, size);
+		EXPECT_LE(0, res);
+
+		close (read_fd);
+		close (write_fd);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_SENDFILE_E)
+		{
+			EXPECT_EQ(write_fd, NumberParser::parse(e->get_param_value_str("out_fd", false)));
+			EXPECT_EQ(read_fd, NumberParser::parse(e->get_param_value_str("in_fd", false)));
+			EXPECT_EQ(size, NumberParser::parse(e->get_param_value_str("size", false)));
+			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_SENDFILE_X)
+		{
+			EXPECT_LE(0, NumberParser::parse(e->get_param_value_str("res", false)));
+			EXPECT_EQ(offset, NumberParser::parse(e->get_param_value_str("offset", false)));
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(2, callnum);
+}
+#endif
