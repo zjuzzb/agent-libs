@@ -52,6 +52,7 @@ function configure_rpm_repo {
 
 	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete
+	ls -1tr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ | head -n -7 | xargs -d '\n' rm -f
 
 	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
 	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
@@ -69,6 +70,7 @@ function configure_debian_repo {
 
 	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete
+	ls -1tr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ | head -n -7 | xargs -d '\n' rm -f
 
 	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 	cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
