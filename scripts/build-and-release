@@ -113,9 +113,16 @@ function configure_debian_repo {
 }
 
 function configure_tgz_repo {
-	mkdir -p $REPOSITORY_DIR/tgz
-	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/
-	aws s3 cp $REPOSITORY_DIR/tgz/ s3://download.draios.com/$REPOSITORY_NAME/tgz/ --recursive --acl public-read
+	BASEARCH=$(uname -m)
+
+	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f
+
+	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
+	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete
 }
 
 function configure_installers {
