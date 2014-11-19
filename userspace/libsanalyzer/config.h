@@ -34,7 +34,7 @@ public:
 	void set_aggregate_connections_in_proto(bool aggregate);
 	bool get_autodrop_enabled() const;
 	void set_autodrop_enabled(bool enabled);
-	uint32_t get_drop_upper_threshold() const;
+	uint32_t get_drop_upper_threshold(uint32_t nprocs) const;
 	void set_drop_upper_threshold(uint32_t drop_upper_threshold);
 	uint32_t get_drop_lower_threshold() const;
 	void set_drop_lower_threshold(uint32_t drop_lower_threshold);

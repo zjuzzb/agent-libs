@@ -1574,12 +1574,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	//
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold())
+		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
-				(int)m_configuration->get_drop_upper_threshold(), m_seconds_above_thresholds, 
+			g_logger.format(sinsp_logger::SEV_ERROR, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds, 
 				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
 		else

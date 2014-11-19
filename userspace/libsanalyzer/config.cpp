@@ -173,9 +173,17 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 	m_autodrop_enabled = enabled;
 }
 
-uint32_t sinsp_configuration::get_drop_upper_threshold() const
+uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
-	return m_drop_upper_threshold;
+	if(nprocs > 0)
+	{
+		return (m_drop_upper_threshold + (m_drop_upper_threshold * (nprocs - 1) * 6 / 10));
+	}
+	else
+	{
+		return m_drop_upper_threshold;
+		ASSERT(false);
+	}
 }
 
 void sinsp_configuration::set_drop_upper_threshold(uint32_t drop_upper_threshold)
@@ -183,9 +191,18 @@ void sinsp_configuration::set_drop_upper_threshold(uint32_t drop_upper_threshold
 	m_drop_upper_threshold = drop_upper_threshold;
 }
 
-uint32_t sinsp_configuration::get_drop_lower_threshold() const
+uint32_t sinsp_configuration::get_drop_lower_threshold(uint32_t nprocs) const
 {
-	return m_drop_lower_threshold;
+	if(nprocs > 0)
+	{
+printf("*\n", (int)m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10));		
+		return (m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10));
+	}
+	else
+	{
+		return m_drop_lower_threshold;
+		ASSERT(false);
+	}
 }
 
 void sinsp_configuration::set_drop_lower_threshold(uint32_t drop_lower_threshold)
