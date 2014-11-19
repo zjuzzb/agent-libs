@@ -240,7 +240,7 @@ TEST_F(sys_call_test, forking_process_expired)
 				ptid = getpid();
 
 				//
-				// Wait 10 seconds. During this time, the process should be removed
+				// Wait 10 seconds. During this time, the process should NOT be removed
 				//
 				sleep(10);
 
@@ -275,8 +275,13 @@ TEST_F(sys_call_test, forking_process_expired)
 			}
 			else if(e->get_type() == PPME_SYSCALL_NANOSLEEP_X && !sleep_caught)
 			{
+				//
+				// The child should exist
+				//
 				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
-				EXPECT_EQ(NULL, ti);
+				EXPECT_NE((sinsp_threadinfo*)NULL, ti);
+				//sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+				//EXPECT_EQ(NULL, ti);
 				sleep_caught = true;
 			}
 		}
