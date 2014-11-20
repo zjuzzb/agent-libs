@@ -177,7 +177,7 @@ uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
 	if(nprocs > 0)
 	{
-		return (m_drop_upper_threshold + (m_drop_upper_threshold * (nprocs - 1) * 6 / 10));
+		return MIN((m_drop_upper_threshold + (m_drop_upper_threshold * (nprocs - 1) * 6 / 10)), 100);
 	}
 	else
 	{
@@ -195,8 +195,7 @@ uint32_t sinsp_configuration::get_drop_lower_threshold(uint32_t nprocs) const
 {
 	if(nprocs > 0)
 	{
-printf("*\n", (int)m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10));		
-		return (m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10));
+		return MIN(m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10), 90);
 	}
 	else
 	{

@@ -36,7 +36,7 @@ public:
 	void set_autodrop_enabled(bool enabled);
 	uint32_t get_drop_upper_threshold(uint32_t nprocs) const;
 	void set_drop_upper_threshold(uint32_t drop_upper_threshold);
-	uint32_t get_drop_lower_threshold() const;
+	uint32_t get_drop_lower_threshold(uint32_t nprocs) const;
 	void set_drop_lower_threshold(uint32_t drop_lower_threshold);
 	uint32_t get_drop_treshold_consecutive_seconds() const;
 	void set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds);
