@@ -1396,28 +1396,36 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 
 		//
-		// Look for the entry in the reduced connection table
+		// Look for the entry in the reduced connection table.
+		// Note: we don't export connections whose sip or dip is zero.
 		//
-		sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
-
-		if(conn.m_timestamp == 0)
+		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
 		{
-			//
-			// New entry.
-			// Structure copy the connection info.
-			//
-			conn = cit->second;
-			conn.m_timestamp = 1;
+			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
+
+			if(conn.m_timestamp == 0)
+			{
+				//
+				// New entry.
+				// Structure copy the connection info.
+				//
+				conn = cit->second;
+				conn.m_timestamp = 1;
+			}
+			else
+			{
+				//
+				// Existing entry.
+				// Add this connection's metrics to the aggregated connection's ones.
+				//
+				conn.m_metrics.add(&cit->second.m_metrics);
+				conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+				conn.m_timestamp++;
+			}
 		}
 		else
 		{
-			//
-			// Existing entry.
-			// Add this connection's metrics to the aggregated connection's ones.
-			//
-			conn.m_metrics.add(&cit->second.m_metrics);
-			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			conn.m_timestamp++;
+			int a = 0;
 		}
 
 		//
