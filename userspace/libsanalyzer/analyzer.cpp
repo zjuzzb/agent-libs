@@ -216,8 +216,15 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Start dropping of non-critical events
 	//
-	m_inspector->start_dropping_mode(1);
-	m_is_sampling = true;
+	if(m_configuration->get_autodrop_enabled())
+	{
+		m_inspector->start_dropping_mode(1);
+		m_is_sampling = true;
+	}
+	else
+	{
+		m_is_sampling = false;
+	}
 
 	//
 	// Enable dynamic snaplen on live captures
