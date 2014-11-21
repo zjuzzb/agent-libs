@@ -1598,7 +1598,6 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
 		{
-printf("$1\n");			
 			double totcpuload = 0;
 
 			for(j = 0; j < m_cpu_loads.size(); j++)
@@ -1628,7 +1627,6 @@ printf("$1\n");
 					new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp ++ Setting drop mode to %" PRIu32, new_sampling_ratio);
 				m_inspector->start_dropping_mode(new_sampling_ratio);
 			}
 			else
@@ -1668,7 +1666,6 @@ printf("$1\n");
 				}
 				else
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- stopping dropping mode");
 					m_inspector->stop_dropping_mode();
 				}
 			}
@@ -3080,6 +3077,13 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 
 	//fprintf(stdout, "%s", reportbuf);
 	return pos;
+}
+
+void sinsp_analyzer::set_autodrop_enabled(bool enabled)
+{
+	m_configuration->set_autodrop_enabled(enabled);
+	m_seconds_above_thresholds = 0;
+	m_seconds_below_thresholds = 0;
 }
 
 #endif // HAS_ANALYZER
