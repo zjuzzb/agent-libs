@@ -534,7 +534,7 @@ int main(int argc, char **argv)
 					filter += " ";
 				}
 			}
-
+printf("!!!! %s\n", filter.c_str());
 			inspector->set_filter(filter);
 #else
 			fprintf(stderr, "filtering not supported.\n");
