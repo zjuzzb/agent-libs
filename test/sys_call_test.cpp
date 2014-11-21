@@ -812,12 +812,12 @@ TEST_F(sys_call_test, quotactl_ko)
 			switch(callnum)
 			{
 			case 2:
-				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
 				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
 				EXPECT_EQ("/quota.user", e->get_param_value_str("quotafilepath"));
 				break;
 			case 4:
-				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
 				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
 			}
 		}
@@ -835,7 +835,7 @@ TEST_F(sys_call_test, quotactl_ok)
 	mktemp(tmpfile);
 	char tmpdir[] = "/tmp/testquotamntXXXXXX";
 	mkdtemp(tmpdir);
-	char command[200] = "dd if=/dev/zero of=%s bs=1M size=200 && echo y| mkfs.ext4 -q %s && mount -o usrquota,grpquota,loop %s %s && quotacheck -cug %s";
+	char command[200] = "dd if=/dev/zero of=%s bs=1M size=200 && echo y | mkfs.ext4 -q %s && mount -o usrquota,grpquota,loop %s %s && quotacheck -cug %s";
 	sprintf(command, tmpfile, tmpfile, tmpfile, tmpdir, tmpdir);
 	int ret = system(command);
 	if (ret != 0)
