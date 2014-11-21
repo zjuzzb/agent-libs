@@ -212,6 +212,12 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	//
+	// Start dropping of non-critical events
+	//
+	m_inspector->start_dropping_mode(1);
+	m_is_sampling = true;
+
+	//
 	// Enable dynamic snaplen on live captures
 	//
 	if(m_inspector->is_live())
@@ -1592,6 +1598,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
 		{
+printf("$1\n");			
 			double totcpuload = 0;
 
 			for(j = 0; j < m_cpu_loads.size(); j++)
@@ -1634,7 +1641,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		{
 			m_seconds_below_thresholds++;
 	
-			if(m_is_sampling)
+			if(m_is_sampling && m_sampling_ratio > 1)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
 					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds, 
@@ -1652,21 +1659,18 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			m_seconds_below_thresholds = 0;
 			uint32_t new_sampling_ratio = m_sampling_ratio / 2;
 
-			if(new_sampling_ratio == 0)
+			if(new_sampling_ratio >= 1)
 			{
-				new_sampling_ratio = 1;
-				m_is_sampling = false;
-			}
-
-			if(m_is_sampling)
-			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-				m_inspector->start_dropping_mode(m_sampling_ratio / 2);
-			}
-			else
-			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- stopping dropping mode");
-				m_inspector->stop_dropping_mode();
+				if(m_is_sampling)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
+					m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+				}
+				else
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- stopping dropping mode");
+					m_inspector->stop_dropping_mode();
+				}
 			}
 		}
 	}
