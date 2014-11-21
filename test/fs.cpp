@@ -470,7 +470,10 @@ TEST_F(sys_call_test, fs_openat)
 		//
 		string s = FILENAME;
 		fd1 = openat(dirfd, FILENAME, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO);
-		ASSERT_GT(0, fd1);
+		if(fd1 <= 0)
+		{
+			FAIL();
+		}
 
 		write(fd1, DATA, sizeof(DATA));
 

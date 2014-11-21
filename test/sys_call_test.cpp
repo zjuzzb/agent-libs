@@ -831,12 +831,11 @@ TEST_F(sys_call_test, quotactl_ok)
 	int callnum = 0;
 
 	// Setup a tmpdisk to test quotas
-	char tmpfile[] = "/tmp/testquotactlXXXXXX";
-	mktemp(tmpfile);
-	char tmpdir[] = "/tmp/testquotamntXXXXXX";
-	mkdtemp(tmpdir);
-	char command[200] = "dd if=/dev/zero of=%s bs=1M size=200 && echo y | mkfs.ext4 -q %s && mount -o usrquota,grpquota,loop %s %s && quotacheck -cug %s";
-	sprintf(command, tmpfile, tmpfile, tmpfile, tmpdir, tmpdir);
+	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
+						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"
+						"mkdir /tmp/testquotamnt &&\n"
+						"mount -o usrquota,grpquota,loop /tmp/testquotactl /tmp/testquotamnt &&\n"
+						"quotacheck -cug /tmp/testquotamnt";
 	int ret = system(command);
 	if (ret != 0)
 	{
@@ -927,4 +926,5 @@ TEST_F(sys_call_test, quotactl_ok)
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(8, callnum);
+	system("umount /tmp/testquotamnt; rm -r /tmp/testquotactl /tmp/testquotamnt");
 }
