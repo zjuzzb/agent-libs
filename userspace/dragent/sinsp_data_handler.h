@@ -15,6 +15,8 @@ public:
 
 	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics);
 
+	void subsampling_disabled();
+	
 private:
 	dragent_configuration* m_configuration;
 	connection_manager* m_connection_manager;

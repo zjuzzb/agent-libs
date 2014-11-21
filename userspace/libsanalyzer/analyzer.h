@@ -9,6 +9,7 @@ class analyzer_callback_interface
 {
 public:
 	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics) = 0;
+	virtual void subsampling_disabled() = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -318,6 +319,7 @@ VISIBILITY_PRIVATE
 	uint32_t m_seconds_below_thresholds;
 	int m_mypid;
 	double m_my_cpuload;
+	double m_last_system_cpuload;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

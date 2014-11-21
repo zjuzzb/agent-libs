@@ -47,3 +47,11 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		g_log->error("Queue full, discarding sample");
 	}
 }
+
+void sinsp_data_handler::subsampling_disabled()
+{
+	//
+	// XXX add code here to start sending capture data to the socket
+	//
+	printf("subsampling disabled\n");
+}

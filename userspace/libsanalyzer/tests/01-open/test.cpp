@@ -86,6 +86,11 @@ public:
 		//*pbuflen = htonl(*pbuflen);
 		//int a = 0;
 	}
+
+	void subsampling_disabled()
+	{
+		printf("subsampling disabled\n");
+	}
 };
 
 sample_collector g_sample_collector;
@@ -573,6 +578,7 @@ int main(int argc, char **argv)
 			if(drop_ratio != 0)
 			{
 				inspector->start_dropping_mode(drop_ratio);
+//inspector->stop_dropping_mode();
 			}
 
 			if(dumpfile != "")

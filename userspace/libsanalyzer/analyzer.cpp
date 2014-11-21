@@ -88,6 +88,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
+	m_last_system_cpuload = 0;
 	inspector->m_max_n_proc_lookups = 300;
 	inspector->m_max_n_proc_socket_lookups = 3;
 
@@ -1572,13 +1573,15 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
 	// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
 	//
+	uint32_t j;
+
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+			g_logger.format(sinsp_logger::SEV_ERROR, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
 				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds, 
 				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
@@ -1589,6 +1592,19 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
 		{
+			double totcpuload = 0;
+
+			for(j = 0; j < m_cpu_loads.size(); j++)
+			{
+				totcpuload += m_cpu_loads[j];
+			}
+
+			if(fabs(totcpuload - m_last_system_cpuload) / totcpuload > 0.1)
+			{
+
+			}
+//printf("*%lf %lf\n", totcpuload, fabs(totcpuload - m_last_system_cpuload) / totcpuload);
+
 			m_seconds_above_thresholds = 0;
 
 			if(m_sampling_ratio < 128)
@@ -1620,7 +1636,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	
 			if(m_is_sampling)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
+				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
 					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds, 
 					m_configuration->get_drop_treshold_consecutive_seconds());				
 			}
