@@ -469,11 +469,8 @@ TEST_F(sys_call_test, fs_openat)
 		// get dropped because FILENAME is not available in memory
 		//
 		string s = FILENAME;
-		fd1 = openat(dirfd, FILENAME, O_CREAT | O_WRONLY, 0);
-		if(fd1 <= 0)
-		{
-			FAIL();
-		}
+		fd1 = openat(dirfd, FILENAME, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO);
+		ASSERT_GT(0, fd1);
 
 		write(fd1, DATA, sizeof(DATA));
 
@@ -482,7 +479,7 @@ TEST_F(sys_call_test, fs_openat)
 
 		unlink(FILENAME);
 
-		fd2 = openat(AT_FDCWD, FILENAME, O_CREAT | O_WRONLY, 0);
+		fd2 = openat(AT_FDCWD, FILENAME, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO);
 		if(fd2 <= 0)
 		{
 			FAIL();

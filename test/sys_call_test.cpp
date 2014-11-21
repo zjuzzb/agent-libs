@@ -27,6 +27,7 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/timerfd.h>
+#include <sys/quota.h>
 
 using namespace std;
 
@@ -758,6 +759,172 @@ TEST_F(sys_call_test, mmap)
 		}
 	};
 
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(8, callnum);
+}
+
+TEST_F(sys_call_test, quotactl_ko)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/xxx", 2, "/quota.user"); // 2 => QFMT_VFS_V0
+		quotactl(QCMD(Q_QUOTAOFF, GRPQUOTA), "/dev/xxx", 0, NULL);
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if (type == PPME_SYSCALL_QUOTACTL_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("QFMT_VFS_V0", e->get_param_value_str("quota_fmt"));
+				break;
+			case 3:
+				EXPECT_EQ("Q_QUOTAOFF", e->get_param_value_str("cmd"));
+				EXPECT_EQ("GRPQUOTA", e->get_param_value_str("type"));
+			}
+		}
+		else if ( type == PPME_SYSCALL_QUOTACTL_X)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
+				EXPECT_EQ("/quota.user", e->get_param_value_str("quotafilepath"));
+				break;
+			case 4:
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
+			}
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
+
+TEST_F(sys_call_test, quotactl_ok)
+{
+	int callnum = 0;
+
+	// Setup a tmpdisk to test quotas
+	char tmpfile[] = "/tmp/testquotactlXXXXXX";
+	mktemp(tmpfile);
+	char tmpdir[] = "/tmp/testquotamntXXXXXX";
+	mkdtemp(tmpdir);
+	char command[200] = "dd if=/dev/zero of=%s bs=1M size=200 && echo y | mkfs.ext4 -q %s && mount -o usrquota,grpquota,loop %s %s && quotacheck -cug %s";
+	sprintf(command, tmpfile, tmpfile, tmpfile, tmpdir, tmpdir);
+	int ret = system(command);
+	if (ret != 0)
+	{
+		// If we don't have quota utilities, skip this test
+		return;
+	}
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	struct dqblk mydqblk;
+	struct dqinfo mydqinfo;
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/loop0", 2, "aquota.user"); // 2 => QFMT_VFS_V0
+		quotactl(QCMD(Q_GETQUOTA, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqblk); // 0 => root user
+		quotactl(QCMD(Q_GETINFO, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqinfo);
+		quotactl(QCMD(Q_QUOTAOFF, USRQUOTA), "/dev/loop0", 0, NULL);
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if (type == PPME_SYSCALL_QUOTACTL_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("QFMT_VFS_V0", e->get_param_value_str("quota_fmt"));
+				break;
+			case 3:
+				EXPECT_EQ("Q_GETQUOTA", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("0", e->get_param_value_str("id"));
+				break;
+			case 5:
+				EXPECT_EQ("Q_GETINFO", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+			case 7:
+				EXPECT_EQ("Q_QUOTAOFF", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+			}
+		}
+		else if ( type == PPME_SYSCALL_QUOTACTL_X)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				EXPECT_EQ("/quota.user", e->get_param_value_str("quotafilepath"));
+				break;
+			case 4:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				EXPECT_EQ(mydqblk.dqb_bhardlimit, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_bhardlimit")->m_val));
+				EXPECT_EQ(mydqblk.dqb_bsoftlimit, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_bsoftlimit")->m_val));
+				EXPECT_EQ(mydqblk.dqb_curspace, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_curspace")->m_val));
+				EXPECT_EQ(mydqblk.dqb_ihardlimit, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_ihardlimit")->m_val));
+				EXPECT_EQ(mydqblk.dqb_isoftlimit, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_isoftlimit")->m_val));
+				EXPECT_EQ(mydqblk.dqb_btime, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_btime")->m_val));
+				EXPECT_EQ(mydqblk.dqb_itime, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_itime")->m_val));
+			case 6:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				EXPECT_EQ(mydqinfo.dqi_bgrace, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_bgrace")->m_val));
+				EXPECT_EQ(mydqinfo.dqi_igrace, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_igrace")->m_val));
+			case 8:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+			}
+		}
+	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(8, callnum);
 }
