@@ -22,10 +22,28 @@
 static inline string clone_flags_to_str(uint32_t flags);
 
 bool ctrl_c_pressed = false;
+bool dropping_mode_enabled = true;
+sinsp* g_inspector = NULL;
 
 static void signal_callback(int signal)
 {
 	ctrl_c_pressed = true;
+}
+
+static void sigusr1_callback(int signal)
+{
+	if(dropping_mode_enabled)
+	{
+		dropping_mode_enabled = false;
+		g_inspector->m_analyzer->set_autodrop_enabled(false);
+		g_inspector->stop_dropping_mode();
+	}
+	else
+	{
+		dropping_mode_enabled = true;
+		g_inspector->start_dropping_mode(1);
+		g_inspector->m_analyzer->set_autodrop_enabled(true);
+	}
 }
 
 class captureinfo
@@ -383,10 +401,10 @@ int main(int argc, char **argv)
 	uint64_t max_evts_in_file = 0;
 
 	{
-		sinsp* inspector = new sinsp();
+		g_inspector = new sinsp();
 #ifdef HAS_ANALYZER
-		sinsp_analyzer* analyzer = new sinsp_analyzer(inspector);
-		inspector->m_analyzer = analyzer;
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector);
+		g_inspector->m_analyzer = analyzer;
 #endif
 
 		//
@@ -407,7 +425,7 @@ int main(int argc, char **argv)
 				if(cnt <= 0)
 				{
 					fprintf(stderr, "invalid packet count %s\n", optarg);
-					delete inspector;
+					delete g_inspector;
 #ifdef HAS_ANALYZER
 					delete analyzer;
 #endif
@@ -460,7 +478,7 @@ int main(int argc, char **argv)
 				{
 					fprintf(stderr, "wrong -l option %s. Accepted values: stdout, sterr or file.", optarg);
 					delete analyzer;
-					delete inspector;
+					delete g_inspector;
 					return EXIT_FAILURE;
 				}
 #endif
@@ -477,7 +495,7 @@ int main(int argc, char **argv)
 #endif
 				break;
 			case 'p':
-				inspector->set_min_log_severity((sinsp_logger::severity)atoi(optarg));
+				g_inspector->set_min_log_severity((sinsp_logger::severity)atoi(optarg));
 				break;
 			case 'r':
 				infile = optarg;
@@ -507,7 +525,7 @@ int main(int argc, char **argv)
 				break;
 			default:
 				usage(argv[0]);
-				delete inspector;
+				delete g_inspector;
 #ifdef HAS_ANALYZER
 				delete analyzer;
 #endif
@@ -535,10 +553,10 @@ int main(int argc, char **argv)
 				}
 			}
 printf("!!!! %s\n", filter.c_str());
-			inspector->set_filter(filter);
+			g_inspector->set_filter(filter);
 #else
 			fprintf(stderr, "filtering not supported.\n");
-			delete inspector;
+			delete g_inspector;
 			delete analyzer;
 			return EXIT_FAILURE;				
 #endif
@@ -550,7 +568,20 @@ printf("!!!! %s\n", filter.c_str());
 		if(signal(SIGINT, signal_callback) == SIG_ERR)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
-			delete inspector;
+			delete g_inspector;
+#ifdef HAS_ANALYZER
+			delete analyzer;
+#endif
+			return EXIT_FAILURE;
+		}
+
+		//
+		// Set the SIGUSR1 signal
+		//
+		if(signal(SIGUSR1, sigusr1_callback) == SIG_ERR)
+		{
+			fprintf(stderr, "An error occurred while setting a signal handler.\n");
+			delete g_inspector;
 #ifdef HAS_ANALYZER
 			delete analyzer;
 #endif
@@ -568,27 +599,27 @@ printf("!!!! %s\n", filter.c_str());
 		{
 			if(infile)
 			{
-				inspector->open(infile);
+				g_inspector->open(infile);
 			}
 			else
 			{
-				inspector->open("");
+				g_inspector->open("");
 			}
 
 			if(drop_ratio != 0)
 			{
-				inspector->start_dropping_mode(drop_ratio);
-//inspector->stop_dropping_mode();
+				g_inspector->start_dropping_mode(drop_ratio);
+//g_inspector->stop_dropping_mode();
 			}
 
 			if(dumpfile != "")
 			{
-				inspector->autodump_start(dumpfile, true);
+				g_inspector->autodump_start(dumpfile, true);
 			}
 
 			duration = ((double)clock()) / CLOCKS_PER_SEC;
 			
-			cinfo = do_inspect(inspector, 
+			cinfo = do_inspect(g_inspector, 
 				cnt, 
 				emitjson, 
 				quiet, 
@@ -601,7 +632,7 @@ printf("!!!! %s\n", filter.c_str());
 			duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 
 			char mrbuf[4096];
-			inspector->m_analyzer->generate_memory_report(mrbuf, sizeof(mrbuf));
+			g_inspector->m_analyzer->generate_memory_report(mrbuf, sizeof(mrbuf));
 			fprintf(stderr, "%s", mrbuf);
 		}
 		catch(sinsp_exception e)
@@ -635,11 +666,11 @@ printf("!!!! %s\n", filter.c_str());
 #ifdef GATHER_INTERNAL_STATS
 		if(get_stats)
 		{
-			inspector->get_stats().emit(stderr);
+			g_inspector->get_stats().emit(stderr);
 		}
 #endif
 
-		delete inspector;
+		delete g_inspector;
 #ifdef HAS_ANALYZER
 		delete analyzer;
 #endif

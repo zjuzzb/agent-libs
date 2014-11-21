@@ -170,11 +170,20 @@ bool sinsp_configuration::get_autodrop_enabled() const
 
 void sinsp_configuration::set_autodrop_enabled(bool enabled)
 {
-	m_autodrop_enabled = enabled;
+	if(enabled)
+	{
+		m_autodrop_enabled = true;
+	}
+	else
+	{
+		//m_inspector->stop_dropping_mode();
+		m_autodrop_enabled = false;	
+	}
 }
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
+	//return 5;
 	if(nprocs > 0)
 	{
 		return MIN((m_drop_upper_threshold + (m_drop_upper_threshold * (nprocs - 1) * 6 / 10)), 100);
@@ -193,6 +202,7 @@ void sinsp_configuration::set_drop_upper_threshold(uint32_t drop_upper_threshold
 
 uint32_t sinsp_configuration::get_drop_lower_threshold(uint32_t nprocs) const
 {
+	//return 3;
 	if(nprocs > 0)
 	{
 		return MIN(m_drop_lower_threshold + (m_drop_lower_threshold * (nprocs - 1) * 7 / 10), 90);
