@@ -61,6 +61,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_sample_callback = NULL;
 	m_protobuf_fp = NULL;
 	m_prev_sample_evtnum = 0;
+	m_serialize_prev_sample_evtnum = 0;
+	m_serialize_prev_sample_time = 0;
 	m_client_tr_time_by_servers = 0;
 	m_last_transaction_delays_update_time = 0;
 	m_total_process_cpu = 0;
@@ -421,11 +423,26 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 
 void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 {
+
 	uint64_t nevts = 0;
 
 	if(evt)
 	{
-		nevts = evt->get_num() - m_prev_sample_evtnum;
+		nevts = evt->get_num() - m_serialize_prev_sample_evtnum;
+		m_serialize_prev_sample_evtnum = evt->get_num();
+
+		//
+		// Subsampling can cause repeated samples, which we skip here
+		//
+		if(m_serialize_prev_sample_time != 0)
+		{
+			if(ts == m_serialize_prev_sample_time)
+			{
+				return;
+			}
+		}
+
+		m_serialize_prev_sample_time = ts;
 	}
 
 	if(m_sample_callback != NULL)
@@ -444,9 +461,9 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
-		g_logger.format(sinsp_logger::SEV_INFO,
+		g_logger.format(sinsp_logger::SEV_ERROR,
 			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64,
-			ts / 1000000000,
+			ts / 100000000,
 			buflen, nevts);
 
 		if(!buf)
@@ -1643,7 +1660,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
 					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds, 
-					m_configuration->get_drop_treshold_consecutive_seconds());				
+					m_configuration->get_drop_treshold_consecutive_seconds());
 			}
 		}
 		else
@@ -2234,7 +2251,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				serialize(evt, m_prev_flush_time_ns);
+				uint64_t serialize_sample_time = 
+				m_prev_flush_time_ns - m_prev_flush_time_ns % m_configuration->get_analyzer_original_sample_len_ns();
+
+				serialize(evt, serialize_sample_time);
 			}
 
 			//

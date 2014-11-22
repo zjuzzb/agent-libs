@@ -321,9 +321,11 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 
 	if(*(uint32_t*)parinfo->m_val != m_analyzer->m_sampling_ratio)
 	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
+			m_analyzer->m_sampling_ratio,
+			*(uint32_t*)parinfo->m_val);
+
 		m_analyzer->m_sampling_ratio = *(int32_t*)parinfo->m_val;
-		g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Switching sampling ratio to %" PRIu32, 
-			m_analyzer->m_sampling_ratio);
 	}
 
 	uint64_t newsl =  ((uint64_t)ONE_SECOND_IN_NS) / m_analyzer->m_sampling_ratio;
