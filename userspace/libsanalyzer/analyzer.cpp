@@ -1615,18 +1615,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
 		{
-			double totcpuload = 0;
+			m_last_system_cpuload = 0;
 
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
-				totcpuload += m_cpu_loads[j];
+				m_last_system_cpuload += m_cpu_loads[j];
 			}
-
-			if(fabs(totcpuload - m_last_system_cpuload) / totcpuload > 0.1)
-			{
-
-			}
-//printf("*%lf %lf\n", totcpuload, fabs(totcpuload - m_last_system_cpuload) / totcpuload);
 
 			m_seconds_above_thresholds = 0;
 
@@ -1671,19 +1665,44 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
 			m_is_sampling)
 		{
-			m_seconds_below_thresholds = 0;
-			uint32_t new_sampling_ratio = m_sampling_ratio / 2;
+			double totcpuload = 0;
+			bool skip = false;
 
-			if(new_sampling_ratio >= 1)
+			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
-				if(m_is_sampling)
+				totcpuload += m_cpu_loads[j];
+			}
+
+			if(m_last_system_cpuload != 0)
+			{
+				if(fabs(totcpuload - m_last_system_cpuload) / min(totcpuload, m_last_system_cpuload) < 0.2)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-					m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+					printf("gonzalo!!!!!\n");
+					if(m_seconds_below_thresholds <= m_configuration->get_drop_treshold_consecutive_seconds() * 50)
+					{
+						skip = true;
+					}
 				}
-				else
+			}
+
+			if(!skip)
+			{
+				m_last_system_cpuload = 0;
+
+				m_seconds_below_thresholds = 0;
+				uint32_t new_sampling_ratio = m_sampling_ratio / 2;
+
+				if(new_sampling_ratio >= 1)
 				{
-					m_inspector->stop_dropping_mode();
+					if(m_is_sampling)
+					{
+						g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
+						m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+					}
+					else
+					{
+						m_inspector->stop_dropping_mode();
+					}
 				}
 			}
 		}
