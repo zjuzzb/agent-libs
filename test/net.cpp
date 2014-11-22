@@ -447,6 +447,10 @@ class analyzer_callback: public analyzer_callback_interface
 	{
 		printf("ciao\n");
 	}
+
+	void subsampling_disabled()
+	{
+	}
 };
 
 TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
