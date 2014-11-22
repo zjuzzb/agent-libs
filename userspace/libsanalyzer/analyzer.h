@@ -209,6 +209,8 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_time_ns;
 
 	uint64_t m_prev_sample_evtnum;
+	uint64_t m_serialize_prev_sample_evtnum;
+	uint64_t m_serialize_prev_sample_time;
 	
 	sinsp_analyzer_parsers* m_parser;
 

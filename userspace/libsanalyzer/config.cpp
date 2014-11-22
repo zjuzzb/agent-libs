@@ -13,6 +13,7 @@ sinsp_configuration::sinsp_configuration()
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
+	m_analyzer_original_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
@@ -126,6 +127,11 @@ void sinsp_configuration::set_customer_id(string customer_id)
 uint64_t sinsp_configuration::get_analyzer_sample_len_ns() const
 {
 	return m_analyzer_sample_len_ns;
+}
+
+uint64_t sinsp_configuration::get_analyzer_original_sample_len_ns() const
+{
+	return m_analyzer_original_sample_len_ns;
 }
 
 void sinsp_configuration::set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns)
