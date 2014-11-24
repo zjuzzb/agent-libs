@@ -830,11 +830,14 @@ TEST_F(sys_call_test, quotactl_ok)
 {
 	int callnum = 0;
 
+	// Clean environment
+	system("umount /tmp/testquotamnt");
+	system("rm -r /tmp/testquotactl /tmp/testquotamnt");
 	// Setup a tmpdisk to test quotas
 	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
 						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"
-						"mkdir /tmp/testquotamnt &&\n"
-						"mount -o usrquota,grpquota,loop /tmp/testquotactl /tmp/testquotamnt &&\n"
+						"mkdir -p /tmp/testquotamnt &&\n"
+						"mount -o usrquota,grpquota,loop=/dev/loop0 /tmp/testquotactl /tmp/testquotamnt &&\n"
 						"quotacheck -cug /tmp/testquotamnt";
 	int ret = system(command);
 	if (ret != 0)
@@ -857,7 +860,7 @@ TEST_F(sys_call_test, quotactl_ok)
 	struct dqinfo mydqinfo;
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/loop0", 2, "aquota.user"); // 2 => QFMT_VFS_V0
+		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/loop0", 2, "/tmp/testquotamnt/aquota.user"); // 2 => QFMT_VFS_V0
 		quotactl(QCMD(Q_GETQUOTA, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqblk); // 0 => root user
 		quotactl(QCMD(Q_GETINFO, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqinfo);
 		quotactl(QCMD(Q_QUOTAOFF, USRQUOTA), "/dev/loop0", 0, NULL);
@@ -888,9 +891,11 @@ TEST_F(sys_call_test, quotactl_ok)
 			case 5:
 				EXPECT_EQ("Q_GETINFO", e->get_param_value_str("cmd"));
 				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				break;
 			case 7:
 				EXPECT_EQ("Q_QUOTAOFF", e->get_param_value_str("cmd"));
 				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				break;
 			}
 		}
 		else if ( type == PPME_SYSCALL_QUOTACTL_X)
@@ -901,7 +906,7 @@ TEST_F(sys_call_test, quotactl_ok)
 			case 2:
 				EXPECT_EQ("0", e->get_param_value_str("res", false));
 				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
-				EXPECT_EQ("/quota.user", e->get_param_value_str("quotafilepath"));
+				EXPECT_EQ("/tmp/testquotamnt/aquota.user", e->get_param_value_str("quotafilepath"));
 				break;
 			case 4:
 				EXPECT_EQ("0", e->get_param_value_str("res", false));
@@ -913,18 +918,20 @@ TEST_F(sys_call_test, quotactl_ok)
 				EXPECT_EQ(mydqblk.dqb_isoftlimit, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_isoftlimit")->m_val));
 				EXPECT_EQ(mydqblk.dqb_btime, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_btime")->m_val));
 				EXPECT_EQ(mydqblk.dqb_itime, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_itime")->m_val));
+				break;
 			case 6:
 				EXPECT_EQ("0", e->get_param_value_str("res", false));
 				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
 				EXPECT_EQ(mydqinfo.dqi_bgrace, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_bgrace")->m_val));
 				EXPECT_EQ(mydqinfo.dqi_igrace, *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_igrace")->m_val));
+				break;
 			case 8:
 				EXPECT_EQ("0", e->get_param_value_str("res", false));
 				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				break;
 			}
 		}
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(8, callnum);
-	system("umount /tmp/testquotamnt; rm -r /tmp/testquotactl /tmp/testquotamnt");
 }
