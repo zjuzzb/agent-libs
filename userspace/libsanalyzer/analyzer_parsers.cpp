@@ -95,7 +95,10 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		return false;
 
 	case PPME_SYSDIGEVENT_E:
-		m_analyzer->m_sample_callback->subsampling_disabled();
+		if(m_analyzer->m_sample_callback != NULL)
+		{
+			m_analyzer->m_sample_callback->subsampling_disabled();
+		}
 		return false;
 	default:
 		return true;
