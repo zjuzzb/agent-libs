@@ -578,6 +578,7 @@ printf("!!!! %s\n", filter.c_str());
 		//
 		// Set the SIGUSR1 signal
 		//
+#ifndef _WIN32
 		if(signal(SIGUSR1, sigusr1_callback) == SIG_ERR)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
@@ -587,6 +588,7 @@ printf("!!!! %s\n", filter.c_str());
 #endif
 			return EXIT_FAILURE;
 		}
+#endif // _WIN32
 
 #ifdef HAS_ANALYZER
 		analyzer->set_sample_callback(&g_sample_collector);

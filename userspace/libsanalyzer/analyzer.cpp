@@ -1362,45 +1362,45 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		if(!cit->second.is_client_and_server())
-		{
-			if(cit->second.is_server_only())
-			{
-				//
-				// If external client aggregation is enabled, this is a server connection, and 
-				// the client address is outside the subnet, mask it so it gets aggregated
-				//
-				if(aggregate_external_clients)
-				{
-					if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(cit->first.m_fields.m_sip))
-					{
-						tuple.m_fields.m_sip = 0;
-					}
-				}
-
-				//
-				// Add this connection's bytes to the host network volume
-				//
-				m_io_net.add_in(cit->second.m_metrics.m_server.m_count_in, 0, cit->second.m_metrics.m_server.m_bytes_in);
-				m_io_net.add_out(cit->second.m_metrics.m_server.m_count_out, 0, cit->second.m_metrics.m_server.m_bytes_out);
-			}
-			else
-			{
-				//
-				// Add this connection's bytes to the host network volume
-				//
-				ASSERT(cit->second.is_client_only())
-				m_io_net.add_in(cit->second.m_metrics.m_client.m_count_in, 0, cit->second.m_metrics.m_client.m_bytes_in);
-				m_io_net.add_out(cit->second.m_metrics.m_client.m_count_out, 0, cit->second.m_metrics.m_client.m_bytes_out);
-			}
-		}
-
-		//
-		// Look for the entry in the reduced connection table.
-		// Note: we don't export connections whose sip or dip is zero.
-		//
 		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
 		{
+			if(!cit->second.is_client_and_server())
+			{
+				if(cit->second.is_server_only())
+				{
+					//
+					// If external client aggregation is enabled, this is a server connection, and 
+					// the client address is outside the subnet, mask it so it gets aggregated
+					//
+					if(aggregate_external_clients)
+					{
+						if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(cit->first.m_fields.m_sip))
+						{
+							tuple.m_fields.m_sip = 0;
+						}
+					}
+
+					//
+					// Add this connection's bytes to the host network volume
+					//
+					m_io_net.add_in(cit->second.m_metrics.m_server.m_count_in, 0, cit->second.m_metrics.m_server.m_bytes_in);
+					m_io_net.add_out(cit->second.m_metrics.m_server.m_count_out, 0, cit->second.m_metrics.m_server.m_bytes_out);
+				}
+				else
+				{
+					//
+					// Add this connection's bytes to the host network volume
+					//
+					ASSERT(cit->second.is_client_only())
+					m_io_net.add_in(cit->second.m_metrics.m_client.m_count_in, 0, cit->second.m_metrics.m_client.m_bytes_in);
+					m_io_net.add_out(cit->second.m_metrics.m_client.m_count_out, 0, cit->second.m_metrics.m_client.m_bytes_out);
+				}
+			}
+
+			//
+			// Look for the entry in the reduced connection table.
+			// Note: we don't export connections whose sip or dip is zero.
+			//
 			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
 
 			if(conn.m_timestamp == 0)
@@ -1422,10 +1422,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 				conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
 				conn.m_timestamp++;
 			}
-		}
-		else
-		{
-			int a = 0;
 		}
 
 		//
