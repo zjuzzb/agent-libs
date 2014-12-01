@@ -1007,3 +1007,63 @@ TEST_F(sys_call_test, setresuid_and_gid)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(4, callnum);
 }
+
+TEST_F(sys_call_test, setuid_and_gid)
+{
+	static const uint32_t test_gid = 6565;
+	int callnum = 0;
+
+	// Clean environment
+	system("groupdel testsetresgid");
+	// Setup a tmpdisk to test quotas
+	char command[] = "groupadd -g 6565 testsetresgid";
+	int ret = system(command);
+	ASSERT_EQ(0, ret);
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// TODO: To set setuid we need to fork the process
+		setgid(test_gid);
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if (type == PPME_SYSCALL_SETUID_E)
+		{
+			++callnum;
+			EXPECT_EQ("9090", e->get_param_value_str("uid", false));
+		}
+		else if ( type == PPME_SYSCALL_SETUID_X)
+		{
+			++callnum;
+			EXPECT_EQ("0", e->get_param_value_str("res", false));
+		} else if ( type == PPME_SYSCALL_SETGID_E)
+		{
+			++callnum;
+			EXPECT_EQ("6565", e->get_param_value_str("gid", false));
+			EXPECT_EQ("testsetresgid", e->get_param_value_str("gid"));
+		} else if ( type == PPME_SYSCALL_SETGID_X)
+		{
+			++callnum;
+
+			EXPECT_EQ("0", e->get_param_value_str("res", false));
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
