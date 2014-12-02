@@ -33,6 +33,7 @@ add_library(sanalyzer STATIC
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp
+	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
