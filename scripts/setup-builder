@@ -39,7 +39,8 @@ rpm-build \
 unzip \
 wget \
 cmake28 \
-npm
+npm \
+quota
 
 ln -s /usr/bin/cmake28 /usr/bin/cmake
 
