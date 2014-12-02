@@ -30,7 +30,9 @@ public:
 
 		dump_job_request():
 			m_duration_ns(0),
-			m_max_size(0)
+			m_max_size(0),
+			m_delete_file_when_done(true),
+			m_send_file(true)
 		{
 		}
 
@@ -39,6 +41,8 @@ public:
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
 		string m_filter;
+		bool m_delete_file_when_done;
+		bool m_send_file;
 	};
 
 	sinsp_worker(dragent_configuration* configuration, 
@@ -158,6 +162,7 @@ private:
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
 	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
+	uint64_t m_driver_stopped_dropping_ns;
 	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;

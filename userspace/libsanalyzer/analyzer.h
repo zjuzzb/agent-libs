@@ -9,7 +9,6 @@ class analyzer_callback_interface
 {
 public:
 	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics) = 0;
-	virtual void subsampling_disabled() = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -188,6 +187,9 @@ public:
 	// Autodrop control
 	//
 	void set_autodrop_enabled(bool enabled);
+	void stop_dropping_mode();
+	void start_dropping_mode(uint32_t sampling_ratio);
+	bool driver_stopped_dropping();
 
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
@@ -320,6 +322,7 @@ VISIBILITY_PRIVATE
 	// Subsampling-related stuff
 	//
 	bool m_is_sampling;
+	bool m_driver_stopped_dropping;
 	uint32_t m_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;

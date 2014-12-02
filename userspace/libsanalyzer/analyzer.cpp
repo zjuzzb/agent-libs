@@ -85,6 +85,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 #endif
 	m_trans_table = NULL;
 	m_is_sampling = false;
+	m_driver_stopped_dropping = false;
 	m_sampling_ratio = 1;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
@@ -218,7 +219,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	if(m_configuration->get_autodrop_enabled())
 	{
-		m_inspector->start_dropping_mode(1);
+		start_dropping_mode(1);
 		m_is_sampling = true;
 	}
 	else
@@ -1649,7 +1650,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 					new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				m_inspector->start_dropping_mode(new_sampling_ratio);
+				start_dropping_mode(new_sampling_ratio);
 			}
 			else
 			{
@@ -1708,11 +1709,11 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 					if(m_is_sampling)
 					{
 						g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-						m_inspector->start_dropping_mode(m_sampling_ratio / 2);
+						start_dropping_mode(m_sampling_ratio / 2);
 					}
 					else
 					{
-						m_inspector->stop_dropping_mode();
+						stop_dropping_mode();
 					}
 				}
 			}
@@ -3134,6 +3135,22 @@ void sinsp_analyzer::set_autodrop_enabled(bool enabled)
 	m_configuration->set_autodrop_enabled(enabled);
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
+}
+
+void sinsp_analyzer::stop_dropping_mode()
+{
+	m_inspector->stop_dropping_mode();
+	m_driver_stopped_dropping = false;
+}
+
+void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
+{
+	m_inspector->start_dropping_mode(sampling_ratio);
+}
+
+bool sinsp_analyzer::driver_stopped_dropping()
+{
+	return m_driver_stopped_dropping;
 }
 
 #endif // HAS_ANALYZER

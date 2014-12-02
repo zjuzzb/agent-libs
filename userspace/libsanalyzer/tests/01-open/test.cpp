@@ -36,12 +36,12 @@ static void sigusr1_callback(int signal)
 	{
 		dropping_mode_enabled = false;
 		g_inspector->m_analyzer->set_autodrop_enabled(false);
-		g_inspector->stop_dropping_mode();
+		g_inspector->m_analyzer->stop_dropping_mode();
 	}
 	else
 	{
 		dropping_mode_enabled = true;
-		g_inspector->start_dropping_mode(1);
+		g_inspector->m_analyzer->start_dropping_mode(1);
 		g_inspector->m_analyzer->set_autodrop_enabled(true);
 	}
 }

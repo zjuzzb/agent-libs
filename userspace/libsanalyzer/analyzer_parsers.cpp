@@ -66,10 +66,12 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		{
 			parse_drop(evt);
 
+#ifdef SIMULATE_DROP_MODE
 			//
 			// Set dropping mode
 			//
 			m_analyzer->m_inspector->m_isdropping = true;
+#endif
 
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
 
@@ -82,10 +84,12 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		{
 			parse_drop(evt);
 
+#ifdef SIMULATE_DROP_MODE
 			//
 			// Turn off dropping mode
 			//
 			m_analyzer->m_inspector->m_isdropping = false;
+#endif
 
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
 
@@ -95,10 +99,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		return false;
 
 	case PPME_SYSDIGEVENT_E:
-		if(m_analyzer->m_sample_callback != NULL)
-		{
-			m_analyzer->m_sample_callback->subsampling_disabled();
-		}
+		m_analyzer->m_driver_stopped_dropping = true;
 		return false;
 	default:
 		return true;
