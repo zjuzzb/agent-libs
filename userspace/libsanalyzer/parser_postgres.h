@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // Protocol specs can be found at 
-// http://dev.mysql.com/doc/internals/en/client-server-protocol.html
+// http://dev.postgres.com/doc/internals/en/client-server-protocol.html
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -13,19 +13,19 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Offsets
 ///////////////////////////////////////////////////////////////////////////////
-#define MYSQL_OFFSET_SEQ_ID 3
-#define MYSQL_OFFSET_OPCODE 4
-#define MYSQL_OFFSET_STATEMENT 5
-#define MYSQL_OFFSET_UNAME 36
+#define POSTGRES_OFFSET_SEQ_ID 3
+#define POSTGRES_OFFSET_OPCODE 4
+#define POSTGRES_OFFSET_STATEMENT 5
+#define POSTGRES_OFFSET_UNAME 36
 
-#define MYSQL_OFFSET_STATUS 4
-#define MYSQL_OFFSET_ERROR_CODE 5
-#define MYSQL_OFFSET_ERROR_MESSAGE 13
+#define POSTGRES_OFFSET_STATUS 4
+#define POSTGRES_OFFSET_ERROR_CODE 5
+#define POSTGRES_OFFSET_ERROR_MESSAGE 13
 
 ///////////////////////////////////////////////////////////////////////////////
 // Opcodes
 ///////////////////////////////////////////////////////////////////////////////
-#define MYSQL_OPCODE_QUERY 3
+#define POSTGRES_OPCODE_QUERY 3
 
 ///////////////////////////////////////////////////////////////////////////////
 // Capabilities
@@ -50,10 +50,10 @@
 #define CAP_MULTI_RESULTS    131072  // Enable/disable multi-results
 
 ///////////////////////////////////////////////////////////////////////////////
-// MYSQL parser
+// POSTGRES parser
 ///////////////////////////////////////////////////////////////////////////////
 
-class sinsp_mysql_parser : sinsp_protocol_parser
+class sinsp_postgres_parser : sinsp_protocol_parser
 {
 public:
 	enum msg_type
@@ -63,7 +63,7 @@ public:
 		MT_QUERY,
 	};
 
-	sinsp_mysql_parser();
+	sinsp_postgres_parser();
 	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
 		sinsp_partial_transaction::direction dir,
 		bool is_switched,

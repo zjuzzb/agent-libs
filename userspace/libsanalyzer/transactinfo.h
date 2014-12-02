@@ -171,6 +171,7 @@ public:
 	    TYPE_IP = 1,
 	    TYPE_HTTP = 2,
 	    TYPE_MYSQL = 3,
+		TYPE_POSTGRES = 4,
 	};
 
 	enum family
