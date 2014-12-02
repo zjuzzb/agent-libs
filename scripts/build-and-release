@@ -51,7 +51,7 @@ function configure_rpm_repo {
 	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
 
 	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f
 
@@ -63,14 +63,14 @@ function configure_rpm_repo {
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 
 	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete
+	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_debian_repo {
 	DEB_BASEARCH=$(dpkg --print-architecture)
 
 	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f
 
@@ -109,20 +109,20 @@ function configure_debian_repo {
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
 	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete
+	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_tgz_repo {
 	BASEARCH=$(uname -m)
 
 	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete
+	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f
 
 	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
-	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete
+	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
 }
 
 function configure_installers {
