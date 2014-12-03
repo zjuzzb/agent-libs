@@ -216,6 +216,7 @@ message sql_info {
 message proto_info {
     optional http_info http = 1;
     optional sql_info mysql = 2;
+    optional sql_info postgres = 3;
 }
 
 //

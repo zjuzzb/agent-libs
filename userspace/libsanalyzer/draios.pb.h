@@ -2635,20 +2635,32 @@ class proto_info : public ::google::protobuf::Message {
   inline ::draiosproto::sql_info* release_mysql();
   inline void set_allocated_mysql(::draiosproto::sql_info* mysql);
 
+  // optional .draiosproto.sql_info postgres = 3;
+  inline bool has_postgres() const;
+  inline void clear_postgres();
+  static const int kPostgresFieldNumber = 3;
+  inline const ::draiosproto::sql_info& postgres() const;
+  inline ::draiosproto::sql_info* mutable_postgres();
+  inline ::draiosproto::sql_info* release_postgres();
+  inline void set_allocated_postgres(::draiosproto::sql_info* postgres);
+
   // @@protoc_insertion_point(class_scope:draiosproto.proto_info)
  private:
   inline void set_has_http();
   inline void clear_has_http();
   inline void set_has_mysql();
   inline void clear_has_mysql();
+  inline void set_has_postgres();
+  inline void clear_has_postgres();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::http_info* http_;
   ::draiosproto::sql_info* mysql_;
+  ::draiosproto::sql_info* postgres_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4205,9 +4217,9 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
+  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
-  ::std::string* host_tags_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
@@ -8607,6 +8619,44 @@ inline void proto_info::set_allocated_mysql(::draiosproto::sql_info* mysql) {
     set_has_mysql();
   } else {
     clear_has_mysql();
+  }
+}
+
+// optional .draiosproto.sql_info postgres = 3;
+inline bool proto_info::has_postgres() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void proto_info::set_has_postgres() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void proto_info::clear_has_postgres() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void proto_info::clear_postgres() {
+  if (postgres_ != NULL) postgres_->::draiosproto::sql_info::Clear();
+  clear_has_postgres();
+}
+inline const ::draiosproto::sql_info& proto_info::postgres() const {
+  return postgres_ != NULL ? *postgres_ : *default_instance_->postgres_;
+}
+inline ::draiosproto::sql_info* proto_info::mutable_postgres() {
+  set_has_postgres();
+  if (postgres_ == NULL) postgres_ = new ::draiosproto::sql_info;
+  return postgres_;
+}
+inline ::draiosproto::sql_info* proto_info::release_postgres() {
+  clear_has_postgres();
+  ::draiosproto::sql_info* temp = postgres_;
+  postgres_ = NULL;
+  return temp;
+}
+inline void proto_info::set_allocated_postgres(::draiosproto::sql_info* postgres) {
+  delete postgres_;
+  postgres_ = postgres;
+  if (postgres) {
+    set_has_postgres();
+  } else {
+    clear_has_postgres();
   }
 }
 

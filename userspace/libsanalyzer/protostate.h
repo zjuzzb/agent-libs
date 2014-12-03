@@ -42,6 +42,7 @@ public:
 #include "parser_http.h"
 #include "parser_mysql.h"
 #include "parser_postgres.h"
+#include "draios.pb.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The DPI-based protocol detector
@@ -319,14 +320,14 @@ public:
 	template<typename Parser>
 	void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
-	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
 private:
-	void query_table_to_protobuf(draiosproto::proto_info* protobuf_msg,
+	void query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 		unordered_map<string, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio,
 		bool is_query_table);
-	void query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg,
+	void query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 		unordered_map<uint32_t, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
