@@ -197,8 +197,8 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 
 			if(tbuflen > 5)	// min length
 			{
-				if ( ( buf[0] == 'Q' && buf[1] == 0 ) || // SimpleQuery command
-					 ( buf[0] == 'P' && buf[1] == 0 ) // Prepare statement commmand
+				if ( ( tbuf[0] == 'Q' && tbuf[1] == 0 ) || // SimpleQuery command
+					 ( tbuf[0] == 'P' && tbuf[1] == 0 ) // Prepare statement commmand
 				 )
 				{
 					printf("postgres detected query\n");
@@ -206,13 +206,13 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;
 				}
-				else if ( buf[4] == 0 && *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00030000 ) // startup command
+				else if ( *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00000300 ) // startup command
 				{
 					printf("postgres detected startup\n");
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;
-				} else if ( buf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
+				} else if ( tbuf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
 				{
 					printf("postgres detected execute\n");
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;

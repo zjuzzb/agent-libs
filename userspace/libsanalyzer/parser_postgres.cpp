@@ -209,7 +209,7 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 		//
 		// Do the parsing
 		//
-		if( rbuf[0] == 'E')
+		if( rbuf[0] == 'E' && htonl(*(uint32_t*)(rbuf+1)) < 2000)
 		{
 			//
 			// Error response
