@@ -24,33 +24,19 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
 ///////////////////////////////////////////////////////////////////////////////
-const char* mysql_querystart_toks[] = {"\3SELECT",
-		"\3INSERT",
-		"\3SET",
-		"\3CREATE",
-		"\3DELETE",
-		"\3DROP",
-		"\3REPLACE",
-		"\3UPDATE",
-		"\3USE",
-		"\3SHOW",
-		"\3LOCK",
-		"\3UNLOCK",
-		"\3ALTER"};
-
-const char* postgres_querystart_toks[] = {"SELECT",
-		"INSERT",
-		"SET",
-		"CREATE",
-		"DELETE",
-		"DROP",
-		"REPLACE",
-		"UPDATE",
-		"USE",
-		"SHOW",
-		"LOCK",
-		"UNLOCK",
-		"ALTER"
+const char* sql_querystart_toks[] = {"select",
+		"insert",
+		"set ",
+		"create",
+		"delete",
+		"drop",
+		"replace",
+		"update",
+		"use ",
+		"show",
+		"lock",
+		"unlock",
+		"alter"
 };
 
 sinsp_proto_detector::sinsp_proto_detector()
@@ -139,11 +125,14 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 					//
 					if(tbuf[0] == 3)
 					{
+						uint32_t downcase_buf;
+						memcpy(&downcase_buf, tbuf+1, sizeof(uint32_t));
+						downcase_buf |= 0x20202020; // downcase all chars
 						for(uint32_t j = 0; 
-							j < sizeof(mysql_querystart_toks) / sizeof(mysql_querystart_toks[0]); 
+							j < sizeof(sql_querystart_toks) / sizeof(sql_querystart_toks[0]);
 							j++)
 						{
-							if(*(uint32_t*)tbuf == *(uint32_t*)mysql_querystart_toks[j])
+							if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
 							{
 								sinsp_mysql_parser* st = new sinsp_mysql_parser;
 								trinfo->m_protoparser = (sinsp_protocol_parser*)st;
@@ -158,11 +147,14 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 						//
 						if(tbuf[4] == 3)
 						{
+							uint32_t downcase_buf;
+							memcpy(&downcase_buf, tbuf+5, sizeof(uint32_t));
+							downcase_buf |= 0x20202020; // downcase all chars
 							for(uint32_t j = 0; 
-								j < sizeof(mysql_querystart_toks) / sizeof(mysql_querystart_toks[0]); 
+								j < sizeof(sql_querystart_toks) / sizeof(sql_querystart_toks[0]);
 								j++)
 							{
-								if(*(uint32_t*)(tbuf + 4) == *(uint32_t*)mysql_querystart_toks[j])
+								if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
 								{
 									sinsp_mysql_parser* st = new sinsp_mysql_parser;
 									trinfo->m_protoparser = (sinsp_protocol_parser*)st;
@@ -197,14 +189,41 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 
 			if(tbuflen > 5)	// min length
 			{
-				if ( ( tbuf[0] == 'Q' && tbuf[1] == 0 ) || // SimpleQuery command
-					 ( tbuf[0] == 'P' && tbuf[1] == 0 ) // Prepare statement commmand
-				 )
+				if ( tbuf[0] == 'Q' ) // Prepare statement commmand
 				{
-					printf("postgres detected query\n");
-					sinsp_postgres_parser* st = new sinsp_postgres_parser;
-					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-					return sinsp_partial_transaction::TYPE_POSTGRES;
+					uint32_t downcase_buf;
+					memcpy(&downcase_buf, tbuf+5, sizeof(uint32_t));
+					downcase_buf |= 0x20202020; // downcase all chars
+					for(uint32_t j = 0;
+						j < sizeof(sql_querystart_toks) / sizeof(sql_querystart_toks[0]);
+						j++)
+					{
+						if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
+						{
+							printf("postgres detected query\n");
+							sinsp_postgres_parser* st = new sinsp_postgres_parser;
+							trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+							return sinsp_partial_transaction::TYPE_POSTGRES;
+						}
+					}
+				}
+				else if ( tbuf[0] == 'P' ) // Prepare statement commmand
+				{
+					uint32_t downcase_buf;
+					memcpy(&downcase_buf, tbuf+6, sizeof(uint32_t));
+					downcase_buf |= 0x20202020; // downcase all chars
+					for(uint32_t j = 0;
+						j < sizeof(sql_querystart_toks) / sizeof(sql_querystart_toks[0]);
+						j++)
+					{
+						if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
+						{
+							printf("postgres detected prepare\n");
+							sinsp_postgres_parser* st = new sinsp_postgres_parser;
+							trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+							return sinsp_partial_transaction::TYPE_POSTGRES;
+						}
+					}
 				}
 				else if ( *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00000300 ) // startup command
 				{
@@ -214,7 +233,7 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 					return sinsp_partial_transaction::TYPE_POSTGRES;
 				} else if ( tbuf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
 				{
-					printf("postgres detected execute\n");
+					printf("postgres detected error");
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;

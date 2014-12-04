@@ -136,41 +136,9 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			m_query_parser.parse(m_statement, copied_size);
 
 			m_msgtype = MT_QUERY;
+			m_parsed = true;
 			m_is_req_valid = true;			
 		}
-		/*
-		TODO: Login stuff, use later
-		if(rbuf[0] == 1)
-		{
-			if(buflen + m_reassembly_buf.get_size() > POSTGRES_OFFSET_UNAME)
-			{
-				//
-				// Login packet
-				//
-				char* tbuf = rbuf + POSTGRES_OFFSET_OPCODE;
-				char* bufend = rbuf + rbufsize;
-
-				uint32_t caps = *(uint32_t*)(tbuf);
-				char* user = rbuf + POSTGRES_OFFSET_UNAME;
-				tbuf = user + strnlen((char *)user, rbufsize - POSTGRES_OFFSET_UNAME) + 1;
-
-				if(tbuf < bufend)
-				{
-					uint32_t pass_len = (caps & CAP_SECURE_CONNECTION ? *tbuf++ : strlen((char *)tbuf));
-					tbuf += pass_len;
-
-					if(tbuf < bufend)
-					{
-						//char* db = (caps & CAP_CONNECT_WITH_DB ? tbuf : (char*)"<NA>");
-						//m_database = m_storage.strcopy(db, bufend - tbuf);
-
-						m_msgtype = MT_LOGIN;
-						m_is_req_valid = true;
-					}
-				}
-			}
-		}*/
-		m_parsed = true;
 	}
 	else
 	{
@@ -214,6 +182,7 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 			//
 			// Error response
 			//
+			/* TODO: not useful right now
 			for(int j = 6; j < rbufsize-1; ++j)
 			{
 				if(rbuf[j] == 0)
@@ -232,7 +201,7 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 						break;
 					}
 				}
-			}
+			}*/
 			m_parsed = true;
 		}
 		else
