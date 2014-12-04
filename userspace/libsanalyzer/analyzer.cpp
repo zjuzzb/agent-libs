@@ -1481,7 +1481,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				// No thread info for this connection?
 				//
-				ASSERT(acit->second.m_analysis_flags & sinsp_connection::AF_CLOSED);
 				continue;
 			}
 
@@ -1496,7 +1495,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				// No thread info for this connection?
 				//
-				ASSERT(false);
 				continue;
 			}
 
