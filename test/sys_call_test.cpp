@@ -1007,7 +1007,7 @@ TEST_F(sys_call_test, setresuid_and_gid)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(4, callnum);
 }
-
+/*
 TEST_F(sys_call_test, getsetuid_and_gid)
 {
 	static const uint32_t test_gid = 6566;
@@ -1096,4 +1096,4 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(12, callnum);
-}
+}*/
