@@ -105,30 +105,38 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 		//
 		// Do the parsing
 		//
-		switch(rbuf[0])
-		{
-		case 'Q':
-		case 'P':
+		if ( rbuf[0] == 'Q' ||
+			 ( rbuf[0] == 'P' && rbuf[5] == 0 ))
 		{
 			//
 			// Query packet
 			// |Q|size(uint32)|query string ending with \0|
 			//
+			// Parse packet
+			// |P|size(uint32)|name|query string| ....
+			//
 			uint32_t querylen;
+			char* querypos;
 			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
-			// From packet size extract string size
-			querylen -= sizeof(uint32_t);
+			querylen=ntohl(querylen);
+			printf("postgres pktlen: %d\n", querylen);
+
 			uint32_t copied_size;
-
-			m_statement = m_storage.strcopy(rbuf + 1 + sizeof(uint32_t), 
+			if ( rbuf[0] == 'Q')
+			{
+				querypos = rbuf + 1 + sizeof(uint32_t);
+			}
+			else
+			{
+				querypos = rbuf + 1 + sizeof(uint32_t) + 1;
+			}
+			m_statement = m_storage.strcopy(querypos,
 				querylen, &copied_size);
-
+			printf("postgres statement: %s\n", m_statement);
 			m_query_parser.parse(m_statement, copied_size);
 
 			m_msgtype = MT_QUERY;
 			m_is_req_valid = true;			
-			break;
-		}
 		}
 		/*
 		TODO: Login stuff, use later
@@ -201,22 +209,30 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 		//
 		// Do the parsing
 		//
-		if(((uint8_t*)rbuf)[POSTGRES_OFFSET_STATUS] == 0xff)
+		if( rbuf[0] == 'E')
 		{
 			//
 			// Error response
 			//
-			if(buflen + m_reassembly_buf.get_size() > POSTGRES_OFFSET_ERROR_MESSAGE)
+			for(int j = 6; j < rbufsize-1; ++j)
 			{
-				uint32_t copied_size;
-				m_error_code = *(uint16_t*)(rbuf + POSTGRES_OFFSET_ERROR_CODE);
-
-				m_error_message = m_storage.strcopy(rbuf + POSTGRES_OFFSET_ERROR_MESSAGE , 
-					rbufsize - POSTGRES_OFFSET_ERROR_MESSAGE, &copied_size);
-
-				m_is_valid = true;
+				if(rbuf[j] == 0)
+				{
+					if(rbuf[j+1] == 'C')
+					{
+						m_error_code = atoi(rbuf + j + 2);
+						m_is_valid = true;
+					}
+					else if (rbuf[j+1] == 'M')
+					{
+						uint32_t copied_size;
+						m_error_message = m_storage.strcopy(rbuf + j + 2 ,
+							rbufsize - j, &copied_size);
+						m_is_valid = true;
+						break;
+					}
+				}
 			}
-
 			m_parsed = true;
 		}
 		else
