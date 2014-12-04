@@ -3,6 +3,7 @@
 #pragma once
 
 #define SRV_PORT_MYSQL 3306
+#define SRV_PORT_POSTGRES 5432
 
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol parser interface class

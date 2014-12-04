@@ -108,6 +108,7 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 		switch(rbuf[0])
 		{
 		case 'Q':
+		case 'P':
 		{
 			//
 			// Query packet

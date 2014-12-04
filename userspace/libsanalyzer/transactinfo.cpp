@@ -307,6 +307,10 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 		{
 			delete (sinsp_mysql_parser*)m_protoparser;			
 		}
+		else if(m_type == TYPE_POSTGRES)
+		{
+			delete (sinsp_postgres_parser*)m_protoparser;
+		}
 		else
 		{
 			ASSERT(false);

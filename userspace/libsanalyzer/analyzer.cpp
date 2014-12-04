@@ -2933,6 +2933,7 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	uint32_t ntransactions = 0;
 	uint32_t ntransactions_http = 0;
 	uint32_t ntransactions_mysql = 0;
+	uint32_t ntransactions_postgres = 0;
 	uint32_t nqueuedtransactions_client = 0;
 	uint32_t nqueuedtransactions_server = 0;
 	uint32_t nqueuedtransactions_client_capacity = 0;
@@ -3043,6 +3044,9 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 						case sinsp_protocol_parser::PROTO_MYSQL:
 							ntransactions_mysql++;
 							break;
+						case sinsp_protocol_parser::PROTO_POSTGRES:
+							ntransactions_postgres++;
+							break;
 						default:
 							ASSERT(false);
 							break;
@@ -3111,6 +3115,9 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	MR_UPDATE_POS;
 	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
 		"  mysql: %d\n", (int)ntransactions_mysql);
+	MR_UPDATE_POS;
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
+		"  postgres: %d\n", (int)ntransactions_postgres);
 	MR_UPDATE_POS;
 	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
 		"  queued client: %d\n", (int)nqueuedtransactions_client);

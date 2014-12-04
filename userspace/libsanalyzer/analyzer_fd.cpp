@@ -159,6 +159,38 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				}
 			}
 		}
+		else if(serverport == SRV_PORT_POSTGRES)
+		{
+			uint8_t* tbuf;
+			uint32_t tbuflen;
+			uint32_t stsize = trinfo->m_reassembly_buffer.get_size();
+
+			if(stsize != 0)
+			{
+				trinfo->m_reassembly_buffer.copy((char*)buf, buflen);
+				tbuf = (uint8_t*)trinfo->m_reassembly_buffer.get_buf();
+				tbuflen = stsize + buflen;
+			}
+			else
+			{
+				tbuf = buf;
+				tbuflen = buflen;
+			}
+
+			tbuf=buf;
+			tbuflen = buflen;
+
+			if(tbuflen > 5)	// min length
+			{
+				if (tbuf[0] == 'Q' || tbuf[0] == 'P')
+				{
+					printf("postgres detected");
+					sinsp_postgres_parser* st = new sinsp_postgres_parser;
+					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+					return sinsp_partial_transaction::TYPE_POSTGRES;
+				}
+			}
+		}
 		else
 		{
 			//ASSERT(trinfo->m_protoparser == NULL);
