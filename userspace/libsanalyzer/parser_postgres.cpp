@@ -7,7 +7,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // Protocol specs can be found at 
-// http://dev.postgres.com/doc/internals/en/client-server-protocol.html
+// http://www.postgresql.org/docs/9.2/static/protocol-message-formats.html
+// http://www.postgresql.org/docs/9.2/static/protocol-error-fields.html
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -119,7 +120,6 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			char* querypos;
 			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
 			querylen=ntohl(querylen);
-			printf("postgres pktlen: %d\n", querylen);
 
 			uint32_t copied_size;
 			if ( rbuf[0] == 'Q')
@@ -132,7 +132,6 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			}
 			m_statement = m_storage.strcopy(querypos,
 				querylen, &copied_size);
-			printf("postgres statement: %s\n", m_statement);
 			m_query_parser.parse(m_statement, copied_size);
 
 			m_msgtype = MT_QUERY;

@@ -11,45 +11,6 @@
 #include "sqlparser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// Offsets
-///////////////////////////////////////////////////////////////////////////////
-#define POSTGRES_OFFSET_SEQ_ID 3
-#define POSTGRES_OFFSET_OPCODE 4
-#define POSTGRES_OFFSET_STATEMENT 5
-#define POSTGRES_OFFSET_UNAME 36
-
-#define POSTGRES_OFFSET_STATUS 4
-#define POSTGRES_OFFSET_ERROR_CODE 5
-#define POSTGRES_OFFSET_ERROR_MESSAGE 13
-
-///////////////////////////////////////////////////////////////////////////////
-// Opcodes
-///////////////////////////////////////////////////////////////////////////////
-#define POSTGRES_OPCODE_QUERY 3
-
-///////////////////////////////////////////////////////////////////////////////
-// Capabilities
-///////////////////////////////////////////////////////////////////////////////
-#define CAP_LONG_PASSWORD    1       // new more secure passwords
-#define CAP_FOUND_ROWS       2       // Found instead of affected rows
-#define CAP_LONG_FLAG        4       // Get all column flags
-#define CAP_CONNECT_WITH_DB  8       // One can specify db on connect
-#define CAP_NO_SCHEMA        16      // Don't allow database.table.column
-#define CAP_COMPRESS         32      // Can use compression protocol
-#define CAP_ODBC             64      // Odbc client
-#define CAP_LOCAL_FILES      128     // Can use LOAD DATA LOCAL
-#define CAP_IGNORE_SPACE     256     // Ignore spaces before '('
-#define CAP_PROTOCOL_41      512     // New 4.1 protocol
-#define CAP_INTERACTIVE      1024    // This is an interactive client
-#define CAP_SSL              2048    // Switch to SSL after handshake
-#define CAP_IGNORE_SIGPIPE   4096    // IGNORE sigpipes
-#define CAP_TRANSACTIONS     8192    // Client knows about transactions
-#define CAP_RESERVED         16384   // Old flag for 4.1 protocol 
-#define CAP_SECURE_CONNECTION 32768  // New 4.1 authentication
-#define CAP_MULTI_STATEMENTS 65536   // Enable/disable multi-stmt support
-#define CAP_MULTI_RESULTS    131072  // Enable/disable multi-results
-
-///////////////////////////////////////////////////////////////////////////////
 // POSTGRES parser
 ///////////////////////////////////////////////////////////////////////////////
 

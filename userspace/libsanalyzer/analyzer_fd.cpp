@@ -200,7 +200,6 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 					{
 						if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
 						{
-							printf("postgres detected query\n");
 							sinsp_postgres_parser* st = new sinsp_postgres_parser;
 							trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 							return sinsp_partial_transaction::TYPE_POSTGRES;
@@ -218,7 +217,6 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 					{
 						if(downcase_buf == *(uint32_t*)sql_querystart_toks[j])
 						{
-							printf("postgres detected prepare\n");
 							sinsp_postgres_parser* st = new sinsp_postgres_parser;
 							trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 							return sinsp_partial_transaction::TYPE_POSTGRES;
@@ -227,13 +225,11 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				}
 				else if ( *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00000300 ) // startup command
 				{
-					printf("postgres detected startup\n");
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;
 				} else if ( tbuf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
 				{
-					printf("postgres detected error");
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;
