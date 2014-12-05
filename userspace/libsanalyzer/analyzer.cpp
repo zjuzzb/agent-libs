@@ -1687,7 +1687,6 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			{
 				if(fabs(totcpuload - m_last_system_cpuload) / min(totcpuload, m_last_system_cpuload) < 0.15)
 				{
-					printf("gonzalo!!!!!\n");
 					if(m_seconds_below_thresholds <= m_configuration->get_drop_treshold_consecutive_seconds() * 50)
 					{
 						skip = true;
@@ -2537,17 +2536,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 		if(m_sampling_ratio != 1)
 		{
-			if(ts < m_last_dropmode_switch_time || 
-				ts - m_last_dropmode_switch_time < m_configuration->get_analyzer_sample_len_ns() * m_sampling_ratio)
-			{
-				do_flush = false;
-			}
-			else
-			{
-				uint64_t original_sample_len = m_configuration->get_analyzer_sample_len_ns() * m_sampling_ratio;
-				m_sampling_ratio = 1;
-				m_configuration->set_analyzer_sample_len_ns(original_sample_len);
-			}
+			do_flush = false;
 		}
 
 		if(do_flush)
