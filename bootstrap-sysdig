@@ -1,7 +1,11 @@
 #!/bin/bash
 set -ex 
 
-SCRIPT=$(readlink -f $0)
+if [[ $(uname) == "Darwin" ]]; then
+  SCRIPT=$(greadlink -f $0)
+else
+  SCRIPT=$(readlink -f $0)
+fi
 AGENT_SOURCEDIR=$(dirname $SCRIPT)
 SYSDIG_SOURCEDIR=$(dirname $SCRIPT)/../sysdig
 
