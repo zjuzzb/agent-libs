@@ -20,7 +20,10 @@ const char* sql_toks[] = {"SELECT",
 		"SHOW",
 		"LOCK",
 		"UNLOCK",
-		"ALTER"};
+		"ALTER",
+		//"VACUUM",
+		//"TRUNCATE"
+};
 
 uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
 	sizeof("INSERT") - 1,
@@ -34,7 +37,10 @@ uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
 	sizeof("SHOW") - 1,
 	sizeof("LOCK") - 1,
 	sizeof("UNLOCK") - 1,
-	sizeof("ALTER") - 1};
+	sizeof("ALTER") - 1,
+	sizeof("VACUUM") - 1,
+	sizeof("TRUNCATE") -1
+};
 
 //
 // Tokens that denote the end of a select
@@ -45,7 +51,8 @@ const char* selectend_toks[] = {"WHERE",
 
 uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
 	sizeof("AS") - 1,
-	sizeof("LIMIT") - 1};
+	sizeof("LIMIT") - 1
+};
 
 //
 // Tokens that denote the end of an insert
@@ -59,6 +66,12 @@ uint32_t insertend_toklens[] = {sizeof("VALUES") - 1};
 const char* updateend_toks[] = {"SET"};
 uint32_t updateend_toklens[] = {sizeof("SET") - 1};
 
+const char* truncateend_toks[] = { "RESTART", "CONTINUE","CASCADE", "RESTRICT" };
+uint32_t truncateend_toklens[] = {sizeof("RESTART")-1,
+								  sizeof("CONTINUE")-1,
+								  sizeof("CASCADE")-1,
+								  sizeof("RESTRICT")-1
+								 };
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_slq_query_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,8 +184,65 @@ inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t 
 	return NULL;
 }
 
+char* sinsp_slq_query_parser::copy_and_cleanup_table_name(const char *data, uint64_t size)
+{
+	//
+	// Skip initial stuff
+	//
+	uint16_t inside_bracket = 0;
+	while(*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n' ||
+		  *data == ';' || *data == '(' || *data == ')' || inside_bracket)
+	{
+		data++;
+		size--;
+
+		if(size == 0)
+		{
+			return NULL;
+		}
+		if ( *data == '(')
+		{
+			++inside_bracket;
+		}
+		if ( *data == ')')
+		{
+			--inside_bracket;
+		}
+	}
+
+	//
+	// Skip initial spaces
+	//
+	const char* end = data + size - 1;
+
+	while(*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n' ||
+		  *end == ';' || *end == '(' || *end == ')' || inside_bracket )
+	{
+		end--;
+		size--;
+
+		if(size == 0)
+		{
+			return NULL;
+		}
+		if ( *end == ')')
+		{
+			++inside_bracket;
+		}
+		if ( *end == '(')
+		{
+			--inside_bracket;
+		}
+	}
+
+	//
+	// Copy the string
+	//
+	return m_str_storage.copy(data, size, 1);
+}
+
 void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len,
-	const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens)
+	const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens, bool cleanup_name)
 {
 	char* pend = src + srclen;
 	const char* sfrom;
@@ -215,13 +285,27 @@ void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* star
 
 			if(id != -1)
 			{
-				m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
+				if (cleanup_name)
+				{
+					m_table = copy_and_cleanup_table_name(sfrom, fromlen);
+				}
+				else
+				{
+					m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
+				}
 				break;
 			}
-			else if(*src == 0)
+			else if(srclen == 0)
 			{
 				fromlen += nskips;
-				m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
+				if (cleanup_name)
+				{
+					m_table = copy_and_cleanup_table_name(sfrom, fromlen);
+				}
+				else
+				{
+					m_table = m_str_storage.copy_and_trim((char*)sfrom, fromlen, 1);
+				}
 				break;
 			}
 
@@ -279,6 +363,15 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 		}
 	}
 
+	// trim final space
+	while ( srclen > 0 && ( src[srclen-1] == ';' ||
+			src[srclen-1] == '\r' || src[srclen-1] == '\n' ||
+			src[srclen-1] == ' ' || src[srclen-1] == '\t')
+		)
+	{
+		--srclen;
+	}
+
 	switch(m_statement_type)
 	{
 	case OT_SELECT:
@@ -291,13 +384,22 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	case OT_REPLACE:
 		extract_table(src, srclen, (char*)"into", sizeof("into") - 1,
 			insertend_toks, insertend_toklens, 
-			sizeof(insertend_toks) / sizeof(insertend_toks[0]));
+			sizeof(insertend_toks) / sizeof(insertend_toks[0]), true);
 		break;
 	case OT_UPDATE:
 		extract_table(src, srclen, NULL, 0,
 			updateend_toks, updateend_toklens, 
 			sizeof(updateend_toks) / sizeof(updateend_toks[0]));
 		break;
+	/*case OT_VACUUM:
+		extract_table(src, srclen, NULL, 0,
+			NULL, NULL, 0);
+		break;
+	case OT_TRUNCATE:
+		extract_table(src, srclen, NULL, 0,
+			truncateend_toks, truncateend_toklens,
+			sizeof(truncateend_toks) / sizeof(truncateend_toks[0]));
+		break;*/
 	default:
 		break;
 	}

@@ -20,6 +20,8 @@ public:
 		OT_LOCK = 11,
 		OT_UNLOCK = 12,
 		OT_ALTER = 13,
+		//OT_VACUUM = 14,
+		//OT_TRUNCATE = 15
 	};
 	
 	sinsp_slq_query_parser()
@@ -45,8 +47,12 @@ private:
 	 * @return
 	 */
 	inline const char* find_token(const char* str, uint32_t strlen, const char* tofind, uint32_t tofind_len);
-	void extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len, const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens);
+	void extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len,
+					   const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens,
+					   bool cleanup_name = false);
 	
+	char* copy_and_cleanup_table_name(const char* table_name, uint64_t table_name_size);
+
 	int32_t m_braket_level;
 	sinsp_autobuffer m_str_storage;
 };

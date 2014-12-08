@@ -50,7 +50,7 @@ public:
 	//
 	// Note: terminate_string is 1 if you want a zero at the end of the string
 	//
-	inline char* copy(char* data, uint32_t size, uint32_t terminate_string = 0)
+	inline char* copy(const char* data, uint32_t size, uint32_t terminate_string = 0)
 	{
 		char* res;
 
