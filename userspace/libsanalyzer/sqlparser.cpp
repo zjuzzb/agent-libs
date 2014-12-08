@@ -133,6 +133,7 @@ inline int32_t sinsp_slq_query_parser::find_tokens(const char* src, uint32_t src
 	return res;
 }
 
+// Look up a token on a string, skips characters inside ()
 inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t strlen,
 													  const char* tofind, uint32_t tofind_len)
 {
@@ -140,6 +141,7 @@ inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t 
 	
 	if(last <= str)
 	{
+		// Seems that is possible this situation, ex "INSERT" as src and "INTO" as tofind
 		//ASSERT(false);
 		return NULL;
 	}
