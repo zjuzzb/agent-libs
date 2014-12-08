@@ -140,7 +140,7 @@ inline const char* sinsp_slq_query_parser::find_token(const char* str, uint32_t 
 	
 	if(last <= str)
 	{
-		ASSERT(false);
+		//ASSERT(false);
 		return NULL;
 	}
 
