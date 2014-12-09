@@ -19,9 +19,7 @@ public:
 		OT_SHOW = 10,
 		OT_LOCK = 11,
 		OT_UNLOCK = 12,
-		OT_ALTER = 13,
-		//OT_VACUUM = 14,
-		//OT_TRUNCATE = 15
+		OT_ALTER = 13
 	};
 	
 	sinsp_slq_query_parser()

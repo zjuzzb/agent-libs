@@ -20,9 +20,7 @@ const char* sql_toks[] = {"SELECT",
 		"SHOW",
 		"LOCK",
 		"UNLOCK",
-		"ALTER",
-		//"VACUUM",
-		//"TRUNCATE"
+		"ALTER"
 };
 
 uint32_t sql_toklens[] = {sizeof("SELECT") - 1,
@@ -66,12 +64,6 @@ uint32_t insertend_toklens[] = {sizeof("VALUES") - 1};
 const char* updateend_toks[] = {"SET"};
 uint32_t updateend_toklens[] = {sizeof("SET") - 1};
 
-const char* truncateend_toks[] = { "RESTART", "CONTINUE","CASCADE", "RESTRICT" };
-uint32_t truncateend_toklens[] = {sizeof("RESTART")-1,
-								  sizeof("CONTINUE")-1,
-								  sizeof("CASCADE")-1,
-								  sizeof("RESTRICT")-1
-								 };
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_slq_query_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -391,15 +383,6 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 			updateend_toks, updateend_toklens, 
 			sizeof(updateend_toks) / sizeof(updateend_toks[0]));
 		break;
-	/*case OT_VACUUM:
-		extract_table(src, srclen, NULL, 0,
-			NULL, NULL, 0);
-		break;
-	case OT_TRUNCATE:
-		extract_table(src, srclen, NULL, 0,
-			truncateend_toks, truncateend_toklens,
-			sizeof(truncateend_toks) / sizeof(truncateend_toks[0]));
-		break;*/
 	default:
 		break;
 	}
