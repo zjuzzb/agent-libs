@@ -13,6 +13,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_analyzer(NULL),
 	m_sinsp_handler(configuration, connection_manager, queue),
 	m_dump_job_requests(10),
+	m_driver_stopped_dropping_ns(0),
 	m_dragent_pid(0),
 	m_last_loop_ns(0)
 {
@@ -49,7 +50,7 @@ void sinsp_worker::init()
 	//
 	// Attach our transmit callback to the analyzer
 	//
-	m_inspector->m_analyzer->set_sample_callback(&m_sinsp_handler);
+	m_analyzer->set_sample_callback(&m_sinsp_handler);
 
 	//
 	// Plug the sinsp logger into our one
@@ -98,7 +99,7 @@ void sinsp_worker::init()
 	if(m_configuration->m_subsampling_ratio != 1)
 	{
 		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
-		m_inspector->start_dropping_mode(m_configuration->m_subsampling_ratio);
+		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
 	if(m_configuration->m_drop_upper_treshold != 0)
@@ -287,6 +288,33 @@ bool sinsp_worker::queue_response(const draiosproto::dump_response& response, pr
 
 void sinsp_worker::run_jobs(sinsp_evt* ev)
 {
+	if(m_running_dump_jobs.empty())
+	{
+		return;
+	}
+
+	if(m_driver_stopped_dropping_ns)
+	{
+		if(!m_analyzer->driver_stopped_dropping())
+		{
+			//
+			// Wait maximum 5 seconds after disabling dropping prior to running the job
+			//
+			if(ev->get_ts() - m_driver_stopped_dropping_ns < 5 * 1000000000LL)
+			{
+				return;
+			}
+
+			g_log->error("Timeout waiting for drop ack event, proceeding anyway");
+		}
+		else
+		{
+			g_log->information("Received drop ack event, proceeding");
+		}
+
+		m_driver_stopped_dropping_ns = 0;
+	}
+
 	for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_dump_jobs.begin();
 		it != m_running_dump_jobs.end(); ++it)
 	{
@@ -461,20 +489,17 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 	if(dragent_configuration::m_signal_dump)
 	{
 		dragent_configuration::m_signal_dump = false;
-		SharedPtr<dump_job_state> job_state(new dump_job_state());
 
-		job_state->m_dumper = new sinsp_dumper(m_inspector);
-		job_state->m_file = m_configuration->m_dump_dir + "dump.scap";
-		g_log->information("Starting dump job " + job_state->m_token 
-			+ " in " + job_state->m_file);
-		job_state->m_dumper->open(job_state->m_file, true);
+		SharedPtr<sinsp_worker::dump_job_request> job_request(
+			new sinsp_worker::dump_job_request());
 
-		job_state->m_duration_ns = 20000000000LL;
-		job_state->m_start_ns = ts;
-		job_state->m_delete_file_when_done = false;
-		job_state->m_send_file = false;
-
-		m_running_dump_jobs.push_back(job_state);
+		job_request->m_request_type = dump_job_request::JOB_START;
+		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
+		job_request->m_duration_ns = 20000000000LL;
+		job_request->m_delete_file_when_done = false;
+		job_request->m_send_file = false;
+		
+		queue_job_request(job_request);
 	}
 
 	SharedPtr<dump_job_request> request;
@@ -546,7 +571,17 @@ void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
 
 	job_state->m_duration_ns = request.m_duration_ns;
 	job_state->m_max_size = request.m_max_size;
+	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
+	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
+
+	if(m_running_dump_jobs.empty())
+	{
+		g_log->information("Disabling dropping mode");
+		m_analyzer->set_autodrop_enabled(false);
+		m_analyzer->stop_dropping_mode();
+		m_driver_stopped_dropping_ns = ts;
+	}
 
 	m_running_dump_jobs.push_back(job_state);
 }
@@ -559,7 +594,8 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
-		if(ts - job->m_last_keepalive_ns > m_keepalive_interval_ns)
+		if((ts - job->m_last_keepalive_ns > m_keepalive_interval_ns) 
+			&& job->m_send_file)
 		{
 			job->m_last_keepalive_ns = ts;
 			draiosproto::dump_response response;
@@ -603,6 +639,17 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 		else
 		{
 			++it;
+		}
+
+		if(m_running_dump_jobs.empty())
+		{
+			g_log->information("Restoring dropping mode state");
+			
+			if(m_configuration->m_autodrop_enabled)
+			{
+				m_analyzer->set_autodrop_enabled(true);
+				m_analyzer->start_dropping_mode(1);
+			}
 		}
 	}
 }
