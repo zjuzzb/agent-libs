@@ -111,10 +111,10 @@ TEST_F(sys_call_test, sql_operation)
 	EXPECT_EQ(opmap["CREATE"], 39846);
 	EXPECT_EQ(opmap["DELETE"], 19880);
 	EXPECT_EQ(opmap["DROP"], 49267);
-	EXPECT_EQ(opmap["INSERT"], 118130);
+	EXPECT_EQ(opmap["INSERT"], 118131);
 	EXPECT_EQ(opmap["LOCK"], 19);
 	EXPECT_EQ(opmap["REPLACE"], 3);
-	EXPECT_EQ(opmap["SELECT"], 7198763);
+	EXPECT_EQ(opmap["SELECT"], 7198764);
 	EXPECT_EQ(opmap["SET"], 11);
 	EXPECT_EQ(opmap["SHOW"], 60);
 	EXPECT_EQ(opmap["UNLOCK"], 19);
@@ -192,7 +192,7 @@ TEST_F(sys_call_test, sql_table_select)
 	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab4 WHERE col3 IS NULL OR (col3 >= 422 OR (col3 > 734 AND (col3 < 813 OR col1 BETWEEN 30.88 AND 73.78) OR col4 >= 799.72)) AND (col3 >= 948) AND ((col3 > 52)) OR (col0 > 298) OR col1 < 283.19 OR col4 = 879.38 )"], 1);
 	EXPECT_EQ(opmap["t15,t56,t18,t14,t43,t4,t1,t25,t31,t49,t27,t33,t52,t17,t20,t42,t55,t34,t8,t9,t7,t46,t53,t38,t3,t13,t45,t16,t24,t10,t47,t2,t35,t36,t57,t44"], 2);
 	EXPECT_EQ(opmap["tab0 cor0 CROSS JOIN tab1"], 991);
-
+	EXPECT_EQ(opmap["test"], 1);
 	printf("Elapsed time: %.3lf\n", duration);
 
 	gzclose(zf);
@@ -334,7 +334,7 @@ TEST_F(sys_call_test, sql_table_insert)
 	EXPECT_EQ(opmap["tab1"], 1167);
 	EXPECT_EQ(opmap["tab0"], 107009);
 	EXPECT_EQ(opmap["view1"], 3);
-
+	EXPECT_EQ(opmap["pgbench_history"], 1);
 	printf("Elapsed time: %.3lf\n", duration);
 
 	gzclose(zf);

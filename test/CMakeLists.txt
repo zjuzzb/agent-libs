@@ -8,6 +8,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(test 

@@ -3,6 +3,7 @@
 #pragma once
 
 #define SRV_PORT_MYSQL 3306
+#define SRV_PORT_POSTGRES 5432
 
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol parser interface class
@@ -22,6 +23,7 @@ public:
 		PROTO_NONE = 0,
 		PROTO_HTTP,
 		PROTO_MYSQL,
+		PROTO_POSTGRES
 	};
 
 	sinsp_protocol_parser();
@@ -40,6 +42,8 @@ public:
 
 #include "parser_http.h"
 #include "parser_mysql.h"
+#include "parser_postgres.h"
+#include "draios.pb.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The DPI-based protocol detector
@@ -300,6 +304,43 @@ public:
 	}
 };
 
+class sql_state
+{
+public:
+	inline void clear()
+	{
+		m_server_queries.clear();
+		m_client_queries.clear();
+		m_server_query_types.clear();
+		m_client_query_types.clear();
+		m_server_tables.clear();
+		m_client_tables.clear();
+	}
+
+	void add(sql_state* other);
+	template<typename Parser>
+	void update(sinsp_partial_transaction* tr,
+				uint64_t time_delta, bool is_server);
+	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
+private:
+	void query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
+		unordered_map<string, sinsp_query_details>* table,
+		bool is_server,
+		uint32_t sampling_ratio,
+		bool is_query_table);
+	void query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
+		unordered_map<uint32_t, sinsp_query_details>* table,
+		bool is_server,
+		uint32_t sampling_ratio);
+
+	unordered_map<string, sinsp_query_details> m_server_queries;
+	unordered_map<string, sinsp_query_details> m_client_queries;
+	unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
+	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
+	unordered_map<string, sinsp_query_details> m_server_tables;
+	unordered_map<string, sinsp_query_details> m_client_tables;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
 ///////////////////////////////////////////////////////////////////////////////
@@ -315,12 +356,7 @@ public:
 		m_server_status_codes.clear();
 		m_client_status_codes.clear();
 
-		m_server_queries.clear();
-		m_client_queries.clear();
-		m_server_query_types.clear();
-		m_client_query_types.clear();
-		m_server_tables.clear();
-		m_client_tables.clear();
+		mysql.clear();
 	}
 
 	void add(sinsp_protostate* other);
@@ -332,21 +368,13 @@ public:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, uint32_t> m_server_status_codes;
 	unordered_map<uint32_t, uint32_t> m_client_status_codes;
-	// The list of mysql queries
-	unordered_map<string, sinsp_query_details> m_server_queries;
-	unordered_map<string, sinsp_query_details> m_client_queries;
-	unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
-	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
-	unordered_map<string, sinsp_query_details> m_server_tables;
-	unordered_map<string, sinsp_query_details> m_client_tables;
 
+	sql_state mysql;
+	sql_state postgres;
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
 		uint64_t time_delta, bool is_server);
-	inline void update_mysql(sinsp_partial_transaction* tr,
-		uint64_t time_delta, bool is_server);
 	inline void add_http(sinsp_protostate* other);
-	inline void add_mysql(sinsp_protostate* other);
 	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_url_details>* table,
 		bool is_server,
@@ -355,15 +383,7 @@ private:
 		unordered_map<uint32_t, uint32_t>* table,
 		bool is_server,
 		uint32_t sampling_ratio);
-	void query_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-		unordered_map<string, sinsp_query_details>* table,
-		bool is_server,
-		uint32_t sampling_ratio,
-		bool is_query_table);
-	void query_type_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-		unordered_map<uint32_t, sinsp_query_details>* table,
-		bool is_server,
-		uint32_t sampling_ratio);
+
 };
 
 #endif // HAS_ANALYZER
