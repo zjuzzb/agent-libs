@@ -947,6 +947,7 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 	// Clean environment
 	system("userdel testsetresuid");
 	system("groupdel testsetresgid");
+	usleep(200);
 	// Setup a tmpdisk to test quotas
 	char command[] = "useradd -u 5454 testsetresuid &&\n"
 						"groupadd -g 6565 testsetresgid";
@@ -1040,6 +1041,7 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 	int callnum = 0;
 	// Clean environment
 	system("groupdel getsetuid_and_gid");
+	usleep(200);
 	// Setup a tmpdisk to test quotas
 	char command[] = "groupadd -g 6566 getsetuid_and_gid";
 	int ret = system(command);
