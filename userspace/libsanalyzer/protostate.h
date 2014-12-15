@@ -4,6 +4,8 @@
 
 #define SRV_PORT_MYSQL 3306
 #define SRV_PORT_POSTGRES 5432
+#define SRV_START_PORT_MONGODB 27000
+#define SRV_END_PORT_MONGODB 27018
 
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol parser interface class
@@ -23,7 +25,8 @@ public:
 		PROTO_NONE = 0,
 		PROTO_HTTP,
 		PROTO_MYSQL,
-		PROTO_POSTGRES
+		PROTO_POSTGRES,
+		PROTO_MONGODB
 	};
 
 	sinsp_protocol_parser();

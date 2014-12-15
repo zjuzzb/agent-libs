@@ -210,6 +210,36 @@ message sql_info {
     repeated sql_entry_details client_tables = 6; // the top client-side queries
 }
 
+message mongodb_collection_details {
+    required string name = 1;
+    required counter_proto_entry counters = 2;
+}
+
+enum mongodb_op_type {
+    MONGODB_OP_NONE = 0;
+    MONGODB_OP_INSERT = 1;
+    MONGODB_OP_UPDATE = 2;
+    MONGODB_OP_DELETE = 3;
+    MONGODB_OP_QUERY = 4;
+    MONGODB_OP_GET_MORE = 5;
+    MONGODB_OP_KILL_CURSORS = 6;
+    MONGODB_OP_FIND = 7;
+    MONGODB_OP_AGGREGATE = 8;
+    MONGODB_OP_COMMAND = 9;
+}
+
+message mongodb_op_type_details {
+    required mongodb_op_type op = 1;
+    required counter_proto_entry counters = 2;
+}
+
+message mongodb_info {
+    repeated mongodb_op_type_details servers_ops = 1;
+    repeated mongodb_op_type_details client_ops = 2;
+    repeated mongodb_collection_details server_collections = 3;
+    repeated mongodb_collection_details client_collections = 4;
+}
+
 //
 // General protocol information
 //
@@ -217,6 +247,7 @@ message proto_info {
     optional http_info http = 1;
     optional sql_info mysql = 2;
     optional sql_info postgres = 3;
+    optional mongodb_info mongodb = 4;
 }
 
 //

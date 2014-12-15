@@ -236,6 +236,10 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				}
 			}
 		}
+		else if(serverport >= SRV_START_PORT_MONGODB && serverport <= SRV_END_PORT_MONGODB)
+		{
+			int32_t* opcode = (int32_t*)(buf+12);
+		}
 		else
 		{
 			//ASSERT(trinfo->m_protoparser == NULL);
