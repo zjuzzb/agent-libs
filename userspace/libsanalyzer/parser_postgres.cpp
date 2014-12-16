@@ -119,7 +119,7 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			uint32_t querylen;
 			char* querypos;
 			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
-			querylen=ntohl(querylen);
+			querylen=min(ntohl(querylen),rbufsize) - sizeof(uint32_t);
 
 			uint32_t copied_size;
 			if ( rbuf[0] == 'Q')
@@ -128,10 +128,13 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			}
 			else
 			{
+				// There is an extra \0 byte on P queries, to denote
+				// an empty "name" of the query
 				querypos = rbuf + 1 + sizeof(uint32_t) + 1;
+				querylen -= 1;
 			}
 			m_statement = m_storage.strcopy(querypos,
-				querylen, &copied_size);
+											querylen, &copied_size);
 			m_query_parser.parse(m_statement, copied_size);
 
 			m_msgtype = MT_QUERY;
@@ -156,7 +159,7 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
 		char* rbuf;
-		uint32_t rbufsize;
+//		uint32_t rbufsize;
 
 		//
 		// Reconstruct the buffer
@@ -164,13 +167,13 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 		if(m_reassembly_buf.get_size() == 0)
 		{
 			rbuf = buf;
-			rbufsize = buflen;
+//			rbufsize = buflen;
 		}
 		else
 		{
 			m_reassembly_buf.copy(buf, buflen);
 			rbuf = m_reassembly_buf.get_buf();
-			rbufsize = m_reassembly_buf.get_size();
+//			rbufsize = m_reassembly_buf.get_size();
 		}
 
 		//
