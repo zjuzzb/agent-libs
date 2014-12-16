@@ -230,7 +230,7 @@ char* sinsp_slq_query_parser::copy_and_cleanup_table_name(const char *data, uint
 	//
 	// Copy the string
 	//
-	return m_str_storage.copy(data, size, 1);
+	return m_str_storage.copy(data, (uint32_t)size, 1);
 }
 
 void sinsp_slq_query_parser::extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len,

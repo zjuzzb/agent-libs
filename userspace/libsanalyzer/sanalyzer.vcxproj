@@ -51,10 +51,12 @@
     <ClCompile Include="metrics.cpp" />
     <ClCompile Include="parser_http.cpp" />
     <ClCompile Include="parser_mysql.cpp" />
+    <ClCompile Include="parser_postgres.cpp" />
     <ClCompile Include="procfs_parser.cpp" />
     <ClCompile Include="protostate.cpp" />
     <ClCompile Include="sched_analyzer.cpp" />
     <ClCompile Include="scores.cpp" />
+    <ClCompile Include="sqlparser.cpp" />
     <ClCompile Include="transactinfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -95,6 +97,7 @@
     <ClInclude Include="metrics.h" />
     <ClInclude Include="parser_http.h" />
     <ClInclude Include="parser_mysql.h" />
+    <ClInclude Include="parser_postgres.h" />
     <ClInclude Include="procfs_parser.h" />
     <ClInclude Include="protostate.h" />
     <ClInclude Include="sched_analyzer.h" />
