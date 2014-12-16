@@ -239,6 +239,14 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 		else if(serverport >= SRV_START_PORT_MONGODB && serverport <= SRV_END_PORT_MONGODB)
 		{
 			int32_t* opcode = (int32_t*)(buf+12);
+			if (*opcode == 1 || *opcode == 1000 ||
+				( *opcode > 2000 && *opcode < 2008 ))
+			{
+				printf("Found mongodb, opcode: %d\n", *opcode);
+				sinsp_mongodb_parser* st = new sinsp_mongodb_parser;
+				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+				return sinsp_partial_transaction::TYPE_MONGODB;
+			}
 		}
 		else
 		{

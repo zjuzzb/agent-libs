@@ -17,9 +17,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_mongodb_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_mongodb_parser::sinsp_mongodb_parser()
+sinsp_mongodb_parser::sinsp_mongodb_parser():
+	m_collection(NULL)
 {
-	m_database = NULL;
 }
 
 inline void sinsp_mongodb_parser::reset()
@@ -27,10 +27,9 @@ inline void sinsp_mongodb_parser::reset()
 	m_parsed = false;
 	m_is_valid = false;
 	m_is_req_valid = false;
-	m_reassembly_buf.clear();
-	m_storage.clear();
+	m_collection_storage.clear();
 	m_error_code = 0;
-	m_msgtype = MT_NONE;
+	m_msgtype = MONGODB_OP_NONE;
 }
 
 sinsp_mongodb_parser::proto sinsp_mongodb_parser::get_type()
@@ -65,7 +64,6 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 		if(is_switched)
 		{
 			m_parsed = false;
-			m_reassembly_buf.clear();
 			return sinsp_protocol_parser::MSG_RESPONSE;
 		}
 		else
@@ -82,142 +80,76 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 
 bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 {
-	if(buflen + m_reassembly_buf.get_size() > 4)
+	if(buflen >= 16)
 	{
-		char* rbuf;
-		uint32_t rbufsize;
-
-		//
-		// Reconstruct the buffer
-		//
-		if(m_reassembly_buf.get_size() == 0)
-		{
-			rbuf = buf;
-			rbufsize = buflen;
-		}
-		else
-		{
-			m_reassembly_buf.copy(buf, buflen);
-			rbuf = m_reassembly_buf.get_buf();
-			rbufsize = m_reassembly_buf.get_size();
-		}
+		int32_t* opcode = (int32_t*)(buf+12);
 
 		//
 		// Do the parsing
 		//
-		if ( rbuf[0] == 'Q' ||
-			 ( rbuf[0] == 'P' && rbuf[5] == 0 ))
+		switch(*opcode)
 		{
-			//
-			// Query packet
-			// |Q|size(uint32)|query string ending with \0|
-			//
-			// Parse packet
-			// |P|size(uint32)|name|query string| ....
-			//
-			uint32_t querylen;
-			char* querypos;
-			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
-			querylen=ntohl(querylen);
-
-			uint32_t copied_size;
-			if ( rbuf[0] == 'Q')
-			{
-				querypos = rbuf + 1 + sizeof(uint32_t);
-			}
-			else
-			{
-				querypos = rbuf + 1 + sizeof(uint32_t) + 1;
-			}
-			m_statement = m_storage.strcopy(querypos,
-				querylen, &copied_size);
-			m_query_parser.parse(m_statement, copied_size);
-
-			m_msgtype = MT_QUERY;
-			m_parsed = true;
-			m_is_req_valid = true;
+		case WIRE_OP_INSERT:
+			m_msgtype = MONGODB_OP_INSERT;
+			break;
+		case WIRE_OP_UPDATE:
+			m_msgtype = MONGODB_OP_UPDATE;
+			break;
+		case WIRE_OP_DELETE:
+			m_msgtype = MONGODB_OP_DELETE;
+			break;
+		case WIRE_OP_QUERY:
+			m_msgtype = MONGODB_OP_QUERY;
+		case WIRE_OP_GET_MORE:
+			m_msgtype = MONGODB_OP_GET_MORE;
+			break;
 		}
-	}
-	else
-	{
-		//
-		// If the buffer is smaller than 4 bytes, we assume that it's a fragment
-		// and we store it for successive analysis
-		//
-		m_reassembly_buf.copy(buf, buflen);
-	}
 
+		printf("MongoDB wire op is: %d\n", *opcode);
+		printf("MongoDB op is: %d\n", m_msgtype);
+
+		if (m_msgtype == MONGODB_OP_INSERT ||
+			m_msgtype == MONGODB_OP_UPDATE ||
+			m_msgtype == MONGODB_OP_DELETE ||
+			m_msgtype == MONGODB_OP_QUERY ||
+			m_msgtype == MONGODB_OP_GET_MORE)
+		{
+			// Extract collection name
+			if (buflen >= 20)
+			{
+				char* start_collection = buf+20;
+				for(int j = 0; j < buflen-20; ++j)
+				{
+					if (*start_collection == '.')
+					{
+						++start_collection;
+						break;
+					}
+					++start_collection;
+				}
+				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+				printf("MongoDB extracted collection: %s\n", m_collection);
+			}
+		}
+		m_parsed = true;
+		m_is_req_valid = true;
+
+	}
 	return true;
 }
 
 bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 {
-	if(buflen + m_reassembly_buf.get_size() > 4)
+	if(buflen >= 16)
 	{
-		char* rbuf;
-		uint32_t rbufsize;
+		int32_t* opcode = (int32_t*)(buf+12);
 
-		//
-		// Reconstruct the buffer
-		//
-		if(m_reassembly_buf.get_size() == 0)
+		if (*opcode == WIRE_OP_REPLY)
 		{
-			rbuf = buf;
-			rbufsize = buflen;
-		}
-		else
-		{
-			m_reassembly_buf.copy(buf, buflen);
-			rbuf = m_reassembly_buf.get_buf();
-			rbufsize = m_reassembly_buf.get_size();
-		}
-
-		//
-		// Do the parsing
-		//
-		if( rbuf[0] == 'E' && htonl(*(uint32_t*)(rbuf+1)) < 2000)
-		{
-			//
-			// Error response
-			//
-			/* TODO: not useful right now
-			for(int j = 6; j < rbufsize-1; ++j)
-			{
-				if(rbuf[j] == 0)
-				{
-					if(rbuf[j+1] == 'C')
-					{
-						m_error_code = atoi(rbuf + j + 2);
-						m_is_valid = true;
-					}
-					else if (rbuf[j+1] == 'M')
-					{
-						uint32_t copied_size;
-						m_error_message = m_storage.strcopy(rbuf + j + 2 ,
-							rbufsize - j, &copied_size);
-						m_is_valid = true;
-						break;
-					}
-				}
-			}*/
-			m_parsed = true;
-		}
-		else
-		{
-			//
-			// OK response
-			//
-			m_parsed = true;
+			m_parsed=true;
 			m_is_valid = true;
 		}
-	}
-	else
-	{
-		//
-		// If the buffer is smaller than 4 bytes, we assume that it's a fragment
-		// and we store it for successive analysis
-		//
-		m_reassembly_buf.copy(buf, buflen);
+
 	}
 
 	return true;

@@ -172,6 +172,7 @@ public:
 	    TYPE_HTTP = 2,
 	    TYPE_MYSQL = 3,
 		TYPE_POSTGRES = 4,
+		TYPE_MONGODB = 5,
 	};
 
 	enum family

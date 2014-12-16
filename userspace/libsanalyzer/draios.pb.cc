@@ -74,6 +74,15 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* sql_info_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   sql_info_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mongodb_collection_details_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mongodb_collection_details_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mongodb_op_type_details_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mongodb_op_type_details_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mongodb_info_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mongodb_info_reflection_ = NULL;
 const ::google::protobuf::Descriptor* proto_info_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   proto_info_reflection_ = NULL;
@@ -129,6 +138,7 @@ const ::google::protobuf::Descriptor* dirty_shutdown_report_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   dirty_shutdown_report_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* sql_statement_type_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* mongodb_op_type_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* networkrole_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* message_type_descriptor_ = NULL;
 
@@ -491,11 +501,62 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(sql_info));
-  proto_info_descriptor_ = file->message_type(18);
-  static const int proto_info_offsets_[3] = {
+  mongodb_collection_details_descriptor_ = file->message_type(18);
+  static const int mongodb_collection_details_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_collection_details, name_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_collection_details, counters_),
+  };
+  mongodb_collection_details_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mongodb_collection_details_descriptor_,
+      mongodb_collection_details::default_instance_,
+      mongodb_collection_details_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_collection_details, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_collection_details, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mongodb_collection_details));
+  mongodb_op_type_details_descriptor_ = file->message_type(19);
+  static const int mongodb_op_type_details_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_op_type_details, op_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_op_type_details, counters_),
+  };
+  mongodb_op_type_details_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mongodb_op_type_details_descriptor_,
+      mongodb_op_type_details::default_instance_,
+      mongodb_op_type_details_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_op_type_details, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_op_type_details, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mongodb_op_type_details));
+  mongodb_info_descriptor_ = file->message_type(20);
+  static const int mongodb_info_offsets_[4] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, servers_ops_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, client_ops_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, server_collections_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, client_collections_),
+  };
+  mongodb_info_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mongodb_info_descriptor_,
+      mongodb_info::default_instance_,
+      mongodb_info_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mongodb_info, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mongodb_info));
+  proto_info_descriptor_ = file->message_type(21);
+  static const int proto_info_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(proto_info, http_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(proto_info, mysql_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(proto_info, postgres_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(proto_info, mongodb_),
   };
   proto_info_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -508,7 +569,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(proto_info));
-  host_descriptor_ = file->message_type(19);
+  host_descriptor_ = file->message_type(22);
   static const int host_offsets_[16] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, hostname_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(host, num_cpus_),
@@ -538,7 +599,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(host));
-  process_descriptor_ = file->message_type(20);
+  process_descriptor_ = file->message_type(23);
   static const int process_offsets_[16] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, details_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(process, is_ipv4_transaction_server_),
@@ -568,7 +629,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(process));
-  program_descriptor_ = file->message_type(21);
+  program_descriptor_ = file->message_type(24);
   static const int program_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(program, procinfo_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(program, pids_),
@@ -584,7 +645,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(program));
-  ipv4tuple_descriptor_ = file->message_type(22);
+  ipv4tuple_descriptor_ = file->message_type(25);
   static const int ipv4tuple_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4tuple, sip_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4tuple, dip_),
@@ -603,7 +664,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ipv4tuple));
-  ipv4_connection_descriptor_ = file->message_type(23);
+  ipv4_connection_descriptor_ = file->message_type(26);
   static const int ipv4_connection_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4_connection, tuple_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4_connection, spid_),
@@ -621,7 +682,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ipv4_connection));
-  ipv4_network_interface_descriptor_ = file->message_type(24);
+  ipv4_network_interface_descriptor_ = file->message_type(27);
   static const int ipv4_network_interface_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4_network_interface, name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ipv4_network_interface, addr_),
@@ -639,7 +700,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ipv4_network_interface));
-  mounted_fs_descriptor_ = file->message_type(25);
+  mounted_fs_descriptor_ = file->message_type(28);
   static const int mounted_fs_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, device_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, mount_dir_),
@@ -659,7 +720,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(mounted_fs));
-  file_stat_descriptor_ = file->message_type(26);
+  file_stat_descriptor_ = file->message_type(29);
   static const int file_stat_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(file_stat, name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(file_stat, bytes_),
@@ -678,7 +739,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(file_stat));
-  metrics_descriptor_ = file->message_type(27);
+  metrics_descriptor_ = file->message_type(30);
   static const int metrics_offsets_[20] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, machine_id_),
@@ -712,7 +773,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(metrics));
-  dump_request_start_descriptor_ = file->message_type(28);
+  dump_request_start_descriptor_ = file->message_type(31);
   static const int dump_request_start_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_start, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_start, machine_id_),
@@ -733,7 +794,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_start));
-  dump_request_stop_descriptor_ = file->message_type(29);
+  dump_request_stop_descriptor_ = file->message_type(32);
   static const int dump_request_stop_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_stop, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_stop, machine_id_),
@@ -751,7 +812,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_stop));
-  dump_response_descriptor_ = file->message_type(30);
+  dump_response_descriptor_ = file->message_type(33);
   static const int dump_response_offsets_[10] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, machine_id_),
@@ -775,7 +836,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_response));
-  ssh_open_channel_descriptor_ = file->message_type(31);
+  ssh_open_channel_descriptor_ = file->message_type(34);
   static const int ssh_open_channel_offsets_[9] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, machine_id_),
@@ -798,7 +859,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_open_channel));
-  ssh_data_descriptor_ = file->message_type(32);
+  ssh_data_descriptor_ = file->message_type(35);
   static const int ssh_data_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, machine_id_),
@@ -819,7 +880,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_data));
-  ssh_close_channel_descriptor_ = file->message_type(33);
+  ssh_close_channel_descriptor_ = file->message_type(36);
   static const int ssh_close_channel_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_close_channel, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_close_channel, machine_id_),
@@ -837,7 +898,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_close_channel));
-  auto_update_request_descriptor_ = file->message_type(34);
+  auto_update_request_descriptor_ = file->message_type(37);
   static const int auto_update_request_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(auto_update_request, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(auto_update_request, machine_id_),
@@ -854,7 +915,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(auto_update_request));
-  dirty_shutdown_report_descriptor_ = file->message_type(35);
+  dirty_shutdown_report_descriptor_ = file->message_type(38);
   static const int dirty_shutdown_report_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, machine_id_),
@@ -873,8 +934,9 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dirty_shutdown_report));
   sql_statement_type_descriptor_ = file->enum_type(0);
-  networkrole_descriptor_ = file->enum_type(1);
-  message_type_descriptor_ = file->enum_type(2);
+  mongodb_op_type_descriptor_ = file->enum_type(1);
+  networkrole_descriptor_ = file->enum_type(2);
+  message_type_descriptor_ = file->enum_type(3);
 }
 
 namespace {
@@ -923,6 +985,12 @@ void protobuf_RegisterTypes(const ::std::string&) {
     sql_query_type_details_descriptor_, &sql_query_type_details::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     sql_info_descriptor_, &sql_info::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mongodb_collection_details_descriptor_, &mongodb_collection_details::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mongodb_op_type_details_descriptor_, &mongodb_op_type_details::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mongodb_info_descriptor_, &mongodb_info::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     proto_info_descriptor_, &proto_info::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
@@ -1000,6 +1068,12 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete sql_query_type_details_reflection_;
   delete sql_info::default_instance_;
   delete sql_info_reflection_;
+  delete mongodb_collection_details::default_instance_;
+  delete mongodb_collection_details_reflection_;
+  delete mongodb_op_type_details::default_instance_;
+  delete mongodb_op_type_details_reflection_;
+  delete mongodb_info::default_instance_;
+  delete mongodb_info_reflection_;
   delete proto_info::default_instance_;
   delete proto_info_reflection_;
   delete host::default_instance_;
@@ -1136,122 +1210,141 @@ void protobuf_AddDesc_draios_2eproto() {
     "ype_details\0225\n\rserver_tables\030\005 \003(\0132\036.dra"
     "iosproto.sql_entry_details\0225\n\rclient_tab"
     "les\030\006 \003(\0132\036.draiosproto.sql_entry_detail"
-    "s\"\201\001\n\nproto_info\022$\n\004http\030\001 \001(\0132\026.draiosp"
-    "roto.http_info\022$\n\005mysql\030\002 \001(\0132\025.draiospr"
-    "oto.sql_info\022\'\n\010postgres\030\003 \001(\0132\025.draiosp"
-    "roto.sql_info\"\327\005\n\004host\022\020\n\010hostname\030\001 \001(\t"
-    "\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n"
-    "\tcpu_steal\030\013 \003(\r\022\"\n\032physical_memory_size"
-    "_bytes\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draios"
-    "proto.time_categories\022B\n\013reqcounters\030\014 \001"
-    "(\0132-.draiosproto.transaction_breakdown_c"
-    "ategories\022E\n\024transaction_counters\030\006 \001(\0132"
-    "\'.draiosproto.counter_time_bidirectional"
-    "\022I\n\030min_transaction_counters\030\026 \001(\0132\'.dra"
-    "iosproto.counter_time_bidirectional\022I\n\030m"
-    "ax_transaction_counters\030\027 \001(\0132\'.draiospr"
-    "oto.counter_time_bidirectional\022$\n\034transa"
-    "ction_processing_delay\030\007 \001(\004\022\033\n\023merged_s"
-    "erver_delay\030\016 \001(\004\022\030\n\020next_tiers_delay\030\r "
-    "\001(\004\022;\n\021resource_counters\030\010 \001(\0132 .draiosp"
-    "roto.resource_categories\022;\n\016syscall_erro"
-    "rs\030\t \001(\0132#.draiosproto.counter_syscall_e"
-    "rrors\0228\n\017external_io_net\030\n \001(\0132\037.draiosp"
-    "roto.counter_time_bytes\"\347\005\n\007process\022-\n\007d"
-    "etails\030\002 \001(\0132\034.draiosproto.process_detai"
-    "ls\022\"\n\032is_ipv4_transaction_server\030\003 \001(\010\022\""
-    "\n\032is_unix_transaction_server\030\004 \001(\010\022\"\n\032is"
-    "_ipv4_transaction_client\030\n \001(\010\022\"\n\032is_uni"
-    "x_transaction_client\030\013 \001(\010\022\017\n\007netrole\030\r "
-    "\001(\r\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto.tim"
-    "e_categories\022E\n\024transaction_counters\030\006 \001"
+    "s\"^\n\032mongodb_collection_details\022\014\n\004name\030"
+    "\001 \002(\t\0222\n\010counters\030\002 \002(\0132 .draiosproto.co"
+    "unter_proto_entry\"w\n\027mongodb_op_type_det"
+    "ails\022(\n\002op\030\001 \002(\0162\034.draiosproto.mongodb_o"
+    "p_type\0222\n\010counters\030\002 \002(\0132 .draiosproto.c"
+    "ounter_proto_entry\"\215\002\n\014mongodb_info\0229\n\013s"
+    "ervers_ops\030\001 \003(\0132$.draiosproto.mongodb_o"
+    "p_type_details\0228\n\nclient_ops\030\002 \003(\0132$.dra"
+    "iosproto.mongodb_op_type_details\022C\n\022serv"
+    "er_collections\030\003 \003(\0132\'.draiosproto.mongo"
+    "db_collection_details\022C\n\022client_collecti"
+    "ons\030\004 \003(\0132\'.draiosproto.mongodb_collecti"
+    "on_details\"\255\001\n\nproto_info\022$\n\004http\030\001 \001(\0132"
+    "\026.draiosproto.http_info\022$\n\005mysql\030\002 \001(\0132\025"
+    ".draiosproto.sql_info\022\'\n\010postgres\030\003 \001(\0132"
+    "\025.draiosproto.sql_info\022*\n\007mongodb\030\004 \001(\0132"
+    "\031.draiosproto.mongodb_info\"\327\005\n\004host\022\020\n\010h"
+    "ostname\030\001 \001(\t\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_l"
+    "oads\030\003 \003(\r\022\021\n\tcpu_steal\030\013 \003(\r\022\"\n\032physica"
+    "l_memory_size_bytes\030\004 \002(\004\022/\n\ttcounters\030\005"
+    " \001(\0132\034.draiosproto.time_categories\022B\n\013re"
+    "qcounters\030\014 \001(\0132-.draiosproto.transactio"
+    "n_breakdown_categories\022E\n\024transaction_co"
+    "unters\030\006 \001(\0132\'.draiosproto.counter_time_"
+    "bidirectional\022I\n\030min_transaction_counter"
+    "s\030\026 \001(\0132\'.draiosproto.counter_time_bidir"
+    "ectional\022I\n\030max_transaction_counters\030\027 \001"
     "(\0132\'.draiosproto.counter_time_bidirectio"
-    "nal\022I\n\030min_transaction_counters\030\022 \001(\0132\'."
-    "draiosproto.counter_time_bidirectional\022I"
-    "\n\030max_transaction_counters\030\023 \001(\0132\'.draio"
-    "sproto.counter_time_bidirectional\022$\n\034tra"
-    "nsaction_processing_delay\030\007 \001(\004\022\033\n\023merge"
-    "d_server_delay\030\016 \001(\004\022\030\n\020next_tiers_delay"
-    "\030\014 \001(\004\022;\n\021resource_counters\030\010 \001(\0132 .drai"
-    "osproto.resource_categories\022;\n\016syscall_e"
-    "rrors\030\t \001(\0132#.draiosproto.counter_syscal"
-    "l_errors\022\'\n\006protos\030\024 \001(\0132\027.draiosproto.p"
-    "roto_info\"\?\n\007program\022&\n\010procinfo\030\001 \002(\0132\024"
-    ".draiosproto.process\022\014\n\004pids\030\002 \003(\004\"T\n\tip"
-    "v4tuple\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip\030\002 \002(\r\022\r\n\005spo"
-    "rt\030\003 \002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007l4proto\030\005 \002(\r"
-    "\"\212\001\n\017ipv4_connection\022%\n\005tuple\030\001 \002(\0132\026.dr"
-    "aiosproto.ipv4tuple\022\014\n\004spid\030\002 \001(\004\022\014\n\004dpi"
-    "d\030\005 \001(\004\0224\n\010counters\030\010 \002(\0132\".draiosproto."
-    "connection_categories\"T\n\026ipv4_network_in"
-    "terface\022\014\n\004name\030\001 \002(\t\022\014\n\004addr\030\002 \002(\r\022\017\n\007n"
-    "etmask\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r\"~\n\nmounted_f"
-    "s\022\016\n\006device\030\001 \002(\t\022\021\n\tmount_dir\030\002 \002(\t\022\014\n\004"
-    "type\030\003 \002(\t\022\022\n\nsize_bytes\030\004 \002(\004\022\022\n\nused_b"
-    "ytes\030\005 \002(\004\022\027\n\017available_bytes\030\006 \002(\004\"]\n\tf"
-    "ile_stat\022\014\n\004name\030\001 \002(\t\022\r\n\005bytes\030\002 \002(\r\022\017\n"
-    "\007time_ns\030\003 \002(\004\022\022\n\nopen_count\030\004 \002(\r\022\016\n\006er"
-    "rors\030\005 \002(\r\"\237\005\n\007metrics\022\024\n\014timestamp_ns\030\001"
-    " \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030"
-    "\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.ho"
-    "st\022&\n\010programs\030\t \003(\0132\024.draiosproto.progr"
-    "am\022\'\n\tprocesses\030\005 \003(\0132\024.draiosproto.proc"
-    "ess\0226\n\020ipv4_connections\030\007 \003(\0132\034.draiospr"
-    "oto.ipv4_connection\022D\n\027ipv4_network_inte"
-    "rfaces\030\010 \003(\0132#.draiosproto.ipv4_network_"
-    "interface\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020hos"
-    "t_custom_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027"
-    "\n\017host_custom_map\030\r \001(\t\022\026\n\016is_host_hidde"
-    "n\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007ver"
-    "sion\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022.\n\010comma"
-    "nds\030\021 \003(\0132\034.draiosproto.command_details\022"
-    "\'\n\006mounts\030\022 \003(\0132\027.draiosproto.mounted_fs"
-    "\022)\n\ttop_files\030\023 \003(\0132\026.draiosproto.file_s"
-    "tat\022\'\n\006protos\030\024 \001(\0132\027.draiosproto.proto_"
-    "info\"\232\001\n\022dump_request_start\022\024\n\014timestamp"
+    "nal\022$\n\034transaction_processing_delay\030\007 \001("
+    "\004\022\033\n\023merged_server_delay\030\016 \001(\004\022\030\n\020next_t"
+    "iers_delay\030\r \001(\004\022;\n\021resource_counters\030\010 "
+    "\001(\0132 .draiosproto.resource_categories\022;\n"
+    "\016syscall_errors\030\t \001(\0132#.draiosproto.coun"
+    "ter_syscall_errors\0228\n\017external_io_net\030\n "
+    "\001(\0132\037.draiosproto.counter_time_bytes\"\347\005\n"
+    "\007process\022-\n\007details\030\002 \001(\0132\034.draiosproto."
+    "process_details\022\"\n\032is_ipv4_transaction_s"
+    "erver\030\003 \001(\010\022\"\n\032is_unix_transaction_serve"
+    "r\030\004 \001(\010\022\"\n\032is_ipv4_transaction_client\030\n "
+    "\001(\010\022\"\n\032is_unix_transaction_client\030\013 \001(\010\022"
+    "\017\n\007netrole\030\r \001(\r\022/\n\ttcounters\030\005 \001(\0132\034.dr"
+    "aiosproto.time_categories\022E\n\024transaction"
+    "_counters\030\006 \001(\0132\'.draiosproto.counter_ti"
+    "me_bidirectional\022I\n\030min_transaction_coun"
+    "ters\030\022 \001(\0132\'.draiosproto.counter_time_bi"
+    "directional\022I\n\030max_transaction_counters\030"
+    "\023 \001(\0132\'.draiosproto.counter_time_bidirec"
+    "tional\022$\n\034transaction_processing_delay\030\007"
+    " \001(\004\022\033\n\023merged_server_delay\030\016 \001(\004\022\030\n\020nex"
+    "t_tiers_delay\030\014 \001(\004\022;\n\021resource_counters"
+    "\030\010 \001(\0132 .draiosproto.resource_categories"
+    "\022;\n\016syscall_errors\030\t \001(\0132#.draiosproto.c"
+    "ounter_syscall_errors\022\'\n\006protos\030\024 \001(\0132\027."
+    "draiosproto.proto_info\"\?\n\007program\022&\n\010pro"
+    "cinfo\030\001 \002(\0132\024.draiosproto.process\022\014\n\004pid"
+    "s\030\002 \003(\004\"T\n\tipv4tuple\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip"
+    "\030\002 \002(\r\022\r\n\005sport\030\003 \002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007"
+    "l4proto\030\005 \002(\r\"\212\001\n\017ipv4_connection\022%\n\005tup"
+    "le\030\001 \002(\0132\026.draiosproto.ipv4tuple\022\014\n\004spid"
+    "\030\002 \001(\004\022\014\n\004dpid\030\005 \001(\004\0224\n\010counters\030\010 \002(\0132\""
+    ".draiosproto.connection_categories\"T\n\026ip"
+    "v4_network_interface\022\014\n\004name\030\001 \002(\t\022\014\n\004ad"
+    "dr\030\002 \002(\r\022\017\n\007netmask\030\003 \002(\r\022\r\n\005bcast\030\004 \001(\r"
+    "\"~\n\nmounted_fs\022\016\n\006device\030\001 \002(\t\022\021\n\tmount_"
+    "dir\030\002 \002(\t\022\014\n\004type\030\003 \002(\t\022\022\n\nsize_bytes\030\004 "
+    "\002(\004\022\022\n\nused_bytes\030\005 \002(\004\022\027\n\017available_byt"
+    "es\030\006 \002(\004\"]\n\tfile_stat\022\014\n\004name\030\001 \002(\t\022\r\n\005b"
+    "ytes\030\002 \002(\r\022\017\n\007time_ns\030\003 \002(\004\022\022\n\nopen_coun"
+    "t\030\004 \002(\r\022\016\n\006errors\030\005 \002(\r\"\237\005\n\007metrics\022\024\n\014t"
+    "imestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n"
+    "\013customer_id\030\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021.d"
+    "raiosproto.host\022&\n\010programs\030\t \003(\0132\024.drai"
+    "osproto.program\022\'\n\tprocesses\030\005 \003(\0132\024.dra"
+    "iosproto.process\0226\n\020ipv4_connections\030\007 \003"
+    "(\0132\034.draiosproto.ipv4_connection\022D\n\027ipv4"
+    "_network_interfaces\030\010 \003(\0132#.draiosproto."
+    "ipv4_network_interface\022\026\n\016sampling_ratio"
+    "\030\n \001(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\021\n\thost"
+    "_tags\030\014 \001(\t\022\027\n\017host_custom_map\030\r \001(\t\022\026\n\016"
+    "is_host_hidden\030\016 \001(\010\022\030\n\020hidden_processes"
+    "\030\017 \001(\t\022\017\n\007version\030\020 \001(\t\022\023\n\013instance_id\030\025"
+    " \001(\t\022.\n\010commands\030\021 \003(\0132\034.draiosproto.com"
+    "mand_details\022\'\n\006mounts\030\022 \003(\0132\027.draiospro"
+    "to.mounted_fs\022)\n\ttop_files\030\023 \003(\0132\026.draio"
+    "sproto.file_stat\022\'\n\006protos\030\024 \001(\0132\027.draio"
+    "sproto.proto_info\"\232\001\n\022dump_request_start"
+    "\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002"
+    "(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030\004"
+    " \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022"
+    "\r\n\005token\030\006 \002(\t\"a\n\021dump_request_stop\022\024\n\014t"
+    "imestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n"
+    "\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdu"
+    "mp_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
+    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010ch"
+    "unk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkee"
+    "p_alive\030\t \001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020final_"
+    "size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005token"
+    "\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timestamp"
     "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
-    "r_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \001(\004\022\017\n\007filte"
-    "rs\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006 \002("
-    "\t\"a\n\021dump_request_stop\022\024\n\014timestamp_ns\030\001"
-    " \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030"
-    "\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_response\022\024"
-    "\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t"
-    "\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022"
-    "\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t \001(\010"
-    "\022\017\n\007content\030\004 \001(\014\022\030\n\020final_size_bytes\030\n "
-    "\001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ss"
-    "h_open_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\n"
-    "machine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n"
-    "\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006"
-    " \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n"
-    "\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns"
-    "\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_i"
-    "d\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005"
-    "error\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_"
-    "close_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nm"
-    "achine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005"
-    "token\030\004 \002(\t\"T\n\023auto_update_request\022\024\n\014ti"
-    "mestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013"
-    "customer_id\030\003 \001(\t\"c\n\025dirty_shutdown_repo"
-    "rt\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002"
-    " \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346"
-    "\001\n\022sql_statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nS"
-    "OP_SELECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003"
-    "\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_"
-    "DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022"
-    "\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013"
-    "\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\251\001\n\013netw"
-    "orkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVE"
-    "R\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNI"
-    "X_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025"
-    "IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIEN"
-    "T\020 *\314\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022DUM"
-    "P_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004"
-    "\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020"
-    "\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027"
-    "\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOW"
-    "N_REPORT\020\nB$\n\031com.draios.model.protobufB"
-    "\005AgentH\001", 8248);
+    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022"
+    "\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassph"
+    "rase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n"
+    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
+    "\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004d"
+    "ata\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status\030"
+    "\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timestamp_"
+    "ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer"
+    "_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_update_"
+    "request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
+    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025dirty_"
+    "shutdown_report\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n"
+    "\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\013"
+    "\n\003log\030\004 \002(\t*\346\001\n\022sql_statement_type\022\014\n\010SO"
+    "P_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSERT\020\002"
+    "\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DEL"
+    "ETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\n"
+    "SOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022"
+    "\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALT"
+    "ER\020\r*\376\001\n\017mongodb_op_type\022\023\n\017MONGODB_OP_N"
+    "ONE\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022\025\n\021MONGODB_"
+    "OP_UPDATE\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022\024\n\020MO"
+    "NGODB_OP_QUERY\020\004\022\027\n\023MONGODB_OP_GET_MORE\020"
+    "\005\022\033\n\027MONGODB_OP_KILL_CURSORS\020\006\022\023\n\017MONGOD"
+    "B_OP_FIND\020\007\022\030\n\024MONGODB_OP_AGGREGATE\020\010\022\026\n"
+    "\022MONGODB_OP_COMMAND\020\t*\251\001\n\013networkrole\022\010\n"
+    "\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_"
+    "REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004"
+    "\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_"
+    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014me"
+    "ssage_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_"
+    "START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_R"
+    "ESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
+    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPD"
+    "ATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\n"
+    "B$\n\031com.draios.model.protobufB\005AgentH\001", 9038);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -1272,6 +1365,9 @@ void protobuf_AddDesc_draios_2eproto() {
   sql_entry_details::default_instance_ = new sql_entry_details();
   sql_query_type_details::default_instance_ = new sql_query_type_details();
   sql_info::default_instance_ = new sql_info();
+  mongodb_collection_details::default_instance_ = new mongodb_collection_details();
+  mongodb_op_type_details::default_instance_ = new mongodb_op_type_details();
+  mongodb_info::default_instance_ = new mongodb_info();
   proto_info::default_instance_ = new proto_info();
   host::default_instance_ = new host();
   process::default_instance_ = new process();
@@ -1308,6 +1404,9 @@ void protobuf_AddDesc_draios_2eproto() {
   sql_entry_details::default_instance_->InitAsDefaultInstance();
   sql_query_type_details::default_instance_->InitAsDefaultInstance();
   sql_info::default_instance_->InitAsDefaultInstance();
+  mongodb_collection_details::default_instance_->InitAsDefaultInstance();
+  mongodb_op_type_details::default_instance_->InitAsDefaultInstance();
+  mongodb_info::default_instance_->InitAsDefaultInstance();
   proto_info::default_instance_->InitAsDefaultInstance();
   host::default_instance_->InitAsDefaultInstance();
   process::default_instance_->InitAsDefaultInstance();
@@ -1355,6 +1454,28 @@ bool sql_statement_type_IsValid(int value) {
     case 11:
     case 12:
     case 13:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::google::protobuf::EnumDescriptor* mongodb_op_type_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mongodb_op_type_descriptor_;
+}
+bool mongodb_op_type_IsValid(int value) {
+  switch(value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
       return true;
     default:
       return false;
@@ -8778,9 +8899,882 @@ void sql_info::Swap(sql_info* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int mongodb_collection_details::kNameFieldNumber;
+const int mongodb_collection_details::kCountersFieldNumber;
+#endif  // !_MSC_VER
+
+mongodb_collection_details::mongodb_collection_details()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mongodb_collection_details::InitAsDefaultInstance() {
+  counters_ = const_cast< ::draiosproto::counter_proto_entry*>(&::draiosproto::counter_proto_entry::default_instance());
+}
+
+mongodb_collection_details::mongodb_collection_details(const mongodb_collection_details& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mongodb_collection_details::SharedCtor() {
+  _cached_size_ = 0;
+  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  counters_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mongodb_collection_details::~mongodb_collection_details() {
+  SharedDtor();
+}
+
+void mongodb_collection_details::SharedDtor() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (this != default_instance_) {
+    delete counters_;
+  }
+}
+
+void mongodb_collection_details::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mongodb_collection_details::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mongodb_collection_details_descriptor_;
+}
+
+const mongodb_collection_details& mongodb_collection_details::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mongodb_collection_details* mongodb_collection_details::default_instance_ = NULL;
+
+mongodb_collection_details* mongodb_collection_details::New() const {
+  return new mongodb_collection_details;
+}
+
+void mongodb_collection_details::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_name()) {
+      if (name_ != &::google::protobuf::internal::kEmptyString) {
+        name_->clear();
+      }
+    }
+    if (has_counters()) {
+      if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mongodb_collection_details::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required string name = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_name()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->name().data(), this->name().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_counters;
+        break;
+      }
+
+      // required .draiosproto.counter_proto_entry counters = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mongodb_collection_details::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required string name = 1;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      1, this->name(), output);
+  }
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  if (has_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      2, this->counters(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mongodb_collection_details::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required string name = 1;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        1, this->name(), target);
+  }
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  if (has_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        2, this->counters(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mongodb_collection_details::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required string name = 1;
+    if (has_name()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->name());
+    }
+
+    // required .draiosproto.counter_proto_entry counters = 2;
+    if (has_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->counters());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mongodb_collection_details::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mongodb_collection_details* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mongodb_collection_details*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mongodb_collection_details::MergeFrom(const mongodb_collection_details& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_name()) {
+      set_name(from.name());
+    }
+    if (from.has_counters()) {
+      mutable_counters()->::draiosproto::counter_proto_entry::MergeFrom(from.counters());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mongodb_collection_details::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mongodb_collection_details::CopyFrom(const mongodb_collection_details& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mongodb_collection_details::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  if (has_counters()) {
+    if (!this->counters().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mongodb_collection_details::Swap(mongodb_collection_details* other) {
+  if (other != this) {
+    std::swap(name_, other->name_);
+    std::swap(counters_, other->counters_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mongodb_collection_details::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mongodb_collection_details_descriptor_;
+  metadata.reflection = mongodb_collection_details_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mongodb_op_type_details::kOpFieldNumber;
+const int mongodb_op_type_details::kCountersFieldNumber;
+#endif  // !_MSC_VER
+
+mongodb_op_type_details::mongodb_op_type_details()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mongodb_op_type_details::InitAsDefaultInstance() {
+  counters_ = const_cast< ::draiosproto::counter_proto_entry*>(&::draiosproto::counter_proto_entry::default_instance());
+}
+
+mongodb_op_type_details::mongodb_op_type_details(const mongodb_op_type_details& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mongodb_op_type_details::SharedCtor() {
+  _cached_size_ = 0;
+  op_ = 0;
+  counters_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mongodb_op_type_details::~mongodb_op_type_details() {
+  SharedDtor();
+}
+
+void mongodb_op_type_details::SharedDtor() {
+  if (this != default_instance_) {
+    delete counters_;
+  }
+}
+
+void mongodb_op_type_details::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mongodb_op_type_details::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mongodb_op_type_details_descriptor_;
+}
+
+const mongodb_op_type_details& mongodb_op_type_details::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mongodb_op_type_details* mongodb_op_type_details::default_instance_ = NULL;
+
+mongodb_op_type_details* mongodb_op_type_details::New() const {
+  return new mongodb_op_type_details;
+}
+
+void mongodb_op_type_details::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    op_ = 0;
+    if (has_counters()) {
+      if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mongodb_op_type_details::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required .draiosproto.mongodb_op_type op = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::draiosproto::mongodb_op_type_IsValid(value)) {
+            set_op(static_cast< ::draiosproto::mongodb_op_type >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(1, value);
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_counters;
+        break;
+      }
+
+      // required .draiosproto.counter_proto_entry counters = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mongodb_op_type_details::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required .draiosproto.mongodb_op_type op = 1;
+  if (has_op()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      1, this->op(), output);
+  }
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  if (has_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      2, this->counters(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mongodb_op_type_details::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required .draiosproto.mongodb_op_type op = 1;
+  if (has_op()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      1, this->op(), target);
+  }
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  if (has_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        2, this->counters(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mongodb_op_type_details::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required .draiosproto.mongodb_op_type op = 1;
+    if (has_op()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->op());
+    }
+
+    // required .draiosproto.counter_proto_entry counters = 2;
+    if (has_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->counters());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mongodb_op_type_details::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mongodb_op_type_details* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mongodb_op_type_details*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mongodb_op_type_details::MergeFrom(const mongodb_op_type_details& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_op()) {
+      set_op(from.op());
+    }
+    if (from.has_counters()) {
+      mutable_counters()->::draiosproto::counter_proto_entry::MergeFrom(from.counters());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mongodb_op_type_details::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mongodb_op_type_details::CopyFrom(const mongodb_op_type_details& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mongodb_op_type_details::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  if (has_counters()) {
+    if (!this->counters().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mongodb_op_type_details::Swap(mongodb_op_type_details* other) {
+  if (other != this) {
+    std::swap(op_, other->op_);
+    std::swap(counters_, other->counters_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mongodb_op_type_details::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mongodb_op_type_details_descriptor_;
+  metadata.reflection = mongodb_op_type_details_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mongodb_info::kServersOpsFieldNumber;
+const int mongodb_info::kClientOpsFieldNumber;
+const int mongodb_info::kServerCollectionsFieldNumber;
+const int mongodb_info::kClientCollectionsFieldNumber;
+#endif  // !_MSC_VER
+
+mongodb_info::mongodb_info()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mongodb_info::InitAsDefaultInstance() {
+}
+
+mongodb_info::mongodb_info(const mongodb_info& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mongodb_info::SharedCtor() {
+  _cached_size_ = 0;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mongodb_info::~mongodb_info() {
+  SharedDtor();
+}
+
+void mongodb_info::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void mongodb_info::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mongodb_info::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mongodb_info_descriptor_;
+}
+
+const mongodb_info& mongodb_info::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mongodb_info* mongodb_info::default_instance_ = NULL;
+
+mongodb_info* mongodb_info::New() const {
+  return new mongodb_info;
+}
+
+void mongodb_info::Clear() {
+  servers_ops_.Clear();
+  client_ops_.Clear();
+  server_collections_.Clear();
+  client_collections_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mongodb_info::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_servers_ops:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_servers_ops()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(10)) goto parse_servers_ops;
+        if (input->ExpectTag(18)) goto parse_client_ops;
+        break;
+      }
+
+      // repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_ops:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_client_ops()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_client_ops;
+        if (input->ExpectTag(26)) goto parse_server_collections;
+        break;
+      }
+
+      // repeated .draiosproto.mongodb_collection_details server_collections = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_server_collections:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_server_collections()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_server_collections;
+        if (input->ExpectTag(34)) goto parse_client_collections;
+        break;
+      }
+
+      // repeated .draiosproto.mongodb_collection_details client_collections = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_collections:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_client_collections()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_client_collections;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mongodb_info::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+  for (int i = 0; i < this->servers_ops_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      1, this->servers_ops(i), output);
+  }
+
+  // repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+  for (int i = 0; i < this->client_ops_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      2, this->client_ops(i), output);
+  }
+
+  // repeated .draiosproto.mongodb_collection_details server_collections = 3;
+  for (int i = 0; i < this->server_collections_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      3, this->server_collections(i), output);
+  }
+
+  // repeated .draiosproto.mongodb_collection_details client_collections = 4;
+  for (int i = 0; i < this->client_collections_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      4, this->client_collections(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mongodb_info::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+  for (int i = 0; i < this->servers_ops_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        1, this->servers_ops(i), target);
+  }
+
+  // repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+  for (int i = 0; i < this->client_ops_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        2, this->client_ops(i), target);
+  }
+
+  // repeated .draiosproto.mongodb_collection_details server_collections = 3;
+  for (int i = 0; i < this->server_collections_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        3, this->server_collections(i), target);
+  }
+
+  // repeated .draiosproto.mongodb_collection_details client_collections = 4;
+  for (int i = 0; i < this->client_collections_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        4, this->client_collections(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mongodb_info::ByteSize() const {
+  int total_size = 0;
+
+  // repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+  total_size += 1 * this->servers_ops_size();
+  for (int i = 0; i < this->servers_ops_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->servers_ops(i));
+  }
+
+  // repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+  total_size += 1 * this->client_ops_size();
+  for (int i = 0; i < this->client_ops_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->client_ops(i));
+  }
+
+  // repeated .draiosproto.mongodb_collection_details server_collections = 3;
+  total_size += 1 * this->server_collections_size();
+  for (int i = 0; i < this->server_collections_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->server_collections(i));
+  }
+
+  // repeated .draiosproto.mongodb_collection_details client_collections = 4;
+  total_size += 1 * this->client_collections_size();
+  for (int i = 0; i < this->client_collections_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->client_collections(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mongodb_info::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mongodb_info* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mongodb_info*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mongodb_info::MergeFrom(const mongodb_info& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  servers_ops_.MergeFrom(from.servers_ops_);
+  client_ops_.MergeFrom(from.client_ops_);
+  server_collections_.MergeFrom(from.server_collections_);
+  client_collections_.MergeFrom(from.client_collections_);
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mongodb_info::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mongodb_info::CopyFrom(const mongodb_info& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mongodb_info::IsInitialized() const {
+
+  for (int i = 0; i < servers_ops_size(); i++) {
+    if (!this->servers_ops(i).IsInitialized()) return false;
+  }
+  for (int i = 0; i < client_ops_size(); i++) {
+    if (!this->client_ops(i).IsInitialized()) return false;
+  }
+  for (int i = 0; i < server_collections_size(); i++) {
+    if (!this->server_collections(i).IsInitialized()) return false;
+  }
+  for (int i = 0; i < client_collections_size(); i++) {
+    if (!this->client_collections(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mongodb_info::Swap(mongodb_info* other) {
+  if (other != this) {
+    servers_ops_.Swap(&other->servers_ops_);
+    client_ops_.Swap(&other->client_ops_);
+    server_collections_.Swap(&other->server_collections_);
+    client_collections_.Swap(&other->client_collections_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mongodb_info::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mongodb_info_descriptor_;
+  metadata.reflection = mongodb_info_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int proto_info::kHttpFieldNumber;
 const int proto_info::kMysqlFieldNumber;
 const int proto_info::kPostgresFieldNumber;
+const int proto_info::kMongodbFieldNumber;
 #endif  // !_MSC_VER
 
 proto_info::proto_info()
@@ -8792,6 +9786,7 @@ void proto_info::InitAsDefaultInstance() {
   http_ = const_cast< ::draiosproto::http_info*>(&::draiosproto::http_info::default_instance());
   mysql_ = const_cast< ::draiosproto::sql_info*>(&::draiosproto::sql_info::default_instance());
   postgres_ = const_cast< ::draiosproto::sql_info*>(&::draiosproto::sql_info::default_instance());
+  mongodb_ = const_cast< ::draiosproto::mongodb_info*>(&::draiosproto::mongodb_info::default_instance());
 }
 
 proto_info::proto_info(const proto_info& from)
@@ -8805,6 +9800,7 @@ void proto_info::SharedCtor() {
   http_ = NULL;
   mysql_ = NULL;
   postgres_ = NULL;
+  mongodb_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -8817,6 +9813,7 @@ void proto_info::SharedDtor() {
     delete http_;
     delete mysql_;
     delete postgres_;
+    delete mongodb_;
   }
 }
 
@@ -8851,6 +9848,9 @@ void proto_info::Clear() {
     }
     if (has_postgres()) {
       if (postgres_ != NULL) postgres_->::draiosproto::sql_info::Clear();
+    }
+    if (has_mongodb()) {
+      if (mongodb_ != NULL) mongodb_->::draiosproto::mongodb_info::Clear();
     }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -8900,6 +9900,20 @@ bool proto_info::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(34)) goto parse_mongodb;
+        break;
+      }
+
+      // optional .draiosproto.mongodb_info mongodb = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_mongodb:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_mongodb()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -8940,6 +9954,12 @@ void proto_info::SerializeWithCachedSizes(
       3, this->postgres(), output);
   }
 
+  // optional .draiosproto.mongodb_info mongodb = 4;
+  if (has_mongodb()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      4, this->mongodb(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -8967,6 +9987,13 @@ void proto_info::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         3, this->postgres(), target);
+  }
+
+  // optional .draiosproto.mongodb_info mongodb = 4;
+  if (has_mongodb()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        4, this->mongodb(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -8999,6 +10026,13 @@ int proto_info::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->postgres());
+    }
+
+    // optional .draiosproto.mongodb_info mongodb = 4;
+    if (has_mongodb()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->mongodb());
     }
 
   }
@@ -9037,6 +10071,9 @@ void proto_info::MergeFrom(const proto_info& from) {
     if (from.has_postgres()) {
       mutable_postgres()->::draiosproto::sql_info::MergeFrom(from.postgres());
     }
+    if (from.has_mongodb()) {
+      mutable_mongodb()->::draiosproto::mongodb_info::MergeFrom(from.mongodb());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -9064,6 +10101,9 @@ bool proto_info::IsInitialized() const {
   if (has_postgres()) {
     if (!this->postgres().IsInitialized()) return false;
   }
+  if (has_mongodb()) {
+    if (!this->mongodb().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -9072,6 +10112,7 @@ void proto_info::Swap(proto_info* other) {
     std::swap(http_, other->http_);
     std::swap(mysql_, other->mysql_);
     std::swap(postgres_, other->postgres_);
+    std::swap(mongodb_, other->mongodb_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

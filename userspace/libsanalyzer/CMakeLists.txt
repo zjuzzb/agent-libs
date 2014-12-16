@@ -34,6 +34,7 @@ add_library(sanalyzer STATIC
 	parser_http.cpp
 	parser_mysql.cpp
 	parser_postgres.cpp
+  parser_mongodb.cpp
 	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp

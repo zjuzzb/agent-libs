@@ -311,6 +311,10 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 		{
 			delete (sinsp_postgres_parser*)m_protoparser;
 		}
+		else if(m_type == TYPE_MONGODB)
+		{
+			delete (sinsp_mongodb_parser*)m_protoparser;
+		}
 		else
 		{
 			ASSERT(false);

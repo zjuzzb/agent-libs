@@ -46,6 +46,7 @@ public:
 #include "parser_http.h"
 #include "parser_mysql.h"
 #include "parser_postgres.h"
+#include "parser_mongodb.h"
 #include "draios.pb.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -94,6 +95,16 @@ public:
 	{
 		m_ncalls = 0;
 		m_flags = SRF_NONE;
+	}
+
+	inline void to_protobuf(draiosproto::counter_proto_entry* counters, uint32_t sampling_ratio) const
+	{
+		counters->set_ncalls(m_ncalls * sampling_ratio);
+		counters->set_time_tot(m_time_tot * sampling_ratio);
+		counters->set_time_max(m_time_max);
+		counters->set_bytes_in(m_bytes_in * sampling_ratio);
+		counters->set_bytes_out(m_bytes_out * sampling_ratio);
+		counters->set_nerrors(m_nerrors * sampling_ratio);
 	}
 
 	uint32_t m_ncalls;		// number of times this request has been served
@@ -350,6 +361,38 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_tables;
 };
 
+class mongodb_state
+{
+public:
+	inline void clear()
+	{
+		m_server_ops.clear();
+		m_client_ops.clear();
+		m_server_collections.clear();
+		m_client_collections.clear();
+	}
+
+	void add(mongodb_state* other);
+
+	void update(sinsp_partial_transaction* tr,
+				uint64_t time_delta, bool is_server);
+
+	void to_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio);
+
+	inline bool has_data()
+	{
+		return m_server_ops.size() > 0 ||
+			   m_client_ops.size() > 0;
+	}
+
+private:
+	// MongoDB
+	unordered_map<uint32_t, sinsp_query_details> m_server_ops;
+	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
+	unordered_map<string, sinsp_query_details> m_server_collections;
+	unordered_map<string, sinsp_query_details> m_client_collections;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
 ///////////////////////////////////////////////////////////////////////////////
@@ -367,6 +410,8 @@ public:
 
 		mysql.clear();
 		postgres.clear();
+
+		mongodb.clear();
 	}
 
 	void add(sinsp_protostate* other);
@@ -381,10 +426,13 @@ public:
 
 	sql_state mysql;
 	sql_state postgres;
+	mongodb_state mongodb;
+
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
 		uint64_t time_delta, bool is_server);
 	inline void add_http(sinsp_protostate* other);
+
 	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
 		unordered_map<string, sinsp_url_details>* table,
 		bool is_server,
