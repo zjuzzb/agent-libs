@@ -555,8 +555,14 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	//
 	// mysql
 	//
-	mysql.to_protobuf(protobuf_msg->mutable_mysql(), sampling_ratio);
-	postgres.to_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
+	if (mysql.has_data())
+	{
+		mysql.to_protobuf(protobuf_msg->mutable_mysql(), sampling_ratio);
+	}
+	if (postgres.has_data())
+	{
+		postgres.to_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
+	}
 }
 
 void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio)

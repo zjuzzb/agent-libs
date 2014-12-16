@@ -322,6 +322,12 @@ public:
 	void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
 	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
+	inline bool has_data()
+	{
+		return m_server_queries.size() > 0 ||
+			   m_client_queries.size() > 0;
+	}
+
 private:
 	void query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 		unordered_map<string, sinsp_query_details>* table,
@@ -357,6 +363,7 @@ public:
 		m_client_status_codes.clear();
 
 		mysql.clear();
+		postgres.clear();
 	}
 
 	void add(sinsp_protostate* other);
