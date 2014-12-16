@@ -781,7 +781,7 @@ TEST_F(sys_call_test, quotactl_ko)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/xxx", 2, "/quota.user"); // 2 => QFMT_VFS_V0
+		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/xxx", 2, (caddr_t)"/quota.user"); // 2 => QFMT_VFS_V0
 		quotactl(QCMD(Q_QUOTAOFF, GRPQUOTA), "/dev/xxx", 0, NULL);
 	};
 
@@ -861,7 +861,7 @@ TEST_F(sys_call_test, quotactl_ok)
 	struct dqinfo mydqinfo;
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/loop0", 2, "/tmp/testquotamnt/aquota.user"); // 2 => QFMT_VFS_V0
+		quotactl(QCMD(Q_QUOTAON, USRQUOTA), "/dev/loop0", 2, (caddr_t)"/tmp/testquotamnt/aquota.user"); // 2 => QFMT_VFS_V0
 		quotactl(QCMD(Q_GETQUOTA, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqblk); // 0 => root user
 		quotactl(QCMD(Q_GETINFO, USRQUOTA), "/dev/loop0", 0, (caddr_t)&mydqinfo);
 		quotactl(QCMD(Q_QUOTAOFF, USRQUOTA), "/dev/loop0", 0, NULL);
