@@ -204,6 +204,7 @@ bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
 					}
 				}
 			}*/
+			m_error_code = 1; // Just to say that there is an error
 			m_parsed = true;
 		}
 		else
