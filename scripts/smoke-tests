@@ -102,7 +102,7 @@ function install_tests {
 
 	ARCH=$(uname -m)
 	FILE_NAME="draios-$AGENT_VERSION-$ARCH-tests.tar.gz"
-	wget http://download.draios.com/$REPOSITORY/tgz/$FILE_NAME
+	wget http://download.draios.com/$REPOSITORY/tgz/$ARCH/$FILE_NAME
 	tar zxvf $FILE_NAME
 	mkdir ./opt/draios/test/captures
 	rm -rf $FILE_NAME
