@@ -1204,7 +1204,7 @@ TEST_F(sys_call_test, fs_sendfile)
 	{
 		struct stat stat_buf;
 
-		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		read_fd = open ("/etc/passwd", O_RDONLY);
 		EXPECT_LE(0, read_fd);
 
 		fstat (read_fd, &stat_buf);
@@ -1271,7 +1271,7 @@ TEST_F(sys_call_test, fs_sendfile_nulloff)
 	{
 		struct stat stat_buf;
 
-		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		read_fd = open ("/etc/passwd", O_RDONLY);
 		EXPECT_LE(0, read_fd);
 
 		fstat (read_fd, &stat_buf);
@@ -1389,7 +1389,7 @@ TEST_F(sys_call_test, fs_sendfile_invalidoff)
 	{
 		struct stat stat_buf;
 
-		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		read_fd = open ("/etc/passwd", O_RDONLY);
 		EXPECT_LE(0, read_fd);
 
 		fstat (read_fd, &stat_buf);
@@ -1458,7 +1458,7 @@ TEST_F(sys_call_test, fs_sendfile64)
 	{
 		struct stat stat_buf;
 
-		read_fd = open ("cmake_install.cmake", O_RDONLY);
+		read_fd = open ("/etc/passwd", O_RDONLY);
 		EXPECT_LE(0, read_fd);
 
 		fstat (read_fd, &stat_buf);
