@@ -2198,6 +2198,26 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_top_files();
 
+			unordered_map<string, sinsp_procfs_parser::container_info> containers;
+			m_procfs_parser->get_containers(&containers);
+			for(unordered_map<string, sinsp_procfs_parser::container_info>::const_iterator it = containers.begin();
+				it != containers.end(); ++it)
+			{
+				draiosproto::container* container = m_metrics->add_containers();
+
+				container->set_id(it->second.id);
+
+				if(!it->second.name.empty())
+				{
+					container->set_name(it->second.name);
+				}
+
+				if(!it->second.image.empty())
+				{
+					container->set_image(it->second.image);
+				}
+			}
+
 			//
 			// Transactions
 			//

@@ -20,6 +20,13 @@ public:
 		uint64_t available_bytes;
 	};
 
+	struct container_info
+	{
+		string id;
+		string name;
+		string image;
+	};
+
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
 	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
@@ -37,8 +44,11 @@ public:
 	//
 	void get_tid_list(OUT set<uint64_t>* tids);
 
+	void get_containers(unordered_map<string, container_info>* containers);
+
 private:
-//	uint64_t m_last_read_time;
+	void parse_docker(unordered_map<string, container_info>* containers);
+	
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
 	bool m_is_live_capture;

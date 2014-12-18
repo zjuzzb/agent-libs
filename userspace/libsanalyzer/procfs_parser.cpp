@@ -12,6 +12,8 @@
 #include <dirent.h>
 #include <mntent.h>
 #include <sys/statvfs.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #endif
 #include <sys/stat.h>
 
@@ -529,4 +531,117 @@ return;
 
 	endmntent(fp);
 #endif
+}
+
+void sinsp_procfs_parser::parse_docker(unordered_map<string, container_info>* containers)
+{
+	string file = string(scap_get_host_root()) + "/var/run/docker.sock";
+
+	int sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	if(sock < 0)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	struct sockaddr_un address;
+	memset(&address, 0, sizeof(struct sockaddr_un));
+
+	address.sun_family = AF_UNIX;
+	snprintf(address.sun_path, sizeof(address.sun_path), file.c_str());
+
+	if(connect(sock, (struct sockaddr *) &address, sizeof(struct sockaddr_un)) != 0)
+	{
+		return;
+	}
+
+	string message = "GET /containers/json HTTP/1.0\r\n\n";
+	if(write(sock, message.c_str(), message.length()) != (ssize_t) message.length())
+	{
+		ASSERT(false);
+		close(sock);
+		return;
+	}
+
+	char buf[256];
+	string json;
+	ssize_t res;
+	while((res = read(sock, buf, sizeof(buf))) != 0)
+	{
+		if(res == -1)
+		{
+			ASSERT(false);
+			close(sock);
+			return;
+		}
+
+		buf[res] = 0;
+		json += buf;
+	}
+
+	size_t pos = json.find("[");
+	if(pos == string::npos)
+	{
+		ASSERT(false);
+		close(sock);
+		return;
+	}
+
+	Json::Value root;
+	Json::Reader reader;
+	bool parsingSuccessful = reader.parse(json.substr(pos), root);
+	if(!parsingSuccessful)
+	{
+		ASSERT(false);
+		close(sock);
+		return;
+	}
+
+	for(uint32_t j = 0; j < root.size(); ++j)
+	{
+		container_info container;
+		Json::Value& e = root[j];
+
+		if(e.isMember("Id"))
+		{
+			container.id = e["Id"].asString();
+		}
+
+		if(e.isMember("Image"))
+		{
+			container.image = e["Image"].asString();
+		}
+
+		//
+		// For names, do like docker does, that is take the only name that
+		// contains one single / (the shortest), and remove it
+		//
+		if(e.isMember("Names"))
+		{
+			Json::Value& names = e["Names"];
+			string min;
+			for(uint32_t k = 0; k < names.size(); ++k)
+			{
+				if(k == 0 || names[k].asString().length() < min.length())
+				{
+					min = names[k].asString();
+				}
+			}
+
+			if(min.length())
+			{
+				container.name = min.substr(1);
+			}
+		}
+
+		(*containers)[container.id] = container;
+	}
+}
+
+void sinsp_procfs_parser::get_containers(unordered_map<string, container_info>* containers)
+{
+	//
+	// First, see if we have a docker daemon running from which we can query basic metadata
+	//
+	parse_docker(containers);
 }
