@@ -18,23 +18,29 @@
 // sinsp_mongodb_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-const uint32_t sinsp_mongodb_parser::commands_size = 2;
+const uint32_t sinsp_mongodb_parser::commands_size = 4;
 
 const char* sinsp_mongodb_parser::commands[] = {
 	"insert",
-	"update"
+	"update",
+	"aggregate",
+	"delete"
 };
 
 const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
 {
 	sizeof("insert"),
-	sizeof("update")
+	sizeof("update"),
+	sizeof("aggregate"),
+	sizeof("delete")
 };
 
 const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[] =
 {
 	MONGODB_OP_INSERT,
-	MONGODB_OP_UPDATE
+	MONGODB_OP_UPDATE,
+	MONGODB_OP_AGGREGATE,
+	MONGODB_OP_DELETE
 };
 
 sinsp_mongodb_parser::sinsp_mongodb_parser():
@@ -100,6 +106,9 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 
 bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 {
+	printf("MongoDB extract: ");
+	debug_print_binary_buf(buf, buflen);
+	printf("\n");
 	if(buflen >= 16)
 	{
 		int32_t* opcode = (int32_t*)(buf+12);
@@ -129,21 +138,6 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				if (*(uint32_t*)(start_collection) == *(uint32_t*)cmd)
 				{
 					char * doc=start_collection+5+8;
-					int32_t* docsize=(int32_t*)(doc);
-//					printf("MongoDB extract docsize: %d\n", *docsize);
-//					printf("MongoDB extract document: ");
-//					for (int j=0; j< *docsize; ++j)
-//					{
-//						if(doc[j] >= 'A' && doc[j] <= 'z' )
-//						{
-//							printf("%c",doc[j]);
-//						}
-//						else
-//						{
-//							printf("%02x",(uint8_t)doc[j]);
-//						}
-//					}
-//					printf("\n");
 					// In this case document is:
 					// |size(int32_t)|0x02|insert|0|size(int32_t)|collection|0|
 					// bytes
@@ -151,7 +145,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 
 					// Extract command
 					uint32_t *command = (uint32_t*)(doc+5);
-					for(int j=0; j < commands_size; ++j)
+					for(unsigned int j=0; j < commands_size; ++j)
 					{
 						if (*command == *(uint32_t*)(commands[j]))
 						{
@@ -161,6 +155,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 						}
 					}
 					//
+				}
+				else
+				{
+					m_msgtype = MONGODB_OP_FIND;
 				}
 				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
 			}
