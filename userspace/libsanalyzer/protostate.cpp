@@ -612,7 +612,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 				op_entry = &(m_server_ops[pp->m_msgtype]);
 				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error);
 			}
-			if(m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				collection_entry =&(m_server_collections[pp->m_collection]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
@@ -625,7 +625,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 				op_entry = &(m_client_ops[pp->m_msgtype]);
 				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error);
 			}
-			if(m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				collection_entry =&(m_client_collections[pp->m_collection]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);

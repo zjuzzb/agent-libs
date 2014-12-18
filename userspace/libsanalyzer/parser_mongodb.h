@@ -63,6 +63,11 @@ private:
 	bool m_parsed;
 
 	char* m_error_message;
+
+	static const uint32_t commands_size;
+	static const char* commands[];
+	static const uint32_t commands_sizes_map[];
+	static const msg_type commands_to_msgtype[];
 };
 
 #endif // HAS_ANALYZER

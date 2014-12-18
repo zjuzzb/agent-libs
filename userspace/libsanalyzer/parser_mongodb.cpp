@@ -17,6 +17,26 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_mongodb_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
+
+const uint32_t sinsp_mongodb_parser::commands_size = 2;
+
+const char* sinsp_mongodb_parser::commands[] = {
+	"insert",
+	"update"
+};
+
+const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
+{
+	sizeof("insert"),
+	sizeof("update")
+};
+
+const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[] =
+{
+	MONGODB_OP_INSERT,
+	MONGODB_OP_UPDATE
+};
+
 sinsp_mongodb_parser::sinsp_mongodb_parser():
 	m_collection(NULL)
 {
@@ -89,31 +109,68 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		//
 		switch(*opcode)
 		{
-		case WIRE_OP_INSERT:
-			m_msgtype = MONGODB_OP_INSERT;
-			break;
-		case WIRE_OP_UPDATE:
-			m_msgtype = MONGODB_OP_UPDATE;
-			break;
-		case WIRE_OP_DELETE:
-			m_msgtype = MONGODB_OP_DELETE;
-			break;
 		case WIRE_OP_QUERY:
+		{
 			m_msgtype = MONGODB_OP_QUERY;
-		case WIRE_OP_GET_MORE:
-			m_msgtype = MONGODB_OP_GET_MORE;
+			// Extract collection name
+			if (buflen >= 20)
+			{
+				char* start_collection = buf+20;
+				for(int j = 0; j < buflen-20; ++j)
+				{
+					if (*start_collection == '.')
+					{
+						++start_collection;
+						break;
+					}
+					++start_collection;
+				}
+				char cmd[] = "$cmd";
+				if (*(uint32_t*)(start_collection) == *(uint32_t*)cmd)
+				{
+					char * doc=start_collection+5+8;
+					int32_t* docsize=(int32_t*)(doc);
+//					printf("MongoDB extract docsize: %d\n", *docsize);
+//					printf("MongoDB extract document: ");
+//					for (int j=0; j< *docsize; ++j)
+//					{
+//						if(doc[j] >= 'A' && doc[j] <= 'z' )
+//						{
+//							printf("%c",doc[j]);
+//						}
+//						else
+//						{
+//							printf("%02x",(uint8_t)doc[j]);
+//						}
+//					}
+//					printf("\n");
+					// In this case document is:
+					// |size(int32_t)|0x02|insert|0|size(int32_t)|collection|0|
+					// bytes
+					// |    4        |  1 | var  |1|     4       | var      |1|
+
+					// Extract command
+					uint32_t *command = (uint32_t*)(doc+5);
+					for(int j=0; j < commands_size; ++j)
+					{
+						if (*command == *(uint32_t*)(commands[j]))
+						{
+							m_msgtype = commands_to_msgtype[j];
+							start_collection = doc+5+commands_sizes_map[j]+4;
+							break;
+						}
+					}
+					//
+				}
+				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+			}
+			m_parsed = true;
+			m_is_req_valid = true;
 			break;
 		}
-
-		printf("MongoDB wire op is: %d\n", *opcode);
-		printf("MongoDB op is: %d\n", m_msgtype);
-
-		if (m_msgtype == MONGODB_OP_INSERT ||
-			m_msgtype == MONGODB_OP_UPDATE ||
-			m_msgtype == MONGODB_OP_DELETE ||
-			m_msgtype == MONGODB_OP_QUERY ||
-			m_msgtype == MONGODB_OP_GET_MORE)
+		case WIRE_OP_GET_MORE:
 		{
+			m_msgtype = MONGODB_OP_GET_MORE;
 			// Extract collection name
 			if (buflen >= 20)
 			{
@@ -128,12 +185,19 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					++start_collection;
 				}
 				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
-				printf("MongoDB extracted collection: %s\n", m_collection);
 			}
+			m_parsed = true;
+			m_is_req_valid = true;
+			break;
 		}
-		m_parsed = true;
-		m_is_req_valid = true;
+		}
 
+		printf("MongoDB wire op is: %d\n", *opcode);
+		printf("MongoDB op is: %d\n", m_msgtype);
+		if (m_collection!=NULL)
+		{
+			printf("MongoDB extracted collection: %s\n", m_collection);
+		}
 	}
 	return true;
 }
