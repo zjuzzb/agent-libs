@@ -357,6 +357,12 @@ message file_stat {
     required uint32 errors = 5;
 }
 
+message container {
+    required string id = 1;
+    optional string name = 2;
+    optional string image = 3;
+}
+
 //
 // ENTRY POINT MESSAGE
 //
@@ -381,6 +387,7 @@ message metrics {
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
+    repeated container containers = 22;
 }
 
 message dump_request_start {

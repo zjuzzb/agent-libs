@@ -61,6 +61,7 @@ class ipv4_connection;
 class ipv4_network_interface;
 class mounted_fs;
 class file_stat;
+class container;
 class metrics;
 class dump_request_start;
 class dump_request_stop;
@@ -3919,6 +3920,123 @@ class file_stat : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class container : public ::google::protobuf::Message {
+ public:
+  container();
+  virtual ~container();
+
+  container(const container& from);
+
+  inline container& operator=(const container& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const container& default_instance();
+
+  void Swap(container* other);
+
+  // implements Message ----------------------------------------------
+
+  container* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const container& from);
+  void MergeFrom(const container& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // optional string name = 2;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 2;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string image = 3;
+  inline bool has_image() const;
+  inline void clear_image();
+  static const int kImageFieldNumber = 3;
+  inline const ::std::string& image() const;
+  inline void set_image(const ::std::string& value);
+  inline void set_image(const char* value);
+  inline void set_image(const char* value, size_t size);
+  inline ::std::string* mutable_image();
+  inline ::std::string* release_image();
+  inline void set_allocated_image(::std::string* image);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.container)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_image();
+  inline void clear_has_image();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::std::string* name_;
+  ::std::string* image_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static container* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class metrics : public ::google::protobuf::Message {
  public:
   metrics();
@@ -4192,6 +4310,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::draiosproto::proto_info* release_protos();
   inline void set_allocated_protos(::draiosproto::proto_info* protos);
 
+  // repeated .draiosproto.container containers = 22;
+  inline int containers_size() const;
+  inline void clear_containers();
+  static const int kContainersFieldNumber = 22;
+  inline const ::draiosproto::container& containers(int index) const;
+  inline ::draiosproto::container* mutable_containers(int index);
+  inline ::draiosproto::container* add_containers();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container >&
+      containers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container >*
+      mutable_containers();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -4243,9 +4373,10 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::file_stat > top_files_;
   ::draiosproto::proto_info* protos_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::container > containers_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(21 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10656,6 +10787,220 @@ inline void file_stat::set_errors(::google::protobuf::uint32 value) {
 
 // -------------------------------------------------------------------
 
+// container
+
+// required string id = 1;
+inline bool container::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void container::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void container::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void container::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& container::id() const {
+  return *id_;
+}
+inline void container::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void container::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void container::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* container::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string name = 2;
+inline bool container::has_name() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void container::set_has_name() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void container::clear_has_name() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void container::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& container::name() const {
+  return *name_;
+}
+inline void container::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void container::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void container::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* container::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image = 3;
+inline bool container::has_image() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void container::set_has_image() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void container::clear_has_image() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void container::clear_image() {
+  if (image_ != &::google::protobuf::internal::kEmptyString) {
+    image_->clear();
+  }
+  clear_has_image();
+}
+inline const ::std::string& container::image() const {
+  return *image_;
+}
+inline void container::set_image(const ::std::string& value) {
+  set_has_image();
+  if (image_ == &::google::protobuf::internal::kEmptyString) {
+    image_ = new ::std::string;
+  }
+  image_->assign(value);
+}
+inline void container::set_image(const char* value) {
+  set_has_image();
+  if (image_ == &::google::protobuf::internal::kEmptyString) {
+    image_ = new ::std::string;
+  }
+  image_->assign(value);
+}
+inline void container::set_image(const char* value, size_t size) {
+  set_has_image();
+  if (image_ == &::google::protobuf::internal::kEmptyString) {
+    image_ = new ::std::string;
+  }
+  image_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_image() {
+  set_has_image();
+  if (image_ == &::google::protobuf::internal::kEmptyString) {
+    image_ = new ::std::string;
+  }
+  return image_;
+}
+inline ::std::string* container::release_image() {
+  clear_has_image();
+  if (image_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_;
+    image_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_image(::std::string* image) {
+  if (image_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_;
+  }
+  if (image) {
+    set_has_image();
+    image_ = image;
+  } else {
+    clear_has_image();
+    image_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // metrics
 
 // required uint64 timestamp_ns = 1;
@@ -11533,6 +11878,31 @@ inline void metrics::set_allocated_protos(::draiosproto::proto_info* protos) {
   } else {
     clear_has_protos();
   }
+}
+
+// repeated .draiosproto.container containers = 22;
+inline int metrics::containers_size() const {
+  return containers_.size();
+}
+inline void metrics::clear_containers() {
+  containers_.Clear();
+}
+inline const ::draiosproto::container& metrics::containers(int index) const {
+  return containers_.Get(index);
+}
+inline ::draiosproto::container* metrics::mutable_containers(int index) {
+  return containers_.Mutable(index);
+}
+inline ::draiosproto::container* metrics::add_containers() {
+  return containers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container >&
+metrics::containers() const {
+  return containers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container >*
+metrics::mutable_containers() {
+  return &containers_;
 }
 
 // -------------------------------------------------------------------
