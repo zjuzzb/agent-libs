@@ -104,6 +104,7 @@ message process_details {
     required string comm = 1; // Command name (e.g. "top")
     required string exe = 2; // Full command name (e.g. "/bin/top")
     repeated string args = 3; // Command line arguments (e.g. "-d1")
+    optional string container_id = 4;
 }
 
 //

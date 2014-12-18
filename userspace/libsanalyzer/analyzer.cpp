@@ -1058,6 +1058,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 
+					if(!tinfo->m_container.empty())
+					{
+						proc->mutable_details()->set_container_id(tinfo->m_container);
+					}
+
 					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 

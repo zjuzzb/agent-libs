@@ -507,7 +507,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_CLONE_16_X)
+		if(e->get_type() == PPME_SYSCALL_CLONE_19_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);
@@ -652,7 +652,7 @@ TEST_F(sys_call_test, forking_clone_nofs)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_CLONE_16_X)
+		if(e->get_type() == PPME_SYSCALL_CLONE_19_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);
@@ -791,7 +791,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_CLONE_16_X)
+		if(e->get_type() == PPME_SYSCALL_CLONE_19_X)
 		{
 			uint64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
 			sinsp_threadinfo* ti = e->get_thread_info(false);

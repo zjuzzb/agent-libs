@@ -1611,21 +1611,36 @@ class process_details : public ::google::protobuf::Message {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& args() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_args();
 
+  // optional string container_id = 4;
+  inline bool has_container_id() const;
+  inline void clear_container_id();
+  static const int kContainerIdFieldNumber = 4;
+  inline const ::std::string& container_id() const;
+  inline void set_container_id(const ::std::string& value);
+  inline void set_container_id(const char* value);
+  inline void set_container_id(const char* value, size_t size);
+  inline ::std::string* mutable_container_id();
+  inline ::std::string* release_container_id();
+  inline void set_allocated_container_id(::std::string* container_id);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process_details)
  private:
   inline void set_has_comm();
   inline void clear_has_comm();
   inline void set_has_exe();
   inline void clear_has_exe();
+  inline void set_has_container_id();
+  inline void clear_has_container_id();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* comm_;
   ::std::string* exe_;
   ::google::protobuf::RepeatedPtrField< ::std::string> args_;
+  ::std::string* container_id_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4217,9 +4232,9 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
-  ::std::string* host_tags_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
+  ::std::string* host_tags_;
   ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
@@ -7551,6 +7566,76 @@ process_details::args() const {
 inline ::google::protobuf::RepeatedPtrField< ::std::string>*
 process_details::mutable_args() {
   return &args_;
+}
+
+// optional string container_id = 4;
+inline bool process_details::has_container_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void process_details::set_has_container_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void process_details::clear_has_container_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void process_details::clear_container_id() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    container_id_->clear();
+  }
+  clear_has_container_id();
+}
+inline const ::std::string& process_details::container_id() const {
+  return *container_id_;
+}
+inline void process_details::set_container_id(const ::std::string& value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void process_details::set_container_id(const char* value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void process_details::set_container_id(const char* value, size_t size) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* process_details::mutable_container_id() {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  return container_id_;
+}
+inline ::std::string* process_details::release_container_id() {
+  clear_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = container_id_;
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void process_details::set_allocated_container_id(::std::string* container_id) {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (container_id) {
+    set_has_container_id();
+    container_id_ = container_id;
+  } else {
+    clear_has_container_id();
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 // -------------------------------------------------------------------
