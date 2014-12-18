@@ -64,7 +64,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_serialize_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_time = 0;
 	m_client_tr_time_by_servers = 0;
-	m_last_transaction_delays_update_time = 0;
 	m_total_process_cpu = 0;
 
 	m_host_transaction_delays = new sinsp_delays_info();
@@ -1960,11 +1959,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Flush the scheduler analyzer
 			//
 			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
-
-			if(m_prev_flush_time_ns - m_last_transaction_delays_update_time > TRANSACTION_DELAYS_INTERVAL_NS)
-			{
-				m_last_transaction_delays_update_time = m_prev_flush_time_ns;
-			}
 
 			//
 			// Reset the protobuffer
