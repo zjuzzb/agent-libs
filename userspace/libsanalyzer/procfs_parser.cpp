@@ -579,11 +579,12 @@ void sinsp_procfs_parser::parse_docker(unordered_map<string, container_info>* co
 		json += buf;
 	}
 
+	close(sock);
+
 	size_t pos = json.find("[");
 	if(pos == string::npos)
 	{
 		ASSERT(false);
-		close(sock);
 		return;
 	}
 
@@ -593,7 +594,6 @@ void sinsp_procfs_parser::parse_docker(unordered_map<string, container_info>* co
 	if(!parsingSuccessful)
 	{
 		ASSERT(false);
-		close(sock);
 		return;
 	}
 
@@ -604,7 +604,7 @@ void sinsp_procfs_parser::parse_docker(unordered_map<string, container_info>* co
 
 		if(e.isMember("Id"))
 		{
-			container.id = e["Id"].asString();
+			container.id = e["Id"].asString().substr(0, 12);
 		}
 
 		if(e.isMember("Image"))
@@ -644,4 +644,26 @@ void sinsp_procfs_parser::get_containers(unordered_map<string, container_info>* 
 	// First, see if we have a docker daemon running from which we can query basic metadata
 	//
 	parse_docker(containers);
+
+	//
+	// Then, augment the container information with the CPU stats, if available
+	//
+	// string mounts = string(scap_get_host_root()) + "/proc/mounts";
+	// FILE* f = setmntent(mounts.c_str(), "r");
+	// if(f == NULL)
+	// {
+	// 	ASSERT(false);
+	// 	return;
+	// }
+	
+	// bool found_cpuacct = false;
+	// bool found_memory = false;
+	// bool found_blk
+	// struct mntent *ent;
+	// while((ent = getmntent(f)) != NULL)
+	// {
+	// 	printf("%s %s\n", ent->mnt_fsname, ent->mnt_dir);
+	// }
+
+	// endmntent(f);
 }
