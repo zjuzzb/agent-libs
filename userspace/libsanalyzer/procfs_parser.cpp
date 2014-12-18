@@ -41,7 +41,9 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 		return -1;
 	}
 
-	FILE* f = fopen("/proc/stat", "r");
+	char filename[SCAP_MAX_PATH_SIZE];
+	sprintf(filename, "%s/proc/stat", scap_get_host_root());
+	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
 		ASSERT(false);
@@ -148,7 +150,9 @@ void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<do
 	idles->clear();
 	steals->clear();
 
-	FILE* f = fopen("/proc/stat", "r");
+	char filename[SCAP_MAX_PATH_SIZE];
+	sprintf(filename, "%s/proc/stat", scap_get_host_root());
+	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
 		ASSERT(false);
@@ -258,7 +262,9 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		return;
 	}
 
-	FILE* f = fopen("/proc/meminfo", "r");
+	char filename[SCAP_MAX_PATH_SIZE];
+	sprintf(filename, "%s/proc/meminfo", scap_get_host_root());
+	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
 		ASSERT(false);
@@ -316,7 +322,7 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	char tmps[32];
 	double res = -1;
 
-	string path = string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
+	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
 	uint64_t tval, val1, val2, val3, val4;
 
 	if(!m_is_live_capture)
@@ -409,7 +415,9 @@ return;
 	uint64_t tid;
 
 	tid = 0;
-	dir_p = opendir("/proc");
+	char filename[SCAP_MAX_PATH_SIZE];
+	sprintf(filename, "%s/proc", scap_get_host_root());
+	dir_p = opendir(filename);
 
 	if(dir_p == NULL)
 	{
