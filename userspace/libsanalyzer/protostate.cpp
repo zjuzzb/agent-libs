@@ -567,6 +567,10 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	{
 		postgres.to_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
 	}
+	if(mongodb.has_data())
+	{
+		mongodb.to_protobuf(protobuf_msg->mutable_mongodb(), sampling_ratio);
+	}
 }
 
 void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio)
@@ -650,7 +654,7 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 	}
 	if(m_client_ops.size() > 0)
 	{
-		for (auto item : m_server_ops)
+		for (auto item : m_client_ops)
 		{
 			ud = protobuf_msg->add_client_ops();
 			ud->set_op((draiosproto::mongodb_op_type)item.first);

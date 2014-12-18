@@ -18,13 +18,19 @@
 // sinsp_mongodb_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-const uint32_t sinsp_mongodb_parser::commands_size = 4;
+const uint32_t sinsp_mongodb_parser::commands_size = 10;
 
 const char* sinsp_mongodb_parser::commands[] = {
 	"insert",
 	"update",
 	"aggregate",
-	"delete"
+	"delete",
+	"count",
+	"distinct",
+	"mapReduce",
+	"geoNear",
+	"geoSearch",
+	"findAndModify",
 };
 
 const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
@@ -32,7 +38,13 @@ const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
 	sizeof("insert"),
 	sizeof("update"),
 	sizeof("aggregate"),
-	sizeof("delete")
+	sizeof("delete"),
+	sizeof("count"),
+	sizeof("distinct"),
+	sizeof("mapReduce"),
+	sizeof("geoNear"),
+	sizeof("geoSearch"),
+	sizeof("findAndModify")
 };
 
 const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[] =
@@ -40,7 +52,13 @@ const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[]
 	MONGODB_OP_INSERT,
 	MONGODB_OP_UPDATE,
 	MONGODB_OP_AGGREGATE,
-	MONGODB_OP_DELETE
+	MONGODB_OP_DELETE,
+	MONGODB_OP_COUNT,
+	MONGODB_OP_DISTINCT,
+	MONGODB_OP_MAP_REDUCE,
+	MONGODB_OP_GEO_NEAR,
+	MONGODB_OP_GEO_SEARCH,
+	MONGODB_OP_FIND_AND_MODIFY,
 };
 
 sinsp_mongodb_parser::sinsp_mongodb_parser():
@@ -111,21 +129,19 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 	printf("\n");
 	if(buflen >= 16)
 	{
-		int32_t* opcode = (int32_t*)(buf+12);
-
+		m_wireopcode = (wire_opcode)(*(int32_t*)(buf+12));
 		//
 		// Do the parsing
 		//
-		switch(*opcode)
+		switch(m_wireopcode)
 		{
 		case WIRE_OP_QUERY:
 		{
-			m_msgtype = MONGODB_OP_QUERY;
 			// Extract collection name
 			if (buflen >= 20)
 			{
 				char* start_collection = buf+20;
-				for(int j = 0; j < buflen-20; ++j)
+				for(unsigned int j = 0; j < buflen-20; ++j)
 				{
 					if (*start_collection == '.')
 					{
@@ -154,7 +170,6 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 							break;
 						}
 					}
-					//
 				}
 				else
 				{
@@ -173,7 +188,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			if (buflen >= 20)
 			{
 				char* start_collection = buf+20;
-				for(int j = 0; j < buflen-20; ++j)
+				for(unsigned int j = 0; j < buflen-20; ++j)
 				{
 					if (*start_collection == '.')
 					{
@@ -190,7 +205,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		}
 
-		printf("MongoDB wire op is: %d\n", *opcode);
+		printf("MongoDB wire op is: %d\n", m_wireopcode);
 		printf("MongoDB op is: %d\n", m_msgtype);
 		if (m_collection!=NULL)
 		{
@@ -202,12 +217,34 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 
 bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 {
+	printf("MongoDB response: ");
+	debug_print_binary_buf(buf, buflen);
+	printf("\n");
 	if(buflen >= 16)
 	{
 		int32_t* opcode = (int32_t*)(buf+12);
 
 		if (*opcode == WIRE_OP_REPLY)
 		{
+			if(m_wireopcode == WIRE_OP_QUERY && buflen >= (16+4+8+4+4 + 4+1+2+1+4+1+2+1+ 4))
+			{
+				// Look for "n" field,
+				// |16bytes header|responseFlags(int32)|cursorid(int64)|startingFrom(int32)|numberReturned(int32)|document
+				// | 16  | 4 | 8 | 4 | 4 |
+				// document:
+				// |size(int32)|0x10|ok|0|int32|0x10|n|0|nvalue|
+				// | 4     | 1 | 2 | 1 | 4 | 1 |2|1
+				int32_t n = *(int32_t*)(buf + 16+4+8+4+4 + 4+1+2+1+4+1+2+1);
+				printf("MongoDB n: %d\n", n);
+				if (n == 0)
+				{
+					m_error_code = 1; // Right now is like a boolean
+				}
+				else
+				{
+					m_error_code = 0;
+				}
+			}
 			m_parsed=true;
 			m_is_valid = true;
 		}

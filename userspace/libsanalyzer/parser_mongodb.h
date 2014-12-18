@@ -22,12 +22,17 @@ public:
 		MONGODB_OP_INSERT = 1,
 		MONGODB_OP_UPDATE = 2,
 		MONGODB_OP_DELETE = 3,
-		MONGODB_OP_QUERY = 4,
-		MONGODB_OP_GET_MORE = 5,
-		MONGODB_OP_KILL_CURSORS = 6,
-		MONGODB_OP_FIND = 7,
-		MONGODB_OP_AGGREGATE = 8,
-		MONGODB_OP_COMMAND = 9,
+		MONGODB_OP_GET_MORE = 4,
+		MONGODB_OP_KILL_CURSORS = 5,
+		MONGODB_OP_FIND = 6,
+		MONGODB_OP_AGGREGATE = 7,
+		MONGODB_OP_COMMAND = 8,
+		MONGODB_OP_COUNT = 9,
+		MONGODB_OP_DISTINCT = 10,
+		MONGODB_OP_MAP_REDUCE = 11,
+		MONGODB_OP_GEO_NEAR = 12,
+		MONGODB_OP_GEO_SEARCH = 13,
+		MONGODB_OP_FIND_AND_MODIFY = 14,
 	};
 
 	sinsp_mongodb_parser();
@@ -44,7 +49,7 @@ public:
 	msg_type m_msgtype;
 
 private:
-	enum wire_opcodes
+	enum wire_opcode
 	{
 		WIRE_OP_NONE = 0,
 		WIRE_OP_REPLY = 1,
@@ -56,7 +61,7 @@ private:
 		WIRE_OP_DELETE = 2006,
 		WIRE_OP_KILL_CURSORS = 2007
 	};
-
+	wire_opcode m_wireopcode;
 	inline void reset();
 
 	sinsp_autobuffer m_collection_storage;

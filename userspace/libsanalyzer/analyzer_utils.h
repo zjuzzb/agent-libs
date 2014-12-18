@@ -110,7 +110,7 @@ inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
 	{
 		if(buf[j] >= 'A' && buf[j] <= 'z' )
 		{
-			printf("%c",buf[j]);
+			printf(".%c",buf[j]);
 		}
 		else
 		{
