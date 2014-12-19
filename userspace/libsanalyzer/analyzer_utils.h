@@ -110,7 +110,7 @@ inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
 	{
 		if(buf[j] >= 'A' && buf[j] <= 'z' )
 		{
-			printf(".%c",buf[j]);
+			printf("\x1B[31m%c\x1B[0m",buf[j]);
 		}
 		else
 		{

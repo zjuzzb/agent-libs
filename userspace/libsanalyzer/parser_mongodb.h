@@ -16,7 +16,10 @@
 class sinsp_mongodb_parser : public sinsp_protocol_parser
 {
 public:
-	enum msg_type
+	//
+	// MongoDB operation reported to metrics
+	//
+	enum opcode
 	{
 		MONGODB_OP_NONE = 0,
 		MONGODB_OP_INSERT = 1,
@@ -46,9 +49,13 @@ public:
 
 	char* m_collection;
 	uint16_t m_error_code;
-	msg_type m_msgtype;
+	opcode m_opcode;
 
 private:
+	//
+	// MongoDB operations defined on the wire
+	// protocol
+	//
 	enum wire_opcode
 	{
 		WIRE_OP_NONE = 0,
@@ -67,12 +74,10 @@ private:
 	sinsp_autobuffer m_collection_storage;
 	bool m_parsed;
 
-	char* m_error_message;
-
 	static const uint32_t commands_size;
 	static const char* commands[];
 	static const uint32_t commands_sizes_map[];
-	static const msg_type commands_to_msgtype[];
+	static const opcode commands_to_opcode[];
 };
 
 #endif // HAS_ANALYZER

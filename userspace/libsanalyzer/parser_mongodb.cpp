@@ -47,7 +47,7 @@ const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
 	sizeof("findAndModify")
 };
 
-const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[] =
+const sinsp_mongodb_parser::opcode sinsp_mongodb_parser::commands_to_opcode[] =
 {
 	MONGODB_OP_INSERT,
 	MONGODB_OP_UPDATE,
@@ -62,7 +62,11 @@ const sinsp_mongodb_parser::msg_type sinsp_mongodb_parser::commands_to_msgtype[]
 };
 
 sinsp_mongodb_parser::sinsp_mongodb_parser():
-	m_collection(NULL)
+	m_collection(NULL),
+	m_error_code(0),
+	m_opcode(MONGODB_OP_NONE),
+	m_wireopcode(WIRE_OP_NONE),
+	m_parsed(false)
 {
 }
 
@@ -71,9 +75,11 @@ inline void sinsp_mongodb_parser::reset()
 	m_parsed = false;
 	m_is_valid = false;
 	m_is_req_valid = false;
+	m_collection = NULL;
 	m_collection_storage.clear();
 	m_error_code = 0;
-	m_msgtype = MONGODB_OP_NONE;
+	m_opcode = MONGODB_OP_NONE;
+	m_wireopcode = WIRE_OP_NONE;
 }
 
 sinsp_mongodb_parser::proto sinsp_mongodb_parser::get_type()
@@ -150,8 +156,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					}
 					++start_collection;
 				}
-				char cmd[] = "$cmd";
-				if (*(uint32_t*)(start_collection) == *(uint32_t*)cmd)
+				if (*(uint32_t*)(start_collection) == *(uint32_t*)"$cmd")
 				{
 					char * doc=start_collection+5+8;
 					// In this case document is:
@@ -165,7 +170,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					{
 						if (*command == *(uint32_t*)(commands[j]))
 						{
-							m_msgtype = commands_to_msgtype[j];
+							m_opcode = commands_to_opcode[j];
 							start_collection = doc+5+commands_sizes_map[j]+4;
 							break;
 						}
@@ -173,7 +178,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				}
 				else
 				{
-					m_msgtype = MONGODB_OP_FIND;
+					m_opcode = MONGODB_OP_FIND;
 				}
 				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
 			}
@@ -183,7 +188,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		case WIRE_OP_GET_MORE:
 		{
-			m_msgtype = MONGODB_OP_GET_MORE;
+			m_opcode = MONGODB_OP_GET_MORE;
 			// Extract collection name
 			if (buflen >= 20)
 			{
@@ -203,10 +208,12 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			m_is_req_valid = true;
 			break;
 		}
+		default:
+			break;
 		}
 
 		printf("MongoDB wire op is: %d\n", m_wireopcode);
-		printf("MongoDB op is: %d\n", m_msgtype);
+		printf("MongoDB op is: %d\n", m_opcode);
 		if (m_collection!=NULL)
 		{
 			printf("MongoDB extracted collection: %s\n", m_collection);
@@ -226,7 +233,7 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 
 		if (*opcode == WIRE_OP_REPLY)
 		{
-			if(m_wireopcode == WIRE_OP_QUERY && buflen >= (16+4+8+4+4 + 4+1+2+1+4+1+2+1+ 4))
+			if(m_wireopcode == WIRE_OP_QUERY && buflen >= (16+4+8+4+4 + 4+1+2+1+4+1+2+1 + 4))
 			{
 				// Look for "n" field,
 				// |16bytes header|responseFlags(int32)|cursorid(int64)|startingFrom(int32)|numberReturned(int32)|document
