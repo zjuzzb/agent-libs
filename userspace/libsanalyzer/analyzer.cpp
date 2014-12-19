@@ -2166,9 +2166,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			int64_t used_memory;
-			int64_t used_swap;
-			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
+			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_kb, &m_host_metrics.m_swap_memory_kb);
 
 			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
 				m_sampling_ratio);
@@ -2180,8 +2178,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)used_memory);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)used_swap);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_host_metrics.m_res_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(m_host_metrics.m_swap_memory_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
@@ -2949,8 +2947,8 @@ void sinsp_analyzer::emit_containers()
 			container->mutable_resource_counters()->set_stolen_capacity_score(it_metrics->second.get_stolen_score() * 100);
 			container->mutable_resource_counters()->set_connection_queue_usage_pct(it_metrics->second.m_connection_queue_usage_pct);
 			container->mutable_resource_counters()->set_fd_usage_pct(it_metrics->second.m_fd_usage_pct);
-			// container->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)used_memory);
-			// container->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)used_swap);
+			container->mutable_resource_counters()->set_resident_memory_usage_kb(it_metrics->second.m_res_memory_kb);
+			container->mutable_resource_counters()->set_swap_memory_usage_kb(it_metrics->second.m_swap_memory_kb);
 			container->mutable_resource_counters()->set_major_pagefaults(it_metrics->second.m_pfmajor);
 			container->mutable_resource_counters()->set_minor_pagefaults(it_metrics->second.m_pfminor);
 			it_metrics->second.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
