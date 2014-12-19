@@ -80,6 +80,7 @@ inline void sinsp_mongodb_parser::reset()
 	m_error_code = 0;
 	m_opcode = MONGODB_OP_NONE;
 	m_wireopcode = WIRE_OP_NONE;
+	m_reassembly_buf.clear();
 }
 
 sinsp_mongodb_parser::proto sinsp_mongodb_parser::get_type()
@@ -114,6 +115,7 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 		if(is_switched)
 		{
 			m_parsed = false;
+			m_reassembly_buf.clear();
 			return sinsp_protocol_parser::MSG_RESPONSE;
 		}
 		else
@@ -130,12 +132,30 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 
 bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 {
-	printf("MongoDB extract: ");
-	debug_print_binary_buf(buf, buflen);
-	printf("\n");
-	if(buflen >= 16)
+	if(buflen + m_reassembly_buf.get_size() > 16)
 	{
-		m_wireopcode = (wire_opcode)(*(int32_t*)(buf+12));
+		char* rbuf;
+		uint32_t rbuflen;
+
+		//
+		// Reconstruct the buffer
+		//
+		if(m_reassembly_buf.get_size() == 0)
+		{
+			rbuf = buf;
+			rbuflen = buflen;
+		}
+		else
+		{
+			printf("MongoDB reconstruct\n");
+			m_reassembly_buf.copy(buf, buflen);
+			rbuf = m_reassembly_buf.get_buf();
+			rbuflen = m_reassembly_buf.get_size();
+		}
+		printf("MongoDB extract: ");
+		debug_print_binary_buf(rbuf, rbuflen);
+		printf("\n");
+		m_wireopcode = (wire_opcode)(*(int32_t*)(rbuf+12));
 		//
 		// Do the parsing
 		//
@@ -144,10 +164,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		case WIRE_OP_QUERY:
 		{
 			// Extract collection name
-			if (buflen >= 20)
+			if (rbuflen >= 20)
 			{
-				char* start_collection = buf+20;
-				for(unsigned int j = 0; j < buflen-20; ++j)
+				char* start_collection = rbuf+20;
+				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
 					if (*start_collection == '.')
 					{
@@ -172,7 +192,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 						{
 							m_opcode = commands_to_opcode[j];
 							start_collection = doc+5+commands_sizes_map[j]+4;
-							m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+							m_collection = m_collection_storage.copy(start_collection, rbuflen, 1);
 							m_parsed = true;
 							m_is_req_valid = true;
 							break;
@@ -182,7 +202,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				else
 				{
 					m_opcode = MONGODB_OP_FIND;
-					m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+					m_collection = m_collection_storage.copy(start_collection, rbuflen, 1);
 					m_parsed = true;
 					m_is_req_valid = true;
 				}
@@ -193,10 +213,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		{
 			m_opcode = MONGODB_OP_GET_MORE;
 			// Extract collection name
-			if (buflen >= 20)
+			if (rbuflen >= 20)
 			{
-				char* start_collection = buf+20;
-				for(unsigned int j = 0; j < buflen-20; ++j)
+				char* start_collection = rbuf+20;
+				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
 					if (*start_collection == '.')
 					{
@@ -221,6 +241,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		{
 			printf("MongoDB extracted collection: %s\n", m_collection);
 		}
+	}
+	else
+	{
+		m_reassembly_buf.copy(buf, buflen);
 	}
 	return true;
 }

@@ -72,6 +72,7 @@ private:
 	inline void reset();
 
 	sinsp_autobuffer m_collection_storage;
+	sinsp_autobuffer m_reassembly_buf;
 	bool m_parsed;
 
 	static const uint32_t commands_size;
