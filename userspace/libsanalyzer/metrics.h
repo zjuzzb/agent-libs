@@ -307,6 +307,7 @@ public:
 	uint32_t m_fd_count; // Number of FDs
 	int64_t m_res_memory_kb;
 	int64_t m_swap_memory_kb;
+	double m_cpuload; // for containers
 
 private:
 	double m_tot_capacity_score;

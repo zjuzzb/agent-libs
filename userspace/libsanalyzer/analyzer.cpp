@@ -2694,6 +2694,11 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			ASSERT(evt->m_tinfo->m_ainfo);
 
 			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
+
+			if(!evt->m_tinfo->m_container.empty())
+			{
+				m_containers_metrics[evt->m_tinfo->m_container].m_syscall_errors.add(evt);
+			}
 		}
 	}
 }
@@ -2958,10 +2963,10 @@ void sinsp_analyzer::emit_containers()
 			container->mutable_resource_counters()->set_minor_pagefaults(it_metrics->second.m_pfminor);
 			it_metrics->second.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 			container->mutable_resource_counters()->set_fd_count(it_metrics->second.m_fd_count);
+			container->mutable_resource_counters()->set_cpu_pct(it_metrics->second.m_cpuload * 100);
 
 			it_metrics->second.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 		}
-
 
 		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(*it);
 
