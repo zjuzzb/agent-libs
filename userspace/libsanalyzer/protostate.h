@@ -386,6 +386,9 @@ public:
 	}
 
 private:
+	void collections_to_protobuf(unordered_map<string, sinsp_query_details>& map,
+									const function<draiosproto::mongodb_collection_details*(void)> get_cd,
+								 uint32_t sampling_ratio);
 	// MongoDB
 	unordered_map<uint32_t, sinsp_query_details> m_server_ops;
 	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
