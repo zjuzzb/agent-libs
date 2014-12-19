@@ -172,6 +172,9 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 						{
 							m_opcode = commands_to_opcode[j];
 							start_collection = doc+5+commands_sizes_map[j]+4;
+							m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+							m_parsed = true;
+							m_is_req_valid = true;
 							break;
 						}
 					}
@@ -179,11 +182,11 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				else
 				{
 					m_opcode = MONGODB_OP_FIND;
+					m_collection = m_collection_storage.copy(start_collection, buflen, 1);
+					m_parsed = true;
+					m_is_req_valid = true;
 				}
-				m_collection = m_collection_storage.copy(start_collection, buflen, 1);
 			}
-			m_parsed = true;
-			m_is_req_valid = true;
 			break;
 		}
 		case WIRE_OP_GET_MORE:
