@@ -88,6 +88,7 @@ public:
 		Poco::Thread thread;
 		thread.start(runnable);
 		capturing.wait_for_capture_start();
+
 		if(!capturing.m_start_failed)
 		{
 			run_function(capturing.m_inspector);
