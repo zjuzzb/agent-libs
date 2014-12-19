@@ -715,7 +715,7 @@ void sinsp_error_counters::add(sinsp_error_counters* other)
 }
 
 
-void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio)
+void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio) const
 {
 	protobuf_msg->set_count(m_count * sampling_ratio);
 
@@ -814,7 +814,7 @@ void sinsp_host_metrics::add_capacity_score(float capacity_score,
 */
 }
 
-double sinsp_host_metrics::get_capacity_score()
+double sinsp_host_metrics::get_capacity_score() const
 {
 	return m_tot_capacity_score;
 /*
@@ -829,7 +829,7 @@ double sinsp_host_metrics::get_capacity_score()
 */
 }
 
-double sinsp_host_metrics::get_stolen_score()
+double sinsp_host_metrics::get_stolen_score() const
 {
 	return m_tot_stolen_capacity_score;
 

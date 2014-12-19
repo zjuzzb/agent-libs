@@ -201,6 +201,7 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	void emit_top_files();
+	void emit_containers();
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -312,6 +313,13 @@ VISIBILITY_PRIVATE
 	// Command list
 	//
 	vector<sinsp_executed_command> m_executed_commands;
+
+	//
+	// Container metrics
+	//
+	set<string> m_containers;
+	unordered_map<string, sinsp_host_metrics> m_containers_metrics;
+	unordered_map<string, sinsp_counters> m_containers_req_metrics;
 
 	//
 	// Subsampling-related stuff

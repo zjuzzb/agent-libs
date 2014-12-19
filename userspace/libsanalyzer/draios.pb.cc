@@ -683,10 +683,20 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(file_stat));
   container_descriptor_ = file->message_type(27);
-  static const int container_offsets_[3] = {
+  static const int container_offsets_[13] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, image_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, tcounters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, reqcounters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, min_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, max_transaction_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, transaction_processing_delay_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, merged_server_delay_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, next_tiers_delay_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, resource_counters_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, syscall_errors_),
   };
   container_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1217,70 +1227,84 @@ void protobuf_AddDesc_draios_2eproto() {
     "_bytes\030\004 \002(\004\022\022\n\nused_bytes\030\005 \002(\004\022\027\n\017avai"
     "lable_bytes\030\006 \002(\004\"]\n\tfile_stat\022\014\n\004name\030\001"
     " \002(\t\022\r\n\005bytes\030\002 \002(\r\022\017\n\007time_ns\030\003 \002(\004\022\022\n\n"
-    "open_count\030\004 \002(\r\022\016\n\006errors\030\005 \002(\r\"4\n\tcont"
-    "ainer\022\n\n\002id\030\001 \002(\t\022\014\n\004name\030\002 \001(\t\022\r\n\005image"
-    "\030\003 \001(\t\"\313\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004"
+    "open_count\030\004 \002(\r\022\016\n\006errors\030\005 \002(\r\"\335\004\n\tcon"
+    "tainer\022\n\n\002id\030\001 \002(\t\022\014\n\004name\030\002 \001(\t\022\r\n\005imag"
+    "e\030\003 \001(\t\022/\n\ttcounters\030\004 \001(\0132\034.draiosproto"
+    ".time_categories\022B\n\013reqcounters\030\005 \001(\0132-."
+    "draiosproto.transaction_breakdown_catego"
+    "ries\022E\n\024transaction_counters\030\006 \001(\0132\'.dra"
+    "iosproto.counter_time_bidirectional\022I\n\030m"
+    "in_transaction_counters\030\007 \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\022I\n\030max_tr"
+    "ansaction_counters\030\010 \001(\0132\'.draiosproto.c"
+    "ounter_time_bidirectional\022$\n\034transaction"
+    "_processing_delay\030\t \001(\004\022\033\n\023merged_server"
+    "_delay\030\n \001(\004\022\030\n\020next_tiers_delay\030\013 \001(\004\022;"
+    "\n\021resource_counters\030\014 \001(\0132 .draiosproto."
+    "resource_categories\022;\n\016syscall_errors\030\r "
+    "\001(\0132#.draiosproto.counter_syscall_errors"
+    "\"\313\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nma"
+    "chine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022#\n\010h"
+    "ostinfo\030\004 \002(\0132\021.draiosproto.host\022&\n\010prog"
+    "rams\030\t \003(\0132\024.draiosproto.program\022\'\n\tproc"
+    "esses\030\005 \003(\0132\024.draiosproto.process\0226\n\020ipv"
+    "4_connections\030\007 \003(\0132\034.draiosproto.ipv4_c"
+    "onnection\022D\n\027ipv4_network_interfaces\030\010 \003"
+    "(\0132#.draiosproto.ipv4_network_interface\022"
+    "\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_custom_n"
+    "ame\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027\n\017host_cus"
+    "tom_map\030\r \001(\t\022\026\n\016is_host_hidden\030\016 \001(\010\022\030\n"
+    "\020hidden_processes\030\017 \001(\t\022\017\n\007version\030\020 \001(\t"
+    "\022\023\n\013instance_id\030\025 \001(\t\022.\n\010commands\030\021 \003(\0132"
+    "\034.draiosproto.command_details\022\'\n\006mounts\030"
+    "\022 \003(\0132\027.draiosproto.mounted_fs\022)\n\ttop_fi"
+    "les\030\023 \003(\0132\026.draiosproto.file_stat\022\'\n\006pro"
+    "tos\030\024 \001(\0132\027.draiosproto.proto_info\022*\n\nco"
+    "ntainers\030\026 \003(\0132\026.draiosproto.container\"\232"
+    "\001\n\022dump_request_start\022\024\n\014timestamp_ns\030\001 "
+    "\002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003"
+    " \001(\t\022\023\n\013duration_ns\030\004 \001(\004\022\017\n\007filters\030\005 \001"
+    "(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006 \002(\t\"a\n\021d"
+    "ump_request_stop\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
+    "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
+    "\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_response\022\024\n\014time"
+    "stamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cu"
+    "stomer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022\023\n\013fin"
+    "al_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t \001(\010\022\017\n\007co"
+    "ntent\030\004 \001(\014\022\030\n\020final_size_bytes\030\n \001(\004\022\r\n"
+    "\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_open"
+    "_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachin"
+    "e_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token"
+    "\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013"
+    "\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030"
+    "\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns\030\001 \002(\004"
     "\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001("
-    "\t\022#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.host\022&"
-    "\n\010programs\030\t \003(\0132\024.draiosproto.program\022\'"
-    "\n\tprocesses\030\005 \003(\0132\024.draiosproto.process\022"
-    "6\n\020ipv4_connections\030\007 \003(\0132\034.draiosproto."
-    "ipv4_connection\022D\n\027ipv4_network_interfac"
-    "es\030\010 \003(\0132#.draiosproto.ipv4_network_inte"
-    "rface\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_cu"
-    "stom_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\027\n\017ho"
-    "st_custom_map\030\r \001(\t\022\026\n\016is_host_hidden\030\016 "
-    "\001(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007version"
-    "\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022.\n\010commands\030"
-    "\021 \003(\0132\034.draiosproto.command_details\022\'\n\006m"
-    "ounts\030\022 \003(\0132\027.draiosproto.mounted_fs\022)\n\t"
-    "top_files\030\023 \003(\0132\026.draiosproto.file_stat\022"
-    "\'\n\006protos\030\024 \001(\0132\027.draiosproto.proto_info"
-    "\022*\n\ncontainers\030\026 \003(\0132\026.draiosproto.conta"
-    "iner\"\232\001\n\022dump_request_start\022\024\n\014timestamp"
-    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
-    "r_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \001(\004\022\017\n\007filte"
-    "rs\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token\030\006 \002("
-    "\t\"a\n\021dump_request_stop\022\024\n\014timestamp_ns\030\001"
-    " \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030"
-    "\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_response\022\024"
-    "\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t"
-    "\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022"
-    "\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030\t \001(\010"
-    "\022\017\n\007content\030\004 \001(\014\022\030\n\020final_size_bytes\030\n "
-    "\001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ss"
-    "h_open_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\n"
-    "machine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n"
-    "\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010password\030\006"
-    " \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n"
-    "\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timestamp_ns"
-    "\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_i"
-    "d\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005"
-    "error\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_"
-    "close_channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nm"
-    "achine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005"
-    "token\030\004 \002(\t\"T\n\023auto_update_request\022\024\n\014ti"
-    "mestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013"
-    "customer_id\030\003 \001(\t\"c\n\025dirty_shutdown_repo"
-    "rt\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002"
-    " \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346"
-    "\001\n\022sql_statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nS"
-    "OP_SELECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003"
-    "\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_"
-    "DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022"
-    "\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013"
-    "\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\251\001\n\013netw"
-    "orkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVE"
-    "R\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNI"
-    "X_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025"
-    "IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIEN"
-    "T\020 *\314\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022DUM"
-    "P_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004"
-    "\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020"
-    "\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027"
-    "\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOW"
-    "N_REPORT\020\nB$\n\031com.draios.model.protobufB"
-    "\005AgentH\001", 8368);
+    "\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030"
+    "\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n\021ssh_close_"
+    "channel\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
+    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030"
+    "\004 \002(\t\"T\n\023auto_update_request\022\024\n\014timestam"
+    "p_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custom"
+    "er_id\030\003 \001(\t\"c\n\025dirty_shutdown_report\022\024\n\014"
+    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
+    "\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346\001\n\022sql"
+    "_statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SEL"
+    "ECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSO"
+    "P_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006"
+    "\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP"
+    "_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSO"
+    "P_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\251\001\n\013networkrol"
+    "e\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n"
+    "\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERV"
+    "ER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REM"
+    "OTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001"
+    "\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQU"
+    "EST_START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDU"
+    "MP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021S"
+    "SH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO"
+    "_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPO"
+    "RT\020\nB$\n\031com.draios.model.protobufB\005Agent"
+    "H\001", 8922);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -13128,6 +13152,16 @@ void file_stat::Swap(file_stat* other) {
 const int container::kIdFieldNumber;
 const int container::kNameFieldNumber;
 const int container::kImageFieldNumber;
+const int container::kTcountersFieldNumber;
+const int container::kReqcountersFieldNumber;
+const int container::kTransactionCountersFieldNumber;
+const int container::kMinTransactionCountersFieldNumber;
+const int container::kMaxTransactionCountersFieldNumber;
+const int container::kTransactionProcessingDelayFieldNumber;
+const int container::kMergedServerDelayFieldNumber;
+const int container::kNextTiersDelayFieldNumber;
+const int container::kResourceCountersFieldNumber;
+const int container::kSyscallErrorsFieldNumber;
 #endif  // !_MSC_VER
 
 container::container()
@@ -13136,6 +13170,13 @@ container::container()
 }
 
 void container::InitAsDefaultInstance() {
+  tcounters_ = const_cast< ::draiosproto::time_categories*>(&::draiosproto::time_categories::default_instance());
+  reqcounters_ = const_cast< ::draiosproto::transaction_breakdown_categories*>(&::draiosproto::transaction_breakdown_categories::default_instance());
+  transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  min_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  max_transaction_counters_ = const_cast< ::draiosproto::counter_time_bidirectional*>(&::draiosproto::counter_time_bidirectional::default_instance());
+  resource_counters_ = const_cast< ::draiosproto::resource_categories*>(&::draiosproto::resource_categories::default_instance());
+  syscall_errors_ = const_cast< ::draiosproto::counter_syscall_errors*>(&::draiosproto::counter_syscall_errors::default_instance());
 }
 
 container::container(const container& from)
@@ -13149,6 +13190,16 @@ void container::SharedCtor() {
   id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   image_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  tcounters_ = NULL;
+  reqcounters_ = NULL;
+  transaction_counters_ = NULL;
+  min_transaction_counters_ = NULL;
+  max_transaction_counters_ = NULL;
+  transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+  merged_server_delay_ = GOOGLE_ULONGLONG(0);
+  next_tiers_delay_ = GOOGLE_ULONGLONG(0);
+  resource_counters_ = NULL;
+  syscall_errors_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -13167,6 +13218,13 @@ void container::SharedDtor() {
     delete image_;
   }
   if (this != default_instance_) {
+    delete tcounters_;
+    delete reqcounters_;
+    delete transaction_counters_;
+    delete min_transaction_counters_;
+    delete max_transaction_counters_;
+    delete resource_counters_;
+    delete syscall_errors_;
   }
 }
 
@@ -13207,6 +13265,32 @@ void container::Clear() {
       if (image_ != &::google::protobuf::internal::kEmptyString) {
         image_->clear();
       }
+    }
+    if (has_tcounters()) {
+      if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
+    }
+    if (has_reqcounters()) {
+      if (reqcounters_ != NULL) reqcounters_->::draiosproto::transaction_breakdown_categories::Clear();
+    }
+    if (has_transaction_counters()) {
+      if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_min_transaction_counters()) {
+      if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+    if (has_max_transaction_counters()) {
+      if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
+    }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
+    merged_server_delay_ = GOOGLE_ULONGLONG(0);
+    next_tiers_delay_ = GOOGLE_ULONGLONG(0);
+    if (has_resource_counters()) {
+      if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
+    }
+    if (has_syscall_errors()) {
+      if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
     }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -13265,6 +13349,152 @@ bool container::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(34)) goto parse_tcounters;
+        break;
+      }
+
+      // optional .draiosproto.time_categories tcounters = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_tcounters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_tcounters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(42)) goto parse_reqcounters;
+        break;
+      }
+
+      // optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_reqcounters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_reqcounters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(58)) goto parse_min_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+      case 7: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_min_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_min_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(66)) goto parse_max_transaction_counters;
+        break;
+      }
+
+      // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+      case 8: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_max_transaction_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_max_transaction_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(72)) goto parse_transaction_processing_delay;
+        break;
+      }
+
+      // optional uint64 transaction_processing_delay = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_transaction_processing_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &transaction_processing_delay_)));
+          set_has_transaction_processing_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(80)) goto parse_merged_server_delay;
+        break;
+      }
+
+      // optional uint64 merged_server_delay = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_merged_server_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &merged_server_delay_)));
+          set_has_merged_server_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_next_tiers_delay;
+        break;
+      }
+
+      // optional uint64 next_tiers_delay = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_next_tiers_delay:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &next_tiers_delay_)));
+          set_has_next_tiers_delay();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(98)) goto parse_resource_counters;
+        break;
+      }
+
+      // optional .draiosproto.resource_categories resource_counters = 12;
+      case 12: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_resource_counters:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_resource_counters()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(106)) goto parse_syscall_errors;
+        break;
+      }
+
+      // optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_syscall_errors:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_syscall_errors()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -13314,6 +13544,63 @@ void container::SerializeWithCachedSizes(
       3, this->image(), output);
   }
 
+  // optional .draiosproto.time_categories tcounters = 4;
+  if (has_tcounters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      4, this->tcounters(), output);
+  }
+
+  // optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+  if (has_reqcounters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      5, this->reqcounters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+  if (has_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      6, this->transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+  if (has_min_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      7, this->min_transaction_counters(), output);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+  if (has_max_transaction_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      8, this->max_transaction_counters(), output);
+  }
+
+  // optional uint64 transaction_processing_delay = 9;
+  if (has_transaction_processing_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(9, this->transaction_processing_delay(), output);
+  }
+
+  // optional uint64 merged_server_delay = 10;
+  if (has_merged_server_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(10, this->merged_server_delay(), output);
+  }
+
+  // optional uint64 next_tiers_delay = 11;
+  if (has_next_tiers_delay()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->next_tiers_delay(), output);
+  }
+
+  // optional .draiosproto.resource_categories resource_counters = 12;
+  if (has_resource_counters()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      12, this->resource_counters(), output);
+  }
+
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+  if (has_syscall_errors()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      13, this->syscall_errors(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -13352,6 +13639,70 @@ void container::SerializeWithCachedSizes(
         3, this->image(), target);
   }
 
+  // optional .draiosproto.time_categories tcounters = 4;
+  if (has_tcounters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        4, this->tcounters(), target);
+  }
+
+  // optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+  if (has_reqcounters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        5, this->reqcounters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+  if (has_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        6, this->transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+  if (has_min_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        7, this->min_transaction_counters(), target);
+  }
+
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+  if (has_max_transaction_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        8, this->max_transaction_counters(), target);
+  }
+
+  // optional uint64 transaction_processing_delay = 9;
+  if (has_transaction_processing_delay()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(9, this->transaction_processing_delay(), target);
+  }
+
+  // optional uint64 merged_server_delay = 10;
+  if (has_merged_server_delay()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(10, this->merged_server_delay(), target);
+  }
+
+  // optional uint64 next_tiers_delay = 11;
+  if (has_next_tiers_delay()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->next_tiers_delay(), target);
+  }
+
+  // optional .draiosproto.resource_categories resource_counters = 12;
+  if (has_resource_counters()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        12, this->resource_counters(), target);
+  }
+
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+  if (has_syscall_errors()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        13, this->syscall_errors(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -13382,6 +13733,78 @@ int container::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->image());
+    }
+
+    // optional .draiosproto.time_categories tcounters = 4;
+    if (has_tcounters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->tcounters());
+    }
+
+    // optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+    if (has_reqcounters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->reqcounters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+    if (has_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+    if (has_min_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->min_transaction_counters());
+    }
+
+    // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+    if (has_max_transaction_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->max_transaction_counters());
+    }
+
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional uint64 transaction_processing_delay = 9;
+    if (has_transaction_processing_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->transaction_processing_delay());
+    }
+
+    // optional uint64 merged_server_delay = 10;
+    if (has_merged_server_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->merged_server_delay());
+    }
+
+    // optional uint64 next_tiers_delay = 11;
+    if (has_next_tiers_delay()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->next_tiers_delay());
+    }
+
+    // optional .draiosproto.resource_categories resource_counters = 12;
+    if (has_resource_counters()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->resource_counters());
+    }
+
+    // optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+    if (has_syscall_errors()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->syscall_errors());
     }
 
   }
@@ -13420,6 +13843,38 @@ void container::MergeFrom(const container& from) {
     if (from.has_image()) {
       set_image(from.image());
     }
+    if (from.has_tcounters()) {
+      mutable_tcounters()->::draiosproto::time_categories::MergeFrom(from.tcounters());
+    }
+    if (from.has_reqcounters()) {
+      mutable_reqcounters()->::draiosproto::transaction_breakdown_categories::MergeFrom(from.reqcounters());
+    }
+    if (from.has_transaction_counters()) {
+      mutable_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.transaction_counters());
+    }
+    if (from.has_min_transaction_counters()) {
+      mutable_min_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.min_transaction_counters());
+    }
+    if (from.has_max_transaction_counters()) {
+      mutable_max_transaction_counters()->::draiosproto::counter_time_bidirectional::MergeFrom(from.max_transaction_counters());
+    }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_transaction_processing_delay()) {
+      set_transaction_processing_delay(from.transaction_processing_delay());
+    }
+    if (from.has_merged_server_delay()) {
+      set_merged_server_delay(from.merged_server_delay());
+    }
+    if (from.has_next_tiers_delay()) {
+      set_next_tiers_delay(from.next_tiers_delay());
+    }
+    if (from.has_resource_counters()) {
+      mutable_resource_counters()->::draiosproto::resource_categories::MergeFrom(from.resource_counters());
+    }
+    if (from.has_syscall_errors()) {
+      mutable_syscall_errors()->::draiosproto::counter_syscall_errors::MergeFrom(from.syscall_errors());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -13439,6 +13894,24 @@ void container::CopyFrom(const container& from) {
 bool container::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
+  if (has_tcounters()) {
+    if (!this->tcounters().IsInitialized()) return false;
+  }
+  if (has_reqcounters()) {
+    if (!this->reqcounters().IsInitialized()) return false;
+  }
+  if (has_transaction_counters()) {
+    if (!this->transaction_counters().IsInitialized()) return false;
+  }
+  if (has_min_transaction_counters()) {
+    if (!this->min_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_max_transaction_counters()) {
+    if (!this->max_transaction_counters().IsInitialized()) return false;
+  }
+  if (has_syscall_errors()) {
+    if (!this->syscall_errors().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -13447,6 +13920,16 @@ void container::Swap(container* other) {
     std::swap(id_, other->id_);
     std::swap(name_, other->name_);
     std::swap(image_, other->image_);
+    std::swap(tcounters_, other->tcounters_);
+    std::swap(reqcounters_, other->reqcounters_);
+    std::swap(transaction_counters_, other->transaction_counters_);
+    std::swap(min_transaction_counters_, other->min_transaction_counters_);
+    std::swap(max_transaction_counters_, other->max_transaction_counters_);
+    std::swap(transaction_processing_delay_, other->transaction_processing_delay_);
+    std::swap(merged_server_delay_, other->merged_server_delay_);
+    std::swap(next_tiers_delay_, other->next_tiers_delay_);
+    std::swap(resource_counters_, other->resource_counters_);
+    std::swap(syscall_errors_, other->syscall_errors_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

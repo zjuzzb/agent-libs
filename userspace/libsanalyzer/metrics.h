@@ -276,7 +276,7 @@ public:
 		}
 	}
 	void add(sinsp_error_counters* other);
-	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio) const;
 };
 
 //
@@ -292,8 +292,8 @@ public:
 	void add_capacity_score(float capacity_score,
 		float stolen_capacity_score,
 		uint32_t n_server_transactions);
-	double get_capacity_score();
-	double get_stolen_score();
+	double get_capacity_score() const;
+	double get_stolen_score() const;
 
 	sinsp_counters m_metrics; 
 	uint64_t m_transaction_processing_delay_ns;

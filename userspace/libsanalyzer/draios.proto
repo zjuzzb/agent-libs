@@ -84,7 +84,7 @@ message resource_categories {
     optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
     optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
     optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
-    optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host.
+    optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host and container.
     optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
@@ -361,6 +361,17 @@ message container {
     required string id = 1;
     optional string name = 2;
     optional string image = 3;
+    optional time_categories tcounters = 4; // The time counters for this thread
+    optional transaction_breakdown_categories reqcounters = 5; // how time is spent when serving requests
+    optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
+    optional counter_time_bidirectional min_transaction_counters = 7; // The fastest transaction counters for the whole host
+    optional counter_time_bidirectional max_transaction_counters = 8; // The slowest transaction counters for the whole host
+    optional uint64 transaction_processing_delay = 9; // the delay introduced by this host when processing transactions.
+    // It's calculated by subtracting outgoing connection time from incoming connection time.
+    optional uint64 merged_server_delay = 10; // the total merged time of all the incoming requests.
+    optional uint64 next_tiers_delay = 11; // the delay introduced by this host's next tiers when processing transactions.
+    optional resource_categories resource_counters = 12; // The resource counters for this process
+    optional counter_syscall_errors syscall_errors = 13; // Syscall error counter
 }
 
 //

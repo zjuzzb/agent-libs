@@ -796,6 +796,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
+		if(!tinfo->m_container.empty())
+		{
+			m_containers.insert(tinfo->m_container);
+		}
+
 		//
 		// Attribute the last pending event to this second
 		//
@@ -1177,6 +1182,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
 							procinfo->m_stolen_capacity_score,
 							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+
+						if(!tinfo->m_container.empty())
+						{
+							m_containers_metrics[tinfo->m_container].add_capacity_score(procinfo->m_capacity_score,
+								procinfo->m_stolen_capacity_score,
+								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+						}
 					}
 
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
@@ -1272,6 +1284,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// want to use processes that don't serve transactions.
 					//
 					m_host_metrics.add(procinfo);
+
+					if(!tinfo->m_container.empty())
+					{
+						m_containers_metrics[tinfo->m_container].add(procinfo);
+					}
 				}
 				else
 				{
@@ -2192,25 +2209,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_top_files();
 
-			unordered_map<string, sinsp_procfs_parser::container_info> containers;
-			m_procfs_parser->get_containers(&containers);
-			for(unordered_map<string, sinsp_procfs_parser::container_info>::const_iterator it = containers.begin();
-				it != containers.end(); ++it)
-			{
-				draiosproto::container* container = m_metrics->add_containers();
-
-				container->set_id(it->second.id);
-
-				if(!it->second.name.empty())
-				{
-					container->set_name(it->second.name);
-				}
-
-				if(!it->second.image.empty())
-				{
-					container->set_image(it->second.image);
-				}
-			}
+			emit_containers();
 
 			//
 			// Transactions
@@ -2913,6 +2912,55 @@ void sinsp_analyzer::emit_top_files()
 	}
 
 	m_fd_listener->m_files_stat.clear();
+}
+
+void sinsp_analyzer::emit_containers()
+{
+	unordered_map<string, sinsp_procfs_parser::container_info> containers_info;
+	m_procfs_parser->get_containers(&containers_info);
+
+	for(set<string>::const_iterator it = m_containers.begin(); it != m_containers.end(); ++it)
+	{
+		draiosproto::container* container = m_metrics->add_containers();
+
+		container->set_id(*it);
+
+		unordered_map<string, sinsp_procfs_parser::container_info>::const_iterator it_info = 
+			containers_info.find(*it);
+
+		if(it_info != containers_info.end())
+		{
+			if(!it_info->second.name.empty())
+			{
+				container->set_name(it_info->second.name);
+			}
+
+			if(!it_info->second.image.empty())
+			{
+				container->set_image(it_info->second.image);
+			}
+		}
+
+		unordered_map<string, sinsp_host_metrics>::const_iterator it_metrics = m_containers_metrics.find(*it);
+
+		if(it_metrics != m_containers_metrics.end())
+		{
+			container->mutable_resource_counters()->set_capacity_score(it_metrics->second.get_capacity_score() * 100);
+			container->mutable_resource_counters()->set_stolen_capacity_score(it_metrics->second.get_stolen_score() * 100);
+			container->mutable_resource_counters()->set_connection_queue_usage_pct(it_metrics->second.m_connection_queue_usage_pct);
+			container->mutable_resource_counters()->set_fd_usage_pct(it_metrics->second.m_fd_usage_pct);
+			// container->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)used_memory);
+			// container->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)used_swap);
+			container->mutable_resource_counters()->set_major_pagefaults(it_metrics->second.m_pfmajor);
+			container->mutable_resource_counters()->set_minor_pagefaults(it_metrics->second.m_pfminor);
+			it_metrics->second.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
+			container->mutable_resource_counters()->set_fd_count(it_metrics->second.m_fd_count);
+		}
+	}
+
+	m_containers.clear();
+	m_containers_metrics.clear();
+	m_containers_req_metrics.clear();
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
