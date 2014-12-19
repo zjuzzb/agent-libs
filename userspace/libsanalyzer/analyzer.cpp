@@ -1276,6 +1276,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 					{
 						m_host_req_metrics.add(&procinfo->m_proc_metrics);
+
+						if(!tinfo->m_container.empty())
+						{
+							m_containers_req_metrics[tinfo->m_container].add(&procinfo->m_proc_metrics);
+						}
 					}
 
 					//
@@ -2939,7 +2944,7 @@ void sinsp_analyzer::emit_containers()
 			}
 		}
 
-		unordered_map<string, sinsp_host_metrics>::const_iterator it_metrics = m_containers_metrics.find(*it);
+		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(*it);
 
 		if(it_metrics != m_containers_metrics.end())
 		{
@@ -2953,6 +2958,16 @@ void sinsp_analyzer::emit_containers()
 			container->mutable_resource_counters()->set_minor_pagefaults(it_metrics->second.m_pfminor);
 			it_metrics->second.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 			container->mutable_resource_counters()->set_fd_count(it_metrics->second.m_fd_count);
+
+			it_metrics->second.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
+		}
+
+
+		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(*it);
+
+		if(it_req_metrics != m_containers_req_metrics.end())
+		{
+			it_req_metrics->second.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
 		}
 	}
 
