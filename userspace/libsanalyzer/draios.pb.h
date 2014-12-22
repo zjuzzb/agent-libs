@@ -110,16 +110,21 @@ enum mongodb_op_type {
   MONGODB_OP_INSERT = 1,
   MONGODB_OP_UPDATE = 2,
   MONGODB_OP_DELETE = 3,
-  MONGODB_OP_QUERY = 4,
-  MONGODB_OP_GET_MORE = 5,
-  MONGODB_OP_KILL_CURSORS = 6,
-  MONGODB_OP_FIND = 7,
-  MONGODB_OP_AGGREGATE = 8,
-  MONGODB_OP_COMMAND = 9
+  MONGODB_OP_GET_MORE = 4,
+  MONGODB_OP_KILL_CURSORS = 5,
+  MONGODB_OP_FIND = 6,
+  MONGODB_OP_AGGREGATE = 7,
+  MONGODB_OP_COMMAND = 8,
+  MONGODB_OP_COUNT = 9,
+  MONGODB_OP_DISTINCT = 10,
+  MONGODB_OP_MAP_REDUCE = 11,
+  MONGODB_OP_GEO_NEAR = 12,
+  MONGODB_OP_GEO_SEARCH = 13,
+  MONGODB_OP_FIND_AND_MODIFY = 14
 };
 bool mongodb_op_type_IsValid(int value);
 const mongodb_op_type mongodb_op_type_MIN = MONGODB_OP_NONE;
-const mongodb_op_type mongodb_op_type_MAX = MONGODB_OP_COMMAND;
+const mongodb_op_type mongodb_op_type_MAX = MONGODB_OP_FIND_AND_MODIFY;
 const int mongodb_op_type_ARRAYSIZE = mongodb_op_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* mongodb_op_type_descriptor();

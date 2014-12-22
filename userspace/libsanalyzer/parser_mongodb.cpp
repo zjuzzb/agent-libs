@@ -273,10 +273,10 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 			rbuflen = m_reassembly_buf.get_size();
 		}
 
-		printf("MongoDB buf is %d bytes\n", rbuflen);
-		printf("MongoDB response: ");
-		debug_print_binary_buf(rbuf, rbuflen);
-		printf("\n");
+//		printf("MongoDB buf is %d bytes\n", rbuflen);
+//		printf("MongoDB response: ");
+//		debug_print_binary_buf(rbuf, rbuflen);
+//		printf("\n");
 
 		int32_t* opcode = (int32_t*)(rbuf+12);
 
@@ -318,8 +318,8 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 					}
 					int32_t ok = *(int32_t*)(rbuf + 16+4+8+4+4 + 4+1+2+1);
 					int32_t n = *(int32_t*)(rbuf + 16+4+8+4+4 + 4+1+2+1+4+1+nshift+1);
-					printf("MongoDB ok: %d\n", ok);
-					printf("MongoDB n: %d\n", n);
+//					printf("MongoDB ok: %d\n", ok);
+//					printf("MongoDB n: %d\n", n);
 					if ( ok == 0 || n == 0)
 					{
 						m_error_code = 1; // Right now is like a boolean
