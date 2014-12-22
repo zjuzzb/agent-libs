@@ -126,6 +126,9 @@
     <ClCompile Include="sqlparser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="parser_mongodb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h">
@@ -255,6 +258,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parser_postgres.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parser_mongodb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
