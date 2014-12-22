@@ -147,14 +147,14 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
-			printf("MongoDB reconstruct\n");
+//			printf("MongoDB reconstruct\n");
 			m_reassembly_buf.copy(buf, buflen);
 			rbuf = m_reassembly_buf.get_buf();
 			rbuflen = m_reassembly_buf.get_size();
 		}
-		printf("MongoDB extract: ");
-		debug_print_binary_buf(rbuf, rbuflen);
-		printf("\n");
+//		printf("MongoDB extract: ");
+//		debug_print_binary_buf(rbuf, rbuflen);
+//		printf("\n");
 		m_wireopcode = (wire_opcode)(*(int32_t*)(rbuf+12));
 		//
 		// Do the parsing
@@ -235,12 +235,13 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			break;
 		}
 
-		printf("MongoDB wire op is: %d\n", m_wireopcode);
-		printf("MongoDB op is: %d\n", m_opcode);
-		if (m_collection!=NULL)
-		{
-			printf("MongoDB extracted collection: %s\n", m_collection);
-		}
+//		printf("MongoDB wire op is: %d\n", m_wireopcode);
+//		printf("MongoDB op is: %d\n", m_opcode);
+//		if (m_collection!=NULL)
+//		{
+//			printf("MongoDB extracted collection: %s\n", m_collection);
+//		}
+		m_reassembly_buf.clear();
 	}
 	else
 	{
@@ -251,32 +252,90 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 
 bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 {
-	printf("MongoDB response: ");
-	debug_print_binary_buf(buf, buflen);
-	printf("\n");
-	if(buflen >= 16)
+
+	if(buflen + m_reassembly_buf.get_size() >= 16)
 	{
-		int32_t* opcode = (int32_t*)(buf+12);
+		char* rbuf;
+		uint32_t rbuflen;
+
+		//
+		// Reconstruct the buffer
+		//
+		if(m_reassembly_buf.get_size() == 0)
+		{
+			rbuf = buf;
+			rbuflen = buflen;
+		}
+		else
+		{
+			m_reassembly_buf.copy(buf, buflen);
+			rbuf = m_reassembly_buf.get_buf();
+			rbuflen = m_reassembly_buf.get_size();
+		}
+
+		printf("MongoDB buf is %d bytes\n", rbuflen);
+		printf("MongoDB response: ");
+		debug_print_binary_buf(rbuf, rbuflen);
+		printf("\n");
+
+		int32_t* opcode = (int32_t*)(rbuf+12);
 
 		if (*opcode == WIRE_OP_REPLY)
 		{
-			if(m_wireopcode == WIRE_OP_QUERY && buflen >= (16+4+8+4+4 + 4+1+2+1+4+1+2+1 + 4))
+			if (rbuflen == 16)
 			{
-				// Look for "n" field,
-				// |16bytes header|responseFlags(int32)|cursorid(int64)|startingFrom(int32)|numberReturned(int32)|document
-				// | 16  | 4 | 8 | 4 | 4 |
-				// document:
-				// |size(int32)|0x10|ok|0|int32|0x10|n|0|nvalue|
-				// | 4     | 1 | 2 | 1 | 4 | 1 |2|1
-				int32_t n = *(int32_t*)(buf + 16+4+8+4+4 + 4+1+2+1+4+1+2+1);
-				printf("MongoDB n: %d\n", n);
-				if (n == 0)
+				if (m_reassembly_buf.get_size() == 0)
 				{
-					m_error_code = 1; // Right now is like a boolean
+					m_reassembly_buf.copy(buf, buflen);
+				}
+				return true;
+			}
+			int32_t* response_flags = (int32_t*)(rbuf+16);
+			if (*response_flags & 0x2)
+			{
+				m_error_code = 1;
+			}
+			if( m_opcode == MONGODB_OP_INSERT ||
+				  m_opcode == MONGODB_OP_DELETE ||
+				  m_opcode == MONGODB_OP_UPDATE
+					)
+			{
+				if(rbuflen >= (16+4+8+4+4 + 4+1+2+1+4+1+2+1 + 4))
+				{
+					// Look for "n" field,
+					// |16bytes header|responseFlags(int32)|cursorid(int64)|startingFrom(int32)|numberReturned(int32)|document
+					// | 16  | 4 | 8 | 4 | 4 |
+					// document (insert and delete):
+					// |size(int32)|0x10|ok|0|int32|0x10|n|0|nvalue|
+					// | 4         | 1  |2 |1|   4 |  1 |1|1|
+					// document (update):
+					// |size(int32)|0x10|ok|0|int32|0x10|nModified|0|nvalue|
+					// | 4         | 1  |2 |1|   4 |  1 |9|1|
+					uint32_t nshift = 1;
+					if (m_opcode == MONGODB_OP_UPDATE)
+					{
+						nshift = 9;
+					}
+					int32_t ok = *(int32_t*)(rbuf + 16+4+8+4+4 + 4+1+2+1);
+					int32_t n = *(int32_t*)(rbuf + 16+4+8+4+4 + 4+1+2+1+4+1+nshift+1);
+					printf("MongoDB ok: %d\n", ok);
+					printf("MongoDB n: %d\n", n);
+					if ( ok == 0 || n == 0)
+					{
+						m_error_code = 1; // Right now is like a boolean
+					}
+					else
+					{
+						m_error_code = 0;
+					}
 				}
 				else
 				{
-					m_error_code = 0;
+					if (m_reassembly_buf.get_size() == 0)
+					{
+						m_reassembly_buf.copy(buf, buflen);
+					}
+					return true;
 				}
 			}
 			m_parsed=true;
