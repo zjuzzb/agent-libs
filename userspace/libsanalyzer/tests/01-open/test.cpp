@@ -647,10 +647,10 @@ printf("!!!! %s\n", filter.c_str());
 			cerr << e.what() << endl;
 			res = EXIT_FAILURE;
 		}
-		catch(...)
-		{
-			res = EXIT_FAILURE;
-		}
+//		catch(...)
+//		{
+//			res = EXIT_FAILURE;
+//		}
 
 		if(verbose)
 		{
