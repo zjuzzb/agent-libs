@@ -84,7 +84,6 @@ void event_capture::capture()
 	}
 	
 	m_inspector->stop_capture();
-
 	uint32_t n_timeouts = 0;
 	while(result && !::testing::Test::HasFatalFailure())
 	{
