@@ -20,6 +20,7 @@ add_library(sanalyzer STATIC
 	config.cpp
 	delays.cpp	
 	draios.pb.cc
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/eventformatter.cpp

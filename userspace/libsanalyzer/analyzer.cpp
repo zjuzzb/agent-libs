@@ -796,11 +796,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
-		if(!tinfo->m_container.empty())
-		{
-			m_containers.insert(tinfo->m_container);
-		}
-
 		//
 		// Attribute the last pending event to this second
 		//
@@ -1062,9 +1057,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 
-					if(!tinfo->m_container.empty())
+					if(!tinfo->m_container.m_id.empty())
 					{
-						proc->mutable_details()->set_container_id(tinfo->m_container);
+						proc->mutable_details()->set_container_id(tinfo->m_container.m_id);
 					}
 
 					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
@@ -1183,9 +1178,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							procinfo->m_stolen_capacity_score,
 							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 
-						if(!tinfo->m_container.empty())
+						if(!tinfo->m_container.m_id.empty())
 						{
-							m_containers_metrics[tinfo->m_container].add_capacity_score(procinfo->m_capacity_score,
+							m_containers_metrics[tinfo->m_container.m_id].add_capacity_score(procinfo->m_capacity_score,
 								procinfo->m_stolen_capacity_score,
 								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 						}
@@ -1277,9 +1272,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						m_host_req_metrics.add(&procinfo->m_proc_metrics);
 
-						if(!tinfo->m_container.empty())
+						if(!tinfo->m_container.m_id.empty())
 						{
-							m_containers_req_metrics[tinfo->m_container].add(&procinfo->m_proc_metrics);
+							m_containers_req_metrics[tinfo->m_container.m_id].add(&procinfo->m_proc_metrics);
 						}
 					}
 
@@ -1290,9 +1285,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					m_host_metrics.add(procinfo);
 
-					if(!tinfo->m_container.empty())
+					if(!tinfo->m_container.m_id.empty())
 					{
-						m_containers_metrics[tinfo->m_container].add(procinfo);
+						m_containers_metrics[tinfo->m_container.m_id].add(procinfo);
 					}
 				}
 				else
@@ -2695,9 +2690,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
 
-			if(!evt->m_tinfo->m_container.empty())
+			if(!evt->m_tinfo->m_container.m_id.empty())
 			{
-				m_containers_metrics[evt->m_tinfo->m_container].m_syscall_errors.add(evt);
+				m_containers_metrics[evt->m_tinfo->m_container.m_id].m_syscall_errors.add(evt);
 			}
 		}
 	}
@@ -2924,32 +2919,25 @@ void sinsp_analyzer::emit_top_files()
 
 void sinsp_analyzer::emit_containers()
 {
-	unordered_map<string, sinsp_procfs_parser::container_info> containers_info;
-	m_procfs_parser->get_containers(&containers_info);
+	const unordered_map<string, sinsp_container_info>* containers_info = m_inspector->m_container_manager.get_containers();
 
-	for(set<string>::const_iterator it = m_containers.begin(); it != m_containers.end(); ++it)
+	for(unordered_map<string, sinsp_container_info>::const_iterator it = containers_info->begin(); it != containers_info->end(); ++it)
 	{
 		draiosproto::container* container = m_metrics->add_containers();
 
-		container->set_id(*it);
+		container->set_id(it->second.m_id);
 
-		unordered_map<string, sinsp_procfs_parser::container_info>::const_iterator it_info = 
-			containers_info.find(*it);
-
-		if(it_info != containers_info.end())
+		if(!it->second.m_name.empty())
 		{
-			if(!it_info->second.name.empty())
-			{
-				container->set_name(it_info->second.name);
-			}
-
-			if(!it_info->second.image.empty())
-			{
-				container->set_image(it_info->second.image);
-			}
+			container->set_name(it->second.m_name);
 		}
 
-		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(*it);
+		if(!it->second.m_image.empty())
+		{
+			container->set_image(it->second.m_image);
+		}
+
+		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(it->second.m_id);
 
 		if(it_metrics != m_containers_metrics.end())
 		{
@@ -2968,7 +2956,7 @@ void sinsp_analyzer::emit_containers()
 			it_metrics->second.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 		}
 
-		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(*it);
+		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(it->second.m_id);
 
 		if(it_req_metrics != m_containers_req_metrics.end())
 		{
@@ -2976,7 +2964,6 @@ void sinsp_analyzer::emit_containers()
 		}
 	}
 
-	m_containers.clear();
 	m_containers_metrics.clear();
 	m_containers_req_metrics.clear();
 }
