@@ -343,7 +343,10 @@ void sinsp_delays::compute_program_delays(sinsp_threadinfo* program_info, OUT si
 	delays->m_local_processing_delay_ns = 
 		(int64_t)(delays->m_merged_server_delay - delays->m_merged_client_delay);
 
-	ASSERT(delays->m_local_processing_delay_ns >= 0);
+	if(delays->m_local_processing_delay_ns < 0)
+	{
+		delays->m_local_processing_delay_ns = 0;
+	}
 
 	//
 	// Ratio between inbound transaction time and local processing time

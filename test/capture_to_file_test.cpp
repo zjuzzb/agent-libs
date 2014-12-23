@@ -8,6 +8,7 @@ TEST(capture_on_file,can_consume_a_capture_file)
 	sinsp_evt *event;
 
 	inspector.open();
+
 	inspector.set_debug_mode(true);
 	inspector.autodump_start("/tmp/can_consume_a_capture_file.scap", false);
 	for(int j=0; j < 1000;)

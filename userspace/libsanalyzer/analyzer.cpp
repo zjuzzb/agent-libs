@@ -1245,8 +1245,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						procinfo->m_proc_metrics.get_net_percentage() +
 						procinfo->m_proc_metrics.get_other_percentage();
 
-					ASSERT(totpct > 0.99);
-					ASSERT(totpct < 1.01);
+					ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
 #endif // _DEBUG
 				}
 #endif // ANALYZER_EMITS_PROCESSES
@@ -2527,11 +2526,11 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			}
 			else if(flshflags == DF_TIMEOUT)
 			{
-				if(m_inspector->is_live())
+				if(m_inspector->is_live() && m_inspector->m_lastevent_ts != 0)
 				{
 					struct timeval tv;
 					gettimeofday(&tv, NULL);
-					ts = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec;
+					ts = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000 - 500000000;
 					etype = 0; // this avoids a compiler warning
 				}
 				else
