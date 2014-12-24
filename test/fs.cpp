@@ -1319,7 +1319,7 @@ TEST_F(sys_call_test, fs_sendfile_nulloff)
 TEST_F(sys_call_test, fs_sendfile_failed)
 {
 	int callnum = 0;
-	int size;
+	//int size;
 
 	//
 	// FILTER

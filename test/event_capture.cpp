@@ -84,8 +84,28 @@ void event_capture::capture()
 	}
 	
 	m_inspector->stop_capture();
-	while(result && SCAP_SUCCESS == (next_result = m_inspector->next(&event)) && !::testing::Test::HasFatalFailure())
+	uint32_t n_timeouts = 0;
+	while(result && !::testing::Test::HasFatalFailure())
 	{
+		next_result = m_inspector->next(&event);
+		if(next_result == SCAP_TIMEOUT)
+		{
+			n_timeouts++;
+
+			if(n_timeouts < 3)
+			{
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(next_result != SCAP_SUCCESS)
+		{
+			break;
+		}
 		result = handle_event(event);
 	}
 	while(SCAP_SUCCESS == m_inspector->next(&event))

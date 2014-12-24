@@ -762,11 +762,12 @@ TEST_F(sys_call_test, procfs_processcpuload)
 
 		pparser.get_global_cpu_load(&cur_global_total_jiffies);
 		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
-
 		EXPECT_NE((double)-1, load);
 		EXPECT_LE((double)0, load);
 		EXPECT_GE((double)100, load);
 		old_global_total_jiffies = cur_global_total_jiffies;
+
+		usleep(100000);
 	}
 }
 

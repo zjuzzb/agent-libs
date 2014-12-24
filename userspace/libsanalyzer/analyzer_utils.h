@@ -104,6 +104,21 @@ inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
 	return true;
 }
 
+inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
+{
+	for (unsigned int j=0; j< bufsize; ++j)
+	{
+		if(buf[j] >= 'A' && buf[j] <= 'z' )
+		{
+			printf("\x1B[31m%c\x1B[0m",buf[j]);
+		}
+		else
+		{
+			printf("%02x",(uint8_t)buf[j]);
+		}
+	}
+}
+
 #ifdef SIMULATE_DROP_MODE
 bool should_drop(sinsp_evt *evt);
 #endif

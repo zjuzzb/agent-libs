@@ -119,6 +119,8 @@ public:
 		DF_FORCE_FLUSH,
 		DF_FORCE_NOFLUSH,
 		DF_FORCE_FLUSH_BUT_DONT_EMIT,
+		DF_TIMEOUT,
+		DF_EOF,
 	};
 
 	sinsp_analyzer(sinsp* inspector);

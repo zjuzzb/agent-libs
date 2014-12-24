@@ -179,7 +179,7 @@ void testdir(string filename, string chdirtarget = "")
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
+	event_filter_t aafilter = [&](sinsp_evt * evt)
 	{
 		int tid = getpid();
 		return evt->get_tid() == tid;
@@ -231,7 +231,7 @@ void testdir(string filename, string chdirtarget = "")
 		vldt.validate(param.m_evt);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, aafilter);});
 
 	EXPECT_EQ(4, vldt.m_callnum);
 }

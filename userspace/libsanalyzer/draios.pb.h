@@ -52,6 +52,9 @@ class http_info;
 class sql_entry_details;
 class sql_query_type_details;
 class sql_info;
+class mongodb_collection_details;
+class mongodb_op_type_details;
+class mongodb_info;
 class proto_info;
 class host;
 class process;
@@ -102,6 +105,38 @@ inline bool sql_statement_type_Parse(
     const ::std::string& name, sql_statement_type* value) {
   return ::google::protobuf::internal::ParseNamedEnum<sql_statement_type>(
     sql_statement_type_descriptor(), name, value);
+}
+enum mongodb_op_type {
+  MONGODB_OP_NONE = 0,
+  MONGODB_OP_INSERT = 1,
+  MONGODB_OP_UPDATE = 2,
+  MONGODB_OP_DELETE = 3,
+  MONGODB_OP_GET_MORE = 4,
+  MONGODB_OP_KILL_CURSORS = 5,
+  MONGODB_OP_FIND = 6,
+  MONGODB_OP_AGGREGATE = 7,
+  MONGODB_OP_COMMAND = 8,
+  MONGODB_OP_COUNT = 9,
+  MONGODB_OP_DISTINCT = 10,
+  MONGODB_OP_MAP_REDUCE = 11,
+  MONGODB_OP_GEO_NEAR = 12,
+  MONGODB_OP_GEO_SEARCH = 13,
+  MONGODB_OP_FIND_AND_MODIFY = 14
+};
+bool mongodb_op_type_IsValid(int value);
+const mongodb_op_type mongodb_op_type_MIN = MONGODB_OP_NONE;
+const mongodb_op_type mongodb_op_type_MAX = MONGODB_OP_FIND_AND_MODIFY;
+const int mongodb_op_type_ARRAYSIZE = mongodb_op_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* mongodb_op_type_descriptor();
+inline const ::std::string& mongodb_op_type_Name(mongodb_op_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    mongodb_op_type_descriptor(), value);
+}
+inline bool mongodb_op_type_Parse(
+    const ::std::string& name, mongodb_op_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<mongodb_op_type>(
+    mongodb_op_type_descriptor(), name, value);
 }
 enum networkrole {
   NONE = 0,
@@ -2579,6 +2614,323 @@ class sql_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class mongodb_collection_details : public ::google::protobuf::Message {
+ public:
+  mongodb_collection_details();
+  virtual ~mongodb_collection_details();
+
+  mongodb_collection_details(const mongodb_collection_details& from);
+
+  inline mongodb_collection_details& operator=(const mongodb_collection_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mongodb_collection_details& default_instance();
+
+  void Swap(mongodb_collection_details* other);
+
+  // implements Message ----------------------------------------------
+
+  mongodb_collection_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mongodb_collection_details& from);
+  void MergeFrom(const mongodb_collection_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::counter_proto_entry& counters() const;
+  inline ::draiosproto::counter_proto_entry* mutable_counters();
+  inline ::draiosproto::counter_proto_entry* release_counters();
+  inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mongodb_collection_details)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_counters();
+  inline void clear_has_counters();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::draiosproto::counter_proto_entry* counters_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mongodb_collection_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mongodb_op_type_details : public ::google::protobuf::Message {
+ public:
+  mongodb_op_type_details();
+  virtual ~mongodb_op_type_details();
+
+  mongodb_op_type_details(const mongodb_op_type_details& from);
+
+  inline mongodb_op_type_details& operator=(const mongodb_op_type_details& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mongodb_op_type_details& default_instance();
+
+  void Swap(mongodb_op_type_details* other);
+
+  // implements Message ----------------------------------------------
+
+  mongodb_op_type_details* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mongodb_op_type_details& from);
+  void MergeFrom(const mongodb_op_type_details& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.mongodb_op_type op = 1;
+  inline bool has_op() const;
+  inline void clear_op();
+  static const int kOpFieldNumber = 1;
+  inline ::draiosproto::mongodb_op_type op() const;
+  inline void set_op(::draiosproto::mongodb_op_type value);
+
+  // required .draiosproto.counter_proto_entry counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::counter_proto_entry& counters() const;
+  inline ::draiosproto::counter_proto_entry* mutable_counters();
+  inline ::draiosproto::counter_proto_entry* release_counters();
+  inline void set_allocated_counters(::draiosproto::counter_proto_entry* counters);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mongodb_op_type_details)
+ private:
+  inline void set_has_op();
+  inline void clear_has_op();
+  inline void set_has_counters();
+  inline void clear_has_counters();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::counter_proto_entry* counters_;
+  int op_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mongodb_op_type_details* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mongodb_info : public ::google::protobuf::Message {
+ public:
+  mongodb_info();
+  virtual ~mongodb_info();
+
+  mongodb_info(const mongodb_info& from);
+
+  inline mongodb_info& operator=(const mongodb_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mongodb_info& default_instance();
+
+  void Swap(mongodb_info* other);
+
+  // implements Message ----------------------------------------------
+
+  mongodb_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mongodb_info& from);
+  void MergeFrom(const mongodb_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+  inline int servers_ops_size() const;
+  inline void clear_servers_ops();
+  static const int kServersOpsFieldNumber = 1;
+  inline const ::draiosproto::mongodb_op_type_details& servers_ops(int index) const;
+  inline ::draiosproto::mongodb_op_type_details* mutable_servers_ops(int index);
+  inline ::draiosproto::mongodb_op_type_details* add_servers_ops();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >&
+      servers_ops() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >*
+      mutable_servers_ops();
+
+  // repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+  inline int client_ops_size() const;
+  inline void clear_client_ops();
+  static const int kClientOpsFieldNumber = 2;
+  inline const ::draiosproto::mongodb_op_type_details& client_ops(int index) const;
+  inline ::draiosproto::mongodb_op_type_details* mutable_client_ops(int index);
+  inline ::draiosproto::mongodb_op_type_details* add_client_ops();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >&
+      client_ops() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >*
+      mutable_client_ops();
+
+  // repeated .draiosproto.mongodb_collection_details server_collections = 3;
+  inline int server_collections_size() const;
+  inline void clear_server_collections();
+  static const int kServerCollectionsFieldNumber = 3;
+  inline const ::draiosproto::mongodb_collection_details& server_collections(int index) const;
+  inline ::draiosproto::mongodb_collection_details* mutable_server_collections(int index);
+  inline ::draiosproto::mongodb_collection_details* add_server_collections();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >&
+      server_collections() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >*
+      mutable_server_collections();
+
+  // repeated .draiosproto.mongodb_collection_details client_collections = 4;
+  inline int client_collections_size() const;
+  inline void clear_client_collections();
+  static const int kClientCollectionsFieldNumber = 4;
+  inline const ::draiosproto::mongodb_collection_details& client_collections(int index) const;
+  inline ::draiosproto::mongodb_collection_details* mutable_client_collections(int index);
+  inline ::draiosproto::mongodb_collection_details* add_client_collections();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >&
+      client_collections() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >*
+      mutable_client_collections();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mongodb_info)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details > servers_ops_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details > client_ops_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details > server_collections_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details > client_collections_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mongodb_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class proto_info : public ::google::protobuf::Message {
  public:
   proto_info();
@@ -2660,6 +3012,15 @@ class proto_info : public ::google::protobuf::Message {
   inline ::draiosproto::sql_info* release_postgres();
   inline void set_allocated_postgres(::draiosproto::sql_info* postgres);
 
+  // optional .draiosproto.mongodb_info mongodb = 4;
+  inline bool has_mongodb() const;
+  inline void clear_mongodb();
+  static const int kMongodbFieldNumber = 4;
+  inline const ::draiosproto::mongodb_info& mongodb() const;
+  inline ::draiosproto::mongodb_info* mutable_mongodb();
+  inline ::draiosproto::mongodb_info* release_mongodb();
+  inline void set_allocated_mongodb(::draiosproto::mongodb_info* mongodb);
+
   // @@protoc_insertion_point(class_scope:draiosproto.proto_info)
  private:
   inline void set_has_http();
@@ -2668,15 +3029,18 @@ class proto_info : public ::google::protobuf::Message {
   inline void clear_has_mysql();
   inline void set_has_postgres();
   inline void clear_has_postgres();
+  inline void set_has_mongodb();
+  inline void clear_has_mongodb();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::http_info* http_;
   ::draiosproto::sql_info* mysql_;
   ::draiosproto::sql_info* postgres_;
+  ::draiosproto::mongodb_info* mongodb_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8874,6 +9238,287 @@ sql_info::mutable_client_tables() {
 
 // -------------------------------------------------------------------
 
+// mongodb_collection_details
+
+// required string name = 1;
+inline bool mongodb_collection_details::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mongodb_collection_details::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mongodb_collection_details::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mongodb_collection_details::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& mongodb_collection_details::name() const {
+  return *name_;
+}
+inline void mongodb_collection_details::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mongodb_collection_details::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mongodb_collection_details::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mongodb_collection_details::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* mongodb_collection_details::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mongodb_collection_details::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required .draiosproto.counter_proto_entry counters = 2;
+inline bool mongodb_collection_details::has_counters() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mongodb_collection_details::set_has_counters() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mongodb_collection_details::clear_has_counters() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mongodb_collection_details::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+  clear_has_counters();
+}
+inline const ::draiosproto::counter_proto_entry& mongodb_collection_details::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
+}
+inline ::draiosproto::counter_proto_entry* mongodb_collection_details::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
+  return counters_;
+}
+inline ::draiosproto::counter_proto_entry* mongodb_collection_details::release_counters() {
+  clear_has_counters();
+  ::draiosproto::counter_proto_entry* temp = counters_;
+  counters_ = NULL;
+  return temp;
+}
+inline void mongodb_collection_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
+}
+
+// -------------------------------------------------------------------
+
+// mongodb_op_type_details
+
+// required .draiosproto.mongodb_op_type op = 1;
+inline bool mongodb_op_type_details::has_op() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mongodb_op_type_details::set_has_op() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mongodb_op_type_details::clear_has_op() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mongodb_op_type_details::clear_op() {
+  op_ = 0;
+  clear_has_op();
+}
+inline ::draiosproto::mongodb_op_type mongodb_op_type_details::op() const {
+  return static_cast< ::draiosproto::mongodb_op_type >(op_);
+}
+inline void mongodb_op_type_details::set_op(::draiosproto::mongodb_op_type value) {
+  assert(::draiosproto::mongodb_op_type_IsValid(value));
+  set_has_op();
+  op_ = value;
+}
+
+// required .draiosproto.counter_proto_entry counters = 2;
+inline bool mongodb_op_type_details::has_counters() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mongodb_op_type_details::set_has_counters() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mongodb_op_type_details::clear_has_counters() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mongodb_op_type_details::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::counter_proto_entry::Clear();
+  clear_has_counters();
+}
+inline const ::draiosproto::counter_proto_entry& mongodb_op_type_details::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
+}
+inline ::draiosproto::counter_proto_entry* mongodb_op_type_details::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::counter_proto_entry;
+  return counters_;
+}
+inline ::draiosproto::counter_proto_entry* mongodb_op_type_details::release_counters() {
+  clear_has_counters();
+  ::draiosproto::counter_proto_entry* temp = counters_;
+  counters_ = NULL;
+  return temp;
+}
+inline void mongodb_op_type_details::set_allocated_counters(::draiosproto::counter_proto_entry* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
+}
+
+// -------------------------------------------------------------------
+
+// mongodb_info
+
+// repeated .draiosproto.mongodb_op_type_details servers_ops = 1;
+inline int mongodb_info::servers_ops_size() const {
+  return servers_ops_.size();
+}
+inline void mongodb_info::clear_servers_ops() {
+  servers_ops_.Clear();
+}
+inline const ::draiosproto::mongodb_op_type_details& mongodb_info::servers_ops(int index) const {
+  return servers_ops_.Get(index);
+}
+inline ::draiosproto::mongodb_op_type_details* mongodb_info::mutable_servers_ops(int index) {
+  return servers_ops_.Mutable(index);
+}
+inline ::draiosproto::mongodb_op_type_details* mongodb_info::add_servers_ops() {
+  return servers_ops_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >&
+mongodb_info::servers_ops() const {
+  return servers_ops_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >*
+mongodb_info::mutable_servers_ops() {
+  return &servers_ops_;
+}
+
+// repeated .draiosproto.mongodb_op_type_details client_ops = 2;
+inline int mongodb_info::client_ops_size() const {
+  return client_ops_.size();
+}
+inline void mongodb_info::clear_client_ops() {
+  client_ops_.Clear();
+}
+inline const ::draiosproto::mongodb_op_type_details& mongodb_info::client_ops(int index) const {
+  return client_ops_.Get(index);
+}
+inline ::draiosproto::mongodb_op_type_details* mongodb_info::mutable_client_ops(int index) {
+  return client_ops_.Mutable(index);
+}
+inline ::draiosproto::mongodb_op_type_details* mongodb_info::add_client_ops() {
+  return client_ops_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >&
+mongodb_info::client_ops() const {
+  return client_ops_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_op_type_details >*
+mongodb_info::mutable_client_ops() {
+  return &client_ops_;
+}
+
+// repeated .draiosproto.mongodb_collection_details server_collections = 3;
+inline int mongodb_info::server_collections_size() const {
+  return server_collections_.size();
+}
+inline void mongodb_info::clear_server_collections() {
+  server_collections_.Clear();
+}
+inline const ::draiosproto::mongodb_collection_details& mongodb_info::server_collections(int index) const {
+  return server_collections_.Get(index);
+}
+inline ::draiosproto::mongodb_collection_details* mongodb_info::mutable_server_collections(int index) {
+  return server_collections_.Mutable(index);
+}
+inline ::draiosproto::mongodb_collection_details* mongodb_info::add_server_collections() {
+  return server_collections_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >&
+mongodb_info::server_collections() const {
+  return server_collections_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >*
+mongodb_info::mutable_server_collections() {
+  return &server_collections_;
+}
+
+// repeated .draiosproto.mongodb_collection_details client_collections = 4;
+inline int mongodb_info::client_collections_size() const {
+  return client_collections_.size();
+}
+inline void mongodb_info::clear_client_collections() {
+  client_collections_.Clear();
+}
+inline const ::draiosproto::mongodb_collection_details& mongodb_info::client_collections(int index) const {
+  return client_collections_.Get(index);
+}
+inline ::draiosproto::mongodb_collection_details* mongodb_info::mutable_client_collections(int index) {
+  return client_collections_.Mutable(index);
+}
+inline ::draiosproto::mongodb_collection_details* mongodb_info::add_client_collections() {
+  return client_collections_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >&
+mongodb_info::client_collections() const {
+  return client_collections_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mongodb_collection_details >*
+mongodb_info::mutable_client_collections() {
+  return &client_collections_;
+}
+
+// -------------------------------------------------------------------
+
 // proto_info
 
 // optional .draiosproto.http_info http = 1;
@@ -8987,6 +9632,44 @@ inline void proto_info::set_allocated_postgres(::draiosproto::sql_info* postgres
     set_has_postgres();
   } else {
     clear_has_postgres();
+  }
+}
+
+// optional .draiosproto.mongodb_info mongodb = 4;
+inline bool proto_info::has_mongodb() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void proto_info::set_has_mongodb() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void proto_info::clear_has_mongodb() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void proto_info::clear_mongodb() {
+  if (mongodb_ != NULL) mongodb_->::draiosproto::mongodb_info::Clear();
+  clear_has_mongodb();
+}
+inline const ::draiosproto::mongodb_info& proto_info::mongodb() const {
+  return mongodb_ != NULL ? *mongodb_ : *default_instance_->mongodb_;
+}
+inline ::draiosproto::mongodb_info* proto_info::mutable_mongodb() {
+  set_has_mongodb();
+  if (mongodb_ == NULL) mongodb_ = new ::draiosproto::mongodb_info;
+  return mongodb_;
+}
+inline ::draiosproto::mongodb_info* proto_info::release_mongodb() {
+  clear_has_mongodb();
+  ::draiosproto::mongodb_info* temp = mongodb_;
+  mongodb_ = NULL;
+  return temp;
+}
+inline void proto_info::set_allocated_mongodb(::draiosproto::mongodb_info* mongodb) {
+  delete mongodb_;
+  mongodb_ = mongodb;
+  if (mongodb) {
+    set_has_mongodb();
+  } else {
+    clear_has_mongodb();
   }
 }
 
@@ -14987,6 +15670,10 @@ namespace protobuf {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::sql_statement_type>() {
   return ::draiosproto::sql_statement_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::mongodb_op_type>() {
+  return ::draiosproto::mongodb_op_type_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
