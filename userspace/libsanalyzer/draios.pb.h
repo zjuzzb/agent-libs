@@ -188,6 +188,25 @@ inline bool message_type_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<message_type>(
     message_type_descriptor(), name, value);
 }
+enum container_type {
+  DOCKER = 1,
+  LXC = 2
+};
+bool container_type_IsValid(int value);
+const container_type container_type_MIN = DOCKER;
+const container_type container_type_MAX = LXC;
+const int container_type_ARRAYSIZE = container_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* container_type_descriptor();
+inline const ::std::string& container_type_Name(container_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    container_type_descriptor(), value);
+}
+inline bool container_type_Parse(
+    const ::std::string& name, container_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<container_type>(
+    container_type_descriptor(), name, value);
+}
 // ===================================================================
 
 class counter_time : public ::google::protobuf::Message {
@@ -4350,10 +4369,17 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_id();
   inline void set_allocated_id(::std::string* id);
 
-  // optional string name = 2;
+  // optional .draiosproto.container_type type = 2;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 2;
+  inline ::draiosproto::container_type type() const;
+  inline void set_type(::draiosproto::container_type value);
+
+  // optional string name = 3;
   inline bool has_name() const;
   inline void clear_name();
-  static const int kNameFieldNumber = 2;
+  static const int kNameFieldNumber = 3;
   inline const ::std::string& name() const;
   inline void set_name(const ::std::string& value);
   inline void set_name(const char* value);
@@ -4362,10 +4388,10 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_name();
   inline void set_allocated_name(::std::string* name);
 
-  // optional string image = 3;
+  // optional string image = 4;
   inline bool has_image() const;
   inline void clear_image();
-  static const int kImageFieldNumber = 3;
+  static const int kImageFieldNumber = 4;
   inline const ::std::string& image() const;
   inline void set_image(const ::std::string& value);
   inline void set_image(const char* value);
@@ -4374,85 +4400,85 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_image();
   inline void set_allocated_image(::std::string* image);
 
-  // optional .draiosproto.time_categories tcounters = 4;
+  // optional .draiosproto.time_categories tcounters = 5;
   inline bool has_tcounters() const;
   inline void clear_tcounters();
-  static const int kTcountersFieldNumber = 4;
+  static const int kTcountersFieldNumber = 5;
   inline const ::draiosproto::time_categories& tcounters() const;
   inline ::draiosproto::time_categories* mutable_tcounters();
   inline ::draiosproto::time_categories* release_tcounters();
   inline void set_allocated_tcounters(::draiosproto::time_categories* tcounters);
 
-  // optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+  // optional .draiosproto.transaction_breakdown_categories reqcounters = 6;
   inline bool has_reqcounters() const;
   inline void clear_reqcounters();
-  static const int kReqcountersFieldNumber = 5;
+  static const int kReqcountersFieldNumber = 6;
   inline const ::draiosproto::transaction_breakdown_categories& reqcounters() const;
   inline ::draiosproto::transaction_breakdown_categories* mutable_reqcounters();
   inline ::draiosproto::transaction_breakdown_categories* release_reqcounters();
   inline void set_allocated_reqcounters(::draiosproto::transaction_breakdown_categories* reqcounters);
 
-  // optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+  // optional .draiosproto.counter_time_bidirectional transaction_counters = 7;
   inline bool has_transaction_counters() const;
   inline void clear_transaction_counters();
-  static const int kTransactionCountersFieldNumber = 6;
+  static const int kTransactionCountersFieldNumber = 7;
   inline const ::draiosproto::counter_time_bidirectional& transaction_counters() const;
   inline ::draiosproto::counter_time_bidirectional* mutable_transaction_counters();
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 8;
   inline bool has_min_transaction_counters() const;
   inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 7;
+  static const int kMinTransactionCountersFieldNumber = 8;
   inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
   inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
   inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
   inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+  // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 9;
   inline bool has_max_transaction_counters() const;
   inline void clear_max_transaction_counters();
-  static const int kMaxTransactionCountersFieldNumber = 8;
+  static const int kMaxTransactionCountersFieldNumber = 9;
   inline const ::draiosproto::counter_time_bidirectional& max_transaction_counters() const;
   inline ::draiosproto::counter_time_bidirectional* mutable_max_transaction_counters();
   inline ::draiosproto::counter_time_bidirectional* release_max_transaction_counters();
   inline void set_allocated_max_transaction_counters(::draiosproto::counter_time_bidirectional* max_transaction_counters);
 
-  // optional uint64 transaction_processing_delay = 9;
+  // optional uint64 transaction_processing_delay = 10;
   inline bool has_transaction_processing_delay() const;
   inline void clear_transaction_processing_delay();
-  static const int kTransactionProcessingDelayFieldNumber = 9;
+  static const int kTransactionProcessingDelayFieldNumber = 10;
   inline ::google::protobuf::uint64 transaction_processing_delay() const;
   inline void set_transaction_processing_delay(::google::protobuf::uint64 value);
 
-  // optional uint64 merged_server_delay = 10;
+  // optional uint64 merged_server_delay = 11;
   inline bool has_merged_server_delay() const;
   inline void clear_merged_server_delay();
-  static const int kMergedServerDelayFieldNumber = 10;
+  static const int kMergedServerDelayFieldNumber = 11;
   inline ::google::protobuf::uint64 merged_server_delay() const;
   inline void set_merged_server_delay(::google::protobuf::uint64 value);
 
-  // optional uint64 next_tiers_delay = 11;
+  // optional uint64 next_tiers_delay = 12;
   inline bool has_next_tiers_delay() const;
   inline void clear_next_tiers_delay();
-  static const int kNextTiersDelayFieldNumber = 11;
+  static const int kNextTiersDelayFieldNumber = 12;
   inline ::google::protobuf::uint64 next_tiers_delay() const;
   inline void set_next_tiers_delay(::google::protobuf::uint64 value);
 
-  // optional .draiosproto.resource_categories resource_counters = 12;
+  // optional .draiosproto.resource_categories resource_counters = 13;
   inline bool has_resource_counters() const;
   inline void clear_resource_counters();
-  static const int kResourceCountersFieldNumber = 12;
+  static const int kResourceCountersFieldNumber = 13;
   inline const ::draiosproto::resource_categories& resource_counters() const;
   inline ::draiosproto::resource_categories* mutable_resource_counters();
   inline ::draiosproto::resource_categories* release_resource_counters();
   inline void set_allocated_resource_counters(::draiosproto::resource_categories* resource_counters);
 
-  // optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+  // optional .draiosproto.counter_syscall_errors syscall_errors = 14;
   inline bool has_syscall_errors() const;
   inline void clear_syscall_errors();
-  static const int kSyscallErrorsFieldNumber = 13;
+  static const int kSyscallErrorsFieldNumber = 14;
   inline const ::draiosproto::counter_syscall_errors& syscall_errors() const;
   inline ::draiosproto::counter_syscall_errors* mutable_syscall_errors();
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
@@ -4462,6 +4488,8 @@ class container : public ::google::protobuf::Message {
  private:
   inline void set_has_id();
   inline void clear_has_id();
+  inline void set_has_type();
+  inline void clear_has_type();
   inline void set_has_name();
   inline void clear_has_name();
   inline void set_has_image();
@@ -4502,9 +4530,10 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
+  int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11656,15 +11685,38 @@ inline void container::set_allocated_id(::std::string* id) {
   }
 }
 
-// optional string name = 2;
-inline bool container::has_name() const {
+// optional .draiosproto.container_type type = 2;
+inline bool container::has_type() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void container::set_has_name() {
+inline void container::set_has_type() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void container::clear_has_name() {
+inline void container::clear_has_type() {
   _has_bits_[0] &= ~0x00000002u;
+}
+inline void container::clear_type() {
+  type_ = 1;
+  clear_has_type();
+}
+inline ::draiosproto::container_type container::type() const {
+  return static_cast< ::draiosproto::container_type >(type_);
+}
+inline void container::set_type(::draiosproto::container_type value) {
+  assert(::draiosproto::container_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional string name = 3;
+inline bool container::has_name() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void container::set_has_name() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void container::clear_has_name() {
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void container::clear_name() {
   if (name_ != &::google::protobuf::internal::kEmptyString) {
@@ -11726,15 +11778,15 @@ inline void container::set_allocated_name(::std::string* name) {
   }
 }
 
-// optional string image = 3;
+// optional string image = 4;
 inline bool container::has_image() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void container::set_has_image() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void container::clear_has_image() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void container::clear_image() {
   if (image_ != &::google::protobuf::internal::kEmptyString) {
@@ -11796,15 +11848,15 @@ inline void container::set_allocated_image(::std::string* image) {
   }
 }
 
-// optional .draiosproto.time_categories tcounters = 4;
+// optional .draiosproto.time_categories tcounters = 5;
 inline bool container::has_tcounters() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void container::set_has_tcounters() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void container::clear_has_tcounters() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void container::clear_tcounters() {
   if (tcounters_ != NULL) tcounters_->::draiosproto::time_categories::Clear();
@@ -11834,15 +11886,15 @@ inline void container::set_allocated_tcounters(::draiosproto::time_categories* t
   }
 }
 
-// optional .draiosproto.transaction_breakdown_categories reqcounters = 5;
+// optional .draiosproto.transaction_breakdown_categories reqcounters = 6;
 inline bool container::has_reqcounters() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void container::set_has_reqcounters() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void container::clear_has_reqcounters() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void container::clear_reqcounters() {
   if (reqcounters_ != NULL) reqcounters_->::draiosproto::transaction_breakdown_categories::Clear();
@@ -11872,15 +11924,15 @@ inline void container::set_allocated_reqcounters(::draiosproto::transaction_brea
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional transaction_counters = 6;
+// optional .draiosproto.counter_time_bidirectional transaction_counters = 7;
 inline bool container::has_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void container::set_has_transaction_counters() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void container::clear_has_transaction_counters() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void container::clear_transaction_counters() {
   if (transaction_counters_ != NULL) transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -11910,15 +11962,15 @@ inline void container::set_allocated_transaction_counters(::draiosproto::counter
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 7;
+// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 8;
 inline bool container::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void container::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void container::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void container::clear_min_transaction_counters() {
   if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -11948,15 +12000,15 @@ inline void container::set_allocated_min_transaction_counters(::draiosproto::cou
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional max_transaction_counters = 8;
+// optional .draiosproto.counter_time_bidirectional max_transaction_counters = 9;
 inline bool container::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void container::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void container::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void container::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -11986,15 +12038,15 @@ inline void container::set_allocated_max_transaction_counters(::draiosproto::cou
   }
 }
 
-// optional uint64 transaction_processing_delay = 9;
+// optional uint64 transaction_processing_delay = 10;
 inline bool container::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void container::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void container::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void container::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -12008,15 +12060,15 @@ inline void container::set_transaction_processing_delay(::google::protobuf::uint
   transaction_processing_delay_ = value;
 }
 
-// optional uint64 merged_server_delay = 10;
+// optional uint64 merged_server_delay = 11;
 inline bool container::has_merged_server_delay() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void container::set_has_merged_server_delay() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void container::clear_has_merged_server_delay() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void container::clear_merged_server_delay() {
   merged_server_delay_ = GOOGLE_ULONGLONG(0);
@@ -12030,15 +12082,15 @@ inline void container::set_merged_server_delay(::google::protobuf::uint64 value)
   merged_server_delay_ = value;
 }
 
-// optional uint64 next_tiers_delay = 11;
+// optional uint64 next_tiers_delay = 12;
 inline bool container::has_next_tiers_delay() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void container::set_has_next_tiers_delay() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void container::clear_has_next_tiers_delay() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void container::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -12052,15 +12104,15 @@ inline void container::set_next_tiers_delay(::google::protobuf::uint64 value) {
   next_tiers_delay_ = value;
 }
 
-// optional .draiosproto.resource_categories resource_counters = 12;
+// optional .draiosproto.resource_categories resource_counters = 13;
 inline bool container::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void container::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void container::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void container::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -12090,15 +12142,15 @@ inline void container::set_allocated_resource_counters(::draiosproto::resource_c
   }
 }
 
-// optional .draiosproto.counter_syscall_errors syscall_errors = 13;
+// optional .draiosproto.counter_syscall_errors syscall_errors = 14;
 inline bool container::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void container::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void container::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void container::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -15682,6 +15734,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
   return ::draiosproto::message_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::container_type>() {
+  return ::draiosproto::container_type_descriptor();
 }
 
 }  // namespace google

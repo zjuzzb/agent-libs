@@ -2958,6 +2958,18 @@ void sinsp_analyzer::emit_containers()
 
 		container->set_id(it->second.m_id);
 
+		switch(it->second.m_type)
+		{
+			case CT_DOCKER:
+				container->set_type(draiosproto::DOCKER);
+				break;
+			case CT_LXC:
+				container->set_type(draiosproto::LXC);
+				break;
+			default:
+				ASSERT(false);
+		}
+
 		if(!it->second.m_name.empty())
 		{
 			container->set_name(it->second.m_name);

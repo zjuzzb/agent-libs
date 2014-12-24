@@ -393,21 +393,27 @@ message file_stat {
     required uint32 errors = 5;
 }
 
+enum container_type {
+    DOCKER = 1;
+    LXC = 2;
+}
+
 message container {
     required string id = 1;
-    optional string name = 2;
-    optional string image = 3;
-    optional time_categories tcounters = 4; // The time counters for this thread
-    optional transaction_breakdown_categories reqcounters = 5; // how time is spent when serving requests
-    optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-    optional counter_time_bidirectional min_transaction_counters = 7; // The fastest transaction counters for the whole host
-    optional counter_time_bidirectional max_transaction_counters = 8; // The slowest transaction counters for the whole host
-    optional uint64 transaction_processing_delay = 9; // the delay introduced by this host when processing transactions.
+    optional container_type type = 2;
+    optional string name = 3;
+    optional string image = 4;
+    optional time_categories tcounters = 5; // The time counters for this thread
+    optional transaction_breakdown_categories reqcounters = 6; // how time is spent when serving requests
+    optional counter_time_bidirectional transaction_counters = 7; // The transaction counters for the whole host
+    optional counter_time_bidirectional min_transaction_counters = 8; // The fastest transaction counters for the whole host
+    optional counter_time_bidirectional max_transaction_counters = 9; // The slowest transaction counters for the whole host
+    optional uint64 transaction_processing_delay = 10; // the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
-    optional uint64 merged_server_delay = 10; // the total merged time of all the incoming requests.
-    optional uint64 next_tiers_delay = 11; // the delay introduced by this host's next tiers when processing transactions.
-    optional resource_categories resource_counters = 12; // The resource counters for this process
-    optional counter_syscall_errors syscall_errors = 13; // Syscall error counter
+    optional uint64 merged_server_delay = 11; // the total merged time of all the incoming requests.
+    optional uint64 next_tiers_delay = 12; // the delay introduced by this host's next tiers when processing transactions.
+    optional resource_categories resource_counters = 13; // The resource counters for this process
+    optional counter_syscall_errors syscall_errors = 14; // Syscall error counter
 }
 
 //
