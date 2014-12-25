@@ -1265,6 +1265,55 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	}
 }
 
+inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* params)
+{
+	//
+	// If this fd has an active transaction transaction table, mark it as unititialized
+	//
+	sinsp_connection *connection;
+	bool do_flush_transaction = params->m_fdinfo->m_usrstate->is_active();
+
+	if(do_flush_transaction)
+	{
+		if(params->m_fdinfo->is_ipv4_socket())
+		{
+			connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, 
+				params->m_ts);
+		}
+#ifdef HAS_UNIX_CONNECTIONS
+		else if(params->m_fdinfo->is_unix_socket())
+		{
+			connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, 
+				params->m_ts);
+		}
+#endif
+		else
+		{
+			ASSERT(false);
+			do_flush_transaction = false;
+		}
+	}
+
+	if(do_flush_transaction)
+	{
+		params->m_fdinfo->m_usrstate->update(params->m_inspector->m_analyzer,
+			params->m_tinfo,
+			params->m_fdinfo,
+			connection,
+			params->m_ts, 
+			params->m_ts, 
+			-1,
+			sinsp_partial_transaction::DIR_CLOSE,
+#if _DEBUG
+			NULL,
+			params->m_fd,
+#endif
+			NULL,
+			0,
+			0);
+	}
+}
+
 void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 {
 	//
@@ -1272,48 +1321,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	//
 	if(params->m_fdinfo->is_transaction())
 	{
-		sinsp_connection *connection;
-		bool do_remove_transaction = params->m_fdinfo->m_usrstate->is_active();
-
-		if(do_remove_transaction)
-		{
-			if(params->m_fdinfo->is_ipv4_socket())
-			{
-				connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, 
-					params->m_ts);
-			}
-#ifdef HAS_UNIX_CONNECTIONS
-			else if(params->m_fdinfo->is_unix_socket())
-			{
-				connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, 
-					params->m_ts);
-			}
-#endif
-			else
-			{
-				ASSERT(false);
-				do_remove_transaction = false;
-			}
-		}
-
-		if(do_remove_transaction)
-		{
-			params->m_fdinfo->m_usrstate->update(params->m_inspector->m_analyzer,
-				params->m_tinfo,
-				params->m_fdinfo,
-				connection,
-				params->m_ts, 
-				params->m_ts, 
-				-1,
-				sinsp_partial_transaction::DIR_CLOSE,
-#if _DEBUG
-				NULL,
-				params->m_fd,
-#endif
-				NULL,
-				0,
-				0);
-		}
+		flush_transaction(params);
 
 		params->m_fdinfo->m_usrstate->mark_inactive();			
 	}
@@ -1403,13 +1411,40 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 {
 	ASSERT(evt->m_fdinfo);
 	ASSERT(evt->m_errorcode != 0);
-	if(evt->m_fdinfo && evt->m_fdinfo->is_file())
+
+	if(evt->m_fdinfo)
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
-		if(file_stat)
+		if(evt->m_fdinfo->is_file())
 		{
-			++file_stat->m_errors;
+			analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
+			if(file_stat)
+			{
+				++file_stat->m_errors;
+			}
 		}
+		//
+		// This attempts to flush a transaction when a read timeout happens.
+		// It's currently experimental and therefore disabled.
+		//
+#if 0
+		else if(evt->m_fdinfo->is_transaction())
+		{
+			erase_fd_params params;
+
+			params.m_fdinfo = evt->m_fdinfo;
+			params.m_tinfo = evt->m_tinfo;
+			params.m_inspector = m_inspector;
+			params.m_ts = evt->get_ts();
+			params.m_fd = 0;
+			enum ppm_event_category ecat = evt->m_info->category;
+
+			if((params.m_fdinfo->is_role_server() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				(params.m_fdinfo->is_role_client() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_IN))
+			{
+				flush_transaction(&params);
+			}
+		}
+#endif
 	}
 }
 
