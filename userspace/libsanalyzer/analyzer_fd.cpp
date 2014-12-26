@@ -1422,13 +1422,11 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 				++file_stat->m_errors;
 			}
 		}
-		//
-		// This attempts to flush a transaction when a read timeout happens.
-		// It's currently experimental and therefore disabled.
-		//
-#if 0
 		else if(evt->m_fdinfo->is_transaction())
 		{
+			//
+			// This attempts to flush a transaction when a read timeout happens.
+			//
 			erase_fd_params params;
 
 			params.m_fdinfo = evt->m_fdinfo;
@@ -1438,13 +1436,20 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 			params.m_fd = 0;
 			enum ppm_event_category ecat = evt->m_info->category;
 
-			if((params.m_fdinfo->is_role_server() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_OUT) ||
-				(params.m_fdinfo->is_role_client() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_IN))
+			//
+			// We flush transaction if the I/O operation satisfies one of the 
+			// following conditions:
+			//  - the FD is a server one, this a failed read AND it's the first read after a bunch of writes 
+			//  - the FD is a client one, this a failed write AND it's the first read after a bunch of reads 
+			// In other words, we try to capture the attempt at beginning a new transaction, even if it
+			// fails because there's no data yet.
+			//
+			if((params.m_fdinfo->is_role_server() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_OUT && ecat == EC_IO_READ) ||
+				(params.m_fdinfo->is_role_client() && params.m_fdinfo->m_usrstate->m_direction == sinsp_partial_transaction::DIR_IN && ecat == EC_IO_WRITE))
 			{
 				flush_transaction(&params);
 			}
 		}
-#endif
 	}
 }
 
