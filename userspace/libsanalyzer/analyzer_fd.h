@@ -76,7 +76,7 @@ public:
 
 private:
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
-	void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* params);
+	void flush_transaction(erase_fd_params* params);
 
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
