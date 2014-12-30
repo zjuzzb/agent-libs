@@ -396,6 +396,7 @@ message file_stat {
 enum container_type {
     DOCKER = 1;
     LXC = 2;
+    LIBVIRT_LXC = 3;
 }
 
 message container {

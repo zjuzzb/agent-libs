@@ -1059,9 +1059,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 
-					if(!tinfo->m_container.m_id.empty())
+					if(!tinfo->m_container_id.empty())
 					{
-						proc->mutable_details()->set_container_id(tinfo->m_container.m_id);
+						proc->mutable_details()->set_container_id(tinfo->m_container_id);
 					}
 
 					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
@@ -1180,9 +1180,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							procinfo->m_stolen_capacity_score,
 							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 
-						if(!tinfo->m_container.m_id.empty())
+						if(!tinfo->m_container_id.empty())
 						{
-							m_containers_metrics[tinfo->m_container.m_id].add_capacity_score(procinfo->m_capacity_score,
+							m_containers_metrics[tinfo->m_container_id].add_capacity_score(procinfo->m_capacity_score,
 								procinfo->m_stolen_capacity_score,
 								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 						}
@@ -1273,9 +1273,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						m_host_req_metrics.add(&procinfo->m_proc_metrics);
 
-						if(!tinfo->m_container.m_id.empty())
+						if(!tinfo->m_container_id.empty())
 						{
-							m_containers_req_metrics[tinfo->m_container.m_id].add(&procinfo->m_proc_metrics);
+							m_containers_req_metrics[tinfo->m_container_id].add(&procinfo->m_proc_metrics);
 						}
 					}
 
@@ -1286,9 +1286,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					m_host_metrics.add(procinfo);
 
-					if(!tinfo->m_container.m_id.empty())
+					if(!tinfo->m_container_id.empty())
 					{
-						m_containers_metrics[tinfo->m_container.m_id].add(procinfo);
+						m_containers_metrics[tinfo->m_container_id].add(procinfo);
 					}
 				}
 				else
@@ -2721,9 +2721,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
 
-			if(!evt->m_tinfo->m_container.m_id.empty())
+			if(!evt->m_tinfo->m_container_id.empty())
 			{
-				m_containers_metrics[evt->m_tinfo->m_container.m_id].m_syscall_errors.add(evt);
+				m_containers_metrics[evt->m_tinfo->m_container_id].m_syscall_errors.add(evt);
 			}
 		}
 	}
@@ -2965,6 +2965,8 @@ void sinsp_analyzer::emit_containers()
 				break;
 			case CT_LXC:
 				container->set_type(draiosproto::LXC);
+			case CT_LIBVIRT_LXC:
+				container->set_type(draiosproto::LIBVIRT_LXC);
 				break;
 			default:
 				ASSERT(false);
