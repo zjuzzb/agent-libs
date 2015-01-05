@@ -59,6 +59,7 @@ public:
 	// XXX this functions have way too many parameters. Fix it.
 	void on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo, char *data, uint32_t original_len, uint32_t len);
 	void on_write(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo, char *data, uint32_t original_len, uint32_t len);
+	void on_rw_error(sinsp_evt *evt, int64_t fd, sinsp_fdinfo_t* fdinfo);
 	void on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len);
 	void on_connect(sinsp_evt *evt, uint8_t* packed_data);
 	void on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo);
@@ -75,6 +76,7 @@ public:
 
 private:
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
+	void flush_transaction(erase_fd_params* params);
 
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;

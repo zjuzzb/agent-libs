@@ -353,6 +353,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			if(m_direction == DIR_UNKNOWN)
 			{
 				res = STATE_SWITCHED;
+				m_bytes_in = len;
 			}
 			else
 			{
@@ -417,6 +418,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			if(m_direction == DIR_UNKNOWN)
 			{
 				res = STATE_SWITCHED;
+				m_bytes_out = len;
 			}
 			else
 			{
@@ -531,6 +533,11 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 			, evt, fd, exit_ts 
 #endif	
 			);
+
+		if(dir == DIR_CLOSE)
+		{
+			m_prev_direction = DIR_UNKNOWN;
+		}
 	}
 	else if(res == STATE_NO_TRANSACTION)
 	{
