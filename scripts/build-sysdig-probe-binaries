@@ -27,6 +27,12 @@ function coreos_build {
 		wget https://github.com/draios/sysdig/archive/$SYSDIG_RELEASE.tar.gz
 	fi
 
+	wget -O config $KERNEL_CONFIG
+	HASH1=$(md5sum config | cut -d' ' -f1)
+	sed -i s/"# Linux\/x86"/"# Linux\/x86_64"/ config
+	HASH2=$(md5sum config | cut -d' ' -f1)
+	rm -rf config
+
 	rm -rf sysdig-$SYSDIG_RELEASE
 	tar zxf $SYSDIG_RELEASE.tar.gz
 	cd sysdig-$SYSDIG_RELEASE
@@ -35,9 +41,11 @@ function coreos_build {
 	cmake -DCMAKE_BUILD_TYPE=Release ..
 	KERNELDIR=$BASEDIR/linux-$KERNEL_RELEASE make driver
 	strip -g driver/sysdig-probe.ko
-	cp driver/sysdig-probe.ko $BASEDIR/sysdig-probe-$SYSDIG_RELEASE-$KERNEL_RELEASE.ko
+	cp driver/sysdig-probe.ko $BASEDIR/sysdig-probe-$SYSDIG_RELEASE-$KERNEL_RELEASE-$HASH1.ko
+	cp driver/sysdig-probe.ko $BASEDIR/sysdig-probe-$SYSDIG_RELEASE-$KERNEL_RELEASE-$HASH2.ko
 	cd $BASEDIR
 }
 
+coreos_build 3.18.1 https://raw.githubusercontent.com/coreos/coreos-overlay/master/sys-kernel/coreos-kernel/files/amd64_defconfig-3.18
 coreos_build 3.17.7 https://raw.githubusercontent.com/coreos/coreos-overlay/build-522/sys-kernel/coreos-kernel/files/x86_64_defconfig-3.17.7
 coreos_build 3.17.2 https://raw.githubusercontent.com/coreos/coreos-overlay/build-494/sys-kernel/coreos-kernel/files/x86_64_defconfig-3.17.2
