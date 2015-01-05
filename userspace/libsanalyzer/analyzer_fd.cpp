@@ -1458,7 +1458,7 @@ analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_thread
 	//
 	// Exclude dragent files to be consistent with everything else
 	//
-	if(tinfo->m_pid == m_analyzer->m_mypid)
+	if(tinfo->m_pid == m_inspector->m_sysdig_pid)
 	{
 		return NULL;
 	}

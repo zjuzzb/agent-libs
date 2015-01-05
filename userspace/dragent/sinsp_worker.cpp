@@ -14,7 +14,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_sinsp_handler(configuration, connection_manager, queue),
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
-	m_dragent_pid(0),
 	m_last_loop_ns(0)
 {
 }
@@ -37,8 +36,6 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 	m_inspector->m_analyzer = m_analyzer;
-
-	m_dragent_pid = getpid();
 
 	//
 	// sysdig that comes with dragent is always installed in /usr
@@ -333,7 +330,7 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 
 		if(!m_configuration->m_capture_dragent_events &&
 			tinfo &&
-			tinfo->m_pid == m_dragent_pid &&
+			tinfo->m_pid == m_inspector->m_sysdig_pid &&
 			etype != PPME_SCHEDSWITCH_1_E && 
 			etype != PPME_SCHEDSWITCH_6_E)
 		{

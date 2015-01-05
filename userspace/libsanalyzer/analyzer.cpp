@@ -98,8 +98,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_configuration = new sinsp_configuration();
 
-	m_mypid = -1;
-
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	//
@@ -927,7 +925,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(m_inspector->m_islive)
 		{
-			if(it->first == m_mypid)
+			if(it->first == m_inspector->m_sysdig_pid)
 			{
 				m_my_cpuload = ainfo->m_cpuload;
 			}
@@ -1912,11 +1910,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	if(flshflags == DF_FORCE_NOFLUSH)
 	{
 		return;
-	}
-
-	if(m_mypid == -1)
-	{
-		m_mypid = getpid();
 	}
 
 	for(j = 0; ; j++)

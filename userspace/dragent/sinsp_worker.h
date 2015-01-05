@@ -163,7 +163,6 @@ private:
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
 	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
 	uint64_t m_driver_stopped_dropping_ns;
-	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 };
