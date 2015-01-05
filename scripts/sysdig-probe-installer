@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+# Installer for precompiled sysdig probe
+#
+set -x
+
+if [ $(id -u) != 0 ]; then
+	echo "Installer must be run as root (or with sudo)."
+	exit 1
+fi
+
+if ! hash lsmod > /dev/null 2>&1; then
+	echo "This program requires lsmod"
+	exit 1
+fi
+
+if ! hash wget > /dev/null 2>&1; then
+	echo "This program requires wget"
+	exit 1
+fi
+
+if ! hash sysdig > /dev/null 2>&1; then
+	echo "This program requires sysdig"
+	exit 1
+fi
+
+if lsmod | grep sysdig_probe > /dev/null 2>&1; then
+	echo "sysdig-probe is already loaded"
+	exit 0
+fi
+
+ARCH=$(uname -m)
+KERNEL_RELEASE=$(uname -r)
+SYSDIG_VERSION=$(sysdig --version | cut -d' ' -f3)
+
+if [ -f /proc/config.gz ]; then
+	echo "Found kernel config at /proc/config.gz"
+	HASH=$(zcat /proc/config.gz | md5sum - | cut -d' ' -f1)
+elif [ -f /boot/config-$KERNEL_RELEASE ]; then
+	echo "Found kernel config at /boot/config-$KERNEL_RELEASE"
+	HASH=$(md5sum /boot/config-$KERNEL_RELEASE | cut -d' ' -f1)	
+fi
+
+SYSDIG_PROBE_FILENAME="sysdig-probe-$SYSDIG_VERSION-$ARCH-$KERNEL_RELEASE-$HASH.ko"
+
+if [ -f ~/.sysdig/$SYSDIG_PROBE_FILENAME ]; then
+	echo "Found precompiled driver at ~/.sysdig/$SYSDIG_PROBE_FILENAME, loading"
+	insmod ~/.sysdig/$SYSDIG_PROBE_FILENAME
+	exit $?
+fi
+
+URL="https://s3.amazonaws.com/download.draios.com/stable/sysdig-probe-binaries/$SYSDIG_PROBE_FILENAME"
+
+echo "Trying to download from $URL"
+curl --create-dirs -o $URL
