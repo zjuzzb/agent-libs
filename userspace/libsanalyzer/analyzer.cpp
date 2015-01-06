@@ -1128,6 +1128,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
 					m_delay_calculator->compute_program_delays(tinfo, prog_delays);
 
+#ifdef _DEBUG
+					procinfo->m_proc_metrics.calculate_totals();
+					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
+						procinfo->m_proc_metrics.get_file_percentage() + 
+						procinfo->m_proc_metrics.get_net_percentage() +
+						procinfo->m_proc_metrics.get_other_percentage();
+					ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
+#endif // _DEBUG
+
 					//
 					// Main metrics
 					//
@@ -1236,6 +1245,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
+								//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
+								//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
 								procinfo->m_proc_metrics.get_processing_percentage() * 100,
 								procinfo->m_proc_metrics.get_file_percentage() * 100,
 								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
@@ -1243,19 +1254,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
 								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
 								procinfo->m_proc_metrics.get_net_percentage() * 100,
+								//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
 								procinfo->m_proc_metrics.get_other_percentage() * 100);
 						}
 					}
 #endif
-
-#ifdef _DEBUG
-					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
-						procinfo->m_proc_metrics.get_file_percentage() + 
-						procinfo->m_proc_metrics.get_net_percentage() +
-						procinfo->m_proc_metrics.get_other_percentage();
-
-					ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
-#endif // _DEBUG
 				}
 #endif // ANALYZER_EMITS_PROCESSES
 			}
@@ -2246,15 +2249,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_host_metrics.m_metrics.get_net_percentage() * 100,
 					m_host_metrics.m_metrics.get_other_percentage() * 100);
 			}
-
-#ifdef _DEBUG
-			double totpct = m_host_metrics.m_metrics.get_processing_percentage() +
-				m_host_metrics.m_metrics.get_file_percentage() + 
-				m_host_metrics.m_metrics.get_net_percentage() +
-				m_host_metrics.m_metrics.get_other_percentage();
-
-			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
-#endif // _DEBUG
 
 			if(m_host_transaction_counters.get_counter()->m_count_in + m_host_transaction_counters.get_counter()->m_count_out != 0)
 			{
