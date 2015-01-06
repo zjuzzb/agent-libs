@@ -193,6 +193,11 @@ public:
 	void start_dropping_mode(uint32_t sampling_ratio);
 	bool driver_stopped_dropping();
 
+	void set_is_sampling(bool is_sampling)
+	{
+		m_is_sampling = is_sampling;
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);

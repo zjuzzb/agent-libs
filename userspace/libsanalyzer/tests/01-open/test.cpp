@@ -611,6 +611,7 @@ printf("!!!! %s\n", filter.c_str());
 			if(drop_ratio != 0)
 			{
 				g_inspector->start_dropping_mode(drop_ratio);
+				g_inspector->m_analyzer->set_is_sampling(true);
 //g_inspector->stop_dropping_mode();
 			}
 

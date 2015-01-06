@@ -1131,6 +1131,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Main metrics
 					//
+					// NOTE ABOUT THE FOLLOWING TWO LINES: computing processing time by looking at gaps 
+					// among system calls doesn't work if we are dropping all the non essential events, 
+					// which the aagent does by default, because a ton of time gets accountd as processing.
+					// To avoid the issue, we patch the processing time with the actual CPU time for the 
+					// process, normalized accodring to the sampling ratio
+					// 
+					procinfo->m_proc_metrics.m_processing.clear();
+					procinfo->m_proc_metrics.m_processing.add(1, (uint64_t)(procinfo->m_cpuload * (1000000000 / 100) / m_sampling_ratio));
+
 					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
 
 					//
