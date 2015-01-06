@@ -337,6 +337,8 @@ VISIBILITY_PRIVATE
 	int m_mypid;
 	double m_my_cpuload;
 	double m_last_system_cpuload;
+	bool m_skip_proc_parsing;
+	uint64_t m_prev_flush_wall_time;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

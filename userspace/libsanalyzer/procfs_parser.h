@@ -38,7 +38,6 @@ public:
 	void get_tid_list(OUT set<uint64_t>* tids);
 
 private:
-//	uint64_t m_last_read_time;
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
 	bool m_is_live_capture;
