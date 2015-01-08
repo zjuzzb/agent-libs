@@ -8,7 +8,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -193,6 +193,11 @@ public:
 	void start_dropping_mode(uint32_t sampling_ratio);
 	bool driver_stopped_dropping();
 
+	void set_is_sampling(bool is_sampling)
+	{
+		m_is_sampling = is_sampling;
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -333,6 +338,8 @@ VISIBILITY_PRIVATE
 	uint32_t m_seconds_below_thresholds;
 	double m_my_cpuload;
 	double m_last_system_cpuload;
+	bool m_skip_proc_parsing;
+	uint64_t m_prev_flush_wall_time;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

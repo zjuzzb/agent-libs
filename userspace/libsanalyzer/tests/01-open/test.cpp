@@ -95,7 +95,7 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 class sample_collector: public analyzer_callback_interface
 {
 public:
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio)
 	{
 //		int a = 0;
 		//sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
@@ -611,6 +611,7 @@ printf("!!!! %s\n", filter.c_str());
 			if(drop_ratio != 0)
 			{
 				g_inspector->start_dropping_mode(drop_ratio);
+				g_inspector->m_analyzer->set_is_sampling(true);
 //g_inspector->stop_dropping_mode();
 			}
 

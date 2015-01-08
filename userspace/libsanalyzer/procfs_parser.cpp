@@ -3,7 +3,6 @@
 //   http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //   http://stackoverflow.com/questions/1420426/calculating-cpu-usage-of-a-process-in-linux
 // 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -12,8 +11,9 @@
 #include <dirent.h>
 #include <mntent.h>
 #include <sys/statvfs.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <sys/time.h>
+#else
+#include <time.h>
 #endif
 #include <sys/stat.h>
 
