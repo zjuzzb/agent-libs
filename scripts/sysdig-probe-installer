@@ -2,7 +2,6 @@
 #
 # Installer for precompiled sysdig probe
 #
-set -x
 
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
@@ -44,12 +43,16 @@ fi
 SYSDIG_PROBE_FILENAME="sysdig-probe-$SYSDIG_VERSION-$ARCH-$KERNEL_RELEASE-$HASH.ko"
 
 if [ -f ~/.sysdig/$SYSDIG_PROBE_FILENAME ]; then
-	echo "Found precompiled driver at ~/.sysdig/$SYSDIG_PROBE_FILENAME, loading"
+	echo "Found precompiled module at ~/.sysdig/$SYSDIG_PROBE_FILENAME, loading module"
 	insmod ~/.sysdig/$SYSDIG_PROBE_FILENAME
 	exit $?
 fi
 
 URL="https://s3.amazonaws.com/download.draios.com/stable/sysdig-probe-binaries/$SYSDIG_PROBE_FILENAME"
 
-echo "Trying to download from $URL"
-curl --create-dirs -o $URL
+echo "Trying to download precompiled module from $URL"
+if curl --create-dirs -o ~/.sysdig/ $URL; then
+	echo "Download succeeded, loading module"
+	insmod ~/.sysdig/$SYSDIG_PROBE_FILENAME
+	exit $?
+fi
