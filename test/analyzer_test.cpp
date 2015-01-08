@@ -139,7 +139,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 		int fd;
 		ssize_t res;
 
-		inspector->m_analyzer->m_mypid = 0;
+		inspector->m_sysdig_pid = 0;
 
 		fd = open("/tmp/nonexistent", O_RDONLY);
 		EXPECT_EQ(-1, fd);
