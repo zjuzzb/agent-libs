@@ -2,6 +2,7 @@ package com.sysdigcloud.sdjagent;
 
 import sun.jvmstat.monitor.*;
 
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,9 +13,9 @@ public class JvmstatVM
 {
     private final MonitoredVm vm;
 
-    public JvmstatVM(int pid) throws MonitorException
+    public JvmstatVM(int pid) throws MonitorException, URISyntaxException
     {
-        VmIdentifier vmId = new VmIdentifier(String.format("//%d", pid);
+        VmIdentifier vmId = new VmIdentifier(String.format("//%d", pid));
         MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(vmId);
         vm = monitoredHost.getMonitoredVm(vmId,-1);
     }
