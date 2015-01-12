@@ -47,13 +47,32 @@ public class JvmstatVM
                 monitorStrList.add(monitor.getValue().toString());
             }
             return monitorStrList;
-        } catch (MonitorException ex) {
+        } catch (MonitorException ex)
+        {
             // TODO: log some error
+            return null;
         }
-        return null;
     }
 
     public String getJvmArgs() {
-        return findByName("java.rt.vmArgs");    // NOI18N
+        try
+        {
+            return MonitoredVmUtil.jvmArgs(vm);
+        } catch (MonitorException e)
+        {
+            return null;
+        }
+    }
+
+    public String getMainClass()
+    {
+        try
+        {
+            return MonitoredVmUtil.mainClass(vm, true);
+        } catch (MonitorException e)
+        {
+            // TODO: add log print
+            return null;
+        }
     }
 }

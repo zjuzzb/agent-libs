@@ -5,7 +5,6 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -41,20 +40,11 @@ public class Connection {
         return wrapper;
     }
 
-    public MBeanAttributeInfo[] getAttributesForBean(String bean_name)
-            throws InstanceNotFoundException, IntrospectionException, ReflectionException, IOException, MalformedObjectNameException
+    public MBeanServerConnection getMbs()
     {
-        return mbs.getMBeanInfo(new ObjectName(bean_name)).getAttributes();
+        return mbs;
     }
 
-    public MBeanAttributeInfo[] getAttributesForBean(ObjectName bean_name)
-            throws InstanceNotFoundException, IntrospectionException, ReflectionException, IOException {
-        return mbs.getMBeanInfo(bean_name).getAttributes();
-    }
-
-    public Set<ObjectInstance> queryMBeans() throws IOException {
-        return mbs.queryMBeans(null, null);
-    }
 
     protected void createConnection() throws IOException {
         this.env.put("attribute.remote.x.request.waiting.timeout", CONNECTION_TIMEOUT);
@@ -62,15 +52,6 @@ public class Connection {
         LOGGER.info("Connecting to: " + this.address);
         connector = connectWithTimeout(this.address, this.env);
         mbs = connector.getMBeanServerConnection();
-    }
-
-    public Object getAttribute(String objectName, String attributeName) throws AttributeNotFoundException, InstanceNotFoundException, MBeanException, ReflectionException, IOException, MalformedObjectNameException
-    {
-        return mbs.getAttribute(new ObjectName(objectName), attributeName);
-    }
-
-    public Object getAttribute(ObjectName objectName, String attributeName) throws AttributeNotFoundException, InstanceNotFoundException, MBeanException, ReflectionException, IOException {
-        return mbs.getAttribute(objectName, attributeName);
     }
 
     /**

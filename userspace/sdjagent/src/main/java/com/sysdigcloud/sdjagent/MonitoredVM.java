@@ -10,7 +10,6 @@ import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 import sun.jvmstat.monitor.MonitorException;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import sun.tools.attach.HotSpotVirtualMachine;
 
 import javax.management.*;
@@ -18,10 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,7 +37,7 @@ public class MonitoredVM {
         this.pid = pid;
 
         JvmstatVM jvmstat = new JvmstatVM(pid);
-
+        this.name = jvmstat.getMainClass();
         // Try to get local address from jvmstat
         String address = jvmstat.findByName("sun.management.JMXConnectorServer.address");
         if (address == null)
@@ -112,10 +108,20 @@ public class MonitoredVM {
         return name;
     }
 
-    public List<Object> getMetrics(List<String> metric_names) throws AttributeNotFoundException, ReflectionException, IOException, InstanceNotFoundException, MalformedObjectNameException, MBeanException, IntrospectionException
+    public void setName(String value)
     {
-        List<Object> metrics = new ArrayList<Object>(metric_names.size());
-        metrics.add(connection.getAttributesForBean("java.lang,T"));
+        this.name = value;
+    }
+
+    public List<BeanData> getMetrics(String query, String[] attributes) throws AttributeNotFoundException, ReflectionException, IOException, InstanceNotFoundException, MalformedObjectNameException, MBeanException, IntrospectionException
+    {
+        List<BeanData> metrics = new ArrayList<BeanData>();
+        MBeanServerConnection mbs = connection.getMbs();
+        for ( ObjectName bean : mbs.queryNames(new ObjectName(query), null))
+        {
+            AttributeList attributes_list = mbs.getAttributes(bean, attributes);
+            metrics.add(new BeanData(bean, attributes, attributes_list));
+        }
         return metrics;
     }
 
@@ -123,7 +129,7 @@ public class MonitoredVM {
             "com.sun.management.jmxremote.localConnectorAddress";
 
     private String loadManagementAgent() throws IOException {
-        VirtualMachine vm = null;
+        VirtualMachine vm;
         String name = String.valueOf(pid);
         // TODO: change euid
         try {

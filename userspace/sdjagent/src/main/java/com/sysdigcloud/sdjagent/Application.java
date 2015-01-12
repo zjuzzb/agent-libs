@@ -10,11 +10,10 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import sun.jvmstat.monitor.MonitorException;
 
 import javax.management.*;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  *
@@ -33,12 +32,15 @@ public class Application {
     }
 
     private HashMap<Integer, MonitoredVM> vms;
+    private Config config;
 
-    private Application()
+    private Application() throws FileNotFoundException
     {
         // TODO: clean no more active pids sometime
         // TODO: add conffile get
         vms = new HashMap<Integer, MonitoredVM>();
+
+        config = new Config();
     }
 
     private void mainLoop() throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
@@ -63,13 +65,25 @@ public class Application {
             if (vm == null)
             {
                 vm = new MonitoredVM(pid);
+
+                // Configure VM name if it matches a pattern on configurations
+                Map<String, String> queries = config.getPatterns();
+                for ( String query : queries.keySet())
+                {
+                    if (vm.getName().contains(query))
+                    {
+                        vm.setName(queries.get(query));
+                        break;
+                    }
+                }
+
+                // Add it to known VMs
                 vms.put(pid, vm);
             }
 
             if (vm.isAgentActive())
             {
-                // TODO: extract metrics, use vm.getName() to lookup on config
-                System.out.println(vm.getMetrics(new ArrayList<String>()));
+                
             }
         }
         //TODO: may be a good point to clean not more useful object from vms
