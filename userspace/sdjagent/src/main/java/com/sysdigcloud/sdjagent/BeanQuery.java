@@ -1,7 +1,11 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 
 /**
  * Created by luca on 12/01/15.
@@ -20,7 +24,12 @@ public class BeanQuery {
         return query;
     }
 
-    public getAttributes() {
+    public String[] getAttributes() {
         return attributes;
+    }
+
+    @JsonIgnore
+    public ObjectName getQueryObjectName() throws MalformedObjectNameException {
+        return new ObjectName(query);
     }
 }

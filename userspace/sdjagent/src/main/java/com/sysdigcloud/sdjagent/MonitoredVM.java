@@ -113,14 +113,14 @@ public class MonitoredVM {
         this.name = value;
     }
 
-    public List<BeanData> getMetrics(String query, String[] attributes) throws AttributeNotFoundException, ReflectionException, IOException, InstanceNotFoundException, MalformedObjectNameException, MBeanException, IntrospectionException
+    public List<BeanData> getMetrics(BeanQuery query) throws AttributeNotFoundException, ReflectionException, IOException, InstanceNotFoundException, MalformedObjectNameException, MBeanException, IntrospectionException
     {
         List<BeanData> metrics = new ArrayList<BeanData>();
         MBeanServerConnection mbs = connection.getMbs();
-        for ( ObjectName bean : mbs.queryNames(new ObjectName(query), null))
+        for ( ObjectName bean : mbs.queryNames(query.getQueryObjectName(), null))
         {
-            AttributeList attributes_list = mbs.getAttributes(bean, attributes);
-            metrics.add(new BeanData(bean, attributes, attributes_list));
+            AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
+            metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
         }
         return metrics;
     }

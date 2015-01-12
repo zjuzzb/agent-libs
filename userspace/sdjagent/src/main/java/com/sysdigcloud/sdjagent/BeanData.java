@@ -1,5 +1,9 @@
 package com.sysdigcloud.sdjagent;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
@@ -12,14 +16,28 @@ import java.util.concurrent.atomic.AtomicLong;
  * Created by luca on 12/01/15.
  */
 public class BeanData {
-    String name;
-    Map<String, Object> attributes;
+    private String name;
+    private Map<String, Object> attributes;
+
+    public String getName() {
+        return name;
+    }
+
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    @JsonCreator
+    private BeanData(@JsonProperty("name") String name, @JsonProperty("attributes") Map<String, Object> attributes) {
+        this.name = name;
+        this.attributes = attributes;
+    }
 
     public BeanData(ObjectName name, String[] attribute_names, AttributeList attribute_values) {
         this.name = name.getCanonicalName();
         for ( int j = 0; j < attribute_names.length; ++j)
         {
-            Object attribute_value = attribute_values.get(j);
+            Object attribute_value = ((Attribute)attribute_values.get(j)).getValue();
             if (attribute_value instanceof CompositeData) {
                 CompositeData compositeData = (CompositeData) attribute_value;
                 HashMap<String, Double> subattributes = new HashMap<String, Double>();

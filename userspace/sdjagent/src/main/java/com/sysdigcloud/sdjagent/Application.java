@@ -5,6 +5,7 @@
  */
 package com.sysdigcloud.sdjagent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
 import sun.jvmstat.monitor.MonitorException;
@@ -21,6 +22,7 @@ import java.util.*;
  */
 public class Application {
 
+    private static final ObjectMapper mapper = new ObjectMapper();
     /**
      * @param args the command line arguments
      */
@@ -83,7 +85,11 @@ public class Application {
 
             if (vm.isAgentActive())
             {
-                
+                List<BeanQuery> default_queries = config.getDefaultBeanQueries();
+                for (BeanQuery query : default_queries) {
+                    List<BeanData> beanDatas = vm.getMetrics(query);
+                    mapper.writeValue(System.out, beanDatas);
+                }
             }
         }
         //TODO: may be a good point to clean not more useful object from vms
