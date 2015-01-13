@@ -11,12 +11,21 @@
         <maven.compiler.target>1.6</maven.compiler.target>
         <snakeyaml.version>1.13</snakeyaml.version>
         <jackson.version>2.4.4</jackson.version>
+        <jna.version>3.4.0</jna.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>Internal deps</id>
+            <url>file://${basedir}/lib</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
-            <version>3.4.0</version>
+            <version>${jna.version}</version>
         </dependency>
         <dependency>
             <groupId>org.yaml</groupId>
@@ -28,5 +37,28 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>sun.tools</groupId>
+            <artifactId>tools</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.sysdigcloud.sdjagent.Application</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

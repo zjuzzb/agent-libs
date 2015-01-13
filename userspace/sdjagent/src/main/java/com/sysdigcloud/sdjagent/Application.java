@@ -60,6 +60,7 @@ public class Application {
 
     private void getMetricsCommand() throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
     {
+
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
         {
             int pid = Integer.parseInt(vmd.id());
@@ -86,10 +87,11 @@ public class Application {
             if (vm.isAgentActive())
             {
                 List<BeanQuery> default_queries = config.getDefaultBeanQueries();
+                List<BeanData> beanDatas = new LinkedList<BeanData>();
                 for (BeanQuery query : default_queries) {
-                    List<BeanData> beanDatas = vm.getMetrics(query);
-                    mapper.writeValue(System.out, beanDatas);
+                    beanDatas.addAll(vm.getMetrics(query));
                 }
+                mapper.writeValue(System.out, beanDatas);
             }
         }
         //TODO: may be a good point to clean not more useful object from vms

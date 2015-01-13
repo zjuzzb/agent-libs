@@ -35,6 +35,7 @@ public class BeanData {
 
     public BeanData(ObjectName name, String[] attribute_names, AttributeList attribute_values) {
         this.name = name.getCanonicalName();
+        this.attributes = new HashMap<String, Object>();
         for ( int j = 0; j < attribute_names.length; ++j)
         {
             Object attribute_value = ((Attribute)attribute_values.get(j)).getValue();
