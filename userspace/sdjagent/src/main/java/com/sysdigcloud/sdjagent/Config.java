@@ -61,8 +61,11 @@ public class Config {
         Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
         List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
         if (queryEntry != null) {
-            for (Object beanQuery : (List<Object>) queryEntry.get("beans")) {
-                beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
+            List beansList = (List) queryEntry.get("beans");
+            if (beansList != null) {
+                for (Object beanQuery : beansList) {
+                    beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
+                }
             }
         }
         return beanQueryList;

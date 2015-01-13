@@ -45,7 +45,6 @@ public class Connection {
         return mbs;
     }
 
-
     protected void createConnection() throws IOException {
         this.env.put("attribute.remote.x.request.waiting.timeout", CONNECTION_TIMEOUT);
         closeConnector();
