@@ -11,6 +11,7 @@ import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
 
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 
@@ -38,8 +39,7 @@ public class Application {
     private HashMap<Integer, MonitoredVM> vms;
     private Config config;
 
-    private Application()
-    {
+    private Application() throws FileNotFoundException {
         // TODO: clean no more active pids sometime
         // TODO: add conffile get
         vms = new HashMap<Integer, MonitoredVM>();

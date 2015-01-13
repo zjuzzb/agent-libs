@@ -15,7 +15,7 @@ public class BeanQuery {
     private String[] attributes;
 
     @JsonCreator
-    public BeanQuery(@JsonProperty("name") String query, @JsonProperty("attributes") String[] attributes) throws
+    public BeanQuery(@JsonProperty("query") String query, @JsonProperty("attributes") String[] attributes) throws
             MalformedObjectNameException {
         this.objectName = new ObjectName(query);
         this.attributes = attributes;
