@@ -78,12 +78,12 @@ public class Application {
                 vm = new MonitoredVM(pid);
 
                 // Configure VM name if it matches a pattern on configurations
-                Map<String, String> queries = config.getPatterns();
-                for ( String query : queries.keySet())
+                Map<String, String> patterns = config.getPatterns();
+                for ( String query : patterns.keySet())
                 {
                     if (vm.getName().contains(query))
                     {
-                        vm.setName(queries.get(query));
+                        vm.setName(patterns.get(query));
                         break;
                     }
                 }
@@ -99,6 +99,11 @@ public class Application {
                 List<BeanQuery> default_queries = config.getDefaultBeanQueries();
                 List<BeanData> beanDataList = new LinkedList<BeanData>();
                 for (BeanQuery query : default_queries) {
+                    beanDataList.addAll(vm.getMetrics(query));
+                }
+
+                List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
+                for (BeanQuery query : specific_queries) {
                     beanDataList.addAll(vm.getMetrics(query));
                 }
                 vmObject.put("beans", beanDataList);

@@ -57,11 +57,14 @@ public class Config {
         return beanQueryList;
     }
 
-/*    public Map<String, BeanQuery> getBeanQueries() {
-        Map<String, BeanQuery> beanQueries = new HashMap<String, BeanQuery>();
-        for (Object bean : conf.get("beans")) {
-            beanQueries.put()mapper.convertValue(bean, BeanQuery.class);
+    public List<BeanQuery> getBeanQueries(String name) {
+        Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
+        List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
+        if (queryEntry != null) {
+            for (Object beanQuery : (List<Object>) queryEntry.get("beans")) {
+                beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
+            }
         }
-        return beanQueries;
-    }*/
+        return beanQueryList;
+    }
 }

@@ -74,5 +74,5 @@ dependencies/
 build/
 
 metrics
-userspace/sdjagent/.idea
+.idea
 sdjagent.iml
