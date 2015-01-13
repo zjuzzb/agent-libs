@@ -340,6 +340,11 @@ VISIBILITY_PRIVATE
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
 
+	//
+	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
+	//
+	bool m_die;
+
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;
