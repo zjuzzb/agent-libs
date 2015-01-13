@@ -19,15 +19,18 @@ public class BeanData {
     private String name;
     private Map<String, Object> attributes;
 
+    @SuppressWarnings("unused")
     public String getName() {
         return name;
     }
 
+    @SuppressWarnings("unused")
     public Map<String, Object> getAttributes() {
         return attributes;
     }
 
     @JsonCreator
+    @SuppressWarnings("unused")
     private BeanData(@JsonProperty("name") String name, @JsonProperty("attributes") Map<String, Object> attributes) {
         this.name = name;
         this.attributes = attributes;

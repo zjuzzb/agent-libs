@@ -5,17 +5,25 @@ import sun.jvmstat.monitor.*;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 /**
  * Created by luca on 09/01/15.
  */
 public class JvmstatVM
-{
+{   private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
     private final MonitoredVm vm;
 
-    public JvmstatVM(int pid) throws MonitorException, URISyntaxException
-    {
-        VmIdentifier vmId = new VmIdentifier(String.format("//%d", pid));
+    public JvmstatVM(int pid) throws MonitorException {
+        VmIdentifier vmId;
+        try {
+            vmId = new VmIdentifier(String.format("//%d", pid));
+        } catch (URISyntaxException e) {
+            // This exception should be very rare
+            // rename it to MonitorException to avoid to deal with it
+            // on throws clause
+            throw new MonitorException(e);
+        }
         MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(vmId);
         vm = monitoredHost.getMonitoredVm(vmId,-1);
     }
@@ -60,6 +68,7 @@ public class JvmstatVM
             return MonitoredVmUtil.jvmArgs(vm);
         } catch (MonitorException e)
         {
+            // TODO: log some error
             return null;
         }
     }

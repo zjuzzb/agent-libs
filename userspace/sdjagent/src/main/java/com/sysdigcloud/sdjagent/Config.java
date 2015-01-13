@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Created by luca on 12/01/15.
@@ -18,6 +19,7 @@ public class Config {
     private Map<String, Object> conf;
     private Yaml yaml;
     private static final ObjectMapper mapper = new ObjectMapper();
+    private final static Logger LOGGER = Logger.getLogger(Config.class.getName());
 
     public Config() throws FileNotFoundException {
         // Load config from file
@@ -61,9 +63,10 @@ public class Config {
         Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
         List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
         if (queryEntry != null) {
-            List beansList = (List) queryEntry.get("beans");
+            List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
             if (beansList != null) {
                 for (Object beanQuery : beansList) {
+                    // FIXME: what happens if query has an invalid value?
                     beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
                 }
             }

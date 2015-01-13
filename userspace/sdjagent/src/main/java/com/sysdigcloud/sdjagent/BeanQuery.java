@@ -11,17 +11,14 @@ import javax.management.ObjectName;
  * Created by luca on 12/01/15.
  */
 public class BeanQuery {
-    private String query;
+    private ObjectName objectName;
     private String[] attributes;
 
     @JsonCreator
-    public BeanQuery(@JsonProperty("name") String query, @JsonProperty("attributes") String[] attributes) {
-        this.query = query;
+    public BeanQuery(@JsonProperty("name") String query, @JsonProperty("attributes") String[] attributes) throws
+            MalformedObjectNameException {
+        this.objectName = new ObjectName(query);
         this.attributes = attributes;
-    }
-
-    public String getQuery() {
-        return query;
     }
 
     public String[] getAttributes() {
@@ -29,7 +26,7 @@ public class BeanQuery {
     }
 
     @JsonIgnore
-    public ObjectName getQueryObjectName() throws MalformedObjectNameException {
-        return new ObjectName(query);
+    public ObjectName getObjectName() {
+        return objectName;
     }
 }

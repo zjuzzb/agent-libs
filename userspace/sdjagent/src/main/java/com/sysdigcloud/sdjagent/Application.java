@@ -9,12 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
-import sun.jvmstat.monitor.MonitorException;
 
-import javax.management.*;
-import java.io.FileNotFoundException;
+
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.*;
 
 /**
@@ -32,8 +29,7 @@ public class Application {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
-    {
+    public static void main(String[] args) throws IOException {
         // TODO code application logic here
         Application app = new Application();
         app.getMetricsCommand();
@@ -42,7 +38,7 @@ public class Application {
     private HashMap<Integer, MonitoredVM> vms;
     private Config config;
 
-    private Application() throws FileNotFoundException
+    private Application()
     {
         // TODO: clean no more active pids sometime
         // TODO: add conffile get
@@ -51,8 +47,7 @@ public class Application {
         config = new Config();
     }
 
-    private void mainLoop() throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
-    {
+    private void mainLoop() throws IOException {
         Scanner scanner = new Scanner(System.in);
         while (true)
         {
@@ -64,8 +59,7 @@ public class Application {
         }
     }
 
-    private void getMetricsCommand() throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
-    {
+    private void getMetricsCommand() throws IOException {
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
         {
@@ -91,24 +85,30 @@ public class Application {
                 // Add it to known VMs
                 vms.put(pid, vm);
             }
-            vmObject.put("pid", new Integer(pid));
-            vmObject.put("name", vm.getName());
+            if (vm.isAvailable()) {
+                vmObject.put("pid", new Integer(pid));
+                vmObject.put("name", vm.getName());
 
-            if (vm.isAgentActive())
-            {
-                List<BeanQuery> default_queries = config.getDefaultBeanQueries();
-                List<BeanData> beanDataList = new LinkedList<BeanData>();
-                for (BeanQuery query : default_queries) {
-                    beanDataList.addAll(vm.getMetrics(query));
-                }
+                if (vm.isAgentActive()) {
+                    try {
+                        List<BeanQuery> default_queries = config.getDefaultBeanQueries();
+                        List<BeanData> beanDataList = new LinkedList<BeanData>();
+                        for (BeanQuery query : default_queries) {
+                            beanDataList.addAll(vm.getMetrics(query));
+                        }
 
-                List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
-                for (BeanQuery query : specific_queries) {
-                    beanDataList.addAll(vm.getMetrics(query));
+                        List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
+                        for (BeanQuery query : specific_queries) {
+                            beanDataList.addAll(vm.getMetrics(query));
+                        }
+                        vmObject.put("beans", beanDataList);
+                    } catch (IOException ex)
+                    {
+
+                    }
                 }
-                vmObject.put("beans", beanDataList);
+                vmList.add(vmObject);
             }
-            vmList.add(vmObject);
         }
         mapper.writeValue(System.out, vmList);
         //TODO: may be a good point to clean not more useful object from vms

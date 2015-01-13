@@ -16,7 +16,6 @@ import javax.management.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -28,16 +27,26 @@ import java.util.logging.Logger;
 public class MonitoredVM {
     private final static Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private Connection connection;
-    private int pid;
+    private final int pid;
     private String name;
     private boolean agentActive;
-    
-    public MonitoredVM(int pid) throws IOException, MonitorException, URISyntaxException
+    private boolean available;
+
+    public MonitoredVM(int pid)
     {
         this.pid = pid;
 
-        JvmstatVM jvmstat = new JvmstatVM(pid);
+        JvmstatVM jvmstat;
+        try {
+            jvmstat = new JvmstatVM(pid);
+            available = true;
+        } catch (MonitorException e) {
+            LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", pid, e.getMessage()));
+            return;
+        }
+
         this.name = jvmstat.getMainClass();
+
         // Try to get local address from jvmstat
         String address = jvmstat.findByName("sun.management.JMXConnectorServer.address");
         if (address == null)
@@ -83,21 +92,24 @@ public class MonitoredVM {
                 address = loadManagementAgent();
             } catch (IOException e)
             {
-                e.printStackTrace();
+                LOGGER.warning(String.format("Cannot load agent on pid %d: %s", pid, e.getMessage()));
             }
         }
 
         if (address != null)
         {
-            connection = new Connection(address);
-            agentActive = true;
-        }
-        else
-        {
-            agentActive = false;
+            try {
+                connection = new Connection(address);
+                agentActive = true;
+            } catch (IOException e) {
+                LOGGER.warning(String.format("Cannot connect to JMX address %s of pid %d: %s", address, pid, e.getMessage()));
+            }
         }
     }
 
+    public boolean isAvailable() {
+        return available;
+    }
     public boolean isAgentActive()
     {
         return agentActive;
@@ -113,15 +125,22 @@ public class MonitoredVM {
         this.name = value;
     }
 
-    public List<BeanData> getMetrics(BeanQuery query) throws AttributeNotFoundException, ReflectionException, IOException, InstanceNotFoundException, MalformedObjectNameException, MBeanException, IntrospectionException
-    {
+    public List<BeanData> getMetrics(BeanQuery query) throws IOException {
         List<BeanData> metrics = new ArrayList<BeanData>();
         MBeanServerConnection mbs = connection.getMbs();
-        for ( ObjectName bean : mbs.queryNames(query.getQueryObjectName(), null))
+
+        for ( ObjectName bean : mbs.queryNames(query.getObjectName(), null))
         {
-            AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
-            metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
+            try {
+                AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
+                metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
+            } catch (InstanceNotFoundException e) {
+                LOGGER.warning(String.format("Bean %s not found on pid %d", bean.getCanonicalName(), pid));
+            } catch (ReflectionException e) {
+                LOGGER.warning(String.format("Cannot get attributes of Bean %s on pid %d", bean.getCanonicalName(), pid));
+            }
         }
+
         return metrics;
     }
 
@@ -130,12 +149,12 @@ public class MonitoredVM {
 
     private String loadManagementAgent() throws IOException {
         VirtualMachine vm;
-        String name = String.valueOf(pid);
+        String vmId = String.valueOf(pid);
         // TODO: change euid
         try {
-            vm = VirtualMachine.attach(name);
+            vm = VirtualMachine.attach(vmId);
         } catch (AttachNotSupportedException x) {
-            return null;
+            throw new IOException(x);
         }
         // try to enable local JMX via jcmd command
         if (!loadManagementAgentViaJcmd(vm)) {
@@ -178,8 +197,7 @@ public class MonitoredVM {
     }
 
     private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
-    private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException
-    {
+    private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException {
         if (vm instanceof HotSpotVirtualMachine) {
             HotSpotVirtualMachine hsvm = (HotSpotVirtualMachine) vm;
             InputStream in = null;
@@ -197,7 +215,7 @@ public class MonitoredVM {
                 } while (n > 0);
                 return true;
             } catch (IOException ex) {
-                LOGGER.log(Level.INFO, "jcmd command \""+ENABLE_LOCAL_AGENT_JCMD+"\" for PID "+pid+" failed", ex); // NOI18N
+                LOGGER.log(Level.INFO, "jcmd command \"" + ENABLE_LOCAL_AGENT_JCMD + "\" for PID " + pid + " failed", ex); // NOI18N
             } finally {
                 if (in != null) {
                     in.close();
@@ -206,6 +224,5 @@ public class MonitoredVM {
         }
         return false;
     }
-
 }
 
