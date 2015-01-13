@@ -7,7 +7,7 @@ import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,13 +35,13 @@ public class BeanData {
 
     public BeanData(ObjectName name, String[] attribute_names, AttributeList attribute_values) {
         this.name = name.getCanonicalName();
-        this.attributes = new HashMap<String, Object>();
+        this.attributes = new LinkedHashMap<String, Object>();
         for ( int j = 0; j < attribute_names.length; ++j)
         {
             Object attribute_value = ((Attribute)attribute_values.get(j)).getValue();
             if (attribute_value instanceof CompositeData) {
                 CompositeData compositeData = (CompositeData) attribute_value;
-                HashMap<String, Double> subattributes = new HashMap<String, Double>();
+                Map<String, Double> subattributes = new LinkedHashMap<String, Double>();
                 for ( String key : compositeData.getCompositeType().keySet())
                 {
                     try {

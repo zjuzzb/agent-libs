@@ -6,6 +6,7 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
 import sun.jvmstat.monitor.MonitorException;
@@ -23,6 +24,11 @@ import java.util.*;
 public class Application {
 
     private static final ObjectMapper mapper = new ObjectMapper();
+
+    static {
+        // TODO: Don't indent on release builds
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+    }
     /**
      * @param args the command line arguments
      */
@@ -60,11 +66,13 @@ public class Application {
 
     private void getMetricsCommand() throws IOException, MalformedObjectNameException, AttributeNotFoundException, ReflectionException, InstanceNotFoundException, MBeanException, MonitorException, URISyntaxException, IntrospectionException
     {
-
+        List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
         {
+            Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
             int pid = Integer.parseInt(vmd.id());
             MonitoredVM vm = vms.get(pid);
+
             if (vm == null)
             {
                 vm = new MonitoredVM(pid);
@@ -83,17 +91,21 @@ public class Application {
                 // Add it to known VMs
                 vms.put(pid, vm);
             }
+            vmObject.put("pid", new Integer(pid));
+            vmObject.put("name", vm.getName());
 
             if (vm.isAgentActive())
             {
                 List<BeanQuery> default_queries = config.getDefaultBeanQueries();
-                List<BeanData> beanDatas = new LinkedList<BeanData>();
+                List<BeanData> beanDataList = new LinkedList<BeanData>();
                 for (BeanQuery query : default_queries) {
-                    beanDatas.addAll(vm.getMetrics(query));
+                    beanDataList.addAll(vm.getMetrics(query));
                 }
-                mapper.writeValue(System.out, beanDatas);
+                vmObject.put("beans", beanDataList);
             }
+            vmList.add(vmObject);
         }
+        mapper.writeValue(System.out, vmList);
         //TODO: may be a good point to clean not more useful object from vms
     }
 }
