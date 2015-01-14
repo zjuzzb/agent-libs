@@ -13,9 +13,7 @@ import sun.jvmstat.monitor.MonitorException;
 import sun.tools.attach.HotSpotVirtualMachine;
 
 import javax.management.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -150,7 +148,19 @@ public class MonitoredVM {
     private String loadManagementAgent() throws IOException {
         VirtualMachine vm;
         String vmId = String.valueOf(pid);
-        // TODO: change euid
+
+        // To load the agent, we need to be the same user and group
+        // of the process
+        long[] idInfo = getUidAndGid(pid);
+        int gid_error = CLibrary.LIBC.setegid(idInfo[1]);
+        int uid_error = CLibrary.LIBC.seteuid(idInfo[0]);
+        if (uid_error == 0 && gid_error == 0) {
+            LOGGER.info(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+        } else {
+            LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
+                    uid_error, gid_error));
+        }
+
         try {
             vm = VirtualMachine.attach(vmId);
         } catch (AttachNotSupportedException x) {
@@ -167,7 +177,38 @@ public class MonitoredVM {
         String address = (String) agentProps.get(LOCAL_CONNECTOR_ADDRESS_PROP);
 
         vm.detach();
+
+        // Restore to uid and gid to root
+        uid_error = CLibrary.LIBC.seteuid(0);
+        gid_error = CLibrary.LIBC.setegid(0);
+        if (uid_error == 0 && gid_error == 0) {
+            LOGGER.info("Restore uid and git");
+        } else {
+            LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
+        }
         return address;
+    }
+
+    private static long[] getUidAndGid(int pid) throws IOException {
+        FileInputStream procStatusFile = new FileInputStream(String.format("/proc/%d/status", pid));
+        Scanner procStatusReader = new Scanner(procStatusFile);
+        long[] result = new long[2];
+        while (procStatusReader.hasNextLine())
+        {
+            String line = procStatusReader.nextLine();
+            if (line.startsWith("Uid:")) {
+                // Example:
+                // Uid:	102	102	102	102
+                // Uid: <real> <effective> <saved> <filesystem>
+                String[] uids = line.split("\\s+");
+                result[0] = Long.parseLong(uids[2]);
+                String groupLine = procStatusReader.nextLine();
+                String[] gids = groupLine.split("\\s+");
+                result[1] = Long.parseLong(gids[2]);
+                break;
+            }
+        }
+        return result;
     }
 
     private void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
