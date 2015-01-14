@@ -11,7 +11,6 @@
         <maven.compiler.target>1.6</maven.compiler.target>
         <snakeyaml.version>1.13</snakeyaml.version>
         <jackson.version>2.4.4</jackson.version>
-        <jna.version>3.4.0</jna.version>
     </properties>
 
     <repositories>
@@ -22,11 +21,6 @@
     </repositories>
 
     <dependencies>
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-            <version>${jna.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>

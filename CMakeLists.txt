@@ -22,6 +22,7 @@ set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a")
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)
+add_subdirectory(userspace/sdjagent/native)
 add_subdirectory(test)
 
 set(CPACK_PACKAGE_NAME "draios")

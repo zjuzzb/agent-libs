@@ -152,8 +152,8 @@ public class MonitoredVM {
         // To load the agent, we need to be the same user and group
         // of the process
         long[] idInfo = getUidAndGid(pid);
-        int gid_error = CLibrary.LIBC.setegid(idInfo[1]);
-        int uid_error = CLibrary.LIBC.seteuid(idInfo[0]);
+        int gid_error = CLibrary.setegid(idInfo[1]);
+        int uid_error = CLibrary.seteuid(idInfo[0]);
         if (uid_error == 0 && gid_error == 0) {
             LOGGER.info(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
         } else {
@@ -179,10 +179,10 @@ public class MonitoredVM {
         vm.detach();
 
         // Restore to uid and gid to root
-        uid_error = CLibrary.LIBC.seteuid(0);
-        gid_error = CLibrary.LIBC.setegid(0);
+        uid_error = CLibrary.seteuid(0);
+        gid_error = CLibrary.setegid(0);
         if (uid_error == 0 && gid_error == 0) {
-            LOGGER.info("Restore uid and git");
+            LOGGER.info("Restore uid and gid");
         } else {
             LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
         }
