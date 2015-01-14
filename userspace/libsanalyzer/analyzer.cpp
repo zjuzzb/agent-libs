@@ -1304,6 +1304,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
+		bool force_close = false;
+		bool is_inactive_thread = ((tinfo->m_flags & PPM_CL_ACTIVE) == 0);
+		if(is_inactive_thread && evt != NULL)
+		{
+			uint64_t lifetime = evt->get_ts() - tinfo->m_clone_ts;
+			if(lifetime > ONE_SECOND_IN_NS)
+			{
+				force_close = true;
+			}
+		}
+
 		if(tinfo->m_flags & PPM_CL_CLOSED)
 		{
 			//
