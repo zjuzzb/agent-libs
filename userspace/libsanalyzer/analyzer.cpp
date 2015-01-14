@@ -95,6 +95,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_system_cpuload = 0;
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
+	m_die = false;
 
 	inspector->m_max_n_proc_lookups = 300;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -766,11 +767,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	//
+	///////////////////////////////////////////////////////////////////////////
 	// Propagate the memory information from child thread to main thread:
 	// since memory is updated at context-switch intervals, it can happen
 	// that the "main" thread stays mostly idle, without getting memory events then
-	//
+	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -1322,6 +1323,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
+		bool force_close = false;
+		bool is_inactive_thread = ((tinfo->m_flags & PPM_CL_ACTIVE) == 0);
+		if(is_inactive_thread && evt != NULL)
+		{
+			uint64_t lifetime = evt->get_ts() - tinfo->m_clone_ts;
+			if(lifetime > ONE_SECOND_IN_NS)
+			{
+				force_close = true;
+			}
+		}
+
 		if(tinfo->m_flags & PPM_CL_CLOSED)
 		{
 			//
@@ -2385,6 +2397,31 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Clear the executed command list
 	//
 	m_executed_commands.clear();
+	
+	//
+	// If there were tid collisions report them in the log and then clear the list
+	//
+	if(m_inspector->m_tid_collisions.size() != 0)
+	{
+		string tcb;
+
+		for(j = 0; j < MIN(m_inspector->m_tid_collisions.size(), 16); j++)
+		{
+			tcb += to_string(m_inspector->m_tid_collisions[j]);
+			tcb += " ";
+		}
+
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"%d TID collisions (%s)", (int)m_inspector->m_tid_collisions.size(),
+			tcb.c_str());
+
+		if(m_inspector->m_tid_collisions.size() >= MAX_TID_COLLISIONS_IN_SAMPLE)
+		{
+			m_die = true;
+		}
+
+		m_inspector->m_tid_collisions.clear();
+	}
 
 	//
 	// Run the periodic connection and thread table cleanup
