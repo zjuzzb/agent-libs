@@ -33,7 +33,7 @@ public class Application {
     public static void main(String[] args) throws IOException {
         // TODO code application logic here
         Application app = new Application();
-        app.getMetricsCommand();
+        app.mainLoop();
     }
 
     private HashMap<Integer, MonitoredVM> vms;
