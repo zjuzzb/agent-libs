@@ -90,22 +90,17 @@ public class Application {
                 vmObject.put("name", vm.getName());
 
                 if (vm.isAgentActive()) {
-                    try {
-                        List<BeanQuery> default_queries = config.getDefaultBeanQueries();
-                        List<BeanData> beanDataList = new LinkedList<BeanData>();
-                        for (BeanQuery query : default_queries) {
-                            beanDataList.addAll(vm.getMetrics(query));
-                        }
-
-                        List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
-                        for (BeanQuery query : specific_queries) {
-                            beanDataList.addAll(vm.getMetrics(query));
-                        }
-                        vmObject.put("beans", beanDataList);
-                    } catch (IOException ex)
-                    {
-
+                    List<BeanQuery> default_queries = config.getDefaultBeanQueries();
+                    List<BeanData> beanDataList = new LinkedList<BeanData>();
+                    for (BeanQuery query : default_queries) {
+                        beanDataList.addAll(vm.getMetrics(query));
                     }
+
+                    List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
+                    for (BeanQuery query : specific_queries) {
+                        beanDataList.addAll(vm.getMetrics(query));
+                    }
+                    vmObject.put("beans", beanDataList);
                 }
                 vmList.add(vmObject);
             }

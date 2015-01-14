@@ -14,6 +14,7 @@ import sun.tools.attach.HotSpotVirtualMachine;
 
 import javax.management.*;
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,6 +26,7 @@ import java.util.logging.Logger;
 public class MonitoredVM {
     private final static Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private Connection connection;
+    private MBeanServerConnection mbs;
     private final int pid;
     private String name;
     private boolean agentActive;
@@ -33,6 +35,14 @@ public class MonitoredVM {
     public MonitoredVM(int pid)
     {
         this.pid = pid;
+
+        if (pid == CLibrary.getPid()) {
+            this.name = "sdjagent";
+            this.mbs = ManagementFactory.getPlatformMBeanServer();
+            available = true;
+            agentActive = true;
+            return;
+        }
 
         JvmstatVM jvmstat;
         try {
@@ -90,7 +100,7 @@ public class MonitoredVM {
                 address = loadManagementAgent();
             } catch (IOException e)
             {
-                LOGGER.warning(String.format("Cannot load agent on pid %d: %s", pid, e.getMessage()));
+                LOGGER.warning(String.format("Cannot load agent on process %d: %s", pid, e.getMessage()));
             }
         }
 
@@ -98,9 +108,10 @@ public class MonitoredVM {
         {
             try {
                 connection = new Connection(address);
+                mbs = connection.getMbs();
                 agentActive = true;
             } catch (IOException e) {
-                LOGGER.warning(String.format("Cannot connect to JMX address %s of pid %d: %s", address, pid, e.getMessage()));
+                LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
         }
     }
@@ -123,22 +134,28 @@ public class MonitoredVM {
         this.name = value;
     }
 
-    public List<BeanData> getMetrics(BeanQuery query) throws IOException {
+    public List<BeanData> getMetrics(BeanQuery query) {
         List<BeanData> metrics = new ArrayList<BeanData>();
-        MBeanServerConnection mbs = connection.getMbs();
-
-        for ( ObjectName bean : mbs.queryNames(query.getObjectName(), null))
-        {
+        if (agentActive) {
             try {
-                AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
-                metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
-            } catch (InstanceNotFoundException e) {
-                LOGGER.warning(String.format("Bean %s not found on pid %d", bean.getCanonicalName(), pid));
-            } catch (ReflectionException e) {
-                LOGGER.warning(String.format("Cannot get attributes of Bean %s on pid %d", bean.getCanonicalName(), pid));
+                for (ObjectName bean : mbs.queryNames(query.getObjectName(), null)) {
+                    try {
+                        AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
+                        metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
+                    } catch (InstanceNotFoundException e) {
+                        LOGGER.warning(String.format("Bean %s not found on process %d", bean.getCanonicalName(), pid));
+                    } catch (ReflectionException e) {
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getCanonicalName(), pid));
+
+
+                    }
+                }
+            } catch (IOException ex) {
+                LOGGER.warning(String.format("Process %d agent is not responding, declaring it down", pid));
+                connection = null;
+                agentActive = false;
             }
         }
-
         return metrics;
     }
 
@@ -151,7 +168,7 @@ public class MonitoredVM {
 
         // To load the agent, we need to be the same user and group
         // of the process
-        long[] idInfo = getUidAndGid(pid);
+        long[] idInfo = CLibrary.getUidAndGid(pid);
         int gid_error = CLibrary.setegid(idInfo[1]);
         int uid_error = CLibrary.seteuid(idInfo[0]);
         if (uid_error == 0 && gid_error == 0) {
@@ -187,28 +204,6 @@ public class MonitoredVM {
             LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
         }
         return address;
-    }
-
-    private static long[] getUidAndGid(int pid) throws IOException {
-        FileInputStream procStatusFile = new FileInputStream(String.format("/proc/%d/status", pid));
-        Scanner procStatusReader = new Scanner(procStatusFile);
-        long[] result = new long[2];
-        while (procStatusReader.hasNextLine())
-        {
-            String line = procStatusReader.nextLine();
-            if (line.startsWith("Uid:")) {
-                // Example:
-                // Uid:	102	102	102	102
-                // Uid: <real> <effective> <saved> <filesystem>
-                String[] uids = line.split("\\s+");
-                result[0] = Long.parseLong(uids[2]);
-                String groupLine = procStatusReader.nextLine();
-                String[] gids = groupLine.split("\\s+");
-                result[1] = Long.parseLong(gids[2]);
-                break;
-            }
-        }
-        return result;
     }
 
     private void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
