@@ -1315,7 +1315,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-		if(tinfo->m_flags & PPM_CL_CLOSED)
+		if(tinfo->m_flags & PPM_CL_CLOSED || force_close)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -1989,11 +1989,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				gettimeofday(&tv, NULL);
 				uint64_t wall_time = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000;
 
-				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000)
+				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || !m_inspector->is_live())
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, 
-						"sample emission too fast (%" PRId64 "), skipping scanning proc",
-						(int64_t)(wall_time - m_prev_flush_wall_time));
+					if(m_inspector->is_live())
+					{
+						g_logger.format(sinsp_logger::SEV_ERROR, 
+							"sample emission too fast (%" PRId64 "), skipping scanning proc",
+							(int64_t)(wall_time - m_prev_flush_wall_time));
+					}
 
 					m_skip_proc_parsing = true;
 				}
