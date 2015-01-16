@@ -45,7 +45,8 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector, const pair<int, int>& sdjagent_fds):
+	m_jmx_proxy(sdjagent_fds)
 {
 	m_inspector = inspector;
 	m_n_flushes = 0;
@@ -722,6 +723,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
+
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -1338,6 +1340,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
+
+	m_jmx_proxy.send_get_metrics();
 }
 
 //

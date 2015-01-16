@@ -9,7 +9,10 @@
 void event_capture::capture()
 {
 	m_inspector = new sinsp();
-	m_analyzer = new sinsp_analyzer(m_inspector);
+	// TODO: Provide fake data for JMX
+	int fake_pipe[2];
+	pipe(fake_pipe);
+	m_analyzer = new sinsp_analyzer(m_inspector, std::make_pair(fake_pipe[1], fake_pipe[0]));
 	m_inspector->m_analyzer = m_analyzer;
 	
 	m_analyzer->set_configuration(m_configuration);

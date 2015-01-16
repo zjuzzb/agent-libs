@@ -25,7 +25,8 @@ public class Application {
 
     static {
         // TODO: Don't indent on release builds
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        //mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        mapper.disable(SerializationFeature.CLOSE_CLOSEABLE);
     }
     /**
      * @param args the command line arguments

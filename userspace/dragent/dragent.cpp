@@ -28,7 +28,8 @@ static void g_usr_signal_callback(int sig)
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
+	m_jmx_controller(&m_configuration),
+	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue, &m_jmx_controller),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 {
 }
@@ -264,6 +265,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	ExitCode exit_code;
 
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+	ThreadPool::defaultPool().start(m_jmx_controller, "jmx_controller");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
 	while(!dragent_configuration::m_terminate)

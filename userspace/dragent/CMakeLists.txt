@@ -24,7 +24,8 @@ add_executable(dragent
 	sinsp_data_handler.cpp
 	sinsp_worker.cpp
 	ssh_worker.cpp
-	update_worker.cpp)
+	update_worker.cpp
+	jmx_controller.cpp)
 
 target_link_libraries(dragent
 	pthread

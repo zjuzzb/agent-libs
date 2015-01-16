@@ -1,6 +1,7 @@
 #pragma once
 
 #include <analyzer_int.h>
+#include "jmx_proxy.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -123,7 +124,7 @@ public:
 		DF_EOF,
 	};
 
-	sinsp_analyzer(sinsp* inspector);
+	sinsp_analyzer(sinsp* inspector, const pair<int, int>& sdjagent_fds);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
@@ -339,6 +340,9 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+
+	// JMX proxy
+	jmx_proxy m_jmx_proxy;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

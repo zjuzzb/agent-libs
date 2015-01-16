@@ -3,6 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
+#include "jmx_controller.h"
 
 class captureinfo
 {
@@ -46,7 +47,8 @@ public:
 	};
 
 	sinsp_worker(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue);
+		connection_manager* connection_manager, protocol_queue* queue,
+	    jmx_controller* jmx_controller_thread);
 	~sinsp_worker();
 
 	void run();
@@ -166,4 +168,5 @@ private:
 	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
+	jmx_controller* m_jmx_controller;
 };

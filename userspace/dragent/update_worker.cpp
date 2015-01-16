@@ -13,6 +13,7 @@ update_worker::update_worker(dragent_configuration* configuration):
 
 void update_worker::run()
 {
+	// Hack to delete this object after run ends
 	SharedPtr<update_worker> ptr(this);
 
 	g_log->information("Starting agent update");

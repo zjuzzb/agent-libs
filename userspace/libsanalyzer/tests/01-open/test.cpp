@@ -403,7 +403,11 @@ int main(int argc, char **argv)
 	{
 		g_inspector = new sinsp();
 #ifdef HAS_ANALYZER
-		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector);
+		// create a fake pipe
+		// TODO: Provide fake data for JMX
+		int fake_pipe[2];
+		pipe(fake_pipe);
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, std::make_pair(fake_pipe[1], fake_pipe[0]));
 		g_inspector->m_analyzer = analyzer;
 #endif
 
