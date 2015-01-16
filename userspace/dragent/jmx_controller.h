@@ -9,7 +9,7 @@ public:
 
 	void run();
 
-	pair<int, int> get_io_fds();
+	pair<FILE*, FILE*> get_io_fds();
 
 private:
 	enum pipe_dir
@@ -20,5 +20,8 @@ private:
 	int m_inpipe[2];
 	int m_outpipe[2];
 	int m_errpipe[2];
+	FILE *input_fd;
+	FILE *output_fd;
+	FILE *err_fd;
 	dragent_configuration *configuration;
 };

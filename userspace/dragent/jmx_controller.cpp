@@ -10,11 +10,14 @@ jmx_controller::jmx_controller(dragent_configuration *configuration) :
 	pipe(m_inpipe);
 	pipe(m_outpipe);
 	pipe(m_errpipe);
+	input_fd = fdopen(m_inpipe[PIPE_WRITE], "w");
+	output_fd = fdopen(m_outpipe[PIPE_READ], "r");
+	err_fd = fdopen(m_errpipe[PIPE_READ], "r");
 }
 
-pair<int, int> jmx_controller::get_io_fds()
+pair<FILE*, FILE*> jmx_controller::get_io_fds()
 {
-	return make_pair(m_inpipe[PIPE_WRITE], m_outpipe[PIPE_READ]);
+	return make_pair(input_fd, output_fd);
 }
 
 void jmx_controller::run()
@@ -40,13 +43,22 @@ void jmx_controller::run()
 		{
 			// Father, read from stderr and write to log
 			// TODO: implement
-			/*while (true)
-		{
-			char buf[200];
-			read(m_errpipe[PIPE_READ], buf, 200);
-			g_log->information(buf);
-		}*/
-			waitpid(child_pid, NULL, 0);
+			char buf[1000];
+			while (true)
+			{
+				char *result = fgets(buf, 1000, err_fd);
+				if (result == buf)
+				{
+					// Parse log level and use it
+					g_log->information(buf);
+				}
+				else
+				{
+					// In this case probably process crashed
+					waitpid(child_pid, NULL, 0);
+					break;
+				}
+			}
 		}
 	}
 }

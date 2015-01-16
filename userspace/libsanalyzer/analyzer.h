@@ -124,7 +124,7 @@ public:
 		DF_EOF,
 	};
 
-	sinsp_analyzer(sinsp* inspector, const pair<int, int>& sdjagent_fds);
+	sinsp_analyzer(sinsp* inspector, const pair<FILE*, FILE*>& sdjagent_fds);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);

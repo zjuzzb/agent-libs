@@ -45,7 +45,7 @@ using namespace google::protobuf::io;
 
 #define DUMP_TO_DISK
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector, const pair<int, int>& sdjagent_fds):
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector, const pair<FILE*, FILE*>& sdjagent_fds):
 	m_jmx_proxy(sdjagent_fds)
 {
 	m_inspector = inspector;
