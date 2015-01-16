@@ -1363,7 +1363,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "(\004\022;\n\021resource_counters\030\r \001(\0132 .draiospr"
     "oto.resource_categories\022;\n\016syscall_error"
     "s\030\016 \001(\0132#.draiosproto.counter_syscall_er"
-    "rors\022:\n\rport_mappings\030\017 \003(\0132#.draiosprot"
+    "rors\022:\n\rport_mappings\030\022 \003(\0132#.draiosprot"
     "o.container_port_mapping\"\313\005\n\007metrics\022\024\n\014"
     "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
     "\n\013customer_id\030\003 \001(\t\022#\n\010hostinfo\030\004 \002(\0132\021."
@@ -14951,12 +14951,12 @@ bool container::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(122)) goto parse_port_mappings;
+        if (input->ExpectTag(146)) goto parse_port_mappings;
         break;
       }
 
-      // repeated .draiosproto.container_port_mapping port_mappings = 15;
-      case 15: {
+      // repeated .draiosproto.container_port_mapping port_mappings = 18;
+      case 18: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_port_mappings:
@@ -14965,7 +14965,7 @@ bool container::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(122)) goto parse_port_mappings;
+        if (input->ExpectTag(146)) goto parse_port_mappings;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -15078,10 +15078,10 @@ void container::SerializeWithCachedSizes(
       14, this->syscall_errors(), output);
   }
 
-  // repeated .draiosproto.container_port_mapping port_mappings = 15;
+  // repeated .draiosproto.container_port_mapping port_mappings = 18;
   for (int i = 0; i < this->port_mappings_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      15, this->port_mappings(i), output);
+      18, this->port_mappings(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -15192,11 +15192,11 @@ void container::SerializeWithCachedSizes(
         14, this->syscall_errors(), target);
   }
 
-  // repeated .draiosproto.container_port_mapping port_mappings = 15;
+  // repeated .draiosproto.container_port_mapping port_mappings = 18;
   for (int i = 0; i < this->port_mappings_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        15, this->port_mappings(i), target);
+        18, this->port_mappings(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -15310,8 +15310,8 @@ int container::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.container_port_mapping port_mappings = 15;
-  total_size += 1 * this->port_mappings_size();
+  // repeated .draiosproto.container_port_mapping port_mappings = 18;
+  total_size += 2 * this->port_mappings_size();
   for (int i = 0; i < this->port_mappings_size(); i++) {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(

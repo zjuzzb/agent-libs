@@ -4598,10 +4598,10 @@ class container : public ::google::protobuf::Message {
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
   inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
 
-  // repeated .draiosproto.container_port_mapping port_mappings = 15;
+  // repeated .draiosproto.container_port_mapping port_mappings = 18;
   inline int port_mappings_size() const;
   inline void clear_port_mappings();
-  static const int kPortMappingsFieldNumber = 15;
+  static const int kPortMappingsFieldNumber = 18;
   inline const ::draiosproto::container_port_mapping& port_mappings(int index) const;
   inline ::draiosproto::container_port_mapping* mutable_port_mappings(int index);
   inline ::draiosproto::container_port_mapping* add_port_mappings();
@@ -12399,7 +12399,7 @@ inline void container::set_allocated_syscall_errors(::draiosproto::counter_sysca
   }
 }
 
-// repeated .draiosproto.container_port_mapping port_mappings = 15;
+// repeated .draiosproto.container_port_mapping port_mappings = 18;
 inline int container::port_mappings_size() const {
   return port_mappings_.size();
 }

@@ -422,7 +422,7 @@ message container {
     optional uint64 next_tiers_delay = 12; // the delay introduced by this host's next tiers when processing transactions.
     optional resource_categories resource_counters = 13; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 14; // Syscall error counter
-    repeated container_port_mapping port_mappings = 15;
+    repeated container_port_mapping port_mappings = 18;
 }
 
 //
