@@ -9,7 +9,7 @@ public:
 	jmx_proxy(const std::pair<int, int>& fds);
 
 	void send_get_metrics();
-	void read_metrics(Json::Value* root);
+	void read_metrics();
 
 private:
 	// Input and output of the subprocess

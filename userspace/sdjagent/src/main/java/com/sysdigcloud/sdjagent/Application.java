@@ -5,6 +5,7 @@
  */
 package com.sysdigcloud.sdjagent;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sun.tools.attach.VirtualMachine;
@@ -14,19 +15,22 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Luca Marturana <luca@draios.com>
  */
 public class Application {
-
+    private final static Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper mapper = new ObjectMapper();
 
     static {
         // TODO: Don't indent on release builds
         //mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        mapper.disable(SerializationFeature.CLOSE_CLOSEABLE);
+        //mapper.disable(SerializationFeature.CLOSE_CLOSEABLE);
+        mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
+        mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
     }
     /**
      * @param args the command line arguments
@@ -53,6 +57,7 @@ public class Application {
         while (true)
         {
             String cmd = scanner.nextLine();
+            LOGGER.fine(String.format("Received command: %s", cmd));
             if (cmd.equals("getMetrics"))
             {
                 getMetricsCommand();
@@ -61,6 +66,7 @@ public class Application {
     }
 
     private void getMetricsCommand() throws IOException {
+        LOGGER.fine("Executing getMetrics");
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
         {
@@ -107,6 +113,9 @@ public class Application {
             }
         }
         mapper.writeValue(System.out, vmList);
+        System.out.println();
+        System.out.flush();
+        LOGGER.fine("End getMetrics command");
         //TODO: may be a good point to clean not more useful object from vms
     }
 }

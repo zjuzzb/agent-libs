@@ -723,6 +723,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
+	m_jmx_proxy.read_metrics();
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
