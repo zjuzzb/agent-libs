@@ -64,6 +64,7 @@ class ipv4_connection;
 class ipv4_network_interface;
 class mounted_fs;
 class file_stat;
+class container_port_mapping;
 class container;
 class metrics;
 class dump_request_start;
@@ -4304,6 +4305,118 @@ class file_stat : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class container_port_mapping : public ::google::protobuf::Message {
+ public:
+  container_port_mapping();
+  virtual ~container_port_mapping();
+
+  container_port_mapping(const container_port_mapping& from);
+
+  inline container_port_mapping& operator=(const container_port_mapping& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const container_port_mapping& default_instance();
+
+  void Swap(container_port_mapping* other);
+
+  // implements Message ----------------------------------------------
+
+  container_port_mapping* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const container_port_mapping& from);
+  void MergeFrom(const container_port_mapping& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional uint32 host_ip = 1;
+  inline bool has_host_ip() const;
+  inline void clear_host_ip();
+  static const int kHostIpFieldNumber = 1;
+  inline ::google::protobuf::uint32 host_ip() const;
+  inline void set_host_ip(::google::protobuf::uint32 value);
+
+  // optional uint32 host_port = 2;
+  inline bool has_host_port() const;
+  inline void clear_host_port();
+  static const int kHostPortFieldNumber = 2;
+  inline ::google::protobuf::uint32 host_port() const;
+  inline void set_host_port(::google::protobuf::uint32 value);
+
+  // optional uint32 container_ip = 3;
+  inline bool has_container_ip() const;
+  inline void clear_container_ip();
+  static const int kContainerIpFieldNumber = 3;
+  inline ::google::protobuf::uint32 container_ip() const;
+  inline void set_container_ip(::google::protobuf::uint32 value);
+
+  // optional uint32 container_port = 4;
+  inline bool has_container_port() const;
+  inline void clear_container_port();
+  static const int kContainerPortFieldNumber = 4;
+  inline ::google::protobuf::uint32 container_port() const;
+  inline void set_container_port(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.container_port_mapping)
+ private:
+  inline void set_has_host_ip();
+  inline void clear_has_host_ip();
+  inline void set_has_host_port();
+  inline void clear_has_host_port();
+  inline void set_has_container_ip();
+  inline void clear_has_container_ip();
+  inline void set_has_container_port();
+  inline void clear_has_container_port();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint32 host_ip_;
+  ::google::protobuf::uint32 host_port_;
+  ::google::protobuf::uint32 container_ip_;
+  ::google::protobuf::uint32 container_port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static container_port_mapping* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class container : public ::google::protobuf::Message {
  public:
   container();
@@ -4485,6 +4598,18 @@ class container : public ::google::protobuf::Message {
   inline ::draiosproto::counter_syscall_errors* release_syscall_errors();
   inline void set_allocated_syscall_errors(::draiosproto::counter_syscall_errors* syscall_errors);
 
+  // repeated .draiosproto.container_port_mapping port_mappings = 15;
+  inline int port_mappings_size() const;
+  inline void clear_port_mappings();
+  static const int kPortMappingsFieldNumber = 15;
+  inline const ::draiosproto::container_port_mapping& port_mappings(int index) const;
+  inline ::draiosproto::container_port_mapping* mutable_port_mappings(int index);
+  inline ::draiosproto::container_port_mapping* add_port_mappings();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >&
+      port_mappings() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >*
+      mutable_port_mappings();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -4531,10 +4656,11 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping > port_mappings_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11614,6 +11740,98 @@ inline void file_stat::set_errors(::google::protobuf::uint32 value) {
 
 // -------------------------------------------------------------------
 
+// container_port_mapping
+
+// optional uint32 host_ip = 1;
+inline bool container_port_mapping::has_host_ip() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void container_port_mapping::set_has_host_ip() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void container_port_mapping::clear_has_host_ip() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void container_port_mapping::clear_host_ip() {
+  host_ip_ = 0u;
+  clear_has_host_ip();
+}
+inline ::google::protobuf::uint32 container_port_mapping::host_ip() const {
+  return host_ip_;
+}
+inline void container_port_mapping::set_host_ip(::google::protobuf::uint32 value) {
+  set_has_host_ip();
+  host_ip_ = value;
+}
+
+// optional uint32 host_port = 2;
+inline bool container_port_mapping::has_host_port() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void container_port_mapping::set_has_host_port() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void container_port_mapping::clear_has_host_port() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void container_port_mapping::clear_host_port() {
+  host_port_ = 0u;
+  clear_has_host_port();
+}
+inline ::google::protobuf::uint32 container_port_mapping::host_port() const {
+  return host_port_;
+}
+inline void container_port_mapping::set_host_port(::google::protobuf::uint32 value) {
+  set_has_host_port();
+  host_port_ = value;
+}
+
+// optional uint32 container_ip = 3;
+inline bool container_port_mapping::has_container_ip() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void container_port_mapping::set_has_container_ip() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void container_port_mapping::clear_has_container_ip() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void container_port_mapping::clear_container_ip() {
+  container_ip_ = 0u;
+  clear_has_container_ip();
+}
+inline ::google::protobuf::uint32 container_port_mapping::container_ip() const {
+  return container_ip_;
+}
+inline void container_port_mapping::set_container_ip(::google::protobuf::uint32 value) {
+  set_has_container_ip();
+  container_ip_ = value;
+}
+
+// optional uint32 container_port = 4;
+inline bool container_port_mapping::has_container_port() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void container_port_mapping::set_has_container_port() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void container_port_mapping::clear_has_container_port() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void container_port_mapping::clear_container_port() {
+  container_port_ = 0u;
+  clear_has_container_port();
+}
+inline ::google::protobuf::uint32 container_port_mapping::container_port() const {
+  return container_port_;
+}
+inline void container_port_mapping::set_container_port(::google::protobuf::uint32 value) {
+  set_has_container_port();
+  container_port_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // container
 
 // required string id = 1;
@@ -12179,6 +12397,31 @@ inline void container::set_allocated_syscall_errors(::draiosproto::counter_sysca
   } else {
     clear_has_syscall_errors();
   }
+}
+
+// repeated .draiosproto.container_port_mapping port_mappings = 15;
+inline int container::port_mappings_size() const {
+  return port_mappings_.size();
+}
+inline void container::clear_port_mappings() {
+  port_mappings_.Clear();
+}
+inline const ::draiosproto::container_port_mapping& container::port_mappings(int index) const {
+  return port_mappings_.Get(index);
+}
+inline ::draiosproto::container_port_mapping* container::mutable_port_mappings(int index) {
+  return port_mappings_.Mutable(index);
+}
+inline ::draiosproto::container_port_mapping* container::add_port_mappings() {
+  return port_mappings_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >&
+container::port_mappings() const {
+  return port_mappings_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >*
+container::mutable_port_mappings() {
+  return &port_mappings_;
 }
 
 // -------------------------------------------------------------------

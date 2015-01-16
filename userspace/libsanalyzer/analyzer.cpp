@@ -3046,6 +3046,17 @@ void sinsp_analyzer::emit_containers()
 			container->set_image(it->second.m_image);
 		}
 
+		for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
+			it_ports != it->second.m_port_mappings.end(); ++it_ports)
+		{
+			draiosproto::container_port_mapping* mapping = container->add_port_mappings();
+
+			mapping->set_host_ip(it_ports->m_host_ip);
+			mapping->set_host_port(it_ports->m_host_port);
+			mapping->set_container_ip(it->second.m_container_ip);
+			mapping->set_container_port(it_ports->m_container_port);
+		}
+
 		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(it->second.m_id);
 
 		if(it_metrics != m_containers_metrics.end())
