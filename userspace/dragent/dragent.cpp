@@ -441,11 +441,11 @@ void dragent_app::check_for_clean_shutdown()
 			return;
 		}
 
-		// if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
-		// {
-		// 	g_log->error("Queue full");
-		// 	return;
-		// }
+		if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
+		{
+			g_log->error("Queue full");
+			return;
+		}
 
 		fclose(fp);
 	}
