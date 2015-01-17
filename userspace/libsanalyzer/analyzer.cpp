@@ -2431,6 +2431,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//
 	remove_expired_connections(ts);
 	m_inspector->remove_inactive_threads();
+	m_inspector->m_container_manager.remove_inactive_containers();
 	
 	if(evt)
 	{
