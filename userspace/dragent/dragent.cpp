@@ -231,14 +231,17 @@ int dragent_app::main(const std::vector<std::string>& args)
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
+	uint64_t uptime_s = 0;
+
 	while(!dragent_configuration::m_terminate)
 	{
 		if(m_configuration.m_watchdog_enabled)
 		{
-			watchdog_check();
+			watchdog_check(uptime_s);
 		}
 
 		Thread::sleep(1000);
+		++uptime_s;
 	}
 
 	if(dragent_error_handler::m_exception)
@@ -264,7 +267,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	return exit_code;
 }
 
-void dragent_app::watchdog_check()
+void dragent_app::watchdog_check(uint64_t uptime_s)
 {
 	bool to_kill = false;
 
@@ -283,6 +286,23 @@ void dragent_app::watchdog_check()
 			snprintf(line, sizeof(line), "watchdog: Detected sinsp_worker stall, last activity %" PRId64 " ns ago\n", diff);
 			crash_handler::log_crashdump_message(line);
 			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
+			to_kill = true;
+		}
+
+		if((uptime_s % m_configuration.m_watchdog_analyzer_tid_collision_check_interval_s) == 0 &&
+			m_sinsp_worker.m_analyzer->m_die)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: too many tid collisions\n");
+			crash_handler::log_crashdump_message(line);
+
+			if(m_sinsp_worker.get_last_loop_ns())
+			{
+				char buf[1024];
+				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+				crash_handler::log_crashdump_message(buf);
+			}
+
 			to_kill = true;
 		}
 	}

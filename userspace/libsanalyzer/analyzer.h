@@ -346,6 +346,7 @@ VISIBILITY_PRIVATE
 	//
 	bool m_die;
 
+	friend class dragent_app;
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;

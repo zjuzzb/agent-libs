@@ -34,7 +34,7 @@ protected:
 	int main(const std::vector<std::string>& args);
 
 private:
-	void watchdog_check();
+	void watchdog_check(uint64_t uptime_s);
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();

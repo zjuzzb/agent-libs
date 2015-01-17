@@ -165,4 +165,6 @@ private:
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
+
+	friend class dragent_app;
 };
