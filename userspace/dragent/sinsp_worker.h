@@ -166,4 +166,6 @@ private:
 	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
+
+	friend class dragent_app;
 };
