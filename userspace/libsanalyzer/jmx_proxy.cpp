@@ -42,7 +42,7 @@ void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean) const
 		proto_attribute->set_name(nested_attribute.first);
 		for(auto subattribute : nested_attribute.second)
 		{
-			draiosproto::jmx_subattribute* proto_subattribute = proto_attribute->add_subattributes();
+			draiosproto::jmx_attribute* proto_subattribute = proto_attribute->add_subattributes();
 			proto_subattribute->set_name(subattribute.first);
 			proto_subattribute->set_value(subattribute.second);
 		}
@@ -98,8 +98,8 @@ unordered_map<int, java_process> jmx_proxy::read_metrics()
 		fgets(buffer, 4096, m_output_fd);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received JMX metrics: %s", buffer);
 		Json::Value json;
-		bool error = m_json_reader.parse(buffer, buffer+4096, json, false);
-		if(error)
+		bool parse_ok = m_json_reader.parse(buffer, buffer+4096-1, json, false);
+		if(parse_ok)
 		{
 			for(auto process_data : json)
 			{

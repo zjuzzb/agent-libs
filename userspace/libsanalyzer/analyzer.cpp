@@ -1109,6 +1109,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				proc->set_netrole(netrole);
 
+				// Add JMX metrics
+				if (jmx_metrics.find(tinfo->m_pid) != jmx_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+					const java_process& java_process_data = jmx_metrics.at(tinfo->m_pid);
+					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
+					java_process_data.to_protobuf(java_proto);
+				}
+
 				//
 				// CPU utilization
 				//
@@ -1274,14 +1283,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 				}
 #endif // ANALYZER_EMITS_PROCESSES
-				// Add JMX metrics
-				if (jmx_metrics.find(tinfo->m_tid) != jmx_metrics.end())
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_tid);
-					const java_process& java_process_data = jmx_metrics.at(tinfo->m_tid);
-					draiosproto::java_info* java_proto = proc->mutable_java_info();
-					java_process_data.to_protobuf(java_proto);
-				}
 			}
 
 			//

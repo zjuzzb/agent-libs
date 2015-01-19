@@ -245,6 +245,22 @@ message mongodb_info {
     repeated mongodb_collection_details client_collections = 4;
 }
 
+message jmx_attribute {
+    optional string name = 1;
+    optional double value = 2;
+    repeated jmx_attribute subattributes = 3;
+}
+
+message jmx_bean {
+    optional string name = 1;
+    repeated jmx_attribute attributes = 2;
+}
+
+message java_info {
+    optional string process_name = 1;
+    repeated jmx_bean beans = 2;
+}
+
 //
 // General protocol information
 //
@@ -253,6 +269,7 @@ message proto_info {
     optional sql_info mysql = 2;
     optional sql_info postgres = 3;
     optional mongodb_info mongodb = 4;
+    optional java_info java = 5; // These are not protocols but as backend is structured is better to save here these info
 }
 
 //
@@ -295,27 +312,6 @@ enum networkrole {
     IS_UNIX_CLIENT = 32; // set if this thread creates unix transactions.
 }
 
-message jmx_subattribute {
-    optional string name = 1;
-    optional double value = 2;
-}
-
-message jmx_attribute {
-    optional string name = 1;
-    optional double value = 2;
-    repeated jmx_subattribute subattributes = 3;
-}
-
-message jmx_bean {
-    optional string name = 1;
-    repeated jmx_attribute attributes = 2;
-}
-
-message java_info {
-    optional string process_name = 1;
-    repeated jmx_bean beans = 2;
-}
-
 message process {
     optional process_details details = 2; // names and string constants relative to this process
     optional bool is_ipv4_transaction_server = 3; // True if this process has served at least one IPv4 transaction.
@@ -334,7 +330,6 @@ message process {
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
-    optional java_info java_info = 21; // Metrics from Java JMX
 }
 
 //
