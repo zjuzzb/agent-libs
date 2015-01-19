@@ -57,6 +57,10 @@ class mongodb_op_type_details;
 class mongodb_info;
 class proto_info;
 class host;
+class jmx_subattribute;
+class jmx_attribute;
+class jmx_bean;
+class java_info;
 class process;
 class program;
 class ipv4tuple;
@@ -3294,6 +3298,413 @@ class host : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class jmx_subattribute : public ::google::protobuf::Message {
+ public:
+  jmx_subattribute();
+  virtual ~jmx_subattribute();
+
+  jmx_subattribute(const jmx_subattribute& from);
+
+  inline jmx_subattribute& operator=(const jmx_subattribute& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const jmx_subattribute& default_instance();
+
+  void Swap(jmx_subattribute* other);
+
+  // implements Message ----------------------------------------------
+
+  jmx_subattribute* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const jmx_subattribute& from);
+  void MergeFrom(const jmx_subattribute& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional double value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline double value() const;
+  inline void set_value(double value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.jmx_subattribute)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  double value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static jmx_subattribute* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class jmx_attribute : public ::google::protobuf::Message {
+ public:
+  jmx_attribute();
+  virtual ~jmx_attribute();
+
+  jmx_attribute(const jmx_attribute& from);
+
+  inline jmx_attribute& operator=(const jmx_attribute& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const jmx_attribute& default_instance();
+
+  void Swap(jmx_attribute* other);
+
+  // implements Message ----------------------------------------------
+
+  jmx_attribute* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const jmx_attribute& from);
+  void MergeFrom(const jmx_attribute& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional double value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline double value() const;
+  inline void set_value(double value);
+
+  // repeated .draiosproto.jmx_subattribute subattributes = 3;
+  inline int subattributes_size() const;
+  inline void clear_subattributes();
+  static const int kSubattributesFieldNumber = 3;
+  inline const ::draiosproto::jmx_subattribute& subattributes(int index) const;
+  inline ::draiosproto::jmx_subattribute* mutable_subattributes(int index);
+  inline ::draiosproto::jmx_subattribute* add_subattributes();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_subattribute >&
+      subattributes() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_subattribute >*
+      mutable_subattributes();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.jmx_attribute)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  double value_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_subattribute > subattributes_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static jmx_attribute* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class jmx_bean : public ::google::protobuf::Message {
+ public:
+  jmx_bean();
+  virtual ~jmx_bean();
+
+  jmx_bean(const jmx_bean& from);
+
+  inline jmx_bean& operator=(const jmx_bean& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const jmx_bean& default_instance();
+
+  void Swap(jmx_bean* other);
+
+  // implements Message ----------------------------------------------
+
+  jmx_bean* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const jmx_bean& from);
+  void MergeFrom(const jmx_bean& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // repeated .draiosproto.jmx_attribute attributes = 2;
+  inline int attributes_size() const;
+  inline void clear_attributes();
+  static const int kAttributesFieldNumber = 2;
+  inline const ::draiosproto::jmx_attribute& attributes(int index) const;
+  inline ::draiosproto::jmx_attribute* mutable_attributes(int index);
+  inline ::draiosproto::jmx_attribute* add_attributes();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute >&
+      attributes() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute >*
+      mutable_attributes();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.jmx_bean)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute > attributes_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static jmx_bean* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class java_info : public ::google::protobuf::Message {
+ public:
+  java_info();
+  virtual ~java_info();
+
+  java_info(const java_info& from);
+
+  inline java_info& operator=(const java_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const java_info& default_instance();
+
+  void Swap(java_info* other);
+
+  // implements Message ----------------------------------------------
+
+  java_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const java_info& from);
+  void MergeFrom(const java_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string process_name = 1;
+  inline bool has_process_name() const;
+  inline void clear_process_name();
+  static const int kProcessNameFieldNumber = 1;
+  inline const ::std::string& process_name() const;
+  inline void set_process_name(const ::std::string& value);
+  inline void set_process_name(const char* value);
+  inline void set_process_name(const char* value, size_t size);
+  inline ::std::string* mutable_process_name();
+  inline ::std::string* release_process_name();
+  inline void set_allocated_process_name(::std::string* process_name);
+
+  // repeated .draiosproto.jmx_bean beans = 2;
+  inline int beans_size() const;
+  inline void clear_beans();
+  static const int kBeansFieldNumber = 2;
+  inline const ::draiosproto::jmx_bean& beans(int index) const;
+  inline ::draiosproto::jmx_bean* mutable_beans(int index);
+  inline ::draiosproto::jmx_bean* add_beans();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_bean >&
+      beans() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_bean >*
+      mutable_beans();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.java_info)
+ private:
+  inline void set_has_process_name();
+  inline void clear_has_process_name();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* process_name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_bean > beans_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static java_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class process : public ::google::protobuf::Message {
  public:
   process();
@@ -3476,6 +3887,15 @@ class process : public ::google::protobuf::Message {
   inline ::draiosproto::proto_info* release_protos();
   inline void set_allocated_protos(::draiosproto::proto_info* protos);
 
+  // optional .draiosproto.java_info java_info = 21;
+  inline bool has_java_info() const;
+  inline void clear_java_info();
+  static const int kJavaInfoFieldNumber = 21;
+  inline const ::draiosproto::java_info& java_info() const;
+  inline ::draiosproto::java_info* mutable_java_info();
+  inline ::draiosproto::java_info* release_java_info();
+  inline void set_allocated_java_info(::draiosproto::java_info* java_info);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_details();
@@ -3510,6 +3930,8 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_protos();
   inline void clear_has_protos();
+  inline void set_has_java_info();
+  inline void clear_has_java_info();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3529,9 +3951,10 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::proto_info* protos_;
+  ::draiosproto::java_info* java_info_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -9883,6 +10306,421 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
 
 // -------------------------------------------------------------------
 
+// jmx_subattribute
+
+// optional string name = 1;
+inline bool jmx_subattribute::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void jmx_subattribute::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void jmx_subattribute::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void jmx_subattribute::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& jmx_subattribute::name() const {
+  return *name_;
+}
+inline void jmx_subattribute::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_subattribute::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_subattribute::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* jmx_subattribute::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* jmx_subattribute::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void jmx_subattribute::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional double value = 2;
+inline bool jmx_subattribute::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void jmx_subattribute::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void jmx_subattribute::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void jmx_subattribute::clear_value() {
+  value_ = 0;
+  clear_has_value();
+}
+inline double jmx_subattribute::value() const {
+  return value_;
+}
+inline void jmx_subattribute::set_value(double value) {
+  set_has_value();
+  value_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// jmx_attribute
+
+// optional string name = 1;
+inline bool jmx_attribute::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void jmx_attribute::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void jmx_attribute::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void jmx_attribute::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& jmx_attribute::name() const {
+  return *name_;
+}
+inline void jmx_attribute::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_attribute::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_attribute::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* jmx_attribute::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* jmx_attribute::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void jmx_attribute::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional double value = 2;
+inline bool jmx_attribute::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void jmx_attribute::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void jmx_attribute::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void jmx_attribute::clear_value() {
+  value_ = 0;
+  clear_has_value();
+}
+inline double jmx_attribute::value() const {
+  return value_;
+}
+inline void jmx_attribute::set_value(double value) {
+  set_has_value();
+  value_ = value;
+}
+
+// repeated .draiosproto.jmx_subattribute subattributes = 3;
+inline int jmx_attribute::subattributes_size() const {
+  return subattributes_.size();
+}
+inline void jmx_attribute::clear_subattributes() {
+  subattributes_.Clear();
+}
+inline const ::draiosproto::jmx_subattribute& jmx_attribute::subattributes(int index) const {
+  return subattributes_.Get(index);
+}
+inline ::draiosproto::jmx_subattribute* jmx_attribute::mutable_subattributes(int index) {
+  return subattributes_.Mutable(index);
+}
+inline ::draiosproto::jmx_subattribute* jmx_attribute::add_subattributes() {
+  return subattributes_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_subattribute >&
+jmx_attribute::subattributes() const {
+  return subattributes_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_subattribute >*
+jmx_attribute::mutable_subattributes() {
+  return &subattributes_;
+}
+
+// -------------------------------------------------------------------
+
+// jmx_bean
+
+// optional string name = 1;
+inline bool jmx_bean::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void jmx_bean::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void jmx_bean::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void jmx_bean::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& jmx_bean::name() const {
+  return *name_;
+}
+inline void jmx_bean::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_bean::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void jmx_bean::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* jmx_bean::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* jmx_bean::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void jmx_bean::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.jmx_attribute attributes = 2;
+inline int jmx_bean::attributes_size() const {
+  return attributes_.size();
+}
+inline void jmx_bean::clear_attributes() {
+  attributes_.Clear();
+}
+inline const ::draiosproto::jmx_attribute& jmx_bean::attributes(int index) const {
+  return attributes_.Get(index);
+}
+inline ::draiosproto::jmx_attribute* jmx_bean::mutable_attributes(int index) {
+  return attributes_.Mutable(index);
+}
+inline ::draiosproto::jmx_attribute* jmx_bean::add_attributes() {
+  return attributes_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute >&
+jmx_bean::attributes() const {
+  return attributes_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute >*
+jmx_bean::mutable_attributes() {
+  return &attributes_;
+}
+
+// -------------------------------------------------------------------
+
+// java_info
+
+// optional string process_name = 1;
+inline bool java_info::has_process_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void java_info::set_has_process_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void java_info::clear_has_process_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void java_info::clear_process_name() {
+  if (process_name_ != &::google::protobuf::internal::kEmptyString) {
+    process_name_->clear();
+  }
+  clear_has_process_name();
+}
+inline const ::std::string& java_info::process_name() const {
+  return *process_name_;
+}
+inline void java_info::set_process_name(const ::std::string& value) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(value);
+}
+inline void java_info::set_process_name(const char* value) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(value);
+}
+inline void java_info::set_process_name(const char* value, size_t size) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* java_info::mutable_process_name() {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  return process_name_;
+}
+inline ::std::string* java_info::release_process_name() {
+  clear_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = process_name_;
+    process_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void java_info::set_allocated_process_name(::std::string* process_name) {
+  if (process_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete process_name_;
+  }
+  if (process_name) {
+    set_has_process_name();
+    process_name_ = process_name;
+  } else {
+    clear_has_process_name();
+    process_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.jmx_bean beans = 2;
+inline int java_info::beans_size() const {
+  return beans_.size();
+}
+inline void java_info::clear_beans() {
+  beans_.Clear();
+}
+inline const ::draiosproto::jmx_bean& java_info::beans(int index) const {
+  return beans_.Get(index);
+}
+inline ::draiosproto::jmx_bean* java_info::mutable_beans(int index) {
+  return beans_.Mutable(index);
+}
+inline ::draiosproto::jmx_bean* java_info::add_beans() {
+  return beans_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_bean >&
+java_info::beans() const {
+  return beans_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_bean >*
+java_info::mutable_beans() {
+  return &beans_;
+}
+
+// -------------------------------------------------------------------
+
 // process
 
 // optional .draiosproto.process_details details = 2;
@@ -10362,6 +11200,44 @@ inline void process::set_allocated_protos(::draiosproto::proto_info* protos) {
     set_has_protos();
   } else {
     clear_has_protos();
+  }
+}
+
+// optional .draiosproto.java_info java_info = 21;
+inline bool process::has_java_info() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void process::set_has_java_info() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void process::clear_has_java_info() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void process::clear_java_info() {
+  if (java_info_ != NULL) java_info_->::draiosproto::java_info::Clear();
+  clear_has_java_info();
+}
+inline const ::draiosproto::java_info& process::java_info() const {
+  return java_info_ != NULL ? *java_info_ : *default_instance_->java_info_;
+}
+inline ::draiosproto::java_info* process::mutable_java_info() {
+  set_has_java_info();
+  if (java_info_ == NULL) java_info_ = new ::draiosproto::java_info;
+  return java_info_;
+}
+inline ::draiosproto::java_info* process::release_java_info() {
+  clear_has_java_info();
+  ::draiosproto::java_info* temp = java_info_;
+  java_info_ = NULL;
+  return temp;
+}
+inline void process::set_allocated_java_info(::draiosproto::java_info* java_info) {
+  delete java_info_;
+  java_info_ = java_info;
+  if (java_info) {
+    set_has_java_info();
+  } else {
+    clear_has_java_info();
   }
 }
 

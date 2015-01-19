@@ -725,10 +725,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	unordered_map<int, java_process> jmx_metrics = m_jmx_proxy.read_metrics();
 
-	for (auto item : jmx_metrics)
-	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Got JMX metrics for pid %d and name %s", item.second.pid(), item.second.name().c_str());
-	}
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -967,7 +963,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	///////////////////////////////////////////////////////////////////////////
-	// Second pass of the list of threads: aggreagate threads into processes 
+	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
@@ -1278,6 +1274,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 				}
 #endif // ANALYZER_EMITS_PROCESSES
+				// Add JMX metrics
+				if (jmx_metrics.find(tinfo->m_tid) != jmx_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_tid);
+					const java_process& java_process_data = jmx_metrics.at(tinfo->m_tid);
+					draiosproto::java_info* java_proto = proc->mutable_java_info();
+					java_process_data.to_protobuf(java_proto);
+				}
 			}
 
 			//

@@ -27,6 +27,7 @@ public:
 		return m_nested_attributes;
 	}
 
+	void to_protobuf(draiosproto::jmx_bean *proto_bean) const;
 private:
 	explicit java_bean(const Json::Value&);
 	string m_name;
@@ -51,6 +52,8 @@ public:
 	{
 		return m_beans;
 	}
+
+	void to_protobuf(draiosproto::java_info* protobuf) const;
 
 private:
 	explicit java_process(const Json::Value&);
