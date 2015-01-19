@@ -1125,21 +1125,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					}
 
 					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
-					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
-					proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
-					proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
-					proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
 				}
 				else
 				{
 					proc->mutable_resource_counters()->set_cpu_pct(0);
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(0);
-					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(0);
-					proc->mutable_resource_counters()->set_swap_memory_usage_kb(0);
-					proc->mutable_resource_counters()->set_major_pagefaults(0);
-					proc->mutable_resource_counters()->set_minor_pagefaults(0);
 				}
+
+				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
+				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
 
 				if(tot.m_count != 0)
 				{
@@ -1291,38 +1287,34 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Update the host metrics with the info coming from this process
 			//
-			if(tot.m_count != 0 || procinfo->m_cpuload != 0)
+			if(procinfo != NULL)
 			{
-				if(procinfo != NULL)
+				if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 				{
-					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-					{
-						m_host_req_metrics.add(&procinfo->m_proc_metrics);
-
-						if(!tinfo->m_container_id.empty())
-						{
-							m_containers_req_metrics[tinfo->m_container_id].add(&procinfo->m_proc_metrics);
-						}
-					}
-
-					//
-					// Note how we only include server processes.
-					// That's because these are transaction time metrics, and therefore we don't 
-					// want to use processes that don't serve transactions.
-					//
-					m_host_metrics.add(procinfo);
+					m_host_req_metrics.add(&procinfo->m_proc_metrics);
 
 					if(!tinfo->m_container_id.empty())
 					{
-						m_containers_metrics[tinfo->m_container_id].add(procinfo);
+						m_containers_req_metrics[tinfo->m_container_id].add(&procinfo->m_proc_metrics);
 					}
 				}
-				else
+
+				//
+				// Note how we only include server processes.
+				// That's because these are transaction time metrics, and therefore we don't 
+				// want to use processes that don't serve transactions.
+				//
+				m_host_metrics.add(procinfo);
+
+				if(!tinfo->m_container_id.empty())
 				{
-					ASSERT(false);
+					m_containers_metrics[tinfo->m_container_id].add(procinfo);
 				}
 			}
-
+			else
+			{
+				ASSERT(false);
+			}
 		}
 
 		//
@@ -3034,7 +3026,7 @@ void sinsp_analyzer::emit_containers()
 
 		draiosproto::container* container = m_metrics->add_containers();
 
-		container->set_id(it->second.m_id);
+ e		container->set_id(it->second.m_id);
 
 		switch(it->second.m_type)
 		{
