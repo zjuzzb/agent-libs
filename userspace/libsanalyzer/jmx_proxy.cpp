@@ -94,14 +94,21 @@ unordered_map<int, java_process> jmx_proxy::read_metrics()
 	int result = select(output_fd_int+1, &readset, NULL, NULL, &timeout);
 	if (result > 0)
 	{
-		char buffer[4096];
-		fgets(buffer, 4096, m_output_fd);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received JMX metrics: %s", buffer);
-		Json::Value json;
-		bool parse_ok = m_json_reader.parse(buffer, buffer+4096-1, json, false);
+		string json_data;
+		char buffer[READ_BUFFER_SIZE];
+		do
+		{
+			fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
+			json_data.append(buffer);
+		} while (strlen(buffer) == READ_BUFFER_SIZE-1 && buffer[READ_BUFFER_SIZE-2] != '\n');
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received JMX metrics: %s", json_data.c_str());
+		Json::Value json_obj;
+		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
 		if(parse_ok)
 		{
-			for(auto process_data : json)
+			for(auto process_data : json_obj)
 			{
 				java_process process(process_data);
 				processes.insert(std::make_pair(process.pid(), process));
