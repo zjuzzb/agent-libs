@@ -788,7 +788,11 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_pfminor += pinfo->m_pfminor;
 	m_res_memory_kb += pinfo->m_vmrss_kb;
 	m_swap_memory_kb += pinfo->m_vmswap_kb;
-	m_cpuload += pinfo->m_cpuload;
+	
+	if(pinfo->m_cpuload >= 0)
+	{
+		m_cpuload += pinfo->m_cpuload;
+	}
 
 	m_protostate->add(&(pinfo->m_protostate));
 

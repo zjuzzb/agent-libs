@@ -901,7 +901,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								cur_global_total_jiffies - m_old_global_total_jiffies);
 						}
 
-						m_total_process_cpu += ainfo->m_cpuload;
+						if(ainfo->m_cpuload >= 0)
+						{
+							m_total_process_cpu += ainfo->m_cpuload;
+						}
 					}
 				}
 			}

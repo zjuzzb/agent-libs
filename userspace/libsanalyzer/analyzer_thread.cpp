@@ -186,7 +186,10 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_connection_queue_usage_pct = other->m_connection_queue_usage_pct;
 	}
 
-	m_procinfo->m_cpuload += other->m_cpuload;
+	if(other->m_cpuload >= 0)
+	{
+		m_procinfo->m_cpuload += other->m_cpuload;
+	}
 
 	//
 	// The memory is just per-process, so we sum it into the parent program
