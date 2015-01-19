@@ -804,6 +804,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
+		if(!tinfo->m_container_id.empty())
+		{
+			m_active_containers.insert(tinfo->m_container_id);
+		}
+
 		//
 		// Attribute the last pending event to this second
 		//
@@ -3022,6 +3027,11 @@ void sinsp_analyzer::emit_containers()
 
 	for(unordered_map<string, sinsp_container_info>::const_iterator it = containers_info->begin(); it != containers_info->end(); ++it)
 	{
+		if(m_active_containers.find(it->second.m_id) == m_active_containers.end())
+		{
+			continue;
+		}
+
 		draiosproto::container* container = m_metrics->add_containers();
 
 		container->set_id(it->second.m_id);
@@ -3090,6 +3100,7 @@ void sinsp_analyzer::emit_containers()
 
 	m_containers_metrics.clear();
 	m_containers_req_metrics.clear();
+	m_active_containers.clear();
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}

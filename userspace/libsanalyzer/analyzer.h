@@ -324,6 +324,7 @@ VISIBILITY_PRIVATE
 	//
 	// Container metrics
 	//
+	set<string> m_active_containers;
 	unordered_map<string, sinsp_host_metrics> m_containers_metrics;
 	unordered_map<string, sinsp_counters> m_containers_req_metrics;
 
