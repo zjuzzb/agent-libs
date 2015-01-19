@@ -3026,7 +3026,7 @@ void sinsp_analyzer::emit_containers()
 
 		draiosproto::container* container = m_metrics->add_containers();
 
- e		container->set_id(it->second.m_id);
+		container->set_id(it->second.m_id);
 
 		switch(it->second.m_type)
 		{
