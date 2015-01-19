@@ -723,8 +723,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
-	m_jmx_proxy.read_metrics();
+	unordered_map<int, java_process> jmx_metrics = m_jmx_proxy.read_metrics();
 
+	for (auto item : jmx_metrics)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Got JMX metrics for pid %d and name %s", item.second.pid(), item.second.name().c_str());
+	}
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, 

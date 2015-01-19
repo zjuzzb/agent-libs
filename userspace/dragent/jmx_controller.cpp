@@ -42,7 +42,7 @@ void jmx_controller::run()
 		else
 		{
 			// Father, read from stderr and write to log
-			// TODO: implement
+			// TODO: parse log and use same severity, improve monitoring
 			char buf[1000];
 			while (true)
 			{
