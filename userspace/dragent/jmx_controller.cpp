@@ -7,12 +7,27 @@ jmx_controller::jmx_controller(dragent_configuration *configuration) :
 		configuration(configuration)
 {
 	// TODO: Check pipe return value
+	// Create pipes
 	pipe(m_inpipe);
 	pipe(m_outpipe);
 	pipe(m_errpipe);
+
+	// transform to FILE*
 	input_fd = fdopen(m_inpipe[PIPE_WRITE], "w");
 	output_fd = fdopen(m_outpipe[PIPE_READ], "r");
 	err_fd = fdopen(m_errpipe[PIPE_READ], "r");
+
+	// Use non blocking io
+	enable_nonblocking(m_outpipe[PIPE_READ]);
+	enable_nonblocking(m_errpipe[PIPE_READ]);
+}
+
+void jmx_controller::enable_nonblocking(int fd)
+{
+	int flags;
+	flags = fcntl(fd, F_GETFL, 0);
+	flags |= O_NONBLOCK;
+	fcntl(fd, F_SETFL, flags);
 }
 
 pair<FILE*, FILE*> jmx_controller::get_io_fds()

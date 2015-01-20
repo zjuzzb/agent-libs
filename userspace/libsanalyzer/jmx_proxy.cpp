@@ -85,23 +85,26 @@ void jmx_proxy::send_get_metrics()
 unordered_map<int, java_process> jmx_proxy::read_metrics()
 {
 	unordered_map<int, java_process> processes;
-	int output_fd_int = fileno(m_output_fd);
-	fd_set readset;
-	FD_ZERO(&readset);
-	FD_SET(output_fd_int, &readset);
-	struct timeval timeout;
-	memset(&timeout, 0, sizeof(struct timeval));
-	int result = select(output_fd_int+1, &readset, NULL, NULL, &timeout);
-	if (result > 0)
+	// Select call
+//	int output_fd_int = fileno(m_output_fd);
+//	fd_set readset;
+//	FD_ZERO(&readset);
+//	FD_SET(output_fd_int, &readset);
+//	struct timeval timeout;
+//	memset(&timeout, 0, sizeof(struct timeval));
+//	int result = select(output_fd_int+1, &readset, NULL, NULL, &timeout);
+	string json_data;
+	char buffer[READ_BUFFER_SIZE] = "";
+	char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
+	while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
 	{
-		string json_data;
-		char buffer[READ_BUFFER_SIZE];
-		do
-		{
-			fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
-			json_data.append(buffer);
-		} while (strlen(buffer) == READ_BUFFER_SIZE-1 && buffer[READ_BUFFER_SIZE-2] != '\n');
+		json_data.append(buffer);
+		fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
+	}
+	json_data.append(buffer);
 
+	if (json_data.size() > 0)
+	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received JMX metrics: %s", json_data.c_str());
 		Json::Value json_obj;

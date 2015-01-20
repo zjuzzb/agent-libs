@@ -12,11 +12,15 @@ public:
 	pair<FILE*, FILE*> get_io_fds();
 
 private:
+	// TODO: utility, can be moved outside if needed
+	static void enable_nonblocking(int fd);
+
 	enum pipe_dir
 	{
 		PIPE_READ = 0,
 		PIPE_WRITE = 1
 	};
+
 	int m_inpipe[2];
 	int m_outpipe[2];
 	int m_errpipe[2];
