@@ -184,10 +184,10 @@ public class MonitoredVM {
             throw new IOException(x);
         }
         // try to enable local JMX via jcmd command
-        if (!loadManagementAgentViaJcmd(vm)) {
+        //if (!loadManagementAgentViaJcmd(vm)) {
             // load the management agent into the target VM
             loadManagementAgentViaJar(vm);
-        }
+        //}
 
         // get the connector address
         Properties agentProps = vm.getAgentProperties();
@@ -232,7 +232,7 @@ public class MonitoredVM {
         }
     }
 
-    private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
+    /*private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
     private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException {
         if (vm instanceof HotSpotVirtualMachine) {
             HotSpotVirtualMachine hsvm = (HotSpotVirtualMachine) vm;
@@ -259,6 +259,6 @@ public class MonitoredVM {
             }
         }
         return false;
-    }
+    }*/
 }
 
