@@ -723,7 +723,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
-	unordered_map<int, java_process> jmx_metrics = m_jmx_proxy.read_metrics();
+	// Get metrics from JMX until we found id 0 or timestamp-1
+	// with id 0, means that sdjagent is not working or metrics are not ready
+	// id = timestamp-1 are what we need now
+	pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
+	do
+	{
+		jmx_metrics = m_jmx_proxy.read_metrics();
+	} while (jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -1110,10 +1117,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				proc->set_netrole(netrole);
 
 				// Add JMX metrics
-				if (jmx_metrics.find(tinfo->m_pid) != jmx_metrics.end())
+				if (jmx_metrics.second.find(tinfo->m_pid) != jmx_metrics.second.end())
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-					const java_process& java_process_data = jmx_metrics.at(tinfo->m_pid);
+					const java_process& java_process_data = jmx_metrics.second.at(tinfo->m_pid);
 					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
 					java_process_data.to_protobuf(java_proto);
 				}
@@ -1351,7 +1358,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
 
-	m_jmx_proxy.send_get_metrics();
+	m_jmx_proxy.send_get_metrics(m_next_flush_time_ns);
 }
 
 //

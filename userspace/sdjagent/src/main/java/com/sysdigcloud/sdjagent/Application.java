@@ -62,16 +62,24 @@ public class Application {
         Scanner scanner = new Scanner(System.in);
         while (true)
         {
-            String cmd = scanner.nextLine();
-            LOGGER.fine(String.format("Received command: %s", cmd));
-            if (cmd.equals("getMetrics"))
+            String cmd_data = scanner.nextLine();
+            LOGGER.fine(String.format("Received command: %s", cmd_data));
+            Map<String, String> cmd_obj = mapper.readValue(cmd_data, Map.class);
+            if (cmd_obj.get("command").equals("getMetrics"))
             {
-                getMetricsCommand();
+                List<Map<String, Object>> vmList = getMetricsCommand();
+                Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
+                response_obj.put("id", cmd_obj.get("id"));
+                response_obj.put("content", vmList);
+                mapper.writeValue(System.out, response_obj);
+                System.out.println();
+                System.out.flush();
+                LOGGER.fine("End getMetrics command");
             }
         }
     }
 
-    private void getMetricsCommand() throws IOException {
+    private List<Map<String, Object>> getMetricsCommand() throws IOException {
         LOGGER.fine("Executing getMetrics");
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
@@ -118,10 +126,7 @@ public class Application {
                 vmList.add(vmObject);
             }
         }
-        mapper.writeValue(System.out, vmList);
-        System.out.println();
-        System.out.flush();
-        LOGGER.fine("End getMetrics command");
+        return vmList;
         //TODO: may be a good point to clean not more useful object from vms
     }
 }

@@ -68,8 +68,8 @@ class jmx_proxy
 public:
 	jmx_proxy(const std::pair<FILE*, FILE*>& fds);
 
-	void send_get_metrics();
-	unordered_map<int, java_process> read_metrics();
+	void send_get_metrics(uint64_t id);
+	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
 
 private:
 	// Input and output of the subprocess
@@ -78,5 +78,6 @@ private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	Json::Reader m_json_reader;
+	Json::FastWriter m_json_writer;
 	static const int READ_BUFFER_SIZE = 1024;
 };
