@@ -1,6 +1,7 @@
 #pragma once
 
 #include "configuration.h"
+#include "third-party/jsoncpp/json/json.h"
 
 class jmx_controller : public Runnable
 {
@@ -24,8 +25,10 @@ private:
 	int m_inpipe[2];
 	int m_outpipe[2];
 	int m_errpipe[2];
-	FILE *input_fd;
-	FILE *output_fd;
-	FILE *err_fd;
+	FILE *m_input_fd;
+	FILE *m_output_fd;
+	FILE *m_error_fd;
+	Json::Reader m_json_reader;
 	dragent_configuration *configuration;
+	static const int READ_BUFFER_SIZE = 1024;
 };

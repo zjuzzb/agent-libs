@@ -15,7 +15,7 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
-import java.util.logging.Logger;
+import java.util.logging.*;
 
 /**
  *
@@ -37,6 +37,12 @@ public class Application {
      */
     public static void main(String[] args) throws IOException {
         // TODO code application logic here
+        LogManager.getLogManager().reset();
+        Logger globalLogger = Logger.getLogger("");
+        ConsoleHandler console = new ConsoleHandler();
+        console.setFormatter(new LogJsonFormatter());
+        globalLogger.setLevel(Level.FINER);
+        globalLogger.addHandler(console);
         Application app = new Application();
         app.mainLoop();
     }
