@@ -77,7 +77,7 @@ jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
 
 void jmx_proxy::send_get_metrics(uint64_t id)
 {
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX");
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX with id %d", id);
 	Json::Value command_obj;
 	command_obj["id"] = static_cast<Json::UInt64>(id);
 	command_obj["command"] = "getMetrics";
@@ -117,7 +117,7 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 		if(parse_ok)
 		{
 			response_id = json_obj["id"].asUInt64();
-			for(auto process_data : json_obj["content"])
+			for(auto process_data : json_obj["body"])
 			{
 				java_process process(process_data);
 				processes.insert(std::make_pair(process.pid(), process));

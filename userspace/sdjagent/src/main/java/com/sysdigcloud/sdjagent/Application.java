@@ -70,7 +70,7 @@ public class Application {
                 List<Map<String, Object>> vmList = getMetricsCommand();
                 Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
                 response_obj.put("id", cmd_obj.get("id"));
-                response_obj.put("content", vmList);
+                response_obj.put("body", vmList);
                 mapper.writeValue(System.out, response_obj);
                 System.out.println();
                 System.out.flush();
