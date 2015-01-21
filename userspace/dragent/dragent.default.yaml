@@ -2,11 +2,23 @@ jmx:
   default:
     - query: "java.lang:type=Memory"
       attributes:
-          - HeapMemoryUsage
-          - NonHeapMemoryUsage
+        - HeapMemoryUsage
+        - NonHeapMemoryUsage
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - LastGcInfo
+    - query: "java.lang:type=ClassLoading"
+      attributes:
+        - LoadedClassCount
+        - UnloadedClassCount
+    - query: "java.lang:type=MemoryPool,name=CMS Perm Gen"
+      attributes:
+        - CollectionUsage
+        - Usage
+    - query: "java.lang:type=Threading"
+      attributes:
+        - ThreadCount
+        - DaemonThreadCount
   cassandra:
     pattern: "cassandra"
     beans:

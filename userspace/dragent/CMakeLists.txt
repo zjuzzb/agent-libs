@@ -58,5 +58,7 @@ install(TARGETS dragent
 install(FILES root.cert 
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
-
+install(FILES dragent.default.yaml
+	DESTINATION ${DRAIOS_BIN_PREFIX}/etc
+	COMPONENT agent)
 configure_file(config.h.in config.h)
