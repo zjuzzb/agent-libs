@@ -4777,18 +4777,6 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::program >*
       mutable_programs();
 
-  // repeated .draiosproto.process processes = 5;
-  inline int processes_size() const;
-  inline void clear_processes();
-  static const int kProcessesFieldNumber = 5;
-  inline const ::draiosproto::process& processes(int index) const;
-  inline ::draiosproto::process* mutable_processes(int index);
-  inline ::draiosproto::process* add_processes();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::process >&
-      processes() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::process >*
-      mutable_processes();
-
   // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
   inline int ipv4_connections_size() const;
   inline void clear_ipv4_connections();
@@ -4843,18 +4831,6 @@ class metrics : public ::google::protobuf::Message {
   inline ::std::string* mutable_host_tags();
   inline ::std::string* release_host_tags();
   inline void set_allocated_host_tags(::std::string* host_tags);
-
-  // optional string host_custom_map = 13;
-  inline bool has_host_custom_map() const;
-  inline void clear_host_custom_map();
-  static const int kHostCustomMapFieldNumber = 13;
-  inline const ::std::string& host_custom_map() const;
-  inline void set_host_custom_map(const ::std::string& value);
-  inline void set_host_custom_map(const char* value);
-  inline void set_host_custom_map(const char* value, size_t size);
-  inline ::std::string* mutable_host_custom_map();
-  inline ::std::string* release_host_custom_map();
-  inline void set_allocated_host_custom_map(::std::string* host_custom_map);
 
   // optional bool is_host_hidden = 14;
   inline bool has_is_host_hidden() const;
@@ -4972,8 +4948,6 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_host_custom_name();
   inline void set_has_host_tags();
   inline void clear_has_host_tags();
-  inline void set_has_host_custom_map();
-  inline void clear_has_host_custom_map();
   inline void set_has_is_host_hidden();
   inline void clear_has_is_host_hidden();
   inline void set_has_hidden_processes();
@@ -4992,14 +4966,12 @@ class metrics : public ::google::protobuf::Message {
   ::std::string* customer_id_;
   ::draiosproto::host* hostinfo_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::program > programs_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::process > processes_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_connection > ipv4_connections_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface > ipv4_network_interfaces_;
   ::std::string* host_custom_name_;
   ::google::protobuf::uint32 sampling_ratio_;
   bool is_host_hidden_;
   ::std::string* host_tags_;
-  ::std::string* host_custom_map_;
   ::std::string* hidden_processes_;
   ::std::string* version_;
   ::std::string* instance_id_;
@@ -5010,7 +4982,7 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container > containers_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(21 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -12653,31 +12625,6 @@ metrics::mutable_programs() {
   return &programs_;
 }
 
-// repeated .draiosproto.process processes = 5;
-inline int metrics::processes_size() const {
-  return processes_.size();
-}
-inline void metrics::clear_processes() {
-  processes_.Clear();
-}
-inline const ::draiosproto::process& metrics::processes(int index) const {
-  return processes_.Get(index);
-}
-inline ::draiosproto::process* metrics::mutable_processes(int index) {
-  return processes_.Mutable(index);
-}
-inline ::draiosproto::process* metrics::add_processes() {
-  return processes_.Add();
-}
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::process >&
-metrics::processes() const {
-  return processes_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::process >*
-metrics::mutable_processes() {
-  return &processes_;
-}
-
 // repeated .draiosproto.ipv4_connection ipv4_connections = 7;
 inline int metrics::ipv4_connections_size() const {
   return ipv4_connections_.size();
@@ -12730,13 +12677,13 @@ metrics::mutable_ipv4_network_interfaces() {
 
 // optional uint32 sampling_ratio = 10;
 inline bool metrics::has_sampling_ratio() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void metrics::set_has_sampling_ratio() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void metrics::clear_has_sampling_ratio() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void metrics::clear_sampling_ratio() {
   sampling_ratio_ = 0u;
@@ -12752,13 +12699,13 @@ inline void metrics::set_sampling_ratio(::google::protobuf::uint32 value) {
 
 // optional string host_custom_name = 11;
 inline bool metrics::has_host_custom_name() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void metrics::set_has_host_custom_name() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void metrics::clear_has_host_custom_name() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void metrics::clear_host_custom_name() {
   if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
@@ -12822,13 +12769,13 @@ inline void metrics::set_allocated_host_custom_name(::std::string* host_custom_n
 
 // optional string host_tags = 12;
 inline bool metrics::has_host_tags() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void metrics::set_has_host_tags() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void metrics::clear_has_host_tags() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void metrics::clear_host_tags() {
   if (host_tags_ != &::google::protobuf::internal::kEmptyString) {
@@ -12890,85 +12837,15 @@ inline void metrics::set_allocated_host_tags(::std::string* host_tags) {
   }
 }
 
-// optional string host_custom_map = 13;
-inline bool metrics::has_host_custom_map() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
-}
-inline void metrics::set_has_host_custom_map() {
-  _has_bits_[0] |= 0x00000800u;
-}
-inline void metrics::clear_has_host_custom_map() {
-  _has_bits_[0] &= ~0x00000800u;
-}
-inline void metrics::clear_host_custom_map() {
-  if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
-    host_custom_map_->clear();
-  }
-  clear_has_host_custom_map();
-}
-inline const ::std::string& metrics::host_custom_map() const {
-  return *host_custom_map_;
-}
-inline void metrics::set_host_custom_map(const ::std::string& value) {
-  set_has_host_custom_map();
-  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_map_ = new ::std::string;
-  }
-  host_custom_map_->assign(value);
-}
-inline void metrics::set_host_custom_map(const char* value) {
-  set_has_host_custom_map();
-  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_map_ = new ::std::string;
-  }
-  host_custom_map_->assign(value);
-}
-inline void metrics::set_host_custom_map(const char* value, size_t size) {
-  set_has_host_custom_map();
-  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_map_ = new ::std::string;
-  }
-  host_custom_map_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* metrics::mutable_host_custom_map() {
-  set_has_host_custom_map();
-  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
-    host_custom_map_ = new ::std::string;
-  }
-  return host_custom_map_;
-}
-inline ::std::string* metrics::release_host_custom_map() {
-  clear_has_host_custom_map();
-  if (host_custom_map_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = host_custom_map_;
-    host_custom_map_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void metrics::set_allocated_host_custom_map(::std::string* host_custom_map) {
-  if (host_custom_map_ != &::google::protobuf::internal::kEmptyString) {
-    delete host_custom_map_;
-  }
-  if (host_custom_map) {
-    set_has_host_custom_map();
-    host_custom_map_ = host_custom_map;
-  } else {
-    clear_has_host_custom_map();
-    host_custom_map_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
 // optional bool is_host_hidden = 14;
 inline bool metrics::has_is_host_hidden() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void metrics::set_has_is_host_hidden() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void metrics::clear_has_is_host_hidden() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void metrics::clear_is_host_hidden() {
   is_host_hidden_ = false;
@@ -12984,13 +12861,13 @@ inline void metrics::set_is_host_hidden(bool value) {
 
 // optional string hidden_processes = 15;
 inline bool metrics::has_hidden_processes() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void metrics::set_has_hidden_processes() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void metrics::clear_has_hidden_processes() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void metrics::clear_hidden_processes() {
   if (hidden_processes_ != &::google::protobuf::internal::kEmptyString) {
@@ -13054,13 +12931,13 @@ inline void metrics::set_allocated_hidden_processes(::std::string* hidden_proces
 
 // optional string version = 16;
 inline bool metrics::has_version() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void metrics::set_has_version() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void metrics::clear_has_version() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void metrics::clear_version() {
   if (version_ != &::google::protobuf::internal::kEmptyString) {
@@ -13124,13 +13001,13 @@ inline void metrics::set_allocated_version(::std::string* version) {
 
 // optional string instance_id = 21;
 inline bool metrics::has_instance_id() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void metrics::set_has_instance_id() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void metrics::clear_has_instance_id() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void metrics::clear_instance_id() {
   if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -13269,13 +13146,13 @@ metrics::mutable_top_files() {
 
 // optional .draiosproto.proto_info protos = 20;
 inline bool metrics::has_protos() const {
-  return (_has_bits_[0] & 0x00080000u) != 0;
+  return (_has_bits_[0] & 0x00020000u) != 0;
 }
 inline void metrics::set_has_protos() {
-  _has_bits_[0] |= 0x00080000u;
+  _has_bits_[0] |= 0x00020000u;
 }
 inline void metrics::clear_has_protos() {
-  _has_bits_[0] &= ~0x00080000u;
+  _has_bits_[0] &= ~0x00020000u;
 }
 inline void metrics::clear_protos() {
   if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();

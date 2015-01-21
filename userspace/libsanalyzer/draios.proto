@@ -434,13 +434,13 @@ message metrics {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required host hostinfo = 4; // The list of processes
     repeated program programs = 9; // The list of programs
-    repeated process processes = 5; // The list of processes
+    // NEVER USED repeated process processes = 5; // The list of processes
     repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
     optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
     optional string host_custom_name = 11; // This machines's user-set custom name for the draios map.
     optional string host_tags = 12; // This machines's user-set list of tags for the draios map. 
-    optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
+    // NEVER USED optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
     optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
     optional string version = 16; // Agent/libsanalyzer/sysdig version
