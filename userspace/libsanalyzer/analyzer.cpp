@@ -458,7 +458,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload);
 	}
 
 	if(m_configuration->get_emit_metrics_to_file())
@@ -473,9 +473,10 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", sr=%" PRIu32,
+			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
+			m_my_cpuload,
 			m_sampling_ratio);
 
 		if(!buf)
