@@ -28,9 +28,11 @@ public class Config {
     public Config() throws FileNotFoundException {
         // Load config from file
         File conf_file = new File("dragent.yaml");
-        if (!conf_file.exists())
-        {
-            conf_file = new File("/opt/draios/bin/dragent.yaml");
+        if (!conf_file.exists()) {
+            conf_file = new File("/opt/draios/etc/dragent.yaml");
+            if (!conf_file.exists()) {
+                conf_file = new File("/opt/draios/etc/dragent.default.yaml");
+            }
         }
         FileInputStream conf_file_stream = new FileInputStream(conf_file);
         yaml = new Yaml();
