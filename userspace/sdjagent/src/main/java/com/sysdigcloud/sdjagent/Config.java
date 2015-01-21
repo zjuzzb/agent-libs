@@ -33,11 +33,6 @@ public class Config {
         conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
     }
 
-    public Map<String, Object> getConf()
-    {
-        return conf;
-    }
-
     public Map<String, String> getPatterns()
     {
         Map<String, String> queries = new HashMap<String, String>();

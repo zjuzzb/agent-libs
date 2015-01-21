@@ -26,33 +26,33 @@ public class Application {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     static {
-        // TODO: Don't indent on release builds
-        //mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        //mapper.disable(SerializationFeature.CLOSE_CLOSEABLE);
         mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
     }
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws IOException {
-        // TODO code application logic here
+    public static void main(String[] args) {
         LogManager.getLogManager().reset();
         Logger globalLogger = Logger.getLogger("");
         ConsoleHandler console = new ConsoleHandler();
         console.setFormatter(new LogJsonFormatter());
         globalLogger.setLevel(Level.FINER);
         globalLogger.addHandler(console);
-        Application app = new Application();
-        app.mainLoop();
+
+        try {
+            Application app = new Application();
+            app.mainLoop();
+        } catch (IOException ex) {
+            LOGGER.severe("IOException on main thread: " + ex.getMessage());
+            System.exit(1);
+        }
     }
 
     private HashMap<Integer, MonitoredVM> vms;
     private Config config;
 
     private Application() throws FileNotFoundException {
-        // TODO: clean no more active pids sometime
-        // TODO: add conffile get
         vms = new HashMap<Integer, MonitoredVM>();
 
         config = new Config();
@@ -76,6 +76,25 @@ public class Application {
                 System.out.flush();
                 LOGGER.fine("End getMetrics command");
             }
+
+            // Cleanup
+            cleanup();
+        }
+    }
+
+    private void cleanup() {
+        final List<VirtualMachineDescriptor> vmdlist = VirtualMachine.list();
+        Set<Integer> activePids = new HashSet<Integer>(vmdlist.size());
+        for (VirtualMachineDescriptor vmd : vmdlist)
+        {
+            Integer pid = Integer.valueOf(vmd.id());
+            activePids.add(pid);
+        }
+        for (Integer pid : vms.keySet()) {
+            if (!activePids.contains(pid)) {
+                LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
+                vms.remove(pid);
+            }
         }
     }
 
@@ -85,12 +104,12 @@ public class Application {
         for (VirtualMachineDescriptor vmd : VirtualMachine.list())
         {
             Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
-            int pid = Integer.parseInt(vmd.id());
+            Integer pid = Integer.valueOf(vmd.id());
             MonitoredVM vm = vms.get(pid);
 
             if (vm == null)
             {
-                vm = new MonitoredVM(pid);
+                vm = new MonitoredVM(pid.intValue());
 
                 // Configure VM name if it matches a pattern on configurations
                 Map<String, String> patterns = config.getPatterns();
@@ -107,7 +126,7 @@ public class Application {
                 vms.put(pid, vm);
             }
             if (vm.isAvailable()) {
-                vmObject.put("pid", new Integer(pid));
+                vmObject.put("pid", pid);
                 vmObject.put("name", vm.getName());
 
                 if (vm.isAgentActive()) {
@@ -127,6 +146,5 @@ public class Application {
             }
         }
         return vmList;
-        //TODO: may be a good point to clean not more useful object from vms
     }
 }
