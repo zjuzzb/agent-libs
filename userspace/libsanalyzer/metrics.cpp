@@ -752,7 +752,6 @@ void sinsp_host_metrics::clear()
 {
 	m_metrics.clear();
 	m_transaction_processing_delay_ns = 0;
-	m_n_capacity_score_entries = 0;
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
 	m_syscall_errors.clear();

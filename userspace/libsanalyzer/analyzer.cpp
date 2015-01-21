@@ -937,6 +937,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
 
+		if(!tinfo->m_container_id.empty())
+		{
+			m_containers_transaction_counters[tinfo->m_container_id].add(&ainfo->m_transaction_metrics);
+		}
+
 		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 		{
 			m_server_programs.insert(mtinfo->m_tid);
@@ -3036,6 +3041,7 @@ void sinsp_analyzer::emit_containers()
 				break;
 			case CT_LXC:
 				container->set_type(draiosproto::LXC);
+				break;
 			case CT_LIBVIRT_LXC:
 				container->set_type(draiosproto::LIBVIRT_LXC);
 				break;
@@ -3065,7 +3071,6 @@ void sinsp_analyzer::emit_containers()
 		}
 
 		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(it->second.m_id);
-
 		if(it_metrics != m_containers_metrics.end())
 		{
 			container->mutable_resource_counters()->set_capacity_score(it_metrics->second.get_capacity_score() * 100);
@@ -3084,16 +3089,25 @@ void sinsp_analyzer::emit_containers()
 		}
 
 		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(it->second.m_id);
-
 		if(it_req_metrics != m_containers_req_metrics.end())
 		{
 			it_req_metrics->second.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
+		}
+
+		unordered_map<string, sinsp_transaction_counters>::iterator it_trans_counters = m_containers_transaction_counters.find(it->second.m_id);
+		if(it_trans_counters != m_containers_transaction_counters.end())
+		{
+			it_trans_counters->second.to_protobuf(container->mutable_transaction_counters(),
+				container->mutable_min_transaction_counters(),
+				container->mutable_max_transaction_counters(), 
+				m_sampling_ratio);
 		}
 	}
 
 	m_containers_metrics.clear();
 	m_containers_req_metrics.clear();
 	m_active_containers.clear();
+	m_containers_transaction_counters.clear();
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}

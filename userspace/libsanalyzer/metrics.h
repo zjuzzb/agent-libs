@@ -297,7 +297,6 @@ public:
 
 	sinsp_counters m_metrics; 
 	uint64_t m_transaction_processing_delay_ns;
-	uint32_t m_n_capacity_score_entries;
 	uint32_t m_connection_queue_usage_pct;
 	uint32_t m_fd_usage_pct;
 	sinsp_error_counters m_syscall_errors;
