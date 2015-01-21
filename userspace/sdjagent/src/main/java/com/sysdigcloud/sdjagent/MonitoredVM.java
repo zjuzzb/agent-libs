@@ -232,7 +232,10 @@ public class MonitoredVM {
         }
     }
 
-    /*private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
+    /*
+    This doesn't work with Java 1.6
+
+    private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
     private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException {
         if (vm instanceof HotSpotVirtualMachine) {
             HotSpotVirtualMachine hsvm = (HotSpotVirtualMachine) vm;

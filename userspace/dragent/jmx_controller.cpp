@@ -38,7 +38,7 @@ pair<FILE*, FILE*> jmx_controller::get_io_fds()
 
 void jmx_controller::run()
 {
-	// TODO: restart child when it crashes
+	g_log->information("Starting jmx_controller thread");
 	while(true)
 	{
 		pid_t child_pid = fork();
@@ -52,8 +52,9 @@ void jmx_controller::run()
 
 			prctl(PR_SET_PDEATHSIG, SIGKILL);
 
-			execl("/usr/bin/java", "java", "-jar", "userspace/sdjagent/target/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
-			g_log->warning("Cannot load sdjagent");
+			execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+			g_log->warning("Cannot load sdjagent, errno: "+ errno);
+			exit(1);
 		}
 		else
 		{
@@ -111,6 +112,10 @@ void jmx_controller::run()
 				}
 				else
 				{
+					if(errno == EINTR)
+					{
+						g_log->debug("Received signal on select call");
+					}
 					// There is no log data, check if process is down
 					pid_t waited_pid = waitpid(child_pid, NULL, WNOHANG);
 					if (waited_pid != 0)

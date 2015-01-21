@@ -1,7 +1,6 @@
 package com.sysdigcloud.sdjagent;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Scanner;
 import java.util.logging.Logger;
@@ -16,7 +15,7 @@ public class CLibrary {
     static {
         pid = 0;
         try {
-            System.loadLibrary("sdjagent");
+            System.loadLibrary("sdjagentjni");
             libraryLoaded = true;
         } catch ( UnsatisfiedLinkError ex) {
             LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));

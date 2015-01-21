@@ -13,6 +13,15 @@
         <jackson.version>2.4.4</jackson.version>
     </properties>
 
+    <profiles>
+        <profile>
+            <id>customBuild</id>
+            <build>
+                <directory>${custom.build.directory}</directory>
+            </build>
+        </profile>
+    </profiles>
+
     <repositories>
         <repository>
             <id>Internal deps</id>
