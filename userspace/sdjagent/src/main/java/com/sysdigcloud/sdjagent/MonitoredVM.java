@@ -65,7 +65,7 @@ public class MonitoredVM {
                 List<String> auths = jvmstat.findByPattern("sun.management.JMXConnectorServer.[0-9]+.authenticate"); // NOI18N
                 if ("true".equals(auths.get(0)))
                 {
-                    // TODO: log some error
+                    LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", pid));
                 } else
                 {
                     address = remoteUrls.get(0);
@@ -141,13 +141,11 @@ public class MonitoredVM {
                 for (ObjectName bean : mbs.queryNames(query.getObjectName(), null)) {
                     try {
                         AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
-                        metrics.add(new BeanData(bean, query.getAttributes(), attributes_list));
+                        metrics.add(new BeanData(bean, attributes_list));
                     } catch (InstanceNotFoundException e) {
                         LOGGER.warning(String.format("Bean %s not found on process %d", bean.getCanonicalName(), pid));
                     } catch (ReflectionException e) {
                         LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getCanonicalName(), pid));
-
-
                     }
                 }
             } catch (IOException ex) {

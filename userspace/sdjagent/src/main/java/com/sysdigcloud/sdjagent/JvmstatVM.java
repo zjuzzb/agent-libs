@@ -41,7 +41,7 @@ public class JvmstatVM
         }
         catch ( MonitorException ex)
         {
-            // TODO: log some error
+            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
         }
         return value;
     }
@@ -57,7 +57,7 @@ public class JvmstatVM
             return monitorStrList;
         } catch (MonitorException ex)
         {
-            // TODO: log some error
+            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
             return null;
         }
     }
@@ -66,9 +66,9 @@ public class JvmstatVM
         try
         {
             return MonitoredVmUtil.jvmArgs(vm);
-        } catch (MonitorException e)
+        } catch (MonitorException ex)
         {
-            // TODO: log some error
+            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
             return null;
         }
     }
@@ -78,9 +78,9 @@ public class JvmstatVM
         try
         {
             return MonitoredVmUtil.mainClass(vm, true);
-        } catch (MonitorException e)
+        } catch (MonitorException ex)
         {
-            // TODO: add log print
+            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
             return null;
         }
     }

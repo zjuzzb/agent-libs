@@ -21,6 +21,10 @@ public class Config {
     private static final ObjectMapper mapper = new ObjectMapper();
     private final static Logger LOGGER = Logger.getLogger(Config.class.getName());
 
+    private Map<String, String> patterns;
+    private List<BeanQuery> defaultBeanQueries;
+    private Map<String, List<BeanQuery>> beanQueries;
+
     public Config() throws FileNotFoundException {
         // Load config from file
         File conf_file = new File("dragent.yaml");
@@ -31,41 +35,66 @@ public class Config {
         FileInputStream conf_file_stream = new FileInputStream(conf_file);
         yaml = new Yaml();
         conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
-    }
 
-    public Map<String, String> getPatterns()
-    {
-        Map<String, String> queries = new HashMap<String, String>();
+        patterns = new HashMap<String, String>();
         for ( String key : conf.keySet())
         {
             if ( ! key.equals("default"))
             {
-                queries.put(((Map<String, String>) conf.get(key)).get("pattern"), key);
+                patterns.put(((Map<String, String>) conf.get(key)).get("pattern"), key);
             }
         }
-        return queries;
+
+        defaultBeanQueries = new ArrayList<BeanQuery>();
+        for (Object bean : (List<Object>) conf.get("default")) {
+            try {
+                defaultBeanQueries.add(mapper.convertValue(bean, BeanQuery.class));
+            } catch (IllegalArgumentException ex) {
+                Map<String, Object> beanAsMap = mapper.convertValue(bean, Map.class);
+                LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query"));
+            }
+        }
+
+        beanQueries = new HashMap<String, List<BeanQuery>>();
+
+        for(String name : conf.keySet() ) {
+            if (name.equals("default")) {
+                continue;
+            }
+            Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
+            List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
+            List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
+            if (beansList != null) {
+                for (Object beanQuery : beansList) {
+                    try {
+                        beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
+                    } catch (IllegalArgumentException ex)
+                    {
+                        Map<String, Object> beanAsMap = mapper.convertValue(beanQuery, Map.class);
+                        LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query"));
+                    }
+                }
+                beanQueries.put(name, beanQueryList);
+            }
+        }
+    }
+
+    public Map<String, String> getPatterns()
+    {
+        return patterns;
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
-        List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
-        for (Object bean : (List<Object>) conf.get("default")) {
-            beanQueryList.add(mapper.convertValue(bean, BeanQuery.class));
-        }
-        return beanQueryList;
+
+        return defaultBeanQueries;
     }
 
     public List<BeanQuery> getBeanQueries(String name) {
-        Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
-        List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
-        if (queryEntry != null) {
-            List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
-            if (beansList != null) {
-                for (Object beanQuery : beansList) {
-                    // FIXME: what happens if query has an invalid value?
-                    beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
-                }
-            }
+
+        if (beanQueries.containsKey(name)) {
+            return beanQueries.get(name);
+        } else {
+            return new ArrayList<BeanQuery>();
         }
-        return beanQueryList;
     }
 }

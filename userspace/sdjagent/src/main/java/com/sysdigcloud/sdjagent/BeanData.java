@@ -36,12 +36,12 @@ public class BeanData {
         this.attributes = attributes;
     }
 
-    public BeanData(ObjectName name, String[] attribute_names, AttributeList attribute_values) {
+    public BeanData(ObjectName name, AttributeList attribute_values) {
         this.name = name.getCanonicalName();
         this.attributes = new LinkedHashMap<String, Object>();
-        for ( int j = 0; j < attribute_names.length; ++j)
+        for ( Attribute attributeObj : attribute_values.asList())
         {
-            Object attribute_value = ((Attribute)attribute_values.get(j)).getValue();
+            Object attribute_value = attributeObj.getValue();
             if (attribute_value instanceof CompositeData) {
                 CompositeData compositeData = (CompositeData) attribute_value;
                 Map<String, Double> subattributes = new LinkedHashMap<String, Double>();
@@ -55,11 +55,11 @@ public class BeanData {
                         // Skip the field in this case
                     }
                 }
-                this.attributes.put(attribute_names[j], subattributes);
+                this.attributes.put(attributeObj.getName(), subattributes);
             }
             else {
                 try {
-                    this.attributes.put(attribute_names[j], getValueAsDouble(attribute_value));
+                    this.attributes.put(attributeObj.getName(), getValueAsDouble(attribute_value));
                 } catch (NumberFormatException ex)
                 {
                     // Skip the value
