@@ -4583,6 +4583,15 @@ class container : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >*
       mutable_port_mappings();
 
+  // optional .draiosproto.proto_info protos = 19;
+  inline bool has_protos() const;
+  inline void clear_protos();
+  static const int kProtosFieldNumber = 19;
+  inline const ::draiosproto::proto_info& protos() const;
+  inline ::draiosproto::proto_info* mutable_protos();
+  inline ::draiosproto::proto_info* release_protos();
+  inline void set_allocated_protos(::draiosproto::proto_info* protos);
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -4611,6 +4620,8 @@ class container : public ::google::protobuf::Message {
   inline void clear_has_resource_counters();
   inline void set_has_syscall_errors();
   inline void clear_has_syscall_errors();
+  inline void set_has_protos();
+  inline void clear_has_protos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4627,10 +4638,11 @@ class container : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping > port_mappings_;
+  ::draiosproto::proto_info* protos_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -12298,6 +12310,44 @@ container::port_mappings() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping >*
 container::mutable_port_mappings() {
   return &port_mappings_;
+}
+
+// optional .draiosproto.proto_info protos = 19;
+inline bool container::has_protos() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void container::set_has_protos() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void container::clear_has_protos() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void container::clear_protos() {
+  if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
+  clear_has_protos();
+}
+inline const ::draiosproto::proto_info& container::protos() const {
+  return protos_ != NULL ? *protos_ : *default_instance_->protos_;
+}
+inline ::draiosproto::proto_info* container::mutable_protos() {
+  set_has_protos();
+  if (protos_ == NULL) protos_ = new ::draiosproto::proto_info;
+  return protos_;
+}
+inline ::draiosproto::proto_info* container::release_protos() {
+  clear_has_protos();
+  ::draiosproto::proto_info* temp = protos_;
+  protos_ = NULL;
+  return temp;
+}
+inline void container::set_allocated_protos(::draiosproto::proto_info* protos) {
+  delete protos_;
+  protos_ = protos;
+  if (protos) {
+    set_has_protos();
+  } else {
+    clear_has_protos();
+  }
 }
 
 // -------------------------------------------------------------------

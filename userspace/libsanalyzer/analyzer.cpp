@@ -3086,6 +3086,7 @@ void sinsp_analyzer::emit_containers()
 			container->mutable_resource_counters()->set_cpu_pct(it_metrics->second.m_cpuload * 100);
 
 			it_metrics->second.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
+			it_metrics->second.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
 		}
 
 		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(it->second.m_id);
