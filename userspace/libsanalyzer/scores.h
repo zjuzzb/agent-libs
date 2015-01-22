@@ -28,24 +28,19 @@ public:
 	//
 	// Return the health score for a process
 	//
-	int32_t get_system_capacity_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration);
+	// int32_t get_system_capacity_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+	// 	uint32_t n_server_threads,
+	// 	uint64_t sample_end_time, uint64_t sample_duration);
 
-	float get_system_capacity_score_bycpu_3(vector<vector<sinsp_trlist_entry>>* transactions, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration,
-		int64_t progid);
+	// float get_system_capacity_score_bycpu_3(vector<vector<sinsp_trlist_entry>>* transactions, 
+	// 	uint32_t n_server_threads,
+	// 	uint64_t sample_end_time, uint64_t sample_duration,
+	// 	int64_t progid);
 
-	sinsp_score_info get_system_capacity_score_bycpu_4(sinsp_delays_info* delays, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration, 
-		sinsp_threadinfo* program_info);
-
-	sinsp_score_info get_system_capacity_score_bycpu_5(sinsp_delays_info* delays, 
-		uint32_t n_server_threads,
-		uint64_t sample_end_time, uint64_t sample_duration, 
-		sinsp_threadinfo* program_info);
+	// sinsp_score_info get_system_capacity_score_bycpu_4(sinsp_delays_info* delays, 
+	// 	uint32_t n_server_threads,
+	// 	uint64_t sample_end_time, uint64_t sample_duration, 
+	// 	sinsp_threadinfo* program_info);
 
 /*
 	int32_t get_system_capacity_score_bycpu(vector<vector<pair<uint64_t, uint64_t>>>* transactions, 
@@ -66,7 +61,11 @@ public:
 		uint64_t sample_end_time, uint64_t sample_duration);
 
 private:
-	float calculate_score_4(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
+	sinsp_score_info get_system_capacity_score_bycpu_5(sinsp_delays_info* delays, 
+		uint32_t n_server_threads,
+		uint64_t sample_end_time, uint64_t sample_duration, 
+		sinsp_threadinfo* program_info);
+	// float calculate_score_4(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
 	float calculate_score_5(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
 
 	sinsp* m_inspector;
