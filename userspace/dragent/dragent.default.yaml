@@ -77,3 +77,20 @@ jmx:
           - accessCount
           - cacheSize
           - hitsCount
+      - query: "Catalina:type=GlobalRequestProcessor,*"
+        attributes:
+          - errorCount
+          - requestCount
+          - processingTime
+      - query: "Catalina:type=Manager,*"
+        attributes:
+          - activeSessions
+          - expiredSessions
+          - processingTime
+          - rejectedSessions
+      - query: "Catalina:type=ThreadPool,*"
+        attributes:
+          - acceptorThreadCount
+          - currentThreadCount
+          - currentThreadBusy
+    
