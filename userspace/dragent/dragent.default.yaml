@@ -13,7 +13,6 @@ jmx:
         - UnloadedClassCount
     - query: "java.lang:type=MemoryPool,name=CMS Perm Gen"
       attributes:
-        - CollectionUsage
         - Usage
     - query: "java.lang:type=Threading"
       attributes:
@@ -30,6 +29,46 @@ jmx:
           - 98thPercentile
           - 99thPercentile
           - 999thPercentile
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Keyspace,name=ReadLatency,*"
+        attributes:
+          - 50thPercentile
+          - 75thPercentile
+          - 95thPercentile
+          - 98thPercentile
+          - 99thPercentile
+          - 999thPercentile
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Keyspace,name=TotalDiskSpaceUsed,*"
+        attributes:
+          - Value
+      - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
+        attributes:
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Compaction,name=CompletedTasks"
+        attributes:
+          - Value
+      - query: "org.apache.cassandra.metrics:type=Compaction,name=PendingTasks"
+        attributes:
+          - Value
+      - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
+        attributes:
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Cache,name=Capacity,*"
+        attributes:
+          - Value
+      - query: "org.apache.cassandra.metrics:type=Cache,name=Entries,*"
+        attributes:
+          - Value
+      - query: "org.apache.cassandra.metrics:type=Cache,name=Hits,*"
+        attributes:
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Cache,name=Requests,*"
+        attributes:
+          - Count
+      - query: "org.apache.cassandra.metrics:type=Cache,name=Size,*"
+        attributes:
+          - Value
   tomcat:
     pattern: "catalina"
     beans:
