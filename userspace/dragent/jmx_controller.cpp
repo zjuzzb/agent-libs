@@ -39,9 +39,10 @@ pair<FILE*, FILE*> jmx_controller::get_io_fds()
 void jmx_controller::run()
 {
 	g_log->information("Starting jmx_controller thread");
-	while(true)
+	pid_t child_pid = 0;
+	while(!dragent_configuration::m_terminate)
 	{
-		pid_t child_pid = fork();
+		child_pid = fork();
 		if(child_pid == 0)
 		{
 			g_log->information("Starting sdjagent");
@@ -59,8 +60,7 @@ void jmx_controller::run()
 		else
 		{
 			// Father, read from stderr and write to log
-			// TODO: parse log and use same severity, improve monitoring
-			while (true)
+			while (!dragent_configuration::m_terminate)
 			{
 				fd_set readset;
 				FD_ZERO(&readset);
@@ -81,6 +81,7 @@ void jmx_controller::run()
 						fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
 					}
 					json_data.append(buffer);
+
 					// Parse log level and use it
 					Json::Value sdjagent_log;
 					bool parsing_ok = m_json_reader.parse(json_data, sdjagent_log, false);
@@ -112,19 +113,27 @@ void jmx_controller::run()
 				}
 				else
 				{
-					if(errno == EINTR)
-					{
-						g_log->debug("Received signal on select call");
-					}
 					// There is no log data, check if process is down
 					pid_t waited_pid = waitpid(child_pid, NULL, WNOHANG);
-					if (waited_pid != 0)
+					if (waited_pid == child_pid)
 					{
 						// Stop this loop and fork again
+						child_pid = 0;
 						break;
 					}
 				}
 			}
 		}
 	}
+	if (child_pid)
+	{
+		g_log->information("Sending SIGTERM to sdjagent");
+		kill(child_pid, SIGTERM);
+		pid_t waited_pid = waitpid(child_pid, NULL, 0);
+		if (waited_pid == child_pid)
+		{
+			g_log->information("sdjagent terminated");
+		}
+	}
+	g_log->information("jmx_controller terminating");
 }

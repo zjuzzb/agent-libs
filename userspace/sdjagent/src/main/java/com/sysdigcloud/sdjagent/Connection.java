@@ -48,7 +48,7 @@ public class Connection {
     protected void createConnection() throws IOException {
         this.env.put("attribute.remote.x.request.waiting.timeout", CONNECTION_TIMEOUT);
         closeConnector();
-        LOGGER.info("Connecting to: " + this.address);
+        LOGGER.fine("Connecting to: " + this.address);
         connector = connectWithTimeout(this.address, this.env);
         mbs = connector.getMBeanServerConnection();
     }
