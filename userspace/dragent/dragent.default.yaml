@@ -93,4 +93,37 @@ jmx:
           - acceptorThreadCount
           - currentThreadCount
           - currentThreadBusy
-    
+  activemq:
+    pattern: "activemq"
+    beans:
+      - query: "org.apache.activemq:Type=Broker,*"
+        attributes:
+          - TotalConsumerCount
+          - TotalDequeueCount
+          - TotalEnqueueCount
+          - TotalMessageCount
+          - TotalProducerCount
+      - query: "org.apache.activemq:Type=Queue,*"
+        attributes:
+          - ConsumerCount
+          - AverageEnqueueTime
+          - DequeueCount 
+          - DispatchCount
+          - EnqueueCount 
+          - ExpiredCount
+          - InFlightCount
+          - MemoryPercentUsage
+          - ProducerCount 
+          - QueueSize
+      - query: "org.apache.activemq:Type=Topic,*"
+        attributes:
+          - ConsumerCount
+          - AverageEnqueueTime
+          - DequeueCount 
+          - DispatchCount
+          - EnqueueCount 
+          - ExpiredCount
+          - InFlightCount
+          - MemoryPercentUsage
+          - ProducerCount 
+          - QueueSize
