@@ -172,7 +172,8 @@ uint64_t sinsp_delays::prune_client_transactions(vector<vector<sinsp_trlist_entr
 }
 
 void sinsp_delays::compute_program_percpu_delays(vector<vector<sinsp_trlist_entry>>* host_client_transactions, 
-		vector<vector<sinsp_trlist_entry>>* host_server_transactions, sinsp_threadinfo* program_info, int32_t cpuid, sinsp_delays_info* delays)
+		vector<vector<sinsp_trlist_entry>>* host_server_transactions, vector<vector<sinsp_trlist_entry>>* container_client_transactions, 
+		vector<vector<sinsp_trlist_entry>>* container_server_transactions, sinsp_threadinfo* program_info, int32_t cpuid, sinsp_delays_info* delays)
 {
 	sinsp_percpu_delays* pd = &delays->m_last_percpu_delays[cpuid];
 
@@ -208,6 +209,11 @@ void sinsp_delays::compute_program_percpu_delays(vector<vector<sinsp_trlist_entr
 		if((it->m_flags & sinsp_trlist_entry::FL_EXTERNAL) && !(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
 			host_server_transactions->at(cpuid).push_back(*it);
+
+			if(container_server_transactions)
+			{
+				container_server_transactions->at(cpuid).push_back(*it);				
+			}
 		}
 	}
 
@@ -218,16 +224,45 @@ void sinsp_delays::compute_program_percpu_delays(vector<vector<sinsp_trlist_entr
 		if((it->m_flags & sinsp_trlist_entry::FL_EXTERNAL) && !(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
 			host_client_transactions->at(cpuid).push_back(*it);
+
+			if(container_client_transactions)
+			{
+				container_client_transactions->at(cpuid).push_back(*it);				
+			}
 		}
 	}
 }
 
 void sinsp_delays::compute_program_delays(vector<vector<sinsp_trlist_entry>>* host_client_transactions, 
-		vector<vector<sinsp_trlist_entry>>* host_server_transactions, sinsp_threadinfo* program_info, OUT sinsp_delays_info* delays)
+		vector<vector<sinsp_trlist_entry>>* host_server_transactions, vector<vector<sinsp_trlist_entry>>* container_client_transactions, 
+		vector<vector<sinsp_trlist_entry>>* container_server_transactions, sinsp_threadinfo* program_info, OUT sinsp_delays_info* delays)
 {
 	int32_t j;
 
 	delays->m_local_processing_delay_ns = -1;
+
+	if(host_client_transactions->empty())
+	{
+		host_client_transactions->resize(m_num_cpus);
+	}
+
+	if(host_server_transactions->empty())
+	{
+		host_server_transactions->resize(m_num_cpus);
+	}
+
+	if(container_client_transactions && 
+		container_client_transactions->empty())
+	{
+		container_client_transactions->resize(m_num_cpus);
+	}
+
+	if(container_server_transactions &&
+		container_server_transactions->empty())
+	{
+		container_server_transactions->resize(m_num_cpus);
+	}
+
 //vector<sinsp_trlist_entry>* transactions = &program_info->m_ainfo->m_client_transactions_per_cpu[0];
 //vector<int64_t>v;
 //int64_t tot = 0;
@@ -292,7 +327,8 @@ void sinsp_delays::compute_program_delays(vector<vector<sinsp_trlist_entry>>* ho
 	//
 	for(j = 0; j < m_num_cpus; j++)
 	{
-		compute_program_percpu_delays(host_client_transactions, host_server_transactions, program_info, j, delays);
+		compute_program_percpu_delays(host_client_transactions, host_server_transactions, container_client_transactions,
+			container_server_transactions, program_info, j, delays);
 	}
 
 //vector<sinsp_trlist_entry>* transactions2 = &((delays)->m_last_percpu_delays[0]).m_last_client_transaction_union;
@@ -415,6 +451,16 @@ void sinsp_delays::compute_host_container_delays(sinsp_transaction_counters* tra
 	int32_t j;
 
 	delays->m_local_processing_delay_ns = -1;
+
+	if(client_transactions->empty())
+	{
+		client_transactions->resize(m_num_cpus);
+	}
+
+	if(server_transactions->empty())
+	{
+		server_transactions->resize(m_num_cpus);
+	}
 
 	if(transaction_counters->get_counter()->m_count_in == 0)
 	{

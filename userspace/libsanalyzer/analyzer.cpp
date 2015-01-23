@@ -55,9 +55,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
 	if(!m_serialization_buffer)
 	{
-			char tbuf[256];
-			snprintf(tbuf, sizeof(tbuf), "memory allocation error at %s:%d", __FILE__, __LINE__);
-			throw sinsp_exception(string(tbuf));
+		char tbuf[256];
+		snprintf(tbuf, sizeof(tbuf), "memory allocation error at %s:%d", __FILE__, __LINE__);
+		throw sinsp_exception(string(tbuf));
 	}
 	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
@@ -250,9 +250,6 @@ void sinsp_analyzer::on_capture_start()
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
 	m_delay_calculator = new sinsp_delays(m_machine_info->num_cpus);
-
-	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
-	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 
 	//
 	// Allocations
@@ -1149,7 +1146,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if(tot.m_count != 0)
 				{
 					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-					m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, tinfo, prog_delays);
+					if(container)
+					{
+						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, 
+							&container->m_client_transactions, &container->m_server_transactions, tinfo, prog_delays);
+					}
+					else
+					{
+						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, NULL, NULL, tinfo, prog_delays);
+					}
 
 #ifdef _DEBUG
 					procinfo->m_proc_metrics.calculate_totals();
@@ -2383,10 +2388,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	m_host_transaction_counters.clear();
 	m_client_tr_time_by_servers = 0;
 
-	for(j = 0; j < m_machine_info->num_cpus; j++)
+	for(j = 0; j < m_host_server_transactions.size(); ++j)
 	{
 		m_host_server_transactions[j].clear();
-		m_host_client_transactions[j].clear();
+	}
+
+	for(j = 0; j < m_host_client_transactions.size(); ++j)
+	{
+		m_host_server_transactions[j].clear();
 	}
 
 	//
@@ -3092,6 +3101,10 @@ void sinsp_analyzer::emit_containers()
 			container->mutable_min_transaction_counters(),
 			container->mutable_max_transaction_counters(), 
 			m_sampling_ratio);
+
+		m_delay_calculator->compute_host_container_delays(&it_analyzer->second.m_transaction_counters, 
+			&it_analyzer->second.m_client_transactions, &it_analyzer->second.m_server_transactions,
+			&it_analyzer->second.m_transaction_delays);
 
 		if(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns != -1)
 		{
