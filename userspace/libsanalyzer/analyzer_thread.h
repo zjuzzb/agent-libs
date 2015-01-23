@@ -4,41 +4,7 @@
 
 #include "transactinfo.h"
 #include "protostate.h"
-
-//
-// Delays info
-// XXX this is a temporary place for these classes
-//
-class sinsp_percpu_delays
-{
-public:
-	void clear()
-	{
-		m_last_server_transaction_union.clear();
-		m_last_client_transaction_union.clear();
-	}
-
-	vector<sinsp_trlist_entry> m_last_server_transaction_union;
-	vector<sinsp_trlist_entry> m_last_client_transaction_union;
-	uint64_t m_merged_server_delay;
-	uint64_t m_merged_client_delay;
-};
-
-class sinsp_delays_info
-{
-public:
-	void clear()
-	{
-		m_merged_server_delay = 0;
-		m_merged_client_delay = 0;
-	}
-
-	vector<sinsp_percpu_delays> m_last_percpu_delays;
-	double m_local_remote_ratio;
-	uint64_t m_merged_server_delay;
-	uint64_t m_merged_client_delay;
-	int64_t m_local_processing_delay_ns;
-};
+#include "delays.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads

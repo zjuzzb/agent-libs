@@ -1,6 +1,7 @@
 #pragma once
 
 #include <analyzer_int.h>
+#include <delays.h>
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -309,7 +310,7 @@ VISIBILITY_PRIVATE
 	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
-	sinsp_delays_info* m_host_transaction_delays;
+	sinsp_delays_info m_host_transaction_delays;
 
 	//
 	// Support for delay calculation

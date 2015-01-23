@@ -68,8 +68,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_client_tr_time_by_servers = 0;
 	m_total_process_cpu = 0;
 
-	m_host_transaction_delays = new sinsp_delays_info();
-
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
 
 	m_procfs_parser = NULL;
@@ -146,11 +144,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_delay_calculator)
 	{
 		delete m_delay_calculator;
-	}
-
-	if(m_host_transaction_delays)
-	{
-		delete m_host_transaction_delays;
 	}
 
 	if(m_threadtable_listener)
@@ -2268,17 +2261,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Transactions
 			//
-			m_delay_calculator->compute_host_container_delays(&m_host_transaction_counters, &m_host_client_transactions, &m_host_server_transactions, m_host_transaction_delays);
+			m_delay_calculator->compute_host_container_delays(&m_host_transaction_counters, &m_host_client_transactions, &m_host_server_transactions, &m_host_transaction_delays);
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(), 
 				m_sampling_ratio);
 
-			if(m_host_transaction_delays->m_local_processing_delay_ns != -1)
+			if(m_host_transaction_delays.m_local_processing_delay_ns != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays->m_local_processing_delay_ns * m_sampling_ratio);
-				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays->m_merged_client_delay * m_sampling_ratio);
+				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
+				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 			}
 
 			//
@@ -2323,9 +2316,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						m_host_transaction_counters.get_counter()->m_count_out * m_sampling_ratio,
 						(float)m_host_transaction_counters.get_counter()->m_time_ns_in / sample_duration,
 						(float)m_client_tr_time_by_servers / sample_duration,
-						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_server_delay) / sample_duration : -1,
-						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_merged_client_delay) / sample_duration : -1,
-						(m_host_transaction_delays->m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays->m_local_processing_delay_ns) / sample_duration : -1);
+						(m_host_transaction_delays.m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays.m_merged_server_delay) / sample_duration : -1,
+						(m_host_transaction_delays.m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays.m_merged_client_delay) / sample_duration : -1,
+						(m_host_transaction_delays.m_local_processing_delay_ns != -1)?((double)m_host_transaction_delays.m_local_processing_delay_ns) / sample_duration : -1);
 
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						"host transaction times: proc:%.2lf%% file:%.2lf%% net:%.2lf%% other:%.2lf%%",
