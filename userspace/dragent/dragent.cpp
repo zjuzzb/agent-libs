@@ -264,8 +264,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	ExitCode exit_code;
 
-	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_jmx_controller, "jmx_controller");
+	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
 	while(!dragent_configuration::m_terminate)

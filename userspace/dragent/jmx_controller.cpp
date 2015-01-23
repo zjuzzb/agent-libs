@@ -21,6 +21,7 @@ jmx_controller::jmx_controller(dragent_configuration *configuration) :
 	// Use non blocking io
 	enable_nonblocking(m_outpipe[PIPE_READ]);
 	enable_nonblocking(m_errpipe[PIPE_READ]);
+	enable_nonblocking(m_inpipe[PIPE_WRITE]);
 }
 
 void jmx_controller::enable_nonblocking(int fd)
@@ -38,14 +39,13 @@ pair<FILE*, FILE*> jmx_controller::get_io_fds()
 
 void jmx_controller::run()
 {
-	g_log->information("Starting jmx_controller thread");
+	g_log->information("jmx_controller: Starting");
 	pid_t child_pid = 0;
 	while(!dragent_configuration::m_terminate)
 	{
 		child_pid = fork();
 		if(child_pid == 0)
 		{
-			g_log->information("Starting sdjagent");
 			// Child, bind pipes and exec
 			dup2(m_outpipe[PIPE_WRITE], STDOUT_FILENO);
 			dup2(m_errpipe[PIPE_WRITE], STDERR_FILENO);
@@ -54,7 +54,7 @@ void jmx_controller::run()
 			prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 			execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
-			g_log->warning("Cannot load sdjagent, errno: "+ errno);
+			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 			exit(1);
 		}
 		else
