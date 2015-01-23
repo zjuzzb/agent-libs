@@ -57,10 +57,6 @@ public:
 	// Aggreaged transaction metrics for the process.
 	// This field is allocated only for process main threads.
 	sinsp_transaction_counters m_proc_transaction_metrics;
-	// The delay that this thread introduced in transaction processing.
-	// This is calculated by subtracting the total outgoing transaction time to
-	// the total incoming transaction time.
-	uint64_t m_proc_transaction_processing_delay_ns;
 	// The ratio between the number of connections waiting to be served and 
 	// the total connection queue length for this process.
 	uint32_t m_connection_queue_usage_pct;
@@ -185,10 +181,6 @@ public:
 	sinsp_transaction_counters m_transaction_metrics; 
 	// The metrics for transaction coming from the external world
 	sinsp_transaction_counters m_external_transaction_metrics; 
-	// The delay that this thread introduced in transaction processing.
-	// This is calculated by subtracting the total outgoing transaction time to
-	// the total incoming transaction time.
-	//uint64_t m_transaction_processing_delay_ns;
 	// Process-specific information
 	sinsp_procinfo* m_procinfo;
 	// The ratio between the number of connections waiting to be served and 

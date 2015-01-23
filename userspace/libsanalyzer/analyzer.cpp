@@ -256,7 +256,7 @@ void sinsp_analyzer::on_capture_start()
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
-	m_delay_calculator = new sinsp_delays(this, m_machine_info->num_cpus);
+	m_delay_calculator = new sinsp_delays(m_machine_info->num_cpus);
 
 	m_host_server_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
 	m_host_client_transactions = vector<vector<sinsp_trlist_entry>>(m_machine_info->num_cpus);
@@ -1149,7 +1149,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if(tot.m_count != 0)
 				{
 					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-					m_delay_calculator->compute_program_delays(tinfo, prog_delays);
+					m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, tinfo, prog_delays);
 
 #ifdef _DEBUG
 					procinfo->m_proc_metrics.calculate_totals();
@@ -2268,7 +2268,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Transactions
 			//
-			m_delay_calculator->compute_host_delays(m_host_transaction_delays);
+			m_delay_calculator->compute_host_container_delays(&m_host_transaction_counters, &m_host_client_transactions, &m_host_server_transactions, m_host_transaction_delays);
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),

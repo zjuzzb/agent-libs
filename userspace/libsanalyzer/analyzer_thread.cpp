@@ -28,7 +28,6 @@ void sinsp_procinfo::clear()
 	m_exclude_from_sample = false;
 	m_proc_metrics.clear();
 	m_proc_transaction_metrics.clear();
-	m_proc_transaction_processing_delay_ns = 0;
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
 	m_syscall_errors.clear();
