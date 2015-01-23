@@ -11,11 +11,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
 
 /**
  * Created by luca on 12/01/15.
  */
 public class BeanData {
+    private final static Logger LOGGER = Logger.getLogger(BeanData.class.getName());
     private String name;
     private Map<String, Object> attributes;
 
@@ -41,6 +43,11 @@ public class BeanData {
         this.attributes = new LinkedHashMap<String, Object>();
         for ( Attribute attributeObj : attribute_values.asList())
         {
+            if (attributeObj == null)
+            {
+                LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
+                continue;
+            }
             Object attribute_value = attributeObj.getValue();
             if (attribute_value instanceof CompositeData) {
                 CompositeData compositeData = (CompositeData) attribute_value;

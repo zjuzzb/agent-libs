@@ -10,13 +10,11 @@ import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 import sun.jvmstat.monitor.MonitorException;
-import sun.tools.attach.HotSpotVirtualMachine;
 
 import javax.management.*;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
