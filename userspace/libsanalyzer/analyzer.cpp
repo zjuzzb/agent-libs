@@ -3096,6 +3096,14 @@ void sinsp_analyzer::emit_containers()
 				container->mutable_max_transaction_counters(), 
 				m_sampling_ratio);
 		}
+
+		unordered_map<string, sinsp_delays_info>::iterator it_delay = m_containers_transaction_delays.find(it->second.m_id);
+		if(it_delay != m_containers_transaction_delays.end() &&
+			it_delay->second.m_local_processing_delay_ns != -1)
+		{
+			container->set_transaction_processing_delay(it_delay->second.m_local_processing_delay_ns * m_sampling_ratio);
+			container->set_next_tiers_delay(it_delay->second.m_merged_client_delay * m_sampling_ratio);
+		}
 	}
 
 	m_containers_metrics.clear();

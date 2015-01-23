@@ -329,6 +329,7 @@ VISIBILITY_PRIVATE
 	unordered_map<string, sinsp_host_metrics> m_containers_metrics;
 	unordered_map<string, sinsp_counters> m_containers_req_metrics;
 	unordered_map<string, sinsp_transaction_counters> m_containers_transaction_counters;
+	unordered_map<string, sinsp_delays_info> m_containers_transaction_delays;
 
 	//
 	// Subsampling-related stuff
