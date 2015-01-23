@@ -797,10 +797,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
+		analyzer_container_state* container = NULL;
 
 		if(!tinfo->m_container_id.empty())
 		{
-			m_active_containers.insert(tinfo->m_container_id);
+			container = &m_containers[tinfo->m_container_id];
 		}
 
 		//
@@ -930,9 +931,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
 
-		if(!tinfo->m_container_id.empty())
+		if(container)
 		{
-			m_containers_transaction_counters[tinfo->m_container_id].add(&ainfo->m_transaction_metrics);
+			container->m_transaction_counters.add(&ainfo->m_transaction_metrics);
 		}
 
 		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
@@ -973,6 +974,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
+		analyzer_container_state* container = NULL;
+
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+		}
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
@@ -1209,9 +1216,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							procinfo->m_stolen_capacity_score,
 							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 
-						if(!tinfo->m_container_id.empty())
+						if(container)
 						{
-							m_containers_metrics[tinfo->m_container_id].add_capacity_score(procinfo->m_capacity_score,
+							container->m_metrics.add_capacity_score(procinfo->m_capacity_score,
 								procinfo->m_stolen_capacity_score,
 								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
 						}
@@ -1294,9 +1301,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					m_host_req_metrics.add(&procinfo->m_proc_metrics);
 
-					if(!tinfo->m_container_id.empty())
+					if(container)
 					{
-						m_containers_req_metrics[tinfo->m_container_id].add(&procinfo->m_proc_metrics);
+						container->m_req_metrics.add(&procinfo->m_proc_metrics);
 					}
 				}
 
@@ -1307,9 +1314,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				//
 				m_host_metrics.add(procinfo);
 
-				if(!tinfo->m_container_id.empty())
+				if(container)
 				{
-					m_containers_metrics[tinfo->m_container_id].add(procinfo);
+					container->m_metrics.add(procinfo);
 				}
 			}
 			else
@@ -2787,7 +2794,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 			if(!evt->m_tinfo->m_container_id.empty())
 			{
-				m_containers_metrics[evt->m_tinfo->m_container_id].m_syscall_errors.add(evt);
+				m_containers[evt->m_tinfo->m_container_id].m_metrics.m_syscall_errors.add(evt);
 			}
 		}
 	}
@@ -3018,7 +3025,8 @@ void sinsp_analyzer::emit_containers()
 
 	for(unordered_map<string, sinsp_container_info>::const_iterator it = containers_info->begin(); it != containers_info->end(); ++it)
 	{
-		if(m_active_containers.find(it->second.m_id) == m_active_containers.end())
+		unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(it->second.m_id);
+		if(it_analyzer == m_containers.end())
 		{
 			continue;
 		}
@@ -3063,53 +3071,36 @@ void sinsp_analyzer::emit_containers()
 			mapping->set_container_port(it_ports->m_container_port);
 		}
 
-		unordered_map<string, sinsp_host_metrics>::iterator it_metrics = m_containers_metrics.find(it->second.m_id);
-		if(it_metrics != m_containers_metrics.end())
-		{
-			container->mutable_resource_counters()->set_capacity_score(it_metrics->second.get_capacity_score() * 100);
-			container->mutable_resource_counters()->set_stolen_capacity_score(it_metrics->second.get_stolen_score() * 100);
-			container->mutable_resource_counters()->set_connection_queue_usage_pct(it_metrics->second.m_connection_queue_usage_pct);
-			container->mutable_resource_counters()->set_fd_usage_pct(it_metrics->second.m_fd_usage_pct);
-			container->mutable_resource_counters()->set_resident_memory_usage_kb(it_metrics->second.m_res_memory_kb);
-			container->mutable_resource_counters()->set_swap_memory_usage_kb(it_metrics->second.m_swap_memory_kb);
-			container->mutable_resource_counters()->set_major_pagefaults(it_metrics->second.m_pfmajor);
-			container->mutable_resource_counters()->set_minor_pagefaults(it_metrics->second.m_pfminor);
-			it_metrics->second.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
-			container->mutable_resource_counters()->set_fd_count(it_metrics->second.m_fd_count);
-			container->mutable_resource_counters()->set_cpu_pct(it_metrics->second.m_cpuload * 100);
+		container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
+		container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
+		container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
+		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
+		container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
+		container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
+		container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
+		container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
+		it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
+		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
+		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 
-			it_metrics->second.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
-			it_metrics->second.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
-		}
+		it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
+		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
 
-		unordered_map<string, sinsp_counters>::iterator it_req_metrics = m_containers_req_metrics.find(it->second.m_id);
-		if(it_req_metrics != m_containers_req_metrics.end())
-		{
-			it_req_metrics->second.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
-		}
+		it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
 
-		unordered_map<string, sinsp_transaction_counters>::iterator it_trans_counters = m_containers_transaction_counters.find(it->second.m_id);
-		if(it_trans_counters != m_containers_transaction_counters.end())
-		{
-			it_trans_counters->second.to_protobuf(container->mutable_transaction_counters(),
-				container->mutable_min_transaction_counters(),
-				container->mutable_max_transaction_counters(), 
-				m_sampling_ratio);
-		}
+		it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
+			container->mutable_min_transaction_counters(),
+			container->mutable_max_transaction_counters(), 
+			m_sampling_ratio);
 
-		unordered_map<string, sinsp_delays_info>::iterator it_delay = m_containers_transaction_delays.find(it->second.m_id);
-		if(it_delay != m_containers_transaction_delays.end() &&
-			it_delay->second.m_local_processing_delay_ns != -1)
+		if(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns != -1)
 		{
-			container->set_transaction_processing_delay(it_delay->second.m_local_processing_delay_ns * m_sampling_ratio);
-			container->set_next_tiers_delay(it_delay->second.m_merged_client_delay * m_sampling_ratio);
+			container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
+			container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 		}
 	}
 
-	m_containers_metrics.clear();
-	m_containers_req_metrics.clear();
-	m_active_containers.clear();
-	m_containers_transaction_counters.clear();
+	m_containers.clear();
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}

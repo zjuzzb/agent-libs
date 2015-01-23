@@ -2,6 +2,7 @@
 
 #include <analyzer_int.h>
 #include <delays.h>
+#include <container_analyzer.h>
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -325,11 +326,7 @@ VISIBILITY_PRIVATE
 	//
 	// Container metrics
 	//
-	set<string> m_active_containers;
-	unordered_map<string, sinsp_host_metrics> m_containers_metrics;
-	unordered_map<string, sinsp_counters> m_containers_req_metrics;
-	unordered_map<string, sinsp_transaction_counters> m_containers_transaction_counters;
-	unordered_map<string, sinsp_delays_info> m_containers_transaction_delays;
+	unordered_map<string, analyzer_container_state> m_containers;
 
 	//
 	// Subsampling-related stuff
