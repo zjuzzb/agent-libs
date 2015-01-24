@@ -206,9 +206,12 @@ void sinsp_delays::compute_program_percpu_delays(vector<vector<sinsp_trlist_entr
 		it != program_info->m_ainfo->m_procinfo->m_server_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
-		if((it->m_flags & sinsp_trlist_entry::FL_EXTERNAL) && !(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
+		if(!(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
-			host_server_transactions->at(cpuid).push_back(*it);
+			if(it->m_flags & sinsp_trlist_entry::FL_EXTERNAL)
+			{
+				host_server_transactions->at(cpuid).push_back(*it);
+			}
 
 			if(container_server_transactions)
 			{
@@ -221,9 +224,12 @@ void sinsp_delays::compute_program_percpu_delays(vector<vector<sinsp_trlist_entr
 		it != program_info->m_ainfo->m_procinfo->m_client_transactions_per_cpu[cpuid].end();
 		it ++)
 	{
-		if((it->m_flags & sinsp_trlist_entry::FL_EXTERNAL) && !(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
+		if(!(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
-			host_client_transactions->at(cpuid).push_back(*it);
+			if(it->m_flags & sinsp_trlist_entry::FL_EXTERNAL)
+			{
+				host_client_transactions->at(cpuid).push_back(*it);
+			}
 
 			if(container_client_transactions)
 			{
