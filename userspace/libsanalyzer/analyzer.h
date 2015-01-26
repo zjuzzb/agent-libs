@@ -207,6 +207,7 @@ VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
+	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	void emit_top_files();
@@ -327,6 +328,8 @@ VISIBILITY_PRIVATE
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+
+	vector<sinsp_threadinfo*> m_threads_to_remove;
 
 	//
 	// Subsampling-related stuff

@@ -968,7 +968,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); 
-		)
+		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
 		analyzer_container_state* container = NULL;
@@ -1344,6 +1344,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
+		//
+		// Clear the thread metrics, so we're ready for the next sample
+		//
+		tinfo->m_ainfo->clear_all_metrics();
+
 		if(tinfo->m_flags & PPM_CL_CLOSED || force_close)
 		{
 			//
@@ -1352,7 +1357,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
 			//       not actually remove the thread if it has childs.
 			//
-			tinfo->m_ainfo->clear_all_metrics();
 
 			if(evt != NULL && 
 				(evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
@@ -1362,16 +1366,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 			else
 			{
-				m_inspector->m_thread_manager->remove_thread(it++, false);
+				m_threads_to_remove.push_back(tinfo);
 			}
-		}
-		else
-		{
-			//
-			// Clear the thread metrics, so we're ready for the next sample
-			//
-			tinfo->m_ainfo->clear_all_metrics();
-			++it;
 		}
 	}
 
@@ -1379,6 +1375,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
+}
+
+void sinsp_analyzer::flush_processes()
+{
+	for(vector<sinsp_threadinfo*>::const_iterator it = m_threads_to_remove.begin();
+		it != m_threads_to_remove.end(); ++it)
+	{
+		m_inspector->m_thread_manager->remove_thread((*it)->m_tid, false);
+	}
+
+	m_threads_to_remove.clear();
 }
 
 //
@@ -1563,40 +1570,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 		if(!acit->second.is_active())
 		{
 			continue;
-		}
-
-		//
-		// Find the main program pids
-		//
-		int64_t prog_spid = 0;
-		int64_t prog_dpid = 0;
-
-		if(acit->second.m_spid != 0)
-		{
-			auto tinfo = m_inspector->get_thread(acit->second.m_spid, false, true);
-			if(tinfo == NULL)
-			{
-				//
-				// No thread info for this connection?
-				//
-				continue;
-			}
-
-			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
-		}
-
-		if(acit->second.m_dpid != 0)
-		{
-			auto tinfo = m_inspector->get_thread(acit->second.m_dpid, false, true);
-			if(tinfo == NULL)
-			{
-				//
-				// No thread info for this connection?
-				//
-				continue;
-			}
-
-			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
 		}
 
 		//
@@ -2189,6 +2162,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 #endif // HAS_PIPE_CONNECTIONS
+
+			flush_processes();
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT THE LIST OF INTERFACES
