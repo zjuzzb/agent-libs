@@ -1426,8 +1426,42 @@ void sinsp_analyzer::emit_aggregated_connections()
 	for(cit = m_ipv4_connections->m_connections.begin(); 
 		cit != m_ipv4_connections->m_connections.end();)
 	{
-		tuple.m_fields.m_spid = cit->second.m_spid;
-		tuple.m_fields.m_dpid = cit->second.m_dpid;
+		//
+		// Find the main program pids
+		//
+		int64_t prog_spid = 0;
+		int64_t prog_dpid = 0;
+
+		if(cit->second.m_spid != 0)
+		{
+			auto tinfo = m_inspector->get_thread(cit->second.m_spid, false, true);
+			if(tinfo == NULL)
+			{
+				//
+				// No thread info for this connection?
+				//
+				continue;
+			}
+
+			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+		}
+
+		if(cit->second.m_dpid != 0)
+		{
+			auto tinfo = m_inspector->get_thread(cit->second.m_dpid, false, true);
+			if(tinfo == NULL)
+			{
+				//
+				// No thread info for this connection?
+				//
+				continue;
+			}
+
+			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+		}
+
+		tuple.m_fields.m_spid = prog_spid;
+		tuple.m_fields.m_dpid = prog_dpid;
 		tuple.m_fields.m_sip = cit->first.m_fields.m_sip;
 		tuple.m_fields.m_dip = cit->first.m_fields.m_dip;
 		tuple.m_fields.m_sport = 0;
@@ -1577,8 +1611,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple->set_dport(acit->first.m_fields.m_dport);
 		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
 
-		conn->set_spid(prog_spid);
-		conn->set_dpid(prog_dpid);
+		conn->set_spid(acit->first.m_fields.m_spid);
+		conn->set_dpid(acit->first.m_fields.m_dpid);
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
