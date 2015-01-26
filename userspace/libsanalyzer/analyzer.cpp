@@ -1447,6 +1447,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				// No thread info for this connection?
 				//
+				++cit;
 				continue;
 			}
 
@@ -1461,6 +1462,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				// No thread info for this connection?
 				//
+				++cit;
 				continue;
 			}
 
