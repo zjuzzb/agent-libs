@@ -283,8 +283,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if(m_configuration.m_java_present)
 	{
-		m_jmx_controller = make_shared<jmx_controller>(&m_configuration, m_jmx_pipes->get_err_fd());
-		ThreadPool::defaultPool().start(*m_jmx_controller, "jmx_controller");
+		m_jmx_controller = make_shared<sdjagent_logger>(&m_configuration, m_jmx_pipes->get_err_fd());
+		ThreadPool::defaultPool().start(*m_jmx_controller, "sdjagent_logger");
 	}
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");

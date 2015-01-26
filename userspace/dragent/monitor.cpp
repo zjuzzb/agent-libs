@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include "jmx_controller.h"
+#include "sdjagent_logger.h"
 
 static int g_signal_received = 0;
 

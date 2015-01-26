@@ -41,10 +41,10 @@ private:
 	FILE *m_error_fd;
 };
 
-class jmx_controller : public Runnable
+class sdjagent_logger : public Runnable
 {
 public:
-	jmx_controller(dragent_configuration* configuration, FILE* m_error_fd);
+	sdjagent_logger(dragent_configuration* configuration, FILE* m_error_fd);
 
 	void run();
 

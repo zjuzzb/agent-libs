@@ -12,6 +12,7 @@ public class CLibrary {
     private final static Logger LOGGER = Logger.getLogger(CLibrary.class.getName());
     private static boolean libraryLoaded;
     private static int pid;
+    
     static {
         pid = 0;
         try {

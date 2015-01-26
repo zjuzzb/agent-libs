@@ -1,4 +1,4 @@
-#include "jmx_controller.h"
+#include "sdjagent_logger.h"
 #include "logger.h"
 
 pipe_manager::pipe_manager()
@@ -45,15 +45,15 @@ void pipe_manager::enable_nonblocking(int fd)
 	fcntl(fd, F_SETFL, flags);
 }
 
-jmx_controller::jmx_controller(dragent_configuration *configuration, FILE* error_fd) :
+sdjagent_logger::sdjagent_logger(dragent_configuration *configuration, FILE* error_fd) :
 		configuration(configuration),
 		m_error_fd(error_fd)
 {
 }
 
-void jmx_controller::run()
+void sdjagent_logger::run()
 {
-	g_log->information("jmx_controller: Starting");
+	g_log->information("sdjagent_logger: Starting");
 	while(!dragent_configuration::m_terminate)
 	{
 		fd_set readset;
@@ -106,5 +106,5 @@ void jmx_controller::run()
 			}
 		}
 	}
-	g_log->information("jmx_controller terminating");
+	g_log->information("sdjagent_logger terminating");
 }

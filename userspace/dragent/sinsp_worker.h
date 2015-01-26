@@ -3,7 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
-#include "jmx_controller.h"
+#include "sdjagent_logger.h"
 
 class captureinfo
 {

@@ -149,6 +149,7 @@ public class MonitoredVM {
             } catch (IOException ex) {
                 LOGGER.warning(String.format("Process %d agent is not responding, declaring it down", pid));
                 connection = null;
+                mbs = null;
                 agentActive = false;
             }
         }
