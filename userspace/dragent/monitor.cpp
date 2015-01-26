@@ -136,11 +136,8 @@ void run_monitor(const string& pidfile, shared_ptr<pipe_manager> jmx_pipes)
 					run_sdjagent(jmx_pipes);
 				}
 			}
-			else
-			{
-				sleep(1);
-				continue;
-			}
+			sleep(1);
+			continue;
 		}
 
 		child_pid = 0;
