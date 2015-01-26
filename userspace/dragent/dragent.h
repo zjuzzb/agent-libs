@@ -45,7 +45,8 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
-	jmx_controller m_jmx_controller;
+	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<jmx_controller> m_jmx_controller;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 };

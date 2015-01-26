@@ -6,8 +6,7 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue,
-		jmx_controller* jmx_controller_thread):
+		connection_manager* connection_manager, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
@@ -16,8 +15,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
 	m_dragent_pid(0),
-	m_last_loop_ns(0),
-	m_jmx_controller(jmx_controller_thread)
+	m_last_loop_ns(0)
 {
 }
 
@@ -37,7 +35,12 @@ sinsp_worker::~sinsp_worker()
 void sinsp_worker::init()
 {
 	m_inspector = new sinsp();
-	m_analyzer = new sinsp_analyzer(m_inspector, m_jmx_controller->get_io_fds());
+	m_analyzer = new sinsp_analyzer(m_inspector);
+
+	if (m_jmx_pipes)
+	{
+		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds());
+	}
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_dragent_pid = getpid();

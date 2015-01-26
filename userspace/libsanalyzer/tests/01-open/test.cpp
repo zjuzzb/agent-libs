@@ -403,11 +403,7 @@ int main(int argc, char **argv)
 	{
 		g_inspector = new sinsp();
 #ifdef HAS_ANALYZER
-		// create a fake pipe
-		// TODO: Provide fake data for JMX
-		FILE* null_file_r = fopen("/dev/null", "r");
-		FILE* null_file_w = fopen("/dev/null", "w");
-		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, std::make_pair(null_file_w, null_file_r));
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector);
 		g_inspector->m_analyzer = analyzer;
 #endif
 

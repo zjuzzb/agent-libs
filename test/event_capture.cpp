@@ -9,10 +9,7 @@
 void event_capture::capture()
 {
 	m_inspector = new sinsp();
-	// TODO: Provide fake data for JMX
-	FILE* null_file_r = fopen("/dev/null", "r");
-	FILE* null_file_w = fopen("/dev/null", "w");
-	m_analyzer = new sinsp_analyzer(m_inspector, std::make_pair(null_file_w, null_file_r));
+	m_analyzer = new sinsp_analyzer(m_inspector);
 	m_inspector->m_analyzer = m_analyzer;
 	
 	m_analyzer->set_configuration(m_configuration);

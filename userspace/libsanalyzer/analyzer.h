@@ -124,7 +124,7 @@ public:
 		DF_EOF,
 	};
 
-	sinsp_analyzer(sinsp* inspector, const pair<FILE*, FILE*>& sdjagent_fds);
+	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
@@ -197,6 +197,11 @@ public:
 	void set_is_sampling(bool is_sampling)
 	{
 		m_is_sampling = is_sampling;
+	}
+
+	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds)
+	{
+		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
 	}
 
 VISIBILITY_PRIVATE
@@ -342,7 +347,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_wall_time;
 
 	// JMX proxy
-	jmx_proxy m_jmx_proxy;
+	shared_ptr<jmx_proxy> m_jmx_proxy;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

@@ -172,6 +172,15 @@ void dragent_configuration::init(Application* app)
 	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
 
 	refresh_aws_metadata();
+
+	if(access("/usr/bin/java", X_OK|R_OK) == 0 )
+	{
+		m_java_present = true;
+	}
+	else
+	{
+		m_java_present = false;
+	}
 }
 
 void dragent_configuration::print_configuration()

@@ -77,6 +77,7 @@ public:
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
+	bool m_java_present;
 
 private:
 	void refresh_aws_metadata();

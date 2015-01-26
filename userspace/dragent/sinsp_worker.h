@@ -47,8 +47,7 @@ public:
 	};
 
 	sinsp_worker(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue,
-	    jmx_controller* jmx_controller_thread);
+		connection_manager* connection_manager, protocol_queue* queue);
 	~sinsp_worker();
 
 	void run();
@@ -66,6 +65,11 @@ public:
 	const sinsp* get_inspector() const
 	{
 		return m_inspector;
+	}
+
+	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
+	{
+		m_jmx_pipes = jmx_pipes;
 	}
 
 private:
@@ -168,5 +172,5 @@ private:
 	int64_t m_dragent_pid;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
-	jmx_controller* m_jmx_controller;
+	shared_ptr<pipe_manager> m_jmx_pipes;
 };

@@ -28,8 +28,7 @@ static void g_usr_signal_callback(int sig)
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_jmx_controller(&m_configuration),
-	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue, &m_jmx_controller),
+	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 {
 }
@@ -184,14 +183,32 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
+	if(m_configuration.m_java_present)
+	{
+		m_jmx_pipes = make_shared<pipe_manager>();
+		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+	}
+
 	if(config().getBool("application.runAsDaemon", false))
 	{
-		run_monitor(m_pidfile);
+		run_monitor(m_pidfile, m_jmx_pipes);
 
 		//
 		// We want to terminate when the monitor is killed by init
 		//
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
+	}
+	else
+	{
+		if(m_configuration.m_java_present)
+		{
+			// Run anyway sdjagent, without monitoring
+			pid_t child_pid = fork();
+			if(child_pid == 0)
+			{
+				run_sdjagent(m_jmx_pipes);
+			}
+		}
 	}
 
 	struct sigaction sa;
@@ -264,7 +281,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	ExitCode exit_code;
 
-	ThreadPool::defaultPool().start(m_jmx_controller, "jmx_controller");
+	if(m_configuration.m_java_present)
+	{
+		m_jmx_controller = make_shared<jmx_controller>(&m_configuration, m_jmx_pipes->get_err_fd());
+		ThreadPool::defaultPool().start(*m_jmx_controller, "jmx_controller");
+	}
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 

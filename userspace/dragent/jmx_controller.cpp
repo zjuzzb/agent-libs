@@ -1,11 +1,7 @@
 #include "jmx_controller.h"
 #include "logger.h"
-#include <sys/prctl.h>
-#include <sys/wait.h>
 
-
-jmx_controller::jmx_controller(dragent_configuration *configuration) :
-		configuration(configuration)
+pipe_manager::pipe_manager()
 {
 	// TODO: Check pipe return value
 	// Create pipes
@@ -24,7 +20,24 @@ jmx_controller::jmx_controller(dragent_configuration *configuration) :
 	enable_nonblocking(m_inpipe[PIPE_WRITE]);
 }
 
-void jmx_controller::enable_nonblocking(int fd)
+pipe_manager::~pipe_manager()
+{
+	close(m_inpipe[PIPE_READ]);
+	fclose(m_input_fd);
+	close(m_outpipe[PIPE_WRITE]);
+	fclose(m_output_fd);
+	close(m_errpipe[PIPE_WRITE]);
+	fclose(m_error_fd);
+}
+
+void pipe_manager::attach_child_stdio()
+{
+	dup2(m_outpipe[PIPE_WRITE], STDOUT_FILENO);
+	dup2(m_errpipe[PIPE_WRITE], STDERR_FILENO);
+	dup2(m_inpipe[PIPE_READ], STDIN_FILENO);
+}
+
+void pipe_manager::enable_nonblocking(int fd)
 {
 	int flags;
 	flags = fcntl(fd, F_GETFL, 0);
@@ -32,107 +45,65 @@ void jmx_controller::enable_nonblocking(int fd)
 	fcntl(fd, F_SETFL, flags);
 }
 
-pair<FILE*, FILE*> jmx_controller::get_io_fds()
+jmx_controller::jmx_controller(dragent_configuration *configuration, FILE* error_fd) :
+		configuration(configuration),
+		m_error_fd(error_fd)
 {
-	return make_pair(m_input_fd, m_output_fd);
 }
 
 void jmx_controller::run()
 {
 	g_log->information("jmx_controller: Starting");
-	pid_t child_pid = 0;
 	while(!dragent_configuration::m_terminate)
 	{
-		child_pid = fork();
-		if(child_pid == 0)
-		{
-			// Child, bind pipes and exec
-			dup2(m_outpipe[PIPE_WRITE], STDOUT_FILENO);
-			dup2(m_errpipe[PIPE_WRITE], STDERR_FILENO);
-			dup2(m_inpipe[PIPE_READ], STDIN_FILENO);
+		fd_set readset;
+		FD_ZERO(&readset);
+		FD_SET(fileno(m_error_fd), &readset);
+		struct timeval timeout;
+		memset(&timeout, 0, sizeof(struct timeval));
+		timeout.tv_sec = 1;
+		int result = select(fileno(m_error_fd)+1, &readset, NULL, NULL, &timeout);
 
-			prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-			execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
-			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
-			exit(1);
-		}
-		else
+		if (result > 0 )
 		{
-			// Father, read from stderr and write to log
-			while (!dragent_configuration::m_terminate)
+			string json_data;
+			char buffer[READ_BUFFER_SIZE] = "";
+			char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
+			while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
 			{
-				fd_set readset;
-				FD_ZERO(&readset);
-				FD_SET(m_errpipe[PIPE_READ], &readset);
-				struct timeval timeout;
-				memset(&timeout, 0, sizeof(struct timeval));
-				timeout.tv_sec = 1;
-				int result = select(m_errpipe[PIPE_READ]+1, &readset, NULL, NULL, &timeout);
+				json_data.append(buffer);
+				fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
+			}
+			json_data.append(buffer);
 
-				if (result > 0 )
+			// Parse log level and use it
+			Json::Value sdjagent_log;
+			bool parsing_ok = m_json_reader.parse(json_data, sdjagent_log, false);
+			if (parsing_ok)
+			{
+				string log_level = sdjagent_log["level"].asString();
+				string log_message = "sdjagent, " + sdjagent_log["message"].asString();
+				if (log_level == "SEVERE")
 				{
-					string json_data;
-					char buffer[READ_BUFFER_SIZE] = "";
-					char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
-					while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
-					{
-						json_data.append(buffer);
-						fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
-					}
-					json_data.append(buffer);
-
-					// Parse log level and use it
-					Json::Value sdjagent_log;
-					bool parsing_ok = m_json_reader.parse(json_data, sdjagent_log, false);
-					if (parsing_ok)
-					{
-						string log_level = sdjagent_log["level"].asString();
-						string log_message = "sdjagent, " + sdjagent_log["message"].asString();
-						if (log_level == "SEVERE")
-						{
-							g_log->error(log_message);
-						}
-						else if (log_level == "WARNING")
-						{
-							g_log->warning(log_message);
-						}
-						else if (log_level == "INFO")
-						{
-							g_log->information(log_message);
-						}
-						else
-						{
-							g_log->debug(log_message);
-						}
-					}
-					else
-					{
-						g_log->error("Cannot parse Log from sdjagent: " + json_data);
-					}
+					g_log->error(log_message);
+				}
+				else if (log_level == "WARNING")
+				{
+					g_log->warning(log_message);
+				}
+				else if (log_level == "INFO")
+				{
+					g_log->information(log_message);
 				}
 				else
 				{
-					// There is no log data, check if process is down
-					pid_t waited_pid = waitpid(child_pid, NULL, WNOHANG);
-					if (waited_pid == child_pid)
-					{
-						// Stop this loop and fork again
-						child_pid = 0;
-						break;
-					}
+					g_log->debug(log_message);
 				}
 			}
-		}
-	}
-	if (child_pid)
-	{
-		g_log->information("Sending SIGTERM to sdjagent");
-		kill(child_pid, SIGTERM);
-		pid_t waited_pid = waitpid(child_pid, NULL, 0);
-		if (waited_pid == child_pid)
-		{
-			g_log->information("sdjagent terminated");
+			else
+			{
+				g_log->error("Cannot parse Log from sdjagent: " + json_data);
+			}
 		}
 	}
 	g_log->information("jmx_controller terminating");
