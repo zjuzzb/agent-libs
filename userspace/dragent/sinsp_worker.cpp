@@ -93,12 +93,6 @@ void sinsp_worker::init()
 	//
 	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);
 
-	if(m_configuration->m_subsampling_ratio != 1)
-	{
-		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
-		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
-	}
-
 	if(m_configuration->m_drop_upper_treshold != 0)
 	{
 		g_log->information("Drop upper treshold=" + NumberFormatter::format(m_configuration->m_drop_upper_treshold));
@@ -161,6 +155,12 @@ void sinsp_worker::init()
 	else
 	{
 		m_inspector->open("");
+	}
+
+	if(m_configuration->m_subsampling_ratio != 1)
+	{
+		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
+		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
 	if(m_configuration->m_aws_metadata.m_valid)
