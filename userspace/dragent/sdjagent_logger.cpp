@@ -46,8 +46,8 @@ void pipe_manager::enable_nonblocking(int fd)
 }
 
 sdjagent_logger::sdjagent_logger(dragent_configuration *configuration, FILE* error_fd) :
-		configuration(configuration),
-		m_error_fd(error_fd)
+		m_error_fd(error_fd),
+		configuration(configuration)
 {
 }
 
@@ -64,12 +64,12 @@ void sdjagent_logger::run()
 		timeout.tv_sec = 1;
 		int result = select(fileno(m_error_fd)+1, &readset, NULL, NULL, &timeout);
 
-		if (result > 0 )
+		if(result > 0 )
 		{
 			string json_data;
 			char buffer[READ_BUFFER_SIZE] = "";
 			char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
-			while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
+			while(fgets_res != NULL && strstr(buffer, "\n") == NULL)
 			{
 				json_data.append(buffer);
 				fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_error_fd);
@@ -79,19 +79,19 @@ void sdjagent_logger::run()
 			// Parse log level and use it
 			Json::Value sdjagent_log;
 			bool parsing_ok = m_json_reader.parse(json_data, sdjagent_log, false);
-			if (parsing_ok)
+			if(parsing_ok)
 			{
 				string log_level = sdjagent_log["level"].asString();
 				string log_message = "sdjagent, " + sdjagent_log["message"].asString();
-				if (log_level == "SEVERE")
+				if(log_level == "SEVERE")
 				{
 					g_log->error(log_message);
 				}
-				else if (log_level == "WARNING")
+				else if(log_level == "WARNING")
 				{
 					g_log->warning(log_message);
 				}
-				else if (log_level == "INFO")
+				else if(log_level == "INFO")
 				{
 					g_log->information(log_message);
 				}

@@ -12,7 +12,7 @@ public:
 	// Get File descriptor to communicate with the child
 	pair<FILE*, FILE*> get_io_fds()
 	{
-		make_pair(m_input_fd, m_output_fd);
+		return make_pair(m_input_fd, m_output_fd);
 	};
 
 	FILE* get_err_fd()

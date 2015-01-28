@@ -235,3 +235,5 @@ jmx:
           - BulkAssign_95th_percentile
           - BulkAssign_99th_percentile
           - BulkAssign_num_ops
+  elasticsearch:
+    pattern: "elasticsearch"
