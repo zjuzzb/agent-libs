@@ -44,6 +44,17 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_max_memory_usage_mb = 0;
 	m_dirty_shutdown_report_log_size_b = 0;
 	m_capture_dragent_events = false;
+	// This config parameter must be known early because is used
+	// on the monitor
+	File java_binary("/usr/bin/java");
+	if(java_binary.exists() && java_binary.canExecute())
+	{
+		m_java_present = true;
+	}
+	else
+	{
+		m_java_present = false;
+	}
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -172,15 +183,6 @@ void dragent_configuration::init(Application* app)
 	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
 
 	refresh_aws_metadata();
-
-	if(access("/usr/bin/java", X_OK|R_OK) == 0 )
-	{
-		m_java_present = true;
-	}
-	else
-	{
-		m_java_present = false;
-	}
 }
 
 void dragent_configuration::print_configuration()
@@ -223,6 +225,7 @@ void dragent_configuration::print_configuration()
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
+	g_log->information("java detected: " + bool_as_text(m_java_present));
 }
 
 void dragent_configuration::refresh_aws_metadata()
