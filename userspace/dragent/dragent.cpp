@@ -183,7 +183,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
-	if(m_configuration.m_java_present)
+	// This config parameter must be known early because is used
+	// on the monitor
+	File java_binary("/usr/bin/java");
+	bool java_present = false;
+	if(java_binary.exists() && java_binary.canExecute())
+	{
+		java_present = true;
+	}
+
+	if(java_present)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
@@ -200,7 +209,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 	else
 	{
-		if(m_configuration.m_java_present)
+		if(java_present)
 		{
 			// Run anyway sdjagent, without monitoring
 			pid_t child_pid = fork();
@@ -238,7 +247,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	m_configuration.print_configuration();
-
+	if(java_present)
+	{
+		g_log->information("Java detected");
+	}
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();
@@ -281,7 +293,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	ExitCode exit_code;
 
-	if(m_configuration.m_java_present)
+	if(java_present)
 	{
 		m_jmx_controller = make_shared<sdjagent_logger>(&m_configuration, m_jmx_pipes->get_err_fd());
 		ThreadPool::defaultPool().start(*m_jmx_controller, "sdjagent_logger");
