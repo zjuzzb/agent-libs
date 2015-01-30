@@ -42,6 +42,26 @@ public class MonitoredVM {
             return;
         }
 
+        // To load the agent, we need to be the same user and group
+        // of the process
+        boolean uidChanged = false;
+        try {
+            long[] idInfo = CLibrary.getUidAndGid(pid);
+            int gid_error = CLibrary.setegid(idInfo[1]);
+            int uid_error = CLibrary.seteuid(idInfo[0]);
+            if (uid_error == 0 && gid_error == 0) {
+                LOGGER.info(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+            } else {
+                LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
+                        uid_error, gid_error));
+            }
+            uidChanged = true;
+        } catch (IOException ex)
+        {
+            LOGGER.warning(String.format("Cannot read uid:gid data from process with pid: %d", pid));
+        }
+
+
         JvmstatVM jvmstat;
         try {
             jvmstat = new JvmstatVM(pid);
@@ -99,6 +119,18 @@ public class MonitoredVM {
             } catch (IOException e)
             {
                 LOGGER.warning(String.format("Cannot load agent on process %d: %s", pid, e.getMessage()));
+            }
+        }
+
+        if (uidChanged)
+        {
+            // Restore to uid and gid to root
+            int uid_error = CLibrary.seteuid(0);
+            int gid_error = CLibrary.setegid(0);
+            if (uid_error == 0 && gid_error == 0) {
+                LOGGER.info("Restore uid and gid");
+            } else {
+                LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
             }
         }
 
@@ -163,18 +195,6 @@ public class MonitoredVM {
         VirtualMachine vm;
         String vmId = String.valueOf(pid);
 
-        // To load the agent, we need to be the same user and group
-        // of the process
-        long[] idInfo = CLibrary.getUidAndGid(pid);
-        int gid_error = CLibrary.setegid(idInfo[1]);
-        int uid_error = CLibrary.seteuid(idInfo[0]);
-        if (uid_error == 0 && gid_error == 0) {
-            LOGGER.info(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
-        } else {
-            LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
-                    uid_error, gid_error));
-        }
-
         try {
             vm = VirtualMachine.attach(vmId);
         } catch (AttachNotSupportedException x) {
@@ -192,14 +212,7 @@ public class MonitoredVM {
 
         vm.detach();
 
-        // Restore to uid and gid to root
-        uid_error = CLibrary.seteuid(0);
-        gid_error = CLibrary.setegid(0);
-        if (uid_error == 0 && gid_error == 0) {
-            LOGGER.info("Restore uid and gid");
-        } else {
-            LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
-        }
+
         return address;
     }
 

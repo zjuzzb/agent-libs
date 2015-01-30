@@ -8,8 +8,6 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.sun.tools.attach.VirtualMachine;
-import com.sun.tools.attach.VirtualMachineDescriptor;
 
 
 import java.io.FileNotFoundException;
@@ -83,13 +81,7 @@ public class Application {
     }
 
     private void cleanup() {
-        final List<VirtualMachineDescriptor> vmdlist = VirtualMachine.list();
-        Set<Integer> activePids = new HashSet<Integer>(vmdlist.size());
-        for (VirtualMachineDescriptor vmd : vmdlist)
-        {
-            Integer pid = Integer.valueOf(vmd.id());
-            activePids.add(pid);
-        }
+        Set<Integer> activePids = JvmstatVM.getActiveVMs();
         for (Integer pid : vms.keySet()) {
             if (!activePids.contains(pid)) {
                 LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
@@ -101,22 +93,20 @@ public class Application {
     private List<Map<String, Object>> getMetricsCommand() throws IOException {
         LOGGER.fine("Executing getMetrics");
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
-        for (VirtualMachineDescriptor vmd : VirtualMachine.list())
-        {
+
+        for (Integer pid : JvmstatVM.getActiveVMs()) {
+            LOGGER.info(String.format("Found java process %s", pid.intValue()));
             Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
-            Integer pid = Integer.valueOf(vmd.id());
+            //Integer pid = Integer.valueOf(vmd.id());
             MonitoredVM vm = vms.get(pid);
 
-            if (vm == null)
-            {
+            if (vm == null) {
                 vm = new MonitoredVM(pid.intValue());
 
                 // Configure VM name if it matches a pattern on configurations
                 Map<String, String> patterns = config.getPatterns();
-                for ( String query : patterns.keySet())
-                {
-                    if (vm.getName().contains(query))
-                    {
+                for (String query : patterns.keySet()) {
+                    if (vm.getName().contains(query)) {
                         vm.setName(patterns.get(query));
                         break;
                     }

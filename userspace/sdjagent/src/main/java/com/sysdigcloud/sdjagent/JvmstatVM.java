@@ -3,8 +3,10 @@ package com.sysdigcloud.sdjagent;
 import sun.jvmstat.monitor.*;
 
 import java.net.URISyntaxException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -83,5 +85,18 @@ public class JvmstatVM
             LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
             return null;
         }
+    }
+
+    public static Set<Integer> getActiveVMs() {
+        try {
+            String hostname = null;
+            MonitoredHost localHost = MonitoredHost.getMonitoredHost(new HostIdentifier(hostname));
+            return localHost.activeVms();
+        } catch (URISyntaxException ex) {
+            LOGGER.warning("URISyntaxException on JvmstatVM: " + ex.getMessage());
+        } catch (MonitorException ex) {
+            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
+        }
+        return new HashSet<Integer>();
     }
 }
