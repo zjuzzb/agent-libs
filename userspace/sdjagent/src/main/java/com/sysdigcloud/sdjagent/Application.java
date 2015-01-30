@@ -82,10 +82,12 @@ public class Application {
 
     private void cleanup() {
         Set<Integer> activePids = JvmstatVM.getActiveVMs();
-        for (Integer pid : vms.keySet()) {
+        Iterator<Integer> vmsIt = vms.keySet().iterator();
+        while (vmsIt.hasNext()) {
+            Integer pid = vmsIt.next();
             if (!activePids.contains(pid)) {
                 LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
-                vms.remove(pid);
+                vmsIt.remove();
             }
         }
     }
