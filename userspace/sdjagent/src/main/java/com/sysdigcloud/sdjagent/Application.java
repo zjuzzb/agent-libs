@@ -95,7 +95,7 @@ public class Application {
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
 
         for (Integer pid : JvmstatVM.getActiveVMs()) {
-            LOGGER.info(String.format("Found java process %s", pid.intValue()));
+            LOGGER.fine(String.format("Found java process %s", pid.intValue()));
             Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
             //Integer pid = Integer.valueOf(vmd.id());
             MonitoredVM vm = vms.get(pid);
