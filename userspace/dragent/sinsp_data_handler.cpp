@@ -41,7 +41,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		+ NumberFormatter::format(ts_ns / 1000000000) 
 		+ ", len=" + NumberFormatter::format(buffer->size())
 		+ ", ne=" + NumberFormatter::format(nevts)
- 		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct)
+ 		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
  		+ ", sr=" + NumberFormatter::format(sampling_ratio));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))

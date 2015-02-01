@@ -476,7 +476,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%lf, sr=%" PRIu32,
+			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
 			m_my_cpuload,
