@@ -1221,8 +1221,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Protocol tables
 					//
-					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
-						m_sampling_ratio);
+//					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
+//						m_sampling_ratio);
 
 #if 1
 					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
