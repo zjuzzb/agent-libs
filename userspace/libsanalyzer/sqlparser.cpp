@@ -55,8 +55,8 @@ uint32_t selectend_toklens[] = {sizeof("WHERE") - 1,
 //
 // Tokens that denote the end of an insert
 //
-const char* insertend_toks[] = {"VALUES"};
-uint32_t insertend_toklens[] = {sizeof("VALUES") - 1};
+const char* insertend_toks[] = {"VALUES", "SET"};
+uint32_t insertend_toklens[] = {sizeof("VALUES") - 1, sizeof("SET") -1};
 
 //
 // Tokens that denote the end of an update
