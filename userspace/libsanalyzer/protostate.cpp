@@ -41,7 +41,7 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 				return;
 			}
 
-			entry = &(m_server_urls[pp->m_url]);
+			entry = &(m_server_urls[truncate_str(pp->m_url)]);
 		}
 		else
 		{
@@ -53,7 +53,7 @@ inline void sinsp_protostate::update_http(sinsp_partial_transaction* tr,
 				return;
 			}
 
-			entry = &(m_client_urls[pp->m_url]);
+			entry = &(m_client_urls[truncate_str(pp->m_url)]);
 		}
 
 		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
@@ -121,14 +121,14 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		{
 			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_server_queries[pp->m_statement]);
+				entry = &(m_server_queries[truncate_str(pp->m_statement)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
 			if(tablename != NULL &&
 				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_server_tables[pp->m_query_parser.m_table]);
+				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -139,14 +139,14 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		{
 			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_client_queries[pp->m_statement]);
+				entry = &(m_client_queries[truncate_str(pp->m_statement)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
 			if(tablename != NULL &&
 				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_client_tables[pp->m_query_parser.m_table]);
+				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -618,7 +618,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			}
 			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				collection_entry =&(m_server_collections[pp->m_collection]);
+				collection_entry =&(m_server_collections[truncate_str(pp->m_collection)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
 			}
 		}
@@ -631,7 +631,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			}
 			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				collection_entry =&(m_client_collections[pp->m_collection]);
+				collection_entry =&(m_client_collections[truncate_str(pp->m_collection)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
 			}
 		}

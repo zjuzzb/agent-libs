@@ -119,6 +119,20 @@ inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
 	}
 }
 
+inline string truncate_str(const string& s, unsigned int max_size = 256)
+{
+	if (s.size() <= max_size)
+	{
+		return s;
+	}
+	else
+	{
+		string truncated(s, 0, max_size-3);
+		truncated += "...";
+		return truncated;
+	}
+}
+
 #ifdef SIMULATE_DROP_MODE
 bool should_drop(sinsp_evt *evt);
 #endif
