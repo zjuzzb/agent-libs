@@ -129,6 +129,9 @@
     <ClCompile Include="parser_mongodb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\container.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h">

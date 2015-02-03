@@ -160,7 +160,7 @@
 //
 // Number of TID collisions in a sample that causes the program to restart
 //
-#define MAX_TID_COLLISIONS_IN_SAMPLE 16
+#define MAX_TID_COLLISIONS_IN_SAMPLE 64
 
 //
 // FD class customized with the storage we need

@@ -21,30 +21,37 @@ void crash_handler::run(int sig)
 {
 	if(g_log)
 	{
-		char line[128];
-		snprintf(line, sizeof(line), "Received signal %d\n", sig);
-		log_crashdump_message(line);
-
-		void *array[NUM_FRAMES];
-		int frames = backtrace(array, NUM_FRAMES);
 		int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
 		if(fd != -1)
 		{
+			char line[128];
+			snprintf(line, sizeof(line), "Received signal %d\n", sig);
+			log_crashdump_message(fd, line);
+
+			void *array[NUM_FRAMES];
+			int frames = backtrace(array, NUM_FRAMES);
+
+			snprintf(line, sizeof(line), "Backtrace frames: %d\n", frames);
+			log_crashdump_message(fd, line);
+
 			backtrace_symbols_fd(array, frames, fd);
+
+			if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
+			{
+				log_crashdump_message(fd, "Memory report:\n");
+
+				char buf[1024];
+				m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+				log_crashdump_message(fd, buf);
+			}
+
 			close(fd);
+
+			backtrace_symbols_fd(array, frames, 1);
 		}
 		else
 		{
 			ASSERT(false);
-		}
-
-		backtrace_symbols_fd(array, frames, 1);
-
-		if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
-		{
-			char buf[1024];
-			m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
-			log_crashdump_message(buf);
 		}
 	}
 
@@ -67,6 +74,11 @@ void crash_handler::log_crashdump_message(const char* message)
 
 	write(1, message, strlen(message));	
 	close(fd);
+}
+
+void crash_handler::log_crashdump_message(int fd, const char* message)
+{
+	write(fd, message, strlen(message));
 }
 
 bool crash_handler::initialize()
