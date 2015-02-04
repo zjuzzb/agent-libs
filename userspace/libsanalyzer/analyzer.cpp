@@ -116,6 +116,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+	m_jmx_sampling = 1;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -1359,8 +1360,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
-
-	if(m_jmx_proxy)
+	
+	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns);
 	}

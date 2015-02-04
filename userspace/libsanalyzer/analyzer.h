@@ -204,6 +204,11 @@ public:
 		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
 	}
 
+	void set_jmx_sampling(unsigned int value)
+	{
+		m_jmx_sampling = value;
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -348,6 +353,7 @@ VISIBILITY_PRIVATE
 
 	// JMX proxy
 	shared_ptr<jmx_proxy> m_jmx_proxy;
+	unsigned int m_jmx_sampling;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;

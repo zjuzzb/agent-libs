@@ -40,6 +40,7 @@ void sinsp_worker::init()
 	if (m_jmx_pipes)
 	{
 		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds());
+		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
 	}
 	m_inspector->m_analyzer = m_analyzer;
 
