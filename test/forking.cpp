@@ -1047,6 +1047,10 @@ TEST_F(sys_call_test, forking_cgroups)
 				sleep(1);
 				exit(0);
 			}
+			else
+			{
+				wait(NULL);
+			}
 		}
 		else
 		{
@@ -1154,6 +1158,8 @@ TEST_F(sys_call_test, forking_clone_nspid)
 		{
 		    FAIL();
 		}
+
+		wait(NULL);
 	};
 
 	//
