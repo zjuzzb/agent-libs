@@ -16,6 +16,7 @@
 #include <Poco/NumberParser.h>
 #include <list>
 #include <cassert>
+#include "scap-int.h"
 
 using namespace std;
 using Poco::StringTokenizer;
@@ -1017,4 +1018,97 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(3, callnum);
+}
+
+TEST_F(sys_call_test, forking_cgroups)
+{
+	int ptid;
+	int ctid;
+	bool done = false;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt* evt)
+	{
+		return evt->get_tid() == ptid || evt->get_tid() == ctid;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		ctid = fork();
+
+		if(ctid >= 0)
+		{
+			if(ctid == 0)
+			{
+				sleep(1);
+				exit(0);
+			}
+		}
+		else
+		{
+			FAIL();
+		}
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if(param.m_evt->get_type() == PPME_SYSCALL_CLONE_20_X)
+		{
+			struct scap_threadinfo scap_tinfo;
+			sinsp_threadinfo sinsp_tinfo;
+			char buf[100];
+
+			scap_tinfo.cgroups_len = 0;
+
+			sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+			ASSERT_TRUE(tinfo != NULL);
+			ASSERT_TRUE(tinfo->m_cgroups.size() > 0);
+
+			snprintf(buf, sizeof(buf), "/proc/%d/", ctid);
+			int32_t res = scap_proc_fill_cgroups(&scap_tinfo, buf);
+			ASSERT_TRUE(res == SCAP_SUCCESS);
+			ASSERT_TRUE(scap_tinfo.cgroups_len > 0);
+
+			sinsp_tinfo.set_cgroups(scap_tinfo.cgroups, scap_tinfo.cgroups_len);
+			ASSERT_TRUE(sinsp_tinfo.m_cgroups.size() > 0);
+
+			//
+			// This tests that the cgroups in /proc/PID/cgroup are always a subset of the ones that came through clone(), checking
+			// the matching. This happens because the kernel by default hides some
+			//
+			map<string, string> cgroups1;
+			for(uint32_t j = 0; j < tinfo->m_cgroups.size(); ++j)
+			{
+				cgroups1.insert(pair<string, string>(tinfo->m_cgroups[j].first, tinfo->m_cgroups[j].second));
+			}
+
+			map<string, string> cgroups2;
+			for(uint32_t j = 0; j < sinsp_tinfo.m_cgroups.size(); ++j)
+			{
+				cgroups2.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
+			}
+
+			ASSERT_TRUE(cgroups1.size() > cgroups2.size());
+			for(map<string, string>::iterator it2 = cgroups2.begin(); it2 != cgroups2.end(); ++it2)
+			{
+				map<string, string>::iterator it1 = cgroups1.find(it2->first);
+				ASSERT_TRUE(it1 != cgroups1.end());
+				ASSERT_TRUE(it1->first == it2->first);
+				ASSERT_TRUE(it1->second == it2->second);
+			}
+
+			done = true;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
 }
