@@ -1069,8 +1069,6 @@ TEST_F(sys_call_test, forking_cgroups)
 			sinsp_threadinfo sinsp_tinfo;
 			char buf[100];
 
-			scap_tinfo.cgroups_len = 0;
-
 			sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 			ASSERT_TRUE(tinfo != NULL);
 			ASSERT_TRUE(tinfo->m_cgroups.size() > 0);
@@ -1078,10 +1076,12 @@ TEST_F(sys_call_test, forking_cgroups)
 			snprintf(buf, sizeof(buf), "/proc/%d/", ctid);
 			int32_t res = scap_proc_fill_cgroups(&scap_tinfo, buf);
 			ASSERT_TRUE(res == SCAP_SUCCESS);
-			ASSERT_TRUE(scap_tinfo.cgroups_len > 0);
 
 			sinsp_tinfo.set_cgroups(scap_tinfo.cgroups, scap_tinfo.cgroups_len);
-			ASSERT_TRUE(sinsp_tinfo.m_cgroups.size() > 0);
+			if(scap_tinfo.cgroups_len)
+			{
+				ASSERT_TRUE(sinsp_tinfo.m_cgroups.size() > 0);
+			}
 
 			//
 			// This tests that the cgroups in /proc/PID/cgroup are always a subset of the ones that came through clone(), checking
