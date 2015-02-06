@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
+import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import java.util.LinkedHashMap;
@@ -38,8 +39,8 @@ public class BeanData {
         this.attributes = attributes;
     }
 
-    public BeanData(ObjectName name, AttributeList attribute_values) {
-        this.name = name.getCanonicalName();
+    public BeanData(ObjectInstance beanInstance, AttributeList attribute_values) {
+        this.name = beanInstance.getObjectName().getCanonicalName();
         this.attributes = new LinkedHashMap<String, Object>();
         for ( Attribute attributeObj : attribute_values.asList())
         {

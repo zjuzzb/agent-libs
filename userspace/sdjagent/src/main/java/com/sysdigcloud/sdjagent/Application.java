@@ -10,8 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.logging.*;
 
@@ -57,10 +56,10 @@ public class Application {
     }
 
     private void mainLoop() throws IOException {
-        Scanner scanner = new Scanner(System.in);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         while (true)
         {
-            String cmd_data = scanner.nextLine();
+            String cmd_data = reader.readLine();
             LOGGER.fine(String.format("Received command: %s", cmd_data));
             Map<String, String> cmd_obj = mapper.readValue(cmd_data, Map.class);
             if (cmd_obj.get("command").equals("getMetrics"))
@@ -99,17 +98,17 @@ public class Application {
         for (Integer pid : JvmstatVM.getActiveVMs()) {
             LOGGER.fine(String.format("Found java process %s", pid.intValue()));
             Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
-            //Integer pid = Integer.valueOf(vmd.id());
             MonitoredVM vm = vms.get(pid);
 
             if (vm == null) {
-                vm = new MonitoredVM(pid.intValue());
+                vm = new MonitoredVM(pid, config.getDefaultBeanQueries());
 
                 // Configure VM name if it matches a pattern on configurations
-                Map<String, String> patterns = config.getPatterns();
-                for (String query : patterns.keySet()) {
-                    if (vm.getName().contains(query)) {
-                        vm.setName(patterns.get(query));
+                List<Config.Process> processes = config.getProcesses();
+                for (Config.Process config : processes) {
+                    if (vm.getName().contains(config.getPattern())) {
+                        vm.setName(config.getName());
+                        vm.addQueries(config.getQueries());
                         break;
                     }
                 }
@@ -117,21 +116,13 @@ public class Application {
                 // Add it to known VMs
                 vms.put(pid, vm);
             }
+            
             if (vm.isAvailable()) {
                 vmObject.put("pid", pid);
                 vmObject.put("name", vm.getName());
 
                 if (vm.isAgentActive()) {
-                    List<BeanQuery> default_queries = config.getDefaultBeanQueries();
-                    List<BeanData> beanDataList = new LinkedList<BeanData>();
-                    for (BeanQuery query : default_queries) {
-                        beanDataList.addAll(vm.getMetrics(query));
-                    }
-
-                    List<BeanQuery> specific_queries = config.getBeanQueries(vm.getName());
-                    for (BeanQuery query : specific_queries) {
-                        beanDataList.addAll(vm.getMetrics(query));
-                    }
+                    List<BeanData> beanDataList = vm.getMetrics();
                     vmObject.put("beans", beanDataList);
                 }
                 vmList.add(vmObject);

@@ -1,13 +1,17 @@
 package com.sysdigcloud.sdjagent;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -19,11 +23,10 @@ public class Config {
     private Map<String, Object> conf;
     private Yaml yaml;
     private static final ObjectMapper mapper = new ObjectMapper();
-    private final static Logger LOGGER = Logger.getLogger(Config.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
 
-    private Map<String, String> patterns;
     private List<BeanQuery> defaultBeanQueries;
-    private Map<String, List<BeanQuery>> beanQueries;
+    private List<Process> processes;
 
     public Config() throws FileNotFoundException {
         // Load config from file
@@ -38,15 +41,6 @@ public class Config {
         yaml = new Yaml();
         conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
 
-        patterns = new HashMap<String, String>();
-        for ( String key : conf.keySet())
-        {
-            if ( ! key.equals("default"))
-            {
-                patterns.put(((Map<String, String>) conf.get(key)).get("pattern"), key);
-            }
-        }
-
         defaultBeanQueries = new ArrayList<BeanQuery>();
         for (Object bean : (List<Object>) conf.get("default")) {
             try {
@@ -57,13 +51,16 @@ public class Config {
             }
         }
 
-        beanQueries = new HashMap<String, List<BeanQuery>>();
-
-        for(String name : conf.keySet() ) {
+        processes = new ArrayList<Process>();
+        for(String name : conf.keySet()) {
             if (name.equals("default")) {
                 continue;
             }
             Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
+            Process process = new Process();
+            process.name = name;
+            process.pattern = (String) queryEntry.get("pattern");
+
             List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
             List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
             if (beansList != null) {
@@ -76,27 +73,65 @@ public class Config {
                         LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query"));
                     }
                 }
-                beanQueries.put(name, beanQueryList);
+                process.queries = beanQueryList;
             }
-        }
-    }
 
-    public Map<String, String> getPatterns()
-    {
-        return patterns;
+            processes.add(process);
+        }
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
-
         return defaultBeanQueries;
     }
 
-    public List<BeanQuery> getBeanQueries(String name) {
+    public List<Process> getProcesses() {
+        return processes;
+    }
 
-        if (beanQueries.containsKey(name)) {
-            return beanQueries.get(name);
-        } else {
-            return new ArrayList<BeanQuery>();
+    public static class Process {
+        private String name;
+        private String pattern;
+        private List<BeanQuery> queries;
+
+        public Process() {
+            this.name = "";
+            this.pattern = "";
+            this.queries = new ArrayList<BeanQuery>();
         }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getPattern() {
+            return pattern;
+        }
+
+        public List<BeanQuery> getQueries() {
+            return queries;
+        }
+    }
+
+    public static class BeanQuery {
+        private ObjectName objectName;
+        private String[] attributes;
+
+        @JsonCreator
+        @SuppressWarnings("unused")
+        private BeanQuery(@JsonProperty("query") String query, @JsonProperty("attributes") String[] attributes) throws
+                MalformedObjectNameException {
+            this.objectName = new ObjectName(query);
+            this.attributes = attributes;
+        }
+
+        public String[] getAttributes() {
+            return attributes;
+        }
+
+        @JsonIgnore
+        public ObjectName getObjectName() {
+            return objectName;
+        }
+
     }
 }

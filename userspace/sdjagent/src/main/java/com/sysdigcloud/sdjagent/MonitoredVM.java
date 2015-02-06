@@ -29,10 +29,17 @@ public class MonitoredVM {
     private String name;
     private boolean agentActive;
     private boolean available;
+    private long lastBeanRefresh;
+    private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
+    private List<Config.BeanQuery> queryList;
+    private List<BeanInstance> matchingBeans;
 
-    public MonitoredVM(int pid)
+    public MonitoredVM(int pid, List<Config.BeanQuery> queries)
     {
         this.pid = pid;
+        this.queryList = new ArrayList<Config.BeanQuery>(queries);
+        this.lastBeanRefresh = 0;
+        this.matchingBeans = new ArrayList<BeanInstance>();
 
         if (pid == CLibrary.getPid()) {
             this.name = "sdjagent";
@@ -164,18 +171,41 @@ public class MonitoredVM {
         this.name = value;
     }
 
-    public List<BeanData> getMetrics(BeanQuery query) {
+    public void addQueries(List<Config.BeanQuery> queries) {
+        queryList.addAll(queries);
+    }
+
+    private void refreshMatchingBeans() throws IOException {
+        matchingBeans.clear();
+        Set<ObjectInstance> allBeans = mbs.queryMBeans(null, null);
+        for (ObjectInstance bean : allBeans) {
+            for( Config.BeanQuery query : queryList) {
+                if (query.getObjectName().apply(bean.getObjectName())) {
+                    matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
+                    break;
+                }
+            }
+        }
+    }
+
+    public List<BeanData> getMetrics() {
         List<BeanData> metrics = new ArrayList<BeanData>();
         if (agentActive) {
             try {
-                for (ObjectName bean : mbs.queryNames(query.getObjectName(), null)) {
+                if(System.currentTimeMillis() - lastBeanRefresh > beanRefreshInterval ) {
+                    refreshMatchingBeans();
+                    lastBeanRefresh = System.currentTimeMillis();
+                }
+
+                for (BeanInstance bean : matchingBeans) {
                     try {
-                        AttributeList attributes_list = mbs.getAttributes(bean, query.getAttributes());
-                        metrics.add(new BeanData(bean, attributes_list));
+                        AttributeList attributes_list = mbs.getAttributes(bean.getInstance().getObjectName(), bean.getAttributes());
+                        metrics.add(new BeanData(bean.getInstance(), attributes_list));
                     } catch (InstanceNotFoundException e) {
-                        LOGGER.warning(String.format("Bean %s not found on process %d", bean.getCanonicalName(), pid));
+                        LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getInstanceName(), pid));
+                        lastBeanRefresh = 0;
                     } catch (ReflectionException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getCanonicalName(), pid));
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getInstanceName(), pid));
                     }
                 }
             } catch (IOException ex) {
@@ -211,7 +241,6 @@ public class MonitoredVM {
         String address = (String) agentProps.get(LOCAL_CONNECTOR_ADDRESS_PROP);
 
         vm.detach();
-
 
         return address;
     }
@@ -273,5 +302,27 @@ public class MonitoredVM {
         }
         return false;
     }*/
+
+    static private class BeanInstance {
+        ObjectInstance instance;
+        String[] attributes;
+
+        public BeanInstance(ObjectInstance instance, String[] attributes) {
+            this.instance = instance;
+            this.attributes = attributes;
+        }
+
+        public String[] getAttributes() {
+            return attributes;
+        }
+
+        public ObjectInstance getInstance() {
+            return instance;
+        }
+
+        public String getInstanceName() {
+            return instance.toString();
+        }
+    }
 }
 
