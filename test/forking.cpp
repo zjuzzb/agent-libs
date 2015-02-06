@@ -1022,7 +1022,6 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 
 TEST_F(sys_call_test, forking_cgroups)
 {
-	int ptid;
 	int ctid;
 	bool done = false;
 
@@ -1031,7 +1030,7 @@ TEST_F(sys_call_test, forking_cgroups)
 	//
 	event_filter_t filter = [&](sinsp_evt* evt)
 	{
-		return evt->get_tid() == ptid || evt->get_tid() == ctid;
+		return evt->get_tid() == ctid;
 	};
 
 	//
@@ -1104,6 +1103,71 @@ TEST_F(sys_call_test, forking_cgroups)
 				ASSERT_TRUE(it1->first == it2->first);
 				ASSERT_TRUE(it1->second == it2->second);
 			}
+
+			done = true;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+static int clone_callback_3(void *arg)
+{
+	sleep(1);
+    return 0;
+}
+
+
+TEST_F(sys_call_test, forking_clone_nspid)
+{
+	int ctid;
+	int flags = CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | SIGCHLD | CLONE_NEWPID;
+	bool done = false;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_tid() == ctid;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		const int STACK_SIZE = 65536;       /* Stack size for cloned child */
+		char *stack;                        /* Start of stack buffer area */
+		char *stack_top;                     /* End of stack buffer area */
+
+		stack = (char*)malloc(STACK_SIZE);
+		if(stack == NULL)
+		{
+		    FAIL();
+		}
+		stack_top = stack + STACK_SIZE;
+
+		ctid = clone(clone_callback_3, stack_top, flags, NULL);
+		if(ctid == -1)
+		{
+		    FAIL();
+		}
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		if(e->get_type() == PPME_SYSCALL_CLONE_20_X)
+		{
+			sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+			ASSERT_TRUE(tinfo != NULL);
+			ASSERT_TRUE(tinfo->m_vtid == 1);
+			ASSERT_TRUE(tinfo->m_vpid == 1);
 
 			done = true;
 		}
