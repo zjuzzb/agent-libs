@@ -1099,7 +1099,7 @@ TEST_F(sys_call_test, forking_cgroups)
 				cgroups2.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
 			}
 
-			ASSERT_TRUE(cgroups1.size() > cgroups2.size());
+			ASSERT_TRUE(cgroups1.size() >= cgroups2.size());
 			for(map<string, string>::iterator it2 = cgroups2.begin(); it2 != cgroups2.end(); ++it2)
 			{
 				map<string, string>::iterator it1 = cgroups1.find(it2->first);
