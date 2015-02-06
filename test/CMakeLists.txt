@@ -14,6 +14,7 @@ add_definitions( -DHAS_ANALYZER )
 add_executable(test 
 	analyzer_test.cpp
 	capture_to_file_test.cpp
+	container.cpp
 	event_capture.cpp
 	forking.cpp
 	fs.cpp
