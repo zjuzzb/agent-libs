@@ -120,7 +120,6 @@ static int clone_callback_3(void *arg)
     return 0;
 }
 
-
 TEST_F(sys_call_test, container_clone_nspid)
 {
 	int ctid;
@@ -175,6 +174,67 @@ TEST_F(sys_call_test, container_clone_nspid)
 
 			done = true;
 		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, docker)
+{
+	bool done = false;
+
+	if(system("service docker status") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		system("docker kill ilovesysdig 2> /dev/null");
+		system("docker rm ilovesysdig 2> /dev/null");
+
+		if(system("docker run -d --name ilovesysdig nginx") != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(2);
+
+		system("docker kill ilovesysdig");
+		system("docker rm ilovesysdig");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		ASSERT_TRUE(tinfo->m_vtid < 10);
+		ASSERT_TRUE(tinfo->m_vpid < 10);
+
+		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_DOCKER);
+		ASSERT_TRUE(container_info.m_name == "ilovesysdig");
+		ASSERT_TRUE(container_info.m_image == "nginx");
+
+		done = true;
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
