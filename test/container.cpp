@@ -180,7 +180,65 @@ TEST_F(sys_call_test, container_clone_nspid)
 	ASSERT_TRUE(done);
 }
 
-TEST_F(sys_call_test, docker)
+TEST_F(sys_call_test, container_clone_nspid_ioctl)
+{
+	int ctid;
+	int flags = CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | SIGCHLD | CLONE_NEWPID;
+	bool done = false;
+
+	const int STACK_SIZE = 65536;
+	char *stack;
+	char *stack_top;
+
+	stack = (char*)malloc(STACK_SIZE);
+	if(stack == NULL)
+	{
+	    FAIL();
+	}
+	stack_top = stack + STACK_SIZE;
+
+	ctid = clone(clone_callback_3, stack_top, flags, NULL);
+	if(ctid == -1)
+	{
+	    FAIL();
+	}
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_tid() == ctid;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		wait(NULL);
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		if(tinfo)
+		{
+			ASSERT_TRUE(tinfo->m_vtid == 1);
+			ASSERT_TRUE(tinfo->m_vpid == 1);
+
+			done = true;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_docker)
 {
 	bool done = false;
 
@@ -241,7 +299,7 @@ TEST_F(sys_call_test, docker)
 	ASSERT_TRUE(done);
 }
 
-TEST_F(sys_call_test, lxc)
+TEST_F(sys_call_test, container_lxc)
 {
 	bool done = false;
 
@@ -307,7 +365,7 @@ TEST_F(sys_call_test, lxc)
 	ASSERT_TRUE(done);
 }
 
-TEST_F(sys_call_test, libvirt)
+TEST_F(sys_call_test, container_libvirt)
 {
 	bool done = false;
 
