@@ -22,7 +22,10 @@ import java.util.logging.Logger;
  * @author Luca Marturana <luca@draios.com>
  */
 public class MonitoredVM {
-    private final static Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
+    private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
+    private static final int beansLimit = 100;
+
     private Connection connection;
     private MBeanServerConnection mbs;
     private final int pid;
@@ -30,7 +33,6 @@ public class MonitoredVM {
     private boolean agentActive;
     private boolean available;
     private long lastBeanRefresh;
-    private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
     private List<Config.BeanQuery> queryList;
     private List<BeanInstance> matchingBeans;
 
@@ -184,6 +186,9 @@ public class MonitoredVM {
                     matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
                     break;
                 }
+            }
+            if (matchingBeans.size() >= beansLimit) {
+                break;
             }
         }
     }

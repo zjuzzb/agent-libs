@@ -27,7 +27,7 @@ public class Application {
         mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
     }
-    
+
     /**
      * @param args the command line arguments
      */
