@@ -267,7 +267,7 @@ TEST_F(sys_call_test, lxc)
 		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
 		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
 
-		if(system("lxc-create -n ilovesysdig_lxc -t debian") != 0)
+		if(system("lxc-create -n ilovesysdig_lxc -t busybox") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
