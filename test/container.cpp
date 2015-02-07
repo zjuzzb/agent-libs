@@ -184,7 +184,7 @@ TEST_F(sys_call_test, docker)
 {
 	bool done = false;
 
-	if(system("service docker status") != 0)
+	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
 		printf("Docker not running, skipping test\n");
 		return;
@@ -203,18 +203,18 @@ TEST_F(sys_call_test, docker)
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		system("docker kill ilovesysdig 2> /dev/null");
-		system("docker rm ilovesysdig 2> /dev/null");
+		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
+		system("docker rm ilovesysdig_docker > /dev/null 2>&1");
 
-		if(system("docker run -d --name ilovesysdig nginx") != 0)
+		if(system("docker run -d --name ilovesysdig_docker nginx") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
 
 		sleep(2);
 
-		system("docker kill ilovesysdig");
-		system("docker rm ilovesysdig");
+		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
+		system("docker rm ilovesysdig_docker > /dev/null 2>&1");
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -231,8 +231,74 @@ TEST_F(sys_call_test, docker)
 		ASSERT_TRUE(found);
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_DOCKER);
-		ASSERT_TRUE(container_info.m_name == "ilovesysdig");
+		ASSERT_TRUE(container_info.m_name == "ilovesysdig_docker");
 		ASSERT_TRUE(container_info.m_image == "nginx");
+
+		done = true;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, lxc)
+{
+	bool done = false;
+
+	if(system("lxc-create --help > /dev/null 2>&1") != 0)
+	{
+		printf("LXC not installed, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
+		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
+
+		if(system("lxc-create -n ilovesysdig_lxc -t debian") != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		if(system("lxc-start -n ilovesysdig_lxc -d") != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(5);
+
+		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
+		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
+		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
+
+		ASSERT_TRUE(tinfo->m_container_id == "ilovesysdig_lxc");
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LXC);
+		ASSERT_TRUE(container_info.m_name == "ilovesysdig_lxc");
+		ASSERT_TRUE(container_info.m_image.empty());
 
 		done = true;
 	};
