@@ -221,8 +221,8 @@ TEST_F(sys_call_test, docker)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
-		ASSERT_TRUE(tinfo->m_vtid < 10);
-		ASSERT_TRUE(tinfo->m_vpid < 10);
+		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
+		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
 
 		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
 
