@@ -306,3 +306,83 @@ TEST_F(sys_call_test, lxc)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_TRUE(done);
 }
+
+TEST_F(sys_call_test, libvirt)
+{
+	bool done = false;
+
+	if(system("virsh --help > /dev/null 2>&1") != 0)
+	{
+		printf("libvirt not installed, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		FILE* f = fopen("/tmp/conf.xml", "w");
+		ASSERT_TRUE(f != NULL);
+		fprintf(f,
+			"<domain type='lxc'>\n"
+			"   <name>libvirt-container</name>\n"
+			"   <memory>128000</memory>\n"
+			"   <os>\n"
+			"      <type>exe</type>\n"
+			"      <init>/bin/sh</init>\n"
+			"   </os>\n"
+			"   <devices>\n"
+			"      <console type='pty'/>\n"
+			"   </devices>\n"
+			"</domain>");
+		fclose(f);
+
+		system("virsh -c lxc:/// undefine libvirt-container");
+
+		if(system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		if(system("virsh -c lxc:/// start libvirt-container") != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(2);
+
+		system("virsh -c lxc:/// undefine /tmp/conf.xml");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
+		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
+
+		ASSERT_TRUE(tinfo->m_container_id == "libvirt-container");
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LIBVIRT_LXC);
+		ASSERT_TRUE(container_info.m_name == "libvirt-container");
+		ASSERT_TRUE(container_info.m_image.empty());
+
+		done = true;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
