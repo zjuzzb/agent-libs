@@ -206,7 +206,7 @@ TEST_F(sys_call_test, docker)
 		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
 		system("docker rm ilovesysdig_docker > /dev/null 2>&1");
 
-		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
+		if(system("docker run -d --name ilovesysdig_docker nginx") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
@@ -232,7 +232,7 @@ TEST_F(sys_call_test, docker)
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_DOCKER);
 		ASSERT_TRUE(container_info.m_name == "ilovesysdig_docker");
-		ASSERT_TRUE(container_info.m_image == "busybox");
+		ASSERT_TRUE(container_info.m_image == "nginx");
 
 		done = true;
 	};
