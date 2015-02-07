@@ -322,7 +322,7 @@ TEST_F(sys_call_test, libvirt)
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if(tinfo)
 		{
-			return !tinfo->m_container_id.empty();
+			return !tinfo->m_container_id.empty() && tinfo->m_comm == "sh";
 		}
 
 		return false;
@@ -346,8 +346,8 @@ TEST_F(sys_call_test, libvirt)
 			"</domain>");
 		fclose(f);
 
-		system("virsh -c lxc:/// undefine libvirt-container");
-		system("virsh -c lxc:/// destroy libvirt-container");
+		system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1");
+		system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1");
 
 		if(system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
 		{
@@ -361,8 +361,8 @@ TEST_F(sys_call_test, libvirt)
 
 		sleep(2);
 
-		system("virsh -c lxc:/// undefine libvirt-container");
-		system("virsh -c lxc:/// destroy libvirt-container");
+		system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1");
+		system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1");
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
