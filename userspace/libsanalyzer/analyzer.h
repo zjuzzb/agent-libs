@@ -354,6 +354,7 @@ VISIBILITY_PRIVATE
 	// JMX proxy
 	shared_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
+	unordered_map<int, java_process> m_jmx_metrics;
 
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
