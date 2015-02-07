@@ -21,11 +21,13 @@ import java.util.logging.*;
 public class Application {
     private final static Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final long vmsCleanupInterval = 10 * 60 * 1000;
 
     static {
         mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
     }
+    
     /**
      * @param args the command line arguments
      */
@@ -48,10 +50,11 @@ public class Application {
 
     private HashMap<Integer, MonitoredVM> vms;
     private Config config;
+    private long lastVmsCleanup;
 
     private Application() throws FileNotFoundException {
         vms = new HashMap<Integer, MonitoredVM>();
-
+        lastVmsCleanup = 0;
         config = new Config();
     }
 
@@ -75,7 +78,10 @@ public class Application {
             }
 
             // Cleanup
-            cleanup();
+            if(System.currentTimeMillis() - lastVmsCleanup > vmsCleanupInterval) {
+                cleanup();
+                lastVmsCleanup = System.currentTimeMillis();
+            }
         }
     }
 
@@ -116,7 +122,7 @@ public class Application {
                 // Add it to known VMs
                 vms.put(pid, vm);
             }
-            
+
             if (vm.isAvailable()) {
                 vmObject.put("pid", pid);
                 vmObject.put("name", vm.getName());
