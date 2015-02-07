@@ -347,6 +347,7 @@ TEST_F(sys_call_test, libvirt)
 		fclose(f);
 
 		system("virsh -c lxc:/// undefine libvirt-container");
+		system("virsh -c lxc:/// destroy libvirt-container");
 
 		if(system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
 		{
@@ -360,7 +361,8 @@ TEST_F(sys_call_test, libvirt)
 
 		sleep(2);
 
-		system("virsh -c lxc:/// undefine /tmp/conf.xml");
+		system("virsh -c lxc:/// undefine libvirt-container");
+		system("virsh -c lxc:/// destroy libvirt-container");
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
