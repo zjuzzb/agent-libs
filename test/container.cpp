@@ -372,14 +372,14 @@ TEST_F(sys_call_test, libvirt)
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
 		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
 
-		ASSERT_TRUE(tinfo->m_container_id == "libvirt-container");
+		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer");
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
 		ASSERT_TRUE(found);
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LIBVIRT_LXC);
-		ASSERT_TRUE(container_info.m_name == "libvirt-container");
+		ASSERT_TRUE(container_info.m_name == "libvirt\\x2dcontainer");
 		ASSERT_TRUE(container_info.m_image.empty());
 
 		done = true;
