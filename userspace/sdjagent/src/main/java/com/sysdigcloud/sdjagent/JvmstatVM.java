@@ -12,9 +12,17 @@ import java.util.logging.Logger;
 /**
  * Created by luca on 09/01/15.
  */
-public class JvmstatVM
-{   private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
+public class JvmstatVM {
+    private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
     private final MonitoredVm vm;
+    private static Set<Integer> cachedActiveVMs;
+    private static final long activeVMRefreshInterval = 60 * 1000;
+    private static long lastActiveVMRefresh;
+
+    static {
+        lastActiveVMRefresh = 0;
+        cachedActiveVMs = new HashSet<Integer>();
+    }
 
     public JvmstatVM(int pid) throws MonitorException {
         VmIdentifier vmId;
@@ -88,15 +96,19 @@ public class JvmstatVM
     }
 
     public static Set<Integer> getActiveVMs() {
-        try {
-            String hostname = null;
-            MonitoredHost localHost = MonitoredHost.getMonitoredHost(new HostIdentifier(hostname));
-            return localHost.activeVms();
-        } catch (URISyntaxException ex) {
-            LOGGER.warning("URISyntaxException on JvmstatVM: " + ex.getMessage());
-        } catch (MonitorException ex) {
-            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
+        if(System.currentTimeMillis() - lastActiveVMRefresh > activeVMRefreshInterval) {
+            cachedActiveVMs.clear();
+            try {
+                String hostname = null;
+                MonitoredHost localHost = MonitoredHost.getMonitoredHost(new HostIdentifier(hostname));
+                cachedActiveVMs = localHost.activeVms();
+            } catch (URISyntaxException ex) {
+                LOGGER.warning("URISyntaxException on JvmstatVM: " + ex.getMessage());
+            } catch (MonitorException ex) {
+                LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
+            }
+            lastActiveVMRefresh = System.currentTimeMillis();
         }
-        return new HashSet<Integer>();
+        return cachedActiveVMs;
     }
 }

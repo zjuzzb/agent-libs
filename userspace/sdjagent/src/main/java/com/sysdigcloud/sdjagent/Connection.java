@@ -111,6 +111,7 @@ public class Connection {
         }
     }
 
+    @SuppressWarnings("unused")
     public boolean isAlive() {
         if (connector == null) {
             return false;

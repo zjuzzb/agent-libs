@@ -179,10 +179,10 @@ public class MonitoredVM {
 
     private void refreshMatchingBeans() throws IOException {
         matchingBeans.clear();
-        Set<ObjectInstance> allBeans = mbs.queryMBeans(null, null);
-        for (ObjectInstance bean : allBeans) {
+        Set<ObjectName> allBeans = mbs.queryNames(null, null);
+        for (ObjectName bean : allBeans) {
             for( Config.BeanQuery query : queryList) {
-                if (query.getObjectName().apply(bean.getObjectName())) {
+                if (query.getObjectName().apply(bean)) {
                     matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
                     break;
                 }
@@ -204,13 +204,13 @@ public class MonitoredVM {
 
                 for (BeanInstance bean : matchingBeans) {
                     try {
-                        AttributeList attributes_list = mbs.getAttributes(bean.getInstance().getObjectName(), bean.getAttributes());
-                        metrics.add(new BeanData(bean.getInstance(), attributes_list));
+                        AttributeList attributes_list = mbs.getAttributes(bean.getName(), bean.getAttributes());
+                        metrics.add(new BeanData(bean.getName(), attributes_list));
                     } catch (InstanceNotFoundException e) {
-                        LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getInstanceName(), pid));
+                        LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
                         lastBeanRefresh = 0;
                     } catch (ReflectionException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getInstanceName(), pid));
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getName().getCanonicalName(), pid));
                     }
                 }
             } catch (IOException ex) {
@@ -309,11 +309,11 @@ public class MonitoredVM {
     }*/
 
     static private class BeanInstance {
-        ObjectInstance instance;
+        ObjectName name;
         String[] attributes;
 
-        public BeanInstance(ObjectInstance instance, String[] attributes) {
-            this.instance = instance;
+        public BeanInstance(ObjectName name, String[] attributes) {
+            this.name = name;
             this.attributes = attributes;
         }
 
@@ -321,12 +321,8 @@ public class MonitoredVM {
             return attributes;
         }
 
-        public ObjectInstance getInstance() {
-            return instance;
-        }
-
-        public String getInstanceName() {
-            return instance.toString();
+        public ObjectName getName() {
+            return name;
         }
     }
 }

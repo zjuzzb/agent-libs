@@ -39,8 +39,8 @@ public class BeanData {
         this.attributes = attributes;
     }
 
-    public BeanData(ObjectInstance beanInstance, AttributeList attribute_values) {
-        this.name = beanInstance.getObjectName().getCanonicalName();
+    public BeanData(ObjectName beanInstance, AttributeList attribute_values) {
+        this.name = beanInstance.getCanonicalName();
         this.attributes = new LinkedHashMap<String, Object>();
         for ( Attribute attributeObj : attribute_values.asList())
         {

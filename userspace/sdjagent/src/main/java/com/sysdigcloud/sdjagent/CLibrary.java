@@ -14,16 +14,6 @@ public class CLibrary {
     private static int pid;
     
     static {
-        pid = 0;
-        try {
-            System.loadLibrary("sdjagentjni");
-            libraryLoaded = true;
-        } catch ( UnsatisfiedLinkError ex) {
-            LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));
-        }
-    }
-
-    private static void getPidFromProc() {
         try {
             FileInputStream procStatusFile = new FileInputStream("/proc/self/status");
             Scanner procStatusReader = new Scanner(procStatusFile);
@@ -42,13 +32,16 @@ public class CLibrary {
         {
             LOGGER.severe(String.format("Error while reading /proc/self/status", ex.getMessage()));
         }
+
+        try {
+            System.loadLibrary("sdjagentjni");
+            libraryLoaded = true;
+        } catch ( UnsatisfiedLinkError ex) {
+            LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));
+        }
     }
 
     public static int getPid() {
-        if (pid == 0)
-        {
-            getPidFromProc();
-        }
         return pid;
     }
 

@@ -35,8 +35,9 @@ public class Application {
         LogManager.getLogManager().reset();
         Logger globalLogger = Logger.getLogger("");
         ConsoleHandler console = new ConsoleHandler();
+        //console.setLevel(Level.FINE);
         console.setFormatter(new LogJsonFormatter());
-        globalLogger.setLevel(Level.FINER);
+        //globalLogger.setLevel(Level.FINE);
         globalLogger.addHandler(console);
 
         try {
