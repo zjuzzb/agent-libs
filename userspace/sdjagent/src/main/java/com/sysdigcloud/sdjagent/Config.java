@@ -20,8 +20,8 @@ import java.util.logging.Logger;
  * Created by luca on 12/01/15.
  */
 public class Config {
-    private Map<String, Object> conf;
-    private Yaml yaml;
+    private final Map<String, Object> conf;
+    private final Yaml yaml;
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
 
