@@ -19,8 +19,8 @@ import java.util.logging.Logger;
  */
 public class BeanData {
     private final static Logger LOGGER = Logger.getLogger(BeanData.class.getName());
-    private String name;
-    private Map<String, Object> attributes;
+    private final String name;
+    private final Map<String, Object> attributes;
 
     @SuppressWarnings("unused")
     public String getName() {
