@@ -194,7 +194,7 @@ public class MonitoredVM {
     }
 
     public List<BeanData> getMetrics() {
-        List<BeanData> metrics = new ArrayList<BeanData>();
+        final List<BeanData> metrics = new LinkedList<BeanData>();
         if (agentActive) {
             try {
                 if(System.currentTimeMillis() - lastBeanRefresh > beanRefreshInterval ) {
@@ -204,7 +204,7 @@ public class MonitoredVM {
 
                 for (BeanInstance bean : matchingBeans) {
                     try {
-                        AttributeList attributes_list = mbs.getAttributes(bean.getName(), bean.getAttributes());
+                        final AttributeList attributes_list = mbs.getAttributes(bean.getName(), bean.getAttributes());
                         metrics.add(new BeanData(bean.getName(), attributes_list));
                     } catch (InstanceNotFoundException e) {
                         LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));

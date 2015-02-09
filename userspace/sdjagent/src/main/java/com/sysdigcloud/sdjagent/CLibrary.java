@@ -30,7 +30,7 @@ public class CLibrary {
             }
         } catch (IOException ex)
         {
-            LOGGER.severe(String.format("Error while reading /proc/self/status", ex.getMessage()));
+            LOGGER.severe(String.format("Error while reading /proc/self/status: %s", ex.getMessage()));
         }
 
         try {
