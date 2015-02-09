@@ -17,22 +17,28 @@ static void g_monitor_signal_callback(int sig)
 
 static void create_pid_file(const string& pidfile)
 {
-	std::ofstream ostr(pidfile);
-	if(ostr.good())
+	if(!pidfile.empty())
 	{
-		ostr << Poco::Process::id() << std::endl;
+		std::ofstream ostr(pidfile);
+		if(ostr.good())
+		{
+			ostr << Poco::Process::id() << std::endl;
+		}
 	}
 }
 
 static void delete_pid_file(const string& pidfile)
 {
-	try
+	if(!pidfile.empty())
 	{
-		File f(pidfile);
-		f.remove(true);
-	}
-	catch(Poco::Exception&)
-	{
+		try
+		{
+			File f(pidfile);
+			f.remove(true);
+		}
+		catch(Poco::Exception&)
+		{
+		}
 	}
 }
 

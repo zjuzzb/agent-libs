@@ -9,10 +9,6 @@
 #include "logger.h"
 #include "monitor.h"
 
-#if 0
-#define AGENT_PRIORITY 19
-#endif
-
 static void g_signal_callback(int sig)
 {
 	g_log->information("Received signal " + NumberFormatter::format(sig) + ", terminating"); 
@@ -183,15 +179,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
-	if(config().getBool("application.runAsDaemon", false))
-	{
-		run_monitor(m_pidfile);
+	run_monitor(m_pidfile);
 
-		//
-		// We want to terminate when the monitor is killed by init
-		//
-		prctl(PR_SET_PDEATHSIG, SIGKILL);
-	}
+	//
+	// We want to terminate when the monitor is killed by init
+	//
+	prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
