@@ -48,7 +48,7 @@ TEST_F(sys_call_test, sql_operation)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
@@ -134,7 +134,7 @@ TEST_F(sys_call_test, sql_table_select)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
@@ -207,7 +207,7 @@ TEST_F(sys_call_test, sql_table_delete)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
@@ -278,7 +278,7 @@ TEST_F(sys_call_test, sql_table_insert)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
@@ -349,7 +349,7 @@ TEST_F(sys_call_test, sql_table_replace)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
@@ -418,7 +418,7 @@ TEST_F(sys_call_test, sql_table_update)
 	zf = gzopen("sql.txt.gz", "rb");
 	if(zf == NULL)
 	{
-		printf("sql.txt.gz not found, skipping test");
+		printf("sql.txt.gz not found, skipping test\n");
 
 		return;
 	}
