@@ -174,6 +174,7 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
+	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 }
 
 void sinsp_worker::run()

@@ -203,6 +203,11 @@ public:
 		m_protocols_enabled = value;
 	}
 
+	void set_remotefs_enabled(bool value)
+	{
+		m_remotefs_enabled = value;
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -286,6 +291,7 @@ VISIBILITY_PRIVATE
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
 	bool m_protocols_enabled;
+	bool m_remotefs_enabled;
 
 	//
 	// The scheduler analyzer

@@ -439,7 +439,7 @@ return;
 #endif // _WIN32
 }
 
-void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
+void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs)
 {
 #ifdef _WIN32
 return;
@@ -475,9 +475,13 @@ return;
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
 			|| strcmp(entry->mnt_type, "none") == 0
-			|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
-			|| strcmp(entry->mnt_type, "smbfs") == 0
-			|| strcmp(entry->mnt_type, "cifs") == 0)
+			||
+				(  !remotefs && (strcmp(entry->mnt_type, "nfs") == 0 // remote fs
+			                     || strcmp(entry->mnt_type, "smbfs") == 0
+			                     || strcmp(entry->mnt_type, "cifs") == 0
+				   )
+				)
+		)
 		{
 			continue;
 		}
