@@ -117,6 +117,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+
+	m_protocols_enabled = true;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -2214,8 +2216,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			int64_t used_swap;
 			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
 
-			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-				m_sampling_ratio);
+			if(m_protocols_enabled)
+			{
+				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
+						m_sampling_ratio);
+			}
 
 			//
 			// host info
