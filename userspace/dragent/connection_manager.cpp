@@ -141,7 +141,7 @@ void connection_manager::disconnect()
 	}
 	else
 	{
-		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval)*2, RECONNECT_MAX_INTERVAL);
+		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval*2), RECONNECT_MAX_INTERVAL);
 	}
 
 	if(!m_socket.isNull())
