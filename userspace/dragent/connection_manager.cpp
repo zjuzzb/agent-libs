@@ -164,7 +164,7 @@ void connection_manager::run()
 			//
 			if(m_socket.isNull())
 			{
-				g_log->information(string("Waiting to reconnect ") + std::to_string(m_reconnect_interval) + " seconds");
+				g_log->information(string("Waiting to reconnect ") + std::to_string(m_reconnect_interval) + " s");
 				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
 					m_last_loop_ns = dragent_configuration::get_current_time_ns();
