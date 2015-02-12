@@ -60,6 +60,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EXECVE_13_X:
 	case PPME_SYSCALL_EXECVE_14_X:
 	case PPME_SYSCALL_EXECVE_15_X:
+	case PPME_SYSCALL_EXECVE_16_X:
 		parse_execve_exit(evt);
 		return true;
 	case PPME_DROP_E:
