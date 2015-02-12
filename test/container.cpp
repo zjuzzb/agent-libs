@@ -238,6 +238,80 @@ TEST_F(sys_call_test, container_clone_nspid_ioctl)
 	ASSERT_TRUE(done);
 }
 
+TEST_F(sys_call_test, container_docker_netns_ioctl)
+{
+	bool done = false;
+	bool first = true;
+
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	system("docker kill ilovesysdig_docker > /dev/null 2>&1");
+	system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+
+	if(system("docker run -d --name ilovesysdig_docker busybox ping -w 10 127.0.0.1") != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	sleep(2);
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		sleep(4);
+
+		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
+		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		if(e->get_type() == PPME_SOCKET_SENDTO_E)
+		{
+			string tuple = e->get_param_value_str("tuple");
+			EXPECT_TRUE(tuple == "0.0.0.0:1->127.0.0.1:0");
+
+			//
+			// The first one doesn't have fd set
+			//
+			if(first)
+			{
+				first = false;
+				return;
+			}
+
+			string fd = e->get_param_value_str("fd");
+			EXPECT_TRUE(fd == "<4i>127.0.0.1->127.0.0.1");
+
+			done = true;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
 TEST_F(sys_call_test, container_docker)
 {
 	bool done = false;
@@ -262,9 +336,9 @@ TEST_F(sys_call_test, container_docker)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-		system("docker rm ilovesysdig_docker > /dev/null 2>&1");
+		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
 
-		if(system("docker run -d --name ilovesysdig_docker nginx") != 0)
+		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
@@ -272,7 +346,7 @@ TEST_F(sys_call_test, container_docker)
 		sleep(2);
 
 		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-		system("docker rm ilovesysdig_docker > /dev/null 2>&1");
+		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -290,7 +364,7 @@ TEST_F(sys_call_test, container_docker)
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_DOCKER);
 		ASSERT_TRUE(container_info.m_name == "ilovesysdig_docker");
-		ASSERT_TRUE(container_info.m_image == "nginx");
+		ASSERT_TRUE(container_info.m_image == "busybox");
 
 		done = true;
 	};
