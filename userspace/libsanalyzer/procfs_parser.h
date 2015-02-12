@@ -25,7 +25,7 @@ public:
 	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap);
 
-	void get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs);
+	void get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs_enabled);
 
 	//
 	// must call get_total_cpu_load to update the system time before calling this
