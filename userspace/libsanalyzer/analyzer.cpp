@@ -3110,7 +3110,10 @@ void sinsp_analyzer::emit_containers()
 		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 
 		it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
-		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
+		if(m_protocols_enabled)
+		{
+			it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
+		}
 
 		it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
 
