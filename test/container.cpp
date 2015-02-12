@@ -275,7 +275,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		sleep(4);
+		sleep(5);
 
 		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
 		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
