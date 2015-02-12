@@ -112,6 +112,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+
+	m_protocols_enabled = true;
+	m_remotefs_enabled = false;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -2240,8 +2243,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_kb, &m_host_metrics.m_swap_memory_kb);
 
-			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-				m_sampling_ratio);
+			if(m_protocols_enabled)
+			{
+				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
+						m_sampling_ratio);
+			}
 
 			//
 			// host info
@@ -2258,7 +2264,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
 			vector<sinsp_procfs_parser::mounted_fs> fs_list;
-			m_procfs_parser->get_mounted_fs_list(&fs_list);
+			m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
 			for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
 				it != fs_list.end(); ++it)
 			{

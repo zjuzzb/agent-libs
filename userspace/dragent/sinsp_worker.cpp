@@ -169,6 +169,9 @@ void sinsp_worker::init()
 			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
+
+	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
+	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 }
 
 void sinsp_worker::run()

@@ -444,7 +444,7 @@ return;
 #endif // _WIN32
 }
 
-void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list)
+void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs_enabled)
 {
 #ifdef _WIN32
 return;
@@ -479,10 +479,7 @@ return;
 			|| strcmp(entry->mnt_type, "kernfs") == 0
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
-			|| strcmp(entry->mnt_type, "none") == 0
-			|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
-			|| strcmp(entry->mnt_type, "smbfs") == 0
-			|| strcmp(entry->mnt_type, "cifs") == 0)
+			|| strcmp(entry->mnt_type, "none") == 0)
 		{
 			continue;
 		}
@@ -490,9 +487,16 @@ return;
 		//
 		// From coreutils, if dev contains ':', then remote
 		//
-		if(strchr(entry->mnt_fsname, ':') != NULL)
+		if(!remotefs_enabled)
 		{
-			continue;
+			// if remotefs are disabled, recognize them and skip
+			if(strchr(entry->mnt_fsname, ':') != NULL
+				|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
+				|| strcmp(entry->mnt_type, "smbfs") == 0
+				|| strcmp(entry->mnt_type, "cifs") == 0)
+			{
+				continue;
+			}
 		}
 
 		struct statvfs statfs;
