@@ -79,6 +79,7 @@ public:
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
 	bool m_protocols_enabled;
+	bool m_remotefs_enabled;
 
 private:
 	void refresh_aws_metadata();

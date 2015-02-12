@@ -46,6 +46,7 @@ dragent_configuration::dragent_configuration()
 	m_dirty_shutdown_report_log_size_b = 0;
 	m_capture_dragent_events = false;
 	m_protocols_enabled = true;
+	m_remotefs_enabled = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -174,6 +175,7 @@ void dragent_configuration::init(Application* app)
 	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 30 * 1024);
 	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
 	m_protocols_enabled = config.getBool("protocols.enabled", true);
+	m_remotefs_enabled = config.getBool("remotefs.enabled", false);
 
 	refresh_aws_metadata();
 }
@@ -214,6 +216,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("dirty_shutdown.report.log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture.dragent.events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("protocols.enabled: " + bool_as_text(m_protocols_enabled));
+	g_log->information("remotefs.enabled: " + bool_as_text(m_remotefs_enabled));
 
 	if(m_aws_metadata.m_valid)
 	{
