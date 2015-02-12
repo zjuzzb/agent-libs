@@ -4,6 +4,7 @@
 #include "configuration.h"
 #include "blocking_queue.h"
 #include "sinsp_worker.h"
+#include <chrono>
 
 class connection_manager : public Runnable
 {
@@ -44,6 +45,8 @@ private:
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
+	static const uint32_t RECONNECT_MAX_INTERVAL;
+	static const chrono::seconds WORKING_INTERVAL;
 	static const string m_name;
 
 	SharedPtr<SocketAddress> m_sa;
@@ -55,4 +58,7 @@ private:
 	sinsp_worker* m_sinsp_worker;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
+
+	uint32_t m_reconnect_interval;
+	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
 };
