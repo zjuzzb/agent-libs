@@ -479,7 +479,7 @@ return;
 				(  !remotefs && (strcmp(entry->mnt_type, "nfs") == 0 // remote fs
 			                     || strcmp(entry->mnt_type, "smbfs") == 0
 			                     || strcmp(entry->mnt_type, "cifs") == 0
-				   )
+				                )
 				)
 		)
 		{
@@ -489,7 +489,7 @@ return;
 		//
 		// From coreutils, if dev contains ':', then remote
 		//
-		if(strchr(entry->mnt_fsname, ':') != NULL)
+		if(!remotefs && strchr(entry->mnt_fsname, ':') != NULL)
 		{
 			continue;
 		}
