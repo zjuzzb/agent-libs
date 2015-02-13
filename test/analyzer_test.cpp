@@ -99,8 +99,8 @@ TEST_F(sys_call_test, analyzer_errors)
 				sinsp_error_counters* ec = &param.m_inspector->m_analyzer->m_host_metrics.m_syscall_errors;
 
 				EXPECT_LT((size_t)10, ec->m_count);
-				EXPECT_LT((size_t)10, ec->m_count_file);
-				EXPECT_LT((size_t)10, ec->m_count_file_open);
+				EXPECT_LT((size_t)5, ec->m_count_file);
+				EXPECT_LT((size_t)5, ec->m_count_file_open);
 				EXPECT_LE((size_t)0, ec->m_count_net);
 
 				sinsp_threadinfo* tinfo = param.m_inspector->find_thread_test(getpid(), true);
