@@ -67,7 +67,7 @@ public class MonitoredVM {
             uidChanged = true;
         } catch (IOException ex)
         {
-            LOGGER.warning(String.format("Cannot read uid:gid data from process with pid: %d", pid));
+            LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
         }
 
 
