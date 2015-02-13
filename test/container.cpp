@@ -302,7 +302,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 			}
 
 			string fd = e->get_param_value_str("fd");
-			EXPECT_TRUE(fd == "<4i>127.0.0.1->127.0.0.1");
+			EXPECT_TRUE(fd == "<4t>127.0.0.1:1->127.0.0.1:0");
 
 			done = true;
 		}
