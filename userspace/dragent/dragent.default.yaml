@@ -6,6 +6,8 @@ jmx:
         - NonHeapMemoryUsage
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
+        - CollectionCount
+        - CollectionTime
         - LastGcInfo
     - query: "java.lang:type=ClassLoading"
       attributes:
