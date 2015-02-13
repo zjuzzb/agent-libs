@@ -42,6 +42,9 @@ public class MonitoredVM {
         this.queryList = new ArrayList<Config.BeanQuery>(queries);
         this.lastBeanRefresh = 0;
         this.matchingBeans = new ArrayList<BeanInstance>();
+        this.available = false;
+        this.agentActive = false;
+        this.name = "";
 
         if (pid == CLibrary.getPid()) {
             this.name = "sdjagent";

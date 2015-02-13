@@ -111,12 +111,15 @@ public class Application {
                 vm = new MonitoredVM(pid, config.getDefaultBeanQueries());
 
                 // Configure VM name if it matches a pattern on configurations
-                List<Config.Process> processes = config.getProcesses();
-                for (Config.Process config : processes) {
-                    if (vm.getName().contains(config.getPattern())) {
-                        vm.setName(config.getName());
-                        vm.addQueries(config.getQueries());
-                        break;
+                if(vm.isAvailable())
+                {
+                    List<Config.Process> processes = config.getProcesses();
+                    for (Config.Process config : processes) {
+                        if (vm.getName().contains(config.getPattern())) {
+                            vm.setName(config.getName());
+                            vm.addQueries(config.getQueries());
+                            break;
+                        }
                     }
                 }
 
