@@ -25,19 +25,30 @@ public class Config {
     private final Yaml yaml;
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
-
+    private static final String[] configFiles = {"dragent.yaml", "dragent.default.yaml",
+                                       "/opt/draios/etc/dragent.yaml", "/opt/draios/etc/dragent.default.yaml" };
     private List<BeanQuery> defaultBeanQueries;
     private List<Process> processes;
 
     public Config() throws FileNotFoundException {
+
         // Load config from file
-        File conf_file = new File("dragent.yaml");
-        if (!conf_file.exists()) {
-            conf_file = new File("/opt/draios/etc/dragent.yaml");
-            if (!conf_file.exists()) {
-                conf_file = new File("/opt/draios/etc/dragent.default.yaml");
+        File conf_file = null;
+        for (String configFilePath : configFiles)
+        {
+            conf_file = new File(configFilePath);
+            if (conf_file.exists())
+            {
+                LOGGER.info("Using config file: " + configFilePath);
+                break;
             }
         }
+        
+        if(conf_file == null)
+        {
+            throw new FileNotFoundException("Cannot find configuration file in any default path");
+        }
+
         FileInputStream conf_file_stream = new FileInputStream(conf_file);
         yaml = new Yaml();
         conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");

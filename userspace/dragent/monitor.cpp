@@ -42,7 +42,16 @@ void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
 {
 	prctl(PR_SET_PDEATHSIG, SIGKILL);
 	jmx_pipes->attach_child_stdio();
-	execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+	File sdjagent_jar("/opt/draios/share/sdjagent.jar");
+	if(sdjagent_jar.exists())
+	{
+		execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+	}
+	else
+	{
+		execl("/usr/bin/java", "java", "-Djava.library.path=../sdjagent", "-jar",
+				"../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
+	}
 	std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 	exit(EXIT_FAILURE);
 }

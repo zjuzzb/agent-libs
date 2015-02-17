@@ -27,6 +27,8 @@ add_executable(dragent
 	update_worker.cpp
 	sdjagent_logger.cpp)
 
+add_dependencies(dragent sdjagent sdjagentjni)
+
 target_link_libraries(dragent
 	pthread
 	sanalyzer
@@ -50,6 +52,9 @@ file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
 
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dragent.default.yaml
+          DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 install(TARGETS dragent 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
