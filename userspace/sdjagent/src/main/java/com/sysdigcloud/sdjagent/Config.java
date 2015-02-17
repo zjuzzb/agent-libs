@@ -43,7 +43,7 @@ public class Config {
                 break;
             }
         }
-        
+
         if(conf_file == null)
         {
             throw new FileNotFoundException("Cannot find configuration file in any default path");

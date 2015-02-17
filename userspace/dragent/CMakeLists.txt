@@ -52,7 +52,7 @@ file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
 
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-	
+
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dragent.default.yaml
           DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

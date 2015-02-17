@@ -71,6 +71,7 @@ public:
 	void send_get_metrics(uint64_t id);
 	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
 
+	bool m_print_json;
 private:
 	// Input and output of the subprocess
 	// so we'll write on input and read from

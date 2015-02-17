@@ -70,8 +70,9 @@ void java_process::to_protobuf(draiosproto::java_info *protobuf) const
 }
 
 jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
-	m_input_fd(fds.first),
-	m_output_fd(fds.second)
+		m_print_json(false),
+		m_input_fd(fds.first),
+		m_output_fd(fds.second)
 {
 }
 
@@ -112,7 +113,9 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 	if (json_data.size() > 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
-		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
+		if(m_print_json) {
+			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
+		}
 		Json::Value json_obj;
 		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
 		if(parse_ok)

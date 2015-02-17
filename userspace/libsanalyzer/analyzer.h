@@ -199,9 +199,10 @@ public:
 		m_is_sampling = is_sampling;
 	}
 	
-	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds)
+	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
 	{
 		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
+		m_jmx_proxy->m_print_json = print_json;
 	}
 
 	void set_jmx_sampling(unsigned int value)
