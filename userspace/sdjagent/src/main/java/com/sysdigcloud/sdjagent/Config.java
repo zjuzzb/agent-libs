@@ -3,6 +3,7 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 
@@ -47,7 +48,7 @@ public class Config {
                 defaultBeanQueries.add(mapper.convertValue(bean, BeanQuery.class));
             } catch (IllegalArgumentException ex) {
                 Map<String, Object> beanAsMap = mapper.convertValue(bean, Map.class);
-                LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query"));
+                LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
             }
         }
 
@@ -70,7 +71,7 @@ public class Config {
                     } catch (IllegalArgumentException ex)
                     {
                         Map<String, Object> beanAsMap = mapper.convertValue(beanQuery, Map.class);
-                        LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query"));
+                        LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
                     }
                 }
                 process.queries = beanQueryList;
@@ -114,17 +115,17 @@ public class Config {
 
     public static class BeanQuery {
         private ObjectName objectName;
-        private String[] attributes;
+        private BeanAttribute[] attributes;
 
         @JsonCreator
         @SuppressWarnings("unused")
-        private BeanQuery(@JsonProperty("query") String query, @JsonProperty("attributes") String[] attributes) throws
+        private BeanQuery(@JsonProperty("query") String query, @JsonProperty("attributes") BeanAttribute[] attributes) throws
                 MalformedObjectNameException {
             this.objectName = new ObjectName(query);
             this.attributes = attributes;
         }
 
-        public String[] getAttributes() {
+        public BeanAttribute[] getAttributes() {
             return attributes;
         }
 
@@ -133,5 +134,33 @@ public class Config {
             return objectName;
         }
 
+    }
+
+    public static class BeanAttribute {
+        public static enum Type {
+            counter, rate
+        }
+        private String name;
+        private Type type;
+
+        @JsonCreator
+        @SuppressWarnings("unused")
+        private BeanAttribute(JsonNode data) {
+            if(data.isTextual()) {
+                this.name = data.textValue();
+                this.type = Type.rate;
+            } else if (data.isObject()) {
+                this.name = data.get("name").textValue();
+                this.type = Type.valueOf(data.get("type").textValue());
+            }
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Type getType() {
+            return type;
+        }
     }
 }

@@ -207,13 +207,20 @@ public class MonitoredVM {
 
                 for (BeanInstance bean : matchingBeans) {
                     try {
-                        final AttributeList attributes_list = mbs.getAttributes(bean.getName(), bean.getAttributes());
-                        metrics.add(new BeanData(bean.getName(), attributes_list));
+                        if (bean.hasLastSample())
+                        {
+                            bean.retrieveMetrics(mbs);
+                            metrics.add(bean.lastSample);
+                        } else {
+                            // Don't send the first example because counter are not usable
+                            bean.retrieveMetrics(mbs);
+                        }
                     } catch (InstanceNotFoundException e) {
                         LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
                         lastBeanRefresh = 0;
                     } catch (ReflectionException e) {
                         LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getName().getCanonicalName(), pid));
+                        lastBeanRefresh = 0;
                     }
                 }
             } catch (IOException ex) {
@@ -313,19 +320,53 @@ public class MonitoredVM {
 
     static private class BeanInstance {
         ObjectName name;
-        String[] attributes;
+        Map<String, Config.BeanAttribute> attributesDesc;
+        String[] attributeNames;
+        BeanData lastSample;
 
-        public BeanInstance(ObjectName name, String[] attributes) {
+        private BeanInstance(ObjectName name, Config.BeanAttribute[] attributes) {
             this.name = name;
-            this.attributes = attributes;
+            this.attributeNames = new String[attributes.length];
+            this.attributesDesc = new HashMap<String, Config.BeanAttribute>(attributes.length);
+
+            for(int j = 0; j < attributes.length; ++j) {
+                Config.BeanAttribute attributeDesc = attributes[j];
+                attributeNames[j] = attributeDesc.getName();
+                attributesDesc.put(attributeDesc.getName(), attributeDesc);
+            }
         }
 
-        public String[] getAttributes() {
-            return attributes;
+        private boolean hasLastSample() {
+            return lastSample != null;
         }
 
-        public ObjectName getName() {
+        private BeanData getLastSample() {
+            return lastSample;
+        }
+
+        private ObjectName getName() {
             return name;
+        }
+
+        private void retrieveMetrics(MBeanServerConnection mbs) throws IOException, InstanceNotFoundException, ReflectionException {
+            BeanData newSample = new BeanData(name);
+            AttributeList attributeValues = mbs.getAttributes(name, attributeNames);
+            for (Attribute attribute : attributeValues.asList()) {
+                if (attribute == null)
+                {
+                    LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
+                    continue;
+                }
+                if (attributesDesc.get(attribute.getName()).getType() == Config.BeanAttribute.Type.counter &&
+                        lastSample != null) {
+                    // Counters are supported only for simple attributes right now
+                        final Object lastSampleValue = lastSample.getAttributes().get(attribute.getName());
+                        newSample.addCounterAttribute(attribute.getName(), attribute.getValue(), lastSampleValue);
+                } else {
+                    newSample.addAttribute(attribute.getName(), attribute.getValue());
+                }
+            }
+            lastSample = newSample;
         }
     }
 }

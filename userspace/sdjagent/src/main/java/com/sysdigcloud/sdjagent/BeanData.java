@@ -1,11 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import javax.management.Attribute;
 import javax.management.AttributeList;
-import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import java.util.LinkedHashMap;
@@ -32,13 +28,6 @@ public class BeanData {
         return attributes;
     }
 
-    @JsonCreator
-    @SuppressWarnings("unused")
-    private BeanData(@JsonProperty("name") String name, @JsonProperty("attributes") Map<String, Object> attributes) {
-        this.name = name;
-        this.attributes = attributes;
-    }
-
     public BeanData(ObjectName beanInstance, AttributeList attribute_values) {
         this.name = beanInstance.getCanonicalName();
         this.attributes = new LinkedHashMap<String, Object>();
@@ -49,31 +38,46 @@ public class BeanData {
                 LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
                 continue;
             }
-            Object attribute_value = attributeObj.getValue();
-            if (attribute_value instanceof CompositeData) {
-                CompositeData compositeData = (CompositeData) attribute_value;
-                Map<String, Double> subattributes = new LinkedHashMap<String, Double>();
-                for ( String key : compositeData.getCompositeType().keySet())
-                {
-                    try {
-                        subattributes.put(key, getValueAsDouble(compositeData.get(key)));
-                    }
-                    catch ( NumberFormatException ex)
-                    {
-                        // Skip the field in this case
-                    }
-                }
-                this.attributes.put(attributeObj.getName(), subattributes);
-            }
-            else {
+            addAttribute(attributeObj.getName(), attributeObj.getValue());
+        }
+    }
+
+    public BeanData(ObjectName beanInstance) {
+        this.name = beanInstance.getCanonicalName();
+        this.attributes = new LinkedHashMap<String, Object>();
+    }
+
+    public void addAttribute(String name, Object attribute_value) {
+        if (attribute_value instanceof CompositeData) {
+            CompositeData compositeData = (CompositeData) attribute_value;
+            Map<String, Double> subattributes = new LinkedHashMap<String, Double>();
+            for ( String key : compositeData.getCompositeType().keySet())
+            {
                 try {
-                    this.attributes.put(attributeObj.getName(), getValueAsDouble(attribute_value));
-                } catch (NumberFormatException ex)
-                {
-                    // Skip the value
+                    subattributes.put(key, getValueAsDouble(compositeData.get(key)));
                 }
+                catch ( NumberFormatException ex)
+                {
+                    // Skip the field in this case
+                }
+            }
+            this.attributes.put(name, subattributes);
+        }
+        else {
+            try {
+                this.attributes.put(name, getValueAsDouble(attribute_value));
+            } catch (NumberFormatException ex)
+            {
+                // Skip the value
             }
         }
+    }
+
+    public void addCounterAttribute(String name, Object newValue, Object oldValue) {
+        double oldValueDouble = getValueAsDouble(oldValue);
+        double newValueDouble = getValueAsDouble(newValue);
+        Double diff = newValueDouble - oldValueDouble;
+        attributes.put(name, diff);
     }
 
     private static double getValueAsDouble(Object value) {
