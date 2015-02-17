@@ -1,6 +1,7 @@
 #pragma once
 
 #include <analyzer_int.h>
+#include <memory>
 #include "jmx_proxy.h"
 
 //

@@ -1,4 +1,8 @@
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "analyzer_int.h"
 #include "jmx_proxy.h"
+
 #include <unistd.h>
 #include "logger.h"
 #include "fcntl.h"
