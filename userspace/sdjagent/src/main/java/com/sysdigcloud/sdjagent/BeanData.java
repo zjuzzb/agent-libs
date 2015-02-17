@@ -1,7 +1,5 @@
 package com.sysdigcloud.sdjagent;
 
-import javax.management.Attribute;
-import javax.management.AttributeList;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import java.util.LinkedHashMap;
@@ -28,6 +26,7 @@ public class BeanData {
         return attributes;
     }
 
+    /*
     public BeanData(ObjectName beanInstance, AttributeList attribute_values) {
         this.name = beanInstance.getCanonicalName();
         this.attributes = new LinkedHashMap<String, Object>();
@@ -40,7 +39,7 @@ public class BeanData {
             }
             addAttribute(attributeObj.getName(), attributeObj.getValue());
         }
-    }
+    }*/
 
     public BeanData(ObjectName beanInstance) {
         this.name = beanInstance.getCanonicalName();

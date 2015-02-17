@@ -210,7 +210,7 @@ public class MonitoredVM {
                         if (bean.hasLastSample())
                         {
                             bean.retrieveMetrics(mbs);
-                            metrics.add(bean.lastSample);
+                            metrics.add(bean.getLastSample());
                         } else {
                             // Don't send the first example because counter are not usable
                             bean.retrieveMetrics(mbs);
@@ -319,10 +319,10 @@ public class MonitoredVM {
     }*/
 
     static private class BeanInstance {
-        ObjectName name;
-        Map<String, Config.BeanAttribute> attributesDesc;
-        String[] attributeNames;
-        BeanData lastSample;
+        private ObjectName name;
+        private Map<String, Config.BeanAttribute> attributesDesc;
+        private String[] attributeNames;
+        private BeanData lastSample;
 
         private BeanInstance(ObjectName name, Config.BeanAttribute[] attributes) {
             this.name = name;
