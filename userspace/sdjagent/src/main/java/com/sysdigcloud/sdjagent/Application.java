@@ -42,6 +42,7 @@ public class Application {
 
         try {
             Application app = new Application();
+            LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
             app.mainLoop();
         } catch (IOException ex) {
             LOGGER.severe("IOException on main thread: " + ex.getMessage());
