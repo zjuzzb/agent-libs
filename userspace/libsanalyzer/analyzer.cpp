@@ -96,6 +96,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_system_cpuload = 0;
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
+	m_die = false;
 
 	inspector->m_max_n_proc_lookups = 300;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -117,6 +118,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
 	m_jmx_sampling = 1;
+
+	m_protocols_enabled = true;
+	m_remotefs_enabled = false;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -461,7 +465,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload);
 	}
 
 	if(m_configuration->get_emit_metrics_to_file())
@@ -476,9 +480,10 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", sr=%" PRIu32,
+			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
+			m_my_cpuload,
 			m_sampling_ratio);
 
 		if(!buf)
@@ -784,11 +789,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	//
+	///////////////////////////////////////////////////////////////////////////
 	// Propagate the memory information from child thread to main thread:
 	// since memory is updated at context-switch intervals, it can happen
 	// that the "main" thread stays mostly idle, without getting memory events then
-	//
+	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -1243,8 +1248,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 					// Protocol tables
 					//
-					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
-						m_sampling_ratio);
+//					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
+//						m_sampling_ratio);
 
 #if 1
 					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
@@ -1327,7 +1332,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Has this thread been closed druring this sample?
 		//
-		if(tinfo->m_flags & PPM_CL_CLOSED)
+		bool force_close = false;
+		bool is_inactive_thread = ((tinfo->m_flags & PPM_CL_ACTIVE) == 0);
+		if(is_inactive_thread && evt != NULL)
+		{
+			uint64_t lifetime = evt->get_ts() - tinfo->m_clone_ts;
+			if(lifetime > ONE_SECOND_IN_NS)
+			{
+				force_close = true;
+			}
+		}
+
+		if(tinfo->m_flags & PPM_CL_CLOSED || force_close)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -2007,11 +2023,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				gettimeofday(&tv, NULL);
 				uint64_t wall_time = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000;
 
-				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000)
+				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || !m_inspector->is_live())
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, 
-						"sample emission too fast (%" PRId64 "), skipping scanning proc",
-						(int64_t)(wall_time - m_prev_flush_wall_time));
+					if(m_inspector->is_live())
+					{
+						g_logger.format(sinsp_logger::SEV_ERROR, 
+							"sample emission too fast (%" PRId64 "), skipping scanning proc",
+							(int64_t)(wall_time - m_prev_flush_wall_time));
+					}
 
 					m_skip_proc_parsing = true;
 				}
@@ -2228,8 +2247,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			int64_t used_swap;
 			m_procfs_parser->get_global_mem_usage_kb(&used_memory, &used_swap);
 
-			m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-				m_sampling_ratio);
+			if(m_protocols_enabled)
+			{
+				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
+						m_sampling_ratio);
+			}
 
 			//
 			// host info
@@ -2246,7 +2268,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
 			vector<sinsp_procfs_parser::mounted_fs> fs_list;
-			m_procfs_parser->get_mounted_fs_list(&fs_list);
+			m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
 			for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
 				it != fs_list.end(); ++it)
 			{
@@ -2406,6 +2428,31 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Clear the executed command list
 	//
 	m_executed_commands.clear();
+	
+	//
+	// If there were tid collisions report them in the log and then clear the list
+	//
+	if(m_inspector->m_tid_collisions.size() != 0)
+	{
+		string tcb;
+
+		for(j = 0; j < MIN(m_inspector->m_tid_collisions.size(), 16); j++)
+		{
+			tcb += to_string(m_inspector->m_tid_collisions[j]);
+			tcb += " ";
+		}
+
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"%d TID collisions (%s)", (int)m_inspector->m_tid_collisions.size(),
+			tcb.c_str());
+
+		if(m_inspector->m_tid_collisions.size() >= MAX_TID_COLLISIONS_IN_SAMPLE)
+		{
+			m_die = true;
+		}
+
+		m_inspector->m_tid_collisions.clear();
+	}
 
 	//
 	// Run the periodic connection and thread table cleanup

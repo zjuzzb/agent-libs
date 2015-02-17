@@ -27,10 +27,10 @@ const char* sinsp_mongodb_parser::commands[] = {
 	"delete",
 	"count",
 	"distinct",
-	"mapReduce",
-	"geoNear",
-	"geoSearch",
-	"findAndModify",
+	"mapreduce",
+	"geonear",
+	"geosearch",
+	"findandmodify",
 };
 
 const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
@@ -41,10 +41,10 @@ const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
 	sizeof("delete"),
 	sizeof("count"),
 	sizeof("distinct"),
-	sizeof("mapReduce"),
-	sizeof("geoNear"),
-	sizeof("geoSearch"),
-	sizeof("findAndModify")
+	sizeof("mapreduce"),
+	sizeof("geonear"),
+	sizeof("geosearch"),
+	sizeof("findandmodify")
 };
 
 const sinsp_mongodb_parser::opcode sinsp_mongodb_parser::commands_to_opcode[] =
@@ -185,10 +185,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					// |    4        |  1 | var  |1|     4       | var      |1|
 
 					// Extract command
-					uint32_t *command = (uint32_t*)(doc+5);
+					uint32_t command = *(uint32_t*)(doc+5) | 0x20202020;
 					for(unsigned int j=0; j < commands_size; ++j)
 					{
-						if (*command == *(uint32_t*)(commands[j]))
+						if (command == *(uint32_t*)(commands[j]))
 						{
 							m_opcode = commands_to_opcode[j];
 							start_collection = doc+5+commands_sizes_map[j]+4;

@@ -173,4 +173,6 @@ private:
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_jmx_pipes;
+
+	friend class dragent_app;
 };

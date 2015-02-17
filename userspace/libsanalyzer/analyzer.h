@@ -9,7 +9,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -198,7 +198,7 @@ public:
 	{
 		m_is_sampling = is_sampling;
 	}
-
+	
 	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds)
 	{
 		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
@@ -207,6 +207,16 @@ public:
 	void set_jmx_sampling(unsigned int value)
 	{
 		m_jmx_sampling = value;
+	}
+
+	void set_protocols_enabled(bool value)
+	{
+		m_protocols_enabled = value;
+	}
+
+	void set_remotefs_enabled(bool value)
+	{
+		m_remotefs_enabled = value;
 	}
 
 VISIBILITY_PRIVATE
@@ -291,6 +301,8 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
+	bool m_protocols_enabled;
+	bool m_remotefs_enabled;
 
 	//
 	// The scheduler analyzer
@@ -356,6 +368,12 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 
+	//
+	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
+	//
+	bool m_die;
+
+	friend class dragent_app;
 	friend class sinsp_transaction_table;
 	friend class sinsp_scores;
 	friend class sinsp_sched_analyzer2;

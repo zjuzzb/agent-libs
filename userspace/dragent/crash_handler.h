@@ -24,6 +24,8 @@ public:
 	static void log_crashdump_message(const char* message);
 
 private:
+	static void log_crashdump_message(int fd, const char* message);
+
 	static const int NUM_FRAMES = 20;
 	static string m_crashdump_file;
 	static const sinsp_worker* m_sinsp_worker;

@@ -158,6 +158,11 @@
 #define MIN_VALID_PROTO_BUF_SIZE 5
 
 //
+// Number of TID collisions in a sample that causes the program to restart
+//
+#define MAX_TID_COLLISIONS_IN_SAMPLE 64
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

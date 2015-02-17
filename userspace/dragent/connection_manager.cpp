@@ -7,6 +7,8 @@
 #include "update_worker.h"
 
 const string connection_manager::m_name = "connection_manager";
+const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
+const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(300);
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
@@ -17,7 +19,8 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_configuration(configuration),
 	m_queue(queue),
 	m_sinsp_worker(sinsp_worker),
-	m_last_loop_ns(0)
+	m_last_loop_ns(0),
+	m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();	
 }
@@ -121,10 +124,26 @@ bool connection_manager::connect()
 		disconnect();
 		return false;
 	}
+	catch(Poco::TimeoutException& e)
+	{
+		g_log->error(m_name + ": " + e.displayText());
+		disconnect();
+		return false;
+	}
+	return false;
 }
 
 void connection_manager::disconnect()
 {
+	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
+	{
+		m_reconnect_interval = 1;
+	}
+	else
+	{
+		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval*2), RECONNECT_MAX_INTERVAL_S);
+	}
+
 	if(!m_socket.isNull())
 	{
 		m_socket->close();
@@ -152,8 +171,19 @@ void connection_manager::run()
 			//
 			if(m_socket.isNull())
 			{
-				Thread::sleep(1000);
-				
+				g_log->information(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
+				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
+				{
+					m_last_loop_ns = dragent_configuration::get_current_time_ns();
+					Thread::sleep(1000);
+				}
+
+				if(dragent_configuration::m_terminate)
+				{
+					break;
+				}
+				m_last_connection_failure = chrono::system_clock::now();
+
 				if(!connect())
 				{
 					continue;

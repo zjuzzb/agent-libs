@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\chisel_api.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\container.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\cyclewriter.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\dumper.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\event.cpp" />

@@ -13,7 +13,7 @@ public:
 	sinsp_data_handler(dragent_configuration* configuration, 
 		connection_manager* connection_manager, protocol_queue* queue);
 
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio);
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct);
 	
 private:
 	dragent_configuration* m_configuration;
