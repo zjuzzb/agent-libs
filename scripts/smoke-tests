@@ -9,21 +9,27 @@ function smoke_tests {
 	cat /opt/draios/bin/dragent.properties | grep "access_key"
 
 	echo "watchdog.enabled = false" >> /opt/draios/bin/dragent.properties
+	echo "protobuf.print = true" >> /opt/draios/bin/dragent.properties
+
 	cp /opt/draios/bin/dragent.properties /opt/draios/bin/dragent.properties.bak
 
 	# The agent should be running after the installation script	
 	sleep 2
 	test -e /var/run/dragent.pid
 	service dragent status
-	MONITOR_PID=$(cat /var/run/dragent.pid)
-	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
 
 	# The agent should be sucessfully connected to app.draios.com
 	cat /opt/draios/logs/* | grep "SSL identity verified"
 
+	# Restart so that protobuf.print is in place
+	service dragent restart
+	sleep 5
+
+	MONITOR_PID=$(cat /var/run/dragent.pid)
+	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
+
 	# The agent should correctly detect Java
 	cat /opt/draios/logs/* | grep "Java detected"
-	cat /opt/draios/logs/* | grep "Found JMX metrics for pid"
 	cat /opt/draios/logs/* | grep "HeapMemoryUsage"
 
 	# The agent should restart if it dies unexpectedly
