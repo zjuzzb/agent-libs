@@ -183,6 +183,10 @@ elif [ -f /etc/system-release-cpe ]; then
 
 	esac
 
+else
+	unsupported
+fi
+
 echo "* Setting access key"
 
 if ! grep ^customerid /opt/draios/bin/dragent.properties > /dev/null 2>&1; then
