@@ -207,13 +207,10 @@ public class MonitoredVM {
 
                 for (BeanInstance bean : matchingBeans) {
                     try {
-                        if (bean.hasLastSample())
+                        BeanData beanMetrics = bean.retrieveMetrics(mbs);
+                        if (!beanMetrics.getAttributes().isEmpty())
                         {
-                            bean.retrieveMetrics(mbs);
-                            metrics.add(bean.getLastSample());
-                        } else {
-                            // Don't send the first example because counter are not usable
-                            bean.retrieveMetrics(mbs);
+                            metrics.add(beanMetrics);
                         }
                     } catch (InstanceNotFoundException e) {
                         LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
@@ -322,12 +319,13 @@ public class MonitoredVM {
         private ObjectName name;
         private Map<String, Config.BeanAttribute> attributesDesc;
         private String[] attributeNames;
-        private BeanData lastSample;
+        private Map<String, Double> counterSamples;
 
         private BeanInstance(ObjectName name, Config.BeanAttribute[] attributes) {
             this.name = name;
             this.attributeNames = new String[attributes.length];
             this.attributesDesc = new HashMap<String, Config.BeanAttribute>(attributes.length);
+            this.counterSamples = new HashMap<String, Double>();
 
             for(int j = 0; j < attributes.length; ++j) {
                 Config.BeanAttribute attributeDesc = attributes[j];
@@ -336,19 +334,11 @@ public class MonitoredVM {
             }
         }
 
-        private boolean hasLastSample() {
-            return lastSample != null;
-        }
-
-        private BeanData getLastSample() {
-            return lastSample;
-        }
-
         private ObjectName getName() {
             return name;
         }
 
-        private void retrieveMetrics(MBeanServerConnection mbs) throws IOException, InstanceNotFoundException, ReflectionException {
+        private BeanData retrieveMetrics(MBeanServerConnection mbs) throws IOException, InstanceNotFoundException, ReflectionException {
             BeanData newSample = new BeanData(name);
             AttributeList attributeValues = mbs.getAttributes(name, attributeNames);
             for (Attribute attribute : attributeValues.asList()) {
@@ -357,16 +347,21 @@ public class MonitoredVM {
                     LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
                     continue;
                 }
-                if (attributesDesc.get(attribute.getName()).getType() == Config.BeanAttribute.Type.counter &&
-                        lastSample != null) {
-                    // Counters are supported only for simple attributes right now
-                        final Object lastSampleValue = lastSample.getAttributes().get(attribute.getName());
-                        newSample.addCounterAttribute(attribute.getName(), attribute.getValue(), lastSampleValue);
+                if (attributesDesc.get(attribute.getName()).getType() == Config.BeanAttribute.Type.counter) {
+                    // TODO: Counters are supported only for simple attributes right now
+                    Double lastAbsoluteValue = counterSamples.get(attribute.getName());
+                    Double newAbsoluteValue = BeanData.parseValueAsDouble(attribute.getValue());
+
+                    if (lastAbsoluteValue != null) {
+                        newSample.addAttribute(attribute.getName(), lastAbsoluteValue-newAbsoluteValue);
+                    }
+
+                    counterSamples.put(attribute.getName(), newAbsoluteValue);
                 } else {
                     newSample.addAttribute(attribute.getName(), attribute.getValue());
                 }
             }
-            lastSample = newSample;
+            return newSample;
         }
     }
 }

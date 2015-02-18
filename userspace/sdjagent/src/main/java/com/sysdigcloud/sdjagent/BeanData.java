@@ -53,7 +53,7 @@ public class BeanData {
             for ( String key : compositeData.getCompositeType().keySet())
             {
                 try {
-                    subattributes.put(key, getValueAsDouble(compositeData.get(key)));
+                    subattributes.put(key, parseValueAsDouble(compositeData.get(key)));
                 }
                 catch ( NumberFormatException ex)
                 {
@@ -64,7 +64,7 @@ public class BeanData {
         }
         else {
             try {
-                this.attributes.put(name, getValueAsDouble(attribute_value));
+                this.attributes.put(name, parseValueAsDouble(attribute_value));
             } catch (NumberFormatException ex)
             {
                 // Skip the value
@@ -72,14 +72,8 @@ public class BeanData {
         }
     }
 
-    public void addCounterAttribute(String name, Object newValue, Object oldValue) {
-        double oldValueDouble = getValueAsDouble(oldValue);
-        double newValueDouble = getValueAsDouble(newValue);
-        Double diff = newValueDouble - oldValueDouble;
-        attributes.put(name, diff);
-    }
-
-    private static double getValueAsDouble(Object value) {
+    // TODO: May be exported to an util class
+    public static double parseValueAsDouble(Object value) {
         if (value instanceof String) {
             return Double.parseDouble((String) value);
         } else if (value instanceof Integer) {
