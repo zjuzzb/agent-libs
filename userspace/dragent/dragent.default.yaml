@@ -10,14 +10,10 @@ jmx:
           type: counter
         - name: CollectionTime
           type: counter
-        - LastGcInfo
     - query: "java.lang:type=ClassLoading"
       attributes:
         - LoadedClassCount
         - UnloadedClassCount
-    - query: "java.lang:type=MemoryPool,name=CMS Perm Gen"
-      attributes:
-        - Usage
     - query: "java.lang:type=Threading"
       attributes:
         - ThreadCount
