@@ -3,6 +3,7 @@ FROM debian:wheezy
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
 ENV REPO cgroups
+ENV SYSDIG_HOST_ROOT /host
 
 RUN apt-get update \
  && apt-get install -y curl
