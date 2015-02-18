@@ -78,6 +78,7 @@ public:
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
+	uint16_t m_jmx_sampling;
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
 

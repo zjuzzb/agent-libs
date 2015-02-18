@@ -74,3 +74,8 @@ dependencies/
 build/
 
 metrics
+
+# sdjagent stuff
+.idea
+sdjagent.iml
+userspace/sdjagent/target

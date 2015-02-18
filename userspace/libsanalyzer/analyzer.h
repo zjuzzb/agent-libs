@@ -3,6 +3,8 @@
 #include <analyzer_int.h>
 #include <delays.h>
 #include <container_analyzer.h>
+#include <memory>
+#include "jmx_proxy.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -199,6 +201,17 @@ public:
 	{
 		m_is_sampling = is_sampling;
 	}
+	
+	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
+	{
+		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
+		m_jmx_proxy->m_print_json = print_json;
+	}
+
+	void set_jmx_sampling(unsigned int value)
+	{
+		m_jmx_sampling = value;
+	}
 
 	void set_protocols_enabled(bool value)
 	{
@@ -356,6 +369,11 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+
+	// JMX proxy
+	shared_ptr<jmx_proxy> m_jmx_proxy;
+	unsigned int m_jmx_sampling;
+	unordered_map<int, java_process> m_jmx_metrics;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

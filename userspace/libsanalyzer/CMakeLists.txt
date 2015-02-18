@@ -47,7 +47,8 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp)
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
+	jmx_proxy.cpp)
 
 target_link_libraries(sanalyzer
 	scap 

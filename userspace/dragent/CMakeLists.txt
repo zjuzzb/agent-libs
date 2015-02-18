@@ -24,7 +24,10 @@ add_executable(dragent
 	sinsp_data_handler.cpp
 	sinsp_worker.cpp
 	ssh_worker.cpp
-	update_worker.cpp)
+	update_worker.cpp
+	sdjagent_logger.cpp)
+
+add_dependencies(dragent sdjagent sdjagentjni)
 
 target_link_libraries(dragent
 	pthread
@@ -50,6 +53,9 @@ file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dragent.default.yaml
+          DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 install(TARGETS dragent 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
@@ -57,5 +63,7 @@ install(TARGETS dragent
 install(FILES root.cert 
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
-
+install(FILES dragent.default.yaml
+	DESTINATION ${DRAIOS_BIN_PREFIX}/etc
+	COMPONENT agent)
 configure_file(config.h.in config.h)

@@ -112,6 +112,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+	m_jmx_sampling = 1;
 
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
@@ -714,6 +715,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 
+	// Get metrics from JMX until we found id 0 or timestamp-1
+	// with id 0, means that sdjagent is not working or metrics are not ready
+	// id = timestamp-1 are what we need now
+	if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
+	{
+		pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
+		do
+		{
+			jmx_metrics = m_jmx_proxy->read_metrics();
+		}
+		while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
+		m_jmx_metrics = jmx_metrics.second;
+	}
+
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -966,7 +981,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	///////////////////////////////////////////////////////////////////////////
-	// Second pass of the list of threads: aggreagate threads into processes 
+	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
@@ -1122,6 +1137,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 
 				proc->set_netrole(netrole);
+
+				// Add JMX metrics
+				if (m_jmx_proxy && m_jmx_metrics.find(tinfo->m_pid) != m_jmx_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+					const java_process& java_process_data = m_jmx_metrics.at(tinfo->m_pid);
+					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
+					java_process_data.to_protobuf(java_proto);
+				}
 
 				//
 				// CPU utilization
@@ -1377,6 +1401,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		m_old_global_total_jiffies = cur_global_total_jiffies;
+	}
+	
+	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
+	{
+		m_jmx_metrics.clear();
+		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns);
 	}
 }
 

@@ -3,6 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
+#include "sdjagent_logger.h"
 
 class captureinfo
 {
@@ -64,6 +65,11 @@ public:
 	const sinsp* get_inspector() const
 	{
 		return m_inspector;
+	}
+
+	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
+	{
+		m_jmx_pipes = jmx_pipes;
 	}
 
 private:
@@ -165,6 +171,7 @@ private:
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
+	shared_ptr<pipe_manager> m_jmx_pipes;
 
 	friend class dragent_app;
 };

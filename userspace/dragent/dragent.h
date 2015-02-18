@@ -15,6 +15,7 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
+#include "sdjagent_logger.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
@@ -44,6 +45,8 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
+	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<sdjagent_logger> m_jmx_controller;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 };

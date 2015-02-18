@@ -35,6 +35,12 @@ void sinsp_worker::init()
 {
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
+
+	if (m_jmx_pipes)
+	{
+		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds(), m_configuration->m_print_protobuf);
+		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
+	}
 	m_inspector->m_analyzer = m_analyzer;
 
 	//
