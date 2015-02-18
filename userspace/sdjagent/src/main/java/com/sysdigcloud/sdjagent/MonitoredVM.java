@@ -353,7 +353,7 @@ public class MonitoredVM {
                     Double newAbsoluteValue = BeanData.parseValueAsDouble(attribute.getValue());
 
                     if (lastAbsoluteValue != null) {
-                        newSample.addAttribute(attribute.getName(), lastAbsoluteValue-newAbsoluteValue);
+                        newSample.addAttribute(attribute.getName(), newAbsoluteValue-lastAbsoluteValue);
                     }
 
                     counterSamples.put(attribute.getName(), newAbsoluteValue);
