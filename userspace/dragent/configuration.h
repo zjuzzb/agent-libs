@@ -41,7 +41,6 @@ public:
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
 
-	bool m_daemon;
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
 	string m_root_dir;

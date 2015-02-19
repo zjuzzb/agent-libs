@@ -23,7 +23,6 @@ static std::string bool_as_text(bool b)
 
 dragent_configuration::dragent_configuration()
 {
-	m_daemon = false;
 	m_server_port = 0;
 	m_transmitbuffer_size = 0;
 	m_ssl_enabled = false;
@@ -80,26 +79,10 @@ Message::Priority dragent_configuration::string_to_priority(const string& priost
 
 void dragent_configuration::init(Application* app)
 {
-	LayeredConfiguration& config = app->config();
-
 	m_machine_id = Environment::nodeId();
 
-	Path configuration_file = Poco::Path::forDirectory(config.getString("application.dir"));
-
-	configuration_file.setFileName("dragent.properties");
-
-	try
-	{
-		app->loadConfiguration(configuration_file.toString()); 
-	}
-	catch(...)
-	{
-
-	}
-
-	m_daemon = config.getBool("application.runAsDaemon", false);
-
-	if(m_daemon)
+	File package_dir("/opt/draios");
+	if(package_dir.exists())
 	{
 		m_root_dir = "/opt/draios";
 	}
@@ -107,6 +90,16 @@ void dragent_configuration::init(Application* app)
 	{
 		m_root_dir = Path::current();
 	}
+
+	try
+	{
+		app->loadConfiguration(Path(m_root_dir).append("dragent.properties").toString()); 
+	}
+	catch(...)
+	{
+	}
+
+	LayeredConfiguration& config = app->config();
 
 	m_root_dir = config.getString("rootdir", m_root_dir);
 
