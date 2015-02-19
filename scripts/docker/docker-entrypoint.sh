@@ -21,4 +21,6 @@ if [ ! -z "$TAGS" ]; then
 	fi
 fi
 
+/opt/draios/bin/sysdig-probe-install
+
 exec "$@"
