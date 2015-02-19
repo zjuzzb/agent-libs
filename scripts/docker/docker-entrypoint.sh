@@ -21,6 +21,12 @@ if [ ! -z "$TAGS" ]; then
 	fi
 fi
 
-/opt/draios/bin/sysdig-probe-install
+if [ $# -eq 0 ]; then
+	if ! /opt/draios/bin/sysdig-probe-installer; then
+		exit 1
+	fi
 
-exec "$@"
+	exec /opt/draios/bin/dragent
+else
+	exec "$@"
+fi
