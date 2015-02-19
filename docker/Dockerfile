@@ -3,7 +3,7 @@ FROM debian:wheezy
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
 ENV REPO cgroups
-ENV AGENT_VERSION 0.99.33
+ENV AGENT_VERSION 0.99.35
 ENV SYSDIG_VERSION 0.99.35
 
 ENV SYSDIG_HOST_ROOT /host
