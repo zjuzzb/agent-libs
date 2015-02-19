@@ -3,8 +3,8 @@ FROM debian:wheezy
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
 ENV REPO cgroups
-ENV AGENT_VERSION 0.99.31
-ENV SYSDIG_VERSION 0.99.34
+ENV AGENT_VERSION 0.99.33
+ENV SYSDIG_VERSION 0.99.35
 
 ENV SYSDIG_HOST_ROOT /host
 
@@ -21,5 +21,3 @@ RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public |
 COPY ./docker-entrypoint.sh /
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-
-CMD ["/opt/draios/bin/dragent"]
