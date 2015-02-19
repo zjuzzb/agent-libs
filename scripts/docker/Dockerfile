@@ -3,8 +3,8 @@ FROM debian:wheezy
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
 ENV REPO cgroups
-ENV AGENT_VERSION 0.99.29
-ENV SYSDIG_VERSION 0.99.32
+ENV AGENT_VERSION 0.99.31
+ENV SYSDIG_VERSION 0.99.34
 
 ENV SYSDIG_HOST_ROOT /host
 
@@ -16,7 +16,7 @@ RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public |
  && apt-get update \
  && apt-get install -y --no-install-recommends draios-agent=$AGENT_VERSION sysdig=$SYSDIG_VERSION \
  && apt-get clean \
- && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ && rm -rf /var/lib/apt/lists/*
 
 COPY ./docker-entrypoint.sh /
 
