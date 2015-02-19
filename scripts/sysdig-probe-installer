@@ -67,6 +67,6 @@ if curl --create-dirs -f -s -o ~/.sysdig/$SYSDIG_PROBE_FILENAME $URL; then
 	insmod ~/.sysdig/$SYSDIG_PROBE_FILENAME
 	exit $?
 else
-	echo "Download failed, consider compiling your own kernel module or getting in touch with the sysdig community"
+	echo "Download failed, consider compiling your own sysdig-probe and loading it or getting in touch with the sysdig community"
 	exit 1
 fi
