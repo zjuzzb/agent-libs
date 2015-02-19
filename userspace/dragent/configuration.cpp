@@ -85,15 +85,21 @@ void dragent_configuration::init(Application* app)
 	if(package_dir.exists())
 	{
 		m_root_dir = "/opt/draios";
+
+		//
+		// Get rid of this "bin" hack asap
+		//
+		m_conf_file = Path(m_root_dir).append("bin").append("dragent.properties").toString();
 	}
 	else
 	{
 		m_root_dir = Path::current();
+		m_conf_file = Path(m_root_dir).append("dragent.properties").toString();
 	}
 
 	try
 	{
-		app->loadConfiguration(Path(m_root_dir).append("dragent.properties").toString()); 
+		app->loadConfiguration(m_conf_file); 
 	}
 	catch(...)
 	{
@@ -179,6 +185,7 @@ void dragent_configuration::print_configuration()
 {
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("rootdir: " + m_root_dir);
+	g_log->information("conffile: " + m_conf_file);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
 	g_log->information("logfile.location: " + m_log_dir);
 	g_log->information("customerid: " + m_customer_id);

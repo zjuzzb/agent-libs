@@ -44,6 +44,7 @@ public:
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
 	string m_root_dir;
+	string m_conf_file;
 	string m_metrics_dir;
 	string m_log_dir;
 	string m_customer_id;
