@@ -102,6 +102,7 @@ public:
 	    AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 	    AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
 	    AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
+		AF_CMDLINE_UPDATED = (1 << 9)
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -116,6 +117,7 @@ public:
 	void flush_inactive_transactions(uint64_t sample_end_time, uint64_t timeout_ns, bool is_subsampling);
 	void add_completed_server_transaction(sinsp_partial_transaction* tr, bool isexternal);
 	void add_completed_client_transaction(sinsp_partial_transaction* tr, bool isexternal);
+
 	inline bool is_main_program_thread()
 	{
 		return (m_th_analysis_flags & AF_IS_MAIN_PROGRAM_THREAD) != 0;
@@ -130,6 +132,23 @@ public:
 		else
 		{
 			m_th_analysis_flags &= ~AF_IS_MAIN_PROGRAM_THREAD;
+		}
+	}
+
+	inline bool is_cmdline_updated()
+	{
+		return (m_th_analysis_flags & AF_CMDLINE_UPDATED) != 0;
+	}
+
+	inline void set_cmdline_update(bool value)
+	{
+		if(value)
+		{
+			m_th_analysis_flags |= AF_CMDLINE_UPDATED;
+		}
+		else
+		{
+			m_th_analysis_flags &= ~AF_CMDLINE_UPDATED;
 		}
 	}
 

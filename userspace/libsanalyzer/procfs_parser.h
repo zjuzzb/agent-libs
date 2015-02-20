@@ -37,6 +37,9 @@ public:
 	//
 	void get_tid_list(OUT set<uint64_t>* tids);
 
+	vector<string> read_process_cmdline(pid_t pid);
+	string read_process_name(pid_t pid);
+
 private:
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;

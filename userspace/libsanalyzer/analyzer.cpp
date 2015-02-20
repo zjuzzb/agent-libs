@@ -819,6 +819,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container = &m_containers[tinfo->m_container_id];
 		}
 
+		if(tinfo->is_main_thread() && !ainfo->is_cmdline_updated())
+		{
+			g_logger.log(string("Reading cmdline for pid: ") + to_string(tinfo->m_pid), sinsp_logger::SEV_DEBUG);
+			string proc_name = m_procfs_parser->read_process_name(tinfo->m_pid);
+			if(!proc_name.empty())
+			{
+				tinfo->m_comm = proc_name;
+			}
+			vector<string> proc_args = m_procfs_parser->read_process_cmdline(tinfo->m_pid);
+			if(!proc_args.empty())
+			{
+				tinfo->m_exe = proc_args.at(0);
+				tinfo->m_args.clear();
+				tinfo->m_args.insert(tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
+			}
+			ainfo->set_cmdline_update(true);
+		}
+
 		//
 		// Attribute the last pending event to this second
 		//
@@ -1358,7 +1376,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		//
-		// Has this thread been closed druring this sample?
+		// Has this thread been closed during this sample?
 		//
 		bool force_close = false;
 		bool is_inactive_thread = ((tinfo->m_flags & PPM_CL_ACTIVE) == 0);
