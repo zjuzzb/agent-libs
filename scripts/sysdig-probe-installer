@@ -13,6 +13,11 @@ if ! hash lsmod > /dev/null 2>&1; then
 	exit 1
 fi
 
+if ! hash modprobe > /dev/null 2>&1; then
+	echo "This program requires lsmod"
+	exit 1
+fi
+
 if ! hash curl > /dev/null 2>&1; then
 	echo "This program requires curl"
 	exit 1
@@ -25,6 +30,11 @@ fi
 
 if lsmod | grep sysdig_probe > /dev/null 2>&1; then
 	echo "sysdig-probe is already loaded"
+	exit 0
+fi
+
+if modprobe sysdig_probe > /dev/null 2>&1; then
+	echo "sysdig-probe found and loaded with modprobe"
 	exit 0
 fi
 
