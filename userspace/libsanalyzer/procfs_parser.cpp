@@ -541,7 +541,7 @@ vector<string> sinsp_procfs_parser::read_process_cmdline(pid_t pid)
 {
 	vector<string> args;
 	char filename[64];
-	snprintf(filename, 64, "/proc/%d/cmdline", pid);
+	snprintf(filename, 64, "%s/proc/%d/cmdline", scap_get_host_root(), pid);
 	ifstream cmdlineFile(filename);
 	while(cmdlineFile.good())
 	{
@@ -556,26 +556,26 @@ string sinsp_procfs_parser::read_process_name(pid_t pid)
 {
 	char name[20] = "";
 	char filename[252];
-	snprintf(filename, sizeof(filename), "/proc/%d/status", pid);
+	snprintf(filename, sizeof(filename), "%s/proc/%d/status", scap_get_host_root(), pid);
 
 	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
-		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_ERROR);
+		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_WARNING);
 	}
 	else
 	{
 		char line[100];
 		if(fgets(line, 100, f) == NULL)
 		{
-			g_logger.log(string("Cannot read from: ") + filename, sinsp_logger::SEV_ERROR);
+			g_logger.log(string("Cannot read from: ") + filename, sinsp_logger::SEV_WARNING);
 		}
 		else
 		{
 			line[100 - 1] = 0;
 			sscanf(line, "Name:%s", name);
 		}
+		fclose(f);
 	}
-	fclose(f);
 	return string(name);
 }
