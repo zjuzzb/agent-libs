@@ -6,7 +6,8 @@ REPOSITORY_NAME=$2
 BASEDIR=$(pwd)
 ARCH=$(uname -m)
 
-mkdir $BASEDIR/output || true
+rm -rf $BASEDIR/output || true
+mkdir $BASEDIR/output
 
 function build_sysdig {
 	if [ ! -f $SYSDIG_VERSION.tar.gz ]; then
@@ -21,7 +22,7 @@ function build_sysdig {
 	cmake -DCMAKE_BUILD_TYPE=Release -DSYSDIG_VERSION=$SYSDIG_VERSION ..
 	make driver
 	strip -g driver/sysdig-probe.ko
-	cp driver/sysdig-probe.ko $BASEDIR/output/sysdig-probe-0.99.39-$ARCH-$KERNEL_RELEASE-$HASH.ko
+	cp driver/sysdig-probe.ko $BASEDIR/output/sysdig-probe-0.99.41-$ARCH-$KERNEL_RELEASE-$HASH.ko
 	cd $BASEDIR
 }
 
