@@ -68,6 +68,8 @@ public:
 	void send_get_metrics(uint64_t id);
 	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
 
+	// This attribute is public because is simply a switch to print
+	// JSON on stdout, does not change object behaviour
 	bool m_print_json;
 private:
 	// Input and output of the subprocess
