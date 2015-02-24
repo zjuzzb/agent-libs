@@ -812,8 +812,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
-		sinsp_threadinfo* main_tinfo = tinfo->m_main_thread;
+		sinsp_threadinfo* main_tinfo;
+		if(tinfo->is_main_thread())
+		{
+			main_tinfo = tinfo;
+		}
+		else
+		{
+			main_tinfo = tinfo->m_main_thread;
+		}
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
+
 		analyzer_container_state* container = NULL;
 
 		if(!tinfo->m_container_id.empty())
@@ -945,7 +954,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		ASSERT(tinfo->m_program_hash != 0);
 
-		auto mtinfo = progtable.emplace(tinfo->m_main_thread->m_program_hash, &it->second).first->second;
+		auto mtinfo = progtable.emplace(main_tinfo->m_program_hash, &it->second).first->second;
 		if(mtinfo->m_tid == tinfo->m_tid)
 		{
 			ainfo->set_main_program_thread(true);
