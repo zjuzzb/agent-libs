@@ -812,6 +812,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
+		sinsp_threadinfo* main_tinfo = tinfo->m_main_thread;
+		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 		analyzer_container_state* container = NULL;
 
 		if(!tinfo->m_container_id.empty())
@@ -819,22 +821,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container = &m_containers[tinfo->m_container_id];
 		}
 
-		if(tinfo->is_main_thread() && !ainfo->is_cmdline_updated())
+		if(!main_ainfo->is_cmdline_updated())
 		{
-			g_logger.log(string("Reading cmdline for pid: ") + to_string(tinfo->m_pid), sinsp_logger::SEV_DEBUG);
-			string proc_name = m_procfs_parser->read_process_name(tinfo->m_pid);
+			g_logger.log(string("Reading cmdline for pid: ") + to_string(main_tinfo->m_pid), sinsp_logger::SEV_DEBUG);
+			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
 			{
-				tinfo->m_comm = proc_name;
+				main_tinfo->m_comm = proc_name;
 			}
-			vector<string> proc_args = m_procfs_parser->read_process_cmdline(tinfo->m_pid);
+			vector<string> proc_args = m_procfs_parser->read_process_cmdline(main_tinfo->m_pid);
 			if(!proc_args.empty())
 			{
-				tinfo->m_exe = proc_args.at(0);
-				tinfo->m_args.clear();
-				tinfo->m_args.insert(tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
+				main_tinfo->m_exe = proc_args.at(0);
+				main_tinfo->m_args.clear();
+				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 			}
-			ainfo->set_cmdline_update(true);
+			main_ainfo->set_cmdline_update(true);
 		}
 
 		//
@@ -943,7 +945,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		ASSERT(tinfo->m_program_hash != 0);
 
-		auto mtinfo = progtable.emplace(tinfo->m_program_hash, &it->second).first->second;
+		auto mtinfo = progtable.emplace(tinfo->m_main_thread->m_program_hash, &it->second).first->second;
 		if(mtinfo->m_tid == tinfo->m_tid)
 		{
 			ainfo->set_main_program_thread(true);
