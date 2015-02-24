@@ -42,6 +42,8 @@ cmake28 \
 npm \
 quota
 
+yum -y install docker-io lxc lxc-templates || true
+
 ln -s /usr/bin/cmake28 /usr/bin/cmake
 
 pip install awscli
