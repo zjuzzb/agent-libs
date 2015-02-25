@@ -846,6 +846,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 			}
+			main_tinfo->compute_program_hash();
 			main_ainfo->set_cmdline_update(true);
 		}
 
