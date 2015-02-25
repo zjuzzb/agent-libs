@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# This script builds a precompiled version of sysdig-probe for a bunch of kernels
+# The precompiled binary is then obtained at runtime by sysdig-probe-installer
+# Ideally, the community should expand this stuff with better support
+#
 set -exu
 
 SYSDIG_VERSION=$1
@@ -22,7 +27,7 @@ function build_sysdig {
 	cmake -DCMAKE_BUILD_TYPE=Release -DSYSDIG_VERSION=$SYSDIG_VERSION ..
 	make driver
 	strip -g driver/sysdig-probe.ko
-	cp driver/sysdig-probe.ko $BASEDIR/output/sysdig-probe-0.99.41-$ARCH-$KERNEL_RELEASE-$HASH.ko
+	cp driver/sysdig-probe.ko $BASEDIR/output/sysdig-probe-$SYSDIG_VERSION-$ARCH-$KERNEL_RELEASE-$HASH.ko
 	cd $BASEDIR
 }
 
