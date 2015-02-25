@@ -92,16 +92,16 @@ public:
 	//
 	enum flags
 	{
-	    AF_NONE = 0,
-	    AF_INVALID = (1 << 0),
-	    AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
-	    AF_IS_LOCAL_IPV4_SERVER = (1 << 2), // set if this thread serves IPv4 transactions coming from the same machine.
-	    AF_IS_REMOTE_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions coming from another machine.
-	    AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
-	    AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
-	    AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
-	    AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
-	    AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
+		AF_NONE = 0,
+		AF_INVALID = (1 << 0),
+		AF_PARTIAL_METRIC = (1 << 1), // Used by the event analyzer to flag that part of the last event has already been measured because the sampling time elapsed
+		AF_IS_LOCAL_IPV4_SERVER = (1 << 2), // set if this thread serves IPv4 transactions coming from the same machine.
+		AF_IS_REMOTE_IPV4_SERVER = (1 << 3), // set if this thread serves IPv4 transactions coming from another machine.
+		AF_IS_UNIX_SERVER = (1 << 4), // set if this thread serves unix transactions.
+		AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
+		AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
+		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
+		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
 		AF_CMDLINE_UPDATED = (1 << 9)
 	};
 
