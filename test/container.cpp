@@ -373,7 +373,7 @@ TEST_F(sys_call_test, container_docker)
 	ASSERT_TRUE(done);
 }
 
-TEST_F(sys_call_test, container_lxc)
+TEST_F(sys_call_test, DISABLED_container_lxc)
 {
 	bool done = false;
 
