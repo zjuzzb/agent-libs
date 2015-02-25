@@ -240,6 +240,13 @@ VISIBILITY_PRIVATE
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
 
+	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
+#ifdef _DEBUG
+			1*60; // 1 minutes
+#else
+			5*60; // 5 minutes
+#endif
+
 	uint32_t m_n_flushes;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;

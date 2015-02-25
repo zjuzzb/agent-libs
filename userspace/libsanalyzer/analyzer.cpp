@@ -781,6 +781,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// since memory is updated at context-switch intervals, it can happen
 	// that the "main" thread stays mostly idle, without getting memory events then
 	///////////////////////////////////////////////////////////////////////////
+
+	bool forced_cmd_update = (m_next_flush_time_ns / 1000000000) % CMDLINE_UPDATE_INTERVAL_S == 0;
+
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -801,6 +804,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			mtinfo->m_vmswap_kb = tinfo->m_vmswap_kb;
 		}
+
+		// Relookup process names every interval
+		if(forced_cmd_update && tinfo->is_main_thread())
+		{
+			tinfo->m_ainfo->set_cmdline_update(false);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -812,15 +821,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
-		sinsp_threadinfo* main_tinfo;
-		if(tinfo->is_main_thread())
-		{
-			main_tinfo = tinfo;
-		}
-		else
-		{
-			main_tinfo = tinfo->m_main_thread;
-		}
+		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 
 		analyzer_container_state* container = NULL;
@@ -955,6 +956,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		ASSERT(tinfo->m_program_hash != 0);
 
 		auto mtinfo = progtable.emplace(main_tinfo->m_program_hash, &it->second).first->second;
+		// Use first found thread of a program to collect all metrics
 		if(mtinfo->m_tid == tinfo->m_tid)
 		{
 			ainfo->set_main_program_thread(true);
@@ -1115,10 +1117,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
 					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 				{
-					proc->mutable_details()->set_comm(tinfo->m_comm);
-					proc->mutable_details()->set_exe(tinfo->m_exe);
-					for(vector<string>::const_iterator arg_it = tinfo->m_args.begin(); 
-						arg_it != tinfo->m_args.end(); ++arg_it)
+					proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
+					proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
+					for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
+						arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
 					{
 						if(*arg_it != "")
 						{
@@ -1126,9 +1128,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 
-					if(!tinfo->m_container_id.empty())
+					if(!tinfo->get_main_thread()->m_container_id.empty())
 					{
-						proc->mutable_details()->set_container_id(tinfo->m_container_id);
+						proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
 					}
 
 					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
