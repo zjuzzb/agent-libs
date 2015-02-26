@@ -42,6 +42,8 @@
 #include "delays.h"
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
+#include <sys/prctl.h>
+#include <signal.h>
 
 using namespace std;
 
@@ -117,6 +119,60 @@ TEST_F(sys_call_test, analyzer_errors)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
 //	EXPECT_EQ(7, callnum);
+}
+
+TEST_F(sys_call_test, analyzer_procrename)
+{
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	int child_pid = 0;
+
+	child_pid = fork();
+
+	if (child_pid == 0)
+	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		execl("./resources/chname", "chname", NULL);
+	}
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Wait a bit so the first flush will be executed
+		usleep(1500*1000);
+		getuid();
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+
+		if(e->get_type() == PPME_SYSCALL_GETUID_X)
+		{
+			auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
+			ASSERT_NE(thread_table->end(), thread_table->find(child_pid));
+			const auto& tinfo = thread_table->at(child_pid);
+			EXPECT_EQ("savonarola", tinfo.m_comm);
+			EXPECT_EQ("sysdig", tinfo.m_exe);
+			EXPECT_FALSE(tinfo.m_args.empty());
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	kill(child_pid, SIGTERM);
+	waitpid(child_pid, NULL, 0);
 }
 
 TEST_F(sys_call_test, analyzer_fdstats)

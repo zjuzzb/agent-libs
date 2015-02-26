@@ -52,7 +52,13 @@ add_executable(resources/forking_nested
 
 target_link_libraries(resources/forking_nested
 	pthread) 
-	
+
+add_executable(resources/chname
+	resources/chname.cpp)
+
+target_link_libraries(resources/chname
+	pthread)
+
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
