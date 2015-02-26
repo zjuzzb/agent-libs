@@ -22,7 +22,7 @@ if [ ! -z "$TAGS" ]; then
 fi
 
 if [ $# -eq 0 ]; then
-	if ! /usr/bin/sysdig-probe-installer; then
+	if ! /usr/bin/sysdig-probe-loader; then
 		exit 1
 	fi
 

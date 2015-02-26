@@ -1,4 +1,4 @@
-FROM debian:wheezy
+FROM debian:unstable
 
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
@@ -19,6 +19,8 @@ RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public |
  && apt-get install -y --no-install-recommends draios-agent=$AGENT_VERSION sysdig=$SYSDIG_VERSION \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
 COPY ./docker-entrypoint.sh /
 
