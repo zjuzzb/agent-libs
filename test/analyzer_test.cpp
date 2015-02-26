@@ -139,6 +139,8 @@ TEST_F(sys_call_test, analyzer_procrename)
 	if (child_pid == 0)
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		// We need another executable to change both procname and cmdline
+		// Also we have a clean environment without gtest, analyzer etc stuff loaded
 		execl("./resources/chname", "chname", NULL);
 	}
 
