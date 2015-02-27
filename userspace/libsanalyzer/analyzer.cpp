@@ -831,7 +831,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container = &m_containers[tinfo->m_container_id];
 		}
 
-		if(!main_ainfo->is_cmdline_updated())
+		if((tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
 		{
 			g_logger.log(string("Reading cmdline for pid: ") + to_string(main_tinfo->m_pid), sinsp_logger::SEV_DEBUG);
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
