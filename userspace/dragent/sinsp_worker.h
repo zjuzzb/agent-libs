@@ -67,6 +67,11 @@ public:
 		return m_inspector;
 	}
 
+	const sinsp_data_handler* get_sinsp_data_handler() const
+	{
+		return &m_sinsp_handler;
+	}
+
 	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
 	{
 		m_jmx_pipes = jmx_pipes;

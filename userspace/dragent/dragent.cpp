@@ -323,6 +323,24 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
+	{
+		int64_t diff = dragent_configuration::get_current_time_ns() 
+			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+
+#if _DEBUG
+		g_log->debug("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_data_handler_timeout_s * 1000000000LL)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected sinsp_data_handler stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
+			to_kill = true;
+		}
+	}
+
 	if(m_connection_manager.get_last_loop_ns() != 0)
 	{
 		int64_t diff = dragent_configuration::get_current_time_ns() 
