@@ -82,7 +82,7 @@ jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
 
 void jmx_proxy::send_get_metrics(uint64_t id)
 {
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX with id %u", id);
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX with id %lu", id);
 	Json::Value command_obj;
 	command_obj["id"] = Json::UInt64(id);
 	command_obj["command"] = "getMetrics";
