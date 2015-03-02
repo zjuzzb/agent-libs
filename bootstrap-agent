@@ -133,6 +133,25 @@ if [ ! -d "$MAVEN_DIR" ]; then
 	tar -xzf apache-maven-3.2.5-bin.tar.gz
 fi
 
+BOOST_DIR=$DEPENDENCIES/boost_1_57_0
+if [ ! -d "$BOOST_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/boost_1_57_0.tar.bz2
+	tar xfj boost_1_57_0.tar.bz2
+fi
+
+YAMLCPP_DIR=$DEPENDENCIES/yaml-cpp-0.5.1
+if [ ! -d "$YAMLCPP_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/yaml-cpp-0.5.1.tar.gz
+	tar xfz yaml-cpp-0.5.1.tar.gz
+	cd $YAMLCPP_DIR
+	mkdir build
+	cd build
+	BOOST_ROOT=$BOOST_DIR $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+	make install
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1-dev"
 fi

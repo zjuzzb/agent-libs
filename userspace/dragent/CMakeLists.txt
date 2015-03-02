@@ -8,6 +8,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-0.1.5/build/target/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -42,7 +43,8 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a
 	dl
-	rt)
+	rt
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-0.1.5/build/target/lib/libyaml.a)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
