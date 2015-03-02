@@ -37,8 +37,8 @@ public:
 	//
 	void get_tid_list(OUT set<uint64_t>* tids);
 
-	vector<string> read_process_cmdline(pid_t pid);
-	string read_process_name(pid_t pid);
+	vector<string> read_process_cmdline(uint64_t pid);
+	string read_process_name(uint64_t pid);
 
 private:
 	uint32_t m_ncpus;
@@ -52,3 +52,4 @@ private:
 	uint64_t m_old_global_total_jiffies;
 	uint64_t m_old_global_work_jiffies;
 };
+

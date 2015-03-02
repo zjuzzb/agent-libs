@@ -4,7 +4,9 @@
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
+#ifndef _WIN32
 #include "jmx_proxy.h"
+#endif
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -202,6 +204,7 @@ public:
 		m_is_sampling = is_sampling;
 	}
 	
+#ifndef _WIN32
 	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
 	{
 		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
@@ -212,6 +215,7 @@ public:
 	{
 		m_jmx_sampling = value;
 	}
+#endif _WIN32
 
 	void set_protocols_enabled(bool value)
 	{
@@ -378,9 +382,11 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_wall_time;
 
 	// JMX proxy
+#ifndef _WIN32
 	shared_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
+#endif
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

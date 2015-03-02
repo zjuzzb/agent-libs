@@ -1455,6 +1455,7 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 
 analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_threadinfo* tinfo, const string& name)
 {
+#if defined(HAS_CAPTURE)
 	//
 	// Exclude dragent files to be consistent with everything else
 	//
@@ -1462,6 +1463,7 @@ analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_thread
 	{
 		return NULL;
 	}
+#endif
 
 	unordered_map<string, analyzer_file_stat>::iterator it = 
 		m_files_stat.find(name);

@@ -3,7 +3,9 @@
 #include "analyzer_int.h"
 #include "jmx_proxy.h"
 
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include "logger.h"
 #include "fcntl.h"
 
