@@ -215,7 +215,7 @@ public:
 	{
 		m_jmx_sampling = value;
 	}
-#endif _WIN32
+#endif
 
 	void set_protocols_enabled(bool value)
 	{
