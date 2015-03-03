@@ -3,7 +3,7 @@ FROM debian:unstable
 MAINTAINER Sysdig <support@sysdigcloud.com>
 
 ENV REPO stable
-ENV AGENT_VERSION 0.1.116
+ENV AGENT_VERSION 0.1.117
 ENV SYSDIG_VERSION 0.1.98
 
 ENV SYSDIG_HOST_ROOT /host
