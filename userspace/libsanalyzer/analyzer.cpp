@@ -1465,6 +1465,31 @@ void sinsp_analyzer::flush_processes()
 	m_threads_to_remove.clear();
 }
 
+bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src, 
+					pair<const process_tuple*, sinsp_connection*>& dst)
+{
+	uint64_t s = src.second->m_metrics.m_client.m_bytes_in + 
+		src.second->m_metrics.m_client.m_bytes_out +
+		src.second->m_metrics.m_server.m_bytes_in +
+		src.second->m_metrics.m_server.m_bytes_out;
+
+	uint64_t d = dst.second->m_metrics.m_client.m_bytes_in + 
+		dst.second->m_metrics.m_client.m_bytes_out +
+		dst.second->m_metrics.m_server.m_bytes_in +
+		dst.second->m_metrics.m_server.m_bytes_out;
+
+	return (s > d);
+}
+
+bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connection*>& src, 
+					pair<const process_tuple*, sinsp_connection*>& dst)
+{
+	uint64_t s = src.second->m_timestamp;
+	uint64_t d = dst.second->m_timestamp;
+
+	return (s > d);
+}
+
 //
 // Strategy:
 //  - sport is *always* masked to zero
@@ -1637,11 +1662,67 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	//
+	// If the table is still too big, sort it and pick only the top connections
+	//
+	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
+	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
+	auto connection_to_emit = m_reduced_ipv4_connections;
+
+	if(m_reduced_ipv4_connections->size() > TOP_CONNECTIONS_IN_SAMPLE)
+	{
+		//
+		// Prepare the sortable list
+		//
+		for(auto sit = m_reduced_ipv4_connections->begin(); 
+			sit != m_reduced_ipv4_connections->end(); ++sit)
+		{
+			sortable_conns_entry.first = &(sit->first);
+			sortable_conns_entry.second = &(sit->second);
+
+			sortable_conns.push_back(sortable_conns_entry);
+		}
+
+		//
+		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE 
+		// connections
+		//
+		partial_sort(sortable_conns.begin(), 
+			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.end(),
+			conn_cmp_n_aggregated_connections);
+
+		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		{
+			process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+				*(sortable_conns[j].second);
+		}
+
+		//
+		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
+		//
+		partial_sort(sortable_conns.begin(), 
+			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.end(),
+			conn_cmp_bytes);
+
+		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		{
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+				*(sortable_conns[j].second);
+		}
+
+		connection_to_emit = &reduced_and_filtered_ipv4_connections;
+	}
+
+	//
 	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = m_reduced_ipv4_connections->begin(); 
-		acit != m_reduced_ipv4_connections->end(); ++acit)
+	for(acit = connection_to_emit->begin(); 
+		acit != connection_to_emit->end(); ++acit)
 	{
 		//
 		// Skip connection that had no activity during the sample

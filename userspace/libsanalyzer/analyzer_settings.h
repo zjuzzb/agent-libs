@@ -131,6 +131,13 @@
 #define TOP_FILES_IN_SAMPLE 20
 
 //
+// Max number of connections that can go in a sample.
+// We sort by both bytes and number of sub-connections, so this number can double
+// in the worst case.
+//
+#define TOP_CONNECTIONS_IN_SAMPLE 40
+
+//
 // Max number of URLS that are reported on a per process and per machine basis
 //
 #define TOP_URLS_IN_SAMPLE 15
