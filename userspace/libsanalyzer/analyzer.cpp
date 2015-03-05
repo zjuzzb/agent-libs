@@ -2782,6 +2782,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		{
 			return;
 		}
+		static uint64_t last_log_ts;
+
+		if (evt->get_ts() - last_log_ts  > 1000000000)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Running process_event with flags: %d", flshflags);
+			last_log_ts = evt->get_ts();
+		}
 	}
 	else
 	{
