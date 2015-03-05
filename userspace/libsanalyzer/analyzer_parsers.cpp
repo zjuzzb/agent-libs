@@ -74,7 +74,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 			//
 			m_analyzer->m_inspector->m_isdropping = true;
 #endif
-			g_logger.log("Executing flush (drop_e)", sinsp_logger::SEV_DEBUG);
+			g_logger.log("Executing flush (drop_e)", sinsp_logger::SEV_INFO);
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
 
 			m_last_drop_was_enter = true;
@@ -92,7 +92,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 			//
 			m_analyzer->m_inspector->m_isdropping = false;
 #endif
-			g_logger.log("Executing flush (drop_x)", sinsp_logger::SEV_DEBUG);
+			g_logger.log("Executing flush (drop_x)", sinsp_logger::SEV_INFO);
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
 
 			m_last_drop_was_enter = false;
