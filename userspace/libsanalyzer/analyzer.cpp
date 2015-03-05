@@ -1694,7 +1694,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
 		{
-			process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
 
 			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
 				*(sortable_conns[j].second);
