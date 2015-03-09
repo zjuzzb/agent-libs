@@ -502,8 +502,8 @@ return;
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			endmntent(fp);
-			throw sinsp_exception("error getting details for " + string(entry->mnt_dir));
+			g_logger.log("error getting details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
+			continue;
 		}
 
 		if(statfs.f_blocks == 0)
