@@ -2834,6 +2834,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	{
 		bool do_flush = true;
 
+		g_logger.format(sinsp_logger::SEV_INFO, "m_sampling_ratio is: %d", m_sampling_ratio);
 		if(m_sampling_ratio != 1)
 		{
 			do_flush = false;
