@@ -2371,6 +2371,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			double totcpuload = 0;
 			double totcpusteal = 0;
 
+			g_logger.format(sinsp_logger::SEV_INFO, "m_cpu_loads size is: %d", m_cpu_loads.size());
 			for(j = 0; j < m_cpu_loads.size(); j++)
 			{
 				cpustr += to_string((long double) m_cpu_loads[j]) + "(" + to_string((long double) m_cpu_steals[j]) + ") ";
