@@ -112,7 +112,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+#ifndef _WIN32
 	m_jmx_sampling = 1;
+#endif
 
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
@@ -718,6 +720,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
+#ifndef _WIN32
 	if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
@@ -728,6 +731,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
 		m_jmx_metrics = jmx_metrics.second;
 	}
+#endif
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -991,10 +995,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(m_inspector->m_islive)
 		{
+#if defined(HAS_CAPTURE)
 			if(it->first == m_inspector->m_sysdig_pid)
 			{
 				m_my_cpuload = ainfo->m_cpuload;
 			}
+#else
+			m_my_cpuload = 0;
+#endif
 		}
 	}
 
@@ -1170,6 +1178,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 				proc->set_netrole(netrole);
 
+#ifndef _WIN32
 				// Add JMX metrics
 				if (m_jmx_proxy && m_jmx_metrics.find(tinfo->m_pid) != m_jmx_metrics.end())
 				{
@@ -1178,6 +1187,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
 					java_process_data.to_protobuf(java_proto);
 				}
+#endif
 
 				//
 				// CPU utilization
@@ -1435,11 +1445,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
 	
+#ifndef _WIN32
 	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		m_jmx_metrics.clear();
 		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns);
 	}
+#endif
 }
 
 void sinsp_analyzer::flush_processes()
@@ -1451,6 +1463,31 @@ void sinsp_analyzer::flush_processes()
 	}
 
 	m_threads_to_remove.clear();
+}
+
+bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src, 
+					pair<const process_tuple*, sinsp_connection*>& dst)
+{
+	uint64_t s = src.second->m_metrics.m_client.m_bytes_in + 
+		src.second->m_metrics.m_client.m_bytes_out +
+		src.second->m_metrics.m_server.m_bytes_in +
+		src.second->m_metrics.m_server.m_bytes_out;
+
+	uint64_t d = dst.second->m_metrics.m_client.m_bytes_in + 
+		dst.second->m_metrics.m_client.m_bytes_out +
+		dst.second->m_metrics.m_server.m_bytes_in +
+		dst.second->m_metrics.m_server.m_bytes_out;
+
+	return (s > d);
+}
+
+bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connection*>& src, 
+					pair<const process_tuple*, sinsp_connection*>& dst)
+{
+	uint64_t s = src.second->m_timestamp;
+	uint64_t d = dst.second->m_timestamp;
+
+	return (s > d);
 }
 
 //
@@ -1625,11 +1662,67 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	//
+	// If the table is still too big, sort it and pick only the top connections
+	//
+	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
+	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
+	auto connection_to_emit = m_reduced_ipv4_connections;
+
+	if(m_reduced_ipv4_connections->size() > TOP_CONNECTIONS_IN_SAMPLE)
+	{
+		//
+		// Prepare the sortable list
+		//
+		for(auto sit = m_reduced_ipv4_connections->begin(); 
+			sit != m_reduced_ipv4_connections->end(); ++sit)
+		{
+			sortable_conns_entry.first = &(sit->first);
+			sortable_conns_entry.second = &(sit->second);
+
+			sortable_conns.push_back(sortable_conns_entry);
+		}
+
+		//
+		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE 
+		// connections
+		//
+		partial_sort(sortable_conns.begin(), 
+			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.end(),
+			conn_cmp_n_aggregated_connections);
+
+		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		{
+			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+				*(sortable_conns[j].second);
+		}
+
+		//
+		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
+		//
+		partial_sort(sortable_conns.begin(), 
+			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.end(),
+			conn_cmp_bytes);
+
+		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		{
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+				*(sortable_conns[j].second);
+		}
+
+		connection_to_emit = &reduced_and_filtered_ipv4_connections;
+	}
+
+	//
 	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = m_reduced_ipv4_connections->begin(); 
-		acit != m_reduced_ipv4_connections->end(); ++acit)
+	for(acit = connection_to_emit->begin(); 
+		acit != connection_to_emit->end(); ++acit)
 	{
 		//
 		// Skip connection that had no activity during the sample
@@ -1752,7 +1845,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_ERROR, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+			g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
 				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds, 
 				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
@@ -1800,7 +1893,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 	
 			if(m_is_sampling && m_sampling_ratio > 1)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
+				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
 					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds, 
 					m_configuration->get_drop_treshold_consecutive_seconds());
 			}
@@ -1843,7 +1936,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 				{
 					if(m_is_sampling)
 					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
+						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
 						start_dropping_mode(m_sampling_ratio / 2);
 					}
 					else

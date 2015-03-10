@@ -132,6 +132,9 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\container.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="jmx_proxy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h">
@@ -264,6 +267,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parser_mongodb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="jmx_proxy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

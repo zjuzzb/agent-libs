@@ -368,13 +368,13 @@ void sinsp_slq_query_parser::parse(char* query, uint32_t querylen)
 	{
 	case OT_SELECT:
 	case OT_DELETE:
-		extract_table(src, srclen, (char*)"from", sizeof("from") - 1,
+		extract_table(src, srclen, (char*)" from ", sizeof(" from ") - 1,
 			selectend_toks, selectend_toklens, 
 			sizeof(selectend_toks) / sizeof(selectend_toks[0]));
 		break;
 	case OT_INSERT:
 	case OT_REPLACE:
-		extract_table(src, srclen, (char*)"into", sizeof("into") - 1,
+		extract_table(src, srclen, (char*)" into ", sizeof(" into ") - 1,
 			insertend_toks, insertend_toklens, 
 			sizeof(insertend_toks) / sizeof(insertend_toks[0]), true);
 		break;

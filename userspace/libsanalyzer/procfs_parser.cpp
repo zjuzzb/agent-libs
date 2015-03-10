@@ -502,8 +502,8 @@ return;
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			endmntent(fp);
-			throw sinsp_exception("error getting details for " + string(entry->mnt_dir));
+			g_logger.log("error getting details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
+			continue;
 		}
 
 		if(statfs.f_blocks == 0)
@@ -537,8 +537,12 @@ return;
 #endif
 }
 
-vector<string> sinsp_procfs_parser::read_process_cmdline(pid_t pid)
+vector<string> sinsp_procfs_parser::read_process_cmdline(uint64_t pid)
 {
+#ifdef _WIN32
+vector<string> res;
+return res;
+#else
 	vector<string> args;
 	char filename[SCAP_MAX_PATH_SIZE];
 	snprintf(filename, sizeof(filename), "%s/proc/%d/cmdline", scap_get_host_root(), pid);
@@ -550,10 +554,14 @@ vector<string> sinsp_procfs_parser::read_process_cmdline(pid_t pid)
 		args.push_back(strBuf);
 	}
 	return args;
+#endif
 }
 
-string sinsp_procfs_parser::read_process_name(pid_t pid)
+string sinsp_procfs_parser::read_process_name(uint64_t pid)
 {
+#ifdef _WIN32
+return "";
+#else
 	char name[SCAP_MAX_PATH_SIZE] = "";
 	char filename[SCAP_MAX_PATH_SIZE];
 	snprintf(filename, sizeof(filename), "%s/proc/%d/status", scap_get_host_root(), pid);
@@ -578,4 +586,6 @@ string sinsp_procfs_parser::read_process_name(pid_t pid)
 		fclose(f);
 	}
 	return string(name);
+#endif
 }
+

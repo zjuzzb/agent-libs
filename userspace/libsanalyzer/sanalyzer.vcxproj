@@ -49,6 +49,7 @@
     <ClCompile Include="connectinfo.cpp" />
     <ClCompile Include="delays.cpp" />
     <ClCompile Include="draios.pb.cc" />
+    <ClCompile Include="jmx_proxy.cpp" />
     <ClCompile Include="metrics.cpp" />
     <ClCompile Include="parser_http.cpp" />
     <ClCompile Include="parser_mongodb.cpp" />
@@ -96,6 +97,7 @@
     <ClInclude Include="connectinfo.h" />
     <ClInclude Include="delays.h" />
     <ClInclude Include="draios.pb.h" />
+    <ClInclude Include="jmx_proxy.h" />
     <ClInclude Include="metrics.h" />
     <ClInclude Include="parser_http.h" />
     <ClInclude Include="parser_mongodb.h" />
