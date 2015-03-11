@@ -2106,7 +2106,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
-	g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
+	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
 
@@ -2778,16 +2778,18 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		ts = evt->get_ts();
 		etype = evt->get_type();
 
+		if (etype == PPME_DROP_E)
+		{
+			g_logger.log("process drop_e", sinsp_logger::SEV_INFO);
+		}
+
+		if (etype == PPME_DROP_X)
+		{
+			g_logger.log("process drop_x", sinsp_logger::SEV_INFO);
+		}
 		if(m_parser->process_event(evt) == false)
 		{
 			return;
-		}
-		static uint64_t last_log_ts;
-
-		if (evt->get_ts() - last_log_ts  > 1000000000)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Running process_event with flags: %d", flshflags);
-			last_log_ts = evt->get_ts();
 		}
 	}
 	else
@@ -2833,7 +2835,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	{
 		bool do_flush = true;
 
-		g_logger.format(sinsp_logger::SEV_INFO, "m_sampling_ratio is: %d", m_sampling_ratio);
 		if(m_sampling_ratio != 1)
 		{
 			do_flush = false;
