@@ -2828,6 +2828,16 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		}
 	}
 
+	if (m_sampling_ratio != 1 && ts - m_last_dropmode_switch_time > ONE_SECOND_IN_NS)
+	{
+		// Passed too much time since last drop event
+		// Probably driver switched to sampling=1 without
+		// sending a drop_event with an updated sampleratio
+		// forcing it
+		g_logger.log("Too much time since last drop event, forcing sampleratio=1", sinsp_logger::SEV_WARNING);
+		m_sampling_ratio = 1;
+	}
+
 	//
 	// Check if it's time to flush
 	//

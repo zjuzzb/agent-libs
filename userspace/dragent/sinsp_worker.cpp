@@ -196,8 +196,6 @@ void sinsp_worker::run()
 
 	m_last_loop_ns = dragent_configuration::get_current_time_ns();
 
-	uint64_t last_log_ts = 0;
-
 	while(!dragent_configuration::m_terminate)
 	{
 		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
@@ -221,12 +219,6 @@ void sinsp_worker::run()
 		{
 			cerr << "res = " << res << endl;
 			throw sinsp_exception(m_inspector->getlasterr().c_str());
-		}
-
-		if (ev->get_ts() - last_log_ts  > 1000000000)
-		{
-			g_log->information("Running sinsp_worker loop");
-			last_log_ts = ev->get_ts();
 		}
 
 		//

@@ -325,7 +325,7 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 
-	g_logger.format(sinsp_logger::SEV_INFO, "Called parse drop, event value is: %d, sampling_ratio: %d", *(uint32_t*)parinfo->m_val);
+	g_logger.format(sinsp_logger::SEV_INFO, "Called parse drop, event value is: %d, sampling_ratio: %d", *(uint32_t*)parinfo->m_val, m_analyzer->m_sampling_ratio);
 	if(*(uint32_t*)parinfo->m_val != m_analyzer->m_sampling_ratio)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
