@@ -1,0 +1,4 @@
+mykey: mystring
+mynested:
+  firstkey:
+    subkey: 78

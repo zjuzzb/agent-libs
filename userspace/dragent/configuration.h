@@ -1,6 +1,7 @@
 #pragma once
 
 #include "main.h"
+#include <yaml-cpp/yaml.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -25,6 +26,36 @@ public:
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
 
+class yaml_configuration
+{
+public:
+	yaml_configuration(const string& path, const string& defaults_path)
+	{
+
+	}
+	YAML::Node m_root;
+	YAML::Node m_default_root;
+
+	template<typename T>
+	auto get_scalar(const string& key, const T&& default_value) -> decltype(this->m_root.as<T>())
+	{
+		return m_root[key].as<T>();
+	}
+
+private:
+
+	inline const YAML::Node get_node(const string& key)
+	{
+		auto node = m_default_root[key];
+		if (node.IsNull())
+		{
+			node = m_root[key];
+		}
+		return node;
+	}
+
+
+};
 class dragent_configuration
 {
 public:

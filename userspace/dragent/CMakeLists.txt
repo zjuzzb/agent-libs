@@ -9,6 +9,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_1_57_0)
 
 add_definitions( -DHAS_ANALYZER )
 
