@@ -82,6 +82,8 @@ main(int argc, char *argv[])
 
     /* Create child; child commences execution in childFunc() */
 
+while(1)
+{
     if (clone(clone_callback_1, stackTop, flags, &cp) == -1)
         FAIL();
 
@@ -93,6 +95,7 @@ main(int argc, char *argv[])
         FAIL();
 
     printf("Child PID=%ld\n", (long) pid);
+}
 
     exit(0);
 }

@@ -118,7 +118,8 @@ public:
 						//
 						// Set the send buffer
 						//
-						iov[1].iov_len = BUFFER_LENGTH;
+						iov[0].iov_len = BUFFER_LENGTH - 10;
+						iov[1].iov_len = 10;
 					}
 					else
 					{
