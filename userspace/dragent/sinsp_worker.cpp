@@ -99,16 +99,16 @@ void sinsp_worker::init()
 	//
 	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);
 
-	if(m_configuration->m_drop_upper_treshold != 0)
+	if(m_configuration->m_drop_upper_threshold != 0)
 	{
-		g_log->information("Drop upper treshold=" + NumberFormatter::format(m_configuration->m_drop_upper_treshold));
-		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_treshold);
+		g_log->information("Drop upper threshold=" + NumberFormatter::format(m_configuration->m_drop_upper_threshold));
+		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_threshold);
 	}
 
-	if(m_configuration->m_drop_lower_treshold != 0)
+	if(m_configuration->m_drop_lower_threshold != 0)
 	{
-		g_log->information("Drop lower treshold=" + NumberFormatter::format(m_configuration->m_drop_lower_treshold));
-		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_treshold);
+		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
+		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
 	}
 
 	if(m_configuration->m_host_custom_name != "")

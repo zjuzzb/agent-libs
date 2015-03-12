@@ -84,6 +84,8 @@ public:
 	* server:
 	*   address: "collector.sysdigcloud.com"
 	*   port: 6666
+	*
+	* get_scalar<string>("server", "address", "localhost")
 	*/
 	template<typename T>
 	const T get_scalar(const string& key, const string& subkey, const T& default_value)
@@ -190,8 +192,12 @@ public:
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
+
 	string m_root_dir;
 	string m_conf_file;
+	shared_ptr<yaml_configuration> m_config;
+
+	string m_defaults_conf_file;
 	string m_metrics_dir;
 	string m_log_dir;
 	string m_customer_id;
@@ -208,8 +214,8 @@ public:
 	uint64_t m_evtcnt;
 	uint32_t m_subsampling_ratio;
 	bool m_autodrop_enabled;
-	uint32_t m_drop_upper_treshold;
-	uint32_t m_drop_lower_treshold;
+	uint32_t m_drop_upper_threshold;
+	uint32_t m_drop_lower_threshold;
 	string m_host_custom_name;
 	string m_host_tags;
 	string m_host_custom_map;

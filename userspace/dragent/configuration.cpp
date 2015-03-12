@@ -33,8 +33,8 @@ dragent_configuration::dragent_configuration()
 	m_evtcnt = 0;
 	m_subsampling_ratio = 1;
 	m_autodrop_enabled = false;
-	m_drop_upper_treshold = 0;
-	m_drop_lower_treshold = 0;
+	m_drop_upper_threshold = 0;
+	m_drop_lower_threshold = 0;
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
 	m_watchdog_enabled = true;
@@ -90,95 +90,88 @@ void dragent_configuration::init(Application* app)
 		//
 		// Get rid of this "bin" hack asap
 		//
-		m_conf_file = Path(m_root_dir).append("bin").append("dragent.properties").toString();
+		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 	}
 	else
 	{
 		m_root_dir = Path::current();
-		m_conf_file = Path(m_root_dir).append("dragent.properties").toString();
+		m_conf_file = Path(m_root_dir).append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
 	}
 
-	try
-	{
-		app->loadConfiguration(m_conf_file); 
-	}
-	catch(...)
-	{
-	}
+	m_config = make_shared<yaml_configuration>(m_conf_file, m_defaults_conf_file);
+	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
 
-	LayeredConfiguration& config = app->config();
-
-	m_root_dir = config.getString("rootdir", m_root_dir);
-
-	if(!config.getString("metricsfile.location", "").empty())
+	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
 	{
-		m_metrics_dir = Path(m_root_dir).append(config.getString("metricsfile.location", "")).toString();
+		m_metrics_dir = Path(m_root_dir).append(m_config->get_scalar<string>("metricsfile", "location", "")).toString();
 	}
 	
-	m_log_dir = Path(m_root_dir).append(config.getString("logfile.location", "logs")).toString();
+	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 	
 	if(m_customer_id.empty())
 	{
-		m_customer_id = config.getString("customerid", "");
+		m_customer_id = m_config->get_scalar<string>("customerid", "");
 	}
 
 	if(m_server_addr.empty())
 	{
-		m_server_addr = config.getString("server.address", "collector.sysdigcloud.com");
+		m_server_addr = m_config->get_scalar<string>("server", "address", "collector.sysdigcloud.com");
 	}
 
 	if(m_server_port == 0)
 	{
-		m_server_port = config.getInt("server.port", 6666);
+		m_server_port = m_config->get_scalar<uint16_t>("server", "port", 6666);
 	}
 
 	if(m_min_file_priority == 0)
 	{
-		m_min_file_priority = string_to_priority(config.getString("logpriority.file", "info"));
+		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("file_priority", "info"));
 	}
 
 	if(m_min_console_priority == 0)
 	{
 #ifdef _DEBUG
-		m_min_console_priority = string_to_priority(config.getString("logpriority.console", "debug"));
+		m_min_console_priority = string_to_priority( m_config->get_scalar<string>("log", "console_priority", "debug"));
 #else
-		m_min_console_priority = string_to_priority(config.getString("logpriority.console", "info"));
+		m_min_console_priority = string_to_priority( m_config->get_scalar<string>("log", "console_priority", "info"));
 #endif		
 	}
 
-	m_transmitbuffer_size = config.getInt("transmitbuffer.size", DEFAULT_DATA_SOCKET_BUF_SIZE);
-	m_ssl_enabled = config.getBool("ssl.enabled", true);
-	m_ssl_ca_certificate = Path(m_root_dir).append(config.getString("ssl.ca_certificate", "root.cert")).toString();
-	m_compression_enabled = config.getBool("compression.enabled", true);
-	m_emit_full_connections = config.getBool("emitfullconnections.enabled", false);
-	m_dump_dir = config.getString("dumpdir", "/tmp/");
-	m_subsampling_ratio = config.getInt("subsampling.ratio", 1);
-	m_autodrop_enabled = config.getBool("autodrop.enabled", true);
-	m_drop_upper_treshold = config.getInt("autodrop.treshold.upper", 0);
-	m_drop_lower_treshold = config.getInt("autodrop.treshold.lower", 0);
+	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
+	m_ssl_enabled = m_config->get_scalar<bool>("ssl", "enabled", true);
+	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ssl", "ca_certificate", "root.cert")).toString();
+	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
+	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
+	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
+	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
+	m_autodrop_enabled =  m_config->get_scalar<bool>("autodrop", "enabled", true);
+	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
+	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
-	m_host_custom_name = config.getString("ui.customname", "");
-	m_host_tags = config.getString("ui.tags", "");
-	m_host_custom_map = config.getString("ui.custommap", "");
-	m_host_hidden = config.getBool("ui.is_hidden", false);
-	m_hidden_processes = config.getString("ui.hidden_processes", "");
-	m_autoupdate_enabled = config.getBool("autoupdate.enabled", true);
-	m_print_protobuf = config.getBool("protobuf.print", false);
+	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
+	m_host_tags = m_config->get_scalar<string>("ui", "tags", "");
+	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
+	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
+	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
+	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
+	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
 #ifdef _DEBUG
-	m_watchdog_enabled = config.getBool("watchdog.enabled", false);
+	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog", "enabled", false);
 #else
-	m_watchdog_enabled = config.getBool("watchdog.enabled", true);
+	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog", "enabled", true);
 #endif
-	m_watchdog_sinsp_worker_timeout_s = config.getInt("watchdog.sinsp_worker.timeout_s", 60);
-	m_watchdog_connection_manager_timeout_s = config.getInt("watchdog.connection_manager.timeout_s", 100);
-	m_watchdog_analyzer_tid_collision_check_interval_s = config.getInt("watchdog.analyzer.tid_collision.check_interval_s", 600);
-	m_watchdog_sinsp_data_handler_timeout_s = config.getInt("watchdog.sinsp_data_handler.timeout_s", 60);
-	m_watchdog_max_memory_usage_mb = config.getInt("watchdog.max.memory_usage_mb", 256);
-	m_dirty_shutdown_report_log_size_b = config.getInt("dirty_shutdown.report.log_size_b", 30 * 1024);
-	m_capture_dragent_events = config.getBool("capture.dragent.events", false);
-	m_jmx_sampling = config.getInt("jmx.sampling", 1);
-	m_protocols_enabled = config.getBool("protocols.enabled", true);
-	m_remotefs_enabled = config.getBool("remotefs.enabled", false);
+	m_watchdog_sinsp_worker_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_timeout_s)>("watchdog", "sinsp_worker_timeout_s", 60);
+	m_watchdog_connection_manager_timeout_s = m_config->get_scalar<decltype(m_watchdog_connection_manager_timeout_s)>("watchdog", "connection_manager_timeout_s", 100);
+	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
+	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
+	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 256);
+	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
+	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
+	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
+	m_protocols_enabled = m_config->get_scalar<bool>("protocols_enabled", true);
+	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs_enabled", false);
 
 	refresh_aws_metadata();
 }
@@ -203,8 +196,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("dumpdir: " + m_dump_dir);
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
-	g_log->information("autodrop.treshold.upper: " + NumberFormatter::format(m_drop_upper_treshold));
-	g_log->information("autodrop.treshold.lower: " + NumberFormatter::format(m_drop_lower_treshold));
+	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
+	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	g_log->information("ui.customname: " + m_host_custom_name);
 	g_log->information("ui.tags: " + m_host_tags);
 	g_log->information("ui.custommap: " + m_host_custom_map);
