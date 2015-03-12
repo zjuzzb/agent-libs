@@ -1,3 +1,11 @@
+mykey: myvaluedefault
 mynested:
   secondkey:
     subkey: 40
+mykeydefault: "value"
+myarray:
+  - 78
+mybool: true
+server:
+  address: "collector.sysdigcloud.com"
+  port: 6666

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "main.h"
+#include "logger.h"
 #include <yaml-cpp/yaml.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -31,31 +32,146 @@ class yaml_configuration
 public:
 	yaml_configuration(const string& path, const string& defaults_path)
 	{
+		try
+		{
+			m_root = YAML::LoadFile(path);
+		} catch ( const YAML::BadFile& ex)
+		{
+#ifndef UNIT_TEST_BINARY
+			g_log->critical("Cannot read config file: " + path + "reason: " + ex.what());
+#endif
+		}
 
+		try
+		{
+			m_default_root = YAML::LoadFile(defaults_path);
+		} catch ( const YAML::BadFile& ex)
+		{
+#ifndef UNIT_TEST_BINARY
+			g_log->critical("Cannot read config file: " + defaults_path + "reason: " + ex.what());
+#endif
+		}
 	}
-	YAML::Node m_root;
-	YAML::Node m_default_root;
 
+	/**
+	* Get a scalar value from config, like:
+	* customerid: "578c60dc-c8b2-11e4-a615-6c4008aec9fe"
+	*/
 	template<typename T>
-	auto get_scalar(const string& key, const T&& default_value) -> decltype(this->m_root.as<T>())
+	const T get_scalar(const string& key, const T& default_value)
 	{
-		return m_root[key].as<T>();
+		auto node = m_root[key];
+		if (node.IsDefined())
+		{
+			return node.as<T>();
+		}
+		else
+		{
+			node = m_default_root[key];
+			if (node.IsDefined())
+			{
+				return node.as<T>();
+			}
+			else
+			{
+				return default_value;
+			}
+		}
+	}
+
+	/**
+	* Utility method to get scalar values inside a 2 level nested structure like:
+	* server:
+	*   address: "collector.sysdigcloud.com"
+	*   port: 6666
+	*/
+	template<typename T>
+	const T get_scalar(const string& key, const string& subkey, const T& default_value)
+	{
+		auto node = m_root[key][subkey];
+		if (node.IsDefined())
+		{
+			return node.as<T>();
+		}
+		else
+		{
+			node = m_default_root[key][subkey];
+			if (node.IsDefined())
+			{
+				return node.as<T>();
+			}
+			else
+			{
+				return default_value;
+			}
+		}
+	}
+
+	/**
+	* get data from a sequence of objects, they
+	* will be merged between settings file and
+	* default files, example:
+	*
+	* common_metrics:
+	*  - cpu
+	*  - memory
+	*
+	* get_merged_sequence<string>("common_metrics)
+	*/
+	template<typename T>
+	const vector<T> get_merged_sequence(const string& key)
+	{
+		vector<T> ret;
+		auto node = m_default_root[key];
+		for(auto item : node)
+		{
+			ret.push_back(item.as<T>());
+		}
+		node = m_root[key];
+		for(auto item : node)
+		{
+			ret.push_back(item.as<T>());
+		}
+		return ret;
+	}
+
+
+	/**
+	* Get data from a map of objects, they
+	* will be merged between settings and
+	* default file, example:
+	*
+	* per_process_metrics:
+	*   cassandra:
+	*     - cpu
+	*     - memory
+	*   mongodb:
+	*     - net
+	*
+	* get_merged_map<vector<string>>("per_process_metrics")
+	*/
+	template<typename T>
+	const unordered_map<string, T> get_merged_map(const string& key)
+	{
+		unordered_map<string, T> ret;
+		auto node = m_default_root[key];
+		for(auto item : node)
+		{
+			ret[item.first.as<string>()] = item.second.as<T>();
+		}
+		node = m_root[key];
+		for(auto item : node)
+		{
+			ret[item.first.as<string>()] = item.second.as<T>();
+		}
+		return ret;
 	}
 
 private:
-
-	inline const YAML::Node get_node(const string& key)
-	{
-		auto node = m_default_root[key];
-		if (node.IsNull())
-		{
-			node = m_root[key];
-		}
-		return node;
-	}
-
-
+	YAML::Node m_root;
+	YAML::Node m_default_root;
 };
+
 class dragent_configuration
 {
 public:

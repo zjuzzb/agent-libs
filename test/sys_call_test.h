@@ -11,6 +11,8 @@
 #ifndef SYS_CALL_TEST_H
 #define	SYS_CALL_TEST_H
 
+#define UNIT_TEST_BINARY
+
 using namespace std;
 
 class proc;
