@@ -796,7 +796,7 @@ TEST_F(sys_call_test, fs_readv)
 			{
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("aaaaabbbbbccccc", (e->get_param_value_str("data")).substr(0, 15));
-				EXPECT_EQ(30, NumberParser::parse(e->get_param_value_str("size")));
+				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("size")));
 				callnum++;
 			}
 		}

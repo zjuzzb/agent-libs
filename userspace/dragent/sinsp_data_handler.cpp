@@ -22,13 +22,6 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		g_log->information(metrics->DebugString());
 	}
 
-	if(!m_connection_manager->is_connected())
-	{
-		g_log->information("Agent not connected, skipping metric ts=" 
-			+ NumberFormatter::format(ts_ns / 1000000000));
-		return;
-	}
-
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		draiosproto::message_type::METRICS, 
 		*metrics, 

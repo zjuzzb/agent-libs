@@ -6,8 +6,6 @@
 
 #define SRV_PORT_MYSQL 3306
 #define SRV_PORT_POSTGRES 5432
-#define SRV_START_PORT_MONGODB 27000
-#define SRV_END_PORT_MONGODB 27018
 
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol parser interface class

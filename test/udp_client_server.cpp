@@ -35,16 +35,18 @@ using Poco::NumberParser;
 class udp_server
 {
 public:
-	udp_server(bool use_unix, bool use_sendmsg)
+	udp_server(bool use_unix, bool use_sendmsg, bool recvmsg_twobufs)
 	{
 		m_use_unix = use_unix;
 		m_use_sendmsg = use_sendmsg;
+		m_recvmsg_twobufs = recvmsg_twobufs;
 	}
 
 	void run()
 	{
 		int sd = -1, rc;
-		char buffer[BUFFER_LENGTH];
+		char buffer[BUFFER_LENGTH + 10];
+		char buffer1[BUFFER_LENGTH - 10];
 		struct sockaddr_in serveraddr;
 		struct sockaddr_in clientaddr;
 		socklen_t clientaddrlen = sizeof(clientaddr);
@@ -90,22 +92,59 @@ public:
 				if(m_use_sendmsg)
 				{
 					struct msghdr msg;
-					struct iovec iov;
+					struct iovec iov[2];
 
-					msg.msg_name = &clientaddr;
-					msg.msg_namelen = clientaddrlen;
-					msg.msg_iov = &iov;
-					msg.msg_iovlen = 1;
-					msg.msg_iov->iov_base = buffer;
-					msg.msg_iov->iov_len = sizeof(buffer);
-					msg.msg_control = 0;
-					msg.msg_controllen = 0;
-					msg.msg_flags = 0;
+					if(m_recvmsg_twobufs)
+					{
+						iov[0].iov_base = buffer1;
+						iov[0].iov_len = BUFFER_LENGTH - 10;
+						iov[1].iov_base = buffer;
+						iov[1].iov_len = BUFFER_LENGTH - 10;
 
-					//
-					// Receive the data
-					//
-					recvmsg(sd, &msg, 0);
+						msg.msg_name = &clientaddr;
+						msg.msg_namelen = clientaddrlen;
+						msg.msg_iov = iov;
+						msg.msg_iovlen = 2;
+						msg.msg_control = 0;
+						msg.msg_controllen = 0;
+						msg.msg_flags = 0;
+
+						//
+						// Receive the data
+						//
+						int res = recvmsg(sd, &msg, 0);
+						EXPECT_EQ(res, (int)BUFFER_LENGTH);
+
+						//
+						// Set the send buffer
+						//
+						iov[0].iov_len = BUFFER_LENGTH - 10;
+						iov[1].iov_len = 10;
+					}
+					else
+					{
+						iov[0].iov_base = buffer;
+						iov[0].iov_len = BUFFER_LENGTH + 10;
+
+						msg.msg_name = &clientaddr;
+						msg.msg_namelen = clientaddrlen;
+						msg.msg_iov = iov;
+						msg.msg_iovlen = 1;
+						msg.msg_control = 0;
+						msg.msg_controllen = 0;
+						msg.msg_flags = 0;
+
+						//
+						// Receive the data
+						//
+						int res = recvmsg(sd, &msg, 0);
+						EXPECT_EQ(res, (int)BUFFER_LENGTH);
+
+						//
+						// Set the send buffer
+						//
+						iov[0].iov_len = BUFFER_LENGTH;
+					}
 
 					//
 					// Echo the data back to the client
@@ -166,6 +205,7 @@ private:
 	int64_t m_tid;
 	bool m_use_unix;
 	bool m_use_sendmsg;
+	bool m_recvmsg_twobufs;
 };
 
 class udp_client
@@ -219,8 +259,6 @@ public:
 		memset(buffer, 0, sizeof(buffer));
 		strncpy(buffer, PAYLOAD, sizeof(buffer));
 
-
-
 		for(j = 0; j < NTRANSACTIONS; j++)
 		{
 			if(m_use_connect)
@@ -268,7 +306,7 @@ private:
 TEST_F(sys_call_test, udp_client_server)
 {
 	Poco::Thread server_thread;
-	udp_server server(false, false);
+	udp_server server(false, false, false);
 	int32_t state = 0;
 	int64_t fd_server_socket = 0;
 	uint32_t server_ip_address = get_server_address();
@@ -443,7 +481,7 @@ TEST_F(sys_call_test, udp_client_server)
 TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 {
 	Poco::Thread server_thread;
-	udp_server server(false, false);
+	udp_server server(false, false, false);
 	uint32_t server_ip_address = get_server_address();
 	struct in_addr server_in_addr;
 	server_in_addr.s_addr = get_server_address();
@@ -514,12 +552,114 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 TEST_F(sys_call_test, udp_client_server_sendmsg)
 {
 	Poco::Thread server_thread;
-	udp_server server(false, true);
+	udp_server server(false, true, false);
 	uint32_t server_ip_address = get_server_address();
 	struct in_addr server_in_addr;
 	server_in_addr.s_addr = get_server_address();
 	char *server_address = inet_ntoa(server_in_addr);
 
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_tid() == server.get_tid() || m_tid_filter(evt);
+	};
+
+	//
+	// INITIALIZATION
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		Poco::RunnableAdapter<udp_server> runnable(server, &udp_server::run);
+		server_thread.start(runnable);
+		server.wait_for_server_ready();
+
+		udp_client client(server_ip_address, false);
+		client.run();
+		server_thread.join();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_CLOSE_X && e->get_tid() == server.get_tid())
+		{
+			sinsp_threadinfo* ti = e->get_thread_info();
+			ASSERT_EQ((uint64_t) 2, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
+				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+		}
+
+		if(type == PPME_SOCKET_RECVMSG_X)
+		{
+			StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+			EXPECT_EQ(2, (int)tst.count());
+
+			string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			string dststr = tst[1];
+
+			StringTokenizer sst(srcstr, ":");
+			EXPECT_EQ(2, (int)sst.count());
+			EXPECT_STREQ(server_address, sst[0].c_str());
+			EXPECT_NE("0", sst[1]);
+
+			StringTokenizer dst(dststr, ":");
+			EXPECT_EQ(2, (int)dst.count());
+			EXPECT_EQ("0.0.0.0", dst[0]);
+			EXPECT_EQ(SERVER_PORT_STR, dst[1]);
+
+			EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+
+			EXPECT_EQ(server_ip_address, e->m_fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
+		}
+		else if(type == PPME_SOCKET_SENDMSG_E)
+		{
+			StringTokenizer tst(e->get_param_value_str("tuple"), ">");
+			EXPECT_EQ(2, (int)tst.count());
+
+			string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			string dststr = tst[1];
+
+			StringTokenizer sst(srcstr, ":");
+			EXPECT_EQ(2, (int)sst.count());
+			EXPECT_STREQ("0.0.0.0", sst[0].c_str());
+			EXPECT_EQ(SERVER_PORT_STR, sst[1]);
+
+			StringTokenizer dst(dststr, ":");
+			EXPECT_EQ(2, (int)dst.count());
+			EXPECT_EQ(server_address, dst[0]);
+			EXPECT_NE("0", dst[1]);
+			EXPECT_EQ((int)BUFFER_LENGTH, (int)NumberParser::parse(e->get_param_value_str("size")));
+		}
+		else if(type == PPME_SOCKET_SENDMSG_X)
+		{
+			EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+}
+
+TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
+{
+	Poco::Thread server_thread;
+	udp_server server(false, true, true);
+	uint32_t server_ip_address = get_server_address();
+	struct in_addr server_in_addr;
+	server_in_addr.s_addr = get_server_address();
+	char *server_address = inet_ntoa(server_in_addr);
 
 	//
 	// FILTER

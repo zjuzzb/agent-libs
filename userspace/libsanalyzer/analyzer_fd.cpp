@@ -236,16 +236,15 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				}
 			}
 		}
-		else if(serverport >= SRV_START_PORT_MONGODB && serverport <= SRV_END_PORT_MONGODB)
+		else if(buflen >= 16 && (
+				*(int32_t*)(buf+12) == 1 ||
+				( *(int32_t*)(buf+12) > 2000 && *(int32_t*)(buf+12) < 2008 )
+				)
+				)
 		{
-			int32_t* opcode = (int32_t*)(buf+12);
-			if (*opcode == 1 || *opcode == 1000 ||
-				( *opcode > 2000 && *opcode < 2008 ))
-			{
-				sinsp_mongodb_parser* st = new sinsp_mongodb_parser;
-				trinfo->m_protoparser = (sinsp_protocol_parser*)st;
-				return sinsp_partial_transaction::TYPE_MONGODB;
-			}
+			sinsp_mongodb_parser* st = new sinsp_mongodb_parser;
+			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
+			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
 		else
 		{
