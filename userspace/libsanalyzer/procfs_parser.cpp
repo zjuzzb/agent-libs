@@ -569,7 +569,7 @@ return "";
 	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
-		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_WARNING);
+		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_DEBUG);
 	}
 	else
 	{
