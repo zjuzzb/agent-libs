@@ -545,7 +545,7 @@ return res;
 #else
 	vector<string> args;
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/%d/cmdline", scap_get_host_root(), pid);
+	snprintf(filename, sizeof(filename), "%s/proc/%lu/cmdline", scap_get_host_root(), pid);
 	ifstream cmdlineFile(filename);
 	while(cmdlineFile.good())
 	{
@@ -564,12 +564,12 @@ return "";
 #else
 	char name[SCAP_MAX_PATH_SIZE] = "";
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/%d/status", scap_get_host_root(), pid);
+	snprintf(filename, sizeof(filename), "%s/proc/%lu/status", scap_get_host_root(), pid);
 
 	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
-		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_WARNING);
+		g_logger.log(string("Cannot open ") + filename, sinsp_logger::SEV_DEBUG);
 	}
 	else
 	{

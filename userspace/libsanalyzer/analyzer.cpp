@@ -2106,6 +2106,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
+	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
 
@@ -2370,14 +2371,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			double totcpuload = 0;
 			double totcpusteal = 0;
 
-			for(j = 0; j < m_cpu_loads.size(); j++)
+			for(uint32_t k = 0; k < m_cpu_loads.size(); k++)
 			{
-				cpustr += to_string((long double) m_cpu_loads[j]) + "(" + to_string((long double) m_cpu_steals[j]) + ") ";
-				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_cpu_loads[j] * 100));
-				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_cpu_steals[j] * 100));
+				cpustr += to_string((long double) m_cpu_loads[k]) + "(" + to_string((long double) m_cpu_steals[k]) + ") ";
+				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_cpu_loads[k] * 100));
+				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_cpu_steals[k] * 100));
 
-				totcpuload += m_cpu_loads[j];
-				totcpusteal += m_cpu_steals[j];
+				totcpuload += m_cpu_loads[k];
+				totcpusteal += m_cpu_steals[k];
 			}
 
 			ASSERT(totcpuload <= 100 * m_cpu_loads.size());
@@ -2818,6 +2819,16 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		}
 	}
 
+	if (m_sampling_ratio != 1 && ts - m_last_dropmode_switch_time > ONE_SECOND_IN_NS*3/2 ) // 1.5 seconds
+	{
+		// Passed too much time since last drop event
+		// Probably driver switched to sampling=1 without
+		// sending a drop_event with an updated sampleratio.
+		// forcing it
+		g_logger.log("Too much time since last drop event, forcing sampleratio=1", sinsp_logger::SEV_WARNING);
+		m_sampling_ratio = 1;
+	}
+
 	//
 	// Check if it's time to flush
 	//
@@ -2832,6 +2843,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 		if(do_flush)
 		{
+			//g_logger.log("Executing flush (do_flush=true)", sinsp_logger::SEV_INFO);
 			flush(evt, ts, false, flshflags);
 		}
 	}
