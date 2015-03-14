@@ -2568,7 +2568,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; j < m_host_client_transactions.size(); ++j)
 	{
-		m_host_server_transactions[j].clear();
+		m_host_client_transactions[j].clear();
 	}
 
 	//
