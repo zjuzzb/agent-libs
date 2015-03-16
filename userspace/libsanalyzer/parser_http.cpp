@@ -65,7 +65,13 @@ inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
 			{
 				uint32_t uastart = tosearchlen;
 
-				for(k = tosearchlen; k < buflen; k++)
+				// Skip initial white spaces after "tosearch" token
+				for(k=uastart; k < buflen && buf[k] == ' '; ++k)
+				{
+					++uastart;
+				}
+
+				for(k = uastart; k < buflen; k++)
 				{
 					if(buf[k] == '\r' || buf[k] == '\n')
 					{
@@ -179,7 +185,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			if((!agentvalid) && ((str = check_and_extract(buf + j,
 				buflen - j,
 				(char*)"user-agent:",
-				sizeof("user-agent:"),
+				sizeof("user-agent:")-1,
 				&strlen)) != NULL))
 			{
 				agentvalid = true;
@@ -195,7 +201,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 			else if((!hostvalid) && ((str = check_and_extract(buf + j, 
 				buflen - j,
 				(char*)"host:",
-				sizeof("host:"),
+				sizeof("host:")-1,
 				&strlen)) != NULL))
 			{
 				hostvalid = true;
@@ -279,7 +285,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 			if((str = check_and_extract(buf + j, 
 				buflen - j,
 				(char*)"content-type:",
-				sizeof("content-type:"),
+				sizeof("content-type:")-1,
 				&strlen)) != NULL)
 			{
 				resp_assign(&m_content_type, str, strlen);
