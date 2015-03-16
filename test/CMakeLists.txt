@@ -79,3 +79,7 @@ install(TARGETS resources/forking_main_thread_exit
 install(TARGETS resources/forking_nested 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
+
+install(TARGETS resources/chname 
+	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+	COMPONENT tests)
