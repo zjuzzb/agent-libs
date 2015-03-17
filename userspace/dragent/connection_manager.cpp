@@ -8,7 +8,7 @@
 
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
-const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(300);
+const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(60);
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
