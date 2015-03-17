@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -21,107 +22,54 @@ import java.util.logging.Logger;
  * Created by luca on 12/01/15.
  */
 public class Config {
-    private static final Yaml yaml = new Yaml();
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
     private static final String[] configFiles = {"dragent.yaml", "/opt/draios/etc/dragent.yaml" };
     private static final String[] defaultConfigFiles = {"dragent.default.yaml", "/opt/draios/etc/dragent.default.yaml" };
 
-    private final Map<String, Object> conf;
-    private final Map<String, Object> defaults_conf;
     private List<BeanQuery> defaultBeanQueries;
-    private List<Process> processes;
+    private Map<String, Process> processes;
 
     public Config() throws FileNotFoundException {
-        File conf_file = getFirstAvailableFile(configFiles);
-        File defaults_file = getFirstAvailableFile(defaultConfigFiles);
+        String conf_file = getFirstAvailableFile(configFiles);
+        String defaults_file = getFirstAvailableFile(defaultConfigFiles);
 
-        FileInputStream conf_file_stream = new FileInputStream(conf_file);
-        FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
-
-        conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
-        defaults_conf = (Map<String, Object>)((Map<String, Object>) yaml.load(defaults_file_stream)).get("jmx");
-
-        defaultBeanQueries = new ArrayList<BeanQuery>();
-        for (Object bean : (List<Object>) conf.get("default")) {
-            try {
-                defaultBeanQueries.add(mapper.convertValue(bean, BeanQuery.class));
-            } catch (IllegalArgumentException ex) {
-                Map<String, Object> beanAsMap = mapper.convertValue(bean, Map.class);
-                LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
-            }
-        }
-
-        processes = new ArrayList<Process>();
-        for(String name : conf.keySet()) {
-            if (name.equals("default")) {
-                continue;
-            }
-            Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
-            Process process = new Process();
-            process.name = name;
-            process.pattern = (String) queryEntry.get("pattern");
-
-            List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
-            List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
-            if (beansList != null) {
-                for (Object beanQuery : beansList) {
-                    try {
-                        beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
-                    } catch (IllegalArgumentException ex)
-                    {
-                        Map<String, Object> beanAsMap = mapper.convertValue(beanQuery, Map.class);
-                        LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
-                    }
-                }
-                process.queries = beanQueryList;
-            }
-
-            processes.add(process);
-        }
+        yamlConfig = new YamlConfig(conf_file, defaults_file);
+        defaultBeanQueries = yamlConfig.getMergedSequence("jmx.default_beans", BeanQuery.class);
+        processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
     }
 
-    private static File getFirstAvailableFile(String[] files) throws FileNotFoundException {
+    private static String getFirstAvailableFile(String[] files) throws FileNotFoundException {
         // Load config from file
-        File conf_file = null;
         for (String configFilePath : files)
         {
-            conf_file = new File(configFilePath);
+            File conf_file = new File(configFilePath);
             if (conf_file.exists())
             {
                 LOGGER.info("Using config file: " + configFilePath);
-                break;
+                return configFilePath;
             }
         }
-
-        if(conf_file == null)
-        {
-            throw new FileNotFoundException("Cannot find configuration file in any default path");
-        }
-        return conf_file;
+        return null;
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
         return defaultBeanQueries;
     }
 
-    public List<Process> getProcesses() {
+    public Map<String, Process> getProcesses() {
         return processes;
     }
 
     public static class Process {
-        private String name;
         private String pattern;
         private List<BeanQuery> queries;
 
-        public Process() {
-            this.name = "";
-            this.pattern = "";
-            this.queries = new ArrayList<BeanQuery>();
-        }
-
-        public String getName() {
-            return name;
+        @JsonCreator
+        @SuppressWarnings("unused")
+        private Process(@JsonProperty("pattern") String pattern, @JsonProperty("beans") List<BeanQuery> queries) {
+            this.pattern = pattern;
+            this.queries = queries;
         }
 
         public String getPattern() {

@@ -114,11 +114,11 @@ public class Application {
                 // Configure VM name if it matches a pattern on configurations
                 if(vm.isAvailable())
                 {
-                    List<Config.Process> processes = config.getProcesses();
-                    for (Config.Process config : processes) {
-                        if (vm.getName().contains(config.getPattern())) {
-                            vm.setName(config.getName());
-                            vm.addQueries(config.getQueries());
+                    Map<String, Config.Process> processes = config.getProcesses();
+                    for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
+                        if (vm.getName().contains(config.getValue().getPattern())) {
+                            vm.setName(config.getKey());
+                            vm.addQueries(config.getValue().getQueries());
                             break;
                         }
                     }

@@ -7,6 +7,8 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,8 +21,6 @@ public class YamlConfigTest {
 
     @Before
     public void setUp() throws FileNotFoundException {
-        ClassLoader classLoader = getClass().getClassLoader();
-
         String confPath = "src/test/resources/test.yaml";
         String defaultsConfPath = "src/test/resources/test.default.yaml";
         this.yamlConfig = new YamlConfig(confPath, defaultsConfPath);
@@ -41,17 +41,17 @@ public class YamlConfigTest {
 
     @Test
     public void getMergedSequence() {
-        List<Integer> myarray = yamlConfig.getMergedSequence("myarray");
+        List<Integer> myarray = yamlConfig.getMergedSequence("myarray", Integer.class);
         assertEquals(3, myarray.size());
     }
 
     @Test
     public void getMergedMap() {
-        Map<String, Map<String, Integer>> merged = yamlConfig.getMergedMap("mynested");
+        Map<String, Map> merged = yamlConfig.getMergedMap("mynested", Map.class);
         assertEquals(Integer.valueOf(78), merged.get("firstkey").get("subkey"));
         assertEquals(Integer.valueOf(40), merged.get("secondkey").get("subkey"));
 
-        merged = yamlConfig.getMergedMap("mynestedempty");
+        merged = yamlConfig.getMergedMap("mynestedempty", Map.class);
         assertTrue(merged.isEmpty());
     }
 }

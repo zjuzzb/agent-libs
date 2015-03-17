@@ -5,9 +5,9 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,11 +20,18 @@ public class YamlConfig {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public YamlConfig(String conf_file, String defaults_file) throws FileNotFoundException {
-        FileInputStream conf_file_stream = new FileInputStream(conf_file);
-        FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
-
-        conf = (Map<String, Object>) yaml.load(conf_file_stream);
-        defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
+        if (conf_file != null) {
+            FileInputStream conf_file_stream = new FileInputStream(conf_file);
+            conf = (Map<String, Object>) yaml.load(conf_file_stream);
+        } else {
+            conf = new HashMap<String, Object>();
+        }
+        if (defaults_file != null) {
+            FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
+            defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
+        } else {
+            defaults_conf = new HashMap<String, Object>();
+        }
     }
 
     public <T> T getSingle(String key, T default_value) {
@@ -42,28 +49,40 @@ public class YamlConfig {
         }
     }
 
-    public <T> List<T> getMergedSequence(String key) {
+    public <T> List<T> getMergedSequence(String key, Class<T> classType) {
         List<T> ret = new ArrayList<T>();
         Object value = getNodeValue(defaults_conf, key);
         if (value != null) {
-            ret.addAll((List<T>) mapper.convertValue(value, List.class));
+            List<Object> values =(List<Object>) value;
+            for (Object subvalue : values) {
+                ret.add(mapper.convertValue(subvalue, classType));
+            }
         }
         value = getNodeValue(conf, key);
         if (value != null) {
-            ret.addAll((List<T>) mapper.convertValue(value, List.class));
+            List<Object> values =(List<Object>) value;
+            for (Object subvalue : values) {
+                ret.add(mapper.convertValue(subvalue, classType));
+            }
         }
         return ret;
     }
 
-    public <T> Map<String, T> getMergedMap(String key) {
+    public <T> Map<String, T> getMergedMap(String key, Class<T> classType) {
         Map<String, T> ret = new HashMap<String, T>();
         Object value = getNodeValue(defaults_conf, key);
         if (value != null) {
-            ret.putAll((Map<String, T>) mapper.convertValue(value, Map.class));
+            Map<String, Object> values = (Map<String, Object>) value;
+            for (Map.Entry<String, Object> subvalue : values.entrySet()) {
+                ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+            }
         }
         value = getNodeValue(conf, key);
         if (value != null) {
-            ret.putAll((Map<String, T>) mapper.convertValue(value, Map.class));
+            Map<String, Object> values = (Map<String, Object>) value;
+            for (Map.Entry<String, Object> subvalue : values.entrySet()) {
+                ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+            }
         }
         return ret;
     }
