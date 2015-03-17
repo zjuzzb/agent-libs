@@ -62,7 +62,7 @@ public class MonitoredVM {
             int gid_error = CLibrary.setegid(idInfo[1]);
             int uid_error = CLibrary.seteuid(idInfo[0]);
             if (uid_error == 0 && gid_error == 0) {
-                LOGGER.info(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+                LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
             } else {
                 LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
                         uid_error, gid_error));
@@ -140,7 +140,7 @@ public class MonitoredVM {
             int uid_error = CLibrary.seteuid(0);
             int gid_error = CLibrary.setegid(0);
             if (uid_error == 0 && gid_error == 0) {
-                LOGGER.info("Restore uid and gid");
+                LOGGER.fine("Restore uid and gid");
             } else {
                 LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
             }

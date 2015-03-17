@@ -32,14 +32,6 @@ public class Application {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        LogManager.getLogManager().reset();
-        Logger globalLogger = Logger.getLogger("");
-        ConsoleHandler console = new ConsoleHandler();
-        //console.setLevel(Level.FINE);
-        console.setFormatter(new LogJsonFormatter());
-        //globalLogger.setLevel(Level.FINE);
-        globalLogger.addHandler(console);
-
         try {
             Application app = new Application();
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
@@ -55,9 +47,19 @@ public class Application {
     private long lastVmsCleanup;
 
     private Application() throws FileNotFoundException {
+        LogManager.getLogManager().reset();
+        Logger globalLogger = Logger.getLogger("");
+        ConsoleHandler console = new ConsoleHandler();
+        console.setFormatter(new LogJsonFormatter());
+        globalLogger.addHandler(console);
+
         vms = new HashMap<Integer, MonitoredVM>();
         lastVmsCleanup = 0;
         config = new Config();
+
+        Level level = config.getLogLevel();
+        console.setLevel(level);
+        globalLogger.setLevel(level);
     }
 
     private void mainLoop() throws IOException {

@@ -127,7 +127,7 @@ void dragent_configuration::init(Application* app)
 
 	if(m_min_file_priority == 0)
 	{
-		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("file_priority", "info"));
+		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "info"));
 	}
 
 	if(m_min_console_priority == 0)

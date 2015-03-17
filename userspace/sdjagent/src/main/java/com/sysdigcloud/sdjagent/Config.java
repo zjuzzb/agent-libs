@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -51,6 +52,20 @@ public class Config {
             }
         }
         return null;
+    }
+
+    public Level getLogLevel() {
+        String stringLevel = yamlConfig.getSingle("log.file_priority", "info");
+        if ( stringLevel.equals("error")) {
+            return Level.SEVERE;
+        } else if (stringLevel.equals("warning")) {
+            return Level.WARNING;
+        } else if (stringLevel.equals("info")) {
+            return Level.INFO;
+        } else if (stringLevel.equals("debug")) {
+            return Level.FINE;
+        }
+        return Level.INFO;
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
