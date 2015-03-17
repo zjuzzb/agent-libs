@@ -21,37 +21,26 @@ import java.util.logging.Logger;
  * Created by luca on 12/01/15.
  */
 public class Config {
-    private final Map<String, Object> conf;
-    private final Yaml yaml;
+    private static final Yaml yaml = new Yaml();
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
-    private static final String[] configFiles = {"dragent.yaml", "dragent.default.yaml",
-                                       "/opt/draios/etc/dragent.yaml", "/opt/draios/etc/dragent.default.yaml" };
+    private static final String[] configFiles = {"dragent.yaml", "/opt/draios/etc/dragent.yaml" };
+    private static final String[] defaultConfigFiles = {"dragent.default.yaml", "/opt/draios/etc/dragent.default.yaml" };
+
+    private final Map<String, Object> conf;
+    private final Map<String, Object> defaults_conf;
     private List<BeanQuery> defaultBeanQueries;
     private List<Process> processes;
 
     public Config() throws FileNotFoundException {
-
-        // Load config from file
-        File conf_file = null;
-        for (String configFilePath : configFiles)
-        {
-            conf_file = new File(configFilePath);
-            if (conf_file.exists())
-            {
-                LOGGER.info("Using config file: " + configFilePath);
-                break;
-            }
-        }
-
-        if(conf_file == null)
-        {
-            throw new FileNotFoundException("Cannot find configuration file in any default path");
-        }
+        File conf_file = getFirstAvailableFile(configFiles);
+        File defaults_file = getFirstAvailableFile(defaultConfigFiles);
 
         FileInputStream conf_file_stream = new FileInputStream(conf_file);
-        yaml = new Yaml();
+        FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
+
         conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
+        defaults_conf = (Map<String, Object>)((Map<String, Object>) yaml.load(defaults_file_stream)).get("jmx");
 
         defaultBeanQueries = new ArrayList<BeanQuery>();
         for (Object bean : (List<Object>) conf.get("default")) {
@@ -90,6 +79,26 @@ public class Config {
 
             processes.add(process);
         }
+    }
+
+    private static File getFirstAvailableFile(String[] files) throws FileNotFoundException {
+        // Load config from file
+        File conf_file = null;
+        for (String configFilePath : files)
+        {
+            conf_file = new File(configFilePath);
+            if (conf_file.exists())
+            {
+                LOGGER.info("Using config file: " + configFilePath);
+                break;
+            }
+        }
+
+        if(conf_file == null)
+        {
+            throw new FileNotFoundException("Cannot find configuration file in any default path");
+        }
+        return conf_file;
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
