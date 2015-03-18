@@ -49,6 +49,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_n_flushes = 0;
+	m_prev_flushes_duration_ns = 0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -454,7 +455,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload, m_prev_flushes_duration_ns);
+		m_prev_flushes_duration_ns = 0;
 	}
 
 	if(m_configuration->get_emit_metrics_to_file())
@@ -2109,6 +2111,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
+	uint64_t flush_start_ns = g_get_current_time_ns();
 
 	if(evt != NULL)
 	{
@@ -2177,9 +2180,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				// Make sure that there's been enough time since the previous call to justify getting
 				// CPU info from proc
 				//
-				struct timeval tv;
-				gettimeofday(&tv, NULL);
-				uint64_t wall_time = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000;
+				uint64_t wall_time = g_get_current_time_ns();
 
 				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || !m_inspector->is_live())
 				{
@@ -2636,6 +2637,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		evt->m_tinfo = NULL;	// This is important to avoid using a stale cached value!
 		evt->m_tinfo = evt->get_thread_info();
 	}
+
+	m_prev_flushes_duration_ns += g_get_current_time_ns() - flush_start_ns;
 }
 
 //
@@ -2797,9 +2800,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			{
 				if(m_inspector->is_live() && m_inspector->m_lastevent_ts != 0)
 				{
-					struct timeval tv;
-					gettimeofday(&tv, NULL);
-					ts = (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000 - 500000000;
+					ts = g_get_current_time_ns();
 					etype = 0; // this avoids a compiler warning
 				}
 				else

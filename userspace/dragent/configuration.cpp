@@ -281,14 +281,6 @@ void dragent_configuration::refresh_aws_metadata()
 	}
 }
 
-uint64_t dragent_configuration::get_current_time_ns()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-
-    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
-}
-
 bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 {
 	struct rusage usage;
