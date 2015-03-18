@@ -2801,7 +2801,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			{
 				if(m_inspector->is_live() && m_inspector->m_lastevent_ts != 0)
 				{
-					ts = sinsp_utils::get_current_time_ns();
+					ts = sinsp_utils::get_current_time_ns() - 500000000;
 					etype = 0; // this avoids a compiler warning
 				}
 				else
