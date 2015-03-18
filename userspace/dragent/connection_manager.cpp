@@ -5,6 +5,7 @@
 #include "draios.pb.h"
 #include "ssh_worker.h"
 #include "update_worker.h"
+#include "utils.h"
 
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
@@ -164,7 +165,7 @@ void connection_manager::run()
 
 		while(!dragent_configuration::m_terminate)
 		{
-			m_last_loop_ns = g_get_current_time_ns();
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 			//
 			// Make sure we have a valid connection
@@ -174,7 +175,7 @@ void connection_manager::run()
 				g_log->information(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
 				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
-					m_last_loop_ns = g_get_current_time_ns();
+					m_last_loop_ns = sinsp_utils::get_current_time_ns();
 					Thread::sleep(1000);
 				}
 

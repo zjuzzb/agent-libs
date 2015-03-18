@@ -1,7 +1,6 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
-#include <sys/time.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -9,14 +8,6 @@
 #include "sinsp_signal.h"
 #include "filter.h"
 #include "filterchecks.h"
-
-uint64_t g_get_current_time_ns()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-
-    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
-}
 
 #ifdef SIMULATE_DROP_MODE
 
