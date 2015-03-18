@@ -289,7 +289,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_last_loop_ns() != 0)
 	{
-		int64_t diff = dragent_configuration::get_current_time_ns() 
+		int64_t diff = g_get_current_time_ns() 
 			- m_sinsp_worker.get_last_loop_ns();
 
 #if _DEBUG
@@ -325,7 +325,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
 	{
-		int64_t diff = dragent_configuration::get_current_time_ns() 
+		int64_t diff = g_get_current_time_ns() 
 			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
 #if _DEBUG
@@ -343,7 +343,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_connection_manager.get_last_loop_ns() != 0)
 	{
-		int64_t diff = dragent_configuration::get_current_time_ns() 
+		int64_t diff = g_get_current_time_ns() 
 			- m_connection_manager.get_last_loop_ns();
 
 #if _DEBUG
@@ -459,7 +459,7 @@ void dragent_app::check_for_clean_shutdown()
 		}
 
 		draiosproto::dirty_shutdown_report report;
-		report.set_timestamp_ns(dragent_configuration::get_current_time_ns());
+		report.set_timestamp_ns(g_get_current_time_ns());
 		report.set_customer_id(m_configuration.m_customer_id);
 		report.set_machine_id(m_configuration.m_machine_id);
 		report.set_log(buf.begin(), buf.size());

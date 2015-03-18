@@ -133,6 +133,8 @@ inline string truncate_str(const string& s, unsigned int max_size = 256)
 	}
 }
 
+uint64_t g_get_current_time_ns();
+
 #ifdef SIMULATE_DROP_MODE
 bool should_drop(sinsp_evt *evt);
 #endif

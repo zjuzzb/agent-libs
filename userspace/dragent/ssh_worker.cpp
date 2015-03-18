@@ -144,13 +144,13 @@ void ssh_worker::run()
 		return;
 	}
 
-	m_last_activity_ns = dragent_configuration::get_current_time_ns();
+	m_last_activity_ns = g_get_current_time_ns();
 
 	while(!dragent_configuration::m_terminate &&
 		ssh_channel_is_open(m_libssh_channel) &&
 		!ssh_channel_is_eof(m_libssh_channel))
 	{
-		if(dragent_configuration::get_current_time_ns() > 
+		if(g_get_current_time_ns() > 
 			m_last_activity_ns + m_session_timeout_ns)
 		{
 			g_log->warning(m_name + ": SSH session timeout");
@@ -162,7 +162,7 @@ void ssh_worker::run()
 		{
 			if(message.m_new_message)
 			{
-				m_last_activity_ns = dragent_configuration::get_current_time_ns();
+				m_last_activity_ns = g_get_current_time_ns();
 			}
 
 			if(message.m_close)
@@ -228,7 +228,7 @@ void ssh_worker::send_error(const string& error)
 
 void ssh_worker::prepare_response(draiosproto::ssh_data* response)
 {
-	response->set_timestamp_ns(dragent_configuration::get_current_time_ns());
+	response->set_timestamp_ns(g_get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
 	response->set_machine_id(m_configuration->m_machine_id);
 	response->set_token(m_token);

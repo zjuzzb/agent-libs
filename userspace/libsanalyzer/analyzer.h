@@ -14,7 +14,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -252,6 +252,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	uint32_t m_n_flushes;
+	uint64_t m_prev_flushes_duration_ns;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 
