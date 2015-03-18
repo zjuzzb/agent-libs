@@ -96,7 +96,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 
-	inspector->m_max_n_proc_lookups = 300;
+	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
 
 	m_configuration = new sinsp_configuration();
