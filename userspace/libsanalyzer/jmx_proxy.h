@@ -5,6 +5,27 @@
 
 class jmx_proxy;
 class java_process;
+class java_bean;
+
+class java_bean_attribute
+{
+public:
+	enum type_t
+	{
+		EMPTY,
+		SIMPLE,
+		NESTED
+	};
+
+	void to_protobuf(draiosproto::jmx_attribute *attribute) const;
+	explicit java_bean_attribute(const Json::Value&);
+private:
+	string m_name;
+	double m_value;
+	uint16_t m_unit;
+	type_t m_type{EMPTY};
+	vector<java_bean_attribute> m_subattributes;
+};
 
 class java_bean {
 public:
@@ -14,22 +35,11 @@ public:
 		return m_name;
 	}
 
-	inline const map<string, double>& simple_attributes() const
-	{
-		return m_simple_attributes;
-	}
-
-	inline const map<string, map<string, double>>& nested_attributes() const
-	{
-		return m_nested_attributes;
-	}
-
 	void to_protobuf(draiosproto::jmx_bean *proto_bean) const;
 private:
 	explicit java_bean(const Json::Value&);
 	string m_name;
-	map<string, double> m_simple_attributes;
-	map<string, map<string, double>> m_nested_attributes;
+	vector<java_bean_attribute> m_attributes;
 	friend class java_process;
 };
 

@@ -154,61 +154,73 @@ public class Config {
         }
         public static enum Unit {
             NONE(0),
+
             SECOND(1),
             MILLISECOND(2),
             MICROSECOND(3),
             NANOSECOND(4),
-            BYTE(5),
-            KILOBYTE(6),
-            MEGABYTE(7),
-            GIGABYTE(8),
-            BYTE_PER_SECOND(9),
-            KILOBYTE_PER_SECOND(10),
-            MEGABYTE_PER_SECOND(11),
-            GIGABYTE_PER_SECOND(12),
-            OPERATION_PER_SECOND(13);
+            MINUTE(5),
+            HOUR(6),
+            DAY(7),
+
+            BYTE(8),
+            KILOBYTE(9),
+            MEGABYTE(10),
+            GIGABYTE(11),
+            TERABYTE(12),
+            KIBIBYTE(13),
+            MEBIBYTE(14),
+            GIBIBYTE(15),
+            TEBIBYTE(16),
+
+            KILO(17),
+            MEGA(18),
+            GIGA(19),
+            TERA(20),
+
+            PERCENT(21),
+            PERCENT_NORM(22);
 
             private final int id;
-            private static final Map<String, Unit> conversionFromString;
+            private static final Map<String, Unit> STRING_TO_UNIT;
 
             static {
-                conversionFromString = new HashMap<String, Unit>();
+                STRING_TO_UNIT = new HashMap<String, Unit>();
 
-                conversionFromString.put("s", SECOND);
-                conversionFromString.put("ms", MILLISECOND);
-                conversionFromString.put("us", MICROSECOND);
-                conversionFromString.put("ns", NANOSECOND);
-                conversionFromString.put("B", BYTE);
-                conversionFromString.put("kB", KILOBYTE);
-                conversionFromString.put("MB", MEGABYTE);
-                conversionFromString.put("GB", GIGABYTE);
-                conversionFromString.put("B/s", BYTE_PER_SECOND);
-                conversionFromString.put("KB/s", KILOBYTE_PER_SECOND);
-                conversionFromString.put("MB/s", MEGABYTE_PER_SECOND);
-                conversionFromString.put("GB/s", GIGABYTE_PER_SECOND);
-                conversionFromString.put("op/s", OPERATION_PER_SECOND);
+                STRING_TO_UNIT.put("s", SECOND);
+                STRING_TO_UNIT.put("ms", MILLISECOND);
+                STRING_TO_UNIT.put("us", MICROSECOND);
+                STRING_TO_UNIT.put("ns", NANOSECOND);
+                STRING_TO_UNIT.put("m", MINUTE);
+                STRING_TO_UNIT.put("h", HOUR);
+                STRING_TO_UNIT.put("d", DAY);
 
-                conversionFromString.put("second", SECOND);
-                conversionFromString.put("millisecond", MILLISECOND);
-                conversionFromString.put("microsecond", MICROSECOND);
-                conversionFromString.put("nanosecond", NANOSECOND);
-                conversionFromString.put("byte", BYTE);
-                conversionFromString.put("kilobyte", KILOBYTE);
-                conversionFromString.put("megabyte", MEGABYTE);
-                conversionFromString.put("gigabyte", GIGABYTE);
-                conversionFromString.put("byte_per_second", BYTE_PER_SECOND);
-                conversionFromString.put("kilobyte_per_second", KILOBYTE_PER_SECOND);
-                conversionFromString.put("megabyte_per_second", MEGABYTE_PER_SECOND);
-                conversionFromString.put("gigabyte_per_second", GIGABYTE_PER_SECOND);
-                conversionFromString.put("operation_per_second", OPERATION_PER_SECOND);
+                STRING_TO_UNIT.put("B", BYTE);
+                STRING_TO_UNIT.put("kB", KILOBYTE);
+                STRING_TO_UNIT.put("MB", MEGABYTE);
+                STRING_TO_UNIT.put("GB", GIGABYTE);
+                STRING_TO_UNIT.put("TB", TERABYTE);
+                STRING_TO_UNIT.put("KiB", KIBIBYTE);
+                STRING_TO_UNIT.put("MiB", MEBIBYTE);
+                STRING_TO_UNIT.put("GiB", GIBIBYTE);
+                STRING_TO_UNIT.put("TiB", TEBIBYTE);
+
+                STRING_TO_UNIT.put("K", KILO);
+                STRING_TO_UNIT.put("M", MEGA);
+                STRING_TO_UNIT.put("G", GIGA);
+                STRING_TO_UNIT.put("T", TERA);
+
+                STRING_TO_UNIT.put("%100", PERCENT);
+                STRING_TO_UNIT.put("%1", PERCENT_NORM);
             }
+
             private Unit(int id) { this.id = id; }
 
             public int getValue() { return id; }
 
             public static Unit fromString(String s) {
-                if (conversionFromString.containsKey(s)) {
-                    return conversionFromString.get(s);
+                if (STRING_TO_UNIT.containsKey(s)) {
+                    return STRING_TO_UNIT.get(s);
                 } else {
                     return NONE;
                 }
@@ -228,7 +240,13 @@ public class Config {
                 this.unit = Unit.NONE;
             } else if (data.isObject()) {
                 this.name = data.get("name").textValue();
-                this.type = Type.valueOf(data.get("type").textValue());
+
+                if ( data.has("type")) {
+                    this.type = Type.valueOf(data.get("type").textValue());
+                } else {
+                    this.type = Type.rate;
+                }
+
                 if (data.has("unit")) {
                     this.unit = Unit.fromString(data.get("unit").asText());
                 } else {

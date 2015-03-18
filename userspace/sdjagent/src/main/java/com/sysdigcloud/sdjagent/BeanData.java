@@ -1,6 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -141,6 +142,7 @@ public class BeanData {
         }
 
         @JsonProperty("unit")
+        @SuppressWarnings("unused")
         private int getUnitJSON() {
             return unit.getValue();
         }
@@ -160,6 +162,7 @@ public class BeanData {
             return value != null || ! subattributes.isEmpty();
         }
 
+        @JsonIgnore
         public Type getType() {
             return this.type;
         }
