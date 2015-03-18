@@ -347,18 +347,19 @@ public class MonitoredVM {
                     LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
                     continue;
                 }
-                if (attributesDesc.get(attribute.getName()).getType() == Config.BeanAttribute.Type.counter) {
+                final Config.BeanAttribute attributeDesc = attributesDesc.get(attribute.getName());
+                if (attributeDesc.getType() == Config.BeanAttribute.Type.counter) {
                     // TODO: Counters are supported only for simple attributes right now
                     Double lastAbsoluteValue = counterSamples.get(attribute.getName());
                     Double newAbsoluteValue = BeanData.parseValueAsDouble(attribute.getValue());
 
                     if (lastAbsoluteValue != null) {
-                        newSample.addAttribute(attribute.getName(), newAbsoluteValue-lastAbsoluteValue);
+                        newSample.addAttribute(attribute.getName(), newAbsoluteValue-lastAbsoluteValue, attributeDesc.getUnit());
                     }
 
                     counterSamples.put(attribute.getName(), newAbsoluteValue);
                 } else {
-                    newSample.addAttribute(attribute.getName(), attribute.getValue());
+                    newSample.addAttribute(attribute.getName(), attribute.getValue(), attributeDesc.getUnit());
                 }
             }
             return newSample;

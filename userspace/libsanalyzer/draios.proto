@@ -246,9 +246,27 @@ message mongodb_info {
     repeated mongodb_collection_details client_collections = 4;
 }
 
+enum jmx_metric_unit {
+    JMX_METRIC_NONE = 0;
+    JMX_METRIC_SECOND = 1;
+    JMX_METRIC_MILLISECOND = 2;
+    JMX_METRIC_MICROSECOND = 3;
+    JMX_METRIC_NANOSECOND = 4;
+    JMX_METRIC_BYTE = 5;
+    JMX_METRIC_KILOBYTE = 6;
+    JMX_METRIC_MEGABYTE = 7;
+    JMX_METRIC_GIGABYTE = 8;
+    JMX_METRIC_BYTE_PER_SECOND = 9;
+    JMX_METRIC_KILOBYTE_PER_SECOND = 10;
+    JMX_METRIC_MEGABYTE_PER_SECOND = 11;
+    JMX_METRIC_GIGABYTE_PER_SECOND = 12;
+    JMX_METRIC_OPERATION_PER_SECOND = 13;
+}
+
 message jmx_attribute {
     optional string name = 1;
     optional double value = 2;
+    optional jmx_metric_unit unit = 4;
     repeated jmx_attribute subattributes = 3;
 }
 
