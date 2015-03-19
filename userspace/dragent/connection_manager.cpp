@@ -9,7 +9,6 @@
 
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
-const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(60);
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
@@ -138,11 +137,11 @@ void connection_manager::disconnect()
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
-		m_reconnect_interval = 1;
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
 	}
 	else
 	{
-		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval*2), RECONNECT_MAX_INTERVAL_S);
+		m_reconnect_interval = min(max(RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2), RECONNECT_MAX_INTERVAL_S);
 	}
 
 	if(!m_socket.isNull())
@@ -183,6 +182,7 @@ void connection_manager::run()
 				{
 					break;
 				}
+				
 				m_last_connection_failure = chrono::system_clock::now();
 
 				if(!connect())
