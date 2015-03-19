@@ -193,6 +193,12 @@ void connection_manager::run()
 				}
 			}
 
+			//
+			// Check if we received a message. We do it before so nothing gets lost if ELBs
+			// still negotiates a connection and then sends us out at the first read/write
+			//
+			receive_message();
+
 			if(item.isNull())
 			{
 				//
@@ -211,11 +217,6 @@ void connection_manager::run()
 					item = NULL;
 				}
 			}
-
-			//
-			// Check if we received a message
-			//
-			receive_message();
 		}
 	}
 
