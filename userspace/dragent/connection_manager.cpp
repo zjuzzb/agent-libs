@@ -247,7 +247,7 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 			return false;
 		}
 
-		g_log->debug(m_name + ": Sent " 
+		g_log->information(m_name + ": Sent " 
 			+ Poco::NumberFormatter::format(buflen) + " to collector");
 
 		return true;
