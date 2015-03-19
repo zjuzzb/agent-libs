@@ -29,9 +29,6 @@ public:
 		return m_connected;
 	}
 
-	static const uint32_t RECONNECT_MIN_INTERVAL_S = 10;
-	static const uint32_t RECONNECT_MAX_INTERVAL_S = 60;
-
 private:
 	bool init();
 	bool connect();
@@ -48,6 +45,8 @@ private:
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
+	static const uint32_t RECONNECT_MIN_INTERVAL_S;
+	static const uint32_t RECONNECT_MAX_INTERVAL_S;
 	static const chrono::seconds WORKING_INTERVAL_S;
 	static const string m_name;
 
