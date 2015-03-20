@@ -129,12 +129,14 @@ public class Config {
         @JsonCreator
         @SuppressWarnings("unused")
         private BeanAttribute(JsonNode data) {
+            this.type = Type.rate;
             if(data.isTextual()) {
                 this.name = data.textValue();
-                this.type = Type.rate;
             } else if (data.isObject()) {
                 this.name = data.get("name").textValue();
-                this.type = Type.valueOf(data.get("type").textValue());
+                if (data.has("type")) {
+                    this.type = Type.valueOf(data.get("type").textValue());
+                }
             }
         }
 

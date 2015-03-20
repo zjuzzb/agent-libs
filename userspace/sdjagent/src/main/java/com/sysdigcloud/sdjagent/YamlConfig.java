@@ -9,15 +9,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Created by luca on 12/03/15.
  */
 public class YamlConfig {
+    private static final Logger LOGGER = Logger.getLogger(YamlConfig.class.getName());
     private static final Yaml yaml = new Yaml();
+    private static final ObjectMapper mapper = new ObjectMapper();
     private Map<String, Object> conf;
     private Map<String, Object> defaults_conf;
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     public YamlConfig(String conf_file, String defaults_file) throws FileNotFoundException {
         if (conf_file != null) {
@@ -35,34 +37,51 @@ public class YamlConfig {
     }
 
     public <T> T getSingle(String key, T default_value) {
-        Object value = getNodeValue(conf, key);
-        if (value != null)
-        {
-            return (T)mapper.convertValue(value, default_value.getClass());
-        } else {
-            value = getNodeValue(defaults_conf, key);
-            if (value != null) {
-                return (T)mapper.convertValue(value, default_value.getClass());
-            } else {
-                return default_value;
+        T value = null;
+
+        try {
+            value = (T) mapper.convertValue(getNodeValue(conf, key), default_value.getClass());
+        } catch (IllegalArgumentException ex) {
+            LOGGER.severe(String.format("Config file error at %s", key));
+        }
+
+        if (value == null ) {
+            try {
+                value = (T) mapper.convertValue(getNodeValue(defaults_conf, key), default_value.getClass());
+            } catch (IllegalArgumentException ex) {
+                LOGGER.severe(String.format("Config file error at %s", key));
             }
         }
+
+        if (value == null) {
+            value = default_value;
+        }
+
+        return value;
     }
 
     public <T> List<T> getMergedSequence(String key, Class<T> classType) {
         List<T> ret = new ArrayList<T>();
         Object value = getNodeValue(defaults_conf, key);
         if (value != null) {
-            List<Object> values =(List<Object>) value;
+            List<Object> values = (List<Object>) value;
             for (Object subvalue : values) {
-                ret.add(mapper.convertValue(subvalue, classType));
+                try {
+                    ret.add(mapper.convertValue(subvalue, classType));
+                } catch (IllegalArgumentException ex) {
+                    LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
+                }
             }
         }
         value = getNodeValue(conf, key);
         if (value != null) {
-            List<Object> values =(List<Object>) value;
+            List<Object> values = (List<Object>) value;
             for (Object subvalue : values) {
-                ret.add(mapper.convertValue(subvalue, classType));
+                try {
+                    ret.add(mapper.convertValue(subvalue, classType));
+                } catch (IllegalArgumentException ex) {
+                    LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
+                }
             }
         }
         return ret;
@@ -74,14 +93,22 @@ public class YamlConfig {
         if (value != null) {
             Map<String, Object> values = (Map<String, Object>) value;
             for (Map.Entry<String, Object> subvalue : values.entrySet()) {
-                ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                try {
+                    ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                } catch (IllegalArgumentException ex) {
+                    LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
+                }
             }
         }
         value = getNodeValue(conf, key);
         if (value != null) {
             Map<String, Object> values = (Map<String, Object>) value;
             for (Map.Entry<String, Object> subvalue : values.entrySet()) {
-                ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                try {
+                    ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                } catch (IllegalArgumentException ex) {
+                    LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
+                }
             }
         }
         return ret;
