@@ -37,7 +37,8 @@ jmx:
           - Value
       - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
         attributes:
-          - Count
+          - name: Count
+            type: counter
       - query: "org.apache.cassandra.metrics:type=Compaction,name=CompletedTasks"
         attributes:
           - Value
@@ -56,10 +57,12 @@ jmx:
           - Value
       - query: "org.apache.cassandra.metrics:type=Cache,name=Hits,*"
         attributes:
-          - Count
+          - name: Count
+            type: counter
       - query: "org.apache.cassandra.metrics:type=Cache,name=Requests,*"
         attributes:
-          - Count
+          - name: Count
+            type: counter
       - query: "org.apache.cassandra.metrics:type=Cache,name=Size,*"
         attributes:
           - Value
