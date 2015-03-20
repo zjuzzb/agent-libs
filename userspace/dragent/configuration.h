@@ -27,19 +27,25 @@ public:
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
 
+/**
+* WARNING: avoid assignment operator on YAML::Node object
+* they modifies underlying tree even on const YAML::Node objects
+*/
 class yaml_configuration
 {
 public:
 	yaml_configuration(const string& path, const string& defaults_path)
 	{
+		// We cant use logging because it's not initialized yet
 		try
 		{
 			m_root = YAML::LoadFile(path);
 		} catch ( const YAML::BadFile& ex)
 		{
-#ifndef UNIT_TEST_BINARY
-			g_log->critical("Cannot read config file: " + path + "reason: " + ex.what());
-#endif
+			m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+		} catch ( const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
 		}
 
 		try
@@ -47,9 +53,10 @@ public:
 			m_default_root = YAML::LoadFile(defaults_path);
 		} catch ( const YAML::BadFile& ex)
 		{
-#ifndef UNIT_TEST_BINARY
-			g_log->critical("Cannot read config file: " + defaults_path + "reason: " + ex.what());
-#endif
+			m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
+		} catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
 		}
 	}
 
@@ -60,23 +67,32 @@ public:
 	template<typename T>
 	const T get_scalar(const string& key, const T& default_value)
 	{
-		auto node = m_root[key];
-		if (node.IsDefined())
+		try
 		{
-			return node.as<T>();
-		}
-		else
-		{
-			node = m_default_root[key];
+			auto node = m_root[key];
 			if (node.IsDefined())
 			{
 				return node.as<T>();
 			}
-			else
-			{
-				return default_value;
-			}
+		} catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Config file error at key: ") + key);
 		}
+
+		try
+		{
+			// Redefine `node` because assignments on YAML::Node variable modifies underlying tree
+			auto node = m_default_root[key];
+			if (node.IsDefined())
+			{
+				return node.as<T>();
+			}
+		} catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Default config file error at key: ") + key);
+		}
+
+		return default_value;
 	}
 
 	/**
@@ -90,23 +106,34 @@ public:
 	template<typename T>
 	const T get_scalar(const string& key, const string& subkey, const T& default_value)
 	{
-		auto node = m_root[key][subkey];
-		if (node.IsDefined())
+		try
 		{
-			return node.as<T>();
-		}
-		else
-		{
-			node = m_default_root[key][subkey];
+			auto node = m_root[key][subkey];
 			if (node.IsDefined())
 			{
 				return node.as<T>();
 			}
-			else
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Config file error at key: ") + key + "." + subkey);
+		}
+
+		try
+		{
+			// Redefine `node` because assignments on YAML::Node variable modifies underlying tree
+			auto node = m_default_root[key][subkey];
+			if (node.IsDefined())
 			{
-				return default_value;
+				return node.as<T>();
 			}
 		}
+		catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Default config file error at key: ") + key + "." + subkey);
+		}
+
+		return default_value;
 	}
 
 	/**
@@ -124,15 +151,27 @@ public:
 	const vector<T> get_merged_sequence(const string& key)
 	{
 		vector<T> ret;
-		auto node = m_default_root[key];
-		for(auto item : node)
+		for(auto item : m_default_root[key])
 		{
-			ret.push_back(item.as<T>());
+			try
+			{
+				ret.push_back(item.as<T>());
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(string("Config file error at key ") + key);
+			}
 		}
-		node = m_root[key];
-		for(auto item : node)
+		for(auto item : m_root[key])
 		{
-			ret.push_back(item.as<T>());
+			try
+			{
+				ret.push_back(item.as<T>());
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(string("Default config file error at key: ") + key);
+			}
 		}
 		return ret;
 	}
@@ -156,22 +195,40 @@ public:
 	const unordered_map<string, T> get_merged_map(const string& key)
 	{
 		unordered_map<string, T> ret;
-		auto node = m_default_root[key];
-		for(auto item : node)
+		for(auto item : m_default_root[key])
 		{
-			ret[item.first.as<string>()] = item.second.as<T>();
+			try
+			{
+				ret[item.first.as<string>()] = item.second.as<T>();
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(string("Config file error at key ") + key);
+			}
 		}
-		node = m_root[key];
-		for(auto item : node)
+		for(auto item : m_root[key])
 		{
-			ret[item.first.as<string>()] = item.second.as<T>();
+			try
+			{
+				ret[item.first.as<string>()] = item.second.as<T>();
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(string("Default config file error at key: ") + key);
+			}
 		}
 		return ret;
+	}
+
+	inline const vector<string>& errors() const
+	{
+		return m_errors;
 	}
 
 private:
 	YAML::Node m_root;
 	YAML::Node m_default_root;
+	vector<string> m_errors;
 };
 
 class dragent_configuration

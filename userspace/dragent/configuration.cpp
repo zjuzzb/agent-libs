@@ -178,6 +178,10 @@ void dragent_configuration::init(Application* app)
 
 void dragent_configuration::print_configuration()
 {
+	for(auto item : m_config->errors())
+	{
+		g_log->critical(item);
+	}
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("conffile: " + m_conf_file);
