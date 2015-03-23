@@ -117,12 +117,12 @@ void dragent_configuration::init(Application* app)
 
 	if(m_server_addr.empty())
 	{
-		m_server_addr = m_config->get_scalar<string>("server", "address", "collector.sysdigcloud.com");
+		m_server_addr = m_config->get_scalar<string>("collector", "collector.sysdigcloud.com");
 	}
 
 	if(m_server_port == 0)
 	{
-		m_server_port = m_config->get_scalar<uint16_t>("server", "port", 6666);
+		m_server_port = m_config->get_scalar<uint16_t>("collector_port", 6666);
 	}
 
 	if(m_min_file_priority == 0)
@@ -140,8 +140,8 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
-	m_ssl_enabled = m_config->get_scalar<bool>("ssl", "enabled", true);
-	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ssl", "ca_certificate", "root.cert")).toString();
+	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
+	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
 	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
@@ -158,9 +158,9 @@ void dragent_configuration::init(Application* app)
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
 #ifdef _DEBUG
-	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog", "enabled", false);
+	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", false);
 #else
-	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog", "enabled", true);
+	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", true);
 #endif
 	m_watchdog_sinsp_worker_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_timeout_s)>("watchdog", "sinsp_worker_timeout_s", 60);
 	m_watchdog_connection_manager_timeout_s = m_config->get_scalar<decltype(m_watchdog_connection_manager_timeout_s)>("watchdog", "connection_manager_timeout_s", 100);

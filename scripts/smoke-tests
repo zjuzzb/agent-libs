@@ -3,15 +3,17 @@ set -exu
 
 BASE_REPOSITORY=$1
 
+CONFIG_FILE=/opt/draios/etc/dragent.yaml
+
 function smoke_tests {
 	killall -9 test || true
 
-	cat /opt/draios/bin/dragent.properties | grep "access_key"
+	cat $CONFIG_FILE | grep "access_key"
 
-	echo "watchdog.enabled = false" >> /opt/draios/bin/dragent.properties
-	echo "protobuf.print = true" >> /opt/draios/bin/dragent.properties
+	echo "watchdog_enabled: false" >> $CONFIG_FILE
+	echo "protobuf_print: true" >> $CONFIG_FILE
 
-	cp /opt/draios/bin/dragent.properties /opt/draios/bin/dragent.properties.bak
+	cp $CONFIG_FILE $CONFIG_FILE.bak
 
 	# The agent should be running after the installation script	
 	sleep 2
@@ -60,11 +62,11 @@ function smoke_tests {
 	# Run the backend server. The first connection should fail
 	# since we are not using the right backend
 	rm -rf /opt/draios/logs/*
-	rm -rf /opt/draios/bin/dragent.properties
-	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	rm -rf $CONFIG_FILE
+	cp $CONFIG_FILE.bak $CONFIG_FILE
 	cp /etc/hosts /etc/hosts.bak
 	echo "127.0.0.1 collector.sysdigcloud.com" >> /etc/hosts
-	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
+	echo "collector_port: 8080" >> $CONFIG_FILE
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
 	service dragent start
 	sleep 5
@@ -75,10 +77,10 @@ function smoke_tests {
 	# Now put the right certificate and check the connection is
 	# fine
 	rm -rf /opt/draios/logs/*
-	rm -rf /opt/draios/bin/dragent.properties
-	cp /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
-	echo "server.port = 8080" >> /opt/draios/bin/dragent.properties
-	echo "ssl.ca_certificate = test/resources/fake_backend.cert" >> /opt/draios/bin/dragent.properties
+	rm -rf $CONFIG_FILE
+	cp $CONFIG_FILE.bak $CONFIG_FILE
+	echo "collector_port: 8080" >> $CONFIG_FILE
+	echo "ca_certificate: test/resources/fake_backend.cert" >> $CONFIG_FILE
 	mkdir -p /opt/draios/test/resources
 	cp ./opt/draios/test/resources/fake_backend.cert /opt/draios/test/resources/
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
@@ -88,8 +90,8 @@ function smoke_tests {
 	service dragent stop
 	pkill -f fake_backend
 
-	rm -rf /opt/draios/bin/dragent.properties
-	mv /opt/draios/bin/dragent.properties.bak /opt/draios/bin/dragent.properties
+	rm -rf $CONFIG_FILE
+	mv $CONFIG_FILE.bak $CONFIG_FILE
 	rm -rf /etc/hosts
 	mv /etc/hosts.bak /etc/hosts
 	
