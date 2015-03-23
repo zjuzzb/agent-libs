@@ -170,8 +170,8 @@ void dragent_configuration::init(Application* app)
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
-	m_protocols_enabled = m_config->get_scalar<bool>("protocols_enabled", true);
-	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs_enabled", false);
+	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
+	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
 
 	refresh_aws_metadata();
 }
