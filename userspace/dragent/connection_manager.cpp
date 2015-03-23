@@ -5,10 +5,12 @@
 #include "draios.pb.h"
 #include "ssh_worker.h"
 #include "update_worker.h"
+#include "utils.h"
 
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
-const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(300);
+const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 10;
+const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
@@ -137,11 +139,11 @@ void connection_manager::disconnect()
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
-		m_reconnect_interval = 1;
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
 	}
 	else
 	{
-		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval*2), RECONNECT_MAX_INTERVAL_S);
+		m_reconnect_interval = std::min(std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2), RECONNECT_MAX_INTERVAL_S);
 	}
 
 	if(!m_socket.isNull())
@@ -164,7 +166,7 @@ void connection_manager::run()
 
 		while(!dragent_configuration::m_terminate)
 		{
-			m_last_loop_ns = dragent_configuration::get_current_time_ns();
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 			//
 			// Make sure we have a valid connection
@@ -174,7 +176,7 @@ void connection_manager::run()
 				g_log->information(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
 				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
-					m_last_loop_ns = dragent_configuration::get_current_time_ns();
+					m_last_loop_ns = sinsp_utils::get_current_time_ns();
 					Thread::sleep(1000);
 				}
 
@@ -182,6 +184,7 @@ void connection_manager::run()
 				{
 					break;
 				}
+				
 				m_last_connection_failure = chrono::system_clock::now();
 
 				if(!connect())
@@ -189,6 +192,12 @@ void connection_manager::run()
 					continue;
 				}
 			}
+
+			//
+			// Check if we received a message. We do it before so nothing gets lost if ELBs
+			// still negotiates a connection and then sends us out at the first read/write
+			//
+			receive_message();
 
 			if(item.isNull())
 			{
@@ -208,11 +217,6 @@ void connection_manager::run()
 					item = NULL;
 				}
 			}
-
-			//
-			// Check if we received a message
-			//
-			receive_message();
 		}
 	}
 
@@ -246,7 +250,7 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 			return false;
 		}
 
-		g_log->debug(m_name + ": Sent " 
+		g_log->information(m_name + ": Sent " 
 			+ Poco::NumberFormatter::format(buflen) + " to collector");
 
 		return true;

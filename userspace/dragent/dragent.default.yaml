@@ -23,30 +23,24 @@ jmx:
     cassandra:
       pattern: "cassandra"
       beans:
-        - query: "org.apache.cassandra.metrics:type=Keyspace,name=WriteLatency,*"
+        - query: "org.apache.cassandra.db:type=StorageProxy"
           attributes:
-            - 50thPercentile
-            - 75thPercentile
-            - 95thPercentile
-            - 98thPercentile
-            - 99thPercentile
-            - 999thPercentile
-            - Count
-        - query: "org.apache.cassandra.metrics:type=Keyspace,name=ReadLatency,*"
+            - RecentWriteLatencyMicros
+            - RecentReadLatencyMicros
+            - name: WriteOperations
+              type: counter
+            - name: ReadOperations
+              type: counter
+        - query: "org.apache.cassandra.metrics:type=ColumnFamily,name=TotalDiskSpaceUsed,*"
           attributes:
-            - 50thPercentile
-            - 75thPercentile
-            - 95thPercentile
-            - 98thPercentile
-            - 99thPercentile
-            - 999thPercentile
-            - Count
+            - Value
         - query: "org.apache.cassandra.metrics:type=Keyspace,name=TotalDiskSpaceUsed,*"
           attributes:
             - Value
         - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
           attributes:
-            - Count
+            - name: Count
+              type: counter
         - query: "org.apache.cassandra.metrics:type=Compaction,name=CompletedTasks"
           attributes:
             - Value
@@ -55,7 +49,8 @@ jmx:
             - Value
         - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
           attributes:
-            - Count
+            - name: Count
+            - type: counter
         - query: "org.apache.cassandra.metrics:type=Cache,name=Capacity,*"
           attributes:
             - Value
@@ -64,10 +59,12 @@ jmx:
             - Value
         - query: "org.apache.cassandra.metrics:type=Cache,name=Hits,*"
           attributes:
-            - Count
+            - name: Count
+              type: counter
         - query: "org.apache.cassandra.metrics:type=Cache,name=Requests,*"
           attributes:
-            - Count
+            - name: Count
+              type: counter
         - query: "org.apache.cassandra.metrics:type=Cache,name=Size,*"
           attributes:
             - Value

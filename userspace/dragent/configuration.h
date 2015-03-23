@@ -17,7 +17,7 @@
 // The number of analyzer samples that we store in memory when we lose connection
 // to the backend. After MAX_SAMPLE_STORE_SIZE samples, we will start dropping.
 //
-#define MAX_SAMPLE_STORE_SIZE 256
+#define MAX_SAMPLE_STORE_SIZE 300
 
 class aws_metadata
 {
@@ -239,7 +239,6 @@ public:
 	void init(Application* app);
 	void print_configuration();
 	static Message::Priority string_to_priority(const string& priostr);
-	static uint64_t get_current_time_ns();
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
 

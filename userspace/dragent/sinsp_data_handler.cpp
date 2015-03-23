@@ -1,7 +1,7 @@
 #include "sinsp_data_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
-
+#include "utils.h"
 #include "logger.h"
 
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, 
@@ -13,20 +13,13 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct)
+void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns)
 {
-	m_last_loop_ns = dragent_configuration::get_current_time_ns();
+	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	if(m_configuration->m_print_protobuf)
 	{
 		g_log->information(metrics->DebugString());
-	}
-
-	if(!m_connection_manager->is_connected())
-	{
-		g_log->information("Agent not connected, skipping metric ts=" 
-			+ NumberFormatter::format(ts_ns / 1000000000));
-		return;
 	}
 
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -45,7 +38,8 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		+ ", len=" + NumberFormatter::format(buffer->size())
 		+ ", ne=" + NumberFormatter::format(nevts)
  		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
- 		+ ", sr=" + NumberFormatter::format(sampling_ratio));
+ 		+ ", sr=" + NumberFormatter::format(sampling_ratio)
+ 		+ ", fl=" + NumberFormatter::format(analyzer_flush_duration_ns / 1000000));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{

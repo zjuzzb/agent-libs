@@ -128,7 +128,7 @@
 // Max number of files per category that can go in a sample, so the worst case is 4X
 // this number
 //
-#define TOP_FILES_IN_SAMPLE 20
+#define TOP_FILES_IN_SAMPLE 10
 
 //
 // Max number of connections that can go in a sample.

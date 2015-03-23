@@ -2,6 +2,7 @@
 
 #include "logger.h"
 #include "error_handler.h"
+#include "utils.h"
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -194,7 +195,7 @@ void sinsp_worker::run()
 
 	init();
 
-	m_last_loop_ns = dragent_configuration::get_current_time_ns();
+	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	while(!dragent_configuration::m_terminate)
 	{
@@ -208,7 +209,7 @@ void sinsp_worker::run()
 
 		if(res == SCAP_TIMEOUT)
 		{
-			m_last_loop_ns = dragent_configuration::get_current_time_ns();
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 			continue;
 		}
 		else if(res == SCAP_EOF)
@@ -264,7 +265,7 @@ void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)
 
 void sinsp_worker::prepare_response(const string& token, draiosproto::dump_response* response)
 {
-	response->set_timestamp_ns(dragent_configuration::get_current_time_ns());
+	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
 	response->set_machine_id(m_configuration->m_machine_id);
 	response->set_token(token);
