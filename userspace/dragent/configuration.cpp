@@ -151,7 +151,7 @@ void dragent_configuration::init(Application* app)
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
-	m_host_tags = m_config->get_scalar<string>("ui", "tags", "");
+	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
 	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
 	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
