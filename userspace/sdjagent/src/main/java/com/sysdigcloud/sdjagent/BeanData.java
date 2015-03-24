@@ -12,7 +12,6 @@ import java.util.logging.Logger;
  * Created by luca on 12/01/15.
  */
 public class BeanData {
-    private final static Logger LOGGER = Logger.getLogger(BeanData.class.getName());
     private final String name;
     private final Map<String, Object> attributes;
 
@@ -25,21 +24,6 @@ public class BeanData {
     public Map<String, Object> getAttributes() {
         return attributes;
     }
-
-    /*
-    public BeanData(ObjectName beanInstance, AttributeList attribute_values) {
-        this.name = beanInstance.getCanonicalName();
-        this.attributes = new LinkedHashMap<String, Object>();
-        for ( Attribute attributeObj : attribute_values.asList())
-        {
-            if (attributeObj == null)
-            {
-                LOGGER.warning(String.format("null attribute on bean %s, probably configuration error", this.name));
-                continue;
-            }
-            addAttribute(attributeObj.getName(), attributeObj.getValue());
-        }
-    }*/
 
     public BeanData(ObjectName beanInstance) {
         this.name = beanInstance.getCanonicalName();

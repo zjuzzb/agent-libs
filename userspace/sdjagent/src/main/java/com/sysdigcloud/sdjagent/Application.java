@@ -19,7 +19,7 @@ import java.util.logging.*;
  * @author Luca Marturana <luca@draios.com>
  */
 public class Application {
-    private final static Logger LOGGER = Logger.getLogger(Application.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final long vmsCleanupInterval = 10 * 60 * 1000;
 
