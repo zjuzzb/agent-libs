@@ -27,47 +27,32 @@ jmx:
           attributes:
             - RecentWriteLatencyMicros
             - RecentReadLatencyMicros
+            - RecentRangeLatencyMicros
             - name: WriteOperations
               type: counter
             - name: ReadOperations
               type: counter
-        - query: "org.apache.cassandra.metrics:type=ColumnFamily,name=TotalDiskSpaceUsed,*"
-          attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Keyspace,name=TotalDiskSpaceUsed,*"
-          attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
-          attributes:
-            - name: Count
+            - name: RangeOperations
               type: counter
-        - query: "org.apache.cassandra.metrics:type=Compaction,name=CompletedTasks"
+        - query: "org.apache.cassandra.db:type=CompactionManager"
           attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Compaction,name=PendingTasks"
-          attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
-          attributes:
-            - name: Count
-            - type: counter
-        - query: "org.apache.cassandra.metrics:type=Cache,name=Capacity,*"
-          attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Cache,name=Entries,*"
-          attributes:
-            - Value
-        - query: "org.apache.cassandra.metrics:type=Cache,name=Hits,*"
-          attributes:
-            - name: Count
+            - name: TotalCompactionsCompleted
               type: counter
-        - query: "org.apache.cassandra.metrics:type=Cache,name=Requests,*"
-          attributes:
-            - name: Count
+            - name: TotalBytesCompleted
               type: counter
-        - query: "org.apache.cassandra.metrics:type=Cache,name=Size,*"
+            - PendingTasks
+            - name: CompletedTasks
+              type: counter
+        - query: "org.apache.cassandra.db:type=Caches"
           attributes:
-            - Value
+            - name: KeyCacheHits
+              type: counter
+            - name: KeyCacheRequests
+              type: counter
+            - name: RowCacheHits
+              type: counter
+            - name: RowCacheRequests
+              type: counter
     tomcat:
       pattern: "catalina"
       beans:
@@ -165,37 +150,13 @@ jmx:
             - SnapshotNumOps
         - query: "Hadoop:service=HBase,name=RegionServer,sub=Server"
           attributes:
-            - Append_75th_percentile
-            - Append_95th_percentile
-            - Append_99th_percentile
             - Append_num_ops
-            - Delete_75th_percentile
-            - Delete_95th_percentile
-            - Delete_99th_percentile
             - Delete_num_ops
-            - FlushTime_75th_percentile
-            - FlushTime_95th_percentile
-            - FlushTime_99th_percentile
             - FlushTime_num_ops
-            - Get_75th_percentile
-            - Get_95th_percentile
-            - Get_99th_percentile
             - Get_num_ops
-            - Increment_75th_percentile
-            - Increment_95th_percentile
-            - Increment_99th_percentile
             - Increment_num_ops
-            - Mutate_75th_percentile
-            - Mutate_95th_percentile
-            - Mutate_99th_percentile
             - Mutate_num_ops
-            - Replay_75th_percentile
-            - Replay_95th_percentile
-            - Replay_99th_percentile
             - Replay_num_ops
-            - SplitTime_75th_percentile
-            - SplitTime_95th_percentile
-            - SplitTime_99th_percentile
             - SplitTime_num_ops
             - blockCacheCount
             - blockCacheEvictionCount
@@ -220,19 +181,10 @@ jmx:
             - LoginSuccessNumOps
         - query: "Hadoop:service=HBase,name=Master,sub=Balancer"
           attributes:
-            - BalancerCluster_75th_percentile
-            - BalancerCluster_95th_percentile
-            - BalancerCluster_99th_percentile
             - BalancerCluster_num_ops
         - query: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
           attributes:
-            - Assign_75th_percentile
-            - Assign_95th_percentile
-            - Assign_99th_percentile
             - Assign_num_ops
-            - BulkAssign_75th_percentile
-            - BulkAssign_95th_percentile
-            - BulkAssign_99th_percentile
             - BulkAssign_num_ops
     elasticsearch:
       pattern: "elasticsearch"
