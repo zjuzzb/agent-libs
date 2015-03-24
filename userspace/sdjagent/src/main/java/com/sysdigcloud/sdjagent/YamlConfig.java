@@ -2,6 +2,7 @@ package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.scanner.ScannerException;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -24,13 +25,23 @@ public class YamlConfig {
     public YamlConfig(String conf_file, String defaults_file) throws FileNotFoundException {
         if (conf_file != null) {
             FileInputStream conf_file_stream = new FileInputStream(conf_file);
-            conf = (Map<String, Object>) yaml.load(conf_file_stream);
+            try {
+                conf = (Map<String, Object>) yaml.load(conf_file_stream);
+            } catch (ScannerException ex) {
+                LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", conf_file));
+                conf = new HashMap<String, Object>();
+            }
         } else {
             conf = new HashMap<String, Object>();
         }
         if (defaults_file != null) {
             FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
-            defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
+            try {
+                defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
+            } catch (ScannerException ex) {
+                LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", defaults_file));
+                defaults_conf = new HashMap<String, Object>();
+            }
         } else {
             defaults_conf = new HashMap<String, Object>();
         }
