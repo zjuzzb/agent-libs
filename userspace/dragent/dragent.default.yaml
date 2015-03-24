@@ -27,12 +27,9 @@ jmx:
           attributes:
             - RecentWriteLatencyMicros
             - RecentReadLatencyMicros
-            - RecentRangeLatencyMicros
             - name: WriteOperations
               type: counter
             - name: ReadOperations
-              type: counter
-            - name: RangeOperations
               type: counter
         - query: "org.apache.cassandra.db:type=CompactionManager"
           attributes:
