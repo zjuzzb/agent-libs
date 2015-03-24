@@ -135,7 +135,12 @@ public class Config {
             } else if (data.isObject()) {
                 this.name = data.get("name").textValue();
                 if (data.has("type")) {
-                    this.type = Type.valueOf(data.get("type").textValue().toLowerCase());
+                    try {
+                        this.type = Type.valueOf(data.get("type").textValue().toLowerCase());
+                    } catch (IllegalArgumentException ex) {
+                        LOGGER.severe(String.format("Wrong type for JMX attribute %s: %s. Accepted values are: counter, rate; using default",
+                                name, data.get("type").textValue()));
+                    }
                 }
             }
         }
