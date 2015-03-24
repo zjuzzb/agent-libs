@@ -186,15 +186,15 @@ void dragent_configuration::print_configuration()
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("conffile: " + m_conf_file);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
-	g_log->information("logfile.location: " + m_log_dir);
+	g_log->information("log.location: " + m_log_dir);
 	g_log->information("customerid: " + m_customer_id);
-	g_log->information("server.address: " + m_server_addr);
-	g_log->information("server.port: " + NumberFormatter::format(m_server_port));
-	g_log->information("logpriority.file: " + NumberFormatter::format(m_min_file_priority));
-	g_log->information("logpriority.console: " + NumberFormatter::format(m_min_console_priority));
-	g_log->information("transmitbuffer.size: " + NumberFormatter::format(m_transmitbuffer_size));
-	g_log->information("ssl.enabled: " + bool_as_text(m_ssl_enabled));	
-	g_log->information("ssl.ca_certificate: " + m_ssl_ca_certificate);
+	g_log->information("collector: " + m_server_addr);
+	g_log->information("collector_port: " + NumberFormatter::format(m_server_port));
+	g_log->information("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
+	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
+	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
+	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
+	g_log->information("ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
 	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	g_log->information("dumpdir: " + m_dump_dir);
@@ -203,31 +203,29 @@ void dragent_configuration::print_configuration()
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	g_log->information("ui.customname: " + m_host_custom_name);
-	g_log->information("ui.tags: " + m_host_tags);
+	g_log->information("tags: " + m_host_tags);
 	g_log->information("ui.custommap: " + m_host_custom_map);
 	g_log->information("ui.is_hidden: " + m_host_hidden);
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
-	g_log->information("autoupdate.enabled: " + bool_as_text(m_autoupdate_enabled));
-	g_log->information("protobuf.print: " + bool_as_text(m_print_protobuf));
-	g_log->information("watchdog.enabled: " + bool_as_text(m_watchdog_enabled));
-	g_log->information("watchdog.sinsp_worker.timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
-	g_log->information("watchdog.connection_manager.timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
-	g_log->information("watchdog.analyzer.tid_collision.check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
-	g_log->information("watchdog.sinsp_data_handler.timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
+	g_log->information("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
+	g_log->information("protobuf_print: " + bool_as_text(m_print_protobuf));
+	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
+	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
+	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
+	g_log->information("watchdog.analyzer_tid_collision_check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
+	g_log->information("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
-	g_log->information("dirty_shutdown.report.log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
-	g_log->information("capture.dragent.events: " + bool_as_text(m_capture_dragent_events));
-	g_log->information("protocols.enabled: " + bool_as_text(m_protocols_enabled));
-	g_log->information("remotefs.enabled: " + bool_as_text(m_remotefs_enabled));
+	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
+	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
+	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
+	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
+	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 
 	if(m_aws_metadata.m_valid)
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
-
-	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
-
 }
 
 void dragent_configuration::refresh_aws_metadata()
