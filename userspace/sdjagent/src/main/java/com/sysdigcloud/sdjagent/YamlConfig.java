@@ -29,9 +29,9 @@ public class YamlConfig {
                 conf = (Map<String, Object>) yaml.load(conf_file_stream);
             } catch (ScannerException ex) {
                 LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", conf_file));
-                conf = new HashMap<String, Object>();
             }
-        } else {
+        }
+        if (conf == null) {
             conf = new HashMap<String, Object>();
         }
         if (defaults_file != null) {
@@ -40,9 +40,9 @@ public class YamlConfig {
                 defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
             } catch (ScannerException ex) {
                 LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", defaults_file));
-                defaults_conf = new HashMap<String, Object>();
             }
-        } else {
+        }
+        if (defaults_conf == null ) {
             defaults_conf = new HashMap<String, Object>();
         }
     }
