@@ -1,4 +1,3 @@
-customerid: 
 jmx:
   default_beans:
     - query: "java.lang:type=Memory"
