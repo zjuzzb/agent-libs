@@ -84,7 +84,11 @@ public class Config {
         @SuppressWarnings("unused")
         private Process(@JsonProperty("pattern") String pattern, @JsonProperty("beans") List<BeanQuery> queries) {
             this.pattern = pattern;
-            this.queries = queries;
+            
+            this.queries = new ArrayList<BeanQuery>();
+            if (queries != null) {
+                this.queries.addAll(queries);
+            }
         }
 
         public String getPattern() {
