@@ -16,7 +16,7 @@ public:
 
 	void to_protobuf();
 
-	bool parse_line(const char *line);
+	bool parse_line(const string& line);
 
 	static inline ptr_t create()
 	{
