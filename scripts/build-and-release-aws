@@ -62,8 +62,8 @@ function configure_rpm_repo {
 	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 
-	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/rpm/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/rpm/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_debian_repo {
@@ -108,8 +108,8 @@ function configure_debian_repo {
 	cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
-	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/deb/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/deb/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_tgz_repo {
@@ -122,7 +122,7 @@ function configure_tgz_repo {
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f
 
 	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
-	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
 }
 
 function configure_installers {
@@ -131,8 +131,8 @@ function configure_installers {
 	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-sysdig
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
 
-	aws s3 cp $REPOSITORY_DIR/install-agent s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/ --acl public-read
-	aws s3 cp $REPOSITORY_DIR/install-sysdig s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/$REPOSITORY_NAME/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/install-agent s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/install-sysdig s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/ --acl public-read
 	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://${BUILD_BUCKET}/${JENKINS_PROJECT}/${GIT_BRANCH}/${BUILD_NUMBER}/ --acl public-read
 }
 
