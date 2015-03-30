@@ -443,6 +443,40 @@ message container {
     optional proto_info protos = 19;
 }
 
+enum statsd_metric_type {
+    STATSD_COUNT = 1;
+    STATSD_HISTOGRAM = 2;
+    STATSD_GAUGE = 3;
+    STATSD_SET = 4;
+}
+
+message statsd_tag {
+    required string key = 1;
+    optional string value = 2;
+}
+
+message statsd_metric {
+    optional string name = 1;
+    repeated statsd_tag tags = 2;
+    optional statsd_metric_type type = 3;
+
+    // Valid on COUNT, GAUGE and SET
+    optional double value = 4;
+
+    // Valid only on HISTOGRAM type
+    optional double sum = 5;
+    optional double sum_squared = 6;
+    optional double mean = 7;
+    optional double min = 8;
+    optional double max = 9;
+    optional double count = 10;
+    optional double stdev = 11;
+    optional double median = 12;
+    optional double percentile_50 = 13;
+    optional double percentile_95 = 14;
+    optional double percentile_99 = 15;
+}
+
 //
 // ENTRY POINT MESSAGE
 //
@@ -468,6 +502,7 @@ message metrics {
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
+    repeated statsd_metric statsd_metrics = 23;
 }
 
 message dump_request_start {
