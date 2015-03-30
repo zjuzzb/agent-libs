@@ -478,7 +478,7 @@ void dragent_app::check_for_clean_shutdown()
 
 		if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
 		{
-			g_log->error("Queue full");
+			g_log->information("Queue full");
 			return;
 		}
 
