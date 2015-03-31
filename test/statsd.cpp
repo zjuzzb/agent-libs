@@ -42,12 +42,23 @@ sets.myset|53|1427796784
 TEST(statsd_metric, parse_counter)
 {
 	auto metric = statsd_metric::create();
-	metric->parse_line("counts.mycounter#xxx,yy|42.000000|1427796784");
+	metric->parse_line("counts.mycounter#xxx,yy|42.000000|1427796784\n");
 	EXPECT_EQ("mycounter", metric->name());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric->type());
 
 	metric = statsd_metric::create();
-	metric->parse_line("counts.mycounter|42.000000|1427796784");
+	metric->parse_line("counts.mycounter|42.000000|1427796784\n");
 	EXPECT_EQ("mycounter", metric->name());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric->type());
+}
+
+TEST(statsd_metric, parser_histogram)
+{
+	auto metric = statsd_metric::create();
+	metric->parse_line("timers.mytime.sum|6681.000000|1427796784\n");
+	EXPECT_EQ("mytime", metric->name());
+
+	metric = statsd_metric::create();
+	metric->parse_line("timers.mytime#we,ff.sum|6681.000000|1427796784\n");
+	EXPECT_EQ("mytime", metric->name());
 }
