@@ -2444,6 +2444,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_containers();
 
+			emit_statsd();
 			//
 			// Transactions
 			//
@@ -3303,6 +3304,23 @@ void sinsp_analyzer::emit_containers()
 	}
 
 	m_containers.clear();
+}
+
+void sinsp_analyzer::emit_statsd()
+{
+	if (m_statsite_proxy)
+	{
+		auto statsd_metrics = m_statsite_proxy->read_metrics();
+		while(!statsd_metrics.empty() && statsd_metrics.at(0)->timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
+		{
+			statsd_metrics = m_statsite_proxy->read_metrics();
+		}
+		for(auto metric : statsd_metrics)
+		{
+			auto statsd_proto = m_metrics->add_statsd_metrics();
+			metric->to_protobuf(statsd_proto);
+		}
+	}
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}

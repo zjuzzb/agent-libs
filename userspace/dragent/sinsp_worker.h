@@ -77,6 +77,11 @@ public:
 		m_jmx_pipes = jmx_pipes;
 	}
 
+	void set_statsite_pipes(shared_ptr<pipe_manager> pipes)
+	{
+		m_statsite_pipes = pipes;
+	}
+
 private:
 	class dump_job_state
 	{
@@ -177,6 +182,7 @@ private:
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<pipe_manager> m_statsite_pipes;
 
 	friend class dragent_app;
 };

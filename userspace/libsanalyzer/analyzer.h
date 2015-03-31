@@ -1,11 +1,13 @@
 #pragma once
 
 #include <analyzer_int.h>
+#include "analyzer_utils.h"
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
 #ifndef _WIN32
 #include "jmx_proxy.h"
+#include "statsite_proxy.h"
 #endif
 
 //
@@ -205,15 +207,20 @@ public:
 	}
 	
 #ifndef _WIN32
-	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
+	inline void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
 	{
 		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
 		m_jmx_proxy->m_print_json = print_json;
 	}
 
-	void set_jmx_sampling(unsigned int value)
+	inline void set_jmx_sampling(unsigned int value)
 	{
 		m_jmx_sampling = value;
+	}
+
+	inline void set_statsd_iofds(const pair<FILE*, FILE*>& iofds)
+	{
+		m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 	}
 #endif
 
@@ -243,7 +250,8 @@ VISIBILITY_PRIVATE
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
-
+	void emit_statsd();
+	
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
 			1*60; // 1 minutes
@@ -387,6 +395,7 @@ VISIBILITY_PRIVATE
 	shared_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
+	unique_ptr<statsite_proxy> m_statsite_proxy;
 #endif
 
 	//

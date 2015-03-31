@@ -42,6 +42,12 @@ void sinsp_worker::init()
 		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds(), m_configuration->m_print_protobuf);
 		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
 	}
+
+	if(m_statsite_pipes)
+	{
+		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds());
+	}
+
 	m_inspector->m_analyzer = m_analyzer;
 
 	//

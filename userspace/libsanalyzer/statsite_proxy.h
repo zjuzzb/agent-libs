@@ -11,16 +11,16 @@ public:
 	using ptr_t = shared_ptr<statsd_metric>;
 	enum class type_t
 	{
-	NONE, COUNT, HISTOGRAM, GAUGE, SET;
+	NONE, COUNT, HISTOGRAM, GAUGE, SET
 	};
 
-	void to_protobuf();
+	void to_protobuf(draiosproto::statsd_metric* proto);
 
 	bool parse_line(const string& line);
 
 	static inline ptr_t create()
 	{
-		return make_shared<statsd_metric>();
+		return ptr_t(new statsd_metric());
 	}
 
 	inline uint64_t timestamp()

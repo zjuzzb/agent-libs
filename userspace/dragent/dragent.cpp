@@ -196,6 +196,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	run_monitor(m_pidfile, m_jmx_pipes);
+	m_statsite_pipes = make_shared<pipe_manager>();
+
+	auto statsite_pid = fork();
+	if (statsite_pid == 0)
+	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		m_statsite_pipes->attach_child_stdio();
+		execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+		exit(EXIT_FAILURE);
+	}
+	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
+
 
 	//
 	// We want to terminate when the monitor is killed by init

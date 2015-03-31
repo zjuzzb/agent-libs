@@ -14,26 +14,31 @@ bool statsd_metric::parse_line(const string& line)
 	// <type>.<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
 
 	// parse timestamp
-	auto timestamp_s = line.substr(line.find_last_of('|'), string::npos);
+	auto timestamp_s = line.substr(line.find_last_of('|')+1, string::npos);
 	auto timestamp = std::stoul(timestamp_s);
 	if (m_timestamp == 0)
 	{
 		m_timestamp = timestamp;
 	}
-
-	if (m_timestamp != timestamp)
+	else if (m_timestamp != timestamp)
 	{
 		return false;
 	}
 
 	// parse name
 	auto type_end = line.find_first_of('.');
-	auto name_and_tags = line.substr(type_end, type_end+line.find_last_of('.'));
+	auto name_and_tags_end = line.find_first_of('|');
+	auto optional_dot_for_subaggregation = line.find_last_of('.',name_and_tags_end);
+	if (optional_dot_for_subaggregation != string::npos)
+	{
+		name_and_tags_end = optional_dot_for_subaggregation-1;
+	}
+	auto name_and_tags = line.substr(type_end+1, name_and_tags_end-type_end);
 	auto dash_pos = name_and_tags.find_last_of('#');
 	string name;
-	if (dash_pos < string::npos)
+	if (dash_pos != string::npos)
 	{
-		name = line.substr(type_end, dash_pos);
+		name = name_and_tags.substr(0, dash_pos);
 		// TODO: parse tags
 	}
 	else
@@ -45,11 +50,12 @@ bool statsd_metric::parse_line(const string& line)
 	{
 		m_name = name;
 	}
-	if (m_name != name)
+	else if (m_name != name)
 	{
 		return false;
 	}
 
+	// Parse type
 	auto type_s = line.substr(0, type_end);
 	if (type_s == "counts")
 	{
@@ -66,6 +72,23 @@ bool statsd_metric::parse_line(const string& line)
 	else if (type_s == "sets")
 	{
 		m_type = type_t::SET;
+	}
+
+	// Parse value
+	return true;
+}
+
+void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
+{
+	proto->set_name(m_name);
+	for(auto tag : m_tags)
+	{
+		auto tag_proto = proto->add_tags();
+		tag_proto->set_key(tag.first);
+		if (!tag.second.empty())
+		{
+			tag_proto->set_value(tag.second);
+		}
 	}
 }
 
