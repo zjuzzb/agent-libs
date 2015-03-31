@@ -11,7 +11,7 @@ public:
 	using ptr_t = shared_ptr<statsd_metric>;
 	enum class type_t
 	{
-	NONE, COUNT, HISTOGRAM, GAUGE, SET
+	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
 	};
 
 	void to_protobuf(draiosproto::statsd_metric* proto);
@@ -26,6 +26,16 @@ public:
 	inline uint64_t timestamp()
 	{
 		return m_timestamp;
+	}
+
+	inline const string& name()
+	{
+		return m_name;
+	}
+
+	inline type_t type()
+	{
+		return m_type;
 	}
 
 private:

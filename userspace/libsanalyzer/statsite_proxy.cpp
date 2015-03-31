@@ -27,9 +27,10 @@ bool statsd_metric::parse_line(const string& line)
 
 	// parse name
 	auto type_end = line.find_first_of('.');
-	auto name_and_tags_end = line.find_first_of('|');
+	auto name_and_tags_end = line.find_first_of('|')-1;
 	auto optional_dot_for_subaggregation = line.find_last_of('.',name_and_tags_end);
-	if (optional_dot_for_subaggregation != string::npos)
+	if (optional_dot_for_subaggregation != string::npos &&
+			optional_dot_for_subaggregation > type_end)
 	{
 		name_and_tags_end = optional_dot_for_subaggregation-1;
 	}

@@ -37,7 +37,7 @@ add_executable(test
 	unix_udp_client_server.cpp
 	userevts.cpp
 	main.cpp
-	yaml_configuration.cpp)
+	yaml_configuration.cpp statsd.cpp)
 
 target_link_libraries(test
 	pthread
