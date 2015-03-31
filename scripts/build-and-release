@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exu
+set -exuo pipefail
 
 COMPONENT=$1
 REPOSITORY_BASENAME=$2
