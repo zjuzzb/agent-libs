@@ -195,7 +195,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
 	}
 
-	run_monitor(m_pidfile, m_jmx_pipes);
 	m_statsite_pipes = make_shared<pipe_manager>();
 
 	auto statsite_pid = fork();
@@ -208,6 +207,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 
+	run_monitor(m_pidfile, m_jmx_pipes);
 
 	//
 	// We want to terminate when the monitor is killed by init

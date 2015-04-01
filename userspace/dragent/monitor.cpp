@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include "sdjagent_logger.h"
+#include <thread>
 
 static int g_signal_received = 0;
 
@@ -60,6 +61,87 @@ void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
 	}
 	std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 	exit(EXIT_FAILURE);
+}
+
+void monitor::run()
+{
+	signal(SIGINT, g_monitor_signal_callback);
+	signal(SIGQUIT, g_monitor_signal_callback);
+	signal(SIGTERM, g_monitor_signal_callback);
+	signal(SIGUSR1, SIG_IGN);
+
+	for(auto& process : m_processes)
+	{
+		auto child_pid = fork();
+		if(child_pid < 0)
+		{
+			exit(EXIT_FAILURE);
+		}
+		else if(child_pid == 0)
+		{
+			prctl(PR_SET_PDEATHSIG, SIGKILL);
+			process.exec();
+		}
+		else
+		{
+			process.set_pid(child_pid);
+		}
+	}
+
+	create_pid_file(m_pidfile);
+
+	while(g_signal_received == 0)
+	{
+		int status = 0;
+		for(auto& process : m_processes)
+		{
+			auto waited_pid = waitpid(process.pid(), &status, WNOHANG);
+			if(waited_pid < 0)
+			{
+				delete_pid_file(m_pidfile);
+				exit(EXIT_FAILURE);
+			}
+			else if(waited_pid > 0)
+			{
+				if(process.is_main() && WIFEXITED(status) && WEXITSTATUS(status) == 0)
+				{
+					//
+					// Process terminated cleanly
+					//
+					delete_pid_file(m_pidfile);
+					exit(EXIT_SUCCESS);
+				}
+
+				// crashed, restart it
+				this_thread::sleep_for(chrono::seconds(1));
+
+				auto child_pid = fork();
+				if (child_pid == 0)
+				{
+					prctl(PR_SET_PDEATHSIG, SIGKILL);
+					process.exec();
+				}
+			}
+		}
+		this_thread::sleep_for(chrono::seconds(1));
+	}
+
+	for(auto& process : m_processes)
+	{
+		//
+		// Signal received, forward it to the child and
+		// wait for it to terminate
+		//
+		if(kill(process.pid(), g_signal_received) != 0)
+		{
+			delete_pid_file(m_pidfile);
+			exit(EXIT_FAILURE);
+		}
+		waitpid(process.pid(), NULL, 0);
+	}
+
+	delete_pid_file(m_pidfile);
+	exit(EXIT_SUCCESS);
 }
 
 void run_monitor(const string& pidfile, shared_ptr<pipe_manager> jmx_pipes)
