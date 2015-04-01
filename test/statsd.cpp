@@ -45,10 +45,12 @@ TEST(statsd_metric, parse_counter)
 	metric->parse_line("counts.mycounter#xxx,yy|42.000000|1427796784\n");
 	EXPECT_EQ("mycounter", metric->name());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric->type());
+	EXPECT_DOUBLE_EQ(42.0, metric->value());
 
 	metric = statsd_metric::create();
 	metric->parse_line("counts.mycounter|42.000000|1427796784\n");
 	EXPECT_EQ("mycounter", metric->name());
+	EXPECT_DOUBLE_EQ(42.0, metric->value());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric->type());
 }
 
@@ -56,9 +58,21 @@ TEST(statsd_metric, parser_histogram)
 {
 	auto metric = statsd_metric::create();
 	metric->parse_line("timers.mytime.sum|6681.000000|1427796784\n");
+	metric->parse_line("timers.mytime.p50|106.000000|1427796784\n");
 	EXPECT_EQ("mytime", metric->name());
+	EXPECT_DOUBLE_EQ(6681.0, metric->sum());
+	EXPECT_DOUBLE_EQ(106.0, metric->percentile_50());
 
 	metric = statsd_metric::create();
 	metric->parse_line("timers.mytime#we,ff.sum|6681.000000|1427796784\n");
 	EXPECT_EQ("mytime", metric->name());
+	EXPECT_DOUBLE_EQ(6681.0, metric->sum());
+}
+
+TEST(statsd_metric, parser_gauge)
+{
+	auto metric = statsd_metric::create();
+	metric->parse_line("gauges.mygauge|2.000000|1427796784\n");
+	EXPECT_EQ("mygauge", metric->name());
+	EXPECT_DOUBLE_EQ(2.0, metric->value());
 }

@@ -76,6 +76,62 @@ bool statsd_metric::parse_line(const string& line)
 	}
 
 	// Parse value
+	auto value_delimiter = line.find_first_of('|');
+	auto subtype_start = name_and_tags_end+2;
+	auto subtype = line.substr(subtype_start, value_delimiter-subtype_start);
+	auto value = std::stod(line.substr(line.find_first_of('|')+1));
+	if(m_type == type_t::HISTOGRAM)
+	{
+		if(subtype == "sum")
+		{
+			m_sum = value;
+		}
+		else if(subtype == "sum_sq")
+		{
+			m_sum_squared = value;
+		}
+		else if(subtype == "mean")
+		{
+			m_mean = value;
+		}
+		else if(subtype == "lower")
+		{
+			m_min = value;
+		}
+		else if(subtype == "upper")
+		{
+			m_max = value;
+		}
+		else if(subtype == "count")
+		{
+			m_count = value;
+		}
+		else if(subtype == "stdev")
+		{
+			m_stdev = value;
+		}
+		else if(subtype == "median")
+		{
+			m_median = value;
+		}
+		else if(subtype == "p50")
+		{
+			m_percentile_50 = value;
+		}
+		else if(subtype == "p95")
+		{
+			m_percentile_95 = value;
+		}
+		else if(subtype == "p99")
+		{
+			m_percentile_99 = value;
+		}
+		// Skipping "rate" and "sample_rate" right now
+	}
+	else
+	{
+		m_value = value;
+	}
 	return true;
 }
 

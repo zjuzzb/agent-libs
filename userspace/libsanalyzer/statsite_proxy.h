@@ -38,6 +38,21 @@ public:
 		return m_type;
 	}
 
+	inline double value()
+	{
+		return m_value;
+	}
+
+	inline double sum()
+	{
+		return m_sum;
+	}
+
+	inline double percentile_50()
+	{
+		return m_percentile_50;
+	}
+
 private:
 	statsd_metric() = default;
 
