@@ -17,9 +17,11 @@ bool statsd_metric::parse_line(const string& line)
 	// timers.mytime.upper|199.000000|1427738072
 	// <type>.<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
 
+	const auto line_tokens = sinsp_split(line, '|');
+	ASSERT(line_tokens.size() == 3);
+
 	// parse timestamp
-	auto timestamp_s = line.substr(line.find_last_of('|')+1, string::npos);
-	auto timestamp = std::stoul(timestamp_s);
+	auto timestamp = std::stoul(line_tokens.at(2));
 	if (m_timestamp == 0)
 	{
 		m_timestamp = timestamp;
@@ -29,24 +31,64 @@ bool statsd_metric::parse_line(const string& line)
 		return false;
 	}
 
-	// parse name
-	auto type_end = line.find_first_of('.');
-	auto name_and_tags_end = line.find_first_of('|')-1;
-	auto optional_dot_for_subaggregation = line.find_last_of('.',name_and_tags_end);
-	if (optional_dot_for_subaggregation != string::npos &&
-			optional_dot_for_subaggregation > type_end)
+	const auto name_tokens = sinsp_split(line_tokens.at(0), '.');
+
+	// Parse type
+	auto type_s = name_tokens.at(0);
+	type_t new_type = type_t::NONE;
+	if (type_s == "counts")
 	{
-		name_and_tags_end = optional_dot_for_subaggregation-1;
+		new_type = type_t::COUNT;
 	}
-	auto name_and_tags = line.substr(type_end+1, name_and_tags_end-type_end);
-	auto dash_pos = name_and_tags.find_last_of('#');
-	string name;
-	if (dash_pos != string::npos)
+	else if (type_s == "timers")
 	{
-		name = name_and_tags.substr(0, dash_pos);
-		map<string, string> new_tags;
-		auto tags = name_and_tags.substr(dash_pos+1);
-		auto tags_tokens = sinsp_split(tags, ',');
+		new_type = type_t::HISTOGRAM;
+	}
+	else if (type_s == "gauges")
+	{
+		new_type = type_t::GAUGE;
+	}
+	else if (type_s == "sets")
+	{
+		new_type = type_t::SET;
+	}
+	ASSERT(new_type != type_t::NONE);
+
+	if(m_type == type_t::NONE)
+	{
+		m_type = new_type;
+	}
+	else if(m_type != new_type)
+	{
+		return false;
+	}
+	ASSERT(m_type != type_t::NONE);
+
+	// parse name
+	auto name_start = name_tokens.begin()+1;
+	auto name_end = name_tokens.end();
+	if(m_type == type_t::HISTOGRAM)
+	{
+		--name_end;
+	}
+
+	auto name_and_tags = sinsp_join(name_start, name_end, '.');
+	auto name_and_tags_tokens = sinsp_split(name_and_tags, '#');
+	auto name = name_and_tags_tokens.at(0);
+
+	if (m_name.empty())
+	{
+		m_name = move(name);
+	}
+	else if (m_name != name)
+	{
+		return false;
+	}
+
+	if (name_and_tags_tokens.size() > 1)
+	{
+		decltype(m_tags) new_tags;
+		auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
 		for(auto tag : tags_tokens)
 		{
 			auto keyvalues = sinsp_split(tag, ':');
@@ -68,46 +110,12 @@ bool statsd_metric::parse_line(const string& line)
 			return false;
 		}
 	}
-	else
-	{
-		name = name_and_tags;
-	}
-
-	if (m_name.empty())
-	{
-		m_name = name;
-	}
-	else if (m_name != name)
-	{
-		return false;
-	}
-
-	// Parse type
-	auto type_s = line.substr(0, type_end);
-	if (type_s == "counts")
-	{
-		m_type = type_t::COUNT;
-	}
-	else if (type_s == "timers")
-	{
-		m_type = type_t::HISTOGRAM;
-	}
-	else if (type_s == "gauges")
-	{
-		m_type = type_t::GAUGE;
-	}
-	else if (type_s == "sets")
-	{
-		m_type = type_t::SET;
-	}
 
 	// Parse value
-	auto value_delimiter = line.find_first_of('|');
-	auto subtype_start = name_and_tags_end+2;
-	auto subtype = line.substr(subtype_start, value_delimiter-subtype_start);
-	auto value = std::stod(line.substr(line.find_first_of('|')+1));
+	auto value = std::stod(line_tokens.at(1));
 	if(m_type == type_t::HISTOGRAM)
 	{
+		auto subtype = name_tokens.back();
 		if(subtype == "sum")
 		{
 			m_sum = value;
