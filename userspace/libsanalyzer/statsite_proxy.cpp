@@ -6,6 +6,10 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 
+/*
+ * Parse a line and fill data structures
+ * return false if line does not belong to this object
+ */
 bool statsd_metric::parse_line(const string& line)
 {
 	// Example:
@@ -40,7 +44,29 @@ bool statsd_metric::parse_line(const string& line)
 	if (dash_pos != string::npos)
 	{
 		name = name_and_tags.substr(0, dash_pos);
-		// TODO: parse tags
+		map<string, string> new_tags;
+		auto tags = name_and_tags.substr(dash_pos+1);
+		auto tags_tokens = sinsp_split(tags, ',');
+		for(auto tag : tags_tokens)
+		{
+			auto keyvalues = sinsp_split(tag, ':');
+			if(keyvalues.size() > 1)
+			{
+				new_tags[keyvalues.at(0)] = keyvalues.at(1);
+			}
+			else
+			{
+				new_tags[keyvalues.at(0)] = "";
+			}
+		}
+		if(m_tags.empty())
+		{
+			m_tags = move(new_tags);
+		}
+		else if(new_tags != m_tags)
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -137,6 +163,8 @@ bool statsd_metric::parse_line(const string& line)
 
 void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
 {
+	ASSERT(m_type != type_t::NONE);
+
 	proto->set_name(m_name);
 	for(auto tag : m_tags)
 	{
@@ -146,6 +174,25 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
 		{
 			tag_proto->set_value(tag.second);
 		}
+	}
+	proto->set_type(static_cast<draiosproto::statsd_metric_type>(m_type));
+	if(m_type == type_t::HISTOGRAM)
+	{
+		proto->set_sum(m_sum);
+		proto->set_sum_squared(m_sum_squared);
+		proto->set_mean(m_mean);
+		proto->set_min(m_min);
+		proto->set_max(m_max);
+		proto->set_count(m_count);
+		proto->set_stdev(m_stdev);
+		proto->set_median(m_median);
+		proto->set_percentile_50(m_percentile_50);
+		proto->set_percentile_95(m_percentile_95);
+		proto->set_percentile_99(m_percentile_99);
+	}
+	else
+	{
+		proto->set_value(m_value);
 	}
 }
 
