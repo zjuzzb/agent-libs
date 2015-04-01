@@ -286,7 +286,7 @@ bool sinsp_worker::queue_response(const draiosproto::dump_response& response, pr
 
 	while(!m_queue->put(buffer, priority))
 	{
-		g_log->error("Queue full");
+		g_log->information("Queue full");
 		return false;
 	}
 
@@ -441,7 +441,7 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		
 		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
 		{
-			g_log->error(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
+			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
 				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
 			return;
 		}
