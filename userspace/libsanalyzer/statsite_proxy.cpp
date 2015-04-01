@@ -21,7 +21,7 @@ bool statsd_metric::parse_line(const string& line)
 	ASSERT(line_tokens.size() == 3);
 
 	// parse timestamp
-	auto timestamp = std::stoul(line_tokens.at(2));
+	const auto timestamp = std::stoul(line_tokens.at(2));
 	if (m_timestamp == 0)
 	{
 		m_timestamp = timestamp;
@@ -34,7 +34,7 @@ bool statsd_metric::parse_line(const string& line)
 	const auto name_tokens = sinsp_split(line_tokens.at(0), '.');
 
 	// Parse type
-	auto type_s = name_tokens.at(0);
+	const auto& type_s = name_tokens.at(0);
 	type_t new_type = type_t::NONE;
 	if (type_s == "counts")
 	{
@@ -72,13 +72,13 @@ bool statsd_metric::parse_line(const string& line)
 		--name_end;
 	}
 
-	auto name_and_tags = sinsp_join(name_start, name_end, '.');
-	auto name_and_tags_tokens = sinsp_split(name_and_tags, '#');
-	auto name = name_and_tags_tokens.at(0);
+	const auto name_and_tags = sinsp_join(name_start, name_end, '.');
+	const auto name_and_tags_tokens = sinsp_split(name_and_tags, '#');
+	const auto& name = name_and_tags_tokens.at(0);
 
 	if (m_name.empty())
 	{
-		m_name = move(name);
+		m_name = name;
 	}
 	else if (m_name != name)
 	{
@@ -88,10 +88,10 @@ bool statsd_metric::parse_line(const string& line)
 	if (name_and_tags_tokens.size() > 1)
 	{
 		decltype(m_tags) new_tags;
-		auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
-		for(auto tag : tags_tokens)
+		const auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
+		for(const auto& tag : tags_tokens)
 		{
-			auto keyvalues = sinsp_split(tag, ':');
+			const auto keyvalues = sinsp_split(tag, ':');
 			if(keyvalues.size() > 1)
 			{
 				new_tags[keyvalues.at(0)] = keyvalues.at(1);
@@ -112,10 +112,10 @@ bool statsd_metric::parse_line(const string& line)
 	}
 
 	// Parse value
-	auto value = std::stod(line_tokens.at(1));
+	const auto value = std::stod(line_tokens.at(1));
 	if(m_type == type_t::HISTOGRAM)
 	{
-		auto subtype = name_tokens.back();
+		const auto& subtype = name_tokens.back();
 		if(subtype == "sum")
 		{
 			m_sum = value;
@@ -174,7 +174,7 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
 	ASSERT(m_type != type_t::NONE);
 
 	proto->set_name(m_name);
-	for(auto tag : m_tags)
+	for(const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
