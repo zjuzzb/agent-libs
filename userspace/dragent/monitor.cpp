@@ -63,6 +63,13 @@ void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
 	exit(EXIT_FAILURE);
 }
 
+void monitored_process::exec()
+{
+	prctl(PR_SET_PDEATHSIG, SIGKILL);
+	// TODO: may be useful to rename process?
+	m_exec();
+}
+
 int monitor::run()
 {
 	signal(SIGINT, g_monitor_signal_callback);
@@ -79,7 +86,6 @@ int monitor::run()
 		}
 		else if(child_pid == 0)
 		{
-			prctl(PR_SET_PDEATHSIG, SIGKILL);
 			process.exec();
 		}
 		else
@@ -122,7 +128,6 @@ int monitor::run()
 				}
 				else if (child_pid == 0)
 				{
-					prctl(PR_SET_PDEATHSIG, SIGKILL);
 					process.exec();
 				}
 				else

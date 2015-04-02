@@ -26,10 +26,7 @@ public:
 		m_pid = pid;
 	}
 
-	void exec()
-	{
-		m_exec();
-	}
+	inline void exec();
 
 	bool is_main()
 	{
