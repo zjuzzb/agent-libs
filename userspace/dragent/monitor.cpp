@@ -63,7 +63,7 @@ void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
 	exit(EXIT_FAILURE);
 }
 
-void monitor::run()
+int monitor::run()
 {
 	signal(SIGINT, g_monitor_signal_callback);
 	signal(SIGQUIT, g_monitor_signal_callback);
@@ -116,10 +116,18 @@ void monitor::run()
 				this_thread::sleep_for(chrono::seconds(1));
 
 				auto child_pid = fork();
-				if (child_pid == 0)
+				if (child_pid < 0)
+				{
+					exit(EXIT_FAILURE);
+				}
+				else if (child_pid == 0)
 				{
 					prctl(PR_SET_PDEATHSIG, SIGKILL);
 					process.exec();
+				}
+				else
+				{
+					process.set_pid(child_pid);
 				}
 			}
 		}
@@ -141,7 +149,7 @@ void monitor::run()
 	}
 
 	delete_pid_file(m_pidfile);
-	exit(EXIT_SUCCESS);
+	return(EXIT_SUCCESS);
 }
 
 void run_monitor(const string& pidfile, shared_ptr<pipe_manager> jmx_pipes)

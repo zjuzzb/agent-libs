@@ -25,6 +25,7 @@ static void g_usr_signal_callback(int sig)
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
+	m_java_present(false),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 {
@@ -180,58 +181,79 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
-	// This config parameter must be known early because is used
-	// on the monitor
+	m_java_present = false;
 	File java_binary("/usr/bin/java");
-	bool java_present = false;
 	if(java_binary.exists() && java_binary.canExecute())
 	{
-		java_present = true;
+		m_java_present = true;
 	}
+	monitor monitor_process(m_pidfile);
 
-	if(java_present)
+	monitor_process.emplace_process("sdagent",[this]()
+	{
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sigemptyset(&sa.sa_mask);
+		sa.sa_handler = g_signal_callback;
+
+		sigaction(SIGINT, &sa, NULL);
+		sigaction(SIGQUIT, &sa, NULL);
+		sigaction(SIGTERM, &sa, NULL);
+
+		sa.sa_handler = g_usr_signal_callback;
+		sigaction(SIGUSR1, &sa, NULL);
+
+		if(crash_handler::initialize() == false)
+		{
+			ASSERT(false);
+		}
+		auto exit_code = this->sdagent_main();
+		exit(exit_code);
+	}, true);
+
+	// This config parameter must be known early because is used
+	// on the monitor
+	if(m_java_present)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+		monitor_process.emplace_process("sdjagent", [this](void)
+		{
+			this->m_jmx_pipes->attach_child_stdio();
+			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
+			if(sdjagent_jar.exists())
+			{
+				execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+			}
+			else
+			{
+				execl("/usr/bin/java", "java", "-Djava.library.path=../sdjagent", "-jar",
+					  "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
+			}
+			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
+			exit(EXIT_FAILURE);
+		});
 	}
 
 	m_statsite_pipes = make_shared<pipe_manager>();
-
-	auto statsite_pid = fork();
-	if (statsite_pid == 0)
-	{
-		prctl(PR_SET_PDEATHSIG, SIGKILL);
-		m_statsite_pipes->attach_child_stdio();
-		execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
-		exit(EXIT_FAILURE);
-	}
 	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 
-	run_monitor(m_pidfile, m_jmx_pipes);
-
-	//
-	// We want to terminate when the monitor is killed by init
-	//
-	prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = g_signal_callback;
-	
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGQUIT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-
-	sa.sa_handler = g_usr_signal_callback;
-	sigaction(SIGUSR1, &sa, NULL);
-
-	if(crash_handler::initialize() == false)
+	monitor_process.emplace_process("statsite", [this](void)
 	{
-		ASSERT(false);
-	}
-#endif
+		this->m_statsite_pipes->attach_child_stdio();
+		execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+		exit(EXIT_FAILURE);
+	});
 
+	//run_monitor(m_pidfile, m_jmx_pipes);
+	return monitor_process.run();
+#else
+	return sdagent_main();
+#endif
+}
+
+int dragent_app::sdagent_main()
+{
 	Poco::ErrorHandler::set(&m_error_handler);
 
 	m_configuration.init(this);
@@ -241,7 +263,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	m_configuration.print_configuration();
-	if(java_present)
+	if(m_java_present)
 	{
 		g_log->information("Java detected");
 	}
@@ -249,10 +271,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		check_for_clean_shutdown();
 	}
-	
+
 	ExitCode exit_code;
 
-	if(java_present)
+	if(m_java_present)
 	{
 		m_jmx_controller = make_shared<sdjagent_logger>(&m_configuration, m_jmx_pipes->get_err_fd());
 		ThreadPool::defaultPool().start(*m_jmx_controller, "sdjagent_logger");

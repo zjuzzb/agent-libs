@@ -35,6 +35,7 @@ protected:
 	int main(const std::vector<std::string>& args);
 
 private:
+	int sdagent_main();
 	void watchdog_check(uint64_t uptime_s);
 	void initialize_logging();
 	void check_for_clean_shutdown();
@@ -45,6 +46,7 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
+	bool m_java_present;
 	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	shared_ptr<sdjagent_logger> m_jmx_controller;

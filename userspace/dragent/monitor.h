@@ -9,8 +9,9 @@ void run_monitor(const string& pidfile, shared_ptr<pipe_manager>);
 class monitored_process
 {
 public:
-	monitored_process(string name, function<void(void)> exec):
+	monitored_process(string name, function<void(void)> exec, bool is_main=false):
 		m_name(move(name)),
+		m_main(is_main),
 		m_exec(move(exec)),
 		m_pid(0)
 	{}
@@ -35,11 +36,6 @@ public:
 		return m_main;
 	}
 
-	void set_main(bool value)
-	{
-		m_main = value;
-	}
-
 private:
 	string m_name;
 	bool m_main;
@@ -50,7 +46,17 @@ private:
 class monitor
 {
 public:
-	void run();
+	monitor(string pidfile):
+		m_pidfile(move(pidfile))
+	{}
+	int run();
+
+	template<typename... Ts>
+	void emplace_process(Ts&&... args)
+	{
+		m_processes.emplace_back(forward<Ts>(args)...);
+	}
+
 private:
 	string m_pidfile;
 	vector<monitored_process> m_processes;

@@ -23,6 +23,8 @@ public:
 	// Attach pipes to child STDIN, STDOUT and STDERR
 	void attach_child_stdio();
 
+	pipe_manager(const pipe_manager&) = delete;
+	pipe_manager& operator=(const pipe_manager&) = delete;
 private:
 	// TODO: utility, can be moved outside if needed
 	static void enable_nonblocking(int fd);
