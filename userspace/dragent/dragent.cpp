@@ -166,6 +166,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		return Application::EXIT_OK;
 	}
 
+	m_configuration.init(this);
 #ifndef _WIN32
 	//
 	// Before running the monitor, unblock all the signals,
@@ -255,8 +256,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 int dragent_app::sdagent_main()
 {
 	Poco::ErrorHandler::set(&m_error_handler);
-
-	m_configuration.init(this);
 
 	initialize_logging();
 

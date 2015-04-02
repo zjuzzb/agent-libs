@@ -174,6 +174,7 @@ void dragent_configuration::init(Application* app)
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
 
 	refresh_aws_metadata();
+	write_statsite_configuration();
 }
 
 void dragent_configuration::print_configuration()
@@ -325,4 +326,44 @@ string dragent_configuration::get_distribution()
 
 	ASSERT(false);
 	return s;
+}
+
+void dragent_configuration::write_statsite_configuration()
+{
+	static const char STATSITE_INI_TEMPLATE[] =
+			"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
+					"[statsite]\n"
+					"port = %u\n"
+					"udp_port = %u\n"
+					"log_level = %s\n"
+					"flush_interval = %u\n";
+
+	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	auto udp_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
+	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
+
+	// convert our loglevel to statsite one
+	// our levels: debug, info, warning, error
+	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
+	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
+	static const unordered_map<string, string> conversion_map{ { "debug", "DEBUG" }, { "info", "INFO" },
+															   {"warning", "WARN"}, {"error", "ERROR"}};
+	if (conversion_map.find(loglevel) != conversion_map.end())
+	{
+		loglevel = conversion_map.at(loglevel);
+	}
+	else
+	{
+		loglevel = "INFO";
+	}
+
+	char formatted_config[sizeof(STATSITE_INI_TEMPLATE)+100];
+	snprintf(formatted_config, sizeof(formatted_config), STATSITE_INI_TEMPLATE, tcp_port, udp_port, loglevel.c_str(), flush_interval);
+
+	std::ofstream ostr("/opt/draios/etc/statsite.ini");
+	if(ostr.good())
+	{
+		ostr << formatted_config;
+	}
+	ostr.close();
 }

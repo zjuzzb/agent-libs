@@ -294,4 +294,5 @@ public:
 
 private:
 	void refresh_aws_metadata();
+	void write_statsite_configuration();
 };
