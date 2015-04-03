@@ -3,11 +3,13 @@
 
 pipe_manager::pipe_manager()
 {
-	// TODO: Check pipe return value
 	// Create pipes
-	pipe(m_inpipe);
-	pipe(m_outpipe);
-	pipe(m_errpipe);
+	int ret = pipe(m_inpipe);
+	ASSERT(ret == 0);
+	ret = pipe(m_outpipe);
+	ASSERT(ret == 0);
+	ret = pipe(m_errpipe);
+	ASSERT(ret == 0);
 
 	// transform to FILE*
 	m_input_fd = fdopen(m_inpipe[PIPE_WRITE], "w");
