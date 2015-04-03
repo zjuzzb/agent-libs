@@ -50,7 +50,6 @@ private:
 	static const chrono::seconds WORKING_INTERVAL_S;
 	static const string m_name;
 
-	SharedPtr<SocketAddress> m_sa;
 	SharedPtr<StreamSocket> m_socket;
 	bool m_connected;
 	Buffer<uint8_t> m_buffer;

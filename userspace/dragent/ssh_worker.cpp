@@ -251,7 +251,7 @@ void ssh_worker::queue_response(const draiosproto::ssh_data& response)
 
 	while(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_HIGH))
 	{
-		g_log->error(m_name + ": Queue full, waiting");
+		g_log->information(m_name + ": Queue full, waiting");
 		Thread::sleep(1000);
 
 		if(dragent_configuration::m_terminate)

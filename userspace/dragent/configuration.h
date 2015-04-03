@@ -37,26 +37,42 @@ public:
 	yaml_configuration(const string& path, const string& defaults_path)
 	{
 		// We cant use logging because it's not initialized yet
-		try
+		File conf_file(path);
+		if(conf_file.exists())
 		{
-			m_root = YAML::LoadFile(path);
-		} catch ( const YAML::BadFile& ex)
+			try
+			{
+				m_root = YAML::LoadFile(path);
+			} catch ( const YAML::BadFile& ex)
+			{
+				m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+			} catch ( const YAML::ParserException& ex)
+			{
+				m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+			}
+		}
+		else
 		{
-			m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-		} catch ( const YAML::ParserException& ex)
-		{
-			m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+			m_errors.emplace_back(string("Config file: ") + path + " does not exists");
 		}
 
-		try
+		File default_conf_file(defaults_path);
+		if(default_conf_file.exists())
 		{
-			m_default_root = YAML::LoadFile(defaults_path);
-		} catch ( const YAML::BadFile& ex)
+			try
+			{
+				m_default_root = YAML::LoadFile(defaults_path);
+			} catch ( const YAML::BadFile& ex)
+			{
+				m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
+			} catch (const YAML::ParserException& ex)
+			{
+				m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
+			}
+		}
+		else
 		{
-			m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
-		} catch (const YAML::ParserException& ex)
-		{
-			m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
+			m_errors.emplace_back(string("Config file: ") + defaults_path + " does not exists");
 		}
 	}
 

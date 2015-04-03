@@ -43,6 +43,6 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
-		g_log->error("Queue full, discarding sample");
+		g_log->information("Queue full, discarding sample");
 	}
 }

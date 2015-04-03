@@ -14,7 +14,6 @@ const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
-	m_sa(NULL),
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
@@ -36,8 +35,6 @@ bool connection_manager::init()
 {
 	if(m_configuration->m_server_addr != "" && m_configuration->m_server_port != 0)
 	{
-		m_sa = new Poco::Net::SocketAddress(m_configuration->m_server_addr, m_configuration->m_server_port);
-
 		if(m_configuration->m_ssl_enabled)
 		{
 			g_log->information("SSL enabled, initializing context");
@@ -69,9 +66,10 @@ bool connection_manager::connect()
 	try
 	{
 		ASSERT(m_socket.isNull());
-		ASSERT(!m_sa.isNull());
 
-		g_log->information("Connecting to collector");
+		SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
+
+		g_log->information("Connecting to collector " + sa.toString());
 
 		if(m_configuration->m_ssl_enabled)
 		{
@@ -79,12 +77,12 @@ bool connection_manager::connect()
 
 			((Poco::Net::SecureStreamSocket*) m_socket.get())->setLazyHandshake(true);
 			((Poco::Net::SecureStreamSocket*) m_socket.get())->setPeerHostName(m_configuration->m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
 		}
 		else
 		{
 			m_socket = new Poco::Net::StreamSocket();
-			m_socket->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
+			m_socket->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
 		}
 
 		if(m_configuration->m_ssl_enabled)

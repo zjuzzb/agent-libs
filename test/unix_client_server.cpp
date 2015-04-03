@@ -190,7 +190,7 @@ TEST_F(sys_call_test, unix_client_server)
 		sinsp_threadinfo *info = evt->get_thread_info(false);
 		if(info)
 		{
-			if(info->get_comm() == "python" && info->m_args.size() == 1)
+			if(info->get_comm() == "python" && info->m_args.size() >= 1)
 			{
 				return ends_with(info->m_args[0], "unix_server.py") || ends_with(info->m_args[0], "unix_client.py");				
 			}

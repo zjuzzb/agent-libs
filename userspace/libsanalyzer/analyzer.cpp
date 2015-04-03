@@ -2602,7 +2602,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			tcb += " ";
 		}
 
-		g_logger.format(sinsp_logger::SEV_ERROR, 
+		g_logger.format(sinsp_logger::SEV_INFO, 
 			"%d TID collisions (%s)", (int)m_inspector->m_tid_collisions.size(),
 			tcb.c_str());
 
