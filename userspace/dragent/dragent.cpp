@@ -26,6 +26,7 @@ dragent_app::dragent_app():
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_java_present(false),
+	m_subprocesses_logger(&m_configuration),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
 {
@@ -218,6 +219,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
 		monitor_process.emplace_process("sdjagent", [this](void)
 		{
 			this->m_jmx_pipes->attach_child_stdio();
@@ -238,6 +240,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	m_statsite_pipes = make_shared<pipe_manager>();
 	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
+	m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
+	{
+		// statsite logs does not have info about level, so print them with a mid level (info)
+		g_log->information(data);
+	});
 
 	monitor_process.emplace_process("statsite", [this](void)
 	{
@@ -273,11 +280,7 @@ int dragent_app::sdagent_main()
 
 	ExitCode exit_code;
 
-	if(m_java_present)
-	{
-		m_jmx_controller = make_shared<sdjagent_logger>(&m_configuration, m_jmx_pipes->get_err_fd());
-		ThreadPool::defaultPool().start(*m_jmx_controller, "sdjagent_logger");
-	}
+	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 

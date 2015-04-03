@@ -15,7 +15,7 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
@@ -49,7 +49,7 @@ private:
 	bool m_java_present;
 	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
-	shared_ptr<sdjagent_logger> m_jmx_controller;
+	subprocesses_logger m_subprocesses_logger;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 };

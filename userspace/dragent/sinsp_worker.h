@@ -3,7 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 
 class captureinfo
 {

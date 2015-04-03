@@ -43,16 +43,37 @@ private:
 	FILE *m_error_fd;
 };
 
-class sdjagent_logger : public Runnable
+class sdjagent_parser
 {
 public:
-	sdjagent_logger(dragent_configuration* configuration, FILE* m_error_fd);
+	void operator()(const string&);
+private:
+	Json::Reader m_json_reader;
+};
+
+class subprocesses_logger : public Runnable
+{
+public:
+	subprocesses_logger(dragent_configuration* configuration);
+
+	void add_logfd(FILE* fd, function<void(const string&)> parser)
+	{
+		m_error_fds.emplace(fd, move(parser));
+		auto fdno = fileno(fd);
+		if (fdno > m_max_fd)
+		{
+			m_max_fd = fdno;
+		}
+		FD_SET(fdno, &m_readset);
+	}
 
 	void run();
 
 private:
-	FILE *m_error_fd;
-	Json::Reader m_json_reader;
+	map<FILE *, function<void(const string&)>> m_error_fds;
 	dragent_configuration *configuration;
-	static const int READ_BUFFER_SIZE = 1024;
+	struct timeval m_timeout;
+	fd_set m_readset;
+	int m_max_fd;
 };
+

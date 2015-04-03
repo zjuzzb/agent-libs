@@ -27,7 +27,7 @@ add_executable(dragent
 	sinsp_worker.cpp
 	ssh_worker.cpp
 	update_worker.cpp
-	sdjagent_logger.cpp)
+	subprocesses_logger.cpp)
 
 add_dependencies(dragent sdjagent sdjagentjni)
 

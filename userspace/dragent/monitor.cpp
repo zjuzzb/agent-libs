@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 #include <thread>
 
 static int g_signal_received = 0;
@@ -66,7 +66,7 @@ void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
 void monitored_process::exec()
 {
 	prctl(PR_SET_PDEATHSIG, SIGKILL);
-	// TODO: may be useful to rename process?
+	// TODO: may be useful rename process?
 	m_exec();
 }
 
