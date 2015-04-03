@@ -25,7 +25,6 @@ static void g_usr_signal_callback(int sig)
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_java_present(false),
 	m_subprocesses_logger(&m_configuration),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
@@ -183,14 +182,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
-	m_java_present = false;
-	File java_binary("/usr/bin/java");
-	if(java_binary.exists() && java_binary.canExecute())
-	{
-		m_java_present = true;
-	}
 	monitor monitor_process(m_pidfile);
 
+	// Add our main process
 	monitor_process.emplace_process("sdagent",[this]()
 	{
 		struct sigaction sa;
@@ -215,7 +209,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	// This config parameter must be known early because is used
 	// on the monitor
-	if(m_java_present)
+	if(m_configuration.java_present())
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
@@ -226,11 +220,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
 			if(sdjagent_jar.exists())
 			{
-				execl("/usr/bin/java", "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+				execl(this->m_configuration.m_java_binary.c_str(), "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
 			}
 			else
 			{
-				execl("/usr/bin/java", "java", "-Djava.library.path=../sdjagent", "-jar",
+				execl(this->m_configuration.m_java_binary.c_str(), "java", "-Djava.library.path=../sdjagent", "-jar",
 					  "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
 			}
 			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
@@ -238,6 +232,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
+	// Configure statsite subprocess
 	m_statsite_pipes = make_shared<pipe_manager>();
 	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
@@ -269,10 +264,7 @@ int dragent_app::sdagent_main()
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	m_configuration.print_configuration();
-	if(m_java_present)
-	{
-		g_log->information("Java detected");
-	}
+
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();

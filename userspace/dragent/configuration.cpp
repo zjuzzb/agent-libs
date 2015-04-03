@@ -172,7 +172,15 @@ void dragent_configuration::init(Application* app)
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
-
+	auto java_home = m_config->get_scalar<string>("java_home", "");
+	for(const auto& bin_path : { string("/usr/bin/java"), java_home + "/jre/bin/java", java_home + "/bin/java"})
+	{
+		File java_bin(bin_path);
+		if(java_bin.exists() && java_bin.canExecute())
+		{
+			m_java_binary = bin_path;
+		}
+	}
 	refresh_aws_metadata();
 	write_statsite_configuration();
 }
@@ -221,7 +229,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
-
+	g_log->information("java detected: " + bool_as_text(java_present()));
+	g_log->information("java_binary: " + m_java_binary);
 	if(m_aws_metadata.m_valid)
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
