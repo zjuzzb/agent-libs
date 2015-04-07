@@ -2,6 +2,7 @@
 
 #include "configuration.h"
 #include "third-party/jsoncpp/json/json.h"
+#include "error_handler.h"
 
 class pipe_manager
 {
@@ -54,11 +55,13 @@ private:
 class subprocesses_logger : public Runnable
 {
 public:
-	subprocesses_logger(dragent_configuration* configuration);
+	subprocesses_logger(dragent_configuration* configuration, log_reporter* reporter);
 
-	void add_logfd(FILE* fd, function<void(const string&)> parser)
+	// `parser` is an rvalue reference because we expect a lambda
+	// or a custom object created on the fly
+	void add_logfd(FILE* fd, function<void(const string&)>&& parser)
 	{
-		m_error_fds.emplace(fd, move(parser));
+		m_error_fds.emplace(fd, parser);
 		auto fdno = fileno(fd);
 		if (fdno > m_max_fd)
 		{
@@ -70,8 +73,9 @@ public:
 	void run();
 
 private:
+	dragent_configuration *m_configuration;
+	log_reporter* m_log_reporter;
 	map<FILE *, function<void(const string&)>> m_error_fds;
-	dragent_configuration *configuration;
 	struct timeval m_timeout;
 	fd_set m_readset;
 	int m_max_fd;

@@ -37,6 +37,10 @@ void pipe_manager::attach_child_stdio()
 	dup2(m_outpipe[PIPE_WRITE], STDOUT_FILENO);
 	dup2(m_errpipe[PIPE_WRITE], STDERR_FILENO);
 	dup2(m_inpipe[PIPE_READ], STDIN_FILENO);
+	// Close the other part of the pipes
+	fclose(m_input_fd);
+	fclose(m_output_fd);
+	fclose(m_error_fd);
 }
 
 void pipe_manager::enable_nonblocking(int fd)
@@ -79,8 +83,9 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
-subprocesses_logger::subprocesses_logger(dragent_configuration *configuration) :
-		configuration(configuration),
+subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
+		m_configuration(configuration),
+		m_log_reporter(reporter),
 		m_max_fd(0)
 {
 	FD_ZERO(&m_readset);
@@ -121,6 +126,12 @@ void subprocesses_logger::run()
 					fds.second(data);
 				}
 			}
+		}
+
+		if(dragent_configuration::m_send_log_report)
+		{
+			m_log_reporter->send_report();
+			dragent_configuration::m_send_log_report = false;
 		}
 	}
 	g_log->information("subprocesses_logger terminating");

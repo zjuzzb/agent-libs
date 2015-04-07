@@ -4,7 +4,7 @@ find_package(JNI)
 if(Java_Development_FOUND)
     add_custom_target(sdjagent ALL COMMAND JAVA_HOME=${JAVA_HOME}
                       ${DRAIOS_DEPENDENCIES_DIR}/apache-maven-3.2.5/bin/mvn -PcustomBuild
-                      -Dcustom.build.directory=${CMAKE_CURRENT_BINARY_DIR}/java clean compile assembly:single
+                      -Dcustom.build.directory=${CMAKE_CURRENT_BINARY_DIR}/java compile assembly:single
                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar
             DESTINATION ${DRAIOS_BIN_PREFIX}/share RENAME sdjagent.jar

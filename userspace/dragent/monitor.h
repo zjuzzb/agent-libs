@@ -9,10 +9,10 @@ void run_monitor(const string& pidfile, shared_ptr<pipe_manager>);
 class monitored_process
 {
 public:
-	monitored_process(string name, function<void(void)> exec, bool is_main=false):
+	monitored_process(string name, function<void(void)>&& exec, bool is_main=false):
 		m_name(move(name)),
 		m_main(is_main),
-		m_exec(move(exec)),
+		m_exec(exec),
 		m_pid(0)
 	{}
 

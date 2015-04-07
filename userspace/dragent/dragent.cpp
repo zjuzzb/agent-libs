@@ -22,12 +22,19 @@ static void g_usr_signal_callback(int sig)
 	dragent_configuration::m_signal_dump = true;
 }
 
+static void g_usr2_signal_callback(int sig)
+{
+	g_log->information("Received SIGUSR2");
+	dragent_configuration::m_send_log_report = true;
+}
+
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_subprocesses_logger(&m_configuration),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
-	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
+	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
+	m_log_reporter(&m_queue, &m_configuration),
+	m_subprocesses_logger(&m_configuration, &m_log_reporter)
 {
 }
 	
@@ -198,6 +205,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 		sa.sa_handler = g_usr_signal_callback;
 		sigaction(SIGUSR1, &sa, NULL);
+		sa.sa_handler = g_usr2_signal_callback;
+		sigaction(SIGUSR2, &sa, NULL);
 
 		if(crash_handler::initialize() == false)
 		{
@@ -207,8 +216,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 		exit(exit_code);
 	}, true);
 
-	// This config parameter must be known early because is used
-	// on the monitor
 	if(m_configuration.java_present())
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
@@ -439,78 +446,7 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		g_log->error("agent didn't terminate cleanly, sending the last " 
-			+ NumberFormatter::format(m_configuration.m_dirty_shutdown_report_log_size_b) 
-			+ "B to collector");
-
-		p.setFileName("draios.log");
-
-		FILE* fp = fopen(p.toString().c_str(), "r");
-		if(fp == NULL)
-		{
-			g_log->error(string("fopen: ") + strerror(errno));
-			return;
-		}
-
-		if(fseek(fp, 0, SEEK_END) == -1)
-		{
-			g_log->error(string("fseek (1): ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		long offset = ftell(fp);
-		if(offset == -1)
-		{
-			g_log->error(string("ftell: ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		if((uint64_t) offset > m_configuration.m_dirty_shutdown_report_log_size_b)
-		{
-			offset = m_configuration.m_dirty_shutdown_report_log_size_b;
-		}
-
-		if(fseek(fp, -offset, SEEK_END) == -1)
-		{
-			g_log->error(string("fseek (2): ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		Buffer<char> buf(offset);
-		if(fread(buf.begin(), offset, 1, fp) != 1)
-		{
-			g_log->error("fread error");
-			fclose(fp);
-			return;
-		}
-
-		draiosproto::dirty_shutdown_report report;
-		report.set_timestamp_ns(sinsp_utils::get_current_time_ns());
-		report.set_customer_id(m_configuration.m_customer_id);
-		report.set_machine_id(m_configuration.m_machine_id);
-		report.set_log(buf.begin(), buf.size());
-
-		SharedPtr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
-			draiosproto::message_type::DIRTY_SHUTDOWN_REPORT, 
-			report, 
-			m_configuration.m_compression_enabled);
-
-		if(report_serialized.isNull())
-		{
-			g_log->error("NULL converting message to buffer");
-			return;
-		}
-
-		if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
-		{
-			g_log->information("Queue full");
-			return;
-		}
-
-		fclose(fp);
+		m_log_reporter.send_report();
 	}
 	else
 	{

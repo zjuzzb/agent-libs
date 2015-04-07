@@ -261,6 +261,7 @@ public:
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
+	static volatile bool m_send_log_report;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;

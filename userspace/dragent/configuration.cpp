@@ -15,6 +15,7 @@ using namespace Poco::Net;
 
 volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
+volatile bool dragent_configuration::m_send_log_report = false;
 
 static std::string bool_as_text(bool b)
 {

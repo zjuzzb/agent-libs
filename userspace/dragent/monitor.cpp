@@ -121,6 +121,19 @@ int monitor::run()
 				// crashed, restart it
 				this_thread::sleep_for(chrono::seconds(1));
 
+				// Notify main process to send log report
+				if(!process.is_main())
+				{
+					for(auto& process : m_processes)
+					{
+						if(process.is_main())
+						{
+							kill(process.pid(), SIGUSR2);
+							break;
+						}
+					}
+				}
+
 				auto child_pid = fork();
 				if (child_pid < 0)
 				{
