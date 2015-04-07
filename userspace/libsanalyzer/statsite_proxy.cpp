@@ -91,14 +91,21 @@ bool statsd_metric::parse_line(const string& line)
 		const auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
 		for(const auto& tag : tags_tokens)
 		{
-			const auto keyvalues = sinsp_split(tag, ':');
+			auto keyvalues = sinsp_split(tag, ':');
 			if(keyvalues.size() > 1)
 			{
 				new_tags[keyvalues.at(0)] = keyvalues.at(1);
 			}
 			else
 			{
-				new_tags[keyvalues.at(0)] = "";
+				keyvalues = sinsp_split(tag, '=');
+				if(keyvalues.size() > 1 ){
+					new_tags[keyvalues.at(0)] = keyvalues.at(1);
+				}
+				else
+				{
+					new_tags[keyvalues.at(0)] = "";
+				}
 			}
 		}
 		if(m_tags.empty())

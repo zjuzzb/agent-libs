@@ -9,6 +9,7 @@ class statsd_metric
 {
 public:
 	using ptr_t = shared_ptr<statsd_metric>;
+
 	enum class type_t
 	{
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
