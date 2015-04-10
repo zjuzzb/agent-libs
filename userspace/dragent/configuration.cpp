@@ -49,6 +49,7 @@ dragent_configuration::dragent_configuration()
 	m_jmx_sampling = 1;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
+	m_agent_installed = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -86,16 +87,14 @@ void dragent_configuration::init(Application* app)
 	File package_dir("/opt/draios");
 	if(package_dir.exists())
 	{
+		m_agent_installed = true;
 		m_root_dir = "/opt/draios";
-
-		//
-		// Get rid of this "bin" hack asap
-		//
 		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 	}
 	else
 	{
+		m_agent_installed = false;
 		m_root_dir = Path::current();
 		m_conf_file = Path(m_root_dir).append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
@@ -183,6 +182,7 @@ void dragent_configuration::init(Application* app)
 			m_java_binary = bin_path;
 		}
 	}
+
 	refresh_aws_metadata();
 	write_statsite_configuration();
 }
@@ -373,7 +373,12 @@ void dragent_configuration::write_statsite_configuration()
 	char formatted_config[sizeof(STATSITE_INI_TEMPLATE)+100];
 	snprintf(formatted_config, sizeof(formatted_config), STATSITE_INI_TEMPLATE, tcp_port, udp_port, loglevel.c_str(), flush_interval);
 
-	std::ofstream ostr("/opt/draios/etc/statsite.ini");
+	string filename("/opt/draios/etc/statsite.ini");
+	if(!m_agent_installed)
+	{
+		filename = "statsite.ini";
+	}
+	std::ofstream ostr(filename);
 	if(ostr.good())
 	{
 		ostr << formatted_config;

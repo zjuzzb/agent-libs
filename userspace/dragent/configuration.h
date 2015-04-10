@@ -310,6 +310,7 @@ public:
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
 	string m_java_binary;
+	bool m_agent_installed;
 
 	bool java_present()
 	{

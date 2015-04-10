@@ -259,7 +259,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 	monitor_process.emplace_process("statsite", [this](void)
 	{
 		this->m_statsite_pipes->attach_child_stdio();
-		execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+		if(this->m_configuration.m_agent_installed)
+		{
+			execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+		}
+		else
+		{
+			execl("../../../../dependencies/statsite-private-master/statsite",
+				  "statsite", "-f", "statsite.ini", (char*)NULL);
+		}
 		exit(EXIT_FAILURE);
 	});
 
