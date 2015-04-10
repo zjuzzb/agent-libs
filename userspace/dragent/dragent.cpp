@@ -396,6 +396,25 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+	if(m_subprocesses_logger.get_last_loop_ns() != 0)
+	{
+		int64_t diff = sinsp_utils::get_current_time_ns()
+					   - m_subprocesses_logger.get_last_loop_ns();
+
+#if _DEBUG
+		g_log->debug("watchdog: subprocesses_logger last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_subprocesses_logger_timeout_s * 1000000000LL)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected subprocesses_logger stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
+			pthread_kill(m_subprocesses_logger.get_pthread_id(), SIGABRT);
+			to_kill = true;
+		}
+	}
+
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{

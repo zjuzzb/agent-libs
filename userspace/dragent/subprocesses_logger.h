@@ -72,6 +72,16 @@ public:
 
 	void run();
 
+	uint64_t get_last_loop_ns()
+	{
+		return m_last_loop_ns;
+	}
+
+	pthread_t get_pthread_id()
+	{
+		return m_pthread_id;
+	}
+
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
@@ -79,5 +89,7 @@ private:
 	struct timeval m_timeout;
 	fd_set m_readset;
 	int m_max_fd;
+	volatile uint64_t m_last_loop_ns;
+	volatile pthread_t m_pthread_id;
 };
 

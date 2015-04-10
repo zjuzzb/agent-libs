@@ -1,5 +1,6 @@
 #include "subprocesses_logger.h"
 #include "logger.h"
+#include "utils.h"
 
 pipe_manager::pipe_manager()
 {
@@ -86,7 +87,8 @@ void sdjagent_parser::operator()(const string& data)
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
 		m_configuration(configuration),
 		m_log_reporter(reporter),
-		m_max_fd(0)
+		m_max_fd(0),
+		m_last_loop_ns(0)
 {
 	FD_ZERO(&m_readset);
 	memset(&m_timeout, 0, sizeof(struct timeval));
@@ -95,10 +97,12 @@ subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, l
 
 void subprocesses_logger::run()
 {
+	m_pthread_id = pthread_self();
 	g_log->information("subprocesses_logger: Starting");
 
 	while(!dragent_configuration::m_terminate)
 	{
+		m_last_loop_ns = sinsp_utils::get_current_time_ns();
 		fd_set readset_w;
 		memcpy(&readset_w, &m_readset, sizeof(fd_set));
 		struct timeval timeout_w;
