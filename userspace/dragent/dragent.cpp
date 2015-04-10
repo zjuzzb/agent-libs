@@ -244,8 +244,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
 	{
-		// statsite logs does not have info about level, so print them with a mid level (info)
-		g_log->information(data);
+		// statsite logs does not have info about level, use error if keyword `Failed` is inside or use
+		// information
+		if(data.find("Failed") != string::npos)
+		{
+			g_log->error(data);
+		}
+		else
+		{
+			g_log->information(data);
+		}
 	});
 
 	monitor_process.emplace_process("statsite", [this](void)
