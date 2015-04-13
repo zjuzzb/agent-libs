@@ -3,8 +3,6 @@
 #include "main.h"
 
 class pipe_manager;
-void run_sdjagent(shared_ptr<pipe_manager>);
-void run_monitor(const string& pidfile, shared_ptr<pipe_manager>);
 
 class monitored_process
 {
@@ -37,7 +35,7 @@ private:
 	string m_name;
 	bool m_main;
 	function<void(void)> m_exec;
-	pid_t m_pid{0};
+	pid_t m_pid;
 };
 
 class monitor
