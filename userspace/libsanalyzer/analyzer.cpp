@@ -2111,7 +2111,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
-	uint64_t flush_start_ns = g_get_current_time_ns();
+	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
 	if(evt != NULL)
 	{
@@ -2180,7 +2180,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				// Make sure that there's been enough time since the previous call to justify getting
 				// CPU info from proc
 				//
-				uint64_t wall_time = g_get_current_time_ns();
+				uint64_t wall_time = sinsp_utils::get_current_time_ns();
 
 				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || !m_inspector->is_live())
 				{
@@ -2576,6 +2576,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Reset the proc lookup counter
 	//
 	m_inspector->m_n_proc_lookups = 0;
+	m_inspector->m_n_proc_lookups_duration_ns = 0;
 
 	//
 	// Clear the network I/O counter
@@ -2600,7 +2601,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			tcb += " ";
 		}
 
-		g_logger.format(sinsp_logger::SEV_ERROR, 
+		g_logger.format(sinsp_logger::SEV_INFO, 
 			"%d TID collisions (%s)", (int)m_inspector->m_tid_collisions.size(),
 			tcb.c_str());
 
@@ -2638,7 +2639,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		evt->m_tinfo = evt->get_thread_info();
 	}
 
-	m_prev_flushes_duration_ns += g_get_current_time_ns() - flush_start_ns;
+	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
 }
 
 //
@@ -2800,7 +2801,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			{
 				if(m_inspector->is_live() && m_inspector->m_lastevent_ts != 0)
 				{
-					ts = g_get_current_time_ns();
+					ts = sinsp_utils::get_current_time_ns() - 500000000;
 					etype = 0; // this avoids a compiler warning
 				}
 				else

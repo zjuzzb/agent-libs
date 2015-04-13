@@ -20,7 +20,8 @@ parser.add_option("--ssl-certificate")
 PORT = 8080
 
 # Establish a TCP/IP socket
-s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Bind to TCP port
 s.bind(("", PORT))

@@ -2,6 +2,7 @@
 
 #include "logger.h"
 #include "error_handler.h"
+#include "utils.h"
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -99,16 +100,16 @@ void sinsp_worker::init()
 	//
 	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);
 
-	if(m_configuration->m_drop_upper_treshold != 0)
+	if(m_configuration->m_drop_upper_threshold != 0)
 	{
-		g_log->information("Drop upper treshold=" + NumberFormatter::format(m_configuration->m_drop_upper_treshold));
-		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_treshold);
+		g_log->information("Drop upper threshold=" + NumberFormatter::format(m_configuration->m_drop_upper_threshold));
+		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_threshold);
 	}
 
-	if(m_configuration->m_drop_lower_treshold != 0)
+	if(m_configuration->m_drop_lower_threshold != 0)
 	{
-		g_log->information("Drop lower treshold=" + NumberFormatter::format(m_configuration->m_drop_lower_treshold));
-		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_treshold);
+		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
+		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
 	}
 
 	if(m_configuration->m_host_custom_name != "")
@@ -194,7 +195,7 @@ void sinsp_worker::run()
 
 	init();
 
-	m_last_loop_ns = g_get_current_time_ns();
+	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	while(!dragent_configuration::m_terminate)
 	{
@@ -208,7 +209,7 @@ void sinsp_worker::run()
 
 		if(res == SCAP_TIMEOUT)
 		{
-			m_last_loop_ns = g_get_current_time_ns();
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 			continue;
 		}
 		else if(res == SCAP_EOF)
@@ -264,7 +265,7 @@ void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)
 
 void sinsp_worker::prepare_response(const string& token, draiosproto::dump_response* response)
 {
-	response->set_timestamp_ns(g_get_current_time_ns());
+	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
 	response->set_machine_id(m_configuration->m_machine_id);
 	response->set_token(token);
@@ -285,7 +286,7 @@ bool sinsp_worker::queue_response(const draiosproto::dump_response& response, pr
 
 	while(!m_queue->put(buffer, priority))
 	{
-		g_log->error("Queue full");
+		g_log->information("Queue full");
 		return false;
 	}
 
@@ -440,7 +441,7 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		
 		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
 		{
-			g_log->error(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
+			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
 				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
 			return;
 		}

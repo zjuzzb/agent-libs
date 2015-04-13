@@ -1,7 +1,7 @@
 #include "sinsp_data_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
-
+#include "utils.h"
 #include "logger.h"
 
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, 
@@ -15,7 +15,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns)
 {
-	m_last_loop_ns = g_get_current_time_ns();
+	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	if(m_configuration->m_print_protobuf)
 	{
@@ -43,6 +43,6 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
-		g_log->error("Queue full, discarding sample");
+		g_log->information("Queue full, discarding sample");
 	}
 }

@@ -21,7 +21,7 @@ import java.util.logging.*;
  * @author Luca Marturana <luca@draios.com>
  */
 public class Application {
-    private final static Logger LOGGER = Logger.getLogger(Application.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final long vmsCleanupInterval = 10 * 60 * 1000;
 
@@ -37,14 +37,6 @@ public class Application {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        LogManager.getLogManager().reset();
-        Logger globalLogger = Logger.getLogger("");
-        ConsoleHandler console = new ConsoleHandler();
-        //console.setLevel(Level.FINE);
-        console.setFormatter(new LogJsonFormatter());
-        //globalLogger.setLevel(Level.FINE);
-        globalLogger.addHandler(console);
-
         try {
             Application app = new Application();
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
@@ -60,9 +52,19 @@ public class Application {
     private long lastVmsCleanup;
 
     private Application() throws FileNotFoundException {
+        LogManager.getLogManager().reset();
+        Logger globalLogger = Logger.getLogger("");
+        ConsoleHandler console = new ConsoleHandler();
+        console.setFormatter(new LogJsonFormatter());
+        globalLogger.addHandler(console);
+
         vms = new HashMap<Integer, MonitoredVM>();
         lastVmsCleanup = 0;
         config = new Config();
+
+        Level level = config.getLogLevel();
+        console.setLevel(level);
+        globalLogger.setLevel(level);
     }
 
     private void mainLoop() throws IOException {
@@ -119,11 +121,11 @@ public class Application {
                 // Configure VM name if it matches a pattern on configurations
                 if(vm.isAvailable())
                 {
-                    List<Config.Process> processes = config.getProcesses();
-                    for (Config.Process config : processes) {
-                        if (vm.getName().contains(config.getPattern())) {
-                            vm.setName(config.getName());
-                            vm.addQueries(config.getQueries());
+                    Map<String, Config.Process> processes = config.getProcesses();
+                    for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
+                        if (vm.getName().contains(config.getValue().getPattern())) {
+                            vm.setName(config.getKey());
+                            vm.addQueries(config.getValue().getQueries());
                             break;
                         }
                     }

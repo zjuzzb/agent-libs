@@ -5,14 +5,15 @@
 #include "draios.pb.h"
 #include "ssh_worker.h"
 #include "update_worker.h"
+#include "utils.h"
 
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
-const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S(60);
+const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 10;
+const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
 connection_manager::connection_manager(dragent_configuration* configuration, 
 		protocol_queue* queue, sinsp_worker* sinsp_worker):
-	m_sa(NULL),
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
@@ -34,8 +35,6 @@ bool connection_manager::init()
 {
 	if(m_configuration->m_server_addr != "" && m_configuration->m_server_port != 0)
 	{
-		m_sa = new Poco::Net::SocketAddress(m_configuration->m_server_addr, m_configuration->m_server_port);
-
 		if(m_configuration->m_ssl_enabled)
 		{
 			g_log->information("SSL enabled, initializing context");
@@ -67,9 +66,10 @@ bool connection_manager::connect()
 	try
 	{
 		ASSERT(m_socket.isNull());
-		ASSERT(!m_sa.isNull());
 
-		g_log->information("Connecting to collector");
+		SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
+
+		g_log->information("Connecting to collector " + sa.toString());
 
 		if(m_configuration->m_ssl_enabled)
 		{
@@ -77,12 +77,12 @@ bool connection_manager::connect()
 
 			((Poco::Net::SecureStreamSocket*) m_socket.get())->setLazyHandshake(true);
 			((Poco::Net::SecureStreamSocket*) m_socket.get())->setPeerHostName(m_configuration->m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
+			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
 		}
 		else
 		{
 			m_socket = new Poco::Net::StreamSocket();
-			m_socket->connect(*m_sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
+			m_socket->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
 		}
 
 		if(m_configuration->m_ssl_enabled)
@@ -137,11 +137,11 @@ void connection_manager::disconnect()
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
-		m_reconnect_interval = 1;
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
 	}
 	else
 	{
-		m_reconnect_interval = min(max(static_cast<uint32_t>(1),m_reconnect_interval*2), RECONNECT_MAX_INTERVAL_S);
+		m_reconnect_interval = std::min(std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2), RECONNECT_MAX_INTERVAL_S);
 	}
 
 	if(!m_socket.isNull())
@@ -164,7 +164,7 @@ void connection_manager::run()
 
 		while(!dragent_configuration::m_terminate)
 		{
-			m_last_loop_ns = g_get_current_time_ns();
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 			//
 			// Make sure we have a valid connection
@@ -174,7 +174,7 @@ void connection_manager::run()
 				g_log->information(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
 				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
-					m_last_loop_ns = g_get_current_time_ns();
+					m_last_loop_ns = sinsp_utils::get_current_time_ns();
 					Thread::sleep(1000);
 				}
 
@@ -182,6 +182,7 @@ void connection_manager::run()
 				{
 					break;
 				}
+				
 				m_last_connection_failure = chrono::system_clock::now();
 
 				if(!connect())
@@ -189,6 +190,12 @@ void connection_manager::run()
 					continue;
 				}
 			}
+
+			//
+			// Check if we received a message. We do it before so nothing gets lost if ELBs
+			// still negotiates a connection and then sends us out at the first read/write
+			//
+			receive_message();
 
 			if(item.isNull())
 			{
@@ -208,11 +215,6 @@ void connection_manager::run()
 					item = NULL;
 				}
 			}
-
-			//
-			// Check if we received a message
-			//
-			receive_message();
 		}
 	}
 
@@ -246,7 +248,7 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 			return false;
 		}
 
-		g_log->debug(m_name + ": Sent " 
+		g_log->information(m_name + ": Sent " 
 			+ Poco::NumberFormatter::format(buflen) + " to collector");
 
 		return true;

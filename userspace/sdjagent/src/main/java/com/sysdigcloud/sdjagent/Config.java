@@ -4,116 +4,87 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.yaml.snakeyaml.Yaml;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Created by luca on 12/01/15.
  */
 public class Config {
-    private final Map<String, Object> conf;
-    private final Yaml yaml;
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
-    private static final String[] configFiles = {"dragent.yaml", "dragent.default.yaml",
-                                       "/opt/draios/etc/dragent.yaml", "/opt/draios/etc/dragent.default.yaml" };
+    private static final String[] configFiles = {"dragent.yaml", "/opt/draios/etc/dragent.yaml" };
+    private static final String[] defaultConfigFiles = {"dragent.default.yaml", "/opt/draios/etc/dragent.default.yaml" };
+
     private List<BeanQuery> defaultBeanQueries;
-    private List<Process> processes;
+    private Map<String, Process> processes;
 
     public Config() throws FileNotFoundException {
+        String conf_file = getFirstAvailableFile(configFiles);
+        String defaults_file = getFirstAvailableFile(defaultConfigFiles);
 
+        yamlConfig = new YamlConfig(conf_file, defaults_file);
+        defaultBeanQueries = yamlConfig.getMergedSequence("jmx.default_beans", BeanQuery.class);
+        processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
+    }
+
+    private static String getFirstAvailableFile(String[] files) throws FileNotFoundException {
         // Load config from file
-        File conf_file = null;
-        for (String configFilePath : configFiles)
+        for (String configFilePath : files)
         {
-            conf_file = new File(configFilePath);
+            File conf_file = new File(configFilePath);
             if (conf_file.exists())
             {
                 LOGGER.info("Using config file: " + configFilePath);
-                break;
+                return configFilePath;
             }
         }
+        return null;
+    }
 
-        if(conf_file == null)
-        {
-            throw new FileNotFoundException("Cannot find configuration file in any default path");
+    public Level getLogLevel() {
+        String stringLevel = yamlConfig.getSingle("log.file_priority", "info");
+        if ( stringLevel.equals("error")) {
+            return Level.SEVERE;
+        } else if (stringLevel.equals("warning")) {
+            return Level.WARNING;
+        } else if (stringLevel.equals("info")) {
+            return Level.INFO;
+        } else if (stringLevel.equals("debug")) {
+            return Level.FINE;
         }
-
-        FileInputStream conf_file_stream = new FileInputStream(conf_file);
-        yaml = new Yaml();
-        conf = (Map<String, Object>)((Map<String, Object>) yaml.load(conf_file_stream)).get("jmx");
-
-        defaultBeanQueries = new ArrayList<BeanQuery>();
-        for (Object bean : (List<Object>) conf.get("default")) {
-            try {
-                defaultBeanQueries.add(mapper.convertValue(bean, BeanQuery.class));
-            } catch (IllegalArgumentException ex) {
-                Map<String, Object> beanAsMap = mapper.convertValue(bean, Map.class);
-                LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
-            }
-        }
-
-        processes = new ArrayList<Process>();
-        for(String name : conf.keySet()) {
-            if (name.equals("default")) {
-                continue;
-            }
-            Map<String, Object> queryEntry = (Map<String, Object>)conf.get(name);
-            Process process = new Process();
-            process.name = name;
-            process.pattern = (String) queryEntry.get("pattern");
-
-            List beansList = mapper.convertValue(queryEntry.get("beans"), List.class);
-            List<BeanQuery> beanQueryList = new ArrayList<BeanQuery>();
-            if (beansList != null) {
-                for (Object beanQuery : beansList) {
-                    try {
-                        beanQueryList.add(mapper.convertValue(beanQuery, BeanQuery.class));
-                    } catch (IllegalArgumentException ex)
-                    {
-                        Map<String, Object> beanAsMap = mapper.convertValue(beanQuery, Map.class);
-                        LOGGER.warning("Skipping invalid query: " + beanAsMap.get("query") + ", reason:" + ex.getMessage());
-                    }
-                }
-                process.queries = beanQueryList;
-            }
-
-            processes.add(process);
-        }
+        return Level.INFO;
     }
 
     public List<BeanQuery> getDefaultBeanQueries() {
         return defaultBeanQueries;
     }
 
-    public List<Process> getProcesses() {
+    public Map<String, Process> getProcesses() {
         return processes;
     }
 
     public static class Process {
-        private String name;
         private String pattern;
         private List<BeanQuery> queries;
 
-        public Process() {
-            this.name = "";
-            this.pattern = "";
+        @JsonCreator
+        @SuppressWarnings("unused")
+        private Process(@JsonProperty("pattern") String pattern, @JsonProperty("beans") List<BeanQuery> queries) {
+            this.pattern = pattern;
+            
             this.queries = new ArrayList<BeanQuery>();
-        }
-
-        public String getName() {
-            return name;
+            if (queries != null) {
+                this.queries.addAll(queries);
+            }
         }
 
         public String getPattern() {
@@ -149,10 +120,10 @@ public class Config {
     }
 
     public static class BeanAttribute {
-        public static enum Type {
+        public enum Type {
             counter, rate
         }
-        public static enum Unit {
+        public enum Unit {
             NONE(0),
 
             SECOND(1),
@@ -214,7 +185,7 @@ public class Config {
                 STRING_TO_UNIT.put("%1", PERCENT_NORM);
             }
 
-            private Unit(int id) { this.id = id; }
+            Unit(int id) { this.id = id; }
 
             public int getValue() { return id; }
 
@@ -234,6 +205,7 @@ public class Config {
         @JsonCreator
         @SuppressWarnings("unused")
         private BeanAttribute(JsonNode data) {
+            this.type = Type.rate;
             if(data.isTextual()) {
                 this.name = data.textValue();
                 this.type = Type.rate;
@@ -242,7 +214,12 @@ public class Config {
                 this.name = data.get("name").textValue();
 
                 if ( data.has("type")) {
-                    this.type = Type.valueOf(data.get("type").textValue());
+                    try {
+                        this.type = Type.valueOf(data.get("type").textValue().toLowerCase());
+                    } catch (IllegalArgumentException ex) {
+                        LOGGER.severe(String.format("Wrong type for JMX attribute %s: %s. Accepted values are: counter, rate; using default",
+                                name, data.get("type").textValue()));
+                    }
                 } else {
                     this.type = Type.rate;
                 }

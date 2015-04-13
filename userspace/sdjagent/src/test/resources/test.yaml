@@ -1,0 +1,9 @@
+mykey: mystring
+mynested:
+  firstkey:
+    subkey: 78
+myarray:
+  - 1
+  - 6
+server:
+  address: "collector-staging.sysdigcloud.com"

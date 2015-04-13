@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex 
+set -exo pipefail
 
 if [[ $(uname) == "Darwin" ]]; then
   SCRIPT=$(greadlink -f $0)
@@ -14,6 +14,7 @@ if [ -z "$WORKDIR" ]; then
 fi
 
 DEPENDENCIES=$WORKDIR/agent/dependencies
+DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
 
 if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
@@ -22,7 +23,7 @@ fi
 ZLIB_DIR=$DEPENDENCIES/zlib-1.2.8
 if [ ! -d "$ZLIB_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/zlib-1.2.8.tar.gz
+	wget $DEPENDENCIES_URL/zlib-1.2.8.tar.gz
 	tar -xzf zlib-1.2.8.tar.gz
 	cd $ZLIB_DIR
 	./configure
@@ -32,7 +33,7 @@ fi
 PROTBUF_DIR=$DEPENDENCIES/protobuf-2.5.0
 if [ ! -d "$PROTBUF_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/protobuf-2.5.0.tar.bz2
+	wget $DEPENDENCIES_URL/protobuf-2.5.0.tar.bz2
 	tar -xjf protobuf-2.5.0.tar.bz2
 	cd $PROTBUF_DIR
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib
@@ -42,7 +43,7 @@ fi
 OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1h
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/openssl-1.0.1h.tar.gz
+	wget $DEPENDENCIES_URL/openssl-1.0.1h.tar.gz
 	tar -xzf openssl-1.0.1h.tar.gz
 	cd $OPENSSL_DIR
 	./config --prefix=$OPENSSL_DIR/target
@@ -53,7 +54,7 @@ fi
 POCO_DIR=$DEPENDENCIES/poco-1.4.6p4-all
 if [ ! -d "$POCO_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/poco-1.4.6p4-all.tar.gz
+	wget $DEPENDENCIES_URL/poco-1.4.6p4-all.tar.gz
 	tar -xzf poco-1.4.6p4-all.tar.gz
 	cd $POCO_DIR
 	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
@@ -65,7 +66,7 @@ fi
 GTEST_DIR=$DEPENDENCIES/gtest-1.7.0
 if [ ! -d "$GTEST_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/gtest-1.7.0.zip
+	wget $DEPENDENCIES_URL/gtest-1.7.0.zip
 	unzip gtest-1.7.0.zip
 	cd $GTEST_DIR
 	g++ -Iinclude -c fused-src/gtest/gtest-all.cc -o gtest-all.o
@@ -76,14 +77,14 @@ fi
 
 if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/simpleopt-3.6.zip
+	wget $DEPENDENCIES_URL/simpleopt-3.6.zip
 	unzip simpleopt-3.6.zip
 fi
 
 CMAKE_DIR=$DEPENDENCIES/cmake-3.0.0
 if [ ! -d "$CMAKE_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.0.0.tar.gz
+	wget $DEPENDENCIES_URL/cmake-3.0.0.tar.gz
 	tar -xzf cmake-3.0.0.tar.gz
 	cd $CMAKE_DIR
 	./bootstrap
@@ -93,7 +94,7 @@ fi
 LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.3
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/libssh-0.6.3.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.6.3.tar.xz
 	tar -xf libssh-0.6.3.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
@@ -106,7 +107,7 @@ fi
 LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
 if [ ! -d "$LUAJIT_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/LuaJIT-2.0.3.tar.gz
+	wget $DEPENDENCIES_URL/LuaJIT-2.0.3.tar.gz
 	tar -xzf LuaJIT-2.0.3.tar.gz
 	cd $LUAJIT_DIR
 	make
@@ -121,15 +122,34 @@ if [ ! -d "$JAVA_DIR" ]; then
 	else
 		TARFILE=jdk-7u75-linux-i586.tar.bz2
 	fi
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/$TARFILE
+	wget $DEPENDENCIES_URL/$TARFILE
 	tar -xjf $TARFILE
 fi
 
 MAVEN_DIR=$DEPENDENCIES/apache-maven-3.2.5
 if [ ! -d "$MAVEN_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/apache-maven-3.2.5-bin.tar.gz
+	wget $DEPENDENCIES_URL/apache-maven-3.2.5-bin.tar.gz
 	tar -xzf apache-maven-3.2.5-bin.tar.gz
+fi
+
+BOOST_DIR=$DEPENDENCIES/boost_1_57_0
+if [ ! -d "$BOOST_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/boost_1_57_0.tar.bz2
+	tar xfj boost_1_57_0.tar.bz2
+fi
+
+YAMLCPP_DIR=$DEPENDENCIES/yaml-cpp-0.5.1
+if [ ! -d "$YAMLCPP_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/yaml-cpp-0.5.1.tar.gz
+	tar xfz yaml-cpp-0.5.1.tar.gz
+	cd $YAMLCPP_DIR
+	mkdir build
+	cd build
+	BOOST_ROOT=$BOOST_DIR $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+	make install
 fi
 
 if [ -z "$AGENT_VERSION" ]; then
