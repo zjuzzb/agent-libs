@@ -117,11 +117,11 @@ int monitor::run()
 				}
 
 				auto child_pid = fork();
-				if (child_pid < 0)
+				if(child_pid < 0)
 				{
 					exit(EXIT_FAILURE);
 				}
-				else if (child_pid == 0)
+				else if(child_pid == 0)
 				{
 					process.exec();
 				}
