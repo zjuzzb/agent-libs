@@ -246,7 +246,7 @@ message mongodb_info {
     repeated mongodb_collection_details client_collections = 4;
 }
 
-enum jmx_metric_unit {
+/*enum jmx_metric_unit {
     JMX_METRIC_NONE = 0;
 
     JMX_METRIC_SECOND = 1;
@@ -274,12 +274,12 @@ enum jmx_metric_unit {
 
     JMX_METRIC_PERCENT = 21;
     JMX_METRIC_PERCENT_NORM = 22;
-}
+}*/
 
 message jmx_attribute {
     optional string name = 1;
     optional double value = 2;
-    optional jmx_metric_unit unit = 4; // Right now is not used, may be removed in the future
+    // optional jmx_metric_unit unit = 6; // Right now is not used, may be removed in the future
     optional string alias = 5;
     repeated jmx_attribute subattributes = 3;
 }

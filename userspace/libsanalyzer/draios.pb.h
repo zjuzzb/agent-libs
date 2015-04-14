@@ -142,46 +142,6 @@ inline bool mongodb_op_type_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<mongodb_op_type>(
     mongodb_op_type_descriptor(), name, value);
 }
-enum jmx_metric_unit {
-  JMX_METRIC_NONE = 0,
-  JMX_METRIC_SECOND = 1,
-  JMX_METRIC_MILLISECOND = 2,
-  JMX_METRIC_MICROSECOND = 3,
-  JMX_METRIC_NANOSECOND = 4,
-  JMX_METRIC_MINUTE = 5,
-  JMX_METRIC_HOUR = 6,
-  JMX_METRIC_DAY = 7,
-  JMX_METRIC_BYTE = 8,
-  JMX_METRIC_KILOBYTE = 9,
-  JMX_METRIC_MEGABYTE = 10,
-  JMX_METRIC_GIGABYTE = 11,
-  JMX_METRIC_TERABYTE = 12,
-  JMX_METRIC_KIBIBYTE = 13,
-  JMX_METRIC_MEBIBYTE = 14,
-  JMX_METRIC_GIBIBYTE = 15,
-  JMX_METRIC_TEBIBYTE = 16,
-  JMX_METRIC_KILO = 17,
-  JMX_METRIC_MEGA = 18,
-  JMX_METRIC_GIGA = 19,
-  JMX_METRIC_TERA = 20,
-  JMX_METRIC_PERCENT = 21,
-  JMX_METRIC_PERCENT_NORM = 22
-};
-bool jmx_metric_unit_IsValid(int value);
-const jmx_metric_unit jmx_metric_unit_MIN = JMX_METRIC_NONE;
-const jmx_metric_unit jmx_metric_unit_MAX = JMX_METRIC_PERCENT_NORM;
-const int jmx_metric_unit_ARRAYSIZE = jmx_metric_unit_MAX + 1;
-
-const ::google::protobuf::EnumDescriptor* jmx_metric_unit_descriptor();
-inline const ::std::string& jmx_metric_unit_Name(jmx_metric_unit value) {
-  return ::google::protobuf::internal::NameOfEnum(
-    jmx_metric_unit_descriptor(), value);
-}
-inline bool jmx_metric_unit_Parse(
-    const ::std::string& name, jmx_metric_unit* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<jmx_metric_unit>(
-    jmx_metric_unit_descriptor(), name, value);
-}
 enum networkrole {
   NONE = 0,
   IS_LOCAL_IPV4_SERVER = 1,
@@ -3068,13 +3028,6 @@ class jmx_attribute : public ::google::protobuf::Message {
   inline double value() const;
   inline void set_value(double value);
 
-  // optional .draiosproto.jmx_metric_unit unit = 4;
-  inline bool has_unit() const;
-  inline void clear_unit();
-  static const int kUnitFieldNumber = 4;
-  inline ::draiosproto::jmx_metric_unit unit() const;
-  inline void set_unit(::draiosproto::jmx_metric_unit value);
-
   // optional string alias = 5;
   inline bool has_alias() const;
   inline void clear_alias();
@@ -3105,8 +3058,6 @@ class jmx_attribute : public ::google::protobuf::Message {
   inline void clear_has_name();
   inline void set_has_value();
   inline void clear_has_value();
-  inline void set_has_unit();
-  inline void clear_has_unit();
   inline void set_has_alias();
   inline void clear_has_alias();
 
@@ -3116,10 +3067,9 @@ class jmx_attribute : public ::google::protobuf::Message {
   double value_;
   ::std::string* alias_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute > subattributes_;
-  int unit_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10113,38 +10063,15 @@ inline void jmx_attribute::set_value(double value) {
   value_ = value;
 }
 
-// optional .draiosproto.jmx_metric_unit unit = 4;
-inline bool jmx_attribute::has_unit() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void jmx_attribute::set_has_unit() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void jmx_attribute::clear_has_unit() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void jmx_attribute::clear_unit() {
-  unit_ = 0;
-  clear_has_unit();
-}
-inline ::draiosproto::jmx_metric_unit jmx_attribute::unit() const {
-  return static_cast< ::draiosproto::jmx_metric_unit >(unit_);
-}
-inline void jmx_attribute::set_unit(::draiosproto::jmx_metric_unit value) {
-  assert(::draiosproto::jmx_metric_unit_IsValid(value));
-  set_has_unit();
-  unit_ = value;
-}
-
 // optional string alias = 5;
 inline bool jmx_attribute::has_alias() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void jmx_attribute::set_has_alias() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void jmx_attribute::clear_has_alias() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void jmx_attribute::clear_alias() {
   if (alias_ != &::google::protobuf::internal::kEmptyString) {
@@ -16641,10 +16568,6 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::sql_statement_typ
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::mongodb_op_type>() {
   return ::draiosproto::mongodb_op_type_descriptor();
-}
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_unit>() {
-  return ::draiosproto::jmx_metric_unit_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {
