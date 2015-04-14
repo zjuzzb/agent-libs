@@ -54,6 +54,10 @@ public:
 		return m_percentile_50;
 	}
 
+	inline const map<string, string>& tags()
+	{
+		return m_tags;
+	}
 private:
 	statsd_metric() = default;
 

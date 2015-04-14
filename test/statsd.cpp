@@ -47,6 +47,8 @@ TEST(statsd_metric, parse_counter)
 	EXPECT_EQ("mycounter", metric->name());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric->type());
 	EXPECT_DOUBLE_EQ(42.0, metric->value());
+	EXPECT_TRUE(metric->tags().find("xxx") != metric->tags().end());
+	EXPECT_FALSE(metric->parse_line("counts.mycounter#xxx,yy|42.000000|1427796785\n"));
 
 	metric = statsd_metric::create();
 	metric->parse_line("counts.mycounter|42.000000|1427796784\n");
@@ -75,6 +77,12 @@ TEST(statsd_metric, parser_histogram)
 	metric->parse_line("timers.mytime#we,ff.sum|6681.000000|1427796784\n");
 	EXPECT_EQ("mytime", metric->name());
 	EXPECT_DOUBLE_EQ(6681.0, metric->sum());
+
+	metric = statsd_metric::create();
+	metric->parse_line("timers.mytime#we=ff.sum|6681.000000|1427796784\n");
+	EXPECT_EQ("mytime", metric->name());
+	EXPECT_DOUBLE_EQ(6681.0, metric->sum());
+	EXPECT_EQ("ff", metric->tags().at("we"));
 }
 
 TEST(statsd_metric, parser_gauge)
@@ -83,5 +91,20 @@ TEST(statsd_metric, parser_gauge)
 	metric->parse_line("gauges.mygauge|2.000000|1427796784\n");
 	EXPECT_EQ(1427796784, metric->timestamp());
 	EXPECT_EQ("mygauge", metric->name());
+	EXPECT_DOUBLE_EQ(2.0, metric->value());
+}
+
+TEST(statsd_metric, parser_edge_cases)
+{
+	auto metric = statsd_metric::create();
+	metric->parse_line("gauges.mygauge#|2.000000|1427796784\n");
+	EXPECT_EQ(1427796784, metric->timestamp());
+	EXPECT_EQ("mygauge", metric->name());
+	EXPECT_DOUBLE_EQ(2.0, metric->value());
+
+	metric = statsd_metric::create();
+	metric->parse_line("gauges.#|2.000000|1427796784\n");
+	EXPECT_EQ(1427796784, metric->timestamp());
+	EXPECT_EQ("", metric->name());
 	EXPECT_DOUBLE_EQ(2.0, metric->value());
 }
