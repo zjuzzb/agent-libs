@@ -10,7 +10,7 @@ class java_bean;
 class java_bean_attribute
 {
 public:
-	enum type_t
+	enum class type_t
 	{
 		EMPTY,
 		SIMPLE,
@@ -21,9 +21,10 @@ public:
 	explicit java_bean_attribute(const Json::Value&);
 private:
 	string m_name;
+	string m_alias;
 	double m_value;
 	uint16_t m_unit;
-	type_t m_type{EMPTY};
+	type_t m_type{type_t::EMPTY};
 	vector<java_bean_attribute> m_subattributes;
 };
 

@@ -354,12 +354,12 @@ public class MonitoredVM {
                     Double newAbsoluteValue = BeanData.parseValueAsDouble(attribute.getValue());
 
                     if (lastAbsoluteValue != null) {
-                        newSample.addAttribute(attribute.getName(), newAbsoluteValue-lastAbsoluteValue, attributeDesc.getUnit());
+                        newSample.addAttribute(attribute.getName(), attributeDesc.getAlias(), newAbsoluteValue-lastAbsoluteValue, attributeDesc.getUnit());
                     }
 
                     counterSamples.put(attribute.getName(), newAbsoluteValue);
                 } else {
-                    newSample.addAttribute(attribute.getName(), attribute.getValue(), attributeDesc.getUnit());
+                    newSample.addAttribute(attribute.getName(), attributeDesc.getAlias(), attribute.getValue(), attributeDesc.getUnit());
                 }
             }
             return newSample;

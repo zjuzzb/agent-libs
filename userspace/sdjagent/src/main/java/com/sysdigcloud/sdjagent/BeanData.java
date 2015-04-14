@@ -41,14 +41,14 @@ public class BeanData {
         this.attributes = new LinkedList<BeanAttributeData>();
     }
 
-    public void addAttribute(String name, Object attribute_value, Config.BeanAttribute.Unit unit) {
-        BeanAttributeData newAttribute = new BeanAttributeData(name);
+    public void addAttribute(String name, String alias, Object attribute_value, Config.BeanAttribute.Unit unit) {
+        BeanAttributeData newAttribute = new BeanAttributeData(name, alias);
         if (attribute_value instanceof CompositeData) {
             CompositeData compositeData = (CompositeData) attribute_value;
             for ( String key : compositeData.getCompositeType().keySet())
             {
                 try {
-                    BeanAttributeData subattribute = new BeanAttributeData(key);
+                    BeanAttributeData subattribute = new BeanAttributeData(key, null);
                     subattribute.setValue(parseValueAsDouble(compositeData.get(key)), unit);
                     newAttribute.addSubAttribute(subattribute);
                 }
@@ -107,11 +107,13 @@ public class BeanData {
         }
 
         @JsonProperty
+        @SuppressWarnings("unused")
         private String name;
 
         @JsonProperty
         private Double value;
 
+        @SuppressWarnings("unused")
         private Config.BeanAttribute.Unit unit;
 
         @JsonProperty
@@ -119,17 +121,25 @@ public class BeanData {
 
         private Type type;
 
-        private BeanAttributeData(String name) {
+        @JsonProperty
+        @SuppressWarnings("unused")
+        private String alias;
+
+        private BeanAttributeData(String name, String alias) {
             this.name = name;
+            this.alias = alias;
             this.subattributes = new LinkedList<BeanAttributeData>();
             this.type = Type.EMPTY;
         }
 
+        /*
+        unit information are not serialized to JSON, may be useful in the future
+        or totally removed
         @JsonProperty("unit")
         @SuppressWarnings("unused")
         private int getUnitJSON() {
             return unit.getValue();
-        }
+        }*/
 
         private void setValue(double value, Config.BeanAttribute.Unit unit) {
             this.value = value;
@@ -165,7 +175,9 @@ public class BeanData {
                 }
                 switch (beanAttributeData.getType()) {
                     case SIMPLE:
-                        if (writer.getName().equals("value") || writer.getName().equals("unit")) {
+                        if (writer.getName().equals("value") ||
+                                writer.getName().equals("unit") ||
+                                writer.getName().equals("alias")) {
                             writer.serializeAsField(pojo, jgen, provider);
                             return;
                         }

@@ -5,17 +5,14 @@ jmx:
   default_beans:
     - query: "java.lang:type=Memory"
       attributes:
-        - name: HeapMemoryUsage
-          unit: MiB
-        - name: NonHeapMemoryUsage
-          unit: MiB
+        - HeapMemoryUsage
+        - NonHeapMemoryUsage
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
           type: counter
         - name: CollectionTime
           type: counter
-          unit: ms
     - query: "java.lang:type=ClassLoading"
       attributes:
         - LoadedClassCount

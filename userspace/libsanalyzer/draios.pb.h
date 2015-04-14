@@ -3075,6 +3075,18 @@ class jmx_attribute : public ::google::protobuf::Message {
   inline ::draiosproto::jmx_metric_unit unit() const;
   inline void set_unit(::draiosproto::jmx_metric_unit value);
 
+  // optional string alias = 5;
+  inline bool has_alias() const;
+  inline void clear_alias();
+  static const int kAliasFieldNumber = 5;
+  inline const ::std::string& alias() const;
+  inline void set_alias(const ::std::string& value);
+  inline void set_alias(const char* value);
+  inline void set_alias(const char* value, size_t size);
+  inline ::std::string* mutable_alias();
+  inline ::std::string* release_alias();
+  inline void set_allocated_alias(::std::string* alias);
+
   // repeated .draiosproto.jmx_attribute subattributes = 3;
   inline int subattributes_size() const;
   inline void clear_subattributes();
@@ -3095,16 +3107,19 @@ class jmx_attribute : public ::google::protobuf::Message {
   inline void clear_has_value();
   inline void set_has_unit();
   inline void clear_has_unit();
+  inline void set_has_alias();
+  inline void clear_has_alias();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* name_;
   double value_;
+  ::std::string* alias_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::jmx_attribute > subattributes_;
   int unit_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10119,6 +10134,76 @@ inline void jmx_attribute::set_unit(::draiosproto::jmx_metric_unit value) {
   assert(::draiosproto::jmx_metric_unit_IsValid(value));
   set_has_unit();
   unit_ = value;
+}
+
+// optional string alias = 5;
+inline bool jmx_attribute::has_alias() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void jmx_attribute::set_has_alias() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void jmx_attribute::clear_has_alias() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void jmx_attribute::clear_alias() {
+  if (alias_ != &::google::protobuf::internal::kEmptyString) {
+    alias_->clear();
+  }
+  clear_has_alias();
+}
+inline const ::std::string& jmx_attribute::alias() const {
+  return *alias_;
+}
+inline void jmx_attribute::set_alias(const ::std::string& value) {
+  set_has_alias();
+  if (alias_ == &::google::protobuf::internal::kEmptyString) {
+    alias_ = new ::std::string;
+  }
+  alias_->assign(value);
+}
+inline void jmx_attribute::set_alias(const char* value) {
+  set_has_alias();
+  if (alias_ == &::google::protobuf::internal::kEmptyString) {
+    alias_ = new ::std::string;
+  }
+  alias_->assign(value);
+}
+inline void jmx_attribute::set_alias(const char* value, size_t size) {
+  set_has_alias();
+  if (alias_ == &::google::protobuf::internal::kEmptyString) {
+    alias_ = new ::std::string;
+  }
+  alias_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* jmx_attribute::mutable_alias() {
+  set_has_alias();
+  if (alias_ == &::google::protobuf::internal::kEmptyString) {
+    alias_ = new ::std::string;
+  }
+  return alias_;
+}
+inline ::std::string* jmx_attribute::release_alias() {
+  clear_has_alias();
+  if (alias_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = alias_;
+    alias_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void jmx_attribute::set_allocated_alias(::std::string* alias) {
+  if (alias_ != &::google::protobuf::internal::kEmptyString) {
+    delete alias_;
+  }
+  if (alias) {
+    set_has_alias();
+    alias_ = alias;
+  } else {
+    clear_has_alias();
+    alias_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 // repeated .draiosproto.jmx_attribute subattributes = 3;

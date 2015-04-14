@@ -11,31 +11,45 @@
 #include "fcntl.h"
 
 java_bean_attribute::java_bean_attribute(const Json::Value& json):
-	m_name(json["name"].asString())
+	m_name(json["name"].asString()),
+	m_unit(0)
 {
 	if (json.isMember("value"))
 	{
 		m_value = json["value"].asDouble();
-		m_unit = json["unit"].asUInt();
-		m_type = SIMPLE;
+		if(json.isMember("unit"))
+		{
+			m_unit = json["unit"].asUInt();
+		}
+		if(json.isMember("alias"))
+		{
+			m_alias = json["alias"].asString();
+		}
+		m_type = type_t::SIMPLE;
 	} else if (json.isMember("subattributes"))
 	{
-		for(auto subattribute : json["subattributes"])
+		for(const auto& subattribute : json["subattributes"])
 		{
 			m_subattributes.emplace_back(subattribute);
 		}
-		m_type = NESTED;
+		m_type = type_t::NESTED;
 	}
 }
 
 void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) const
 {
 	attribute->set_name(m_name);
-	if (m_type == SIMPLE) {
+	if (m_type == type_t::SIMPLE) {
 		attribute->set_value(m_value);
-		attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
-	} else if (m_type == NESTED) {
-		for(auto subattribute : m_subattributes)
+		// unit support kept for future usage if needed, otherwise it will be totally
+		// removed
+		//attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
+		if(!m_alias.empty())
+		{
+			attribute->set_alias(m_alias);
+		}
+	} else if (m_type == type_t::NESTED) {
+		for(const auto& subattribute : m_subattributes)
 		{
 			draiosproto::jmx_attribute* subattribute_proto = attribute->add_subattributes();
 			subattribute.to_protobuf(subattribute_proto);
@@ -55,7 +69,7 @@ java_bean::java_bean(const Json::Value& json):
 void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean) const
 {
 	proto_bean->mutable_name()->assign(m_name);
-	for(auto attribute : m_attributes)
+	for(const auto& attribute : m_attributes)
 	{
 		draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
 		attribute.to_protobuf(attribute_proto);
@@ -66,7 +80,7 @@ java_process::java_process(const Json::Value& json):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString())
 {
-	for(auto bean : json["beans"])
+	for(const auto& bean : json["beans"])
 	{
 		m_beans.push_back(java_bean(bean));
 	}
@@ -75,7 +89,7 @@ java_process::java_process(const Json::Value& json):
 void java_process::to_protobuf(draiosproto::java_info *protobuf) const
 {
 	protobuf->set_process_name(m_name);
-	for(auto bean : m_beans)
+	for(const auto& bean : m_beans)
 	{
 		draiosproto::jmx_bean* protobean = protobuf->add_beans();
 		bean.to_protobuf(protobean);

@@ -279,7 +279,8 @@ enum jmx_metric_unit {
 message jmx_attribute {
     optional string name = 1;
     optional double value = 2;
-    optional jmx_metric_unit unit = 4;
+    optional jmx_metric_unit unit = 4; // Right now is not used, may be removed in the future
+    optional string alias = 5;
     repeated jmx_attribute subattributes = 3;
 }
 

@@ -202,6 +202,7 @@ public class Config {
         private String name;
         private Type type;
         private Unit unit;
+        private String alias;
 
         @JsonCreator
         @SuppressWarnings("unused")
@@ -230,6 +231,10 @@ public class Config {
                 } else {
                     this.unit = Unit.NONE;
                 }
+
+                if (data.has("alias")) {
+                    this.alias = data.get("alias").textValue();
+                }
             }
         }
 
@@ -243,6 +248,14 @@ public class Config {
 
         public Unit getUnit() {
             return unit;
+        }
+
+        public boolean hasAlias() {
+            return alias != null;
+        }
+
+        public String getAlias() {
+            return alias;
         }
     }
 }
