@@ -5,53 +5,74 @@
 
 #ifndef _WIN32
 #include <unistd.h>
+
 #endif
 #include "logger.h"
 #include "fcntl.h"
 
+java_bean_attribute::java_bean_attribute(const Json::Value& json):
+	m_name(json["name"].asString()),
+	m_unit(0)
+{
+	if (json.isMember("value"))
+	{
+		m_value = json["value"].asDouble();
+		if(json.isMember("unit"))
+		{
+			m_unit = json["unit"].asUInt();
+		}
+		if(json.isMember("alias"))
+		{
+			m_alias = json["alias"].asString();
+		}
+		m_type = type_t::SIMPLE;
+	} else if (json.isMember("subattributes"))
+	{
+		for(const auto& subattribute : json["subattributes"])
+		{
+			m_subattributes.emplace_back(subattribute);
+		}
+		m_type = type_t::NESTED;
+	}
+}
+
+void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) const
+{
+	attribute->set_name(m_name);
+	if (m_type == type_t::SIMPLE) {
+		attribute->set_value(m_value);
+		// unit support kept for future usage if needed, otherwise it will be totally
+		// removed
+		//attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
+		if(!m_alias.empty())
+		{
+			attribute->set_alias(m_alias);
+		}
+	} else if (m_type == type_t::NESTED) {
+		for(const auto& subattribute : m_subattributes)
+		{
+			draiosproto::jmx_attribute* subattribute_proto = attribute->add_subattributes();
+			subattribute.to_protobuf(subattribute_proto);
+		}
+	}
+}
 
 java_bean::java_bean(const Json::Value& json):
 	m_name(json["name"].asString())
 {
-	const Json::Value& attributes_obj = json["attributes"];
-	for(auto attribute_name : attributes_obj.getMemberNames())
+	for(auto attribute : json["attributes"])
 	{
-		const Json::Value & attribute_obj = attributes_obj[attribute_name];
-		if (attribute_obj.isDouble())
-		{
-			m_simple_attributes[attribute_name] = attribute_obj.asDouble();
-		}
-		else
-		{
-			map<string, double> subattributes;
-			for(auto subattribute_name : attribute_obj.getMemberNames())
-			{
-				subattributes[subattribute_name] = attribute_obj[subattribute_name].asDouble();
-			}
-			m_nested_attributes[attribute_name] = subattributes;
-		}
+		m_attributes.emplace_back(attribute);
 	}
 }
 
 void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean) const
 {
 	proto_bean->mutable_name()->assign(m_name);
-	for(auto simple_attribute : m_simple_attributes)
+	for(const auto& attribute : m_attributes)
 	{
-		draiosproto::jmx_attribute* proto_attribute = proto_bean->add_attributes();
-		proto_attribute->set_name(simple_attribute.first);
-		proto_attribute->set_value(simple_attribute.second);
-	}
-	for(auto nested_attribute : m_nested_attributes)
-	{
-		draiosproto::jmx_attribute* proto_attribute = proto_bean->add_attributes();
-		proto_attribute->set_name(nested_attribute.first);
-		for(auto subattribute : nested_attribute.second)
-		{
-			draiosproto::jmx_attribute* proto_subattribute = proto_attribute->add_subattributes();
-			proto_subattribute->set_name(subattribute.first);
-			proto_subattribute->set_value(subattribute.second);
-		}
+		draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
+		attribute.to_protobuf(attribute_proto);
 	}
 }
 
@@ -59,7 +80,7 @@ java_process::java_process(const Json::Value& json):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString())
 {
-	for(auto bean : json["beans"])
+	for(const auto& bean : json["beans"])
 	{
 		m_beans.push_back(java_bean(bean));
 	}
@@ -68,7 +89,7 @@ java_process::java_process(const Json::Value& json):
 void java_process::to_protobuf(draiosproto::java_info *protobuf) const
 {
 	protobuf->set_process_name(m_name);
-	for(auto bean : m_beans)
+	for(const auto& bean : m_beans)
 	{
 		draiosproto::jmx_bean* protobean = protobuf->add_beans();
 		bean.to_protobuf(protobean);
