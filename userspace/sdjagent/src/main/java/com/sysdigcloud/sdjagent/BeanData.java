@@ -169,15 +169,14 @@ public class BeanData {
                                      SerializerProvider provider, PropertyWriter writer) throws Exception {
             BeanAttributeData beanAttributeData = (BeanAttributeData) pojo;
             if (include(writer)) {
-                if (writer.getName().equals("name")) {
+                if (writer.getName().equals("name") || writer.getName().equals("alias")) {
                     writer.serializeAsField(pojo, jgen, provider);
                     return;
                 }
                 switch (beanAttributeData.getType()) {
                     case SIMPLE:
                         if (writer.getName().equals("value") ||
-                                writer.getName().equals("unit") ||
-                                writer.getName().equals("alias")) {
+                                writer.getName().equals("unit")) {
                             writer.serializeAsField(pojo, jgen, provider);
                             return;
                         }

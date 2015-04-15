@@ -14,16 +14,16 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	m_name(json["name"].asString()),
 	m_unit(0)
 {
+	if(json.isMember("alias"))
+	{
+		m_alias = json["alias"].asString();
+	}
 	if (json.isMember("value"))
 	{
 		m_value = json["value"].asDouble();
 		if(json.isMember("unit"))
 		{
 			m_unit = json["unit"].asUInt();
-		}
-		if(json.isMember("alias"))
-		{
-			m_alias = json["alias"].asString();
 		}
 		m_type = type_t::SIMPLE;
 	} else if (json.isMember("subattributes"))
@@ -39,15 +39,15 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) const
 {
 	attribute->set_name(m_name);
+	if(!m_alias.empty())
+	{
+		attribute->set_alias(m_alias);
+	}
 	if (m_type == type_t::SIMPLE) {
 		attribute->set_value(m_value);
 		// unit support kept for future usage if needed, otherwise it will be totally
 		// removed
 		//attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
-		if(!m_alias.empty())
-		{
-			attribute->set_alias(m_alias);
-		}
 	} else if (m_type == type_t::NESTED) {
 		for(const auto& subattribute : m_subattributes)
 		{
