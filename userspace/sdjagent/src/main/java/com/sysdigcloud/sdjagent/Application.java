@@ -8,6 +8,8 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.ser.FilterProvider;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 
 
 import java.io.*;
@@ -26,6 +28,9 @@ public class Application {
     static {
         mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+        FilterProvider filters = new SimpleFilterProvider().addFilter("BeanAttributeDataFilter", new BeanData
+                .BeanAttributeDataFilter());
+        mapper.setFilters(filters);
     }
 
     /**
