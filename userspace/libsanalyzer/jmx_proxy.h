@@ -90,5 +90,4 @@ private:
 	FILE* m_output_fd;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
-	static const int READ_BUFFER_SIZE = 1024;
 };

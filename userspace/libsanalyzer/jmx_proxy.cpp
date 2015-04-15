@@ -118,15 +118,9 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 {
 	uint64_t response_id = 0;
 	unordered_map<int, java_process> processes;
-	// Select call
-//	int output_fd_int = fileno(m_output_fd);
-//	fd_set readset;
-//	FD_ZERO(&readset);
-//	FD_SET(output_fd_int, &readset);
-//	struct timeval timeout;
-//	memset(&timeout, 0, sizeof(struct timeval));
-//	int result = select(output_fd_int+1, &readset, NULL, NULL, &timeout);
+
 	string json_data;
+	static const int READ_BUFFER_SIZE = 1024;
 	char buffer[READ_BUFFER_SIZE] = "";
 	char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
 	while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
