@@ -63,16 +63,18 @@ jmx:
               alias: cassandra.rowcache.requests
         - query: "org.apache.cassandra.internal:type=HintedHandoff"
           attributes:
-            - PendingTasks
-            - ActiveCount
+            - name: PendingTasks
+              alias: cassandra.hintedhandoff.pending
+            - name: ActiveCount
+              alias: cassandra.hintedhandoff.active
         - query: "org.apache.cassandra.request:type=ReadStage"
           attributes:
-            - PendingTasks
-            - ActiveCount
+            - name: PendingTasks
+              alias: cassandra.read.pending
         - query: "org.apache.cassandra.request:type=MutationStage"
           attributes:
-            - PendingTasks
-            - ActiveCount
+            - name: PendingTasks
+              alias: cassandra.write.pending
     tomcat:
       pattern: "catalina"
       beans:
