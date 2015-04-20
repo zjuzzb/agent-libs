@@ -145,7 +145,10 @@ int monitor::run()
 			delete_pid_file(m_pidfile);
 			exit(EXIT_FAILURE);
 		}
-		waitpid(process.pid(), NULL, 0);
+		if(process.is_main())
+		{
+			waitpid(process.pid(), NULL, 0);
+		}
 	}
 
 	delete_pid_file(m_pidfile);

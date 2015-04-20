@@ -4,12 +4,20 @@
 
 #pragma once
 
+
 class statsite_proxy;
 class statsd_metric
 {
 public:
 	using ptr_t = shared_ptr<statsd_metric>;
-
+	class parse_exception: public sinsp_exception
+	{
+	public:
+		template<typename... T>
+		parse_exception(T&&... args):
+				sinsp_exception(forward<T>(args)...)
+		{}
+	};
 	enum class type_t
 	{
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
@@ -49,17 +57,21 @@ public:
 		return m_sum;
 	}
 
-	inline double percentile_50()
+	inline double median()
 	{
-		return m_percentile_50;
+		return m_median;
 	}
 
 	inline const map<string, string>& tags()
 	{
 		return m_tags;
 	}
+
 private:
-	statsd_metric() = default;
+	statsd_metric():
+		m_timestamp(0),
+		m_type(type_t::NONE)
+	{}
 
 	uint64_t m_timestamp{0};
 	string m_name;
@@ -69,16 +81,15 @@ private:
 	double m_value;
 
 	double m_sum;
-	double m_sum_squared;
 	double m_mean;
 	double m_min;
 	double m_max;
 	double m_count;
 	double m_stdev;
 	double m_median;
-	double m_percentile_50;
 	double m_percentile_95;
 	double m_percentile_99;
+	double m_percentile_999;
 };
 
 class statsite_proxy
@@ -89,6 +100,5 @@ public:
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
-	static const uint32_t READ_BUFFER_SIZE = 200;
-	char m_buffer[READ_BUFFER_SIZE];
+	statsd_metric::ptr_t m_metric;
 };

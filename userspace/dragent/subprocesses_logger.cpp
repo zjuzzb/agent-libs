@@ -120,13 +120,14 @@ void subprocesses_logger::run()
 					auto available_stream = fds.first;
 					static const int READ_BUFFER_SIZE = 1024;
 					char buffer[READ_BUFFER_SIZE] = "";
-					char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, available_stream);
+					char* fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					while(fgets_res != NULL && strstr(buffer, "\n") == NULL)
 					{
 						data.append(buffer);
-						fgets_res = fgets(buffer, READ_BUFFER_SIZE, available_stream);
+						fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					}
 					data.append(buffer);
+					trim(data);
 					fds.second(data);
 				}
 			}

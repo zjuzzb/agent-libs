@@ -349,7 +349,8 @@ void dragent_configuration::write_statsite_configuration()
 					"port = %u\n"
 					"udp_port = %u\n"
 					"log_level = %s\n"
-					"flush_interval = %u\n";
+					"flush_interval = %u\n"
+					"quantiles = 0.5, 0.95, 0.99, 0.999\n";
 
 	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);

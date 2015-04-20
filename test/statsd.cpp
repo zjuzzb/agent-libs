@@ -67,11 +67,11 @@ TEST(statsd_metric, parser_histogram)
 {
 	auto metric = statsd_metric::create();
 	metric->parse_line("timers.mytime.sum|6681.000000|1427796784\n");
-	metric->parse_line("timers.mytime.p50|106.000000|1427796784\n");
+	metric->parse_line("timers.mytime.median|106.000000|1427796784\n");
 	EXPECT_EQ(1427796784, metric->timestamp());
 	EXPECT_EQ("mytime", metric->name());
 	EXPECT_DOUBLE_EQ(6681.0, metric->sum());
-	EXPECT_DOUBLE_EQ(106.0, metric->percentile_50());
+	EXPECT_DOUBLE_EQ(106.0, metric->median());
 
 	metric = statsd_metric::create();
 	metric->parse_line("timers.mytime#we,ff.sum|6681.000000|1427796784\n");

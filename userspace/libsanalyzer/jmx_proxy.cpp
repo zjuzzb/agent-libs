@@ -122,12 +122,12 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 	string json_data;
 	static const int READ_BUFFER_SIZE = 1024;
 	char buffer[READ_BUFFER_SIZE] = "";
-	char* fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
+	char* fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, m_output_fd);
 	while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
 	{
 		json_data.append(buffer);
 		buffer[0] = '\0'; // Consume the buffer
-		fgets_res = fgets(buffer, READ_BUFFER_SIZE, m_output_fd);
+		fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, m_output_fd);
 	}
 	json_data.append(buffer);
 

@@ -3308,16 +3308,26 @@ void sinsp_analyzer::emit_containers()
 
 void sinsp_analyzer::emit_statsd()
 {
+	static const auto STATSD_METRIC_LIMIT = 800;
 	if (m_statsite_proxy)
 	{
+		uint64_t start_read_metrics = sinsp_utils::get_current_time_ns();
 		auto statsd_metrics = m_statsite_proxy->read_metrics();
+		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_proxy::read_metrics took: %.3f", double(sinsp_utils::get_current_time_ns()-start_read_metrics) / ONE_SECOND_IN_NS);
 		while(!statsd_metrics.empty() && statsd_metrics.at(0)->timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
 		{
+			uint64_t start_read_metrics = sinsp_utils::get_current_time_ns();
 			statsd_metrics = m_statsite_proxy->read_metrics();
+			g_logger.format(sinsp_logger::SEV_WARNING, "statsite_proxy::read_metrics took: %.3f", double(sinsp_utils::get_current_time_ns()-start_read_metrics) / ONE_SECOND_IN_NS);
 		}
+		int j = 0;
 		for(auto metric : statsd_metrics)
 		{
-			auto statsd_proto = m_metrics->add_statsd_metrics();
+			if(++j > STATSD_METRIC_LIMIT)
+			{
+				break;
+			}
+			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
 			metric->to_protobuf(statsd_proto);
 		}
 	}
