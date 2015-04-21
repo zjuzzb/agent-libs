@@ -30,6 +30,8 @@ using namespace google::protobuf::io;
 #ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
+#include "statsite_proxy.h"
+#include "jmx_proxy.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -3586,6 +3588,11 @@ void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 bool sinsp_analyzer::driver_stopped_dropping()
 {
 	return m_driver_stopped_dropping;
+}
+
+void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
+{
+	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
 
 #endif // HAS_ANALYZER

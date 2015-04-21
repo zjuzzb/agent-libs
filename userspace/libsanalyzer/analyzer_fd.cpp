@@ -20,6 +20,7 @@
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
 #include "analyzer_fd.h"
+#include "statsite_proxy.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
@@ -1011,6 +1012,13 @@ w_conn_creation_done:
 			// This happens when the connection table is full
 			//
 			return;
+		}
+
+		// Support for statsd protocol
+		if(connection->m_dpid == 0 && fdinfo->m_sockinfo.m_ipv4serverinfo.m_port == 8125)
+		{
+			sinsp_autobuffer autobuf;
+			m_analyzer->m_statsite_proxy->send_metric(autobuf.copy(data, len, 1));
 		}
 
 		if(fdinfo->is_role_server())

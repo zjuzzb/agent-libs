@@ -5,10 +5,7 @@
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
-#ifndef _WIN32
 #include "jmx_proxy.h"
-#include "statsite_proxy.h"
-#endif
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -118,6 +115,7 @@ public:
 //
 // The main analyzer class
 //
+class statsite_proxy;
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -218,10 +216,7 @@ public:
 		m_jmx_sampling = value;
 	}
 
-	inline void set_statsd_iofds(const pair<FILE*, FILE*>& iofds)
-	{
-		m_statsite_proxy = make_unique<statsite_proxy>(iofds);
-	}
+	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
 #endif
 
 	void set_protocols_enabled(bool value)
