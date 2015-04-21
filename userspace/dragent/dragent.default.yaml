@@ -6,29 +6,29 @@ jmx:
     - query: "java.lang:type=Memory"
       attributes:
         - name: HeapMemoryUsage
-          alias: heap
+          alias: jvm.heap
         - name: NonHeapMemoryUsage
-          alias: nonHeap
+          alias: jvm.nonHeap
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
           type: counter
-          alias: gc.{name}.count
+          alias: jvm.gc.{name}.count
         - name: CollectionTime
           type: counter
-          alias: gc.{name}.time
+          alias: jvm.gc.{name}.time
     - query: "java.lang:type=ClassLoading"
       attributes:
         - name: LoadedClassCount
-          alias: class.loaded
+          alias: jvm.class.loaded
         - name: UnloadedClassCount
-          alias: class.unloaded
+          alias: jvm.class.unloaded
     - query: "java.lang:type=Threading"
       attributes:
         - name: ThreadCount
-          alias: thread.count
+          alias: jvm.thread.count
         - name: DaemonThreadCount
-          alias: thread.daemon
+          alias: jvm.thread.daemon
   per_process_beans:
     cassandra:
       pattern: "cassandra"
