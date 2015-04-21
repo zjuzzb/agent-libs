@@ -258,12 +258,12 @@ vector<statsd_metric::ptr_t> statsite_proxy::read_metrics()
 	}
 	if(timestamp > 0 && timestamp == m_metric->timestamp())
 	{
-		g_logger.log("Adding last sample", sinsp_logger::SEV_INFO);
+		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
 		ret.push_back(m_metric);
 		m_metric = statsd_metric::create();
 	}
-	g_logger.format(sinsp_logger::SEV_INFO, "Vector size is: %d", ret.size());
-	g_logger.format(sinsp_logger::SEV_INFO, "m_metric timestamp is: %lu, vector timestamp: %lu", m_metric->timestamp(), ret.size() > 0 ? ret.at(0)->timestamp() : 0);
-	g_logger.format(sinsp_logger::SEV_INFO, "m_metric name is: %s", m_metric->name().c_str());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, Vector size is: %d", ret.size());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric->timestamp(), ret.size() > 0 ? ret.at(0)->timestamp() : 0);
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric->name().c_str());
 	return ret;
 }
