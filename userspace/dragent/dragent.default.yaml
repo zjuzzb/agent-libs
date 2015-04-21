@@ -5,8 +5,10 @@ jmx:
   default_beans:
     - query: "java.lang:type=Memory"
       attributes:
-        - HeapMemoryUsage
-        - NonHeapMemoryUsage
+        - name: HeapMemoryUsage
+          alias: heap
+        - name: NonHeapMemoryUsage
+          alias: nonHeap
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
@@ -15,12 +17,16 @@ jmx:
           type: counter
     - query: "java.lang:type=ClassLoading"
       attributes:
-        - LoadedClassCount
-        - UnloadedClassCount
+        - name: LoadedClassCount
+          alias: class.loaded
+        - name: UnloadedClassCount
+          alias: class.unloaded
     - query: "java.lang:type=Threading"
       attributes:
-        - ThreadCount
-        - DaemonThreadCount
+        - name: ThreadCount
+          alias: thread.count
+        - name: DaemonThreadCount
+          alias: thread.deamon
   per_process_beans:
     cassandra:
       pattern: "cassandra"
