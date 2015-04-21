@@ -3312,19 +3312,19 @@ void sinsp_analyzer::emit_statsd()
 	if (m_statsite_proxy)
 	{
 		auto statsd_metrics = m_statsite_proxy->read_metrics();
-		while(!statsd_metrics.empty() && statsd_metrics.at(0)->timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
+		while(!statsd_metrics.empty() && statsd_metrics.at(0).timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
 		{
 			statsd_metrics = m_statsite_proxy->read_metrics();
 		}
 		int j = 0;
-		for(auto metric : statsd_metrics)
+		for(const auto& metric : statsd_metrics)
 		{
 			if(++j > STATSD_METRIC_LIMIT)
 			{
 				break;
 			}
 			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
-			metric->to_protobuf(statsd_proto);
+			metric.to_protobuf(statsd_proto);
 		}
 	}
 }

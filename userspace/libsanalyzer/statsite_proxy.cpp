@@ -181,7 +181,7 @@ bool statsd_metric::parse_line(const string& line)
 	}
 }
 
-void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
+void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
 	ASSERT(m_type != type_t::NONE);
 
@@ -215,14 +215,13 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto)
 
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 		m_input_fd(fds.first),
-		m_output_fd(fds.second),
-		m_metric(statsd_metric::create())
+		m_output_fd(fds.second)
 {
 }
 
-vector<statsd_metric::ptr_t> statsite_proxy::read_metrics()
+vector<statsd_metric> statsite_proxy::read_metrics()
 {
-	vector<statsd_metric::ptr_t> ret;
+	vector<statsd_metric> ret;
 	uint64_t timestamp = 0;
 	char buffer[300];
 
@@ -230,20 +229,20 @@ vector<statsd_metric::ptr_t> statsite_proxy::read_metrics()
 	while (continue_read)
 	{
 		try {
-			bool parsed = m_metric->parse_line(buffer);
+			bool parsed = m_metric.parse_line(buffer);
 			if(!parsed)
 			{
 				if(timestamp == 0)
 				{
-					timestamp = m_metric->timestamp();
+					timestamp = m_metric.timestamp();
 				}
 
-				ret.push_back(m_metric);
-				m_metric = statsd_metric::create();
+				ret.push_back(move(m_metric));
+				m_metric = statsd_metric();
 
-				parsed = m_metric->parse_line(buffer);
+				parsed = m_metric.parse_line(buffer);
 				ASSERT(parsed == true);
-				if(timestamp < m_metric->timestamp())
+				if(timestamp < m_metric.timestamp())
 				{
 					break;
 				}
@@ -256,14 +255,14 @@ vector<statsd_metric::ptr_t> statsite_proxy::read_metrics()
 
 		continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 	}
-	if(timestamp > 0 && timestamp == m_metric->timestamp())
+	if(timestamp > 0 && timestamp == m_metric.timestamp())
 	{
 		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-		ret.push_back(m_metric);
-		m_metric = statsd_metric::create();
+		ret.push_back(move(m_metric));
+		m_metric = statsd_metric();
 	}
 	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, Vector size is: %d", ret.size());
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric->timestamp(), ret.size() > 0 ? ret.at(0)->timestamp() : 0);
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric->name().c_str());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at(0).timestamp() : 0);
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
 	return ret;
 }
