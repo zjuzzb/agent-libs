@@ -13,8 +13,10 @@ jmx:
       attributes:
         - name: CollectionCount
           type: counter
+          alias: gc.{name}.count
         - name: CollectionTime
           type: counter
+          alias: gc.{name}.time
     - query: "java.lang:type=ClassLoading"
       attributes:
         - name: LoadedClassCount
@@ -26,7 +28,7 @@ jmx:
         - name: ThreadCount
           alias: thread.count
         - name: DaemonThreadCount
-          alias: thread.deamon
+          alias: thread.daemon
   per_process_beans:
     cassandra:
       pattern: "cassandra"
