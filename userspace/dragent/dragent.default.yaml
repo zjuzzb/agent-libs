@@ -8,15 +8,13 @@ jmx:
         - name: HeapMemoryUsage
           alias: heap
         - name: NonHeapMemoryUsage
-          alias: nonheap
+          alias: nonHeap
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
           type: counter
-          alias: gc.{name}.count
         - name: CollectionTime
           type: counter
-          alias: gc.{name}.time
     - query: "java.lang:type=ClassLoading"
       attributes:
         - name: LoadedClassCount
