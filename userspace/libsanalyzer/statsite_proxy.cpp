@@ -261,8 +261,11 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 		ret.push_back(move(m_metric));
 		m_metric = statsd_metric();
 	}
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, Vector size is: %d", ret.size());
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at(0).timestamp() : 0);
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %d", ret.size());
+	if(m_metric.timestamp() > 0)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at(0).timestamp() : 0);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
+	}
 	return ret;
 }

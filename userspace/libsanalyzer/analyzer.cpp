@@ -3308,7 +3308,7 @@ void sinsp_analyzer::emit_containers()
 
 void sinsp_analyzer::emit_statsd()
 {
-	static const auto STATSD_METRIC_LIMIT = 800;
+	static const auto STATSD_METRIC_LIMIT = 300;
 	if (m_statsite_proxy)
 	{
 		auto statsd_metrics = m_statsite_proxy->read_metrics();
@@ -3321,6 +3321,7 @@ void sinsp_analyzer::emit_statsd()
 		{
 			if(++j > STATSD_METRIC_LIMIT)
 			{
+				g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
 				break;
 			}
 			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
