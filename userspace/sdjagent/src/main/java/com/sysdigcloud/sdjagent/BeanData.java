@@ -53,7 +53,9 @@ public class BeanData {
             lastpos = m.end();
             String key = alias.substring(m.start()+1,m.end()-1);
             String value = name.getKeyProperty(key);
-            ret.append(value);
+            if (value != null) {
+                ret.append(value);
+            }
         }
         ret.append(alias.substring(lastpos, alias.length()));
         return ret.toString();
