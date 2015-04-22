@@ -3547,13 +3547,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline double percentile_99() const;
   inline void set_percentile_99(double value);
 
-  // optional double percentile_999 = 12;
-  inline bool has_percentile_999() const;
-  inline void clear_percentile_999();
-  static const int kPercentile999FieldNumber = 12;
-  inline double percentile_999() const;
-  inline void set_percentile_999(double value);
-
   // @@protoc_insertion_point(class_scope:draiosproto.statsd_metric)
  private:
   inline void set_has_name();
@@ -3576,8 +3569,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline void clear_has_percentile_95();
   inline void set_has_percentile_99();
   inline void clear_has_percentile_99();
-  inline void set_has_percentile_999();
-  inline void clear_has_percentile_999();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3591,11 +3582,10 @@ class statsd_metric : public ::google::protobuf::Message {
   double median_;
   double percentile_95_;
   double percentile_99_;
-  double percentile_999_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11219,28 +11209,6 @@ inline double statsd_metric::percentile_99() const {
 inline void statsd_metric::set_percentile_99(double value) {
   set_has_percentile_99();
   percentile_99_ = value;
-}
-
-// optional double percentile_999 = 12;
-inline bool statsd_metric::has_percentile_999() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
-}
-inline void statsd_metric::set_has_percentile_999() {
-  _has_bits_[0] |= 0x00000800u;
-}
-inline void statsd_metric::clear_has_percentile_999() {
-  _has_bits_[0] &= ~0x00000800u;
-}
-inline void statsd_metric::clear_percentile_999() {
-  percentile_999_ = 0;
-  clear_has_percentile_999();
-}
-inline double statsd_metric::percentile_999() const {
-  return percentile_999_;
-}
-inline void statsd_metric::set_percentile_999(double value) {
-  set_has_percentile_999();
-  percentile_999_ = value;
 }
 
 // -------------------------------------------------------------------

@@ -83,7 +83,6 @@ private:
 	double m_median;
 	double m_percentile_95;
 	double m_percentile_99;
-	double m_percentile_999;
 };
 
 class statsite_proxy

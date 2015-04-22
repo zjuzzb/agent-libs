@@ -161,10 +161,6 @@ bool statsd_metric::parse_line(const string& line)
 			{
 				m_percentile_99 = value;
 			}
-			else if(subtype == "p100")
-			{
-				m_percentile_999 = value;
-			}
 			// Skipping "rate" and "sample_rate" right now
 		}
 		else
@@ -205,7 +201,6 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 		proto->set_median(m_median);
 		proto->set_percentile_95(m_percentile_95);
 		proto->set_percentile_99(m_percentile_99);
-		proto->set_percentile_999(m_percentile_999);
 	}
 	else
 	{
