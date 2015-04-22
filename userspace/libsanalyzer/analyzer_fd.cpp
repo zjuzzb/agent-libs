@@ -1027,8 +1027,7 @@ w_conn_creation_done:
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 24 ) & 0xFF,
 							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);*/
-			sinsp_autobuffer autobuf;
-			m_analyzer->m_statsite_proxy->send_metric(autobuf.copy(data, len, 1), len+1);
+			m_analyzer->m_statsite_proxy->send_metric(data, len);
 		}
 
 		if(fdinfo->is_role_server())

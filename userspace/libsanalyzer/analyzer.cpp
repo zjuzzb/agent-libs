@@ -3321,13 +3321,18 @@ void sinsp_analyzer::emit_statsd()
 		int j = 0;
 		for(const auto& metric : statsd_metrics)
 		{
-			if(++j > STATSD_METRIC_LIMIT)
+			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
+			metric.to_protobuf(statsd_proto);
+			++j;
+			if(j >= STATSD_METRIC_LIMIT)
 			{
 				g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
 				break;
 			}
-			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
-			metric.to_protobuf(statsd_proto);
+		}
+		if (j > 0)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
 		}
 	}
 }
