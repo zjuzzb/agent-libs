@@ -1015,7 +1015,7 @@ w_conn_creation_done:
 		}
 
 		// Support for statsd protocol
-		if(connection->m_dpid == 0 && fdinfo->m_sockinfo.m_ipv4serverinfo.m_port == 8125)
+		if(connection->m_dpid == 0 && fdinfo->get_serverport() == 8125)
 		{
 			sinsp_autobuffer autobuf;
 			m_analyzer->m_statsite_proxy->send_metric(autobuf.copy(data, len, 1));

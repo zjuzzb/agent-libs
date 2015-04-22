@@ -272,6 +272,6 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 
 void statsite_proxy::send_metric(const char* buf)
 {
-	fprintf(m_input_fd, "%s", buf);
+	fprintf(m_input_fd, "%s\n", buf);
 	fflush(m_input_fd);
 }
