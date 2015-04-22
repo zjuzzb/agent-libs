@@ -345,7 +345,7 @@ void dragent_configuration::write_statsite_configuration()
 	static const char STATSITE_INI_TEMPLATE[] =
 			"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
 					"[statsite]\n"
-					"bind_address=localhost\n"
+					"bind_address = 127.0.0.1\n"
 					"port = %u\n"
 					"udp_port = %u\n"
 					"log_level = %s\n"

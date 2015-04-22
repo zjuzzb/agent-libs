@@ -1015,10 +1015,18 @@ w_conn_creation_done:
 		}
 
 		// Support for statsd protocol
-		if(connection->m_dpid == 0 && fdinfo->get_serverport() == 8125)
+		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
+		if(fdinfo->get_serverport() == 8125 &&
+		   fdinfo->is_ipv4_socket() && fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
 		{
+			/*g_logger.format(sinsp_logger::SEV_INFO, "Detected statsd message ipv4: %u.%u.%u.%u:%u",
+							fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 8 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 24 ) & 0xFF,
+							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);*/
 			sinsp_autobuffer autobuf;
-			m_analyzer->m_statsite_proxy->send_metric(autobuf.copy(data, len, 1));
+			m_analyzer->m_statsite_proxy->send_metric(autobuf.copy(data, len, 1), len+1);
 		}
 
 		if(fdinfo->is_role_server())

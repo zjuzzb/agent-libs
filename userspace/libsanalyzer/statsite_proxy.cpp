@@ -270,8 +270,17 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 	return ret;
 }
 
-void statsite_proxy::send_metric(const char* buf)
+// len is including final '\0'
+void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
-	fprintf(m_input_fd, "%s\n", buf);
+	// Extra lines on statsite cause "wrong input log message"
+	if(buf[len-2] == '\n')
+	{
+		fprintf(m_input_fd, "%s", buf);
+	}
+	else
+	{
+		fprintf(m_input_fd, "%s\n", buf);
+	}
 	fflush(m_input_fd);
 }

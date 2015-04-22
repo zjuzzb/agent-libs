@@ -91,7 +91,7 @@ class statsite_proxy
 public:
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
 	vector<statsd_metric> read_metrics();
-	void send_metric(const char* buf);
+	void send_metric(const char *buf, uint64_t len);
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
