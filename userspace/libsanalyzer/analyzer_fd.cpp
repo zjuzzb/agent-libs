@@ -1016,10 +1016,11 @@ w_conn_creation_done:
 
 		// Support for statsd protocol
 		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
-		if(fdinfo->get_serverport() == 8125 &&
-		   fdinfo->is_ipv4_socket() && fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
+		if(fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == 8125 &&
+		    fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
 		{
-			/*g_logger.format(sinsp_logger::SEV_INFO, "Detected statsd message ipv4: %u.%u.%u.%u:%u",
+			/* This log line it's useful to debug, but it's not suitable for enabling it always
+			 * g_logger.format(sinsp_logger::SEV_INFO, "Detected statsd message ipv4: %u.%u.%u.%u:%u",
 							fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 8 ) & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
