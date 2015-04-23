@@ -69,6 +69,7 @@ void sinsp_procinfo::clear()
 
 	m_protostate.clear();
 	m_fd_count = 0;
+	m_process_start = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -106,6 +107,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_dynstate->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_dynstate->m_syscall_errors.clear();
+	m_process_start = 0;
 }
 
 void thread_analyzer_info::destroy()
@@ -270,6 +272,8 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	m_procinfo->m_protostate.add(&other->m_dynstate->m_protostate);
 
 	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
+
+	m_procinfo->m_process_start += other->m_process_start;
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -312,6 +316,7 @@ void thread_analyzer_info::clear_all_metrics()
 	}
 
 	m_dynstate->m_protostate.clear();
+	m_process_start = 0;
 }
 
 void thread_analyzer_info::clear_role_flags()

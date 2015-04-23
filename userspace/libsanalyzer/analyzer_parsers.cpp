@@ -233,6 +233,8 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
+	tinfo->m_ainfo->m_process_start += 1;
+
 	sinsp_executed_command cmdinfo;
 
 	if(tinfo->m_clone_ts != 0)
