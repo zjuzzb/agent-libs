@@ -2,6 +2,7 @@ package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -11,24 +12,24 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by luca on 12/01/15.
  */
 public class BeanData {
-    private final String name;
+    private final ObjectName name;
     private final List<BeanAttributeData> attributes;
+    static private final Pattern tokenPattern = Pattern.compile("\\{.+\\}");
 
     @SuppressWarnings("unused")
     public String getName() {
-        return name;
+        return name.getCanonicalName();
     }
 
     @SuppressWarnings("unused")
@@ -37,12 +38,36 @@ public class BeanData {
     }
 
     public BeanData(ObjectName beanInstance) {
-        this.name = beanInstance.getCanonicalName();
+        this.name = beanInstance;
         this.attributes = new LinkedList<BeanAttributeData>();
     }
 
+    private String expandAlias(String alias)
+    {
+        StringBuilder ret = new StringBuilder(alias.length());
+        Matcher m = tokenPattern.matcher(alias);
+        int lastpos = 0;
+        while(m.find())
+        {
+            ret.append(alias.substring(lastpos, m.start()));
+            lastpos = m.end();
+            String key = alias.substring(m.start()+1,m.end()-1);
+            String value = name.getKeyProperty(key);
+            if (value != null) {
+                ret.append(value);
+            }
+        }
+        ret.append(alias.substring(lastpos, alias.length()));
+        return ret.toString();
+    }
+
     public void addAttribute(String name, String alias, Object attribute_value, Config.BeanAttribute.Unit unit) {
-        BeanAttributeData newAttribute = new BeanAttributeData(name, alias);
+        BeanAttributeData newAttribute;
+        if(alias != null) {
+            newAttribute = new BeanAttributeData(name, expandAlias(alias));
+        } else {
+            newAttribute = new BeanAttributeData(name);
+        }
         if (attribute_value instanceof CompositeData) {
             CompositeData compositeData = (CompositeData) attribute_value;
             for ( String key : compositeData.getCompositeType().keySet())
@@ -101,6 +126,7 @@ public class BeanData {
     }
 
     @JsonFilter("BeanAttributeDataFilter")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class BeanAttributeData {
         public enum Type {
             EMPTY, SIMPLE, NESTED
@@ -128,6 +154,12 @@ public class BeanData {
         private BeanAttributeData(String name, String alias) {
             this.name = name;
             this.alias = alias;
+            this.subattributes = new LinkedList<BeanAttributeData>();
+            this.type = Type.EMPTY;
+        }
+
+        private BeanAttributeData(String name) {
+            this.name = name;
             this.subattributes = new LinkedList<BeanAttributeData>();
             this.type = Type.EMPTY;
         }

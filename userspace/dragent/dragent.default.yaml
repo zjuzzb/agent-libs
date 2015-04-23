@@ -5,53 +5,84 @@ jmx:
   default_beans:
     - query: "java.lang:type=Memory"
       attributes:
-        - HeapMemoryUsage
-        - NonHeapMemoryUsage
+        - name: HeapMemoryUsage
+          alias: jvm.heap
+        - name: NonHeapMemoryUsage
+          alias: jvm.nonHeap
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
           type: counter
+          alias: jvm.gc.{name}.count
         - name: CollectionTime
           type: counter
+          alias: jvm.gc.{name}.time
     - query: "java.lang:type=ClassLoading"
       attributes:
-        - LoadedClassCount
-        - UnloadedClassCount
+        - name: LoadedClassCount
+          alias: jvm.class.loaded
+        - name: UnloadedClassCount
+          alias: jvm.class.unloaded
     - query: "java.lang:type=Threading"
       attributes:
-        - ThreadCount
-        - DaemonThreadCount
+        - name: ThreadCount
+          alias: jvm.thread.count
+        - name: DaemonThreadCount
+          alias: jvm.thread.daemon
   per_process_beans:
     cassandra:
       pattern: "cassandra"
       beans:
         - query: "org.apache.cassandra.db:type=StorageProxy"
           attributes:
-            - RecentWriteLatencyMicros
-            - RecentReadLatencyMicros
+            - name: RecentWriteLatencyMicros
+              alias: cassandra.write.latency
+            - name: RecentReadLatencyMicros
+              alias: cassandra.read.latency
             - name: WriteOperations
               type: counter
+              alias: cassandra.write.count
             - name: ReadOperations
               type: counter
+              alias: cassandra.read.count
         - query: "org.apache.cassandra.db:type=CompactionManager"
           attributes:
             - name: TotalCompactionsCompleted
               type: counter
-            - name: TotalBytesCompleted
+              alias: cassandra.compactions.count
+            - name: PendingTasks
+              alias: cassandra.compactions.pending
+            - name: TotalBytesCompacted
               type: counter
-            - PendingTasks
-            - name: CompletedTasks
-              type: counter
+              alias: cassandra.compactions.bytes
         - query: "org.apache.cassandra.db:type=Caches"
           attributes:
             - name: KeyCacheHits
               type: counter
+              alias: cassandra.keycache.hits
             - name: KeyCacheRequests
               type: counter
+              alias: cassandra.keycache.requests
             - name: RowCacheHits
               type: counter
+              alias: cassandra.rowcache.hits
             - name: RowCacheRequests
               type: counter
+              alias: cassandra.rowcache.requests
+        - query: "org.apache.cassandra.internal:type=HintedHandoff"
+          attributes:
+            - name: PendingTasks
+              alias: cassandra.hintedhandoff.pending
+            - name: ActiveCount
+              alias: cassandra.hintedhandoff.active
+        - query: "org.apache.cassandra.request:type=ReadStage"
+          attributes:
+            - name: PendingTasks
+              alias: cassandra.read.pending
+        - query: "org.apache.cassandra.request:type=MutationStage"
+          attributes:
+            - name: PendingTasks
+              alias: cassandra.write.pending
     tomcat:
       pattern: "catalina"
       beans:
