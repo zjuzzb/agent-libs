@@ -7,8 +7,10 @@ jmx:
       attributes:
         - name: HeapMemoryUsage
           alias: jvm.heap
+          unit: MiB
         - name: NonHeapMemoryUsage
           alias: jvm.nonHeap
+          unit: MiB
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
@@ -17,6 +19,7 @@ jmx:
         - name: CollectionTime
           type: counter
           alias: jvm.gc.{name}.time
+          unit: ms
     - query: "java.lang:type=ClassLoading"
       attributes:
         - name: LoadedClassCount
@@ -37,8 +40,10 @@ jmx:
           attributes:
             - name: RecentWriteLatencyMicros
               alias: cassandra.write.latency
+              unit: us
             - name: RecentReadLatencyMicros
               alias: cassandra.read.latency
+              unit: us
             - name: WriteOperations
               type: counter
               alias: cassandra.write.count
@@ -55,6 +60,7 @@ jmx:
             - name: TotalBytesCompacted
               type: counter
               alias: cassandra.compactions.bytes
+              unit: B
         - query: "org.apache.cassandra.db:type=Caches"
           attributes:
             - name: KeyCacheHits

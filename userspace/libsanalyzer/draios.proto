@@ -246,41 +246,47 @@ message mongodb_info {
     repeated mongodb_collection_details client_collections = 4;
 }
 
-/*enum jmx_metric_unit {
-    JMX_METRIC_NONE = 0;
+enum unit {
+    UNIT_NONE = 0;
+    UNIT_SECOND = 1;
+    UNIT_BYTE = 2;
+    UNIT_PERCENT = 3;
+}
 
-    JMX_METRIC_SECOND = 1;
-    JMX_METRIC_MILLISECOND = 2;
-    JMX_METRIC_MICROSECOND = 3;
-    JMX_METRIC_NANOSECOND = 4;
-    JMX_METRIC_MINUTE = 5;
-    JMX_METRIC_HOUR = 6;
-    JMX_METRIC_DAY = 7;
+enum scale {
+    SCALE_NONE = 0;
 
-    JMX_METRIC_BYTE = 8;
-    JMX_METRIC_KILOBYTE = 9;
-    JMX_METRIC_MEGABYTE = 10;
-    JMX_METRIC_GIGABYTE = 11;
-    JMX_METRIC_TERABYTE = 12;
-    JMX_METRIC_KIBIBYTE = 13;
-    JMX_METRIC_MEBIBYTE = 14;
-    JMX_METRIC_GIBIBYTE = 15;
-    JMX_METRIC_TEBIBYTE = 16;
+    SCALE_MILLI = 1;
+    SCALE_MICRO = 2;
+    SCALE_NANO = 3;
+    SCALE_MINUTE = 4;
+    SCALE_HOUR = 5;
+    SCALE_DAY = 6;
 
-    JMX_METRIC_KILO = 17;
-    JMX_METRIC_MEGA = 18;
-    JMX_METRIC_GIGA = 19;
-    JMX_METRIC_TERA = 20;
+    SCALE_KILO = 7;
+    SCALE_MEGA = 8;
+    SCALE_GIGA = 9;
+    SCALE_TERA = 10;
+    SCALE_KIBI = 11;
+    SCALE_MEBI = 12;
+    SCALE_GIBI = 13;
+    SCALE_TEBI = 14;
 
-    JMX_METRIC_PERCENT = 21;
-    JMX_METRIC_PERCENT_NORM = 22;
-}*/
+    SCALE_PERCENT_0_1 = 15;
+}
+
+enum jmx_metric_type {
+    JMX_METRIC_TYPE_COUNTER = 1;
+    JMX_METRIC_TYPE_GAUGE = 2;
+}
 
 message jmx_attribute {
     optional string name = 1;
     optional double value = 2;
-    // optional jmx_metric_unit unit = 6; // Right now is not used, may be removed in the future
     optional string alias = 5;
+    optional jmx_metric_type type = 7;
+    optional unit unit = 8;
+    optional scale scale = 9;
     repeated jmx_attribute subattributes = 3;
 }
 

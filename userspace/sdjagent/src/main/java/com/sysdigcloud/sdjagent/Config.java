@@ -122,96 +122,137 @@ public class Config {
 
     public static class BeanAttribute {
         public enum Type {
-            counter, rate
+            counter(1), gauge(2);
+            private final int id;
+            Type(int id) {
+                this.id = id;
+            }
+            public int getValue() { return id; }
         }
         public enum Unit {
             NONE(0),
-
             SECOND(1),
-            MILLISECOND(2),
-            MICROSECOND(3),
-            NANOSECOND(4),
-            MINUTE(5),
-            HOUR(6),
-            DAY(7),
-
-            BYTE(8),
-            KILOBYTE(9),
-            MEGABYTE(10),
-            GIGABYTE(11),
-            TERABYTE(12),
-            KIBIBYTE(13),
-            MEBIBYTE(14),
-            GIBIBYTE(15),
-            TEBIBYTE(16),
-
-            KILO(17),
-            MEGA(18),
-            GIGA(19),
-            TERA(20),
-
-            PERCENT(21),
-            PERCENT_NORM(22);
+            BYTE(2),
+            PERCENT(3);
 
             private final int id;
-            private static final Map<String, Unit> STRING_TO_UNIT;
-
-            static {
-                STRING_TO_UNIT = new HashMap<String, Unit>();
-
-                STRING_TO_UNIT.put("s", SECOND);
-                STRING_TO_UNIT.put("ms", MILLISECOND);
-                STRING_TO_UNIT.put("us", MICROSECOND);
-                STRING_TO_UNIT.put("ns", NANOSECOND);
-                STRING_TO_UNIT.put("m", MINUTE);
-                STRING_TO_UNIT.put("h", HOUR);
-                STRING_TO_UNIT.put("d", DAY);
-
-                STRING_TO_UNIT.put("B", BYTE);
-                STRING_TO_UNIT.put("kB", KILOBYTE);
-                STRING_TO_UNIT.put("MB", MEGABYTE);
-                STRING_TO_UNIT.put("GB", GIGABYTE);
-                STRING_TO_UNIT.put("TB", TERABYTE);
-                STRING_TO_UNIT.put("KiB", KIBIBYTE);
-                STRING_TO_UNIT.put("MiB", MEBIBYTE);
-                STRING_TO_UNIT.put("GiB", GIBIBYTE);
-                STRING_TO_UNIT.put("TiB", TEBIBYTE);
-
-                STRING_TO_UNIT.put("K", KILO);
-                STRING_TO_UNIT.put("M", MEGA);
-                STRING_TO_UNIT.put("G", GIGA);
-                STRING_TO_UNIT.put("T", TERA);
-
-                STRING_TO_UNIT.put("%100", PERCENT);
-                STRING_TO_UNIT.put("%1", PERCENT_NORM);
-            }
-
             Unit(int id) { this.id = id; }
+
+            public int getValue() {
+                return id;
+            }
+        }
+        public enum Scale {
+            NONE(0),
+
+            MILLI(1),
+            MICRO(2),
+            NANO(3),
+            MINUTE(4),
+            HOUR(5),
+            DAY(6),
+
+            KILO(7),
+            MEGA(8),
+            GIGA(9),
+            TERA(10),
+            KIBI(11),
+            MEBI(12),
+            GIBI(13),
+            TEBI(14),
+
+            PERCENT_0_1(15);
+
+            private final int id;
+
+            Scale(int id) { this.id = id; }
 
             public int getValue() { return id; }
 
-            public static Unit fromString(String s) {
-                if (STRING_TO_UNIT.containsKey(s)) {
-                    return STRING_TO_UNIT.get(s);
-                } else {
-                    return NONE;
-                }
+        }
+
+        private static class Pair<L,R> {
+
+            private final L left;
+            private final R right;
+
+            public Pair(L left, R right) {
+                this.left = left;
+                this.right = right;
+            }
+
+            public L getLeft() { return left; }
+            public R getRight() { return right; }
+
+            @Override
+            public int hashCode() { return left.hashCode() ^ right.hashCode(); }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof Pair)) return false;
+                Pair pairo = (Pair) o;
+                return this.left.equals(pairo.getLeft()) &&
+                        this.right.equals(pairo.getRight());
+            }
+
+        }
+
+        private static final Map<String, Pair<Unit, Scale>> STRING_TO_UNIT;
+
+        static {
+            STRING_TO_UNIT = new HashMap<String, Pair<Unit, Scale>>();
+
+            STRING_TO_UNIT.put("none", new Pair<Unit, Scale>(Unit.NONE, Scale.NONE));
+            STRING_TO_UNIT.put("s", new Pair<Unit, Scale>(Unit.SECOND, Scale.NONE));
+            STRING_TO_UNIT.put("ms", new Pair<Unit, Scale>(Unit.SECOND, Scale.MILLI));
+            STRING_TO_UNIT.put("us", new Pair<Unit, Scale>(Unit.SECOND, Scale.MICRO));
+            STRING_TO_UNIT.put("ns", new Pair<Unit, Scale>(Unit.SECOND, Scale.NANO));
+            STRING_TO_UNIT.put("m", new Pair<Unit, Scale>(Unit.SECOND, Scale.MINUTE));
+            STRING_TO_UNIT.put("h", new Pair<Unit, Scale>(Unit.SECOND, Scale.HOUR));
+            STRING_TO_UNIT.put("d", new Pair<Unit, Scale>(Unit.SECOND, Scale.DAY));
+
+            STRING_TO_UNIT.put("B", new Pair<Unit, Scale>(Unit.BYTE, Scale.NONE));
+            STRING_TO_UNIT.put("kB", new Pair<Unit, Scale>(Unit.BYTE, Scale.KILO));
+            STRING_TO_UNIT.put("MB", new Pair<Unit, Scale>(Unit.BYTE, Scale.MEGA));
+            STRING_TO_UNIT.put("GB", new Pair<Unit, Scale>(Unit.BYTE, Scale.GIGA));
+            STRING_TO_UNIT.put("TB", new Pair<Unit, Scale>(Unit.BYTE, Scale.TERA));
+            STRING_TO_UNIT.put("KiB", new Pair<Unit, Scale>(Unit.BYTE, Scale.KIBI));
+            STRING_TO_UNIT.put("MiB", new Pair<Unit, Scale>(Unit.BYTE, Scale.MEBI));
+            STRING_TO_UNIT.put("GiB", new Pair<Unit, Scale>(Unit.BYTE, Scale.GIBI));
+            STRING_TO_UNIT.put("TiB", new Pair<Unit, Scale>(Unit.BYTE, Scale.TEBI));
+
+            STRING_TO_UNIT.put("K", new Pair<Unit, Scale>(Unit.NONE, Scale.KILO));
+            STRING_TO_UNIT.put("M", new Pair<Unit, Scale>(Unit.NONE, Scale.MEGA));
+            STRING_TO_UNIT.put("G", new Pair<Unit, Scale>(Unit.NONE, Scale.GIGA));
+            STRING_TO_UNIT.put("T", new Pair<Unit, Scale>(Unit.NONE, Scale.TERA));
+
+            STRING_TO_UNIT.put("%100", new Pair<Unit, Scale>(Unit.PERCENT, Scale.NONE));
+            STRING_TO_UNIT.put("%1", new Pair<Unit, Scale>(Unit.PERCENT, Scale.PERCENT_0_1));
+        }
+
+        public static Pair<Unit, Scale> getUnitInfoFromString(String s) {
+            if (STRING_TO_UNIT.containsKey(s)) {
+                return STRING_TO_UNIT.get(s);
+            } else {
+                LOGGER.warning("Wrong metric unit specified: " + s);
+                return STRING_TO_UNIT.get("none");
             }
         }
 
         private String name;
         private Type type;
         private Unit unit;
+        private Scale scale;
         private String alias;
 
         @JsonCreator
         @SuppressWarnings("unused")
         private BeanAttribute(JsonNode data) {
-            this.type = Type.rate;
+            this.type = Type.gauge;
+            this.unit = Unit.NONE;
+            this.scale = Scale.NONE;
             if(data.isTextual()) {
                 this.name = data.textValue();
-                this.type = Type.rate;
-                this.unit = Unit.NONE;
             } else if (data.isObject()) {
                 this.name = data.get("name").textValue();
 
@@ -219,17 +260,15 @@ public class Config {
                     try {
                         this.type = Type.valueOf(data.get("type").textValue().toLowerCase());
                     } catch (IllegalArgumentException ex) {
-                        LOGGER.severe(String.format("Wrong type for JMX attribute %s: %s. Accepted values are: counter, rate; using default",
+                        LOGGER.severe(String.format("Wrong type for JMX attribute %s: %s. Accepted values are: counter, gauge; using default",
                                 name, data.get("type").textValue()));
                     }
-                } else {
-                    this.type = Type.rate;
                 }
 
                 if (data.has("unit")) {
-                    this.unit = Unit.fromString(data.get("unit").asText());
-                } else {
-                    this.unit = Unit.NONE;
+                    final Pair<Unit, Scale> unitScalePair = getUnitInfoFromString(data.get("unit").asText());
+                    this.unit = unitScalePair.getLeft();
+                    this.scale = unitScalePair.getRight();
                 }
 
                 if (data.has("alias")) {
@@ -249,6 +288,8 @@ public class Config {
         public Unit getUnit() {
             return unit;
         }
+
+        public Scale getScale() { return scale; }
 
         public boolean hasAlias() {
             return alias != null;
