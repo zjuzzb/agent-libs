@@ -234,6 +234,7 @@ public class Config {
             if (STRING_TO_UNIT.containsKey(s)) {
                 return STRING_TO_UNIT.get(s);
             } else {
+                LOGGER.warning("Wrong metric unit specified: " + s);
                 return STRING_TO_UNIT.get("none");
             }
         }
