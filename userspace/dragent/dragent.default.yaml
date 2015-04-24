@@ -7,10 +7,10 @@ jmx:
       attributes:
         - name: HeapMemoryUsage
           alias: jvm.heap
-          unit: MiB
+          unit: B
         - name: NonHeapMemoryUsage
           alias: jvm.nonHeap
-          unit: MiB
+          unit: B
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
