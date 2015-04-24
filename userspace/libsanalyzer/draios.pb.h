@@ -142,59 +142,59 @@ inline bool mongodb_op_type_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<mongodb_op_type>(
     mongodb_op_type_descriptor(), name, value);
 }
-enum jmx_metric_unit {
-  JMX_METRIC_UNIT_NONE = 0,
-  JMX_METRIC_UNIT_SECOND = 1,
-  JMX_METRIC_UNIT_BYTE = 2,
-  JMX_METRIC_UNIT_PERCENT = 3
+enum unit {
+  UNIT_NONE = 0,
+  UNIT_SECOND = 1,
+  UNIT_BYTE = 2,
+  UNIT_PERCENT = 3
 };
-bool jmx_metric_unit_IsValid(int value);
-const jmx_metric_unit jmx_metric_unit_MIN = JMX_METRIC_UNIT_NONE;
-const jmx_metric_unit jmx_metric_unit_MAX = JMX_METRIC_UNIT_PERCENT;
-const int jmx_metric_unit_ARRAYSIZE = jmx_metric_unit_MAX + 1;
+bool unit_IsValid(int value);
+const unit unit_MIN = UNIT_NONE;
+const unit unit_MAX = UNIT_PERCENT;
+const int unit_ARRAYSIZE = unit_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* jmx_metric_unit_descriptor();
-inline const ::std::string& jmx_metric_unit_Name(jmx_metric_unit value) {
+const ::google::protobuf::EnumDescriptor* unit_descriptor();
+inline const ::std::string& unit_Name(unit value) {
   return ::google::protobuf::internal::NameOfEnum(
-    jmx_metric_unit_descriptor(), value);
+    unit_descriptor(), value);
 }
-inline bool jmx_metric_unit_Parse(
-    const ::std::string& name, jmx_metric_unit* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<jmx_metric_unit>(
-    jmx_metric_unit_descriptor(), name, value);
+inline bool unit_Parse(
+    const ::std::string& name, unit* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<unit>(
+    unit_descriptor(), name, value);
 }
-enum jmx_metric_scale {
-  JMX_METRIC_SCALE_NONE = 0,
-  JMX_METRIC_SCALE_MILLI = 1,
-  JMX_METRIC_SCALE_MICRO = 2,
-  JMX_METRIC_SCALE_NANO = 3,
-  JMX_METRIC_SCALE_MINUTE = 4,
-  JMX_METRIC_SCALE_HOUR = 5,
-  JMX_METRIC_SCALE_DAY = 6,
-  JMX_METRIC_SCALE_KILO = 7,
-  JMX_METRIC_SCALE_MEGA = 8,
-  JMX_METRIC_SCALE_GIGA = 9,
-  JMX_METRIC_SCALE_TERA = 10,
-  JMX_METRIC_SCALE_KIBI = 11,
-  JMX_METRIC_SCALE_MEBI = 12,
-  JMX_METRIC_SCALE_GIBI = 13,
-  JMX_METRIC_SCALE_TEBI = 14,
-  JMX_METRIC_PERCENT_0_1 = 15
+enum scale {
+  SCALE_NONE = 0,
+  SCALE_MILLI = 1,
+  SCALE_MICRO = 2,
+  SCALE_NANO = 3,
+  SCALE_MINUTE = 4,
+  SCALE_HOUR = 5,
+  SCALE_DAY = 6,
+  SCALE_KILO = 7,
+  SCALE_MEGA = 8,
+  SCALE_GIGA = 9,
+  SCALE_TERA = 10,
+  SCALE_KIBI = 11,
+  SCALE_MEBI = 12,
+  SCALE_GIBI = 13,
+  SCALE_TEBI = 14,
+  SCALE_PERCENT_0_1 = 15
 };
-bool jmx_metric_scale_IsValid(int value);
-const jmx_metric_scale jmx_metric_scale_MIN = JMX_METRIC_SCALE_NONE;
-const jmx_metric_scale jmx_metric_scale_MAX = JMX_METRIC_PERCENT_0_1;
-const int jmx_metric_scale_ARRAYSIZE = jmx_metric_scale_MAX + 1;
+bool scale_IsValid(int value);
+const scale scale_MIN = SCALE_NONE;
+const scale scale_MAX = SCALE_PERCENT_0_1;
+const int scale_ARRAYSIZE = scale_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* jmx_metric_scale_descriptor();
-inline const ::std::string& jmx_metric_scale_Name(jmx_metric_scale value) {
+const ::google::protobuf::EnumDescriptor* scale_descriptor();
+inline const ::std::string& scale_Name(scale value) {
   return ::google::protobuf::internal::NameOfEnum(
-    jmx_metric_scale_descriptor(), value);
+    scale_descriptor(), value);
 }
-inline bool jmx_metric_scale_Parse(
-    const ::std::string& name, jmx_metric_scale* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<jmx_metric_scale>(
-    jmx_metric_scale_descriptor(), name, value);
+inline bool scale_Parse(
+    const ::std::string& name, scale* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<scale>(
+    scale_descriptor(), name, value);
 }
 enum jmx_metric_type {
   JMX_METRIC_TYPE_COUNTER = 1,
@@ -3120,19 +3120,19 @@ class jmx_attribute : public ::google::protobuf::Message {
   inline ::draiosproto::jmx_metric_type type() const;
   inline void set_type(::draiosproto::jmx_metric_type value);
 
-  // optional .draiosproto.jmx_metric_unit unit = 8;
+  // optional .draiosproto.unit unit = 8;
   inline bool has_unit() const;
   inline void clear_unit();
   static const int kUnitFieldNumber = 8;
-  inline ::draiosproto::jmx_metric_unit unit() const;
-  inline void set_unit(::draiosproto::jmx_metric_unit value);
+  inline ::draiosproto::unit unit() const;
+  inline void set_unit(::draiosproto::unit value);
 
-  // optional .draiosproto.jmx_metric_scale scale = 9;
+  // optional .draiosproto.scale scale = 9;
   inline bool has_scale() const;
   inline void clear_scale();
   static const int kScaleFieldNumber = 9;
-  inline ::draiosproto::jmx_metric_scale scale() const;
-  inline void set_scale(::draiosproto::jmx_metric_scale value);
+  inline ::draiosproto::scale scale() const;
+  inline void set_scale(::draiosproto::scale value);
 
   // repeated .draiosproto.jmx_attribute subattributes = 3;
   inline int subattributes_size() const;
@@ -10259,7 +10259,7 @@ inline void jmx_attribute::set_type(::draiosproto::jmx_metric_type value) {
   type_ = value;
 }
 
-// optional .draiosproto.jmx_metric_unit unit = 8;
+// optional .draiosproto.unit unit = 8;
 inline bool jmx_attribute::has_unit() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
@@ -10273,16 +10273,16 @@ inline void jmx_attribute::clear_unit() {
   unit_ = 0;
   clear_has_unit();
 }
-inline ::draiosproto::jmx_metric_unit jmx_attribute::unit() const {
-  return static_cast< ::draiosproto::jmx_metric_unit >(unit_);
+inline ::draiosproto::unit jmx_attribute::unit() const {
+  return static_cast< ::draiosproto::unit >(unit_);
 }
-inline void jmx_attribute::set_unit(::draiosproto::jmx_metric_unit value) {
-  assert(::draiosproto::jmx_metric_unit_IsValid(value));
+inline void jmx_attribute::set_unit(::draiosproto::unit value) {
+  assert(::draiosproto::unit_IsValid(value));
   set_has_unit();
   unit_ = value;
 }
 
-// optional .draiosproto.jmx_metric_scale scale = 9;
+// optional .draiosproto.scale scale = 9;
 inline bool jmx_attribute::has_scale() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
@@ -10296,11 +10296,11 @@ inline void jmx_attribute::clear_scale() {
   scale_ = 0;
   clear_has_scale();
 }
-inline ::draiosproto::jmx_metric_scale jmx_attribute::scale() const {
-  return static_cast< ::draiosproto::jmx_metric_scale >(scale_);
+inline ::draiosproto::scale jmx_attribute::scale() const {
+  return static_cast< ::draiosproto::scale >(scale_);
 }
-inline void jmx_attribute::set_scale(::draiosproto::jmx_metric_scale value) {
-  assert(::draiosproto::jmx_metric_scale_IsValid(value));
+inline void jmx_attribute::set_scale(::draiosproto::scale value) {
+  assert(::draiosproto::scale_IsValid(value));
   set_has_scale();
   scale_ = value;
 }
@@ -16742,12 +16742,12 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::mongodb_op_type>(
   return ::draiosproto::mongodb_op_type_descriptor();
 }
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_unit>() {
-  return ::draiosproto::jmx_metric_unit_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::unit>() {
+  return ::draiosproto::unit_descriptor();
 }
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_scale>() {
-  return ::draiosproto::jmx_metric_scale_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::scale>() {
+  return ::draiosproto::scale_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_type>() {

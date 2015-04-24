@@ -53,11 +53,11 @@ void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) con
 	}
 	if(m_unit > 0)
 	{
-		attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
+		attribute->set_unit(static_cast<draiosproto::unit>(m_unit));
 	}
 	if(m_scale > 0)
 	{
-		attribute->set_scale(static_cast<draiosproto::jmx_metric_scale>(m_scale));
+		attribute->set_scale(static_cast<draiosproto::scale>(m_scale));
 	}
 	if(m_type > 0)
 	{
