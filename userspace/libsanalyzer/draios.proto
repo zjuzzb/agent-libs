@@ -369,7 +369,7 @@ message process {
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
-    optional uint64 start = 21;
+    optional uint64 start_count = 21;
 }
 
 //

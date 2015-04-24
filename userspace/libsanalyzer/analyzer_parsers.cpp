@@ -233,7 +233,8 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	tinfo->m_ainfo->m_process_start += 1;
+	g_logger.format(sinsp_logger::SEV_INFO, "Detect execve for pid: %d, procname: %s", evt->m_tinfo->m_pid, evt->m_tinfo->m_comm.c_str());
+	tinfo->m_ainfo->m_start_count += 1;
 
 	sinsp_executed_command cmdinfo;
 

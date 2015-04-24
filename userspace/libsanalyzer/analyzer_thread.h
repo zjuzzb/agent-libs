@@ -65,7 +65,7 @@ public:
 	sinsp_protostate m_protostate;
 	// Number of FDs
 	uint32_t m_fd_count;
-	uint64_t m_process_start;
+	uint64_t m_start_count;
 };
 
 class thread_analyzer_dyn_state
@@ -186,7 +186,7 @@ public:
 	// The complext state that needs to be explicitly allocated because placement
 	// new doesn't support it
 	thread_analyzer_dyn_state* m_dynstate;
-	uint64_t m_process_start;
+	uint64_t m_start_count;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
