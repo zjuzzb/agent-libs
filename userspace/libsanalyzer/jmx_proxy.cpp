@@ -12,27 +12,35 @@
 
 java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	m_name(json["name"].asString()),
-	m_unit(0)
+	m_unit(0),
+	m_scale(0),
+	m_type(0)
 {
 	if(json.isMember("alias"))
 	{
 		m_alias = json["alias"].asString();
 	}
+	if(json.isMember("unit"))
+	{
+		m_unit = json["unit"].asUInt();
+	}
+	if(json.isMember("scale"))
+	{
+		m_scale = json["scale"].asUInt();
+	}
+	if(json.isMember("type"))
+	{
+		m_type = json["type"].asUInt();
+	}
 	if (json.isMember("value"))
 	{
 		m_value = json["value"].asDouble();
-		if(json.isMember("unit"))
-		{
-			m_unit = json["unit"].asUInt();
-		}
-		m_type = type_t::SIMPLE;
 	} else if (json.isMember("subattributes"))
 	{
 		for(const auto& subattribute : json["subattributes"])
 		{
 			m_subattributes.emplace_back(subattribute);
 		}
-		m_type = type_t::NESTED;
 	}
 }
 
@@ -43,12 +51,24 @@ void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) con
 	{
 		attribute->set_alias(m_alias);
 	}
-	if (m_type == type_t::SIMPLE) {
+	if(m_unit > 0)
+	{
+		attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
+	}
+	if(m_scale > 0)
+	{
+		attribute->set_scale(static_cast<draiosproto::jmx_metric_scale>(m_scale));
+	}
+	if(m_type > 0)
+	{
+		attribute->set_type(static_cast<draiosproto::jmx_metric_type>(m_type));
+	}
+	if (m_subattributes.empty())
+	{
 		attribute->set_value(m_value);
-		// unit support kept for future usage if needed, otherwise it will be totally
-		// removed
-		//attribute->set_unit(static_cast<draiosproto::jmx_metric_unit>(m_unit));
-	} else if (m_type == type_t::NESTED) {
+	}
+	else
+	{
 		for(const auto& subattribute : m_subattributes)
 		{
 			draiosproto::jmx_attribute* subattribute_proto = attribute->add_subattributes();

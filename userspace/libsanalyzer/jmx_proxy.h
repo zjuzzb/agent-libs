@@ -10,13 +10,6 @@ class java_bean;
 class java_bean_attribute
 {
 public:
-	enum class type_t
-	{
-		EMPTY,
-		SIMPLE,
-		NESTED
-	};
-
 	void to_protobuf(draiosproto::jmx_attribute *attribute) const;
 	explicit java_bean_attribute(const Json::Value&);
 private:
@@ -24,7 +17,8 @@ private:
 	string m_alias;
 	double m_value;
 	uint16_t m_unit;
-	type_t m_type{type_t::EMPTY};
+	uint16_t m_scale;
+	uint16_t m_type;
 	vector<java_bean_attribute> m_subattributes;
 };
 
