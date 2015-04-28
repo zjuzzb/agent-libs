@@ -48,6 +48,7 @@ dragent_configuration::dragent_configuration()
 	m_jmx_sampling = 1;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
+	m_ssh_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -172,7 +173,7 @@ void dragent_configuration::init(Application* app)
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
-
+	m_ssh_enabled = m_config->get_scalar<bool>("ssh", "enabled", true);
 	refresh_aws_metadata();
 }
 
@@ -220,6 +221,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
+	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 
 	if(m_aws_metadata.m_valid)
 	{
