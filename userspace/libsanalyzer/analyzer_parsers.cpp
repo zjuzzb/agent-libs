@@ -213,7 +213,6 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 
 void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
-	uint32_t j;
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	if(tinfo == NULL)
 	{
@@ -233,10 +232,9 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	g_logger.format(sinsp_logger::SEV_INFO, "Detect execve for pid: %d, procname: %s", evt->m_tinfo->m_pid, evt->m_tinfo->m_comm.c_str());
 	tinfo->m_ainfo->m_start_count += 1;
 
-	sinsp_executed_command cmdinfo;
+	/*sinsp_executed_command cmdinfo;
 
 	if(tinfo->m_clone_ts != 0)
 	{
@@ -260,7 +258,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
-	}
+	}*/
 
 
 /*
@@ -286,7 +284,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Lookup the parent process
 	//
-	sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
+	/*sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
 	string pname;
 	if(parentinfo != NULL)
 	{
@@ -312,7 +310,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	m_analyzer->m_executed_commands.push_back(cmdinfo);
+	m_analyzer->m_executed_commands.push_back(cmdinfo);*/
 
 	return;
 }
