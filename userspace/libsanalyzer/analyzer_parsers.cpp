@@ -232,7 +232,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	tinfo->m_ainfo->m_start_count += 1;
+	tinfo->m_ainfo->m_called_execve = true;
 
 	/*sinsp_executed_command cmdinfo;
 

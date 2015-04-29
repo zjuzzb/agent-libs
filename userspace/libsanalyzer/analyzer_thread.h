@@ -186,7 +186,7 @@ public:
 	// The complext state that needs to be explicitly allocated because placement
 	// new doesn't support it
 	thread_analyzer_dyn_state* m_dynstate;
-	uint64_t m_start_count;
+	bool m_called_execve;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

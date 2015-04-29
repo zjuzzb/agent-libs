@@ -107,7 +107,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_dynstate->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_dynstate->m_syscall_errors.clear();
-	m_start_count = 0;
+	m_called_execve = false;
 }
 
 void thread_analyzer_info::destroy()
@@ -273,7 +273,10 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
 
-	m_procinfo->m_start_count += other->m_start_count;
+	if(other->m_called_execve)
+	{
+		m_procinfo->m_start_count += 1;
+	}
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -316,7 +319,7 @@ void thread_analyzer_info::clear_all_metrics()
 	}
 
 	m_dynstate->m_protostate.clear();
-	m_start_count = 0;
+	m_called_execve = false;
 }
 
 void thread_analyzer_info::clear_role_flags()
