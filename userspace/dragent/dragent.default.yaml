@@ -7,10 +7,10 @@ jmx:
       attributes:
         - name: HeapMemoryUsage
           alias: jvm.heap
-          unit: MiB
+          unit: B
         - name: NonHeapMemoryUsage
           alias: jvm.nonHeap
-          unit: MiB
+          unit: B
     - query: "java.lang:type=GarbageCollector,*"
       attributes:
         - name: CollectionCount
@@ -94,25 +94,87 @@ jmx:
       beans:
         - query: "Catalina:type=Cache,*"
           attributes:
-            - accessCount
-            - cacheSize
-            - hitsCount
+            - name: accessCount
+              alias: tomcat.access.count
+              type: counter
+            - name: hitsCount
+              alias: tomcat.hits.count
+              type: counter
         - query: "Catalina:type=GlobalRequestProcessor,*"
           attributes:
-            - errorCount
-            - requestCount
-            - processingTime
+            - name: bytesReceived
+              alias: tomcat.bytes.received
+              type: counter
+            - name: errorCount
+              alias: tomcat.error.count
+              type: counter
+            - name: maxTime
+              alias: tomcat.max.time
+            - name: requestCount
+              alias: tomcat.request.count
+              type: counter
+            - name: processingTime
+              alias: tomcat.processing.time
+              type: counter
+              unit: ms
+            - name: bytesSent
+              alias: tomcat.bytes.sent
+              type: counter
         - query: "Catalina:type=Manager,*"
           attributes:
-            - activeSessions
-            - expiredSessions
-            - processingTime
-            - rejectedSessions
+            - name: activeSessions
+              alias: tomcat.sessions.active
+              type: counter
+            - name: maxActive
+              alias: tomcat.session.max.active
+            - name: expiredSessions
+              alias: tomcat.sessions.expired
+              type: counter
+            - name: sessionCreateRate
+              alias: tomcat.session.create.rate
+            - name: sessionExpireRate
+              alias: tomcat.session.expire.rate
         - query: "Catalina:type=ThreadPool,*"
           attributes:
-            - acceptorThreadCount
-            - currentThreadCount
-            - currentThreadBusy
+            - name: maxThreads
+              alias: tomcat.threads.max
+            - name: currentThreadCount
+              alias: tomcat.thread.current.count
+            - name: currentThreadsBusy
+              alias: tomcat.threads.current.busy
+        - query: "Catalina:type=JspMonitor,*"
+          attributes:
+            - name: jspCount
+              alias: tomcat.jsp.count
+              type: counter
+            - name: jspReloadCount
+              alias: tomcat.jsp.reload.count
+              type: counter
+        - query: "Catalina:j2eeType=Servlet,*"
+          attributes:
+            - name: processingTime
+              alias: tomcat.servlet.processing.time
+              type: counter
+            - name: errorCount
+              alias: tomcat.servlet.error.count
+              type: counter
+            - name: requestCount
+              alias: tomcat.servlet.request.count
+              type: counter
+        - query: "Catalina:type=DataSource,*"
+          attributes:
+            - name: numActive
+              alias: tomcat.datasource.connection.active
+              type: counter
+            - name: numIdle
+              alias: tomcat.datasource.connection.idle
+              type: counter
+            - name: maxActive
+              alias: tomcat.datasource.connection.max.active
+            - name: maxIdle
+              alias: tomcat.datasource.connection.max.idle
+            - name: minIdle
+              alias: tomcat.datasource.connection.min.idle
     activemq:
       pattern: "activemq"
       beans:

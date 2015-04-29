@@ -26,6 +26,7 @@ ssh_worker::ssh_worker(dragent_configuration* configuration, protocol_queue* que
 
 ssh_worker::~ssh_worker()
 {
+	g_log->information("~ssh_worker called");
 	delete_pending_messages(m_token);
 
 	if(m_libssh_channel)
@@ -57,7 +58,13 @@ void ssh_worker::run()
 	SharedPtr<ssh_worker> ptr(this);
 
 	add_pending_messages(m_token);
-	
+
+	if(m_configuration->m_ssh_enabled == false)
+	{
+		send_error("SSH disabled from agent configuration file");
+		return;
+	}
+
 	g_log->information(m_name + ": Opening SSH session, token " + m_token);
 
 	m_libssh_session = ssh_new();
