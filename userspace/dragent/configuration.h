@@ -307,6 +307,7 @@ public:
 	uint16_t m_jmx_sampling;
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
+	bool m_ssh_enabled;
 
 private:
 	void refresh_aws_metadata();
