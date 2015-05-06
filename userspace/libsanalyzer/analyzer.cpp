@@ -1366,6 +1366,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 #endif
+					proc->set_start_count(procinfo->m_start_count);
 				}
 #endif // ANALYZER_EMITS_PROCESSES
 			}

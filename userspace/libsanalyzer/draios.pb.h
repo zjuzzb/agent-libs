@@ -4352,6 +4352,13 @@ class process : public ::google::protobuf::Message {
   inline ::draiosproto::proto_info* release_protos();
   inline void set_allocated_protos(::draiosproto::proto_info* protos);
 
+  // optional uint64 start_count = 21;
+  inline bool has_start_count() const;
+  inline void clear_start_count();
+  static const int kStartCountFieldNumber = 21;
+  inline ::google::protobuf::uint64 start_count() const;
+  inline void set_start_count(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_details();
@@ -4384,6 +4391,8 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_protos();
   inline void clear_has_protos();
+  inline void set_has_start_count();
+  inline void clear_has_start_count();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4402,9 +4411,10 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::proto_info* protos_;
+  ::google::protobuf::uint64 start_count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -12620,6 +12630,28 @@ inline void process::set_allocated_protos(::draiosproto::proto_info* protos) {
   } else {
     clear_has_protos();
   }
+}
+
+// optional uint64 start_count = 21;
+inline bool process::has_start_count() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void process::set_has_start_count() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void process::clear_has_start_count() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void process::clear_start_count() {
+  start_count_ = GOOGLE_ULONGLONG(0);
+  clear_has_start_count();
+}
+inline ::google::protobuf::uint64 process::start_count() const {
+  return start_count_;
+}
+inline void process::set_start_count(::google::protobuf::uint64 value) {
+  set_has_start_count();
+  start_count_ = value;
 }
 
 // -------------------------------------------------------------------

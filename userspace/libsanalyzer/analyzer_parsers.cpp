@@ -213,7 +213,6 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 
 void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
-	uint32_t j;
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	if(tinfo == NULL)
 	{
@@ -233,7 +232,9 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	sinsp_executed_command cmdinfo;
+	tinfo->m_ainfo->m_called_execve = true;
+
+	/*sinsp_executed_command cmdinfo;
 
 	if(tinfo->m_clone_ts != 0)
 	{
@@ -257,7 +258,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
-	}
+	}*/
 
 
 /*
@@ -283,7 +284,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Lookup the parent process
 	//
-	sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
+	/*sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
 	string pname;
 	if(parentinfo != NULL)
 	{
@@ -309,7 +310,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	m_analyzer->m_executed_commands.push_back(cmdinfo);
+	m_analyzer->m_executed_commands.push_back(cmdinfo);*/
 
 	return;
 }
