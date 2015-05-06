@@ -1270,6 +1270,7 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		// This should be checked by parse_accept_exit()
 		//
 		ASSERT(false);
+		return;
 	}
 
 	//

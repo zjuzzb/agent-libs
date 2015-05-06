@@ -40,6 +40,7 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\third-party\jsoncpp\jsoncpp.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\threadinfo.cpp" />
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\utils.cpp" />
+    <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\viewinfo.cpp" />
     <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="analyzer_fd.cpp" />
     <ClCompile Include="analyzer_parsers.cpp" />
@@ -86,6 +87,7 @@
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\threadinfo.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\tuples.h" />
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\utils.h" />
+    <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\viewinfo.h" />
     <ClInclude Include="analyzer.h" />
     <ClInclude Include="analyzer_fd.h" />
     <ClInclude Include="analyzer_int.h" />

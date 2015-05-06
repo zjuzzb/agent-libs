@@ -50,6 +50,7 @@ dragent_configuration::dragent_configuration()
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
+	m_ssh_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -182,8 +183,9 @@ void dragent_configuration::init(Application* app)
 			m_java_binary = bin_path;
 		}
 	}
-
-	refresh_aws_metadata();
+	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
+	
+  refresh_aws_metadata();
 	write_statsite_configuration();
 }
 
@@ -234,6 +236,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
+	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
+
 	if(m_aws_metadata.m_valid)
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
