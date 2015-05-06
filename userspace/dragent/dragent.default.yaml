@@ -178,37 +178,61 @@ jmx:
     activemq:
       pattern: "activemq"
       beans:
-        - query: "org.apache.activemq:Type=Broker,*"
+        - query: "org.apache.activemq:type=Broker,brokerName=*"
           attributes:
-            - TotalConsumerCount
-            - TotalDequeueCount
-            - TotalEnqueueCount
-            - TotalMessageCount
-            - TotalProducerCount
-        - query: "org.apache.activemq:Type=Queue,*"
+            - name: StorePercentUsage
+              alias: activemq.broker.store.percentage.usage
+              unit: "%100"
+            - name: TempPercentUsage
+              alias: activemq.broker.temp.percentage.usage
+              unit: "%100"
+            - name: MemoryPercentUsage
+              alias: activemq.broker.memory.percentage.usage 
+              unit: "%100"
+            - name: TotalConnectionsCount
+              alias: activemq.broker.total.connections.count
+            - name: TotalConsumerCount
+              alias: activemq.broker.total.consumer.count
+            - name: TotalDequeueCount
+              alias: activemq.broker.total.dequeue.count
+            - name: TotalEnqueueCount
+              alias: activemq.broker.total.enqueue.count
+            - name: TotalMessageCount
+              alias: activemq.broker.total.message.count
+            - name: TotalProducerCount
+              alias: activemq.broker.total.producer.count
+        - query: "org.apache.activemq:type=Broker,brokerName=*,destinationType=Queue,*"
           attributes:
-            - ConsumerCount
-            - AverageEnqueueTime
-            - DequeueCount 
-            - DispatchCount
-            - EnqueueCount 
-            - ExpiredCount
-            - InFlightCount
-            - MemoryPercentUsage
-            - ProducerCount 
-            - QueueSize
-        - query: "org.apache.activemq:Type=Topic,*"
-          attributes:
-            - ConsumerCount
-            - AverageEnqueueTime
-            - DequeueCount 
-            - DispatchCount
-            - EnqueueCount 
-            - ExpiredCount
-            - InFlightCount
-            - MemoryPercentUsage
-            - ProducerCount 
-            - QueueSize
+            - name: AverageEnqueueTime
+              alias: activemq.queue.average.enqueue.time
+            - name: ConsumerCount
+              alias: activemq.queue.consumer.count
+            - name: DequeueCount
+              alias: activemq.queue.dequeue.count
+              type: counter
+            - name: DispatchCount
+              alias: activemq.queue.dispatch.count
+              type: counter
+            - name: EnqueueCount 
+              alias: activemq.queue.enqueue.count
+              type: counter
+            - name: ExpiredCount
+              alias: activemq.queue.expired.count
+              type: counter
+            - name: InFlightCount
+              alias: activemq.queue.inflight.count
+              type: counter
+            - name: MemoryPercentUsage
+              alias: activemq.queue.memory.percentage.usage
+              unit: "%100"
+            - name: ProducerCount
+              alias: activemq.queue.producer.count
+            - name: QueueSize
+              alias: activemq.queue.size
+            - name: MaxEnqueueTime
+              alias: activemq.queue.max.enqueue.time
+            - name: MinEnqueueTime
+              alias: activemq.queue.min.enqueue.time
     zookeeper:
       pattern: "zookeeper"
       beans:
