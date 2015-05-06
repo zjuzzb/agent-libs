@@ -159,7 +159,7 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 		}
 		Json::Value json_obj;
 		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
-		if(parse_ok)
+		if(parse_ok && json_obj.isObject() && json_obj.isMember("id") && json_obj.isMember("body"))
 		{
 			response_id = json_obj["id"].asUInt64();
 			for(auto process_data : json_obj["body"])

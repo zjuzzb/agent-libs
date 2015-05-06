@@ -173,7 +173,7 @@ void dragent_configuration::init(Application* app)
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
-	m_ssh_enabled = m_config->get_scalar<bool>("ssh", "enabled", true);
+	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	refresh_aws_metadata();
 }
 
