@@ -28,7 +28,9 @@ void event_capture::capture()
 	{
 		m_inspector->m_inactive_thread_scan_time_ns = m_inactive_thread_scan_time_ns;
 	}
-	
+
+	m_inspector->set_get_procs_cpu_from_driver(true);
+
 	if(m_analyzer_callback != NULL)
 	{
 		m_analyzer->set_sample_callback(m_analyzer_callback);
