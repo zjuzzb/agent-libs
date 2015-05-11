@@ -870,85 +870,6 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	th1.join();
 }
 
-
-TEST_F(sys_call_test, procinfo_processchild_cpuload)
-{
-	int callnum = 0;
-	int pid = getpid();
-	int lastcpu = 0;
-
-	//
-	// FILTER
-	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return true;
-	};
-
-	//
-	// TEST CODE
-	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		Poco::Thread th;
-		loadthread ct;
-		Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
-		th.start(runnable);
-
-		for(uint32_t j = 0; j < 5; j++)
-		{
-			sleep(1);
-		}
-
-		ct.m_die = true;
-
-		th.join();
-	};
-
-	//
-	// OUTPUT VALDATION
-	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt* e = param.m_evt;
-		uint16_t type = e->get_type();
-
-		if(type == PPME_PROCINFO_E)
-		{
-			sinsp_threadinfo* tinfo = e->get_thread_info();
-
-			if(tinfo)
-			{
-				if(tinfo->m_pid == pid && tinfo->m_tid != syscall(SYS_gettid))
-				{
-					uint64_t tcpu;
-
-					sinsp_evt_param* parinfo = e->get_param(0);
-					tcpu = *(uint64_t*)parinfo->m_val;
-
-					uint64_t delta = tcpu - lastcpu;
-
-					if(callnum != 0)
-					{
-						EXPECT_GT(delta, 90);
-						EXPECT_LT(delta, 110);
-					}
-
-//printf("%ld:%ld)%ld >> %ld\n", tinfo->m_pid, tinfo->m_tid, tcpu, delta);
-
-					lastcpu = tcpu;
-
-					callnum++;
-				}
-			}
-		}
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-
-//	EXPECT_EQ(8, callnum);
-}
-
 TEST_F(sys_call_test, procfs_globalmemory)
 {
 	int64_t memusage;
@@ -1069,6 +990,191 @@ TEST_F(sys_call_test, process_scap_proc_get)
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+}
+
+TEST_F(sys_call_test, procinfo_processchild_cpuload)
+{
+	int callnum = 0;
+	int pid = getpid();
+	int lastcpu = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return true;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		Poco::Thread th;
+		loadthread ct;
+		Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
+		th.start(runnable);
+
+		for(uint32_t j = 0; j < 5; j++)
+		{
+			sleep(1);
+		}
+
+		ct.m_die = true;
+
+		th.join();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_PROCINFO_E)
+		{
+			sinsp_threadinfo* tinfo = e->get_thread_info();
+
+			if(tinfo)
+			{
+				if(tinfo->m_pid == pid && tinfo->m_tid != syscall(SYS_gettid))
+				{
+					uint64_t tcpu;
+
+					sinsp_evt_param* parinfo = e->get_param(0);
+					tcpu = *(uint64_t*)parinfo->m_val;
+
+					uint64_t delta = tcpu - lastcpu;
+
+					if(callnum != 0)
+					{
+						EXPECT_GT(delta, 90);
+						EXPECT_LT(delta, 110);
+					}
+
+					printf("%ld:%ld)%ld >> %ld\n", tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+
+					lastcpu = tcpu;
+
+					callnum++;
+				}
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(5, callnum);
+}
+
+TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
+{
+	int callnum = 0;
+	int pid = getpid();
+	int lastcpu1 = 0;
+	int lastcpu2 = 0;
+	int64_t firsttid = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return true;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		Poco::Thread th;
+		loadthread ct;
+		Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
+		th.start(runnable);
+
+		Poco::Thread th1;
+		loadthread ct1;
+		Poco::RunnableAdapter<loadthread> runnable1(ct1, &loadthread::run);
+		th1.start(runnable1);
+
+		for(uint32_t j = 0; j < 5; j++)
+		{
+			sleep(1);
+		}
+
+		ct.m_die = true;
+		ct1.m_die = true;
+
+		th.join();
+		th1.join();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_PROCINFO_E)
+		{
+			sinsp_threadinfo* tinfo = e->get_thread_info();
+
+			if(tinfo)
+			{
+				if(tinfo->m_pid == pid && tinfo->m_tid != syscall(SYS_gettid))
+				{
+					uint64_t tcpu;
+					uint64_t delta;
+
+					sinsp_evt_param* parinfo = e->get_param(0);
+					tcpu = *(uint64_t*)parinfo->m_val;
+
+					if(firsttid == 0)
+					{
+						firsttid = tinfo->m_tid;
+					}
+
+					if(tinfo->m_tid == firsttid)
+					{
+						delta = tcpu - lastcpu1;
+					}
+					else
+					{
+						delta = tcpu - lastcpu2;
+					}
+
+					if(callnum > 2)
+					{
+						EXPECT_GT(delta, 90);
+						EXPECT_LT(delta, 110);
+					}
+
+					printf("%ld:%ld)%ld >> %ld\n", tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+
+					if(tinfo->m_tid == firsttid)
+					{
+						lastcpu1 = tcpu;
+					}
+					else
+					{
+						lastcpu2 = tcpu;
+					}
+
+					callnum++;
+				}
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(10, callnum);
 }
 
 /*
