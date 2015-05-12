@@ -2828,8 +2828,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Too much time since last drop event, forcing sampleratio=1", sinsp_logger::SEV_WARNING);
-		m_sampling_ratio = 1;
+		auto driver_sampling_ratio = m_inspector->get_sampling_ratio();
+		if(driver_sampling_ratio != m_sampling_ratio)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "Agent/driver sampling ratio mismatch %u vs %u, synchronizing", m_sampling_ratio, driver_sampling_ratio);
+			m_sampling_ratio = driver_sampling_ratio;
+		}
+		m_last_dropmode_switch_time = ts;
 	}
 
 	//
