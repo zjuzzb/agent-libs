@@ -240,36 +240,39 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	// Configure statsite subprocess
-	m_statsite_pipes = make_shared<pipe_manager>();
-	m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
-	m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
+	if(m_configuration.m_statsd_enabled)
 	{
-		// statsite logs does not have info about level, use error if keyword `Failed` is inside or use
-		// information
-		if(data.find("Failed") != string::npos)
+		m_statsite_pipes = make_shared<pipe_manager>();
+		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
+		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
 		{
-			g_log->error(data);
-		}
-		else
-		{
-			g_log->information(data);
-		}
-	});
+			// statsite logs does not have info about level, use error if keyword `Failed` is inside or use
+			// information
+			if(data.find("Failed") != string::npos)
+			{
+				g_log->error(data);
+			}
+			else
+			{
+				g_log->information(data);
+			}
+		});
 
-	monitor_process.emplace_process("statsite", [this](void)
-	{
-		this->m_statsite_pipes->attach_child_stdio();
-		if(this->m_configuration.m_agent_installed)
+		monitor_process.emplace_process("statsite", [this](void)
 		{
-			execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
-		}
-		else
-		{
-			execl("../../../../dependencies/statsite-private-master/statsite",
-				  "statsite", "-f", "statsite.ini", (char*)NULL);
-		}
-		exit(EXIT_FAILURE);
-	});
+			this->m_statsite_pipes->attach_child_stdio();
+			if(this->m_configuration.m_agent_installed)
+			{
+				execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+			}
+			else
+			{
+				execl("../../../../dependencies/statsite-private-master/statsite",
+					  "statsite", "-f", "statsite.ini", (char*)NULL);
+			}
+			exit(EXIT_FAILURE);
+		});
+	}
 
 	//run_monitor(m_pidfile, m_jmx_pipes);
 	return monitor_process.run();

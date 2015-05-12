@@ -313,6 +313,7 @@ public:
 	string m_sdjagent_opts;
 	bool m_agent_installed;
 	bool m_ssh_enabled;
+	bool m_statsd_enabled;
 
 	bool java_present()
 	{

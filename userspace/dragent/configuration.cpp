@@ -51,6 +51,7 @@ dragent_configuration::dragent_configuration()
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
 	m_ssh_enabled = true;
+	m_statsd_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -185,9 +186,12 @@ void dragent_configuration::init(Application* app)
 	}
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256M");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
-	
+	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	if(m_statsd_enabled)
+	{
+		write_statsite_configuration();
+	}
     refresh_aws_metadata();
-	write_statsite_configuration();
 }
 
 void dragent_configuration::print_configuration()
@@ -239,6 +243,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
+	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 
 	if(m_aws_metadata.m_valid)
 	{
