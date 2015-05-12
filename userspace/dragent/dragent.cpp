@@ -221,19 +221,41 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
+
+
 		monitor_process.emplace_process("sdjagent", [this](void)
 		{
+			static const auto MAX_SDJAGENT_ARGS = 50;
+
 			this->m_jmx_pipes->attach_child_stdio();
+
+			// Our option parser is pretty simple, for example an arg with spaces inside
+			// double quotes will not work, eg:
+			// -Xmx:myamazingconfig="test with spaces" -Xmx256m
+			auto sdjagent_opts_split = sinsp_split(m_configuration.m_sdjagent_opts, ' ');
+
+			const char* args[MAX_SDJAGENT_ARGS];
+			unsigned j = 0;
+			args[j++] = "java";
+			for(const auto& opt : sdjagent_opts_split)
+			{
+				args[j++] = opt.c_str();
+			}
+			args[j++] = "-Djava.library.path=/opt/draios/lib";
+			args[j++] = "-jar";
 			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
 			if(sdjagent_jar.exists())
 			{
-				execl(this->m_configuration.m_java_binary.c_str(), "java", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
+				args[j++] = "/opt/draios/share/sdjagent.jar";
 			}
 			else
 			{
-				execl(this->m_configuration.m_java_binary.c_str(), "java", "-Djava.library.path=../sdjagent", "-jar",
-					  "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
+				args[j++] = "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
 			}
+			args[j++] = NULL;
+
+			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
+
 			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 			exit(EXIT_FAILURE);
 		});

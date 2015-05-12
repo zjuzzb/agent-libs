@@ -184,7 +184,7 @@ void dragent_configuration::init(Application* app)
 			m_java_binary = bin_path;
 		}
 	}
-	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256M");
+	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	if(m_statsd_enabled)
