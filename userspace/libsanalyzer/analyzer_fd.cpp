@@ -1017,7 +1017,8 @@ w_conn_creation_done:
 		// Support for statsd protocol
 		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
 		static const uint16_t STATSD_PORT = 8125;
-		if(fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
+		if(m_analyzer->m_statsite_proxy &&
+		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
 		    fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
 		{
 			// This log line it's useful to debug, but it's not suitable for enabling it always
