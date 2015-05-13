@@ -169,7 +169,7 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 fi
 
 if [ -z "$AGENT_VERSION" ]; then
-	AGENT_VERSION="0.2-dev"
+	AGENT_VERSION="0.1.1-dev"
 fi
 
 if [ -z "$SYSDIG_MINIMUM_VERSION" ]; then
