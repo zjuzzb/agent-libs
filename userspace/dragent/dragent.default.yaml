@@ -233,6 +233,38 @@ jmx:
               alias: activemq.queue.max.enqueue.time
             - name: MinEnqueueTime
               alias: activemq.queue.min.enqueue.time
+        - query: "org.apache.activemq:type=Broker,brokerName=*,destinationType=Topic,*"
+          attributes:
+            - name: AverageEnqueueTime
+              alias: activemq.topic.average.enqueue.time
+            - name: ConsumerCount
+              alias: activemq.topic.consumer.count
+            - name: DequeueCount
+              alias: activemq.topic.dequeue.count
+              type: counter
+            - name: DispatchCount
+              alias: activemq.topic.dispatch.count
+              type: counter
+            - name: EnqueueCount
+              alias: activemq.topic.enqueue.count
+              type: counter
+            - name: ExpiredCount
+              alias: activemq.topic.expired.count
+              type: counter
+            - name: InFlightCount
+              alias: activemq.topic.inflight.count
+              type: counter
+            - name: MemoryPercentUsage
+              alias: activemq.topic.memory.percentage.usage
+              unit: "%100"
+            - name: ProducerCount
+              alias: activemq.topic.producer.count
+            - name: QueueSize
+              alias: activemq.topic.size
+            - name: MaxEnqueueTime
+              alias: activemq.topic.max.enqueue.time
+            - name: MinEnqueueTime
+              alias: activemq.topic.min.enqueue.time
     zookeeper:
       pattern: "zookeeper"
       beans:
