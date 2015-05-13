@@ -83,6 +83,11 @@ int monitor::run()
 		int status = 0;
 		for(auto& process : m_processes)
 		{
+			if(!process.is_enabled())
+			{
+				continue;
+			}
+
 			auto waited_pid = waitpid(process.pid(), &status, WNOHANG);
 			if(waited_pid < 0)
 			{
@@ -100,13 +105,10 @@ int monitor::run()
 					exit(EXIT_SUCCESS);
 				}
 
-				// crashed, restart it
-				this_thread::sleep_for(chrono::seconds(1));
-
-				// Notify main process to send log report
 				if(!process.is_main())
 				{
-					for(auto& process : m_processes)
+					// Notify main process to send log report
+					for(const auto& process : m_processes)
 					{
 						if(process.is_main())
 						{
@@ -114,7 +116,19 @@ int monitor::run()
 							break;
 						}
 					}
+
+					if(WIFEXITED(status) && WEXITSTATUS(status) == 17)
+					{
+						// errorcode=17 tells monitor to not retry
+						// when a process fails (does not regard
+						// our dragent)
+						process.disable();
+						continue;
+					}
 				}
+
+				// crashed, restart it
+				this_thread::sleep_for(chrono::seconds(1));
 
 				auto child_pid = fork();
 				if(child_pid < 0)
@@ -134,7 +148,7 @@ int monitor::run()
 		this_thread::sleep_for(chrono::seconds(1));
 	}
 
-	for(auto& process : m_processes)
+	for(const auto& process : m_processes)
 	{
 		//
 		// Signal received, forward it to the child and

@@ -11,10 +11,11 @@ public:
 		m_name(move(name)),
 		m_main(is_main),
 		m_exec(exec),
-		m_pid(0)
+		m_pid(0),
+		m_enabled(true)
 	{}
 
-	pid_t pid()
+	pid_t pid() const
 	{
 		return m_pid;
 	}
@@ -26,9 +27,20 @@ public:
 
 	inline void exec();
 
-	bool is_main()
+	bool is_main() const
 	{
 		return m_main;
+	}
+
+	bool is_enabled() const
+	{
+		return m_enabled;
+	}
+
+	void disable()
+	{
+		m_enabled = false;
+		m_pid = 0;
 	}
 
 private:
@@ -36,6 +48,7 @@ private:
 	bool m_main;
 	function<void(void)> m_exec;
 	pid_t m_pid;
+	bool m_enabled;
 };
 
 class monitor
