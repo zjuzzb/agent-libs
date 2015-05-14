@@ -26,7 +26,7 @@ add_subdirectory(userspace/sdjagent)
 add_subdirectory(scripts)
 add_subdirectory(test)
 
-install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-master/statsite
+install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
 
