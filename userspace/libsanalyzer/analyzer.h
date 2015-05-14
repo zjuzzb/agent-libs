@@ -229,6 +229,16 @@ public:
 		m_remotefs_enabled = value;
 	}
 
+	void set_sampling_ratio(uint64_t value)
+	{
+		m_sampling_ratio = value;
+		auto newsl = ((uint64_t)ONE_SECOND_IN_NS) / m_sampling_ratio;
+		if(newsl != m_configuration->get_analyzer_sample_len_ns())
+		{
+			m_configuration->set_analyzer_sample_len_ns(newsl);
+		}
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -377,6 +387,7 @@ VISIBILITY_PRIVATE
 	bool m_is_sampling;
 	bool m_driver_stopped_dropping;
 	uint32_t m_sampling_ratio;
+	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;

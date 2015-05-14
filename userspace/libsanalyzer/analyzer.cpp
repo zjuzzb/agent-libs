@@ -89,6 +89,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_is_sampling = false;
 	m_driver_stopped_dropping = false;
 	m_sampling_ratio = 1;
+	m_new_sampling_ratio = m_sampling_ratio;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
@@ -1872,19 +1873,17 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 			if(m_sampling_ratio < 128)
 			{
-				uint32_t new_sampling_ratio;
-
 				if(!m_is_sampling)
 				{
-					new_sampling_ratio = 1;
+					m_new_sampling_ratio = 1;
 					m_is_sampling = true;
 				}
 				else
 				{
-					new_sampling_ratio = m_sampling_ratio * 2;
+					m_new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				start_dropping_mode(new_sampling_ratio);
+				start_dropping_mode(m_new_sampling_ratio);
 			}
 			else
 			{
@@ -1935,17 +1934,18 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 				m_last_system_cpuload = 0;
 
 				m_seconds_below_thresholds = 0;
-				uint32_t new_sampling_ratio = m_sampling_ratio / 2;
+				m_new_sampling_ratio = m_sampling_ratio / 2;
 
-				if(new_sampling_ratio >= 1)
+				if(m_new_sampling_ratio >= 1)
 				{
 					if(m_is_sampling)
 					{
-						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-						start_dropping_mode(m_sampling_ratio / 2);
+						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_new_sampling_ratio);
+						start_dropping_mode(m_new_sampling_ratio);
 					}
 					else
 					{
+						ASSERT(m_new_sampling_ratio == 1);
 						stop_dropping_mode();
 					}
 				}
@@ -2834,8 +2834,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		auto driver_sampling_ratio = m_inspector->get_sampling_ratio();
 		if(driver_sampling_ratio != m_sampling_ratio)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Agent/driver sampling ratio mismatch %u vs %u, synchronizing", m_sampling_ratio, driver_sampling_ratio);
-			m_sampling_ratio = driver_sampling_ratio;
+			g_logger.format(sinsp_logger::SEV_WARNING, "Did not receive drop event to confirm sampling_ratio, forcing update", m_sampling_ratio, driver_sampling_ratio);
+			set_sampling_ratio(m_new_sampling_ratio);
 		}
 		m_last_dropmode_switch_time = ts;
 	}
