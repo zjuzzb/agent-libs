@@ -22,11 +22,19 @@ static void g_usr_signal_callback(int sig)
 	dragent_configuration::m_signal_dump = true;
 }
 
+static void g_usr2_signal_callback(int sig)
+{
+	g_log->information("Received SIGUSR2");
+	dragent_configuration::m_send_log_report = true;
+}
+
 dragent_app::dragent_app(): 
 	m_help_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
-	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker)
+	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
+	m_log_reporter(&m_queue, &m_configuration),
+	m_subprocesses_logger(&m_configuration, &m_log_reporter)
 {
 }
 	
@@ -165,6 +173,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		return Application::EXIT_OK;
 	}
 
+	m_configuration.init(this);
 #ifndef _WIN32
 	//
 	// Before running the monitor, unblock all the signals,
@@ -180,71 +189,138 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
-	// This config parameter must be known early because is used
-	// on the monitor
-	File java_binary("/usr/bin/java");
-	bool java_present = false;
-	if(java_binary.exists() && java_binary.canExecute())
-	{
-		java_present = true;
-	}
+	monitor monitor_process(m_pidfile);
 
-	if(java_present)
+	// Add our main process
+	monitor_process.emplace_process("sdagent",[this]()
+	{
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sigemptyset(&sa.sa_mask);
+		sa.sa_handler = g_signal_callback;
+
+		sigaction(SIGINT, &sa, NULL);
+		sigaction(SIGQUIT, &sa, NULL);
+		sigaction(SIGTERM, &sa, NULL);
+
+		sa.sa_handler = g_usr_signal_callback;
+		sigaction(SIGUSR1, &sa, NULL);
+		sa.sa_handler = g_usr2_signal_callback;
+		sigaction(SIGUSR2, &sa, NULL);
+
+		if(crash_handler::initialize() == false)
+		{
+			ASSERT(false);
+		}
+		auto exit_code = this->sdagent_main();
+		exit(exit_code);
+	}, true);
+
+	if(m_configuration.java_present())
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
+
+
+		monitor_process.emplace_process("sdjagent", [this](void)
+		{
+			static const auto MAX_SDJAGENT_ARGS = 50;
+
+			this->m_jmx_pipes->attach_child_stdio();
+
+			// Our option parser is pretty simple, for example an arg with spaces inside
+			// double quotes will not work, eg:
+			// -Xmx:myamazingconfig="test with spaces" -Xmx256m
+			auto sdjagent_opts_split = sinsp_split(m_configuration.m_sdjagent_opts, ' ');
+
+			const char* args[MAX_SDJAGENT_ARGS];
+			unsigned j = 0;
+			args[j++] = "java";
+			for(const auto& opt : sdjagent_opts_split)
+			{
+				args[j++] = opt.c_str();
+			}
+			args[j++] = "-Djava.library.path=/opt/draios/lib";
+			args[j++] = "-jar";
+			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
+			if(sdjagent_jar.exists())
+			{
+				args[j++] = "/opt/draios/share/sdjagent.jar";
+			}
+			else
+			{
+				args[j++] = "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
+			}
+			args[j++] = NULL;
+
+			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
+
+			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
+			exit(EXIT_FAILURE);
+		});
 	}
 
-	run_monitor(m_pidfile, m_jmx_pipes);
-
-	//
-	// We want to terminate when the monitor is killed by init
-	//
-	prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = g_signal_callback;
-	
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGQUIT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-
-	sa.sa_handler = g_usr_signal_callback;
-	sigaction(SIGUSR1, &sa, NULL);
-
-	if(crash_handler::initialize() == false)
+	// Configure statsite subprocess
+	if(m_configuration.m_statsd_enabled)
 	{
-		ASSERT(false);
+		m_statsite_pipes = make_shared<pipe_manager>();
+		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
+		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
+		{
+			// statsite logs does not have info about level, use error if keyword `Failed` is inside or use
+			// information
+			if(data.find("Failed") != string::npos)
+			{
+				g_log->error(data);
+			}
+			else
+			{
+				g_log->information(data);
+			}
+		});
+
+		monitor_process.emplace_process("statsite", [this](void)
+		{
+			this->m_statsite_pipes->attach_child_stdio();
+			if(this->m_configuration.m_agent_installed)
+			{
+				execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+			}
+			else
+			{
+				execl("../../../../dependencies/statsite-private-master/statsite",
+					  "statsite", "-f", "statsite.ini", (char*)NULL);
+			}
+			exit(EXIT_FAILURE);
+		});
 	}
+
+	//run_monitor(m_pidfile, m_jmx_pipes);
+	return monitor_process.run();
+#else
+	return sdagent_main();
 #endif
+}
 
+int dragent_app::sdagent_main()
+{
 	Poco::ErrorHandler::set(&m_error_handler);
-
-	m_configuration.init(this);
 
 	initialize_logging();
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	m_configuration.print_configuration();
-	if(java_present)
-	{
-		g_log->information("Java detected");
-	}
+
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();
 	}
-	
+
 	ExitCode exit_code;
 
-	if(java_present)
-	{
-		m_jmx_controller = make_shared<sdjagent_logger>(&m_configuration, m_jmx_pipes->get_err_fd());
-		ThreadPool::defaultPool().start(*m_jmx_controller, "sdjagent_logger");
-	}
+	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
@@ -361,6 +437,25 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+	if(m_subprocesses_logger.get_last_loop_ns() != 0)
+	{
+		int64_t diff = sinsp_utils::get_current_time_ns()
+					   - m_subprocesses_logger.get_last_loop_ns();
+
+#if _DEBUG
+		g_log->debug("watchdog: subprocesses_logger last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_subprocesses_logger_timeout_s * 1000000000LL)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected subprocesses_logger stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
+			pthread_kill(m_subprocesses_logger.get_pthread_id(), SIGABRT);
+			to_kill = true;
+		}
+	}
+
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
@@ -411,78 +506,7 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		g_log->error("agent didn't terminate cleanly, sending the last " 
-			+ NumberFormatter::format(m_configuration.m_dirty_shutdown_report_log_size_b) 
-			+ "B to collector");
-
-		p.setFileName("draios.log");
-
-		FILE* fp = fopen(p.toString().c_str(), "r");
-		if(fp == NULL)
-		{
-			g_log->error(string("fopen: ") + strerror(errno));
-			return;
-		}
-
-		if(fseek(fp, 0, SEEK_END) == -1)
-		{
-			g_log->error(string("fseek (1): ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		long offset = ftell(fp);
-		if(offset == -1)
-		{
-			g_log->error(string("ftell: ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		if((uint64_t) offset > m_configuration.m_dirty_shutdown_report_log_size_b)
-		{
-			offset = m_configuration.m_dirty_shutdown_report_log_size_b;
-		}
-
-		if(fseek(fp, -offset, SEEK_END) == -1)
-		{
-			g_log->error(string("fseek (2): ") + strerror(errno));
-			fclose(fp);
-			return;
-		}
-
-		Buffer<char> buf(offset);
-		if(fread(buf.begin(), offset, 1, fp) != 1)
-		{
-			g_log->error("fread error");
-			fclose(fp);
-			return;
-		}
-
-		draiosproto::dirty_shutdown_report report;
-		report.set_timestamp_ns(sinsp_utils::get_current_time_ns());
-		report.set_customer_id(m_configuration.m_customer_id);
-		report.set_machine_id(m_configuration.m_machine_id);
-		report.set_log(buf.begin(), buf.size());
-
-		SharedPtr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
-			draiosproto::message_type::DIRTY_SHUTDOWN_REPORT, 
-			report, 
-			m_configuration.m_compression_enabled);
-
-		if(report_serialized.isNull())
-		{
-			g_log->error("NULL converting message to buffer");
-			return;
-		}
-
-		if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
-		{
-			g_log->information("Queue full");
-			return;
-		}
-
-		fclose(fp);
+		m_log_reporter.send_report();
 	}
 	else
 	{

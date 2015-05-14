@@ -20,6 +20,7 @@
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
 #include "analyzer_fd.h"
+#include "statsite_proxy.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
@@ -1011,6 +1012,23 @@ w_conn_creation_done:
 			// This happens when the connection table is full
 			//
 			return;
+		}
+
+		// Support for statsd protocol
+		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
+		static const uint16_t STATSD_PORT = 8125;
+		if(m_analyzer->m_statsite_proxy &&
+		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
+		    fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
+		{
+			// This log line it's useful to debug, but it's not suitable for enabling it always
+			/*g_logger.format(sinsp_logger::SEV_INFO, "Detected statsd message ipv4: %u.%u.%u.%u:%u",
+							fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 8 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 24 ) & 0xFF,
+							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);*/
+			m_analyzer->m_statsite_proxy->send_metric(data, len);
 		}
 
 		if(fdinfo->is_role_server())

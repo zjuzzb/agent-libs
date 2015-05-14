@@ -261,6 +261,7 @@ public:
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
+	static volatile bool m_send_log_report;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -298,6 +299,7 @@ public:
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
+	uint64_t m_watchdog_subprocesses_logger_timeout_s;
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
@@ -307,8 +309,17 @@ public:
 	uint16_t m_jmx_sampling;
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
+	string m_java_binary;
+	string m_sdjagent_opts;
+	bool m_agent_installed;
 	bool m_ssh_enabled;
+	bool m_statsd_enabled;
 
+	bool java_present()
+	{
+		return !m_java_binary.empty();
+	}
 private:
 	void refresh_aws_metadata();
+	void write_statsite_configuration();
 };

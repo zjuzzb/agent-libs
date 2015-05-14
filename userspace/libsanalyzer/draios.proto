@@ -300,6 +300,41 @@ message java_info {
     repeated jmx_bean beans = 2;
 }
 
+enum statsd_metric_type {
+    STATSD_COUNT = 1;
+    STATSD_HISTOGRAM = 2;
+    STATSD_GAUGE = 3;
+    STATSD_SET = 4;
+}
+
+message statsd_tag {
+    required string key = 1;
+    optional string value = 2;
+}
+
+message statsd_metric {
+    optional string name = 1;
+    repeated statsd_tag tags = 2;
+    optional statsd_metric_type type = 3;
+
+    // Valid on COUNT, GAUGE and SET
+    optional double value = 4;
+
+    // Valid only on HISTOGRAM type
+    optional double sum = 5;
+    optional double min = 6;
+    optional double max = 7;
+    optional double count = 8;
+    optional double median = 9;
+    optional double percentile_95 = 10;
+    optional double percentile_99 = 11;
+}
+
+message statsd_info {
+    // May be used in the future to add metadata
+    repeated statsd_metric statsd_metrics = 1;
+}
+
 //
 // General protocol information
 //
@@ -309,6 +344,7 @@ message proto_info {
     optional sql_info postgres = 3;
     optional mongodb_info mongodb = 4;
     optional java_info java = 5; // These are not protocols but as backend is structured is better to save here these info
+    optional statsd_info statsd = 6;
 }
 
 //

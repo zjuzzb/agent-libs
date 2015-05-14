@@ -3,7 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 
 class captureinfo
 {
@@ -75,6 +75,11 @@ public:
 	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
 	{
 		m_jmx_pipes = jmx_pipes;
+	}
+
+	void set_statsite_pipes(shared_ptr<pipe_manager> pipes)
+	{
+		m_statsite_pipes = pipes;
 	}
 
 private:
@@ -177,6 +182,7 @@ private:
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<pipe_manager> m_statsite_pipes;
 
 	friend class dragent_app;
 };

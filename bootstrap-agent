@@ -152,6 +152,22 @@ if [ ! -d "$YAMLCPP_DIR" ]; then
 	make install
 fi
 
+SCONS_DIR=$DEPENDENCIES/scons-2.3.4
+if [ ! -d "${SCONS_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/scons-2.3.4.tar.gz
+	tar xfz scons-2.3.4.tar.gz
+fi
+
+STATSITE_DIR=$DEPENDENCIES/statsite-private-master
+if [ ! -d "${STATSITE_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/statsite-private-master.zip
+	unzip statsite-private-master.zip
+	cd $STATSITE_DIR
+	python $SCONS_DIR/script/scons
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1-dev"
 fi
