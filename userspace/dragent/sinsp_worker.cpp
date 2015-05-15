@@ -15,7 +15,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_sinsp_handler(configuration, connection_manager, queue),
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
-	m_last_loop_ns(0)
+	m_last_loop_ns(0),
+	m_statsd_capture_localhost(false)
 {
 }
 
@@ -185,6 +186,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
+	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
 }
 
 void sinsp_worker::run()

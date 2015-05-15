@@ -229,6 +229,11 @@ public:
 		m_remotefs_enabled = value;
 	}
 
+	void set_statsd_capture_localhost(bool value)
+	{
+		m_statsd_capture_localhost = value;
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -391,6 +396,7 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
+	bool m_statsd_capture_localhost;
 #endif
 
 	//
