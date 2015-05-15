@@ -6,11 +6,21 @@ pipe_manager::pipe_manager()
 {
 	// Create pipes
 	int ret = pipe(m_inpipe);
-	ASSERT(ret == 0);
+	if(ret != 0)
+	{
+		// We don't have logging enabled when this constructor is called
+		cerr << "Cannot create pipe()" << endl;
+	}
 	ret = pipe(m_outpipe);
-	ASSERT(ret == 0);
+	if(ret != 0)
+	{
+		cerr << "Cannot create pipe()" << endl;
+	}
 	ret = pipe(m_errpipe);
-	ASSERT(ret == 0);
+	if(ret != 0)
+	{
+		cerr << "Cannot create pipe()" << endl;
+	}
 
 	// transform to FILE*
 	m_input_fd = fdopen(m_inpipe[PIPE_WRITE], "w");
@@ -116,19 +126,17 @@ void subprocesses_logger::run()
 			{
 				if(FD_ISSET(fileno(fds.first), &readset_w))
 				{
-					string data;
 					auto available_stream = fds.first;
-					static const int READ_BUFFER_SIZE = 1024;
-					char buffer[READ_BUFFER_SIZE] = "";
-					char* fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
-					while(fgets_res != NULL && strstr(buffer, "\n") == NULL)
+					static const auto READ_BUFFER_SIZE = 1024;
+					char buffer[READ_BUFFER_SIZE];
+					auto fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
+					while(fgets_res != NULL)
 					{
-						data.append(buffer);
+						string data(buffer);
+						trim(data);
+						fds.second(data);
 						fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					}
-					data.append(buffer);
-					trim(data);
-					fds.second(data);
 				}
 			}
 		}

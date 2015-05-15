@@ -266,8 +266,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
-		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [](const string& data)
+		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data)
 		{
+			if(data.find("Failed to bind") != string::npos)
+			{
+				this->m_sinsp_worker.set_statsd_capture_localhost(true);
+			}
 			// statsite logs does not have info about level, use error if keyword `Failed` is inside or use
 			// information
 			if(data.find("Failed") != string::npos)

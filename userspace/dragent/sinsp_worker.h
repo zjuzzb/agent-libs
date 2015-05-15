@@ -82,6 +82,19 @@ public:
 		m_statsite_pipes = pipes;
 	}
 
+	void set_statsd_capture_localhost(bool value)
+	{
+		if(value)
+		{
+			g_log->information("Enable statsd localhost capture");
+		}
+		m_statsd_capture_localhost = value;
+		if(m_analyzer)
+		{
+			m_analyzer->set_statsd_capture_localhost(value);
+		}
+	}
+
 private:
 	class dump_job_state
 	{
@@ -183,6 +196,7 @@ private:
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
+	bool m_statsd_capture_localhost;
 
 	friend class dragent_app;
 };
