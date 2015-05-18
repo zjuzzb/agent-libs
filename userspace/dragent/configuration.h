@@ -3,6 +3,7 @@
 #include "main.h"
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
+#include <atomic>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -320,7 +321,38 @@ public:
 	{
 		return !m_java_binary.empty();
 	}
-private:
 	void refresh_aws_metadata();
+
+private:
 	void write_statsite_configuration();
+	friend class aws_metadata_refresher;
+};
+
+class aws_metadata_refresher: public Runnable
+{
+public:
+	aws_metadata_refresher(dragent_configuration* configuration):
+		m_refreshed(false),
+		m_configuration(configuration)
+	{}
+
+	void run()
+	{
+		m_configuration->refresh_aws_metadata();
+		m_refreshed.store(true);
+	}
+
+	void reset()
+	{
+		m_refreshed.store(false);
+	}
+
+	bool done()
+	{
+		return m_refreshed.load();
+	}
+
+private:
+	atomic<bool> m_refreshed;
+	dragent_configuration* m_configuration;
 };

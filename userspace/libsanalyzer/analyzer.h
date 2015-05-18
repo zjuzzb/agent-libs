@@ -402,10 +402,6 @@ VISIBILITY_PRIVATE
 	bool m_statsd_capture_localhost;
 #endif
 
-	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 5*ONE_SECOND_IN_NS;
-	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
-	uint64_t m_next_iflist_refresh_ns;
-
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
