@@ -198,7 +198,7 @@ private:
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 
-	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 5*ONE_SECOND_IN_NS;
+	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
 	uint64_t m_next_iflist_refresh_ns;
 	aws_metadata_refresher m_aws_metadata_refresher;
