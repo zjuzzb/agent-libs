@@ -339,17 +339,17 @@ public:
 	void run()
 	{
 		m_configuration->refresh_aws_metadata();
-		m_refreshed.store(true);
+		m_refreshed.store(true, memory_order_relaxed);
 	}
 
 	void reset()
 	{
-		m_refreshed.store(false);
+		m_refreshed.store(false, memory_order_relaxed);
 	}
 
 	bool done()
 	{
-		return m_refreshed.load();
+		return m_refreshed.load(memory_order_relaxed);
 	}
 
 private:

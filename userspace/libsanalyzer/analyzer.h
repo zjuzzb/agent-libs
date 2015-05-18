@@ -6,6 +6,7 @@
 #include <container_analyzer.h>
 #include <memory>
 #include "jmx_proxy.h"
+#include <atomic>
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -241,7 +242,7 @@ public:
 
 	void set_statsd_capture_localhost(bool value)
 	{
-		m_statsd_capture_localhost = value;
+		m_statsd_capture_localhost.store(value, memory_order_relaxed);
 	}
 
 VISIBILITY_PRIVATE
@@ -407,10 +408,7 @@ VISIBILITY_PRIVATE
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
 
-	// This bool is set by another thread, but it should not
-	// make problems because analyzer only reads, it's a simple
-	// bool variable and we don't mind of cached values
-	bool m_statsd_capture_localhost;
+	atomic<bool> m_statsd_capture_localhost;
 #endif
 
 	//

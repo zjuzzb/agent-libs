@@ -1019,7 +1019,7 @@ w_conn_creation_done:
 		static const uint16_t STATSD_PORT = 8125;
 		if(m_analyzer->m_statsite_proxy &&
 		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
-				(m_analyzer->m_statsd_capture_localhost || fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
+				(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) || fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
 		    )
 		{
 			// This log line it's useful to debug, but it's not suitable for enabling it always
