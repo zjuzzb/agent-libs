@@ -52,6 +52,7 @@ dragent_configuration::dragent_configuration()
 	m_agent_installed = true;
 	m_ssh_enabled = true;
 	m_statsd_enabled = true;
+	m_sdjagent_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -187,6 +188,8 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+
 	if(m_statsd_enabled)
 	{
 		write_statsite_configuration();

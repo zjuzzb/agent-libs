@@ -216,13 +216,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 		exit(exit_code);
 	}, true);
 
-	if(m_configuration.java_present())
+	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
-
-
+		
 		monitor_process.emplace_process("sdjagent", [this](void)
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;

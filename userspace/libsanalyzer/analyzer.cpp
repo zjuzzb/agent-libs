@@ -121,6 +121,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
+
+	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -2835,6 +2837,12 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		m_sampling_ratio = 1;
 	}
 
+	if(m_inspector->is_live() && (ts > m_next_iflist_refresh_ns))
+	{
+		g_logger.log("Refresh network interfaces list", sinsp_logger::SEV_INFO);
+		m_inspector->refresh_ifaddr_list();
+		m_next_iflist_refresh_ns += IFLIST_REFRESH_TIMEOUT_NS;
+	}
 	//
 	// Check if it's time to flush
 	//

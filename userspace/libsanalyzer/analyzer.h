@@ -207,7 +207,7 @@ public:
 #ifndef _WIN32
 	inline void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
 	{
-		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
+		m_jmx_proxy = make_unique<jmx_proxy>(iofds);
 		m_jmx_proxy->m_print_json = print_json;
 	}
 
@@ -390,14 +390,21 @@ VISIBILITY_PRIVATE
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
 
-	// JMX proxy
 #ifndef _WIN32
-	shared_ptr<jmx_proxy> m_jmx_proxy;
+	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
+
+	// This bool is set by another thread, but it should not
+	// make problems because analyzer only reads, it's a simple
+	// bool variable and we don't mind of cached values
 	bool m_statsd_capture_localhost;
 #endif
+
+	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 5*ONE_SECOND_IN_NS;
+	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
+	uint64_t m_next_iflist_refresh_ns;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
