@@ -1017,18 +1017,41 @@ w_conn_creation_done:
 		// Support for statsd protocol
 		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
 		static const uint16_t STATSD_PORT = 8125;
+
+		// This check is written here to avoid calling get_thread_info
+		// if it's not necessary (like other conditions are alread true)
+		static auto is_container = [](sinsp_evt* evt) -> bool
+		{
+			auto tinfo = evt->get_thread_info(false);
+			if(tinfo != nullptr)
+			{
+				return !tinfo->m_container_id.empty();
+			}
+			else
+			{
+				return false;
+			}
+		};
 		if(m_analyzer->m_statsite_proxy &&
 		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
-				(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) || fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
+				(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
+				 fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4 ||
+				 is_container(evt))
 		    )
 		{
 			// This log line it's useful to debug, but it's not suitable for enabling it always
-			/*g_logger.format(sinsp_logger::SEV_INFO, "Detected statsd message ipv4: %u.%u.%u.%u:%u",
+			/*g_logger.format(sinsp_logger::SEV_DEBUG, "Detected statsd message ipv4: %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u container: %s",
+							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 8 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 16 ) & 0xFF,
+							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 24 ) & 0xFF,
+							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport,
 							fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 8 ) & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
 							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 24 ) & 0xFF,
-							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport);*/
+							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport,
+							evt->get_thread_info(false)->m_container_id.c_str());*/
 			m_analyzer->m_statsite_proxy->send_metric(data, len);
 		}
 
