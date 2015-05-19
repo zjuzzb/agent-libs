@@ -216,8 +216,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			ASSERT(false);
 		}
-		auto exit_code = this->sdagent_main();
-		exit(exit_code);
+		return this->sdagent_main();
 	}, true);
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
@@ -226,7 +225,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
 
-		monitor_process.emplace_process("sdjagent", [this](void)
+		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
 
@@ -260,7 +259,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
 			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
-			exit(EXIT_FAILURE);
+			return (EXIT_FAILURE);
 		});
 	}
 
@@ -287,7 +286,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 		});
 
-		monitor_process.emplace_process("statsite", [this](void)
+		monitor_process.emplace_process("statsite", [this](void) -> int
 		{
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
@@ -299,7 +298,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 				execl("../../../../dependencies/statsite-private-master/statsite",
 					  "statsite", "-f", "statsite.ini", (char*)NULL);
 			}
-			exit(EXIT_FAILURE);
+			return (EXIT_FAILURE);
 		});
 	}
 
