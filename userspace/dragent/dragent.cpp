@@ -173,6 +173,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		return Application::EXIT_OK;
 	}
 
+	//
+	// Never move this further down!
+	// It's important that the pidfile gets created immediately!
+	//
 	monitor monitor_process(m_pidfile);
 
 	m_configuration.init(this);
