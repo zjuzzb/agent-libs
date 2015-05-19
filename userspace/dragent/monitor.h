@@ -54,9 +54,7 @@ private:
 class monitor
 {
 public:
-	monitor(string pidfile):
-		m_pidfile(move(pidfile))
-	{}
+	monitor(string pidfile);
 	int run();
 
 	template<typename... Ts>

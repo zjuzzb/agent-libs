@@ -52,6 +52,12 @@ void monitored_process::exec()
 	m_exec();
 }
 
+monitor::monitor(string pidfile):
+	m_pidfile(move(pidfile))
+{
+	create_pid_file(m_pidfile);
+}
+
 int monitor::run()
 {
 	signal(SIGINT, g_monitor_signal_callback);
@@ -75,8 +81,6 @@ int monitor::run()
 			process.set_pid(child_pid);
 		}
 	}
-
-	create_pid_file(m_pidfile);
 
 	while(g_signal_received == 0)
 	{

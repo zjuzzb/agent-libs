@@ -173,6 +173,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		return Application::EXIT_OK;
 	}
 
+	monitor monitor_process(m_pidfile);
+
 	m_configuration.init(this);
 #ifndef _WIN32
 	//
@@ -188,8 +190,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGTERM);
 	sigaddset(&sigs, SIGPIPE); 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
-
-	monitor monitor_process(m_pidfile);
 
 	// Add our main process
 	monitor_process.emplace_process("sdagent",[this]()
@@ -299,7 +299,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
-	//run_monitor(m_pidfile, m_jmx_pipes);
 	return monitor_process.run();
 #else
 	return sdagent_main();
