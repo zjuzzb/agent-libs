@@ -31,7 +31,7 @@ function smoke_tests {
 	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
 
 	# The agent should correctly detect Java
-	cat /opt/draios/logs/* | grep "java detected"
+	cat /opt/draios/logs/* | grep "java detected: true"
 	cat /opt/draios/logs/* | grep "HeapMemoryUsage"
 
 	# The agent should restart if it dies unexpectedly
