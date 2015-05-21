@@ -30,8 +30,6 @@ using namespace google::protobuf::io;
 #ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
-#include "statsite_proxy.h"
-#include "jmx_proxy.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -2216,6 +2214,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
+			get_statsd();
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
@@ -2447,7 +2446,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_containers();
 
-			emit_statsd();
+			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
+			{
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd());
+			}
 			//
 			// Transactions
 			//
@@ -3305,37 +3307,45 @@ void sinsp_analyzer::emit_containers()
 			container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
 			container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 		}
+		if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
+		{
+			emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd());
+		}
 	}
 
 	m_containers.clear();
 }
 
-void sinsp_analyzer::emit_statsd()
+void sinsp_analyzer::get_statsd()
 {
-	static const auto STATSD_METRIC_LIMIT = 300;
 	if (m_statsite_proxy)
 	{
-		auto statsd_metrics = m_statsite_proxy->read_metrics();
-		while(!statsd_metrics.empty() && statsd_metrics.at(0).timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
+		m_statsd_metrics = m_statsite_proxy->read_metrics();
+		while(!m_statsd_metrics.empty() && m_statsd_metrics.at("").at(0).timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
 		{
-			statsd_metrics = m_statsite_proxy->read_metrics();
+			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
-		int j = 0;
-		for(const auto& metric : statsd_metrics)
+	}
+}
+
+void sinsp_analyzer::emit_statsd(const vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info)
+{
+	static const auto STATSD_METRIC_LIMIT = 300;
+	int j = 0;
+	for(const auto& metric : statsd_metrics)
+	{
+		auto statsd_proto = statsd_info->add_statsd_metrics();
+		metric.to_protobuf(statsd_proto);
+		++j;
+		if(j >= STATSD_METRIC_LIMIT)
 		{
-			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
-			metric.to_protobuf(statsd_proto);
-			++j;
-			if(j >= STATSD_METRIC_LIMIT)
-			{
-				g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
-				break;
-			}
+			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
+			break;
 		}
-		if (j > 0)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
-		}
+	}
+	if (j > 0)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
 	}
 }
 

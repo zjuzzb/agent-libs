@@ -36,6 +36,11 @@ public:
 		return m_name;
 	}
 
+	inline const string& container_id() const
+	{
+		return m_container_id;
+	}
+
 	inline type_t type() const
 	{
 		return m_type;
@@ -66,10 +71,12 @@ public:
 			m_type(type_t::NONE)
 	{}
 
+	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
 	uint64_t m_timestamp;
 	string m_name;
 	map<string, string> m_tags;
+	string m_container_id;
 	type_t m_type;
 
 	double m_value;
@@ -89,8 +96,9 @@ class statsite_proxy
 {
 public:
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	vector<statsd_metric> read_metrics();
+	unordered_map<string, vector<statsd_metric>> read_metrics();
 	void send_metric(const char *buf, uint64_t len);
+	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;

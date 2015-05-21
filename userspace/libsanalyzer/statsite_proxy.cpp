@@ -76,18 +76,45 @@ bool statsd_metric::parse_line(const string& line)
 
 		const auto name_and_tags = sinsp_join(name_start, name_end, '.');
 		const auto name_and_tags_tokens = sinsp_split(name_and_tags, '#');
-		const auto& name = name_and_tags_tokens.at(0);
+		const auto& name_and_container_id = name_and_tags_tokens.at(0);
+		const auto name_and_container_id_split = sinsp_split(name_and_container_id, CONTAINER_ID_SEPARATOR);
 
-		if (m_name.empty())
+		if(name_and_container_id_split.size() > 1)
 		{
-			m_name = name;
+			const auto& container_id = name_and_container_id_split.at(0);
+			if(m_container_id.empty())
+			{
+				m_container_id = container_id;
+			}
+			else if(m_container_id != container_id)
+			{
+				return false;
+			}
+
+			const auto& name = name_and_container_id_split.at(1);
+			if(m_name.empty())
+			{
+				m_name = name;
+			}
+			else if(m_name != name)
+			{
+				return false;
+			}
 		}
-		else if (m_name != name)
+		else
 		{
-			return false;
+			const auto& name = name_and_container_id;
+			if(m_name.empty())
+			{
+				m_name = name;
+			}
+			else if(m_name != name)
+			{
+				return false;
+			}
 		}
 
-		if (name_and_tags_tokens.size() > 1)
+		if(name_and_tags_tokens.size() > 1)
 		{
 			decltype(m_tags) new_tags;
 			const auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
@@ -214,9 +241,9 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 {
 }
 
-vector<statsd_metric> statsite_proxy::read_metrics()
+unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 {
-	vector<statsd_metric> ret;
+	unordered_map<string, vector<statsd_metric>> ret;
 	uint64_t timestamp = 0;
 	char buffer[300];
 
@@ -232,7 +259,7 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 					timestamp = m_metric.timestamp();
 				}
 
-				ret.push_back(move(m_metric));
+				ret[m_metric.container_id()].push_back(move(m_metric));
 				m_metric = statsd_metric();
 
 				parsed = m_metric.parse_line(buffer);
@@ -253,13 +280,13 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 	if(timestamp > 0 && timestamp == m_metric.timestamp())
 	{
 		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-		ret.push_back(move(m_metric));
+		ret[m_metric.container_id()].push_back(move(m_metric));
 		m_metric = statsd_metric();
 	}
 	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %d", ret.size());
 	if(m_metric.timestamp() > 0)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at(0).timestamp() : 0);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
 	}
 	return ret;
@@ -276,4 +303,26 @@ void statsite_proxy::send_metric(const char *buf, uint64_t len)
 	}
 	fwrite_unlocked(&sendbuf, sizeof(char), len, m_input_fd);
 	fflush_unlocked(m_input_fd);
+}
+
+void statsite_proxy::send_container_metric(const string &container_id, const char *data, uint64_t len)
+{
+	// Send the metric with containerid prefix
+	// Prefix container metrics with containerid and $
+	auto container_prefix = container_id + statsd_metric::CONTAINER_ID_SEPARATOR;
+
+	// Init metric data with initial container_prefix
+	auto metric_data = container_prefix;
+	metric_data.append(data, len);
+
+	// Add container prefix to other metrics if they are present
+	auto endline_pos = metric_data.find('\n');
+	while(endline_pos+1 < metric_data.size())
+	{
+		metric_data.insert(endline_pos+1, container_prefix);
+		endline_pos = metric_data.find('\n', endline_pos+1);
+	}
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
+	// send_metric does not need final \0
+	send_metric(metric_data.data(), metric_data.size()-1);
 }
