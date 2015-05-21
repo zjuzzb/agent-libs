@@ -68,6 +68,7 @@ function smoke_tests {
 	echo "127.0.0.1 collector.sysdigcloud.com" >> /etc/hosts
 	echo "collector_port: 8080" >> $CONFIG_FILE
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
+	sleep 2
 	service dragent start
 	sleep 5
 	cat /opt/draios/logs/* | grep "certificate verify failed"
@@ -84,6 +85,7 @@ function smoke_tests {
 	mkdir -p /opt/draios/test/resources
 	cp ./opt/draios/test/resources/fake_backend.cert /opt/draios/test/resources/
 	python ./opt/draios/test/resources/fake_backend.py --ssl-certificate=./opt/draios/test/resources/fake_backend.cert --ssl-key=./opt/draios/test/resources/fake_backend.key &
+	sleep 2
 	service dragent start
 	sleep 5
 	cat /opt/draios/logs/* | grep "SSL identity verified"
