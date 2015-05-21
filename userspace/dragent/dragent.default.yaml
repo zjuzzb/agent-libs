@@ -275,21 +275,80 @@ jmx:
     kafka:
       pattern: "kafka"
       beans:
-        - query: '"kafka.server":type="BrokerTopicMetrics",*'
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="DelayedFetchRequestMetrics",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_out
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="DelayedProducerRequestMetrics",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_in
+        - query: "kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="FetchRequestPurgatory",*'
+            - name: MeanRate
+              alias: kafka.messages_in
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesRejectedPerSec"
           attributes:
-            - Value
-        - query: '"kafka.server":type="ProducerRequestPurgatory",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_rejected
+        - query: "kafka.server:type=BrokerTopicMetrics,name=FailedFetchRequestsPerSec"
           attributes:
-            - Value
+            - name: MeanRate
+              alias: kafka.request.fetch.failed
+        - query: "kafka.server:type=BrokerTopicMetrics,name=FailedProduceRequestsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.request.produce.failed
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Produce"
+          attributes:
+            - name: Mean
+              alias: kafka.request.produce.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.produce.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Fetch"
+          attributes:
+            - name: Mean
+              alias: kafka.request.fetch.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.fetch.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=UpdateMetadata"
+          attributes:
+            - name: Mean
+              alias: kafka.request.update_metadata.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.update_metadata.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Metadata"
+          attributes:
+            - name: Mean
+              alias: kafka.request.metadata.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.metadata.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Offsets"
+          attributes:
+            - name: Mean
+              alias: kafka.request.offsets.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.offsets.time.99percentile
+        - query: "kafka.server:type=KafkaRequestHandlerPool,name=RequestHandlerAvgIdlePercent"
+          attributes:
+            - name: MeanRate
+              alias: kafka.request.handler.avg.idle.pct
+        - query: "kafka.server:type=ReplicaManager,name=IsrShrinksPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.isr_shrinks
+        - query: "kafka.server:type=ReplicaManager,name=IsrExpandsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.isr_expands
+        - query: "kafka.controller:type=ControllerStats,name=LeaderElectionRateAndTimeMs"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.leader_elections
+        - query: "kafka.controller:type=ControllerStats,name=UncleanLeaderElectionsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.unclean_leader_elections
     hbase:
       pattern: "hbase"
       beans:
