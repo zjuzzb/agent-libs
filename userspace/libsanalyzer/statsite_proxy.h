@@ -68,7 +68,8 @@ public:
 
 	statsd_metric():
 			m_timestamp(0),
-			m_type(type_t::NONE)
+			m_type(type_t::NONE),
+			m_full_identifier_parsed(false)
 	{}
 
 	static const char CONTAINER_ID_SEPARATOR = '$';
@@ -78,6 +79,7 @@ private:
 	map<string, string> m_tags;
 	string m_container_id;
 	type_t m_type;
+	bool m_full_identifier_parsed;
 
 	double m_value;
 

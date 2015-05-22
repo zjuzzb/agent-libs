@@ -13,10 +13,14 @@
  */
 bool statsd_metric::parse_line(const string& line)
 {
+	// WARNING: Parsing is not so optimized, because if it will result
+	// a bottleneck, a better option is to use statsite binary based
+	// output, or write a protobuf output for it
+
 	// Example:
 	// counts.mycounter#xxx,yy|313.000000|1427738072
 	// timers.mytime.upper|199.000000|1427738072
-	// <type>.<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
+	// <type>.[<containerid>$]<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
 	try
 	{
 		const auto line_tokens = sinsp_split(line, '|');
@@ -24,14 +28,11 @@ bool statsd_metric::parse_line(const string& line)
 
 		// parse timestamp
 		const auto timestamp = std::stoul(line_tokens.at(2));
-		if (m_timestamp == 0)
-		{
-			m_timestamp = timestamp;
-		}
-		else if (m_timestamp != timestamp)
+		if (m_full_identifier_parsed && m_timestamp != timestamp)
 		{
 			return false;
 		}
+		m_timestamp = timestamp;
 
 		const auto name_tokens = sinsp_split(line_tokens.at(0), '.');
 
@@ -56,14 +57,12 @@ bool statsd_metric::parse_line(const string& line)
 		}
 		//ASSERT(new_type != type_t::NONE);
 
-		if(m_type == type_t::NONE)
-		{
-			m_type = new_type;
-		}
-		else if(m_type != new_type)
+		if(m_full_identifier_parsed && m_type != new_type)
 		{
 			return false;
 		}
+		m_type = new_type;
+
 		//ASSERT(m_type != type_t::NONE);
 
 		// parse name
@@ -82,38 +81,30 @@ bool statsd_metric::parse_line(const string& line)
 		if(name_and_container_id_split.size() > 1)
 		{
 			const auto& name = name_and_container_id_split.at(1);
-			if(m_name.empty())
-			{
-				m_name = name;
-			}
-			else if(m_name != name)
+			if(m_full_identifier_parsed && m_name != name)
 			{
 				return false;
 			}
+			m_name = name;
 
 			const auto& container_id = name_and_container_id_split.at(0);
-			if(m_container_id.empty())
-			{
-				m_container_id = container_id;
-			}
-			else if(m_container_id != container_id)
+			if(m_full_identifier_parsed && m_container_id != container_id)
 			{
 				return false;
+
 			}
+			m_container_id = container_id;
 		}
 		else
 		{
 			const auto& name = name_and_container_id;
-			if(m_name.empty())
-			{
-				m_name = name;
-			}
-			else if(m_name != name)
+			if(m_full_identifier_parsed && m_name != name)
 			{
 				return false;
 			}
+			m_name = name;
 
-			if(!m_container_id.empty())
+			if(m_full_identifier_parsed && !m_container_id.empty())
 			{
 				return false;
 			}
@@ -142,15 +133,14 @@ bool statsd_metric::parse_line(const string& line)
 					}
 				}
 			}
-			if(m_tags.empty())
-			{
-				m_tags = move(new_tags);
-			}
-			else if(new_tags != m_tags)
+			if(m_full_identifier_parsed && m_tags != new_tags)
 			{
 				return false;
 			}
+			m_tags = move(new_tags);
 		}
+
+		m_full_identifier_parsed = true;
 
 		// Parse value
 		const auto value = std::stod(line_tokens.at(1));
