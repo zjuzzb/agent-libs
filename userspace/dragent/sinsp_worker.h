@@ -3,7 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 
 class captureinfo
 {
@@ -75,6 +75,24 @@ public:
 	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
 	{
 		m_jmx_pipes = jmx_pipes;
+	}
+
+	void set_statsite_pipes(shared_ptr<pipe_manager> pipes)
+	{
+		m_statsite_pipes = pipes;
+	}
+
+	void set_statsd_capture_localhost(bool value)
+	{
+		if(value)
+		{
+			g_log->information("Enable statsd localhost capture");
+		}
+		m_statsd_capture_localhost = value;
+		if(m_analyzer)
+		{
+			m_analyzer->set_statsd_capture_localhost(value);
+		}
 	}
 
 private:
@@ -177,6 +195,13 @@ private:
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<pipe_manager> m_statsite_pipes;
+	bool m_statsd_capture_localhost;
+
+	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
+	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
+	uint64_t m_next_iflist_refresh_ns;
+	aws_metadata_refresher m_aws_metadata_refresher;
 
 	friend class dragent_app;
 };

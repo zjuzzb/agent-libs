@@ -332,13 +332,7 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 			m_analyzer->m_sampling_ratio,
 			*(uint32_t*)parinfo->m_val);
 
-		m_analyzer->m_sampling_ratio = *(int32_t*)parinfo->m_val;
-	}
-
-	uint64_t newsl =  ((uint64_t)ONE_SECOND_IN_NS) / m_analyzer->m_sampling_ratio;
-	if(newsl != m_analyzer->m_configuration->get_analyzer_sample_len_ns())
-	{
-		m_analyzer->m_configuration->set_analyzer_sample_len_ns(newsl);
+		m_analyzer->set_sampling_ratio(*(int32_t*)parinfo->m_val);
 	}
 }
 

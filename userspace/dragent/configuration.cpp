@@ -15,6 +15,7 @@ using namespace Poco::Net;
 
 volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
+volatile bool dragent_configuration::m_send_log_report = false;
 
 static std::string bool_as_text(bool b)
 {
@@ -48,7 +49,10 @@ dragent_configuration::dragent_configuration()
 	m_jmx_sampling = 1;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
+	m_agent_installed = true;
 	m_ssh_enabled = true;
+	m_statsd_enabled = true;
+	m_sdjagent_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -86,16 +90,14 @@ void dragent_configuration::init(Application* app)
 	File package_dir("/opt/draios");
 	if(package_dir.exists())
 	{
+		m_agent_installed = true;
 		m_root_dir = "/opt/draios";
-
-		//
-		// Get rid of this "bin" hack asap
-		//
 		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 	}
 	else
 	{
+		m_agent_installed = false;
 		m_root_dir = Path::current();
 		m_conf_file = Path(m_root_dir).append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
@@ -165,6 +167,7 @@ void dragent_configuration::init(Application* app)
 #endif
 	m_watchdog_sinsp_worker_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_timeout_s)>("watchdog", "sinsp_worker_timeout_s", 60);
 	m_watchdog_connection_manager_timeout_s = m_config->get_scalar<decltype(m_watchdog_connection_manager_timeout_s)>("watchdog", "connection_manager_timeout_s", 100);
+	m_watchdog_subprocesses_logger_timeout_s = m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>("watchdog", "subprocesses_logger_timeout_s", 60);
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
 	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 256);
@@ -173,8 +176,25 @@ void dragent_configuration::init(Application* app)
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
+	auto java_home = m_config->get_scalar<string>("java_home", "");
+	for(const auto& bin_path : { string("/usr/bin/java"), java_home + "/jre/bin/java", java_home + "/bin/java"})
+	{
+		File java_bin(bin_path);
+		if(java_bin.exists() && java_bin.canExecute())
+		{
+			m_java_binary = bin_path;
+		}
+	}
+	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
-	refresh_aws_metadata();
+	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+
+	if(m_statsd_enabled)
+	{
+		write_statsite_configuration();
+	}
+    refresh_aws_metadata();
 }
 
 void dragent_configuration::print_configuration()
@@ -213,6 +233,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
+	g_log->information("watchdog.subprocesses_logger_timeout_s: " + NumberFormatter::format(m_watchdog_subprocesses_logger_timeout_s));
 	g_log->information("watchdog.analyzer_tid_collision_check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
 	g_log->information("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
@@ -221,7 +242,11 @@ void dragent_configuration::print_configuration()
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
+	g_log->information("java detected: " + bool_as_text(java_present()));
+	g_log->information("java_binary: " + m_java_binary);
+	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
+	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 
 	if(m_aws_metadata.m_valid)
 	{
@@ -327,4 +352,51 @@ string dragent_configuration::get_distribution()
 
 	ASSERT(false);
 	return s;
+}
+
+void dragent_configuration::write_statsite_configuration()
+{
+	static const char STATSITE_INI_TEMPLATE[] =
+			"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
+					"[statsite]\n"
+					"bind_address = 127.0.0.1\n"
+					"port = %u\n"
+					"udp_port = %u\n"
+					"log_level = %s\n"
+					"flush_interval = %u\n"
+					"parse_stdin = 1\n";
+
+	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	auto udp_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
+	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
+
+	// convert our loglevel to statsite one
+	// our levels: debug, info, warning, error
+	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
+	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
+	static const unordered_map<string, string> conversion_map{ { "debug", "DEBUG" }, { "info", "INFO" },
+															   {"warning", "WARN"}, {"error", "ERROR"}};
+	if (conversion_map.find(loglevel) != conversion_map.end())
+	{
+		loglevel = conversion_map.at(loglevel);
+	}
+	else
+	{
+		loglevel = "INFO";
+	}
+
+	char formatted_config[sizeof(STATSITE_INI_TEMPLATE)+100];
+	snprintf(formatted_config, sizeof(formatted_config), STATSITE_INI_TEMPLATE, tcp_port, udp_port, loglevel.c_str(), flush_interval);
+
+	string filename("/opt/draios/etc/statsite.ini");
+	if(!m_agent_installed)
+	{
+		filename = "statsite.ini";
+	}
+	std::ofstream ostr(filename);
+	if(ostr.good())
+	{
+		ostr << formatted_config;
+	}
+	ostr.close();
 }

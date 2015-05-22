@@ -5,7 +5,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
+#include <thread>
 
 static int g_signal_received = 0;
 
@@ -44,175 +45,130 @@ static void delete_pid_file(const string& pidfile)
 	}
 }
 
-void run_sdjagent(shared_ptr<pipe_manager> jmx_pipes)
+void monitored_process::exec()
 {
 	prctl(PR_SET_PDEATHSIG, SIGKILL);
-	jmx_pipes->attach_child_stdio();
-	File sdjagent_jar("/opt/draios/share/sdjagent.jar");
-	if(sdjagent_jar.exists())
-	{
-		execl("/usr/bin/java", "java", "-Xmx256M", "-Djava.library.path=/opt/draios/lib", "-jar", "/opt/draios/share/sdjagent.jar", (char *) NULL);
-	}
-	else
-	{
-		execl("/usr/bin/java", "java", "-Xmx256M", "-Djava.library.path=../sdjagent", "-jar",
-				"../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar", (char *) NULL);
-	}
-	std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
-	exit(EXIT_FAILURE);
+	// TODO: may be useful rename process?
+	m_exec();
 }
 
-void run_monitor(const string& pidfile, shared_ptr<pipe_manager> jmx_pipes)
+monitor::monitor(string pidfile):
+	m_pidfile(move(pidfile))
+{
+	create_pid_file(m_pidfile);
+}
+
+int monitor::run()
 {
 	signal(SIGINT, g_monitor_signal_callback);
 	signal(SIGQUIT, g_monitor_signal_callback);
 	signal(SIGTERM, g_monitor_signal_callback);
 	signal(SIGUSR1, SIG_IGN);
 
-	//
-	// Start the monitor process
-	// 
-	pid_t child_pid = fork();
-	if(child_pid < 0)
+	for(auto& process : m_processes)
 	{
-		exit(EXIT_FAILURE);
-	}
-
-	if(child_pid == 0)
-	{
-		//
-		// Child. Continue execution
-		//
-		return;
-	}
-
-	// Start also sdjagent
-	pid_t sdjagent_child_pid = 0;
-	if(jmx_pipes)
-	{
-		sdjagent_child_pid = fork();
-		if(sdjagent_child_pid < 0)
+		auto child_pid = fork();
+		if(child_pid < 0)
 		{
 			exit(EXIT_FAILURE);
 		}
-
-		if(sdjagent_child_pid == 0)
+		else if(child_pid == 0)
 		{
-			run_sdjagent(jmx_pipes);
+			process.exec();
+		}
+		else
+		{
+			process.set_pid(child_pid);
 		}
 	}
-
-	//
-	// Father. It will be the monitor process
-	//
-	create_pid_file(pidfile);
 
 	while(g_signal_received == 0)
 	{
 		int status = 0;
-		pid_t waited_pid = waitpid(child_pid, &status, WNOHANG);
-
-		if(waited_pid < 0)
+		for(auto& process : m_processes)
 		{
-			delete_pid_file(pidfile);
-			exit(EXIT_FAILURE);
-		}
-
-		if(waited_pid == 0)
-		{
-			//
-			// dragent Child still alive
-			//
-			if(jmx_pipes)
+			if(!process.is_enabled())
 			{
-				// check also sdjagent
-				waited_pid = waitpid(sdjagent_child_pid, &status, WNOHANG);
+				continue;
+			}
 
-				if(waited_pid < 0)
+			auto waited_pid = waitpid(process.pid(), &status, WNOHANG);
+			if(waited_pid < 0)
+			{
+				delete_pid_file(m_pidfile);
+				exit(EXIT_FAILURE);
+			}
+			else if(waited_pid > 0)
+			{
+				if(process.is_main() && WIFEXITED(status) && WEXITSTATUS(status) == 0)
 				{
-					delete_pid_file(pidfile);
+					//
+					// Process terminated cleanly
+					//
+					delete_pid_file(m_pidfile);
+					exit(EXIT_SUCCESS);
+				}
+
+				if(!process.is_main())
+				{
+					// Notify main process to send log report
+					for(const auto& process : m_processes)
+					{
+						if(process.is_main())
+						{
+							kill(process.pid(), SIGUSR2);
+							break;
+						}
+					}
+
+					if(WIFEXITED(status) && WEXITSTATUS(status) == 17)
+					{
+						// errorcode=17 tells monitor to not retry
+						// when a process fails (does not regard
+						// our dragent)
+						process.disable();
+						continue;
+					}
+				}
+
+				// crashed, restart it
+				this_thread::sleep_for(chrono::seconds(1));
+
+				auto child_pid = fork();
+				if(child_pid < 0)
+				{
 					exit(EXIT_FAILURE);
 				}
-
-				if(waited_pid == 0)
+				else if(child_pid == 0)
 				{
-					sleep(1);
-					continue;
+					process.exec();
 				}
-
-				sdjagent_child_pid = fork();
-				if(sdjagent_child_pid < 0)
+				else
 				{
-					exit(EXIT_FAILURE);
-				}
-
-				if(sdjagent_child_pid == 0)
-				{
-					run_sdjagent(jmx_pipes);
+					process.set_pid(child_pid);
 				}
 			}
-			sleep(1);
-			continue;
 		}
-
-		child_pid = 0;
-
-		if(WIFEXITED(status) && WEXITSTATUS(status) == 0)
-		{
-			//
-			// Process terminated cleanly
-			//
-			delete_pid_file(pidfile);
-			exit(EXIT_SUCCESS);
-		}
-
-		//
-		// Process terminated abnormally, restart it
-		//
-		sleep(1);
-
-		child_pid = fork();
-		if(child_pid < 0)
-		{
-			delete_pid_file(pidfile);
-			exit(EXIT_FAILURE);
-		}
-
-		if(child_pid == 0)
-		{
-			//
-			// Child. Continue execution
-			//
-			return;
-		}
+		this_thread::sleep_for(chrono::seconds(1));
 	}
 
-	if(child_pid)
+	for(const auto& process : m_processes)
 	{
 		//
 		// Signal received, forward it to the child and
 		// wait for it to terminate
 		//
-		if(kill(child_pid, g_signal_received) != 0)
+		if(kill(process.pid(), g_signal_received) != 0)
 		{
-			delete_pid_file(pidfile);
+			delete_pid_file(m_pidfile);
 			exit(EXIT_FAILURE);
 		}
-
-		waitpid(child_pid, NULL, 0);
-	}
-
-	if(sdjagent_child_pid)
-	{
-		if(kill(sdjagent_child_pid, g_signal_received) != 0)
+		if(process.is_main())
 		{
-			delete_pid_file(pidfile);
-			exit(EXIT_FAILURE);
+			waitpid(process.pid(), NULL, 0);
 		}
-
-		waitpid(sdjagent_child_pid, NULL, 0);
 	}
 
-	delete_pid_file(pidfile);
-	exit(EXIT_SUCCESS);
+	delete_pid_file(m_pidfile);
+	return(EXIT_SUCCESS);
 }

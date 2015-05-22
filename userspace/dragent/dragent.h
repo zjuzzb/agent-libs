@@ -15,7 +15,7 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
-#include "sdjagent_logger.h"
+#include "subprocesses_logger.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
@@ -35,6 +35,7 @@ protected:
 	int main(const std::vector<std::string>& args);
 
 private:
+	int sdagent_main();
 	void watchdog_check(uint64_t uptime_s);
 	void initialize_logging();
 	void check_for_clean_shutdown();
@@ -46,7 +47,9 @@ private:
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
 	shared_ptr<pipe_manager> m_jmx_pipes;
-	shared_ptr<sdjagent_logger> m_jmx_controller;
+	shared_ptr<pipe_manager> m_statsite_pipes;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
+	log_reporter m_log_reporter;
+	subprocesses_logger m_subprocesses_logger;
 };

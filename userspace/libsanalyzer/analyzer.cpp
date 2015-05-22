@@ -30,6 +30,8 @@ using namespace google::protobuf::io;
 #ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
+#include "statsite_proxy.h"
+#include "jmx_proxy.h"
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
@@ -87,6 +89,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_is_sampling = false;
 	m_driver_stopped_dropping = false;
 	m_sampling_ratio = 1;
+	m_new_sampling_ratio = m_sampling_ratio;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
@@ -1870,19 +1873,17 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 			if(m_sampling_ratio < 128)
 			{
-				uint32_t new_sampling_ratio;
-
 				if(!m_is_sampling)
 				{
-					new_sampling_ratio = 1;
+					m_new_sampling_ratio = 1;
 					m_is_sampling = true;
 				}
 				else
 				{
-					new_sampling_ratio = m_sampling_ratio * 2;
+					m_new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				start_dropping_mode(new_sampling_ratio);
+				start_dropping_mode(m_new_sampling_ratio);
 			}
 			else
 			{
@@ -1933,17 +1934,18 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 				m_last_system_cpuload = 0;
 
 				m_seconds_below_thresholds = 0;
-				uint32_t new_sampling_ratio = m_sampling_ratio / 2;
+				m_new_sampling_ratio = m_sampling_ratio / 2;
 
-				if(new_sampling_ratio >= 1)
+				if(m_new_sampling_ratio >= 1)
 				{
 					if(m_is_sampling)
 					{
-						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_sampling_ratio / 2);
-						start_dropping_mode(m_sampling_ratio / 2);
+						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_new_sampling_ratio);
+						start_dropping_mode(m_new_sampling_ratio);
 					}
 					else
 					{
+						ASSERT(m_new_sampling_ratio == 1);
 						stop_dropping_mode();
 					}
 				}
@@ -2445,6 +2447,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_containers();
 
+			emit_statsd();
 			//
 			// Transactions
 			//
@@ -2828,8 +2831,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Too much time since last drop event, forcing sampleratio=1", sinsp_logger::SEV_WARNING);
-		m_sampling_ratio = 1;
+		g_logger.log("Did not receive drop event to confirm sampling_ratio, forcing update", sinsp_logger::SEV_WARNING);
+		set_sampling_ratio(m_new_sampling_ratio);
+		m_last_dropmode_switch_time = ts;
 	}
 
 	//
@@ -3306,6 +3310,35 @@ void sinsp_analyzer::emit_containers()
 	m_containers.clear();
 }
 
+void sinsp_analyzer::emit_statsd()
+{
+	static const auto STATSD_METRIC_LIMIT = 300;
+	if (m_statsite_proxy)
+	{
+		auto statsd_metrics = m_statsite_proxy->read_metrics();
+		while(!statsd_metrics.empty() && statsd_metrics.at(0).timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
+		{
+			statsd_metrics = m_statsite_proxy->read_metrics();
+		}
+		int j = 0;
+		for(const auto& metric : statsd_metrics)
+		{
+			auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
+			metric.to_protobuf(statsd_proto);
+			++j;
+			if(j >= STATSD_METRIC_LIMIT)
+			{
+				g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
+				break;
+			}
+		}
+		if (j > 0)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
+		}
+	}
+}
+
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
 
 int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report)
@@ -3562,6 +3595,11 @@ void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 bool sinsp_analyzer::driver_stopped_dropping()
 {
 	return m_driver_stopped_dropping;
+}
+
+void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
+{
+	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
 
 #endif // HAS_ANALYZER

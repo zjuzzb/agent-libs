@@ -233,31 +233,142 @@ jmx:
               alias: activemq.queue.max.enqueue.time
             - name: MinEnqueueTime
               alias: activemq.queue.min.enqueue.time
+        - query: "org.apache.activemq:type=Broker,brokerName=*,destinationType=Topic,*"
+          attributes:
+            - name: AverageEnqueueTime
+              alias: activemq.topic.average.enqueue.time
+            - name: ConsumerCount
+              alias: activemq.topic.consumer.count
+            - name: DequeueCount
+              alias: activemq.topic.dequeue.count
+              type: counter
+            - name: DispatchCount
+              alias: activemq.topic.dispatch.count
+              type: counter
+            - name: EnqueueCount
+              alias: activemq.topic.enqueue.count
+              type: counter
+            - name: ExpiredCount
+              alias: activemq.topic.expired.count
+              type: counter
+            - name: InFlightCount
+              alias: activemq.topic.inflight.count
+              type: counter
+            - name: MemoryPercentUsage
+              alias: activemq.topic.memory.percentage.usage
+              unit: "%100"
+            - name: ProducerCount
+              alias: activemq.topic.producer.count
+            - name: QueueSize
+              alias: activemq.topic.size
+            - name: MaxEnqueueTime
+              alias: activemq.topic.max.enqueue.time
+            - name: MinEnqueueTime
+              alias: activemq.topic.min.enqueue.time
     zookeeper:
       pattern: "zookeeper"
       beans:
-        - query: "org.apache.ZooKeeperService:name1=InMemoryDataTree,*"
+        - query: "org.apache.ZooKeeperService:name0=StandaloneServer*,*"
           attributes:
-            - NodeCount
-            - WatchCount
+            - name: AvgRequestLatency
+              alias: zookeeper.standalone.avg.request.latency
+            - name: MaxRequestLatency
+              alias: zookeeper.standalone.max.request.latency
+            - name: NumAliveConnections
+              alias: zookeeper.standalone.current.alive.connections
+            - name: NodeCount
+              alias: zookeeper.standalone.node.count
+        - query: "org.apache.ZooKeeperService:name0=ReplicatedServer*,*"
+          attributes:
+            - name: QuorumSize
+              alias: zookeeper.cluster.quorum.size
+            - name: AvgRequestLatency
+              alias: zookeeper.cluster.avg.request.latency
+            - name: MaxRequestLatency
+              alias: zookeeper.cluster.max.request.latency
+            - name: MinRequestLatency
+              alias: zookeeper.cluster.min.request.latency
+            - name: NodeCount
+              alias: zookeeper.cluster.node.count
+            - name: NumAliveConnections
+              alias: zookeper.cluster.current.alive.connections
     kafka:
       pattern: "kafka"
       beans:
-        - query: '"kafka.server":type="BrokerTopicMetrics",*'
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="DelayedFetchRequestMetrics",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_out
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="DelayedProducerRequestMetrics",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_in
+        - query: "kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec"
           attributes:
-            - Count
-        - query: '"kafka.server":type="FetchRequestPurgatory",*'
+            - name: MeanRate
+              alias: kafka.messages_in
+        - query: "kafka.server:type=BrokerTopicMetrics,name=BytesRejectedPerSec"
           attributes:
-            - Value
-        - query: '"kafka.server":type="ProducerRequestPurgatory",*'
+            - name: MeanRate
+              alias: kafka.net.bytes_rejected
+        - query: "kafka.server:type=BrokerTopicMetrics,name=FailedFetchRequestsPerSec"
           attributes:
-            - Value
+            - name: MeanRate
+              alias: kafka.request.fetch.failed
+        - query: "kafka.server:type=BrokerTopicMetrics,name=FailedProduceRequestsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.request.produce.failed
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Produce"
+          attributes:
+            - name: Mean
+              alias: kafka.request.produce.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.produce.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Fetch"
+          attributes:
+            - name: Mean
+              alias: kafka.request.fetch.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.fetch.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=UpdateMetadata"
+          attributes:
+            - name: Mean
+              alias: kafka.request.update_metadata.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.update_metadata.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Metadata"
+          attributes:
+            - name: Mean
+              alias: kafka.request.metadata.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.metadata.time.99percentile
+        - query: "kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Offsets"
+          attributes:
+            - name: Mean
+              alias: kafka.request.offsets.time.avg
+            - name: 99thPercentile
+              alias: kafka.request.offsets.time.99percentile
+        - query: "kafka.server:type=KafkaRequestHandlerPool,name=RequestHandlerAvgIdlePercent"
+          attributes:
+            - name: MeanRate
+              alias: kafka.request.handler.avg.idle.pct
+        - query: "kafka.server:type=ReplicaManager,name=IsrShrinksPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.isr_shrinks
+        - query: "kafka.server:type=ReplicaManager,name=IsrExpandsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.isr_expands
+        - query: "kafka.controller:type=ControllerStats,name=LeaderElectionRateAndTimeMs"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.leader_elections
+        - query: "kafka.controller:type=ControllerStats,name=UncleanLeaderElectionsPerSec"
+          attributes:
+            - name: MeanRate
+              alias: kafka.replication.unclean_leader_elections
     hbase:
       pattern: "hbase"
       beans:

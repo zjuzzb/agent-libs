@@ -1,12 +1,12 @@
 #pragma once
 
 #include <analyzer_int.h>
+#include "analyzer_utils.h"
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
-#ifndef _WIN32
 #include "jmx_proxy.h"
-#endif
+#include <atomic>
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -116,6 +116,7 @@ public:
 //
 // The main analyzer class
 //
+class statsite_proxy;
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -205,16 +206,18 @@ public:
 	}
 	
 #ifndef _WIN32
-	void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
+	inline void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
 	{
-		m_jmx_proxy = make_shared<jmx_proxy>(iofds);
+		m_jmx_proxy = make_unique<jmx_proxy>(iofds);
 		m_jmx_proxy->m_print_json = print_json;
 	}
 
-	void set_jmx_sampling(unsigned int value)
+	inline void set_jmx_sampling(unsigned int value)
 	{
 		m_jmx_sampling = value;
 	}
+
+	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
 #endif
 
 	void set_protocols_enabled(bool value)
@@ -225,6 +228,21 @@ public:
 	void set_remotefs_enabled(bool value)
 	{
 		m_remotefs_enabled = value;
+	}
+
+	void set_sampling_ratio(uint64_t value)
+	{
+		m_sampling_ratio = value;
+		auto newsl = ((uint64_t) ONE_SECOND_IN_NS) / m_sampling_ratio;
+		if(newsl != m_configuration->get_analyzer_sample_len_ns())
+		{
+			m_configuration->set_analyzer_sample_len_ns(newsl);
+		}
+	}
+
+	void set_statsd_capture_localhost(bool value)
+	{
+		m_statsd_capture_localhost.store(value, memory_order_relaxed);
 	}
 
 VISIBILITY_PRIVATE
@@ -243,7 +261,8 @@ VISIBILITY_PRIVATE
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
-
+	void emit_statsd();
+	
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
 			1*60; // 1 minutes
@@ -374,6 +393,7 @@ VISIBILITY_PRIVATE
 	bool m_is_sampling;
 	bool m_driver_stopped_dropping;
 	uint32_t m_sampling_ratio;
+	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
@@ -382,11 +402,13 @@ VISIBILITY_PRIVATE
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
 
-	// JMX proxy
 #ifndef _WIN32
-	shared_ptr<jmx_proxy> m_jmx_proxy;
+	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
+	unique_ptr<statsite_proxy> m_statsite_proxy;
+
+	atomic<bool> m_statsd_capture_localhost;
 #endif
 
 	//

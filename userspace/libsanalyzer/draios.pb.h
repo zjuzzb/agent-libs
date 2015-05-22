@@ -58,6 +58,9 @@ class mongodb_info;
 class jmx_attribute;
 class jmx_bean;
 class java_info;
+class statsd_tag;
+class statsd_metric;
+class statsd_info;
 class proto_info;
 class host;
 class process;
@@ -214,6 +217,27 @@ inline bool jmx_metric_type_Parse(
     const ::std::string& name, jmx_metric_type* value) {
   return ::google::protobuf::internal::ParseNamedEnum<jmx_metric_type>(
     jmx_metric_type_descriptor(), name, value);
+}
+enum statsd_metric_type {
+  STATSD_COUNT = 1,
+  STATSD_HISTOGRAM = 2,
+  STATSD_GAUGE = 3,
+  STATSD_SET = 4
+};
+bool statsd_metric_type_IsValid(int value);
+const statsd_metric_type statsd_metric_type_MIN = STATSD_COUNT;
+const statsd_metric_type statsd_metric_type_MAX = STATSD_SET;
+const int statsd_metric_type_ARRAYSIZE = statsd_metric_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* statsd_metric_type_descriptor();
+inline const ::std::string& statsd_metric_type_Name(statsd_metric_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    statsd_metric_type_descriptor(), value);
+}
+inline bool statsd_metric_type_Parse(
+    const ::std::string& name, statsd_metric_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<statsd_metric_type>(
+    statsd_metric_type_descriptor(), name, value);
 }
 enum networkrole {
   NONE = 0,
@@ -3383,6 +3407,383 @@ class java_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class statsd_tag : public ::google::protobuf::Message {
+ public:
+  statsd_tag();
+  virtual ~statsd_tag();
+
+  statsd_tag(const statsd_tag& from);
+
+  inline statsd_tag& operator=(const statsd_tag& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const statsd_tag& default_instance();
+
+  void Swap(statsd_tag* other);
+
+  // implements Message ----------------------------------------------
+
+  statsd_tag* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const statsd_tag& from);
+  void MergeFrom(const statsd_tag& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // optional string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.statsd_tag)
+ private:
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* key_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static statsd_tag* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class statsd_metric : public ::google::protobuf::Message {
+ public:
+  statsd_metric();
+  virtual ~statsd_metric();
+
+  statsd_metric(const statsd_metric& from);
+
+  inline statsd_metric& operator=(const statsd_metric& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const statsd_metric& default_instance();
+
+  void Swap(statsd_metric* other);
+
+  // implements Message ----------------------------------------------
+
+  statsd_metric* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const statsd_metric& from);
+  void MergeFrom(const statsd_metric& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // repeated .draiosproto.statsd_tag tags = 2;
+  inline int tags_size() const;
+  inline void clear_tags();
+  static const int kTagsFieldNumber = 2;
+  inline const ::draiosproto::statsd_tag& tags(int index) const;
+  inline ::draiosproto::statsd_tag* mutable_tags(int index);
+  inline ::draiosproto::statsd_tag* add_tags();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_tag >&
+      tags() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_tag >*
+      mutable_tags();
+
+  // optional .draiosproto.statsd_metric_type type = 3;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 3;
+  inline ::draiosproto::statsd_metric_type type() const;
+  inline void set_type(::draiosproto::statsd_metric_type value);
+
+  // optional double value = 4;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 4;
+  inline double value() const;
+  inline void set_value(double value);
+
+  // optional double sum = 5;
+  inline bool has_sum() const;
+  inline void clear_sum();
+  static const int kSumFieldNumber = 5;
+  inline double sum() const;
+  inline void set_sum(double value);
+
+  // optional double min = 6;
+  inline bool has_min() const;
+  inline void clear_min();
+  static const int kMinFieldNumber = 6;
+  inline double min() const;
+  inline void set_min(double value);
+
+  // optional double max = 7;
+  inline bool has_max() const;
+  inline void clear_max();
+  static const int kMaxFieldNumber = 7;
+  inline double max() const;
+  inline void set_max(double value);
+
+  // optional double count = 8;
+  inline bool has_count() const;
+  inline void clear_count();
+  static const int kCountFieldNumber = 8;
+  inline double count() const;
+  inline void set_count(double value);
+
+  // optional double median = 9;
+  inline bool has_median() const;
+  inline void clear_median();
+  static const int kMedianFieldNumber = 9;
+  inline double median() const;
+  inline void set_median(double value);
+
+  // optional double percentile_95 = 10;
+  inline bool has_percentile_95() const;
+  inline void clear_percentile_95();
+  static const int kPercentile95FieldNumber = 10;
+  inline double percentile_95() const;
+  inline void set_percentile_95(double value);
+
+  // optional double percentile_99 = 11;
+  inline bool has_percentile_99() const;
+  inline void clear_percentile_99();
+  static const int kPercentile99FieldNumber = 11;
+  inline double percentile_99() const;
+  inline void set_percentile_99(double value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.statsd_metric)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_value();
+  inline void clear_has_value();
+  inline void set_has_sum();
+  inline void clear_has_sum();
+  inline void set_has_min();
+  inline void clear_has_min();
+  inline void set_has_max();
+  inline void clear_has_max();
+  inline void set_has_count();
+  inline void clear_has_count();
+  inline void set_has_median();
+  inline void clear_has_median();
+  inline void set_has_percentile_95();
+  inline void clear_has_percentile_95();
+  inline void set_has_percentile_99();
+  inline void clear_has_percentile_99();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_tag > tags_;
+  double value_;
+  double sum_;
+  double min_;
+  double max_;
+  double count_;
+  double median_;
+  double percentile_95_;
+  double percentile_99_;
+  int type_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static statsd_metric* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class statsd_info : public ::google::protobuf::Message {
+ public:
+  statsd_info();
+  virtual ~statsd_info();
+
+  statsd_info(const statsd_info& from);
+
+  inline statsd_info& operator=(const statsd_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const statsd_info& default_instance();
+
+  void Swap(statsd_info* other);
+
+  // implements Message ----------------------------------------------
+
+  statsd_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const statsd_info& from);
+  void MergeFrom(const statsd_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.statsd_metric statsd_metrics = 1;
+  inline int statsd_metrics_size() const;
+  inline void clear_statsd_metrics();
+  static const int kStatsdMetricsFieldNumber = 1;
+  inline const ::draiosproto::statsd_metric& statsd_metrics(int index) const;
+  inline ::draiosproto::statsd_metric* mutable_statsd_metrics(int index);
+  inline ::draiosproto::statsd_metric* add_statsd_metrics();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_metric >&
+      statsd_metrics() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_metric >*
+      mutable_statsd_metrics();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.statsd_info)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_metric > statsd_metrics_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static statsd_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class proto_info : public ::google::protobuf::Message {
  public:
   proto_info();
@@ -3482,6 +3883,15 @@ class proto_info : public ::google::protobuf::Message {
   inline ::draiosproto::java_info* release_java();
   inline void set_allocated_java(::draiosproto::java_info* java);
 
+  // optional .draiosproto.statsd_info statsd = 6;
+  inline bool has_statsd() const;
+  inline void clear_statsd();
+  static const int kStatsdFieldNumber = 6;
+  inline const ::draiosproto::statsd_info& statsd() const;
+  inline ::draiosproto::statsd_info* mutable_statsd();
+  inline ::draiosproto::statsd_info* release_statsd();
+  inline void set_allocated_statsd(::draiosproto::statsd_info* statsd);
+
   // @@protoc_insertion_point(class_scope:draiosproto.proto_info)
  private:
   inline void set_has_http();
@@ -3494,6 +3904,8 @@ class proto_info : public ::google::protobuf::Message {
   inline void clear_has_mongodb();
   inline void set_has_java();
   inline void clear_has_java();
+  inline void set_has_statsd();
+  inline void clear_has_statsd();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3502,9 +3914,10 @@ class proto_info : public ::google::protobuf::Message {
   ::draiosproto::sql_info* postgres_;
   ::draiosproto::mongodb_info* mongodb_;
   ::draiosproto::java_info* java_;
+  ::draiosproto::statsd_info* statsd_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10540,6 +10953,477 @@ java_info::mutable_beans() {
 
 // -------------------------------------------------------------------
 
+// statsd_tag
+
+// required string key = 1;
+inline bool statsd_tag::has_key() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void statsd_tag::set_has_key() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void statsd_tag::clear_has_key() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void statsd_tag::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& statsd_tag::key() const {
+  return *key_;
+}
+inline void statsd_tag::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void statsd_tag::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void statsd_tag::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* statsd_tag::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* statsd_tag::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void statsd_tag::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string value = 2;
+inline bool statsd_tag::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void statsd_tag::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void statsd_tag::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void statsd_tag::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& statsd_tag::value() const {
+  return *value_;
+}
+inline void statsd_tag::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void statsd_tag::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void statsd_tag::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* statsd_tag::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* statsd_tag::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void statsd_tag::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// statsd_metric
+
+// optional string name = 1;
+inline bool statsd_metric::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void statsd_metric::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void statsd_metric::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void statsd_metric::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& statsd_metric::name() const {
+  return *name_;
+}
+inline void statsd_metric::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void statsd_metric::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void statsd_metric::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* statsd_metric::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* statsd_metric::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void statsd_metric::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.statsd_tag tags = 2;
+inline int statsd_metric::tags_size() const {
+  return tags_.size();
+}
+inline void statsd_metric::clear_tags() {
+  tags_.Clear();
+}
+inline const ::draiosproto::statsd_tag& statsd_metric::tags(int index) const {
+  return tags_.Get(index);
+}
+inline ::draiosproto::statsd_tag* statsd_metric::mutable_tags(int index) {
+  return tags_.Mutable(index);
+}
+inline ::draiosproto::statsd_tag* statsd_metric::add_tags() {
+  return tags_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_tag >&
+statsd_metric::tags() const {
+  return tags_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_tag >*
+statsd_metric::mutable_tags() {
+  return &tags_;
+}
+
+// optional .draiosproto.statsd_metric_type type = 3;
+inline bool statsd_metric::has_type() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void statsd_metric::set_has_type() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void statsd_metric::clear_has_type() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void statsd_metric::clear_type() {
+  type_ = 1;
+  clear_has_type();
+}
+inline ::draiosproto::statsd_metric_type statsd_metric::type() const {
+  return static_cast< ::draiosproto::statsd_metric_type >(type_);
+}
+inline void statsd_metric::set_type(::draiosproto::statsd_metric_type value) {
+  assert(::draiosproto::statsd_metric_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional double value = 4;
+inline bool statsd_metric::has_value() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void statsd_metric::set_has_value() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void statsd_metric::clear_has_value() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void statsd_metric::clear_value() {
+  value_ = 0;
+  clear_has_value();
+}
+inline double statsd_metric::value() const {
+  return value_;
+}
+inline void statsd_metric::set_value(double value) {
+  set_has_value();
+  value_ = value;
+}
+
+// optional double sum = 5;
+inline bool statsd_metric::has_sum() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void statsd_metric::set_has_sum() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void statsd_metric::clear_has_sum() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void statsd_metric::clear_sum() {
+  sum_ = 0;
+  clear_has_sum();
+}
+inline double statsd_metric::sum() const {
+  return sum_;
+}
+inline void statsd_metric::set_sum(double value) {
+  set_has_sum();
+  sum_ = value;
+}
+
+// optional double min = 6;
+inline bool statsd_metric::has_min() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void statsd_metric::set_has_min() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void statsd_metric::clear_has_min() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void statsd_metric::clear_min() {
+  min_ = 0;
+  clear_has_min();
+}
+inline double statsd_metric::min() const {
+  return min_;
+}
+inline void statsd_metric::set_min(double value) {
+  set_has_min();
+  min_ = value;
+}
+
+// optional double max = 7;
+inline bool statsd_metric::has_max() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void statsd_metric::set_has_max() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void statsd_metric::clear_has_max() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void statsd_metric::clear_max() {
+  max_ = 0;
+  clear_has_max();
+}
+inline double statsd_metric::max() const {
+  return max_;
+}
+inline void statsd_metric::set_max(double value) {
+  set_has_max();
+  max_ = value;
+}
+
+// optional double count = 8;
+inline bool statsd_metric::has_count() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void statsd_metric::set_has_count() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void statsd_metric::clear_has_count() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void statsd_metric::clear_count() {
+  count_ = 0;
+  clear_has_count();
+}
+inline double statsd_metric::count() const {
+  return count_;
+}
+inline void statsd_metric::set_count(double value) {
+  set_has_count();
+  count_ = value;
+}
+
+// optional double median = 9;
+inline bool statsd_metric::has_median() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void statsd_metric::set_has_median() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void statsd_metric::clear_has_median() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void statsd_metric::clear_median() {
+  median_ = 0;
+  clear_has_median();
+}
+inline double statsd_metric::median() const {
+  return median_;
+}
+inline void statsd_metric::set_median(double value) {
+  set_has_median();
+  median_ = value;
+}
+
+// optional double percentile_95 = 10;
+inline bool statsd_metric::has_percentile_95() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void statsd_metric::set_has_percentile_95() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void statsd_metric::clear_has_percentile_95() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void statsd_metric::clear_percentile_95() {
+  percentile_95_ = 0;
+  clear_has_percentile_95();
+}
+inline double statsd_metric::percentile_95() const {
+  return percentile_95_;
+}
+inline void statsd_metric::set_percentile_95(double value) {
+  set_has_percentile_95();
+  percentile_95_ = value;
+}
+
+// optional double percentile_99 = 11;
+inline bool statsd_metric::has_percentile_99() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void statsd_metric::set_has_percentile_99() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void statsd_metric::clear_has_percentile_99() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void statsd_metric::clear_percentile_99() {
+  percentile_99_ = 0;
+  clear_has_percentile_99();
+}
+inline double statsd_metric::percentile_99() const {
+  return percentile_99_;
+}
+inline void statsd_metric::set_percentile_99(double value) {
+  set_has_percentile_99();
+  percentile_99_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// statsd_info
+
+// repeated .draiosproto.statsd_metric statsd_metrics = 1;
+inline int statsd_info::statsd_metrics_size() const {
+  return statsd_metrics_.size();
+}
+inline void statsd_info::clear_statsd_metrics() {
+  statsd_metrics_.Clear();
+}
+inline const ::draiosproto::statsd_metric& statsd_info::statsd_metrics(int index) const {
+  return statsd_metrics_.Get(index);
+}
+inline ::draiosproto::statsd_metric* statsd_info::mutable_statsd_metrics(int index) {
+  return statsd_metrics_.Mutable(index);
+}
+inline ::draiosproto::statsd_metric* statsd_info::add_statsd_metrics() {
+  return statsd_metrics_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_metric >&
+statsd_info::statsd_metrics() const {
+  return statsd_metrics_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::statsd_metric >*
+statsd_info::mutable_statsd_metrics() {
+  return &statsd_metrics_;
+}
+
+// -------------------------------------------------------------------
+
 // proto_info
 
 // optional .draiosproto.http_info http = 1;
@@ -10729,6 +11613,44 @@ inline void proto_info::set_allocated_java(::draiosproto::java_info* java) {
     set_has_java();
   } else {
     clear_has_java();
+  }
+}
+
+// optional .draiosproto.statsd_info statsd = 6;
+inline bool proto_info::has_statsd() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void proto_info::set_has_statsd() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void proto_info::clear_has_statsd() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void proto_info::clear_statsd() {
+  if (statsd_ != NULL) statsd_->::draiosproto::statsd_info::Clear();
+  clear_has_statsd();
+}
+inline const ::draiosproto::statsd_info& proto_info::statsd() const {
+  return statsd_ != NULL ? *statsd_ : *default_instance_->statsd_;
+}
+inline ::draiosproto::statsd_info* proto_info::mutable_statsd() {
+  set_has_statsd();
+  if (statsd_ == NULL) statsd_ = new ::draiosproto::statsd_info;
+  return statsd_;
+}
+inline ::draiosproto::statsd_info* proto_info::release_statsd() {
+  clear_has_statsd();
+  ::draiosproto::statsd_info* temp = statsd_;
+  statsd_ = NULL;
+  return temp;
+}
+inline void proto_info::set_allocated_statsd(::draiosproto::statsd_info* statsd) {
+  delete statsd_;
+  statsd_ = statsd;
+  if (statsd) {
+    set_has_statsd();
+  } else {
+    clear_has_statsd();
   }
 }
 
@@ -16784,6 +17706,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::scale>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_type>() {
   return ::draiosproto::jmx_metric_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::statsd_metric_type>() {
+  return ::draiosproto::statsd_metric_type_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {

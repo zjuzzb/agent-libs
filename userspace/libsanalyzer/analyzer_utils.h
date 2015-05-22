@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 class sinsp_evttables;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,6 +133,12 @@ inline string truncate_str(const string& s, unsigned int max_size = 256)
 		truncated += "...";
 		return truncated;
 	}
+}
+
+template<typename T, typename... Ts>
+unique_ptr<T> make_unique(Ts&&... params)
+{
+	return unique_ptr<T>(new T(forward<Ts>(params)...));
 }
 
 #ifdef SIMULATE_DROP_MODE

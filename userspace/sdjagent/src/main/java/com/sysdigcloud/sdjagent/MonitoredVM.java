@@ -257,7 +257,7 @@ public class MonitoredVM {
         return address;
     }
 
-    private void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
+    static private void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
         // Normally in ${java.home}/jre/lib/management-agent.jar but might
         // be in ${java.home}/lib in build environments.
         String javaHome = vm.getSystemProperties().getProperty("java.home");
