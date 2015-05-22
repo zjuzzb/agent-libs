@@ -112,3 +112,35 @@ TEST(statsd_metric, parser_edge_cases)
 	EXPECT_EQ("", metric.name());
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
 }
+
+TEST(statsite_proxy, parser)
+{
+	auto output_file = fopen("resources/statsite_output.txt", "r");
+	auto input_fd = fopen("/dev/null", "w");
+	ASSERT_TRUE(output_file != NULL);
+	statsite_proxy proxy(make_pair(input_fd, output_file));
+
+	auto ret = proxy.read_metrics();
+	EXPECT_EQ(10, ret.at("").size());
+	EXPECT_EQ(10, ret.at("3ce9120d8307").size());
+
+	set<string> reference_set;
+	for(unsigned j = 1; j < 11; ++j)
+	{
+		reference_set.insert(string("totam.sunt.consequatur.numquam.aperiam") + to_string(j));
+	}
+	for(const auto& item : ret)
+	{
+		set<string> found_set;
+		for(const auto& m : item.second)
+		{
+			found_set.insert(m.name());
+		}
+		for(const auto& ref : reference_set)
+		{
+			EXPECT_TRUE(found_set.find(ref) != found_set.end()) << ref << " not found for " << item.first;
+		}
+	}
+	fclose(output_file);
+	fclose(input_fd);
+}

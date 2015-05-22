@@ -81,22 +81,22 @@ bool statsd_metric::parse_line(const string& line)
 
 		if(name_and_container_id_split.size() > 1)
 		{
-			const auto& container_id = name_and_container_id_split.at(0);
-			if(m_container_id.empty())
-			{
-				m_container_id = container_id;
-			}
-			else if(m_container_id != container_id)
-			{
-				return false;
-			}
-
 			const auto& name = name_and_container_id_split.at(1);
 			if(m_name.empty())
 			{
 				m_name = name;
 			}
 			else if(m_name != name)
+			{
+				return false;
+			}
+
+			const auto& container_id = name_and_container_id_split.at(0);
+			if(m_container_id.empty())
+			{
+				m_container_id = container_id;
+			}
+			else if(m_container_id != container_id)
 			{
 				return false;
 			}
@@ -109,6 +109,11 @@ bool statsd_metric::parse_line(const string& line)
 				m_name = name;
 			}
 			else if(m_name != name)
+			{
+				return false;
+			}
+
+			if(!m_container_id.empty())
 			{
 				return false;
 			}
@@ -246,10 +251,13 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 	unordered_map<string, vector<statsd_metric>> ret;
 	uint64_t timestamp = 0;
 	char buffer[300];
+	unsigned metric_count = 0;
 
 	bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 	while (continue_read)
 	{
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "Received from statsite: %s", buffer);
+		//printf(buffer);
 		try {
 			bool parsed = m_metric.parse_line(buffer);
 			if(!parsed)
@@ -260,6 +268,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 				}
 
 				ret[m_metric.container_id()].push_back(move(m_metric));
+				++metric_count;
 				m_metric = statsd_metric();
 
 				parsed = m_metric.parse_line(buffer);
@@ -281,9 +290,10 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 	{
 		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
 		ret[m_metric.container_id()].push_back(move(m_metric));
+		++metric_count;
 		m_metric = statsd_metric();
 	}
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %d", ret.size());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
 	if(m_metric.timestamp() > 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
