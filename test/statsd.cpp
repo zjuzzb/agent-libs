@@ -72,17 +72,20 @@ TEST(statsd_metric, parser_histogram)
 	EXPECT_EQ("mytime", metric.name());
 	EXPECT_DOUBLE_EQ(6681.0, metric.sum());
 	EXPECT_DOUBLE_EQ(106.0, metric.median());
+	EXPECT_EQ("", metric.container_id());
 
 	metric = statsd_metric();
 	metric.parse_line("timers.mytime#we,ff.sum|6681.000000|1427796784\n");
 	EXPECT_EQ("mytime", metric.name());
 	EXPECT_DOUBLE_EQ(6681.0, metric.sum());
+	EXPECT_EQ("", metric.container_id());
 
 	metric = statsd_metric();
-	metric.parse_line("timers.mytime#we=ff.sum|6681.000000|1427796784\n");
+	metric.parse_line("timers.lksajdlkjsal$mytime#we=ff.sum|6681.000000|1427796784\n");
 	EXPECT_EQ("mytime", metric.name());
 	EXPECT_DOUBLE_EQ(6681.0, metric.sum());
 	EXPECT_EQ("ff", metric.tags().at("we"));
+	EXPECT_EQ("lksajdlkjsal", metric.container_id());
 }
 
 TEST(statsd_metric, parser_gauge)
@@ -92,6 +95,7 @@ TEST(statsd_metric, parser_gauge)
 	EXPECT_EQ(1427796784, metric.timestamp());
 	EXPECT_EQ("mygauge", metric.name());
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
+	EXPECT_EQ("", metric.container_id());
 }
 
 TEST(statsd_metric, parser_edge_cases)

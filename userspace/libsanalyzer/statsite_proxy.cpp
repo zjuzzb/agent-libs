@@ -317,12 +317,12 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 
 	// Add container prefix to other metrics if they are present
 	auto endline_pos = metric_data.find('\n');
-	while(endline_pos+1 < metric_data.size())
+	while(endline_pos != string::npos && endline_pos+1 < metric_data.size())
 	{
 		metric_data.insert(endline_pos+1, container_prefix);
 		endline_pos = metric_data.find('\n', endline_pos+1);
 	}
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
+	//g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
 	// send_metric does not need final \0
-	send_metric(metric_data.data(), metric_data.size()-1);
+	send_metric(metric_data.data(), metric_data.size());
 }
