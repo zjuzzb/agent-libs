@@ -6,6 +6,19 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 
+template<typename It>
+string sinsp_join(It begin, It end, char delim)
+{
+	std::stringstream ss;
+	ss << *begin;
+	++begin;
+	for(auto it = begin; it < end; ++it)
+	{
+		ss << delim << *it;
+	}
+	return ss.str();
+}
+
 /*
  * Parse a line and fill data structures
  * return false if line does not belong to this object
