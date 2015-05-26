@@ -299,18 +299,21 @@ jmx:
           attributes:
             - name: MeanRate
               alias: kafka.net.bytes_out
+              type: counter
         - query: "kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec"
           attributes:
             - name: MeanRate
               alias: kafka.net.bytes_in
+              type: counter
         - query: "kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec"
           attributes:
-            - name: MeanRate
+            - name: Count
               alias: kafka.messages_in
         - query: "kafka.server:type=BrokerTopicMetrics,name=BytesRejectedPerSec"
           attributes:
             - name: MeanRate
               alias: kafka.net.bytes_rejected
+              type: counter
         - query: "kafka.server:type=BrokerTopicMetrics,name=FailedFetchRequestsPerSec"
           attributes:
             - name: MeanRate
