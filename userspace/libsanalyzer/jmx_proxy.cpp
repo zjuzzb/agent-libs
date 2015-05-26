@@ -5,8 +5,6 @@
 
 #ifndef _WIN32
 #include <unistd.h>
-
-#endif
 #include "logger.h"
 #include "fcntl.h"
 
@@ -179,3 +177,4 @@ pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
 	}
 	return make_pair(response_id, processes);
 }
+#endif // _WIN32

@@ -4,6 +4,7 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <analyzer.h>
+#include "chisel.h"
 #include "settings.h"
 #include <iostream>
 #include <time.h>
@@ -380,6 +381,82 @@ static void usage(char *program_name)
 }
 
 //
+// Parse the command line following a chisel to consume the chisel command line.
+// We use the following strategy:
+//  - if the chisel has no arguments, we don't consume anything
+//  - if the chisel has at least one required argument, we consume the next command line token
+//  - if the chisel has only optional arguments, we consume the next token, unless
+//    - there is no next token
+//    - the next token starts with a '-'
+//    - the rest of the command line contains a valid filter
+//
+static void parse_chisel_args(sinsp_chisel* ch, sinsp* inspector, int optind, int argc, char **argv, int32_t* n_filterargs)
+{
+	uint32_t nargs = ch->get_n_args();
+	uint32_t nreqargs = ch->get_n_required_args();
+	string args;
+
+	if(nargs != 0)
+	{
+		if(optind > (int32_t)argc)
+		{
+			throw sinsp_exception("invalid number of arguments for chisel " + string(optarg) + ", " + to_string((long long int)nargs) + " expected.");
+		}
+		else if(optind < (int32_t)argc)
+		{
+			args = argv[optind];
+
+			if(nreqargs != 0)
+			{
+				ch->set_args(args);
+				(*n_filterargs)++;
+			}
+			else
+			{
+				if(args[0] != '-')
+				{
+					string testflt;
+
+					for(int32_t j = optind; j < argc; j++)
+					{
+						testflt += argv[j];
+						if(j < argc - 1)
+						{
+							testflt += " ";
+						}
+					}
+
+					if(nargs == 1 && ch->get_lua_script_info()->m_args[0].m_type == "filter")
+					{
+						ch->set_args(args);
+						(*n_filterargs)++;
+					}
+					else
+					{
+						try
+						{
+							sinsp_filter df(inspector, testflt);
+						}
+						catch(...)
+						{
+							ch->set_args(args);
+							(*n_filterargs)++;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			if(nreqargs != 0)
+			{
+				throw sinsp_exception("missing arguments for chisel " + string(optarg));
+			}
+		}
+	}
+}
+
+//
 // MAIN
 //
 int main(int argc, char **argv)
@@ -399,6 +476,7 @@ int main(int argc, char **argv)
 	string dumpfile;
 	uint32_t drop_ratio = 0;
 	uint64_t max_evts_in_file = 0;
+	int32_t n_filterargs = 0;
 
 	{
 		g_inspector = new sinsp();
@@ -410,7 +488,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:p:qr:s:vw:W:")) != -1)
+		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:np:qr:s:vw:W:")) != -1)
 		{
 			switch (op)
 			{
@@ -421,17 +499,12 @@ int main(int argc, char **argv)
 				absolute_times = true;
 				break;
 			case 'c':
-				cnt = atoi(optarg);
-				if(cnt <= 0)
-				{
-					fprintf(stderr, "invalid packet count %s\n", optarg);
-					delete g_inspector;
-#ifdef HAS_ANALYZER
-					delete analyzer;
-#endif
-					return EXIT_FAILURE;
-				}
-				break;
+			{
+				sinsp_chisel* ch = new sinsp_chisel(g_inspector, optarg);
+				parse_chisel_args(ch, g_inspector, optind, argc, argv, &n_filterargs);
+				analyzer->add_chisel(ch);
+			}
+			break;
 			case 'C':
 #ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_customer_id(optarg);
@@ -493,6 +566,18 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_machine_id(optarg);
 #endif
+				break;
+			case 'n':
+				cnt = atoi(optarg);
+				if(cnt <= 0)
+				{
+					fprintf(stderr, "invalid packet count %s\n", optarg);
+					delete g_inspector;
+#ifdef HAS_ANALYZER
+					delete analyzer;
+#endif
+					return EXIT_FAILURE;
+				}
 				break;
 			case 'p':
 				g_inspector->set_min_log_severity((sinsp_logger::severity)atoi(optarg));
@@ -599,6 +684,8 @@ printf("!!!! %s\n", filter.c_str());
 		//
 		try
 		{
+			analyzer->initialize_chisels();
+
 			if(infile)
 			{
 				g_inspector->open(infile);

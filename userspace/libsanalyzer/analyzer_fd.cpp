@@ -13,6 +13,8 @@
 #include "analyzer_thread.h"
 #include "connectinfo.h"
 #include "metrics.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 #include "delays.h"
 #include "scores.h"
@@ -1032,6 +1034,8 @@ w_conn_creation_done:
 				return false;
 			}
 		};
+
+#ifndef _WIN32
 		if(m_analyzer->m_statsite_proxy &&
 		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT &&
 				(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
@@ -1054,6 +1058,7 @@ w_conn_creation_done:
 							evt->get_thread_info(false)->m_container_id.c_str());*/
 			m_analyzer->m_statsite_proxy->send_metric(data, len);
 		}
+#endif // _WIN32
 
 		if(fdinfo->is_role_server())
 		{

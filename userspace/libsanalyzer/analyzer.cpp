@@ -35,6 +35,8 @@ using namespace google::protobuf::io;
 #include "analyzer.h"
 #include "connectinfo.h"
 #include "metrics.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 #include "delays.h"
 #include "scores.h"
@@ -44,6 +46,7 @@ using namespace google::protobuf::io;
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
+#include "chisel.h"
 
 #define DUMP_TO_DISK
 
@@ -98,6 +101,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
+	m_run_chisels = false;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -122,6 +126,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
+
+	//
+	// Chisels init
+	//
+	add_chisel_dirs();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -210,6 +219,13 @@ sinsp_analyzer::~sinsp_analyzer()
 		fclose(m_protobuf_fp);
 	}
 
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		delete *it;
+	}
+	m_chisels.clear();
+
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -280,6 +296,11 @@ void sinsp_analyzer::on_capture_start()
 	ASSERT(m_sched_analyzer2 != NULL);
 	m_sched_analyzer2->on_capture_start();
 	m_parser->on_capture_start();
+
+	//
+	// Call the chisels on_capture_start callback
+	//
+	chisels_on_capture_start();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -315,6 +336,63 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 	}
 
 	*m_configuration = configuration;
+}
+
+void sinsp_analyzer::add_chisel_dirs()
+{
+	//
+	// Add the default chisel directory statically configured by the build system
+	//
+	//m_inspector->add_chisel_dir(SYSDIG_INSTALLATION_DIR CHISELS_INSTALLATION_DIR, false);
+
+	//
+	// Add the directories configured in the SYSDIG_CHISEL_DIR environment variable
+	//
+	char* s_user_cdirs = getenv("SYSDIG_CHISEL_DIR");
+
+	if(s_user_cdirs != NULL)
+	{
+		vector<string> user_cdirs = sinsp_split(s_user_cdirs, ';');
+
+		for(uint32_t j = 0; j < user_cdirs.size(); j++)
+		{
+			m_inspector->add_chisel_dir(user_cdirs[j], true);
+		}
+	}
+}
+
+void sinsp_analyzer::initialize_chisels()
+{
+	for(uint32_t j = 0; j < m_chisels.size(); j++)
+	{
+		m_chisels[j]->on_init();
+	}
+}
+
+void sinsp_analyzer::chisels_on_capture_start()
+{
+	for(uint32_t j = 0; j < m_chisels.size(); j++)
+	{
+		m_chisels[j]->on_capture_start();
+}
+}
+
+void sinsp_analyzer::chisels_on_capture_end()
+{
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		(*it)->on_capture_end();
+	}
+}
+
+void sinsp_analyzer::chisels_do_timeout(sinsp_evt* ev)
+{
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		(*it)->do_timeout(ev);
+	}
 }
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
@@ -2416,8 +2494,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_host_metrics.m_res_memory_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(m_host_metrics.m_swap_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
@@ -2443,11 +2521,28 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
+			//
+			// Top files
+			//
 			emit_top_files();
 
+			//
+			// List of containers
+			//
 			emit_containers();
 
+			//
+			// Statsd metrics
+			//
+#ifndef _WIN32
 			emit_statsd();
+#endif
+
+			//
+			// Metrics coming from chisels
+			//
+			emit_chisel_metrics();
+
 			//
 			// Transactions
 			//
@@ -2790,6 +2885,20 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		{
 			return;
 		}
+
+		//
+		// if there are chisels to run, run them now, before going into the analyzer logic
+		//
+		if(m_run_chisels)
+		{
+			for(auto it = m_chisels.begin(); it != m_chisels.end(); ++it)
+			{
+				if((*it)->run(evt) == false)
+				{
+					continue;
+				}
+			}
+		}
 	}
 	else
 	{
@@ -2799,6 +2908,12 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			{
 				ts = m_next_flush_time_ns;
 				flush(evt, ts, true, flshflags);
+
+				if(m_run_chisels)
+				{
+					chisels_on_capture_end();
+				}
+
 				return;
 			}
 			else if(flshflags == DF_TIMEOUT)
@@ -3271,17 +3386,17 @@ void sinsp_analyzer::emit_containers()
 			mapping->set_container_port(it_ports->m_container_port);
 		}
 
-		container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
-		container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
+		container->mutable_resource_counters()->set_capacity_score((uint32_t)(it_analyzer->second.m_metrics.get_capacity_score() * 100));
+		container->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(it_analyzer->second.m_metrics.get_stolen_score() * 100));
 		container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
-		container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
-		container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
+		container->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)it_analyzer->second.m_metrics.m_res_memory_kb);
+		container->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)it_analyzer->second.m_metrics.m_swap_memory_kb);
 		container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 		container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 		it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
-		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+		container->mutable_resource_counters()->set_cpu_pct((uint32_t)(it_analyzer->second.m_metrics.m_cpuload * 100));
 
 		it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 		if(m_protocols_enabled)
@@ -3310,6 +3425,7 @@ void sinsp_analyzer::emit_containers()
 	m_containers.clear();
 }
 
+#ifndef _WIN32
 void sinsp_analyzer::emit_statsd()
 {
 	static const auto STATSD_METRIC_LIMIT = 300;
@@ -3336,6 +3452,35 @@ void sinsp_analyzer::emit_statsd()
 		{
 			g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
 		}
+	}
+}
+#endif
+
+void sinsp_analyzer::emit_chisel_metrics()
+{
+	uint32_t j = 0;
+
+	for(const auto& chisel : m_chisels)
+	{
+		chisel->do_end_of_sample();
+	}
+
+	for(const auto& metric : m_chisel_metrics)
+	{
+		auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
+		metric.to_protobuf(statsd_proto);
+		++j;
+
+		if(j >= CHISEL_METRIC_LIMIT)
+		{
+			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
+			break;
+		}
+	}
+
+	if(j > 0)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d chisel metrics", j);
 	}
 }
 
@@ -3597,9 +3742,11 @@ bool sinsp_analyzer::driver_stopped_dropping()
 	return m_driver_stopped_dropping;
 }
 
+#ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
+#endif // _WIN32
 
 #endif // HAS_ANALYZER

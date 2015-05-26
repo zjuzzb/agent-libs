@@ -12,6 +12,8 @@
 #include "analyzer.h"
 #include "analyzer_parsers.h"
 #include "metrics.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 #include "delays.h"
 #include "scores.h"

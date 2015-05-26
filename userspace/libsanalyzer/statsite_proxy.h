@@ -4,18 +4,20 @@
 
 #pragma once
 
-
 class statsite_proxy;
+
 class statsd_metric
 {
 public:
 	class parse_exception: public sinsp_exception
 	{
+#ifndef _WIN32
 	public:
 		template<typename... T>
 		parse_exception(T&&... args):
 				sinsp_exception(forward<T>(args)...)
 		{}
+#endif
 	};
 	enum class type_t
 	{

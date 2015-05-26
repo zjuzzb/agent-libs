@@ -119,7 +119,7 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			uint32_t querylen;
 			char* querypos;
 			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
-			querylen=min(ntohl(querylen),rbufsize) - sizeof(uint32_t);
+			querylen = MIN(ntohl(querylen),rbufsize) - sizeof(uint32_t);
 
 			uint32_t copied_size;
 			if ( rbuf[0] == 'Q')

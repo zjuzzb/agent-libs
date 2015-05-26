@@ -1,11 +1,12 @@
 #pragma once
 
 #include <analyzer_int.h>
-#include "analyzer_utils.h"
+#include <analyzer_utils.h>
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
-#include "jmx_proxy.h"
+#include <jmx_proxy.h>
+#include <statsite_proxy.h>
 #include <atomic>
 
 //
@@ -149,6 +150,17 @@ public:
 	void set_configuration(const sinsp_configuration& configuration);
 
 	//
+	// Chisel helpers
+	//
+	void add_chisel_dirs();
+	void initialize_chisels();
+	void add_chisel(sinsp_chisel* ch)
+	{
+		m_chisels.push_back(ch);
+		m_run_chisels = true;
+	}
+
+	//
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt, flush_flags flshflags);
@@ -232,7 +244,7 @@ public:
 
 	void set_sampling_ratio(uint64_t value)
 	{
-		m_sampling_ratio = value;
+		m_sampling_ratio = (uint32_t)value;
 		auto newsl = ((uint64_t) ONE_SECOND_IN_NS) / m_sampling_ratio;
 		if(newsl != m_configuration->get_analyzer_sample_len_ns())
 		{
@@ -240,12 +252,17 @@ public:
 		}
 	}
 
+#ifndef _WIN32
 	void set_statsd_capture_localhost(bool value)
 	{
 		m_statsd_capture_localhost.store(value, memory_order_relaxed);
 	}
+#endif 
 
 VISIBILITY_PRIVATE
+	void chisels_on_capture_start();
+	void chisels_on_capture_end();
+	void chisels_do_timeout(sinsp_evt* ev);
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	void filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -262,7 +279,8 @@ VISIBILITY_PRIVATE
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
 	void emit_statsd();
-	
+	void emit_chisel_metrics();
+
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
 			1*60; // 1 minutes
@@ -384,7 +402,6 @@ VISIBILITY_PRIVATE
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
-
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
 	//
@@ -401,6 +418,13 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+
+	//
+	// Chisel-generated metrics infrastructure
+	//
+	vector<sinsp_chisel*> m_chisels;
+	vector<statsd_metric> m_chisel_metrics;
+	bool m_run_chisels;
 
 #ifndef _WIN32
 	unique_ptr<jmx_proxy> m_jmx_proxy;

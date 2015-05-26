@@ -6,13 +6,17 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 
-/*
- * Parse a line and fill data structures
- * return false if line does not belong to this object
- * throws an exception if parsing fails
- */
+//
+// Parse a line and fill data structures
+// return false if line does not belong to this object
+// throws an exception if parsing fails
+// NOTE: not implemenetd in windows yet, but should be easy to add it there.
+//
 bool statsd_metric::parse_line(const string& line)
 {
+#ifdef _WIN32
+	return false;
+#else
 	// Example:
 	// counts.mycounter#xxx,yy|313.000000|1427738072
 	// timers.mytime.upper|199.000000|1427738072
@@ -175,6 +179,7 @@ bool statsd_metric::parse_line(const string& line)
 		// so catch them and map as parsing exception
 		throw parse_exception(ex.what());
 	}
+#endif // _WIN32
 }
 
 void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
@@ -208,6 +213,7 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	}
 }
 
+#ifndef _WIN32
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second)
@@ -277,3 +283,4 @@ void statsite_proxy::send_metric(const char *buf, uint64_t len)
 	fwrite_unlocked(&sendbuf, sizeof(char), len, m_input_fd);
 	fflush_unlocked(m_input_fd);
 }
+#endif // _WIN32
