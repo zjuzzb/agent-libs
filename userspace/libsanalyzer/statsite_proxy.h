@@ -5,6 +5,10 @@
 #pragma once
 
 class statsite_proxy;
+namespace draiosproto
+{
+	class statsd_metric;
+};
 
 class statsd_metric
 {
@@ -85,6 +89,8 @@ private:
 	double m_median;
 	double m_percentile_95;
 	double m_percentile_99;
+
+	friend class lua_cbacks;
 };
 
 class statsite_proxy

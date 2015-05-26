@@ -369,12 +369,18 @@ void sinsp_analyzer::initialize_chisels()
 	}
 }
 
+void sinsp_analyzer::add_chisel(sinsp_chisel* ch)
+{
+	m_chisels.push_back(ch);
+	m_run_chisels = true;
+}
+
 void sinsp_analyzer::chisels_on_capture_start()
 {
 	for(uint32_t j = 0; j < m_chisels.size(); j++)
 	{
 		m_chisels[j]->on_capture_start();
-}
+	}
 }
 
 void sinsp_analyzer::chisels_on_capture_end()
