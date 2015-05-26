@@ -6,6 +6,7 @@
 #include <container_analyzer.h>
 #include <memory>
 #include "jmx_proxy.h"
+#include "statsite_proxy.h"
 #include <atomic>
 
 //
@@ -116,7 +117,7 @@ public:
 //
 // The main analyzer class
 //
-class statsite_proxy;
+
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -261,8 +262,9 @@ VISIBILITY_PRIVATE
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
-	void emit_statsd();
-	
+	void get_statsd();
+	static void emit_statsd(const vector<statsd_metric>& statsd_metrics, draiosproto::statsd_info* statsd_info);
+
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
 			1*60; // 1 minutes
@@ -407,6 +409,7 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
+	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
 #endif
