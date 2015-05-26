@@ -1049,13 +1049,13 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					uint64_t delta = tcpu - lastcpu;
 
+					printf("%d)%ld:%ld)%ld >> %ld\n", (int)callnum, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+
 					if(callnum != 0)
 					{
 						EXPECT_GT(delta, 90);
 						EXPECT_LT(delta, 110);
 					}
-
-					printf("%ld:%ld)%ld >> %ld\n", tinfo->m_pid, tinfo->m_tid, tcpu, delta);
 
 					lastcpu = tcpu;
 
