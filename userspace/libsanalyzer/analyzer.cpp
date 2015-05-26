@@ -3466,6 +3466,8 @@ void sinsp_analyzer::emit_chisel_metrics()
 {
 	uint32_t j = 0;
 
+	m_chisel_metrics.clear();
+
 	for(const auto& chisel : m_chisels)
 	{
 		chisel->do_end_of_sample();
