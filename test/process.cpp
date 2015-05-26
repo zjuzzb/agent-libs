@@ -1149,13 +1149,13 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 						delta = tcpu - lastcpu2;
 					}
 
+					printf("%d)%ld:%ld)%ld >> %ld\n", (int)callnum, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 90);
+						EXPECT_GT(delta, 0);
 						EXPECT_LT(delta, 110);
 					}
-
-					printf("%ld:%ld)%ld >> %ld\n", tinfo->m_pid, tinfo->m_tid, tcpu, delta);
 
 					if(tinfo->m_tid == firsttid)
 					{
