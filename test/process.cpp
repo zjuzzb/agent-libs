@@ -1180,8 +1180,6 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-
-	EXPECT_EQ(10, callnum);
 }
 
 /*
