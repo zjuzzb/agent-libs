@@ -375,52 +375,136 @@ jmx:
     hbase:
       pattern: "hbase"
       beans:
-        - query: "Hadoop:service=HBase,name=MetricsSystem,sub=Stats"
+        ### hbase 0.98 conf ###
+        - query: "Hadoop:service=HBase,name=Master,sub=Server"
           attributes:
-            - DroppedPubAll
-            - NumActiveSinks
-            - NumActiveSources
-            - NumAllSinks
-            - NumAllSources
-            - PublishNumOps
-            - SnapshotNumOps
+            - name: averageLoad
+              alias: hbase.master.server.avg.load
+            - name: numRegionServers
+              alias: hbase.master.server.num.region.server
+            - name: numDeadRegionServers
+              alias: hbase.master.server.num.dead.region.server
+        - query: "Hadoop:service=HBase,name=IPC,sub=IPC"
+          attributes:
+            - name: sentBytes
+              alias: hbase.ipc.sent.bytes
+              type: counter
+            - name: receivedBytes
+              alias: hbase.ipc.received.bytes
+              type: counter
+            - name: queueSize
+              alias: hbase.ipc.queue.size
+            - name: numOpenConnections
+              alias: hbase.ipc.num.open.connections
         - query: "Hadoop:service=HBase,name=RegionServer,sub=Server"
           attributes:
-            - Append_num_ops
-            - Delete_num_ops
-            - FlushTime_num_ops
-            - Get_num_ops
-            - Increment_num_ops
-            - Mutate_num_ops
-            - Replay_num_ops
-            - SplitTime_num_ops
-            - blockCacheCount
-            - blockCacheEvictionCount
-            - blockCacheExpressHitPercent
-            - blockCacheFreeSize
-            - blockCacheHitCount
-            - blockCacheMissCount
-            - compactedCellsCount
-            - compactedCellsSize
-            - compactionQueueLength
-            - flushQueueLength
-            - flushedCellsCount
-            - readRequestCount
-            - slowAppendCount
-            - slowDeleteCount
-            - slowGetCount
-            - slowIncrementCount
-            - slowPutCount
-        - query: "Hadoop:service=HBase,name=UgiMetrics"
+            - name: blockCacheCount
+              alias: hbase.region.server.block.cache.count
+              type: counter
+            - name: blockCacheEvictionCount
+              alias: hbase.region.server.block.cache.eviction.count
+              type: counter
+            - name: blockCacheFreeSize
+              alias: hbase.region.server.block.cache.free.size
+            - name: blockCacheHitCount
+              alias: hbase.region.server.block.cache.hit.count
+              type: counter
+            - name: blockCountHitPercent
+              alias: hbase.region.server.block.count.hit.percent
+            - name: blockCacheMissCount
+              alias: hbase.region.server.block.cache.miss.count
+              type: counter
+            - name: blockCacheSize
+              alias: hbase.region.server.block.cache.size
+            - name: compactionQueueLength
+              alias: hbase.region.server.compaction.queue.length
+            - name: flushQueueLength
+              alias: hbase.region.server.flush.queue.length
+            - name: memStoreSize
+              alias: hbase.region.server.mem.store.size
+            - name: storeCount
+              alias: hbase.region.server.store.count
+              type: counter
+            - name: readRequestCount
+              alias: hbase.region.server.read.request.count
+              type: counter
+            - name: storeFileIndexSize
+              alias: hbase.region.server.store.file.index.size
+            - name: writeRequestCount
+              alias: hbase.region.server.write.requests.count
+              type: counter
+            - name: totalRequestCount
+              alias: hbase.region.server.total.request.count
+              type: counter
+            - name: slowAppendCount
+              alias: hbase.region.server.slow.append.count
+              type: counter
+            - name: slowPutCount
+              alias: hbase.region.server.slow.put.count
+              type: counter
+            - name: slowGetCount
+              alias: hbase.region.server.slow.get.count
+              type: counter
+        ### hbase 0.95 conf ###
+        - query: "hadoop:service=RegionServer,name=RegionServerStatistics"
           attributes:
-            - LoginFailureNumOps
-            - LoginSuccessNumOps
-        - query: "Hadoop:service=HBase,name=Master,sub=Balancer"
-          attributes:
-            - BalancerCluster_num_ops
-        - query: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
-          attributes:
-            - Assign_num_ops
-            - BulkAssign_num_ops
+            - name: blockCacheExpressCachingRatio
+              alias: hbase.region.server.cache.caching.ration
+            - name: blockCacheHitCachingRatio
+              alias: hbase.region.server.cache.hit.ratio
+            - name: callQueueLength
+              alias: hbase.region.server.call.queue.length
+            - name: compactionQueueLength
+              alias: hbase.region.server.compaction.queue.length
+            - name: compactionQueueSize
+              alias: hbase.region.server.compaction.queue.size
+            - name: flushQueueSize
+              alias: hbase.region.server.flush.queue.size
+            - name: hdfsBlocksLocalityIndex
+              alias: hbase.region.server.blocks.locality.index
+            - name: memstoreSizeMB
+              alias: hbase.region.server.mem.store.size
+            - name: numberOfOnlineRegions
+              alias: hbase.region.server.online.regions
+            - name: readRequestsCount
+              alias: hbase.region.server.requests.count
+            - name: slowHLogAppendCount
+              alias: hbase.region.server.log.append.count
+              type: counter
+            - name: usedHeapMB
+              alias: hbase.region.server.used.heap
+            - name: writeRequestsCount
+              alias: hbase.region.server.write.requests.count
+              type: counter
+            - name: blockCacheCount
+              alias: hbase.region.server.block.cache.count
+              type: counter
+            - name: blockCacheEvictedCount
+              alias: hbase.region.server.block.cache.eviction.count
+              type: counter
+            - name: blockCacheFreeMB
+              alias: hbase.region.server.block.free.cache
+            - name: blockCacheHitCount
+              alias: hbase.region.server.block.cache.hit.count
+              type: counter
+            - name: blockCacheMissCount
+              alias: hbase.region.server.block.cache.miss.count
+              type: counter
+            - name: blockCacheSizeMB
+              alias: hbase.region.server.block.cache.size
+            - name: fsPreadLatencyNumOps
+              alias: hbase.region.server.fs.pread.latency.num
+            - name: fsReadLatencyNumOps
+              alias: hbase.region.server.fs.read.latency.num
+            - name: fsWriteLatencyNumOps
+              alias: hbase.region.server.fs.write.latency.num
+            - name: NumberOfStores
+              alias: hbase.region.server.store.number
+            - name: NumberOfStorefiles
+              alias: hbase.region.server.files.store.number
+            - name: requestsPerSecond
+              alias: hbase.region.server.request.per.second
+            - name: storeFileIndexSizeMB
+              alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
