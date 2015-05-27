@@ -1163,7 +1163,7 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					uint64_t delta = tcpu - lastcpu1;
 
-					printf("%d:%d)%ld:%ld)%ld >> %ld\n", (int)callnum, (int)ctid, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+					printf("%d:%d)%ld:%ld)%ld >> %ld\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta);
 
 					if(callnum > 2)
 					{
