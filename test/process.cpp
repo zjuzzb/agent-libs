@@ -777,13 +777,14 @@ public:
 	loadthread()
 	{
 		m_die = false;
-		m_tid = syscall(SYS_gettid);
+		m_tid = -1;
 	}
 
 	void run()
 	{
 		uint64_t k = 0;
 		uint64_t t = 0;
+		m_tid = syscall(SYS_gettid);
 
 		while(true)
 		{
@@ -995,8 +996,16 @@ TEST_F(sys_call_test, process_scap_proc_get)
 TEST_F(sys_call_test, procinfo_processchild_cpuload)
 {
 	int callnum = 0;
-	int pid = getpid();
 	int lastcpu = 0;
+	int64_t ctid = -1;
+
+	Poco::Thread th;
+	loadthread ct;
+	Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
+	th.start(runnable);
+
+	sleep(2);
+	ctid = ct.get_tid();
 
 	//
 	// FILTER
@@ -1011,11 +1020,6 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		Poco::Thread th;
-		loadthread ct;
-		Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
-		th.start(runnable);
-
 		for(uint32_t j = 0; j < 5; j++)
 		{
 			sleep(1);
@@ -1040,7 +1044,7 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 			if(tinfo)
 			{
-				if(tinfo->m_pid == pid && tinfo->m_tid != syscall(SYS_gettid))
+				if(tinfo->m_tid == ctid)
 				{
 					uint64_t tcpu;
 
@@ -1049,7 +1053,7 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					uint64_t delta = tcpu - lastcpu;
 
-					printf("%d)%ld:%ld)%ld >> %ld\n", (int)callnum, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+					printf("%d:%d)%ld:%ld)%ld >> %ld\n", (int)callnum, (int)ctid, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
 
 					if(callnum != 0)
 					{
@@ -1073,10 +1077,22 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 {
 	int callnum = 0;
-	int pid = getpid();
+	int lastcpu = 0;
 	int lastcpu1 = 0;
-	int lastcpu2 = 0;
-	int64_t firsttid = 0;
+
+	Poco::Thread th;
+	loadthread ct;
+	Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
+	th.start(runnable);
+
+	Poco::Thread th1;
+	loadthread ct1;
+	Poco::RunnableAdapter<loadthread> runnable1(ct1, &loadthread::run);
+	th1.start(runnable1);
+
+	sleep(2);
+	int64_t ctid = ct.get_tid();
+	int64_t ctid1 = ct1.get_tid();
 
 	//
 	// FILTER
@@ -1091,16 +1107,6 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		Poco::Thread th;
-		loadthread ct;
-		Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
-		th.start(runnable);
-
-		Poco::Thread th1;
-		loadthread ct1;
-		Poco::RunnableAdapter<loadthread> runnable1(ct1, &loadthread::run);
-		th1.start(runnable1);
-
 		for(uint32_t j = 0; j < 5; j++)
 		{
 			sleep(1);
@@ -1127,44 +1133,45 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 			if(tinfo)
 			{
-				if(tinfo->m_pid == pid && tinfo->m_tid != syscall(SYS_gettid))
+				if(tinfo->m_tid == ctid)
 				{
 					uint64_t tcpu;
-					uint64_t delta;
 
 					sinsp_evt_param* parinfo = e->get_param(0);
 					tcpu = *(uint64_t*)parinfo->m_val;
 
-					if(firsttid == 0)
-					{
-						firsttid = tinfo->m_tid;
-					}
+					uint64_t delta = tcpu - lastcpu;
 
-					if(tinfo->m_tid == firsttid)
-					{
-						delta = tcpu - lastcpu1;
-					}
-					else
-					{
-						delta = tcpu - lastcpu2;
-					}
-
-					printf("%d)%ld:%ld)%ld >> %ld\n", (int)callnum, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+					printf("%d:%d)%ld:%ld)%ld >> %ld\n", (int)callnum, (int)ctid, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
 
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 0);
+						EXPECT_GT(delta, 90);
 						EXPECT_LT(delta, 110);
 					}
 
-					if(tinfo->m_tid == firsttid)
+					lastcpu = tcpu;
+
+					callnum++;
+				}
+				else if(tinfo->m_tid == ctid1)
+				{
+					uint64_t tcpu;
+
+					sinsp_evt_param* parinfo = e->get_param(0);
+					tcpu = *(uint64_t*)parinfo->m_val;
+
+					uint64_t delta = tcpu - lastcpu1;
+
+					printf("%d:%d)%ld:%ld)%ld >> %ld\n", (int)callnum, (int)ctid, tinfo->m_pid, tinfo->m_tid, tcpu, delta);
+
+					if(callnum > 2)
 					{
-						lastcpu1 = tcpu;
+						EXPECT_GT(delta, 90);
+						EXPECT_LT(delta, 110);
 					}
-					else
-					{
-						lastcpu2 = tcpu;
-					}
+
+					lastcpu1 = tcpu;
 
 					callnum++;
 				}
