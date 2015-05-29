@@ -241,7 +241,10 @@ public class MonitoredVM {
             vm = VirtualMachine.attach(vmId);
         } catch (AttachNotSupportedException x) {
             throw new IOException(x);
+        } catch (UnsatisfiedLinkError x) {
+            throw new IOException(x);
         }
+        
         // try to enable local JMX via jcmd command
         //if (!loadManagementAgentViaJcmd(vm)) {
             // load the management agent into the target VM
