@@ -317,6 +317,7 @@ int dragent_app::sdagent_main()
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
+	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
 
 	if(m_configuration.m_watchdog_enabled)

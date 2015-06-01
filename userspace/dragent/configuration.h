@@ -333,17 +333,20 @@ class aws_metadata_refresher: public Runnable
 public:
 	aws_metadata_refresher(dragent_configuration* configuration):
 		m_refreshed(false),
+		m_running(false),
 		m_configuration(configuration)
 	{}
 
 	void run()
 	{
+		m_running.store(true, memory_order_relaxed);
 		m_configuration->refresh_aws_metadata();
 		m_refreshed.store(true, memory_order_relaxed);
 	}
 
 	void reset()
 	{
+		m_running.store(false, memory_order_relaxed);
 		m_refreshed.store(false, memory_order_relaxed);
 	}
 
@@ -352,7 +355,13 @@ public:
 		return m_refreshed.load(memory_order_relaxed);
 	}
 
+	bool is_running()
+	{
+		return m_running.load(memory_order_relaxed);
+	}
+
 private:
 	atomic<bool> m_refreshed;
+	atomic<bool> m_running;
 	dragent_configuration* m_configuration;
 };
