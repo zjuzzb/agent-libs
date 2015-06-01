@@ -194,7 +194,6 @@ void dragent_configuration::init(Application* app)
 	{
 		write_statsite_configuration();
 	}
-    refresh_aws_metadata();
 }
 
 void dragent_configuration::print_configuration()
