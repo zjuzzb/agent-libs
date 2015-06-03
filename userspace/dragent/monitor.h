@@ -7,7 +7,7 @@ class pipe_manager;
 class monitored_process
 {
 public:
-	monitored_process(string name, function<void(void)>&& exec, bool is_main=false):
+	monitored_process(string name, function<int(void)>&& exec, bool is_main=false):
 		m_name(move(name)),
 		m_main(is_main),
 		m_exec(exec),
@@ -25,7 +25,7 @@ public:
 		m_pid = pid;
 	}
 
-	inline void exec();
+	inline int exec();
 
 	bool is_main() const
 	{
@@ -46,7 +46,7 @@ public:
 private:
 	string m_name;
 	bool m_main;
-	function<void(void)> m_exec;
+	function<int(void)> m_exec;
 	pid_t m_pid;
 	bool m_enabled;
 };

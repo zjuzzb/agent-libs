@@ -45,11 +45,11 @@ static void delete_pid_file(const string& pidfile)
 	}
 }
 
-void monitored_process::exec()
+int monitored_process::exec()
 {
 	prctl(PR_SET_PDEATHSIG, SIGKILL);
 	// TODO: may be useful rename process?
-	m_exec();
+	return m_exec();
 }
 
 monitor::monitor(string pidfile):
@@ -74,7 +74,7 @@ int monitor::run()
 		}
 		else if(child_pid == 0)
 		{
-			process.exec();
+			return process.exec();
 		}
 		else
 		{
@@ -141,7 +141,7 @@ int monitor::run()
 				}
 				else if(child_pid == 0)
 				{
-					process.exec();
+					return process.exec();
 				}
 				else
 				{
