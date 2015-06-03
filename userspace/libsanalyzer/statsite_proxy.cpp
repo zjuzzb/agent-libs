@@ -267,13 +267,15 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 
 void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
-	char sendbuf[512];
+	char sendbuf[2048];
 	memcpy(&sendbuf, buf, len);
 	if(sendbuf[len-1] != '\n')
 	{
 		sendbuf[len] = '\n';
 		++len;
 	}
+	//sendbuf[len] = '\0';
+	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", sendbuf);
 	fwrite_unlocked(&sendbuf, sizeof(char), len, m_input_fd);
 	fflush_unlocked(m_input_fd);
 }
