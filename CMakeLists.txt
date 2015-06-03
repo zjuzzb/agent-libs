@@ -42,9 +42,9 @@ set(CPACK_STRIP_FILES "ON")
 set(CPACK_GENERATOR DEB RPM TGZ)
 
 set(CPACK_DEB_COMPONENT_INSTALL "ON")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Draios Inc. <support@draios.com>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Sysdig <support@sysdig.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
-set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.draios.com")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.sysdig.com")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "sysdig (>= ${SYSDIG_MINIMUM_VERSION})")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/scripts/debian/postinst;${PROJECT_SOURCE_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
 
