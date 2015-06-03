@@ -7,7 +7,6 @@ package com.sysdigcloud.sdjagent;
 
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
-import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 import sun.jvmstat.monitor.MonitorException;
 
@@ -239,9 +238,7 @@ public class MonitoredVM {
 
         try {
             vm = VirtualMachine.attach(vmId);
-        } catch (AttachNotSupportedException x) {
-            throw new IOException(x);
-        } catch (UnsatisfiedLinkError x) {
+        } catch (Throwable x) {
             throw new IOException(x);
         }
         
