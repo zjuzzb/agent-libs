@@ -160,7 +160,7 @@ if [ ! -d "${SCONS_DIR}" ]; then
 fi
 
 if [ -z $STATSITE_VERSION ]; then
-  STATSITE_VERSION=0.7.0-sysdig2
+  STATSITE_VERSION=0.7.0-sysdig3
 fi
 STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
 if [ ! -d "${STATSITE_DIR}" ]; then
