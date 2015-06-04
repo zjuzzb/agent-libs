@@ -3329,7 +3329,6 @@ void sinsp_analyzer::get_statsd()
 
 void sinsp_analyzer::emit_statsd(const vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info)
 {
-	static const auto STATSD_METRIC_LIMIT = 300;
 	int j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
