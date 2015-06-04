@@ -3252,8 +3252,6 @@ private:
 
 void sinsp_analyzer::emit_containers()
 {
-	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
-
 	auto cpu_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_metrics.m_cpuload;
@@ -3276,7 +3274,7 @@ void sinsp_analyzer::emit_containers()
 
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
-	
+
 	g_logger.format(sinsp_logger::SEV_INFO, "Containers are %u", m_containers.size());
 	for(const auto& container_state : m_containers)
 	{
@@ -3307,6 +3305,7 @@ void sinsp_analyzer::emit_containers()
 		}
 	};
 
+	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
 	counter = 0;
 	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
 	{
