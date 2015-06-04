@@ -3252,38 +3252,48 @@ private:
 
 void sinsp_analyzer::emit_containers()
 {
+	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
+
 	auto cpu_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_metrics.m_cpuload;
 	};
-	set<string, containers_cmp<decltype(cpu_extractor)>> top_containers_by_cpu(containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 
 	auto mem_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_metrics.m_res_memory_kb;
 	};
-	set<string, containers_cmp<decltype(mem_extractor)>> top_containers_by_mem(containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
 
 	auto file_io_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
 	};
-	set<string, containers_cmp<decltype(file_io_extractor)>> top_containers_by_file_io(containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
 
 	auto net_io_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
 	};
-	set<string, containers_cmp<decltype(net_io_extractor)>> top_containers_by_net_io(containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
 
+	vector<string> containers_ids;
+	containers_ids.reserve(m_containers.size());
+	
+	g_logger.format(sinsp_logger::SEV_INFO, "Containers are %u", m_containers.size());
 	for(const auto& container_state : m_containers)
 	{
-		top_containers_by_cpu.insert(container_state.first);
-		top_containers_by_mem.insert(container_state.first);
-		top_containers_by_file_io.insert(container_state.first);
-		top_containers_by_net_io.insert(container_state.first);
+		containers_ids.push_back(container_state.first);
 	}
 
+	vector<string> top_containers_by_cpu = containers_ids;
+	vector<string> top_containers_by_mem = containers_ids;
+	vector<string> top_containers_by_file_io = containers_ids;
+	vector<string> top_containers_by_net_io = containers_ids;
+
+	sort(top_containers_by_cpu.begin(), top_containers_by_cpu.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	sort(top_containers_by_mem.begin(), top_containers_by_mem.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	sort(top_containers_by_file_io.begin(), top_containers_by_file_io.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	sort(top_containers_by_net_io.begin(), top_containers_by_net_io.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+
+	g_logger.format(sinsp_logger::SEV_INFO, "top_containers_by_cpu are %u", top_containers_by_cpu.size());
 	set<string> emitted_containers;
 	unsigned counter;
 
@@ -3298,29 +3308,29 @@ void sinsp_analyzer::emit_containers()
 	};
 
 	counter = 0;
-	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT/4; ++it)
+	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
 	{
 		check_and_emit_container(*it);
 	}
 
 	counter = 0;
-	for(auto it = top_containers_by_mem.begin(); it != top_containers_by_mem.end() && counter < CONTAINERS_LIMIT/4; ++it)
+	for(auto it = top_containers_by_mem.begin(); it != top_containers_by_mem.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
 	{
 		check_and_emit_container(*it);
 	}
 
 	counter = 0;
-	for(auto it = top_containers_by_file_io.begin(); it != top_containers_by_file_io.end() && counter < CONTAINERS_LIMIT/4; ++it)
+	for(auto it = top_containers_by_file_io.begin(); it != top_containers_by_file_io.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
 	{
 		check_and_emit_container(*it);
 	}
 
 	counter = 0;
-	for(auto it = top_containers_by_net_io.begin(); it != top_containers_by_net_io.end() && counter < CONTAINERS_LIMIT/4; ++it)
+	for(auto it = top_containers_by_net_io.begin(); it != top_containers_by_net_io.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
 	{
 		check_and_emit_container(*it);
 	}
-
+	g_logger.format(sinsp_logger::SEV_INFO, "Emitted containers are %u", emitted_containers.size());
 	m_containers.clear();
 }
 
