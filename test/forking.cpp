@@ -171,7 +171,8 @@ TEST_F(sys_call_test, forking_while_scap_stopped)
 		sinsp_evt* e = param.m_evt;
 
 		if(e->get_type() == PPME_SCHEDSWITCH_1_E ||
-			e->get_type() == PPME_SCHEDSWITCH_6_E)
+			e->get_type() == PPME_SCHEDSWITCH_6_E ||
+			e->get_type() == PPME_PROCINFO_E)
 		{
 			return;
 		}
