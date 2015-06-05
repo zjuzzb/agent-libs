@@ -3277,36 +3277,10 @@ void sinsp_analyzer::emit_containers()
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
 
-	g_logger.format(sinsp_logger::SEV_INFO, "Containers are %u", m_containers.size());
 	for(const auto& container_state : m_containers)
 	{
 		containers_ids.push_back(container_state.first);
 	}
-
-	vector<string> top_containers_by_cpu = containers_ids;
-	vector<string> top_containers_by_mem = containers_ids;
-	vector<string> top_containers_by_file_io = containers_ids;
-	vector<string> top_containers_by_net_io = containers_ids;
-
-	// Sort top_containers_by_* vectors using a comparator and the corresponding lambda
-	sort(top_containers_by_cpu.begin(), top_containers_by_cpu.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
-	sort(top_containers_by_mem.begin(), top_containers_by_mem.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
-	sort(top_containers_by_file_io.begin(), top_containers_by_file_io.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
-	sort(top_containers_by_net_io.begin(), top_containers_by_net_io.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
-
-	g_logger.format(sinsp_logger::SEV_INFO, "top_containers_by_cpu are %u", top_containers_by_cpu.size());
-	set<string> emitted_containers;
-	unsigned counter;
-
-	auto check_and_emit_container = [&emitted_containers, &counter, this](const string& id)
-	{
-		if(emitted_containers.find(id) == emitted_containers.end())
-		{
-			this->emit_container(id);
-			emitted_containers.insert(id);
-			++counter;
-		}
-	};
 
 	// Emit containers on protobuf, our logic is:
 	// Pick top N from top_by_cpu
@@ -3316,31 +3290,27 @@ void sinsp_analyzer::emit_containers()
 
 	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
 
-	counter = 0;
-	for(auto it = top_containers_by_mem.begin(); it != top_containers_by_mem.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
+	auto check_and_emit_containers = [&containers_ids, this]()
 	{
-		check_and_emit_container(*it);
-	}
+		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
+		{
+			this->emit_container(containers_ids.front());
+			containers_ids.erase(containers_ids.begin());
+		}
+	};
 
-	counter = 0;
-	for(auto it = top_containers_by_file_io.begin(); it != top_containers_by_file_io.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
-	{
-		check_and_emit_container(*it);
-	}
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	check_and_emit_containers();
 
-	counter = 0;
-	for(auto it = top_containers_by_net_io.begin(); it != top_containers_by_net_io.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
-	{
-		check_and_emit_container(*it);
-	}
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	check_and_emit_containers();
 
-	counter = 0;
-	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
-	{
-		check_and_emit_container(*it);
-	}
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	check_and_emit_containers();
 
-	g_logger.format(sinsp_logger::SEV_INFO, "Emitted containers are %u", emitted_containers.size());
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	check_and_emit_containers();
+
 	m_containers.clear();
 }
 
