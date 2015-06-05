@@ -3252,6 +3252,8 @@ private:
 
 void sinsp_analyzer::emit_containers()
 {
+	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
+	// that value from analyzer_container_state
 	auto cpu_extractor = [](const analyzer_container_state& analyzer_state)
 	{
 		return analyzer_state.m_metrics.m_cpuload;
@@ -3286,6 +3288,7 @@ void sinsp_analyzer::emit_containers()
 	vector<string> top_containers_by_file_io = containers_ids;
 	vector<string> top_containers_by_net_io = containers_ids;
 
+	// Sort top_containers_by_* vectors using a comparator and the corresponding lambda
 	sort(top_containers_by_cpu.begin(), top_containers_by_cpu.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	sort(top_containers_by_mem.begin(), top_containers_by_mem.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
 	sort(top_containers_by_file_io.begin(), top_containers_by_file_io.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
@@ -3304,6 +3307,12 @@ void sinsp_analyzer::emit_containers()
 			++counter;
 		}
 	};
+
+	// Emit containers on protobuf, our logic is:
+	// Pick top N from top_by_cpu
+	// Pick top N from top_by_mem which are not already taken by top_cpu
+	// Pick top N from top_by_file_io which are not already taken by top_cpu and top_mem
+	// Etc ...
 
 	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
 	counter = 0;
