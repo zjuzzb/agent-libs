@@ -3220,99 +3220,192 @@ void sinsp_analyzer::emit_top_files()
 	m_fd_listener->m_files_stat.clear();
 }
 
+template<typename Extractor>
+class containers_cmp
+{
+public:
+	containers_cmp(unordered_map<string, analyzer_container_state>* containers, Extractor&& extractor):
+		m_containers(containers),
+		m_extractor(extractor)
+	{}
+
+	bool operator()(const string& lhs, const string& rhs)
+	{
+		const auto it_analyzer_lhs = m_containers->find(lhs);
+		const auto it_analyzer_rhs = m_containers->find(rhs);
+		decltype(m_extractor(it_analyzer_lhs->second)) cmp_lhs = 0;
+		if(it_analyzer_lhs != m_containers->end())
+		{
+			cmp_lhs = m_extractor(it_analyzer_lhs->second);
+		}
+		decltype(m_extractor(it_analyzer_rhs->second)) cmp_rhs = 0;
+		if(it_analyzer_rhs != m_containers->end())
+		{
+			cmp_rhs = m_extractor(it_analyzer_rhs->second);
+		}
+		return cmp_lhs > cmp_rhs;
+	}
+private:
+	unordered_map<string, analyzer_container_state>* m_containers;
+	Extractor m_extractor;
+};
+
 void sinsp_analyzer::emit_containers()
 {
-	const unordered_map<string, sinsp_container_info>* containers_info = m_inspector->m_container_manager.get_containers();
-
-	for(unordered_map<string, sinsp_container_info>::const_iterator it = containers_info->begin(); it != containers_info->end(); ++it)
+	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
+	// that value from analyzer_container_state
+	auto cpu_extractor = [](const analyzer_container_state& analyzer_state)
 	{
-		unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(it->second.m_id);
-		if(it_analyzer == m_containers.end())
-		{
-			continue;
-		}
+		return analyzer_state.m_metrics.m_cpuload;
+	};
 
-		draiosproto::container* container = m_metrics->add_containers();
+	auto mem_extractor = [](const analyzer_container_state& analyzer_state)
+	{
+		return analyzer_state.m_metrics.m_res_memory_kb;
+	};
 
-		container->set_id(it->second.m_id);
+	auto file_io_extractor = [](const analyzer_container_state& analyzer_state)
+	{
+		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
+	};
 
-		switch(it->second.m_type)
-		{
-			case CT_DOCKER:
-				container->set_type(draiosproto::DOCKER);
-				break;
-			case CT_LXC:
-				container->set_type(draiosproto::LXC);
-				break;
-			case CT_LIBVIRT_LXC:
-				container->set_type(draiosproto::LIBVIRT_LXC);
-				break;
-			default:
-				ASSERT(false);
-		}
+	auto net_io_extractor = [](const analyzer_container_state& analyzer_state)
+	{
+		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
+	};
 
-		if(!it->second.m_name.empty())
-		{
-			container->set_name(it->second.m_name);
-		}
+	vector<string> containers_ids;
+	containers_ids.reserve(m_containers.size());
 
-		if(!it->second.m_image.empty())
-		{
-			container->set_image(it->second.m_image);
-		}
-
-		for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
-			it_ports != it->second.m_port_mappings.end(); ++it_ports)
-		{
-			draiosproto::container_port_mapping* mapping = container->add_port_mappings();
-
-			mapping->set_host_ip(it_ports->m_host_ip);
-			mapping->set_host_port(it_ports->m_host_port);
-			mapping->set_container_ip(it->second.m_container_ip);
-			mapping->set_container_port(it_ports->m_container_port);
-		}
-
-		container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
-		container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
-		container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
-		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
-		container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
-		container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
-		container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
-		container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
-		it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
-		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
-		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
-
-		it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
-		if(m_protocols_enabled)
-		{
-			it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
-		}
-
-		it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
-
-		it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
-			container->mutable_min_transaction_counters(),
-			container->mutable_max_transaction_counters(), 
-			m_sampling_ratio);
-
-		m_delay_calculator->compute_host_container_delays(&it_analyzer->second.m_transaction_counters, 
-			&it_analyzer->second.m_client_transactions, &it_analyzer->second.m_server_transactions,
-			&it_analyzer->second.m_transaction_delays);
-
-		if(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns != -1)
-		{
-			container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
-			container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
-		}
-		if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
-		{
-			emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd());
-		}
+	for(const auto& container_state : m_containers)
+	{
+		containers_ids.push_back(container_state.first);
 	}
 
+	// Emit containers on protobuf, our logic is:
+	// Pick top N from top_by_cpu
+	// Pick top N from top_by_mem which are not already taken by top_cpu
+	// Pick top N from top_by_file_io which are not already taken by top_cpu and top_mem
+	// Etc ...
+
+	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
+
+	auto check_and_emit_containers = [&containers_ids, this]()
+	{
+		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
+		{
+			this->emit_container(containers_ids.front());
+			containers_ids.erase(containers_ids.begin());
+		}
+	};
+
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	check_and_emit_containers();
+
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	check_and_emit_containers();
+
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	check_and_emit_containers();
+
+	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	check_and_emit_containers();
+
 	m_containers.clear();
+}
+
+void sinsp_analyzer::emit_container(const string& container_id)
+{
+	const auto containers_info = m_inspector->m_container_manager.get_containers();
+	auto it = containers_info->find(container_id);
+	if(it == containers_info->end())
+	{
+		return;
+	}
+	unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(it->second.m_id);
+	if(it_analyzer == m_containers.end())
+	{
+		return;
+	}
+
+	draiosproto::container* container = m_metrics->add_containers();
+
+	container->set_id(it->second.m_id);
+
+	switch(it->second.m_type)
+	{
+	case CT_DOCKER:
+		container->set_type(draiosproto::DOCKER);
+		break;
+	case CT_LXC:
+		container->set_type(draiosproto::LXC);
+		break;
+	case CT_LIBVIRT_LXC:
+		container->set_type(draiosproto::LIBVIRT_LXC);
+		break;
+	default:
+		ASSERT(false);
+	}
+
+	if(!it->second.m_name.empty())
+	{
+		container->set_name(it->second.m_name);
+	}
+
+	if(!it->second.m_image.empty())
+	{
+		container->set_image(it->second.m_image);
+	}
+
+	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
+		it_ports != it->second.m_port_mappings.end(); ++it_ports)
+	{
+		draiosproto::container_port_mapping* mapping = container->add_port_mappings();
+
+		mapping->set_host_ip(it_ports->m_host_ip);
+		mapping->set_host_port(it_ports->m_host_port);
+		mapping->set_container_ip(it->second.m_container_ip);
+		mapping->set_container_port(it_ports->m_container_port);
+	}
+
+	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
+	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
+	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
+	container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
+	container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
+	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
+	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
+	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
+	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
+	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
+	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+
+	it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
+	if(m_protocols_enabled)
+	{
+		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
+	}
+
+	it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
+
+	it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
+														   container->mutable_min_transaction_counters(),
+														   container->mutable_max_transaction_counters(),
+														   m_sampling_ratio);
+
+	m_delay_calculator->compute_host_container_delays(&it_analyzer->second.m_transaction_counters,
+													  &it_analyzer->second.m_client_transactions, &it_analyzer->second.m_server_transactions,
+													  &it_analyzer->second.m_transaction_delays);
+
+	if(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns != -1)
+	{
+		container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
+		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
+	}
+	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
+	{
+		emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd());
+	}
 }
 
 void sinsp_analyzer::get_statsd()
@@ -3329,7 +3422,6 @@ void sinsp_analyzer::get_statsd()
 
 void sinsp_analyzer::emit_statsd(const vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info)
 {
-	static const auto STATSD_METRIC_LIMIT = 300;
 	int j = 0;
 	for(const auto& metric : statsd_metrics)
 	{

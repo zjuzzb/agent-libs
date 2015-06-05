@@ -306,7 +306,7 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_bytes_other(m_bytes_other * sampling_ratio);
 }
 
-uint64_t sinsp_counter_time_bytes::get_tot_bytes()
+uint64_t sinsp_counter_time_bytes::get_tot_bytes() const
 {
 	return m_bytes_in + m_bytes_out;
 }
