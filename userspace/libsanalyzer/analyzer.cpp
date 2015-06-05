@@ -3315,11 +3315,6 @@ void sinsp_analyzer::emit_containers()
 	// Etc ...
 
 	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
-	counter = 0;
-	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
-	{
-		check_and_emit_container(*it);
-	}
 
 	counter = 0;
 	for(auto it = top_containers_by_mem.begin(); it != top_containers_by_mem.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
@@ -3338,6 +3333,13 @@ void sinsp_analyzer::emit_containers()
 	{
 		check_and_emit_container(*it);
 	}
+
+	counter = 0;
+	for(auto it = top_containers_by_cpu.begin(); it != top_containers_by_cpu.end() && counter < CONTAINERS_LIMIT_BY_TYPE; ++it)
+	{
+		check_and_emit_container(*it);
+	}
+
 	g_logger.format(sinsp_logger::SEV_INFO, "Emitted containers are %u", emitted_containers.size());
 	m_containers.clear();
 }
