@@ -116,7 +116,7 @@ public:
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
-	uint64_t get_tot_bytes();
+	uint64_t get_tot_bytes() const;
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;

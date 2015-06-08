@@ -180,3 +180,5 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 #undef SIMULATE_DROP_MODE
 
 static const auto STATSD_METRIC_LIMIT = 300;
+
+static const auto CONTAINERS_LIMIT = 20;
