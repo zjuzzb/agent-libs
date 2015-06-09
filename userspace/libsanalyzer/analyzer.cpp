@@ -2403,6 +2403,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_protocols_enabled)
 			{
+				sinsp_protostate_marker host_marker;
+				host_marker.add(m_host_metrics.m_protostate);
+				host_marker.mark_top();
 				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
 						m_sampling_ratio);
 			}
@@ -3276,12 +3279,15 @@ void sinsp_analyzer::emit_containers()
 
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
+	sinsp_protostate_marker containers_protostate_marker;
 
 	for(const auto& container_state : m_containers)
 	{
 		containers_ids.push_back(container_state.first);
+		containers_protostate_marker.add(container_state.second.m_metrics.m_protostate);
 	}
 
+	containers_protostate_marker.mark_top();
 	// Emit containers on protobuf, our logic is:
 	// Pick top N from top_by_cpu
 	// Pick top N from top_by_mem which are not already taken by top_cpu

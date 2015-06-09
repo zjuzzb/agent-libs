@@ -252,10 +252,13 @@ public:
 	{
 		uint32_t j;
 
-		partial_sort(sortable_list->begin(), 
-			sortable_list->begin() + TOP_URLS_IN_SAMPLE, 
-			sortable_list->end(),
-			comparer);
+		if(sortable_list->size() > TOP_URLS_IN_SAMPLE)
+		{
+			partial_sort(sortable_list->begin(),
+						 sortable_list->begin() + TOP_URLS_IN_SAMPLE,
+						 sortable_list->end(),
+						 comparer);
+		}
 
 		for(j = 0; j < TOP_URLS_IN_SAMPLE; j++)
 		{
@@ -296,12 +299,15 @@ public:
 		//       TOP_URLS_IN_SAMPLE entries have errors, and so we add only the ones that
 		//       have m_nerrors > 0.
 		//
-		partial_sort(sortable_list->begin(), 
-			sortable_list->begin() + TOP_URLS_IN_SAMPLE, 
-			sortable_list->end(),
-			cmp_nerrors);
+		if(sortable_list->size() > TOP_URLS_IN_SAMPLE)
+		{
+			partial_sort(sortable_list->begin(),
+						 sortable_list->begin() + TOP_URLS_IN_SAMPLE,
+						 sortable_list->end(),
+						 cmp_nerrors);
+		}
 
-		for(uint32_t j = 0; j < TOP_URLS_IN_SAMPLE; j++)
+		for(uint32_t j = 0; j < std::min(static_cast<size_t>(TOP_URLS_IN_SAMPLE), sortable_list->size()); j++)
 		{
 			T* entry = &(sortable_list->at(j)->second);
 
@@ -335,6 +341,7 @@ public:
 	template<typename Parser>
 	void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
+
 	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
 	inline bool has_data()
 	{
@@ -343,6 +350,7 @@ public:
 	}
 
 private:
+	friend class sinsp_sql_marker;
 	void query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 		unordered_map<string, sinsp_query_details>* table,
 		bool is_server,
@@ -386,6 +394,7 @@ public:
 	}
 
 private:
+	friend class sinsp_mongodb_marker;
 	void collections_to_protobuf(unordered_map<string, sinsp_query_details>& map,
 									const function<draiosproto::mongodb_collection_details*(void)> get_cd,
 								 uint32_t sampling_ratio);
@@ -411,10 +420,10 @@ public:
 		m_server_status_codes.clear();
 		m_client_status_codes.clear();
 
-		mysql.clear();
-		postgres.clear();
+		m_mysql.clear();
+		m_postgres.clear();
 
-		mongodb.clear();
+		m_mongodb.clear();
 	}
 
 	void add(sinsp_protostate* other);
@@ -427,9 +436,10 @@ public:
 	unordered_map<uint32_t, uint32_t> m_server_status_codes;
 	unordered_map<uint32_t, uint32_t> m_client_status_codes;
 
-	sql_state mysql;
-	sql_state postgres;
-	mongodb_state mongodb;
+	sql_state m_mysql;
+	sql_state m_postgres;
+	mongodb_state m_mongodb;
+
 
 private:
 	inline void update_http(sinsp_partial_transaction* tr,
@@ -445,6 +455,134 @@ private:
 		bool is_server,
 		uint32_t sampling_ratio);
 
+};
+
+class sinsp_http_marker
+{
+public:
+	void add(sinsp_protostate* state)
+	{
+		for(auto it = state->m_server_urls.begin(); it != state->m_server_urls.end(); ++it)
+		{
+			m_server_urls.push_back(it);
+		}
+		for(auto it = state->m_client_urls.begin(); it != state->m_client_urls.end(); ++it)
+		{
+			m_client_urls.push_back(it);
+		}
+	}
+	void mark_top()
+	{
+		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls);
+		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls);
+	}
+
+private:
+	vector<unordered_map<string, sinsp_url_details>::iterator> m_server_urls;
+	vector<unordered_map<string, sinsp_url_details>::iterator> m_client_urls;
+	//unordered_map<uint32_t, uint32_t> m_server_status_codes;
+	//unordered_map<uint32_t, uint32_t> m_client_status_codes;
+};
+
+class sinsp_sql_marker
+{
+public:
+	void add(sql_state* state)
+	{
+		for(auto it = state->m_server_queries.begin(); it != state->m_server_queries.end(); ++it)
+		{
+			m_server_queries.push_back(it);
+		}
+		for(auto it = state->m_client_queries.begin(); it != state->m_client_queries.end(); ++it)
+		{
+			m_client_queries.push_back(it);
+		}
+		for(auto it = state->m_server_tables.begin(); it != state->m_server_tables.end(); ++it)
+		{
+			m_server_tables.push_back(it);
+		}
+		for(auto it = state->m_client_tables.begin(); it != state->m_client_tables.end(); ++it)
+		{
+			m_client_tables.push_back(it);
+		}
+	}
+	void mark_top()
+	{
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_queries);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_queries);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_tables);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_tables);
+	}
+
+private:
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_queries;
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_queries;
+	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_query_types;
+	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_query_types;
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_tables;
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_tables;
+};
+
+class sinsp_mongodb_marker
+{
+public:
+	void add(mongodb_state* state)
+	{
+		/*for(auto it = state->m_server_ops.begin(); it != state->m_server_ops.end(); ++it)
+		{
+			m_server_ops.push_back(it);
+		}
+		for(auto it = state->m_client_ops.begin(); it != state->m_client_ops.end(); ++it)
+		{
+			m_client_ops.push_back(it);
+		}*/
+		for(auto it = state->m_server_collections.begin(); it != state->m_server_collections.end(); ++it)
+		{
+			m_server_collections.push_back(it);
+		}
+		for(auto it = state->m_client_collections.begin(); it != state->m_client_collections.end(); ++it)
+		{
+			m_client_collections.push_back(it);
+		}
+	}
+
+	void mark_top()
+	{
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_collections);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_collections);
+	}
+private:
+	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
+	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_collections;
+	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_collections;
+};
+
+
+class sinsp_protostate_marker
+{
+public:
+	void add(sinsp_protostate* protostate)
+	{
+		m_http.add(protostate);
+		m_mysql.add(&protostate->m_mysql);
+		m_postgres.add(&protostate->m_postgres);
+		m_mongodb.add(&protostate->m_mongodb);
+	}
+
+	void mark_top()
+	{
+		m_http.mark_top();
+		m_mysql.mark_top();
+		m_postgres.mark_top();
+		m_mongodb.mark_top();
+	}
+
+private:
+	sinsp_http_marker m_http;
+	sinsp_sql_marker m_mysql;
+	sinsp_sql_marker m_postgres;
+	sinsp_mongodb_marker m_mongodb;
 };
 
 #endif // HAS_ANALYZER

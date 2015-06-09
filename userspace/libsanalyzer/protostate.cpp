@@ -166,14 +166,14 @@ void sinsp_protostate::update(sinsp_partial_transaction* tr,
 	}
 	else if(tr->m_type == sinsp_partial_transaction::TYPE_MYSQL)
 	{
-		mysql.update<sinsp_mysql_parser>(tr, time_delta, is_server);
+		m_mysql.update<sinsp_mysql_parser>(tr, time_delta, is_server);
 	}
 	else if(tr->m_type == sinsp_partial_transaction::TYPE_POSTGRES)
 	{
-		postgres.update<sinsp_postgres_parser>(tr, time_delta, is_server);
+		m_postgres.update<sinsp_postgres_parser>(tr, time_delta, is_server);
 	} else if(tr->m_type == sinsp_partial_transaction::TYPE_MONGODB)
 	{
-		mongodb.update(tr, time_delta, is_server);
+		m_mongodb.update(tr, time_delta, is_server);
 	}
 }
 
@@ -243,9 +243,9 @@ inline void sql_state::add(sql_state* other)
 void sinsp_protostate::add(sinsp_protostate* other)
 {
 	add_http(other);
-	mysql.add(&(other->mysql));
-	postgres.add(&(other->postgres));
-	mongodb.add(&(other->mongodb));
+	m_mysql.add(&(other->m_mysql));
+	m_postgres.add(&(other->m_postgres));
+	m_mongodb.add(&(other->m_mongodb));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -256,57 +256,15 @@ void sinsp_protostate::url_table_to_protobuf(draiosproto::proto_info* protobuf_m
 						   bool is_server,
 						   uint32_t sampling_ratio)
 {
-	uint32_t j;
 	unordered_map<string, sinsp_url_details>::iterator uit;
 	draiosproto::url_details* ud;
 
-	if(table->size() > TOP_URLS_IN_SAMPLE)
+	//
+	// The table is small enough that we don't need to sort it
+	//
+	for(uit = table->begin(); uit != table->end(); ++uit)
 	{
-		//
-		// The table is big enough to require sorting
-		//
-		vector<unordered_map<string, sinsp_url_details>::iterator> sortable_list;
-		vector<unordered_map<string, sinsp_url_details>::iterator>::iterator vit;
-
-		for(uit = table->begin(); uit != table->end(); ++uit)
-		{
-			sortable_list.push_back(uit);
-		}
-
-		request_sorter<string, sinsp_url_details>::mark_top(&sortable_list);
-
-		//
-		// Go through the list and emit the marked elements
-		//
-		for(vit = sortable_list.begin(), j = 0; vit != sortable_list.end() && j < TOP_URLS_IN_SAMPLE; ++vit, ++j)
-		{
-			if(is_server)
-			{
-				ud = protobuf_msg->mutable_http()->add_server_urls();
-			}
-			else
-			{
-				ud = protobuf_msg->mutable_http()->add_client_urls();
-			}
-
-			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
-			{
-				ud->set_url((*vit)->first);
-				ud->mutable_counters()->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
-				ud->mutable_counters()->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
-				ud->mutable_counters()->set_time_max((*vit)->second.m_time_max);
-				ud->mutable_counters()->set_bytes_in((*vit)->second.m_bytes_in * sampling_ratio);
-				ud->mutable_counters()->set_bytes_out((*vit)->second.m_bytes_out * sampling_ratio);
-				ud->mutable_counters()->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
-			}
-		}
-	}
-	else
-	{
-		//
-		// The table is small enough that we don't need to sort it
-		//
-		for(uit = table->begin(); uit != table->end(); ++uit)
+		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
 			if(is_server)
 			{
@@ -400,71 +358,15 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 						   uint32_t sampling_ratio,
 						   bool is_query_table)
 {
-	uint32_t j;
 	unordered_map<string, sinsp_query_details>::iterator uit;
 	draiosproto::sql_entry_details* ud;
 
-	if(table->size() > TOP_URLS_IN_SAMPLE)
+	//
+	// The table is small enough that we don't need to sort it
+	//
+	for(uit = table->begin(); uit != table->end(); ++uit)
 	{
-		//
-		// The table is big enough to require sorting
-		//
-		vector<unordered_map<string, sinsp_query_details>::iterator> sortable_list;
-		vector<unordered_map<string, sinsp_query_details>::iterator>::iterator vit;
-
-		for(uit = table->begin(); uit != table->end(); ++uit)
-		{
-			sortable_list.push_back(uit);
-		}
-
-		request_sorter<string, sinsp_query_details>::mark_top(&sortable_list);
-
-		//
-		// Go through the list and emit the marked elements
-		//
-		for(vit = sortable_list.begin(), j = 0; vit != sortable_list.end() && j < TOP_URLS_IN_SAMPLE; ++vit, ++j)
-		{
-			if(is_query_table)
-			{
-				if(is_server)
-				{
-					ud = protobuf_msg->add_server_queries();
-				}
-				else
-				{
-					ud = protobuf_msg->add_client_queries();
-				}
-			}
-			else
-			{
-				if(is_server)
-				{
-					ud = protobuf_msg->add_server_tables();
-				}
-				else
-				{
-					ud = protobuf_msg->add_client_tables();
-				}
-			}
-
-			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
-			{
-				ud->set_name((*vit)->first);
-				ud->mutable_counters()->set_ncalls((*vit)->second.m_ncalls * sampling_ratio);
-				ud->mutable_counters()->set_time_tot((*vit)->second.m_time_tot * sampling_ratio);
-				ud->mutable_counters()->set_time_max((*vit)->second.m_time_max);
-				ud->mutable_counters()->set_bytes_in((*vit)->second.m_bytes_in * sampling_ratio);
-				ud->mutable_counters()->set_bytes_out((*vit)->second.m_bytes_out * sampling_ratio);
-				ud->mutable_counters()->set_nerrors((*vit)->second.m_nerrors * sampling_ratio);
-			}
-		}
-	}
-	else
-	{
-		//
-		// The table is small enough that we don't need to sort it
-		//
-		for(uit = table->begin(); uit != table->end(); ++uit)
+		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
 			if(is_query_table)
 			{
@@ -559,17 +461,17 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	//
 	// mysql
 	//
-	if (mysql.has_data())
+	if (m_mysql.has_data())
 	{
-		mysql.to_protobuf(protobuf_msg->mutable_mysql(), sampling_ratio);
+		m_mysql.to_protobuf(protobuf_msg->mutable_mysql(), sampling_ratio);
 	}
-	if (postgres.has_data())
+	if (m_postgres.has_data())
 	{
-		postgres.to_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
+		m_postgres.to_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
 	}
-	if(mongodb.has_data())
+	if(m_mongodb.has_data())
 	{
-		mongodb.to_protobuf(protobuf_msg->mutable_mongodb(), sampling_ratio);
+		m_mongodb.to_protobuf(protobuf_msg->mutable_mongodb(), sampling_ratio);
 	}
 }
 
@@ -642,42 +544,11 @@ void mongodb_state::collections_to_protobuf(unordered_map<string, sinsp_query_de
 										   const function<draiosproto::mongodb_collection_details*(void)> get_cd,
 											uint32_t sampling_ratio)
 {
-	draiosproto::mongodb_collection_details *cd;
-	if (map.size() > TOP_URLS_IN_SAMPLE)
+	for (const auto& item : map)
 	{
-		//
-		// The table is big enough to require sorting
-		//
-		vector<unordered_map<string, sinsp_query_details>::iterator> sortable_list;
-		vector<unordered_map<string, sinsp_query_details>::iterator>::iterator vit;
-		unordered_map<string, sinsp_query_details>::iterator uit;
-		uint32_t j;
-
-		for(uit = map.begin(); uit != map.end(); ++uit)
+		if(item.second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
-			sortable_list.push_back(uit);
-		}
-
-		request_sorter<string, sinsp_query_details>::mark_top(&sortable_list);
-
-		//
-		// Go through the list and emit the marked elements
-		//
-		for(vit = sortable_list.begin(), j = 0; vit != sortable_list.end() && j < TOP_URLS_IN_SAMPLE; ++vit, ++j)
-		{
-			cd = get_cd();
-			if((*vit)->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
-			{
-				cd->set_name((*vit)->first);
-				(*vit)->second.to_protobuf(cd->mutable_counters(), sampling_ratio);
-			}
-		}
-	}
-	else
-	{
-		for (auto item : map)
-		{
-			cd = get_cd();
+			auto cd = get_cd();
 			cd->set_name(item.first);
 			item.second.to_protobuf(cd->mutable_counters(), sampling_ratio);
 		}
