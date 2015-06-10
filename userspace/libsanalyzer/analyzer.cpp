@@ -2450,7 +2450,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd());
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), STATSD_METRIC_LIMIT);
 			}
 			//
 			// Transactions
@@ -3295,12 +3295,12 @@ void sinsp_analyzer::emit_containers()
 	// Etc ...
 
 	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
-
-	auto check_and_emit_containers = [&containers_ids, this]()
+	unsigned statsd_limit = STATSD_METRIC_LIMIT;
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit]()
 	{
 		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
 		{
-			this->emit_container(containers_ids.front());
+			this->emit_container(containers_ids.front(), &statsd_limit);
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
@@ -3320,7 +3320,7 @@ void sinsp_analyzer::emit_containers()
 	m_containers.clear();
 }
 
-void sinsp_analyzer::emit_container(const string& container_id)
+void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -3410,7 +3410,8 @@ void sinsp_analyzer::emit_container(const string& container_id)
 	}
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
-		emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd());
+		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(), *statsd_limit);
+		*statsd_limit -= statsd_emitted;
 	}
 }
 
@@ -3426,15 +3427,16 @@ void sinsp_analyzer::get_statsd()
 	}
 }
 
-void sinsp_analyzer::emit_statsd(const vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info)
+unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+					   unsigned limit)
 {
-	int j = 0;
+	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
 		auto statsd_proto = statsd_info->add_statsd_metrics();
 		metric.to_protobuf(statsd_proto);
 		++j;
-		if(j >= STATSD_METRIC_LIMIT)
+		if(j >= limit)
 		{
 			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
 			break;
@@ -3444,6 +3446,7 @@ void sinsp_analyzer::emit_statsd(const vector<statsd_metric> &statsd_metrics, dr
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
 	}
+	return j;
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}

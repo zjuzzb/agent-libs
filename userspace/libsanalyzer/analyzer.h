@@ -258,13 +258,14 @@ VISIBILITY_PRIVATE
 	void emit_full_connections();
 	void emit_top_files();
 	void emit_containers();
-	void emit_container(const string& container_id);
+	void emit_container(const string &container_id, unsigned* statsd_limit);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
 	void get_statsd();
-	static void emit_statsd(const vector<statsd_metric>& statsd_metrics, draiosproto::statsd_info* statsd_info);
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+						   unsigned limit);
 
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
