@@ -130,8 +130,8 @@ class sinsp_query_details : public sinsp_request_details
 template <typename KT, typename T>
 class request_sorter
 {
-	typedef bool (*request_comparer)(typename unordered_map<string, T>::iterator src, 
-		typename unordered_map<string, T>::iterator dst);
+	typedef bool (*request_comparer)(typename unordered_map<KT, T>::iterator src,
+		typename unordered_map<KT, T>::iterator dst);
 
 public:
 	//
@@ -218,27 +218,27 @@ public:
 	//
 	// Comparers for sorting
 	//
-	static bool cmp_ncalls(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	static bool cmp_ncalls(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_ncalls > dst->second.m_ncalls;
 	}
 
-	static bool cmp_nerrors(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	static bool cmp_nerrors(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_nerrors > dst->second.m_nerrors;
 	}
 
-	static bool cmp_time_avg(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	static bool cmp_time_avg(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
 		return (src->second.m_time_tot / src->second.m_ncalls) > (dst->second.m_time_tot / dst->second.m_ncalls);
 	}
 
-	static bool cmp_time_max(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	static bool cmp_time_max(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_time_max > dst->second.m_time_max;
 	}
 
-	static bool cmp_bytes_tot(typename unordered_map<string, T>::iterator src, typename unordered_map<string, T>::iterator dst)
+	static bool cmp_bytes_tot(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
 		return (src->second.m_bytes_in + src->second.m_bytes_out) > 
 			(dst->second.m_bytes_in + dst->second.m_bytes_out);
@@ -247,27 +247,27 @@ public:
 	//
 	// Marking functions
 	//
-	static void mark_top_by(vector<typename unordered_map<string, T>::iterator>* sortable_list,
+	static void mark_top_by(vector<typename unordered_map<KT, T>::iterator>* sortable_list,
 							request_comparer comparer)
 	{
 		uint32_t j;
 
-		if(sortable_list->size() > TOP_URLS_IN_SAMPLE)
+		if(sortable_list->size() > CONTAINERS_PROTOS_TOP_BY_LIMIT)
 		{
 			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + TOP_URLS_IN_SAMPLE,
+						 sortable_list->begin() + CONTAINERS_PROTOS_TOP_BY_LIMIT,
 						 sortable_list->end(),
 						 comparer);
 		}
 
-		for(j = 0; j < TOP_URLS_IN_SAMPLE; j++)
+		for(j = 0; j < std::min(static_cast<size_t>(CONTAINERS_PROTOS_TOP_BY_LIMIT), sortable_list->size()); j++)
 		{
 			sortable_list->at(j)->second.m_flags =
 				(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
 		}
 	}
 
-	static void mark_top(vector<typename unordered_map<string, T>::iterator>* sortable_list)
+	static void mark_top(vector<typename unordered_map<KT, T>::iterator>* sortable_list)
 	{
 		//
 		// Mark top based on number of calls
@@ -299,15 +299,15 @@ public:
 		//       TOP_URLS_IN_SAMPLE entries have errors, and so we add only the ones that
 		//       have m_nerrors > 0.
 		//
-		if(sortable_list->size() > TOP_URLS_IN_SAMPLE)
+		if(sortable_list->size() > CONTAINERS_PROTOS_TOP_BY_LIMIT)
 		{
 			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + TOP_URLS_IN_SAMPLE,
+						 sortable_list->begin() + CONTAINERS_PROTOS_TOP_BY_LIMIT,
 						 sortable_list->end(),
 						 cmp_nerrors);
 		}
 
-		for(uint32_t j = 0; j < std::min(static_cast<size_t>(TOP_URLS_IN_SAMPLE), sortable_list->size()); j++)
+		for(uint32_t j = 0; j < std::min(static_cast<size_t>(CONTAINERS_PROTOS_TOP_BY_LIMIT), sortable_list->size()); j++)
 		{
 			T* entry = &(sortable_list->at(j)->second);
 
@@ -497,6 +497,14 @@ public:
 		{
 			m_client_queries.push_back(it);
 		}
+		for(auto it = state->m_server_query_types.begin(); it != state->m_server_query_types.end(); ++it)
+		{
+			m_server_query_types.push_back(it);
+		}
+		for(auto it = state->m_client_query_types.begin(); it != state->m_client_query_types.end(); ++it)
+		{
+			m_client_query_types.push_back(it);
+		}
 		for(auto it = state->m_server_tables.begin(); it != state->m_server_tables.end(); ++it)
 		{
 			m_server_tables.push_back(it);
@@ -506,10 +514,13 @@ public:
 			m_client_tables.push_back(it);
 		}
 	}
+
 	void mark_top()
 	{
 		request_sorter<string, sinsp_query_details>::mark_top(&m_server_queries);
 		request_sorter<string, sinsp_query_details>::mark_top(&m_client_queries);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_query_types);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_query_types);
 		request_sorter<string, sinsp_query_details>::mark_top(&m_server_tables);
 		request_sorter<string, sinsp_query_details>::mark_top(&m_client_tables);
 	}
@@ -517,8 +528,8 @@ public:
 private:
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_queries;
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_queries;
-	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_query_types;
-	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_query_types;
+	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_query_types;
+	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_query_types;
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_tables;
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_tables;
 };
@@ -528,14 +539,14 @@ class sinsp_mongodb_marker
 public:
 	void add(mongodb_state* state)
 	{
-		/*for(auto it = state->m_server_ops.begin(); it != state->m_server_ops.end(); ++it)
+		for(auto it = state->m_server_ops.begin(); it != state->m_server_ops.end(); ++it)
 		{
 			m_server_ops.push_back(it);
 		}
 		for(auto it = state->m_client_ops.begin(); it != state->m_client_ops.end(); ++it)
 		{
 			m_client_ops.push_back(it);
-		}*/
+		}
 		for(auto it = state->m_server_collections.begin(); it != state->m_server_collections.end(); ++it)
 		{
 			m_server_collections.push_back(it);
@@ -552,8 +563,8 @@ public:
 		request_sorter<string, sinsp_query_details>::mark_top(&m_client_collections);
 	}
 private:
-	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
-	//vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
+	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
+	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_collections;
 	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_collections;
 };

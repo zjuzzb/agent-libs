@@ -181,4 +181,5 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 
 static const auto STATSD_METRIC_LIMIT = 300;
 
-static const auto CONTAINERS_LIMIT = 20;
+static const auto CONTAINERS_LIMIT = 200;
+static const auto CONTAINERS_PROTOS_TOP_BY_LIMIT = 5;
