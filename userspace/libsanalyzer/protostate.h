@@ -405,6 +405,44 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_collections;
 };
 
+class sinsp_http_state
+{
+public:
+	void clear()
+	{
+		m_server_urls.clear();
+		m_client_urls.clear();
+		m_server_status_codes.clear();
+		m_client_status_codes.clear();
+	}
+
+	bool has_data()
+	{
+		return ! m_server_status_codes.empty() || ! m_client_status_codes.empty();
+	}
+
+	void add(sinsp_http_state* other);
+
+	inline void update(sinsp_partial_transaction* tr,
+				uint64_t time_delta, bool is_server);
+
+	inline void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio);
+
+private:
+	friend class sinsp_http_marker;
+	void url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
+							   unordered_map<string, sinsp_url_details>* table,
+							   bool is_server,
+							   uint32_t sampling_ratio);
+	void status_code_table_to_protobuf(draiosproto::http_info* protobuf_msg,
+									   unordered_map<uint32_t, sinsp_request_details>* table,
+									   bool is_server,
+									   uint32_t sampling_ratio);
+	unordered_map<string, sinsp_url_details> m_server_urls;
+	unordered_map<string, sinsp_url_details> m_client_urls;
+	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
+	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
+};
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
 ///////////////////////////////////////////////////////////////////////////////
@@ -415,10 +453,7 @@ public:
 
 	inline void clear()
 	{
-		m_server_urls.clear();
-		m_client_urls.clear();
-		m_server_status_codes.clear();
-		m_client_status_codes.clear();
+		m_http.clear();
 
 		m_mysql.clear();
 		m_postgres.clear();
@@ -430,38 +465,25 @@ public:
 
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio);
 
-	// The list of URLs
-	unordered_map<string, sinsp_url_details> m_server_urls;
-	unordered_map<string, sinsp_url_details> m_client_urls;
-	unordered_map<uint32_t, uint32_t> m_server_status_codes;
-	unordered_map<uint32_t, uint32_t> m_client_status_codes;
-
+	sinsp_http_state m_http;
 	sql_state m_mysql;
 	sql_state m_postgres;
 	mongodb_state m_mongodb;
-
-
-private:
-	inline void update_http(sinsp_partial_transaction* tr,
-		uint64_t time_delta, bool is_server);
-	inline void add_http(sinsp_protostate* other);
-
-	void url_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-		unordered_map<string, sinsp_url_details>* table,
-		bool is_server,
-		uint32_t sampling_ratio);
-	void status_code_table_to_protobuf(draiosproto::proto_info* protobuf_msg, 
-		unordered_map<uint32_t, uint32_t>* table,
-		bool is_server,
-		uint32_t sampling_ratio);
-
 };
 
 class sinsp_http_marker
 {
 public:
-	void add(sinsp_protostate* state)
+	void add(sinsp_http_state* state)
 	{
+		for(auto it = state->m_server_status_codes.begin(); it != state->m_server_status_codes.end(); ++it)
+		{
+			m_server_status_codes.push_back(it);
+		}
+		for(auto it = state->m_client_status_codes.begin(); it != state->m_client_status_codes.end(); ++it)
+		{
+			m_client_status_codes.push_back(it);
+		}
 		for(auto it = state->m_server_urls.begin(); it != state->m_server_urls.end(); ++it)
 		{
 			m_server_urls.push_back(it);
@@ -475,13 +497,15 @@ public:
 	{
 		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls);
 		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls);
+		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_server_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls);
+		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_client_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls);
 	}
 
 private:
 	vector<unordered_map<string, sinsp_url_details>::iterator> m_server_urls;
 	vector<unordered_map<string, sinsp_url_details>::iterator> m_client_urls;
-	//unordered_map<uint32_t, uint32_t> m_server_status_codes;
-	//unordered_map<uint32_t, uint32_t> m_client_status_codes;
+	vector<unordered_map<uint32_t, sinsp_request_details>::iterator> m_server_status_codes;
+	vector<unordered_map<uint32_t, sinsp_request_details>::iterator> m_client_status_codes;
 };
 
 class sinsp_sql_marker
@@ -575,7 +599,7 @@ class sinsp_protostate_marker
 public:
 	void add(sinsp_protostate* protostate)
 	{
-		m_http.add(protostate);
+		m_http.add(&protostate->m_http);
 		m_mysql.add(&protostate->m_mysql);
 		m_postgres.add(&protostate->m_postgres);
 		m_mongodb.add(&protostate->m_mongodb);
