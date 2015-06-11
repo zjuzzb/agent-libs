@@ -342,7 +342,7 @@ public:
 	void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
 
-	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 	inline bool has_data()
 	{
 		return m_server_queries.size() > 0 ||
@@ -355,11 +355,11 @@ private:
 		unordered_map<string, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio,
-		bool is_query_table);
+		bool is_query_table, uint32_t limit);
 	void query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 		unordered_map<uint32_t, sinsp_query_details>* table,
 		bool is_server,
-		uint32_t sampling_ratio);
+		uint32_t sampling_ratio, uint32_t limit);
 
 	unordered_map<string, sinsp_query_details> m_server_queries;
 	unordered_map<string, sinsp_query_details> m_client_queries;
@@ -385,7 +385,7 @@ public:
 	void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
 
-	void to_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 	inline bool has_data()
 	{
@@ -397,7 +397,7 @@ private:
 	friend class sinsp_mongodb_marker;
 	void collections_to_protobuf(unordered_map<string, sinsp_query_details>& map,
 									const function<draiosproto::mongodb_collection_details*(void)> get_cd,
-								 uint32_t sampling_ratio);
+								 uint32_t sampling_ratio, uint32_t limit);
 	// MongoDB
 	unordered_map<uint32_t, sinsp_query_details> m_server_ops;
 	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
@@ -426,18 +426,18 @@ public:
 	inline void update(sinsp_partial_transaction* tr,
 				uint64_t time_delta, bool is_server);
 
-	inline void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio);
+	inline void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 private:
 	friend class sinsp_http_marker;
 	void url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
 							   unordered_map<string, sinsp_url_details>* table,
 							   bool is_server,
-							   uint32_t sampling_ratio);
+							   uint32_t sampling_ratio, uint32_t limit);
 	void status_code_table_to_protobuf(draiosproto::http_info* protobuf_msg,
 									   unordered_map<uint32_t, sinsp_request_details>* table,
 									   bool is_server,
-									   uint32_t sampling_ratio);
+									   uint32_t sampling_ratio, uint32_t limit);
 	unordered_map<string, sinsp_url_details> m_server_urls;
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
@@ -463,7 +463,7 @@ public:
 
 	void add(sinsp_protostate* other);
 
-	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 	sinsp_http_state m_http;
 	sql_state m_mysql;

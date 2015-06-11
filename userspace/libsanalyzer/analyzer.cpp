@@ -2407,7 +2407,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				host_marker.add(m_host_metrics.m_protostate);
 				host_marker.mark_top(HOST_PROTOS_LIMIT);
 				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-						m_sampling_ratio);
+						m_sampling_ratio, HOST_PROTOS_LIMIT);
 			}
 
 			//
@@ -3301,7 +3301,6 @@ void sinsp_analyzer::emit_containers()
 		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
 		{
 			this->emit_container(containers_ids.front(), &statsd_limit);
-			g_logger.format(sinsp_logger::SEV_INFO, "Statsd limit is now %d", statsd_limit);
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
@@ -3318,7 +3317,6 @@ void sinsp_analyzer::emit_containers()
 	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	check_and_emit_containers();
 
-	g_logger.log("Finish emit_containers", sinsp_logger::SEV_INFO);
 	m_containers.clear();
 }
 
@@ -3391,7 +3389,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 	if(m_protocols_enabled)
 	{
-		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio);
+		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio, CONTAINERS_PROTOS_TOP_LIMIT);
 	}
 
 	it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
