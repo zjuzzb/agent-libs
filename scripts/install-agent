@@ -76,7 +76,7 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $0 access_key [tags]"
+	echo "Usage: $0 -a access_key -t [tags] -c collector -s secure"
 	echo "  access_key: Secret access key, as shown in app.draios.com"
 	echo "  tags: List of tags for this host. If set, tags can be used in"
 	echo "        the Draios map. The syntax can be a comma-separated list of"
@@ -84,16 +84,44 @@ function help {
 	echo "        name \"Tag\" is implicitly assumed)."
 	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
 	echo "        and \"webserver\" are all valid alternatives."
+	echo "  collector: collector IP for sysdig cloud on premis installation"
+	echo "  secure: use a secure TLS connection to send metrics to the collector"
+	echo "          accepted values: true or false"
 	echo
 	exit 1
 }
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-	help
-fi
-
-ACCESS_KEY="$1"
-TAGS="$2"
+#main
+while getopts ":a:t:c:s:" opt; do
+  case ${opt} in
+    a)  
+        echo "access key: ${OPTARG}" >&2
+        ACCESS_KEY=${OPTARG}
+        ;;  
+    t)  
+        echo "tags: ${OPTARG}" >&2
+        TAGS=${OPTARG}
+        ;;  
+    c)  
+        echo "collector endpoint: ${OPTARG}" >&2
+        COLLECTOR=${OPTARG}
+        ;;  
+    s)  
+        echo "secure connection setting: ${OPTARG}" >&2
+        SECURE=${OPTARG}
+        ;;  
+    \?) 
+        echo "Invalid option: -${OPTARG}" >&2
+        help
+        exit 1
+        ;;  
+    :)  
+      echo "Option -${OPTARG} requires an argument." >&2
+      help
+      exit 1
+      ;;  
+  esac
+done
 
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
@@ -200,10 +228,30 @@ fi
 if [ ! -z "$TAGS" ]; then
 	echo "* Setting tags"
 
-	if ! grep ^ui.tags $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^tags $CONFIG_FILE > /dev/null 2>&1; then
 		echo "tags: $TAGS" >> $CONFIG_FILE
 	else
 		sed -i "s/^tags.*/tags: $TAGS/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$COLLECTOR" ]; then
+	echo "* Setting collector endpoint"
+
+	if ! grep ^ui.tags $CONFIG_FILE > /dev/null 2>&1; then
+		echo "collector: $COLLECTOR" >> $CONFIG_FILE
+	else
+		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$SECURE" ]; then
+	echo "* Setting connection security"
+
+	if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+		echo "ssl: $SECURE" >> $CONFIG_FILE
+	else
+		sed -i "s/^ssl.*/ssl: $SECURE/g" $CONFIG_FILE
 	fi
 fi
 
