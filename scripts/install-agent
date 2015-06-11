@@ -123,6 +123,13 @@ while getopts ":a:t:c:s:" opt; do
   esac
 done
 
+if [ -z $ACCESS_KEY ]; then
+ echo "access key not provided"
+ echo
+ help
+ exit 1
+fi
+
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
 	exit 1
