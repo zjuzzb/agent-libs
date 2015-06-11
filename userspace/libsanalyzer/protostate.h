@@ -248,50 +248,50 @@ public:
 	// Marking functions
 	//
 	static void mark_top_by(vector<typename unordered_map<KT, T>::iterator>* sortable_list,
-							request_comparer comparer)
+							request_comparer comparer, size_t limit)
 	{
 		uint32_t j;
 
-		if(sortable_list->size() > CONTAINERS_PROTOS_TOP_BY_LIMIT)
+		if(sortable_list->size() > limit)
 		{
 			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + CONTAINERS_PROTOS_TOP_BY_LIMIT,
+						 sortable_list->begin() + limit,
 						 sortable_list->end(),
 						 comparer);
 		}
 
-		for(j = 0; j < std::min(static_cast<size_t>(CONTAINERS_PROTOS_TOP_BY_LIMIT), sortable_list->size()); j++)
+		for(j = 0; j < std::min(limit, sortable_list->size()); j++)
 		{
 			sortable_list->at(j)->second.m_flags =
 				(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
 		}
 	}
 
-	static void mark_top(vector<typename unordered_map<KT, T>::iterator>* sortable_list)
+	static void mark_top(vector<typename unordered_map<KT, T>::iterator>* sortable_list, size_t limit)
 	{
 		//
 		// Mark top based on number of calls
 		//
 		mark_top_by(sortable_list, 
-			cmp_ncalls);
+			cmp_ncalls, limit);
 						
 		//
 		// Mark top based on total time
 		//
 		mark_top_by(sortable_list, 
-			cmp_time_avg);
+			cmp_time_avg, limit);
 
 		//
 		// Mark top based on max time
 		//
 		mark_top_by(sortable_list, 
-			cmp_time_max);
+			cmp_time_max, limit);
 
 		//
 		// Mark top based on total bytes
 		//
 		mark_top_by(sortable_list, 
-			cmp_bytes_tot);
+			cmp_bytes_tot, limit);
 		
 		//
 		// Mark top based on number of errors
@@ -299,15 +299,15 @@ public:
 		//       TOP_URLS_IN_SAMPLE entries have errors, and so we add only the ones that
 		//       have m_nerrors > 0.
 		//
-		if(sortable_list->size() > CONTAINERS_PROTOS_TOP_BY_LIMIT)
+		if(sortable_list->size() > limit)
 		{
 			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + CONTAINERS_PROTOS_TOP_BY_LIMIT,
+						 sortable_list->begin() + limit,
 						 sortable_list->end(),
 						 cmp_nerrors);
 		}
 
-		for(uint32_t j = 0; j < std::min(static_cast<size_t>(CONTAINERS_PROTOS_TOP_BY_LIMIT), sortable_list->size()); j++)
+		for(uint32_t j = 0; j < std::min(limit, sortable_list->size()); j++)
 		{
 			T* entry = &(sortable_list->at(j)->second);
 
@@ -493,12 +493,12 @@ public:
 			m_client_urls.push_back(it);
 		}
 	}
-	void mark_top()
+	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls);
-		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls);
-		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_server_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls);
-		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_client_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls);
+		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls, limit);
+		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls, limit);
+		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_server_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
+		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_client_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
 	}
 
 private:
@@ -539,14 +539,14 @@ public:
 		}
 	}
 
-	void mark_top()
+	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_queries);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_queries);
-		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_query_types);
-		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_query_types);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_tables);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_tables);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_queries, limit);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_queries, limit);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_query_types, limit);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_query_types, limit);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_tables, limit);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_tables, limit);
 	}
 
 private:
@@ -581,11 +581,14 @@ public:
 		}
 	}
 
-	void mark_top()
+	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_collections);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_collections);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_ops, limit);
+		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_ops, limit);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_server_collections, limit);
+		request_sorter<string, sinsp_query_details>::mark_top(&m_client_collections, limit);
 	}
+
 private:
 	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
 	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
@@ -605,12 +608,12 @@ public:
 		m_mongodb.add(&protostate->m_mongodb);
 	}
 
-	void mark_top()
+	void mark_top(size_t limit)
 	{
-		m_http.mark_top();
-		m_mysql.mark_top();
-		m_postgres.mark_top();
-		m_mongodb.mark_top();
+		m_http.mark_top(limit);
+		m_mysql.mark_top(limit);
+		m_postgres.mark_top(limit);
+		m_mongodb.mark_top(limit);
 	}
 
 private:

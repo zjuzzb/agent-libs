@@ -264,6 +264,7 @@ VISIBILITY_PRIVATE
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
 	void get_statsd();
+	
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 						   unsigned limit);
 

@@ -2405,7 +2405,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				sinsp_protostate_marker host_marker;
 				host_marker.add(m_host_metrics.m_protostate);
-				host_marker.mark_top();
+				host_marker.mark_top(HOST_PROTOS_LIMIT);
 				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
 						m_sampling_ratio);
 			}
@@ -2450,7 +2450,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), STATSD_METRIC_LIMIT);
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), HOST_STATSD_METRIC_LIMIT);
 			}
 			//
 			// Transactions
@@ -3287,7 +3287,7 @@ void sinsp_analyzer::emit_containers()
 		containers_protostate_marker.add(container_state.second.m_metrics.m_protostate);
 	}
 
-	containers_protostate_marker.mark_top();
+	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
 	// Pick top N from top_by_cpu
 	// Pick top N from top_by_mem which are not already taken by top_cpu
@@ -3295,12 +3295,13 @@ void sinsp_analyzer::emit_containers()
 	// Etc ...
 
 	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
-	unsigned statsd_limit = STATSD_METRIC_LIMIT;
+	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit]()
 	{
 		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
 		{
 			this->emit_container(containers_ids.front(), &statsd_limit);
+			g_logger.format(sinsp_logger::SEV_INFO, "Statsd limit is now %d", statsd_limit);
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
@@ -3317,6 +3318,7 @@ void sinsp_analyzer::emit_containers()
 	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	check_and_emit_containers();
 
+	g_logger.log("Finish emit_containers", sinsp_logger::SEV_INFO);
 	m_containers.clear();
 }
 
@@ -3433,14 +3435,14 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
-		auto statsd_proto = statsd_info->add_statsd_metrics();
-		metric.to_protobuf(statsd_proto);
-		++j;
 		if(j >= limit)
 		{
 			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
 			break;
 		}
+		auto statsd_proto = statsd_info->add_statsd_metrics();
+		metric.to_protobuf(statsd_proto);
+		++j;
 	}
 	if (j > 0)
 	{
