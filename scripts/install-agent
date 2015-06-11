@@ -76,7 +76,7 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $0 -a access_key -t [tags] -c collector -s secure"
+	echo "Usage: $0 -a access_key [-t tags] [-c collector] [-s secure]"
 	echo "  access_key: Secret access key, as shown in app.draios.com"
 	echo "  tags: List of tags for this host. If set, tags can be used in"
 	echo "        the Draios map. The syntax can be a comma-separated list of"
