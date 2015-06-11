@@ -238,7 +238,7 @@ fi
 if [ ! -z "$COLLECTOR" ]; then
 	echo "* Setting collector endpoint"
 
-	if ! grep ^ui.tags $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^collector $CONFIG_FILE > /dev/null 2>&1; then
 		echo "collector: $COLLECTOR" >> $CONFIG_FILE
 	else
 		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
