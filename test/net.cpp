@@ -632,7 +632,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 			auto http_parser = new sinsp_http_parser();
 			auto url = string("http://test/url/topcall");
 			http_parser->m_url = const_cast<char*>(url.c_str());
-			http_parser->m_status_code = 200;
+			http_parser->m_status_code = 204;
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
@@ -648,6 +648,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	marker.mark_top(15);
 	auto found_slow = false;
 	auto found_top_call = false;
+	auto top_ncalls = 0;
 	for(auto& protostate : protostates)
 	{
 		auto protos = make_unique<draiosproto::proto_info>();
@@ -664,10 +665,17 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 					{
 						found_slow = true;
 					}
-					if(url.url().find("slow") != string::npos)
+					if(url.url().find("topcall") != string::npos)
 					{
 						found_top_call = true;
 					}
+				}
+			}
+			for(auto status_code : http.client_status_codes())
+			{
+				if(status_code.status_code() == 204)
+				{
+					top_ncalls = status_code.ncalls();
 				}
 			}
 		}
@@ -677,4 +685,5 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	}
 	EXPECT_TRUE(found_slow);
 	EXPECT_TRUE(found_top_call);
+	EXPECT_EQ(500, top_ncalls);
 }
