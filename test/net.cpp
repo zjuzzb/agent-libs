@@ -593,7 +593,7 @@ TEST(sinsp_protostate, test_per_container_distribution)
 	EXPECT_EQ(15, has_urls);
 }
 
-TEST(sinsp_protostate, test_slower_call_should_be_present)
+TEST(sinsp_protostate, test_top_call_should_be_present)
 {
 	std::array<sinsp_protostate, 80> protostates;
 	for(auto& protostate : protostates)
@@ -624,6 +624,22 @@ TEST(sinsp_protostate, test_slower_call_should_be_present)
 		protostate.update(transaction.get(), 1000, false);
 	}
 
+	{
+		auto& protostate = protostates.at(50);
+		for(auto j = 0; j < 500; ++j)
+		{
+			auto transaction = make_unique<sinsp_partial_transaction>();
+			auto http_parser = new sinsp_http_parser();
+			auto url = string("http://test/url/topcall");
+			http_parser->m_url = const_cast<char*>(url.c_str());
+			http_parser->m_status_code = 200;
+			http_parser->m_is_valid = true;
+			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+			transaction->m_protoparser = http_parser;
+			protostate.update(transaction.get(), 2, false);
+		}
+	}
+
 	sinsp_protostate_marker marker;
 	for(auto& protostate: protostates)
 	{
@@ -631,6 +647,7 @@ TEST(sinsp_protostate, test_slower_call_should_be_present)
 	}
 	marker.mark_top(15);
 	auto found_slow = false;
+	auto found_top_call = false;
 	for(auto& protostate : protostates)
 	{
 		auto protos = make_unique<draiosproto::proto_info>();
@@ -647,6 +664,10 @@ TEST(sinsp_protostate, test_slower_call_should_be_present)
 					{
 						found_slow = true;
 					}
+					if(url.url().find("slow") != string::npos)
+					{
+						found_top_call = true;
+					}
 				}
 			}
 		}
@@ -655,4 +676,5 @@ TEST(sinsp_protostate, test_slower_call_should_be_present)
 		EXPECT_FALSE(protos->has_mongodb());
 	}
 	EXPECT_TRUE(found_slow);
+	EXPECT_TRUE(found_top_call);
 }
