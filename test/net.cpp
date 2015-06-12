@@ -34,6 +34,8 @@
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer_thread.h"
+#include "protostate.h"
+#include <array>
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
@@ -533,4 +535,59 @@ return;
 	configuration.set_analyzer_sample_len_ns(3 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration, &ac);});
+}
+
+TEST(sinsp_protostate, test_zero)
+{
+	sinsp_protostate protostate;
+	auto protos = make_unique<draiosproto::proto_info>();
+	protostate.to_protobuf(protos.get(), 1, 20);
+	EXPECT_FALSE(protos->has_http());
+	EXPECT_FALSE(protos->has_mysql());
+	EXPECT_FALSE(protos->has_postgres());
+	EXPECT_FALSE(protos->has_mongodb());
+}
+
+TEST(sinsp_protostate, test_one_per_container)
+{
+	std::array<sinsp_protostate, 80> protostates;
+	for(auto& protostate : protostates)
+	{
+		for(auto j = 0; j < 100; ++j)
+		{
+			auto transaction = make_unique<sinsp_partial_transaction>();
+			auto http_parser = new sinsp_http_parser();
+			http_parser->m_url = "http://test";
+			http_parser->m_status_code = 200;
+			http_parser->m_is_valid = true;
+			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+			transaction->m_protoparser = http_parser;
+			protostate.update(transaction.get(), j, false);
+		}
+	}
+	sinsp_protostate_marker marker;
+	for(auto& protostate: protostates)
+	{
+		marker.add(&protostate);
+	}
+	marker.mark_top(15);
+	auto has_urls = 0;
+	for(auto& protostate : protostates)
+	{
+		auto protos = make_unique<draiosproto::proto_info>();
+		protostate.to_protobuf(protos.get(), 1, 15);
+		if(protos->has_http())
+		{
+			auto http = protos->http();
+
+			if(http.client_urls().size() > 0)
+			{
+				has_urls += 1;
+			}
+		}
+		EXPECT_FALSE(protos->has_mysql());
+		EXPECT_FALSE(protos->has_postgres());
+		EXPECT_FALSE(protos->has_mongodb());
+	}
+	EXPECT_EQ(15, has_urls);
 }
