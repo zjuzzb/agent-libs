@@ -93,98 +93,91 @@ function help {
 }
 
 function is_valid_value {
-  if [[ ${1} == -* ]] || [[ ${1} == --* ]] || [[ -z ${1} ]]; then
-     return 1
-  else
-     return 0
-  fi
+	if [[ ${1} == -* ]] || [[ ${1} == --* ]] || [[ -z ${1} ]]; then
+		return 1
+	else
+		return 0
+	fi
 }
 
 #main
 BACKWARD=false 
 
 if [[ ${#} -eq 0 ]]; then
- echo "ERROR: sysdig-cloud access_key is mandatory, use -h | --help for $(basename ${0}) Usage"
+	echo "ERROR: sysdig-cloud access_key is mandatory, use -h | --help for $(basename ${0}) Usage"
 	exit 1
 fi
 
 #backward for old agent options
 if [[ ${#} -le 2 ]]; then
-   if is_valid_value "${1}"; then
-      if [[ ${1} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
-          ACCESS_KEY="${1}"
-          BACKWARD=true
-      fi
-   fi
-   if is_valid_value "${2}"; then
-      if [[ ! ${2} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
-         TAGS="${2}"
-      fi
-   fi
+	if is_valid_value "${1}"; then
+		if [[ ${1} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
+			ACCESS_KEY="${1}"
+			BACKWARD=true
+		fi
+	fi
+	if is_valid_value "${2}"; then
+		if [[ ! ${2} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
+			TAGS="${2}"
+		fi
+	fi
 fi
 
 if [[ ${BACKWARD} != true ]]; then
-   while [[ ${#} > 0 ]]
-   do
-   key="${1}"
+	while [[ ${#} > 0 ]]
+	do
+	key="${1}"
 
-   case ${key} in
-       -a|--access_key)
-          if is_valid_value "${2}"; then
-            ACCESS_KEY="${2}"
-          else
-            echo "ERROR: no value provided for access_key option, use -h | --help for $(basename ${0}) Usage"
-            exit 1
-          fi
-          shift
-          ;;
-       -t|--tags)
-          if is_valid_value "${2}"; then
-            TAGS="${2}"
-          else
-            echo "ERROR: no value provided for tags option, use -h | --help for $(basename ${0}) Usage"
-            exit 1
-          fi
-          shift
-          ;;
-       -c|--collector)
-          if is_valid_value "${2}"; then
-            COLLECTOR="${2}"
-          else
-            echo "ERROR: no value provided for collector endpoint option, use -h | --help for $(basename ${0}) Usage"
-            exit 1
-          fi
-          shift
-          ;;
-       -s|--secure)
-          if is_valid_value "${2}"; then
-            SECURE="${2}"
-          else
-            echo "ERROR: no value provided connection security option, use -h | --help for $(basename ${0}) Usage"
-            exit 1
-          fi
-          shift
-          ;;
-       -h|--help)
-           help
-           exit 1
-          ;;
-       *)
-          echo "ERROR: Invalid option: ${1}, use -h | --help for $(basename ${0}) Usage"
-          exit 1
-          ;;
-   esac
-   shift
-   done
+	case ${key} in
+		-a|--access_key)
+			if is_valid_value "${2}"; then
+				ACCESS_KEY="${2}"
+			else
+				echo "ERROR: no value provided for access_key option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-t|--tags)
+			if is_valid_value "${2}"; then
+				TAGS="${2}"
+			else
+				echo "ERROR: no value provided for tags option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-c|--collector)
+			if is_valid_value "${2}"; then
+				COLLECTOR="${2}"
+			else
+				echo "ERROR: no value provided for collector endpoint option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-s|--secure)
+			if is_valid_value "${2}"; then
+				SECURE="${2}"
+			else
+				echo "ERROR: no value provided connection security option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-h|--help)
+			help
+			exit 1
+			;;
+		*)
+			echo "ERROR: Invalid option: ${1}, use -h | --help for $(basename ${0}) Usage"
+			exit 1
+			;;
+	esac
+	shift
+	done
 fi
 
-## this section is only for testing remove before ship it
-echo "access ${ACCESS_KEY}"
-echo "tags ${TAGS}"
-echo "collector ${COLLECTOR}"
-echo "secure ${SECURE}"
-exit 1
-#####
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
 	exit 1
