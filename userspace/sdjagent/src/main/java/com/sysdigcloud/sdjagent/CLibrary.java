@@ -28,6 +28,7 @@ public class CLibrary {
                     break;
                 }
             }
+            procStatusFile.close();
         } catch (IOException ex)
         {
             LOGGER.severe(String.format("Error while reading /proc/self/status: %s", ex.getMessage()));
@@ -64,6 +65,7 @@ public class CLibrary {
                 break;
             }
         }
+        procStatusFile.close();
         return result;
     }
 
