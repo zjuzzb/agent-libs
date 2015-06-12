@@ -76,7 +76,7 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $0 -a access_key [-t tags] [-c collector] [-s secure]"
+	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] [-s | --secure <value>]"
 	echo "  access_key: Secret access key, as shown in app.draios.com"
 	echo "  tags: List of tags for this host. If set, tags can be used in"
 	echo "        the Draios map. The syntax can be a comma-separated list of"
@@ -86,49 +86,77 @@ function help {
 	echo "        and \"webserver\" are all valid alternatives."
 	echo "  collector: collector IP for sysdig cloud on premis installation"
 	echo "  secure: use a secure TLS connection to send metrics to the collector"
-	echo "          accepted values: true or false"
+	echo "          accepted values: true or false [default true]"
 	echo
 	exit 1
 }
 
+function is_valid_value {
+  if [[ ${1} == -* ]] || [[ ${1} == --* ]] || [[ -z ${1} ]]; then
+     return 1
+  else
+     return 0
+  fi
+}
+
 #main
-while getopts ":a:t:c:s:" opt; do
-  case ${opt} in
-    a)  
-        echo "access key: ${OPTARG}" >&2
-        ACCESS_KEY=${OPTARG}
-        ;;  
-    t)  
-        echo "tags: ${OPTARG}" >&2
-        TAGS=${OPTARG}
-        ;;  
-    c)  
-        echo "collector endpoint: ${OPTARG}" >&2
-        COLLECTOR=${OPTARG}
-        ;;  
-    s)  
-        echo "secure connection setting: ${OPTARG}" >&2
-        SECURE=${OPTARG}
-        ;;  
-    \?) 
-        echo "Invalid option: -${OPTARG}" >&2
+if [ ${#} -eq 0 ]; then
+ echo "ERROR: sysdig-cloud access_key is mandatory, use -h | --help for $(basename ${0}) Usage"
+	exit 1
+fi
+
+while [[ ${#} > 0 ]]
+do
+key="${1}"
+
+case ${key} in
+    -a|--access_key)
+       if is_valid_value "${2}"; then
+         ACCESS_KEY="${2}"
+       else
+         echo "ERROR: no value provided for access_key option, use -h | --help for $(basename ${0}) Usage"
+         exit 1
+       fi
+       shift
+       ;;
+    -t|--tags)
+       if is_valid_value "${2}"; then
+         TAGS="${2}"
+       else
+         echo "ERROR: no value provided for tags option, use -h | --help for $(basename ${0}) Usage"
+         exit 1
+       fi
+       shift
+       ;;
+    -c|--collector)
+       if is_valid_value "${2}"; then
+         COLLECTOR="${2}"
+       else
+         echo "ERROR: no value provided for collector endpoint option, use -h | --help for $(basename ${0}) Usage"
+         exit 1
+       fi
+       shift
+       ;;
+    -s|--secure)
+       if is_valid_value "${2}"; then
+         SECURE="${2}"
+       else
+         echo "ERROR: no value provided connection security option, use -h | --help for $(basename ${0}) Usage"
+         exit 1
+       fi
+       shift
+       ;;
+    -h|--help)
         help
         exit 1
-        ;;  
-    :)  
-       echo "Option -${OPTARG} requires an argument." >&2
-       help
+       ;;
+    *)
+       echo "ERROR: Invalid option: ${1}, use -h | --help for $(basename ${0}) Usage"
        exit 1
-      ;;  
-  esac
+       ;;
+esac
+shift
 done
-
-if [ -z $ACCESS_KEY ]; then
- echo "access key not provided"
- echo
- help
- exit 1
-fi
 
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
