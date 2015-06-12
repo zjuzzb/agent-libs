@@ -177,13 +177,13 @@ if [[ ${BACKWARD} != true ]]; then
    done
 fi
 
+## this section is only for testing remove before ship it
 echo "access ${ACCESS_KEY}"
 echo "tags ${TAGS}"
 echo "collector ${COLLECTOR}"
 echo "secure ${SECURE}"
-
 exit 1
-
+#####
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
 	exit 1
