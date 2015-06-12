@@ -76,7 +76,7 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $0 access_key [tags]"
+	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] [-s | --secure <value>] [-h | --help]"
 	echo "  access_key: Secret access key, as shown in app.draios.com"
 	echo "  tags: List of tags for this host. If set, tags can be used in"
 	echo "        the Draios map. The syntax can be a comma-separated list of"
@@ -84,17 +84,107 @@ function help {
 	echo "        name \"Tag\" is implicitly assumed)."
 	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
 	echo "        and \"webserver\" are all valid alternatives."
+	echo "  collector: collector IP for sysdig cloud on premis installation"
+	echo "  secure: use a secure TLS connection to send metrics to the collector"
+	echo "          accepted values: true or false [default true]"
+	echo "  help: print this usage and exit"
 	echo
 	exit 1
 }
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-	help
+function is_valid_value {
+  if [[ ${1} == -* ]] || [[ ${1} == --* ]] || [[ -z ${1} ]]; then
+     return 1
+  else
+     return 0
+  fi
+}
+
+#main
+BACKWARD=false 
+
+if [[ ${#} -eq 0 ]]; then
+ echo "ERROR: sysdig-cloud access_key is mandatory, use -h | --help for $(basename ${0}) Usage"
+	exit 1
 fi
 
-ACCESS_KEY="$1"
-TAGS="$2"
+#backward for old agent options
+if [[ ${#} -le 2 ]]; then
+   if is_valid_value "${1}"; then
+      if [[ ${1} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
+          ACCESS_KEY="${1}"
+          BACKWARD=true
+      fi
+   fi
+   if is_valid_value "${2}"; then
+      if [[ ! ${2} =~ [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} ]]; then
+         TAGS="${2}"
+      fi
+   fi
+fi
 
+if [[ ${BACKWARD} != true ]]; then
+   while [[ ${#} > 0 ]]
+   do
+   key="${1}"
+
+   case ${key} in
+       -a|--access_key)
+          if is_valid_value "${2}"; then
+            ACCESS_KEY="${2}"
+          else
+            echo "ERROR: no value provided for access_key option, use -h | --help for $(basename ${0}) Usage"
+            exit 1
+          fi
+          shift
+          ;;
+       -t|--tags)
+          if is_valid_value "${2}"; then
+            TAGS="${2}"
+          else
+            echo "ERROR: no value provided for tags option, use -h | --help for $(basename ${0}) Usage"
+            exit 1
+          fi
+          shift
+          ;;
+       -c|--collector)
+          if is_valid_value "${2}"; then
+            COLLECTOR="${2}"
+          else
+            echo "ERROR: no value provided for collector endpoint option, use -h | --help for $(basename ${0}) Usage"
+            exit 1
+          fi
+          shift
+          ;;
+       -s|--secure)
+          if is_valid_value "${2}"; then
+            SECURE="${2}"
+          else
+            echo "ERROR: no value provided connection security option, use -h | --help for $(basename ${0}) Usage"
+            exit 1
+          fi
+          shift
+          ;;
+       -h|--help)
+           help
+           exit 1
+          ;;
+       *)
+          echo "ERROR: Invalid option: ${1}, use -h | --help for $(basename ${0}) Usage"
+          exit 1
+          ;;
+   esac
+   shift
+   done
+fi
+
+## this section is only for testing remove before ship it
+echo "access ${ACCESS_KEY}"
+echo "tags ${TAGS}"
+echo "collector ${COLLECTOR}"
+echo "secure ${SECURE}"
+exit 1
+#####
 if [ $(id -u) != 0 ]; then
 	echo "Installer must be run as root (or with sudo)."
 	exit 1
@@ -200,10 +290,30 @@ fi
 if [ ! -z "$TAGS" ]; then
 	echo "* Setting tags"
 
-	if ! grep ^ui.tags $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^tags $CONFIG_FILE > /dev/null 2>&1; then
 		echo "tags: $TAGS" >> $CONFIG_FILE
 	else
 		sed -i "s/^tags.*/tags: $TAGS/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$COLLECTOR" ]; then
+	echo "* Setting collector endpoint"
+
+	if ! grep ^collector $CONFIG_FILE > /dev/null 2>&1; then
+		echo "collector: $COLLECTOR" >> $CONFIG_FILE
+	else
+		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$SECURE" ]; then
+	echo "* Setting connection security"
+
+	if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+		echo "ssl: $SECURE" >> $CONFIG_FILE
+	else
+		sed -i "s/^ssl.*/ssl: $SECURE/g" $CONFIG_FILE
 	fi
 fi
 
