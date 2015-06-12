@@ -179,6 +179,10 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 
 #undef SIMULATE_DROP_MODE
 
-static const auto STATSD_METRIC_LIMIT = 300;
+static const auto CONTAINERS_LIMIT = 200;
 
-static const auto CONTAINERS_LIMIT = 20;
+static const auto HOST_STATSD_METRIC_LIMIT = 100;
+static const auto CONTAINERS_STATSD_METRIC_LIMIT = 100;
+
+static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
+static const size_t HOST_PROTOS_LIMIT = 15;
