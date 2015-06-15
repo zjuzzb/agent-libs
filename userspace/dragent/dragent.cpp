@@ -295,7 +295,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			else
 			{
-				execl("../../../../dependencies/statsite-private-master/statsite",
+				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
 					  "statsite", "-f", "statsite.ini", (char*)NULL);
 			}
 			return (EXIT_FAILURE);
@@ -318,6 +318,18 @@ int dragent_app::sdagent_main()
 
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
+
+	if(m_configuration.m_customer_id.empty())
+	{
+		g_log->error("customerid not specified");
+		return Application::EXIT_SOFTWARE;
+	}
+
+	if(m_configuration.m_machine_id == "00:00:00:00:00:00")
+	{
+		g_log->error("Invalid machine_id detected");
+		return Application::EXIT_SOFTWARE;
+	}
 
 	if(m_configuration.m_watchdog_enabled)
 	{

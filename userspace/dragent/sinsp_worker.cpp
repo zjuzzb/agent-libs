@@ -89,14 +89,6 @@ void sinsp_worker::init()
 	//
 	m_analyzer->get_configuration()->set_machine_id(m_configuration->m_machine_id);
 
-	//
-	// The customer id is currently specified by the user
-	//
-	if(m_configuration->m_customer_id.empty())
-	{
-		g_log->error("customerid not specified.");
-	}
-
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
 	//
