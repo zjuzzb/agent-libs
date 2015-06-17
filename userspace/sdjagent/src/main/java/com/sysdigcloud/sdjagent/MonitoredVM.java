@@ -5,6 +5,7 @@
  */
 package com.sysdigcloud.sdjagent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.VirtualMachine;
@@ -24,7 +25,9 @@ public class MonitoredVM {
     private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
     private static final int beansLimit = 100;
+    private static final ObjectMapper mapper = new ObjectMapper();
 
+    private String address;
     private Connection connection;
     private MBeanServerConnection mbs;
     private final int pid;
@@ -32,20 +35,20 @@ public class MonitoredVM {
     private boolean agentActive;
     private boolean available;
     private long lastBeanRefresh;
-    private List<Config.BeanQuery> queryList;
-    private List<BeanInstance> matchingBeans;
+    private final List<Config.BeanQuery> queryList;
+    private final List<BeanInstance> matchingBeans;
 
-    public MonitoredVM(int pid, List<Config.BeanQuery> queries)
+    public MonitoredVM(VMRequest request)
     {
-        this.pid = pid;
-        this.queryList = new ArrayList<Config.BeanQuery>(queries);
+        this.pid = request.getPid();
+        this.queryList = new ArrayList<Config.BeanQuery>();
         this.lastBeanRefresh = 0;
         this.matchingBeans = new ArrayList<BeanInstance>();
         this.available = false;
         this.agentActive = false;
         this.name = "";
 
-        if (pid == CLibrary.getPid()) {
+        if (this.pid == CLibrary.getPid()) {
             this.name = "sdjagent";
             this.mbs = ManagementFactory.getPlatformMBeanServer();
             available = true;
@@ -53,11 +56,50 @@ public class MonitoredVM {
             return;
         }
 
+        if (request.isContainer()) {
+            retrieveVmInfoFromContainer(request);
+        } else {
+            retrieveVMInfoFromHost(request);
+        }
+
+        if (this.address != null)
+        {
+            if (request.isContainer()) {
+                CLibrary.goToNamespace(request.getPid());
+            }
+            try {
+                connection = new Connection(address);
+                mbs = connection.getMbs();
+                agentActive = true;
+            } catch (IOException e) {
+                LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
+            }
+            if (request.isContainer()) {
+                CLibrary.goToInitialNamespace();
+            }
+        }
+    }
+
+    private void retrieveVmInfoFromContainer(VMRequest request) {
+        CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar");
+        CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so");
+        String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", String.valueOf(request.getVpid())};
+        String data = CLibrary.runOnContainer(request.getPid(), command);
+        try {
+            Map<String, String> vmInfo = mapper.readValue(data, Map.class);
+            this.name = vmInfo.get("name");
+            this.address = vmInfo.get("address");
+        } catch (IOException ex) {
+            // TODO: log exception
+        }
+    }
+
+    private void retrieveVMInfoFromHost(VMRequest request) {
         // To load the agent, we need to be the same user and group
         // of the process
         boolean uidChanged = false;
         try {
-            long[] idInfo = CLibrary.getUidAndGid(pid);
+            long[] idInfo = CLibrary.getUidAndGid(request.getVpid());
             int gid_error = CLibrary.setegid(idInfo[1]);
             int uid_error = CLibrary.seteuid(idInfo[0]);
             if (uid_error == 0 && gid_error == 0) {
@@ -72,64 +114,31 @@ public class MonitoredVM {
             LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
         }
 
-
         JvmstatVM jvmstat;
         try {
-            jvmstat = new JvmstatVM(pid);
+            jvmstat = new JvmstatVM(request.getVpid());
             available = true;
         } catch (MonitorException e) {
-            LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", pid, e.getMessage()));
+            LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
             return;
         }
 
         this.name = jvmstat.getMainClass();
 
         // Try to get local address from jvmstat
-        String address = jvmstat.findByName("sun.management.JMXConnectorServer.address");
-        if (address == null)
-        {
-            List<String> remoteUrls = jvmstat.findByPattern("sun.management.JMXConnectorServer.[0-9]+.remoteAddress"); // NOI18N
-            if (remoteUrls.size() != 0)
-            {
-                List<String> auths = jvmstat.findByPattern("sun.management.JMXConnectorServer.[0-9]+.authenticate"); // NOI18N
-                if ("true".equals(auths.get(0)))
-                {
-                    LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", pid));
-                } else
-                {
-                    address = remoteUrls.get(0);
-                }
-            }
-        }
-        // Try to get address from JVM args
-        if (address == null)
-        {
-            String jvmArgs = jvmstat.getJvmArgs();
-            StringTokenizer st = new StringTokenizer(jvmArgs);
-            int port = -1;
-            boolean authenticate = false;
-            while (st.hasMoreTokens()) {
-                String token = st.nextToken();
-                if (token.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
-                    port = Integer.parseInt(token.substring(token.indexOf("=") + 1)); // NOI18N
-                } else if (token.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
-                    authenticate = true;
-                }
-            }
-            if (port != -1 && authenticate == false) {
-                address = String.format("service:jmx:rmi:///jndi/rmi://localhost:%d/jmxrmi", port);
-            }
-        }
+        this.address = jvmstat.getJMXAddress();
+
+        jvmstat.detach();
 
         // Try to load agent and get address from there
-        if (address == null)
+        if (this.address == null)
         {
             try
             {
-                address = loadManagementAgent();
+                this.address = loadManagementAgent(request.getVpid());
             } catch (IOException e)
             {
-                LOGGER.warning(String.format("Cannot load agent on process %d: %s", pid, e.getMessage()));
+                LOGGER.warning(String.format("Cannot load agent on process %d: %s", this.pid, e.getMessage()));
             }
         }
 
@@ -144,22 +153,12 @@ public class MonitoredVM {
                 LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
             }
         }
-
-        if (address != null)
-        {
-            try {
-                connection = new Connection(address);
-                mbs = connection.getMbs();
-                agentActive = true;
-            } catch (IOException e) {
-                LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
-            }
-        }
     }
 
     public boolean isAvailable() {
         return available;
     }
+
     public boolean isAgentActive()
     {
         return agentActive;
@@ -173,6 +172,10 @@ public class MonitoredVM {
     public void setName(String value)
     {
         this.name = value;
+    }
+
+    public String getAddress() {
+        return address;
     }
 
     public void addQueries(List<Config.BeanQuery> queries) {
@@ -232,7 +235,7 @@ public class MonitoredVM {
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP =
             "com.sun.management.jmxremote.localConnectorAddress";
 
-    private String loadManagementAgent() throws IOException {
+    private static String loadManagementAgent(int pid) throws IOException {
         VirtualMachine vm;
         String vmId = String.valueOf(pid);
 
@@ -257,7 +260,7 @@ public class MonitoredVM {
         return address;
     }
 
-    static private void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
+    private static void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
         // Normally in ${java.home}/jre/lib/management-agent.jar but might
         // be in ${java.home}/lib in build environments.
         String javaHome = vm.getSystemProperties().getProperty("java.home");

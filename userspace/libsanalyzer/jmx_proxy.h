@@ -71,25 +71,19 @@ class java_process_request
 public:
 	explicit java_process_request(sinsp_threadinfo* tinfo):
 		m_pid(tinfo->m_pid),
-		m_vpid(tinfo->m_vpid),
-		m_uid(tinfo->m_uid),
-		m_gid(tinfo->m_gid)
+		m_vpid(tinfo->m_vpid)
 	{
 
 	}
 	explicit java_process_request(int pid, int vpid, int uid, int gid):
 			m_pid(pid),
-			m_vpid(vpid),
-			m_uid(uid),
-			m_gid(gid)
+			m_vpid(vpid)
 	{
 	}
 	inline Json::Value to_json() const;
 private:
 	int m_pid;
 	int m_vpid;
-	int m_uid;
-	int m_gid;
 };
 
 class jmx_proxy

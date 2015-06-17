@@ -8,11 +8,12 @@ import java.util.logging.Logger;
 /**
  * Created by luca on 08/01/15.
  */
-public class CLibrary {
+final public class CLibrary {
     private final static Logger LOGGER = Logger.getLogger(CLibrary.class.getName());
     private static boolean libraryLoaded;
     private static int pid;
-    
+    private static final int initialNamespace;
+
     static {
         try {
             FileInputStream procStatusFile = new FileInputStream("/proc/self/status");
@@ -39,6 +40,12 @@ public class CLibrary {
             libraryLoaded = true;
         } catch ( UnsatisfiedLinkError ex) {
             LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));
+        }
+
+        if (libraryLoaded) {
+            initialNamespace = open_fd("/proc/self/ns/net");
+        } else {
+            initialNamespace = 0;
         }
     }
 
@@ -86,8 +93,68 @@ public class CLibrary {
         }
     }
 
+    public static boolean setenv(String name, String value) {
+        if (libraryLoaded) {
+            return real_setenv(name, value, 1) == 0;
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean unsetenv(String name) {
+        if (libraryLoaded) {
+            return real_unsetenv(name) == 0;
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean goToNamespace(int pid) {
+        if (libraryLoaded) {
+            String path = String.format("/proc/%d/ns/net", pid);
+            int netnsfd = open_fd(path);
+            int nsret = setns(netnsfd, 0);
+            close_fd(netnsfd);
+            return nsret == 0;
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean goToInitialNamespace() {
+        if (libraryLoaded) {
+            return setns(initialNamespace, 0) == 0;
+        } else {
+            return true;
+        }
+    }
+
+    public static boolean copyToContainer(String source, int pid, String destination) {
+        if (libraryLoaded) {
+            return realCopyToContainer(source, pid, destination) == 0;
+        } else {
+            return false;
+        }
+    }
+
+    public static String runOnContainer(int pid, String[] command) {
+        if (libraryLoaded) {
+            return realRunOnContainer(pid, command);
+        } else {
+            return new String();
+        }
+    }
+
+    // Export C function as-is and then provide a tiny wrapper to be more Java friendly
     private static native int real_seteuid(long euid);
     private static native int real_setegid(long egid);
+    private static native int real_setenv(String name, String value, int overwrite);
+    private static native int real_unsetenv(String name);
+    private static native int setns(int fd, int type);
+    private static native int open_fd(String path);
+    private static native int close_fd(int fd);
+    private static native int realCopyToContainer(String source, int pid, String destination);
+    private static native String realRunOnContainer(int pid, String[] command);
 
     private CLibrary() {
         // Deny create instances of this class

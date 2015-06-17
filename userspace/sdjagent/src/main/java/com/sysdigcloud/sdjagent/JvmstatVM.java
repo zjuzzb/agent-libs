@@ -1,12 +1,11 @@
 package com.sysdigcloud.sdjagent;
 
 import sun.jvmstat.monitor.*;
+import sun.jvmstat.perfdata.monitor.protocol.file.FileMonitoredVm;
+import sun.jvmstat.perfdata.monitor.protocol.local.LocalMonitoredVm;
 
 import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -27,6 +26,7 @@ public class JvmstatVM {
     public JvmstatVM(int pid) throws MonitorException {
         VmIdentifier vmId;
         try {
+            //vmId = new VmIdentifier(String.format("file:/tmp/hsperfdata_root/%d", pid));
             vmId = new VmIdentifier(String.format("//%d", pid));
         } catch (URISyntaxException e) {
             // This exception should be very rare
@@ -36,9 +36,14 @@ public class JvmstatVM {
         }
         MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(vmId);
         vm = monitoredHost.getMonitoredVm(vmId,-1);
+        //vm = new FileMonitoredVm(vmId, -1);
     }
 
-    public String findByName(String key)
+    public void detach() {
+        vm.detach();
+    }
+
+    private String findByName(String key)
     {
         String value = null;
         try
@@ -56,7 +61,7 @@ public class JvmstatVM {
         return value;
     }
 
-    public List<String> findByPattern(String pattern)
+    private List<String> findByPattern(String pattern)
     {
         try {
             List<Monitor> monitorList = vm.findByPattern(pattern);
@@ -72,7 +77,7 @@ public class JvmstatVM {
         }
     }
 
-    public String getJvmArgs() {
+    private String getJvmArgs() {
         try
         {
             return MonitoredVmUtil.jvmArgs(vm);
@@ -110,5 +115,44 @@ public class JvmstatVM {
             lastActiveVMRefresh = System.currentTimeMillis();
         }
         return cachedActiveVMs;
+    }
+
+    public String getJMXAddress() {
+        String address = findByName("sun.management.JMXConnectorServer.address");
+        if (address == null)
+        {
+            List<String> remoteUrls = findByPattern("sun.management.JMXConnectorServer.[0-9]+.remoteAddress"); // NOI18N
+            if (remoteUrls.size() != 0)
+            {
+                List<String> auths = findByPattern("sun.management.JMXConnectorServer.[0-9]+.authenticate"); // NOI18N
+                if ("true".equals(auths.get(0)))
+                {
+                    LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", vm.getVmIdentifier().getLocalVmId()));
+                } else
+                {
+                    address = remoteUrls.get(0);
+                }
+            }
+        }
+        // Try to get address from JVM args
+        if (address == null)
+        {
+            String jvmArgs = getJvmArgs();
+            StringTokenizer st = new StringTokenizer(jvmArgs);
+            int port = -1;
+            boolean authenticate = false;
+            while (st.hasMoreTokens()) {
+                String token = st.nextToken();
+                if (token.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+                    port = Integer.parseInt(token.substring(token.indexOf("=") + 1)); // NOI18N
+                } else if (token.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
+                    authenticate = true;
+                }
+            }
+            if (port != -1 && authenticate == false) {
+                address = String.format("service:jmx:rmi:///jndi/rmi://localhost:%d/jmxrmi", port);
+            }
+        }
+        return address;
     }
 }
