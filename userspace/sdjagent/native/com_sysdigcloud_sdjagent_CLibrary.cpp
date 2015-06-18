@@ -20,13 +20,15 @@ public:
 	{
 		m_java_ptr = java_s;
 		m_env = env;
-		is_copy = JNI_FALSE;
-		m_c_str = m_env->GetStringUTFChars(java_s, &is_copy);
+		m_is_copy = JNI_FALSE;
+		m_c_str = m_env->GetStringUTFChars(m_java_ptr, &m_is_copy);
+		//fprintf(stderr, "java_string for %s on %d\n", m_c_str, getpid());
 	}
 
 	~java_string()
 	{
-		if(is_copy == JNI_TRUE)
+		//fprintf(stderr, "~java_string for %s on %d\n", m_c_str, getpid());
+		if(m_c_str != NULL && m_is_copy == JNI_TRUE)
 		{
 			m_env->ReleaseStringUTFChars(m_java_ptr, m_c_str);
 		}
@@ -36,9 +38,40 @@ public:
 		return m_c_str;
 	}
 
+	// Deny copying of this object
+	java_string(const java_string&) = delete;
+	java_string& operator=(const java_string&) = delete;
+
+	// Allow moving
+	java_string(java_string&& other)
+	{
+		m_c_str = other.m_c_str;
+		m_is_copy = other.m_is_copy;
+		m_env = other.m_env;
+		m_java_ptr = other.m_java_ptr;
+
+		other.m_c_str = NULL;
+		other.m_is_copy = JNI_FALSE;
+		other.m_env = NULL;
+		other.m_java_ptr = NULL;
+	}
+
+	java_string& operator=(java_string&& other)
+	{
+		m_c_str = other.m_c_str;
+		m_is_copy = other.m_is_copy;
+		m_env = other.m_env;
+		m_java_ptr = other.m_java_ptr;
+
+		other.m_c_str = NULL;
+		other.m_is_copy = JNI_FALSE;
+		other.m_env = NULL;
+		other.m_java_ptr = NULL;
+	}
+
 private:
 	const char* m_c_str;
-	jboolean is_copy;
+	jboolean m_is_copy;
 	JNIEnv* m_env;
 	jstring m_java_ptr;
 };
@@ -66,35 +99,18 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1setegid
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1setenv
         (JNIEnv * env, jclass, jstring name, jstring value, jint overwrite)
 {
-    jboolean name_is_copy = JNI_FALSE;
-    jboolean value_is_copy = JNI_FALSE;
-    const char* name_c = env->GetStringUTFChars(name, &name_is_copy);
-    const char* value_c = env->GetStringUTFChars(value, &value_is_copy);
-    int res = setenv(name_c, value_c, overwrite);
-	fprintf(stderr, "Setting %s to %s -> %d\n", name_c, value_c, res);
-    if(name_is_copy == JNI_TRUE)
-    {
-        env->ReleaseStringUTFChars(name, name_c);
-    }
-    if(value_is_copy == JNI_TRUE)
-    {
-        env->ReleaseStringUTFChars(value, value_c);
-    }
-    return res;
+	java_string name_c(env, name);
+	java_string value_c(env, value);
+    int res = setenv(name_c.c_str(), value_c.c_str(), overwrite);
+	return res;
 }
 
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1unsetenv
         (JNIEnv* env, jclass, jstring name)
 {
-    jboolean name_is_copy = JNI_FALSE;
-    const char* name_c = env->GetStringUTFChars(name, &name_is_copy);
-    int res = unsetenv(name_c);
-	fprintf(stderr, "Unsetting %s -> %d", name_c, res);
-    if(name_is_copy == JNI_TRUE)
-    {
-        env->ReleaseStringUTFChars(name, name_c);
-    }
-    return res;
+    java_string name_c(env, name);
+    int res = unsetenv(name_c.c_str());
+	return res;
 }
 
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_setns
@@ -106,13 +122,8 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_setns
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_open_1fd
 		(JNIEnv* env, jclass, jstring path)
 {
-	jboolean name_is_copy = JNI_FALSE;
-	const char* path_c = env->GetStringUTFChars(path, &name_is_copy);
-	int res = open(path_c, O_RDONLY);
-	if(name_is_copy == JNI_TRUE)
-	{
-		env->ReleaseStringUTFChars(path, path_c);
-	}
+	java_string path_c(env,path);
+	int res = open(path_c.c_str(), O_RDONLY);
 	return res;
 }
 
@@ -134,6 +145,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 
 	if(child == 0)
 	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		char mntnspath[128];
 		snprintf(mntnspath, sizeof(mntnspath), "/proc/%d/ns/mnt", pid);
 
@@ -210,6 +222,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 
 	if(child == 0)
 	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
 
 		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/mnt", pid);
@@ -264,6 +277,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 
 	if(child == 0)
 	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		char mntnspath[128];
 		snprintf(mntnspath, sizeof(mntnspath), "/proc/%d/ns/mnt", pid);
 
