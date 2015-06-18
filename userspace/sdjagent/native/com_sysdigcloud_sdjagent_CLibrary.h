@@ -9,7 +9,7 @@ extern "C" {
 #endif
 /*
  * Class:     com_sysdigcloud_sdjagent_CLibrary
- * Method:    seteuid
+ * Method:    real_seteuid
  * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1seteuid
@@ -17,11 +17,75 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1seteuid
 
 /*
  * Class:     com_sysdigcloud_sdjagent_CLibrary
- * Method:    setegid
+ * Method:    real_setegid
  * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1setegid
   (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    real_setenv
+ * Signature: (Ljava/lang/String;Ljava/lang/String;I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1setenv
+  (JNIEnv *, jclass, jstring, jstring, jint);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    real_unsetenv
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1unsetenv
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    setns
+ * Signature: (II)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_setns
+  (JNIEnv *, jclass, jint, jint);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    open_fd
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_open_1fd
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    close_fd
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_close_1fd
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    realCopyToContainer
+ * Signature: (Ljava/lang/String;ILjava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContainer
+  (JNIEnv *, jclass, jstring, jint, jstring);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    realRunOnContainer
+ * Signature: (I[Ljava/lang/String;)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
+  (JNIEnv *, jclass, jint, jstring, jobjectArray);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    realRmFromContainer
+ * Signature: (ILjava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContainer
+  (JNIEnv *, jclass, jint, jstring);
 
 #ifdef __cplusplus
 }

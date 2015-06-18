@@ -81,7 +81,14 @@ public class Application {
             vmInfo.put("name", vm.getName());
             vmInfo.put("address", vm.getAddress());
             mapper.writeValue(System.out, vmInfo);
+        } else if (args[0].equals("getMetrics") && args.length > 2) {
+            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+            MonitoredVM vm = new MonitoredVM(request);
+            vm.addQueries(config.getDefaultBeanQueries());
+            mapper.writeValue(System.out, vm.getMetrics());
         }
+        System.out.println();
+        System.out.flush();
     }
 
     private void mainLoop() throws IOException {
@@ -95,7 +102,7 @@ public class Application {
             {
                 List<Object> body = (List<Object>) cmd_obj.get("body");
                 List<VMRequest> requestedVMs = new ArrayList<VMRequest>(body.size());
-                for(Object item : requestedVMs) {
+                for(Object item : body) {
                     requestedVMs.add(mapper.convertValue(item, VMRequest.class));
                 }
                 List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);

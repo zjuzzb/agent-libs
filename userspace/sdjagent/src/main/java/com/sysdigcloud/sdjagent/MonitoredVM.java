@@ -65,7 +65,7 @@ public class MonitoredVM {
         if (this.address != null)
         {
             if (request.isContainer()) {
-                CLibrary.goToNamespace(request.getPid());
+                CLibrary.setNamespace(request.getPid());
             }
             try {
                 connection = new Connection(address);
@@ -75,7 +75,7 @@ public class MonitoredVM {
                 LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
             if (request.isContainer()) {
-                CLibrary.goToInitialNamespace();
+                CLibrary.setInitialNamespace();
             }
         }
     }
@@ -83,12 +83,16 @@ public class MonitoredVM {
     private void retrieveVmInfoFromContainer(VMRequest request) {
         CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar");
         CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so");
-        String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", String.valueOf(request.getVpid())};
-        String data = CLibrary.runOnContainer(request.getPid(), command);
+        String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+        String data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
+        CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
+        CLibrary.rmFromContainer(request.getPid(), "/tmp/libsdjagentjni.so");
         try {
             Map<String, String> vmInfo = mapper.readValue(data, Map.class);
+            // TODO: improve parsing data from JSON, ensure name and address are not null
             this.name = vmInfo.get("name");
             this.address = vmInfo.get("address");
+            this.available = true;
         } catch (IOException ex) {
             // TODO: log exception
         }
@@ -99,7 +103,7 @@ public class MonitoredVM {
         // of the process
         boolean uidChanged = false;
         try {
-            long[] idInfo = CLibrary.getUidAndGid(request.getVpid());
+            long[] idInfo = CLibrary.getUidAndGid(request.getPid());
             int gid_error = CLibrary.setegid(idInfo[1]);
             int uid_error = CLibrary.seteuid(idInfo[0]);
             if (uid_error == 0 && gid_error == 0) {
@@ -116,7 +120,7 @@ public class MonitoredVM {
 
         JvmstatVM jvmstat;
         try {
-            jvmstat = new JvmstatVM(request.getVpid());
+            jvmstat = new JvmstatVM(request.getPid());
             available = true;
         } catch (MonitorException e) {
             LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
@@ -135,7 +139,7 @@ public class MonitoredVM {
         {
             try
             {
-                this.address = loadManagementAgent(request.getVpid());
+                this.address = loadManagementAgent(request.getPid());
             } catch (IOException e)
             {
                 LOGGER.warning(String.format("Cannot load agent on process %d: %s", this.pid, e.getMessage()));

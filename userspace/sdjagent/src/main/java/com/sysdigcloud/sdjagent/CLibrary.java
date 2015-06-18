@@ -44,6 +44,7 @@ final public class CLibrary {
 
         if (libraryLoaded) {
             initialNamespace = open_fd("/proc/self/ns/net");
+            // TODO: Add error if this open fails
         } else {
             initialNamespace = 0;
         }
@@ -109,7 +110,7 @@ final public class CLibrary {
         }
     }
 
-    public static boolean goToNamespace(int pid) {
+    public static boolean setNamespace(int pid) {
         if (libraryLoaded) {
             String path = String.format("/proc/%d/ns/net", pid);
             int netnsfd = open_fd(path);
@@ -121,7 +122,7 @@ final public class CLibrary {
         }
     }
 
-    public static boolean goToInitialNamespace() {
+    public static boolean setInitialNamespace() {
         if (libraryLoaded) {
             return setns(initialNamespace, 0) == 0;
         } else {
@@ -137,11 +138,19 @@ final public class CLibrary {
         }
     }
 
-    public static String runOnContainer(int pid, String[] command) {
+    public static String runOnContainer(int pid, String exe, String[] command) {
         if (libraryLoaded) {
-            return realRunOnContainer(pid, command);
+            return realRunOnContainer(pid, exe, command);
         } else {
             return new String();
+        }
+    }
+
+    public static boolean rmFromContainer(int pid, String filepath) {
+        if (libraryLoaded) {
+            return realRmFromContainer(pid, filepath) == 0;
+        } else {
+            return false;
         }
     }
 
@@ -154,7 +163,8 @@ final public class CLibrary {
     private static native int open_fd(String path);
     private static native int close_fd(int fd);
     private static native int realCopyToContainer(String source, int pid, String destination);
-    private static native String realRunOnContainer(int pid, String[] command);
+    private static native String realRunOnContainer(int pid, String exe, String[] command);
+    private static native int realRmFromContainer(int pid, String filepath);
 
     private CLibrary() {
         // Deny create instances of this class
