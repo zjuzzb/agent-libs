@@ -67,6 +67,7 @@ public:
 		other.m_is_copy = JNI_FALSE;
 		other.m_env = NULL;
 		other.m_java_ptr = NULL;
+		return *this;
 	}
 
 private:

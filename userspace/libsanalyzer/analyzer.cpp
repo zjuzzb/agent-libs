@@ -818,11 +818,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			tinfo->m_ainfo->set_cmdline_update(false);
 		}
-		if(m_jmx_proxy && tinfo->is_main_thread() &&
-		   (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
-			tinfo->m_comm == "java")
+
+		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
+		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java")
 		{
-			//java_process_requests.emplace_back(tinfo->m_pid, tinfo->m_vpid, tinfo->m_uid, tinfo->m_gid);
+			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
+			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
 			java_process_requests.emplace_back(tinfo);
 		}
 	}
