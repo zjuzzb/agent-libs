@@ -1,8 +1,6 @@
 package com.sysdigcloud.sdjagent;
 
 import sun.jvmstat.monitor.*;
-import sun.jvmstat.perfdata.monitor.protocol.file.FileMonitoredVm;
-import sun.jvmstat.perfdata.monitor.protocol.local.LocalMonitoredVm;
 
 import java.net.URISyntaxException;
 import java.util.*;
@@ -14,14 +12,9 @@ import java.util.logging.Logger;
 public class JvmstatVM {
     private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
     private final MonitoredVm vm;
-    private static Set<Integer> cachedActiveVMs;
-    private static final long activeVMRefreshInterval = 60 * 1000;
-    private static long lastActiveVMRefresh;
-
-    static {
-        lastActiveVMRefresh = 0;
-        cachedActiveVMs = new HashSet<Integer>();
-    }
+    //private static Set<Integer> cachedActiveVMs = new HashSet<Integer>();
+    //private static final long activeVMRefreshInterval = 60 * 1000;
+    //private static long lastActiveVMRefresh = 0;
 
     public JvmstatVM(int pid) throws MonitorException {
         VmIdentifier vmId;
@@ -100,6 +93,7 @@ public class JvmstatVM {
         }
     }
 
+    /*
     public static Set<Integer> getActiveVMs() {
         if(System.currentTimeMillis() - lastActiveVMRefresh > activeVMRefreshInterval) {
             cachedActiveVMs.clear();
@@ -115,7 +109,7 @@ public class JvmstatVM {
             lastActiveVMRefresh = System.currentTimeMillis();
         }
         return cachedActiveVMs;
-    }
+    }*/
 
     public String getJMXAddress() {
         String address = findByName("sun.management.JMXConnectorServer.address");

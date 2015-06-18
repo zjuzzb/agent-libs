@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 
 
 import java.io.*;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.logging.*;
 
@@ -98,10 +97,10 @@ public class Application {
             String cmd_data = reader.readLine();
             LOGGER.fine(String.format("Received command: %s", cmd_data));
             Map<String, Object> cmd_obj = mapper.readValue(cmd_data, Map.class);
+            List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
             if (cmd_obj.get("command").equals("getMetrics"))
             {
                 List<Object> body = (List<Object>) cmd_obj.get("body");
-                List<VMRequest> requestedVMs = new ArrayList<VMRequest>(body.size());
                 for(Object item : body) {
                     requestedVMs.add(mapper.convertValue(item, VMRequest.class));
                 }
@@ -117,14 +116,17 @@ public class Application {
 
             // Cleanup
             if(System.currentTimeMillis() - lastVmsCleanup > vmsCleanupInterval) {
-                cleanup();
+                cleanup(requestedVMs);
                 lastVmsCleanup = System.currentTimeMillis();
             }
         }
     }
 
-    private void cleanup() {
-        Set<Integer> activePids = JvmstatVM.getActiveVMs();
+    private void cleanup(List<VMRequest> requestedVMs) {
+        Set<Integer> activePids = new HashSet<Integer>();
+        for (VMRequest requestedVM : requestedVMs) {
+            activePids.add(requestedVM.getPid());
+        }
         Iterator<Integer> vmsIt = vms.keySet().iterator();
         while (vmsIt.hasNext()) {
             Integer pid = vmsIt.next();
