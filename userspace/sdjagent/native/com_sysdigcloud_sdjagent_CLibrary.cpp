@@ -101,15 +101,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1setenv
 {
 	java_string name_c(env, name);
 	java_string value_c(env, value);
-    int res = setenv(name_c.c_str(), value_c.c_str(), overwrite);
+	int res = setenv(name_c.c_str(), value_c.c_str(), overwrite);
 	return res;
 }
 
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1unsetenv
         (JNIEnv* env, jclass, jstring name)
 {
-    java_string name_c(env, name);
-    int res = unsetenv(name_c.c_str());
+	java_string name_c(env, name);
+	int res = unsetenv(name_c.c_str());
 	return res;
 }
 
