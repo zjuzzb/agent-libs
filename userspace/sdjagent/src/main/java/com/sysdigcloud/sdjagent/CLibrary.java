@@ -14,8 +14,15 @@ final public class CLibrary {
     private static int pid;
     private static int ppid;
     private static final int initialNamespace;
+    private static final String hostRoot;
 
     static {
+        if(System.getenv("SYSDIG_HOST_ROOT") != null) {
+            hostRoot = System.getenv("SYSDIG_HOST_ROOT");
+        } else {
+            hostRoot = "";
+        }
+
         try {
             // Read pid and ppid from file instead of calling getpid() because it
             // will work event we cannot load our `libsdjagent.so` library
@@ -52,7 +59,7 @@ final public class CLibrary {
         }
 
         if (libraryLoaded) {
-            initialNamespace = open_fd(String.format("%s/proc/self/ns/net", System.getenv("SYSDIG_HOST_ROOT")));
+            initialNamespace = open_fd(String.format("%s/proc/self/ns/net", hostRoot));
             // TODO: Add error if this open fails
         } else {
             initialNamespace = 0;
@@ -125,7 +132,7 @@ final public class CLibrary {
 
     public static boolean setNamespace(int pid) {
         if (libraryLoaded) {
-            String path = String.format("%s/proc/%d/ns/net", System.getenv("SYSDIG_HOST_ROOT"), pid);
+            String path = String.format("%s/proc/%d/ns/net", hostRoot, pid);
             int netnsfd = open_fd(path);
             int nsret = setns(netnsfd, 0);
             close_fd(netnsfd);

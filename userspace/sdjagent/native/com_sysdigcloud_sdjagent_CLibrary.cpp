@@ -9,6 +9,7 @@
 #include <sys/sendfile.h>
 #include <sys/wait.h>
 #include <vector>
+#include <string>
 
 using namespace std;
 
@@ -235,6 +236,24 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
 
+		const char* container_environ_ptr[100];
+		vector<string> container_environ;
+		char environ_path[200];
+		snprintf(environ_path, sizeof(environ_path), "%s/proc/%d/environ", scap_get_host_root(), pid);
+		FILE* environ_file = fopen(environ_path, "r");
+		char read_buffer[512];
+		while(fgets(read_buffer, sizeof(read_buffer), environ_file) != NULL)
+		{
+			container_environ.emplace_back((const char*)read_buffer);
+		}
+		int j = 0;
+		for(const auto& env : container_environ)
+		{
+			container_environ_ptr[j++] = env.c_str();
+		}
+		container_environ_ptr[j++] = NULL;
+		fclose(environ_file);
+
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 		int mntnsfd = open(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), pid);
@@ -257,7 +276,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(usernsfd, CLONE_NEWUSER);
 		close(usernsfd);
 
-		execv(exe.c_str(), (char* const*)command_args_c);
+		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 	}
 	else
 	{

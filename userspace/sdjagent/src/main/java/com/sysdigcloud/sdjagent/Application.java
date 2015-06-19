@@ -76,9 +76,15 @@ public class Application {
         if(args[0].equals("getVMHandle") && args.length > 1) {
             VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[1]));
             MonitoredVM vm = new MonitoredVM(request);
-            Map<String, String> vmInfo = new HashMap<String, String>();
-            vmInfo.put("name", vm.getName());
-            vmInfo.put("address", vm.getAddress());
+            Map<String, Object> vmInfo = new HashMap<String, Object>();
+            vmInfo.put("available", vm.isAvailable());
+            if(vm.isAvailable()) {
+                vmInfo.put("name", vm.getName());
+                vmInfo.put("agentActive", vm.isAgentActive());
+                if (vm.isAgentActive()) {
+                    vmInfo.put("address", vm.getAddress());
+                }
+            }
             mapper.writeValue(System.out, vmInfo);
         } else if (args[0].equals("getMetrics") && args.length > 2) {
             VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[2]));

@@ -107,13 +107,15 @@ public class MonitoredVM {
         if (data != null && !data.isEmpty())
         {
             try {
-                Map<String, String> vmInfo = mapper.readValue(data, Map.class);
-                if (vmInfo.containsKey("name")) {
-                    this.name = vmInfo.get("name");
-                    this.available = true;
-                }
-                if (vmInfo.containsKey("address")) {
-                    this.address = vmInfo.get("address");
+                Map<String, Object> vmInfo = mapper.readValue(data, Map.class);
+                if (vmInfo.containsKey("available")) {
+                    this.available = (Boolean)vmInfo.get("available");
+                    if (vmInfo.containsKey("name")) {
+                        this.name = (String)vmInfo.get("name");
+                    }
+                    if (vmInfo.containsKey("address")) {
+                        this.address = (String)vmInfo.get("address");
+                    }
                 }
             } catch (IOException ex) {
                 LOGGER.severe(String.format("Wrong data from getVMHandle for process (%d:%d): %s, exception: %s",
