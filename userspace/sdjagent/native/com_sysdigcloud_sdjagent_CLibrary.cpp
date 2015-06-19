@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <vector>
 #include <string>
+#include <fstream>
 
 using namespace std;
 
@@ -236,15 +237,20 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
 
+		// Copy environment of the target process
 		const char* container_environ_ptr[100];
 		vector<string> container_environ;
 		char environ_path[200];
 		snprintf(environ_path, sizeof(environ_path), "%s/proc/%d/environ", scap_get_host_root(), pid);
-		FILE* environ_file = fopen(environ_path, "r");
-		char read_buffer[512];
-		while(fgets(read_buffer, sizeof(read_buffer), environ_file) != NULL)
+		ifstream environ_file(environ_path);
+		while(environ_file.good())
 		{
-			container_environ.emplace_back((const char*)read_buffer);
+			string read_buffer;
+			std::getline( environ_file, read_buffer, '\0' );
+			if(!read_buffer.empty())
+			{
+				container_environ.push_back(move(read_buffer));
+			}
 		}
 		int j = 0;
 		for(const auto& env : container_environ)
@@ -252,8 +258,9 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			container_environ_ptr[j++] = env.c_str();
 		}
 		container_environ_ptr[j++] = NULL;
-		fclose(environ_file);
+		environ_file.close();
 
+		// Open namespaces of target process
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 		int mntnsfd = open(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), pid);
@@ -280,12 +287,12 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	}
 	else
 	{
-		setns(mypidnsfd, CLONE_NEWPID);
-		close(mypidnsfd);
-
 		int status = 0;
 		// TODO: avoid blocking?
 		waitpid(child, &status, 0);
+		setns(mypidnsfd, CLONE_NEWPID);
+		close(mypidnsfd);
+
 		FILE* output = fdopen(child_pipe[0], "r");
 		char output_buffer[1024];
 		fgets(output_buffer, sizeof(output_buffer), output);
