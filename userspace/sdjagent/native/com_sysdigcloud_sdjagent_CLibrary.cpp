@@ -77,6 +77,45 @@ private:
 	jstring m_java_ptr;
 };
 
+class file_descriptor
+{
+public:
+	explicit file_descriptor(const char* path, int flags)
+	{
+		m_fd = open(path, flags);
+	}
+
+	explicit file_descriptor(const char* path, int flags, mode_t mode)
+	{
+		m_fd = open(path, flags, mode);
+	}
+
+	~file_descriptor()
+	{
+		if(is_valid())
+		{
+			close(m_fd);
+		}
+	}
+
+	int fd()
+	{
+		return m_fd;
+	}
+
+	bool is_valid()
+	{
+		return m_fd >= 0;
+	}
+
+	// Deny copying of this object
+	file_descriptor(const file_descriptor&) = delete;
+	file_descriptor& operator=(const file_descriptor&) = delete;
+
+private:
+	int m_fd;
+};
+
 // Function imported from scap, to link scap it should be compiled with -fPIC and it's not
 const char* scap_get_host_root()
 {
@@ -161,21 +200,31 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 		char mntnspath[128];
 		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 
-		int fd_from = open(source_str.c_str(), O_RDONLY);
+		file_descriptor fd_from(source_str.c_str(), O_RDONLY);
+		if(!fd_from.is_valid())
+		{
+			exit(1);
+		}
+
 		struct stat from_info = {0};
-		fstat(fd_from, &from_info);
+		fstat(fd_from.fd(), &from_info);
 
+		file_descriptor ns_fd(mntnspath, O_RDONLY);
+		if(!ns_fd.is_valid())
+		{
+			exit(1);
+		}
 
-		int ns_fd = open(mntnspath, O_RDONLY);
-		setns(ns_fd, CLONE_NEWNS);
-		close(ns_fd);
+		setns(ns_fd.fd(), CLONE_NEWNS);
 
-		int fd_to = open(destination_str.c_str(), O_WRONLY | O_CREAT, from_info.st_mode);
+		file_descriptor fd_to(destination_str.c_str(), O_WRONLY | O_CREAT, from_info.st_mode);
+		if(!fd_to.is_valid())
+		{
+			exit(1);
+		}
 
-		int result = sendfile(fd_to, fd_from, NULL, from_info.st_size);
+		int result = sendfile(fd_to.fd(), fd_from.fd(), NULL, from_info.st_size);
 
-		close(fd_from);
-		close(fd_to);
 		if(result == from_info.st_size)
 		{
 			exit(0);
@@ -208,10 +257,20 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	java_string exe(env, command);
 
 	snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/pid", scap_get_host_root(), pid);
-	int pidnsfd = open(nspath, O_RDONLY);
+	file_descriptor pidnsfd(nspath, O_RDONLY);
+
+	if(!pidnsfd.is_valid())
+	{
+		return ret;
+	}
 
 	snprintf(nspath, sizeof(nspath), "%s/proc/self/ns/pid", scap_get_host_root());
-	int mypidnsfd = open(nspath, O_RDONLY);
+	file_descriptor mypidnsfd(nspath, O_RDONLY);
+
+	if(!pidnsfd.is_valid())
+	{
+		return ret;
+	}
 
 	// Build command line for execv
 	vector<java_string> command_args;
@@ -228,8 +287,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	}
 	command_args_c[j++] = NULL;
 
-	setns(pidnsfd, CLONE_NEWPID);
-	close(pidnsfd);
+	setns(pidnsfd.fd(), CLONE_NEWPID);
 	pid_t child = fork();
 
 	if(child == 0)
@@ -262,26 +320,21 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 
 		// Open namespaces of target process
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
-		int mntnsfd = open(nspath, O_RDONLY);
+		file_descriptor mntnsfd(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), pid);
-		int netnsfd = open(nspath, O_RDONLY);
+		file_descriptor netnsfd(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/user", scap_get_host_root(), pid);
-		int usernsfd = open(nspath, O_RDONLY);
+		file_descriptor usernsfd(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/uts", scap_get_host_root(), pid);
-		int utsnsfd = open(nspath, O_RDONLY);
+		file_descriptor utsnsfd(nspath, O_RDONLY);
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/ipc", scap_get_host_root(), pid);
-		int ipcnsfd = open(nspath, O_RDONLY);
+		file_descriptor ipcnsfd(nspath, O_RDONLY);
 
-		setns(netnsfd, CLONE_NEWNET);
-		close(netnsfd);
-		setns(utsnsfd, CLONE_NEWUTS);
-		close(utsnsfd);
-		setns(ipcnsfd, CLONE_NEWIPC);
-		close(ipcnsfd);
-		setns(mntnsfd, CLONE_NEWNS);
-		close(mntnsfd);
-		setns(usernsfd, CLONE_NEWUSER);
-		close(usernsfd);
+		setns(netnsfd.fd(), CLONE_NEWNET);
+		setns(utsnsfd.fd(), CLONE_NEWUTS);
+		setns(ipcnsfd.fd(), CLONE_NEWIPC);
+		setns(mntnsfd.fd(), CLONE_NEWNS);
+		setns(usernsfd.fd(), CLONE_NEWUSER);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 	}
@@ -290,8 +343,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		int status = 0;
 		// TODO: avoid blocking?
 		waitpid(child, &status, 0);
-		setns(mypidnsfd, CLONE_NEWPID);
-		close(mypidnsfd);
+		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
 		FILE* output = fdopen(child_pipe[0], "r");
 		char output_buffer[1024];
@@ -316,9 +368,12 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 		char mntnspath[128];
 		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 
-		int ns_fd = open(mntnspath, O_RDONLY);
-		setns(ns_fd, CLONE_NEWNS);
-		close(ns_fd);
+		file_descriptor ns_fd(mntnspath, O_RDONLY);
+		if(!ns_fd.is_valid())
+		{
+			exit(1);
+		}
+		setns(ns_fd.fd(), CLONE_NEWNS);
 
 		int res = remove(path_str.c_str());
 
