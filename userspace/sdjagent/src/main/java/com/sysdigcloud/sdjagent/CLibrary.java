@@ -12,10 +12,13 @@ final public class CLibrary {
     private final static Logger LOGGER = Logger.getLogger(CLibrary.class.getName());
     private static boolean libraryLoaded;
     private static int pid;
+    private static int ppid;
     private static final int initialNamespace;
 
     static {
         try {
+            // Read pid and ppid from file instead of calling getpid() because it
+            // will work event we cannot load our `libsdjagent.so` library
             FileInputStream procStatusFile = new FileInputStream("/proc/self/status");
             Scanner procStatusReader = new Scanner(procStatusFile);
             while (procStatusReader.hasNextLine()) {
@@ -26,6 +29,12 @@ final public class CLibrary {
                     // Uid: <pid>
                     String[] parsed = line.split("\\s+");
                     pid = Integer.parseInt(parsed[1]);
+
+                    // Parse also parent pid
+                    line = procStatusReader.nextLine();
+                    parsed = line.split("\\s+");
+                    ppid = Integer.parseInt(parsed[1]);
+
                     break;
                 }
             }
@@ -43,7 +52,7 @@ final public class CLibrary {
         }
 
         if (libraryLoaded) {
-            initialNamespace = open_fd("/proc/self/ns/net");
+            initialNamespace = open_fd(String.format("%s/proc/self/ns/net", System.getenv("SYSDIG_HOST_ROOT")));
             // TODO: Add error if this open fails
         } else {
             initialNamespace = 0;
@@ -52,6 +61,10 @@ final public class CLibrary {
 
     public static int getPid() {
         return pid;
+    }
+
+    public static int getPPid() {
+        return ppid;
     }
 
     public static long[] getUidAndGid(int pid) throws IOException {
@@ -112,7 +125,7 @@ final public class CLibrary {
 
     public static boolean setNamespace(int pid) {
         if (libraryLoaded) {
-            String path = String.format("/proc/%d/ns/net", pid);
+            String path = String.format("%s/proc/%d/ns/net", System.getenv("SYSDIG_HOST_ROOT"), pid);
             int netnsfd = open_fd(path);
             int nsret = setns(netnsfd, 0);
             close_fd(netnsfd);
@@ -142,7 +155,7 @@ final public class CLibrary {
         if (libraryLoaded) {
             return realRunOnContainer(pid, exe, command);
         } else {
-            return new String();
+            return "";
         }
     }
 

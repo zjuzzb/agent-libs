@@ -22,12 +22,10 @@ public:
 		m_env = env;
 		m_is_copy = JNI_FALSE;
 		m_c_str = m_env->GetStringUTFChars(m_java_ptr, &m_is_copy);
-		//fprintf(stderr, "java_string for %s on %d\n", m_c_str, getpid());
 	}
 
 	~java_string()
 	{
-		//fprintf(stderr, "~java_string for %s on %d\n", m_c_str, getpid());
 		if(m_c_str != NULL && m_is_copy == JNI_TRUE)
 		{
 			m_env->ReleaseStringUTFChars(m_java_ptr, m_c_str);
@@ -76,6 +74,17 @@ private:
 	JNIEnv* m_env;
 	jstring m_java_ptr;
 };
+
+// Function imported from scap, to link scap it should be compiled with -fPIC and it's not
+const char* scap_get_host_root()
+{
+	const char* p = getenv("SYSDIG_HOST_ROOT");
+	if(!p)
+	{
+		p = "";
+	}
+	return p;
+}
 
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1seteuid
         (JNIEnv *, jclass, jlong euid)
@@ -148,7 +157,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		char mntnspath[128];
-		snprintf(mntnspath, sizeof(mntnspath), "/proc/%d/ns/mnt", pid);
+		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 
 		int fd_from = open(source_str.c_str(), O_RDONLY);
 		struct stat from_info = {0};
@@ -196,10 +205,10 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 
 	java_string exe(env, command);
 
-	snprintf(nspath, sizeof(nspath), "/proc/%d/ns/pid", pid);
+	snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/pid", scap_get_host_root(), pid);
 	int pidnsfd = open(nspath, O_RDONLY);
 
-	snprintf(nspath, sizeof(nspath), "/proc/self/ns/pid");
+	snprintf(nspath, sizeof(nspath), "%s/proc/self/ns/pid", scap_get_host_root());
 	int mypidnsfd = open(nspath, O_RDONLY);
 
 	// Build command line for execv
@@ -226,15 +235,15 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
 
-		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/mnt", pid);
+		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 		int mntnsfd = open(nspath, O_RDONLY);
-		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/net", pid);
+		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), pid);
 		int netnsfd = open(nspath, O_RDONLY);
-		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/user", pid);
+		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/user", scap_get_host_root(), pid);
 		int usernsfd = open(nspath, O_RDONLY);
-		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/uts", pid);
+		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/uts", scap_get_host_root(), pid);
 		int utsnsfd = open(nspath, O_RDONLY);
-		snprintf(nspath, sizeof(nspath), "/proc/%d/ns/ipc", pid);
+		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/ipc", scap_get_host_root(), pid);
 		int ipcnsfd = open(nspath, O_RDONLY);
 
 		setns(netnsfd, CLONE_NEWNET);
@@ -249,7 +258,6 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		close(usernsfd);
 
 		execv(exe.c_str(), (char* const*)command_args_c);
-		//execl("/usr/bin/java", "java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", "1", NULL);
 	}
 	else
 	{
@@ -280,7 +288,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		char mntnspath[128];
-		snprintf(mntnspath, sizeof(mntnspath), "/proc/%d/ns/mnt", pid);
+		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 
 		int ns_fd = open(mntnspath, O_RDONLY);
 		setns(ns_fd, CLONE_NEWNS);

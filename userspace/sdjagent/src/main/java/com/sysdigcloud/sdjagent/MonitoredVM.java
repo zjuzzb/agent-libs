@@ -48,7 +48,12 @@ public class MonitoredVM {
         this.agentActive = false;
         this.name = "";
 
-        if (this.pid == CLibrary.getPid()) {
+        // Check if the asked pid is sdjagent itself, there are two cases:
+        // 1. sdjagent running on host, so we check the pid
+        // 2. sdjagent running on container, check the vpid,
+        //    to distiguish from the former check if parent pid is 1
+        if (request.getPid() == CLibrary.getPid() ||
+                (CLibrary.getPPid() == 1 && CLibrary.getPid() == request.getVpid())) {
             this.name = "sdjagent";
             this.mbs = ManagementFactory.getPlatformMBeanServer();
             available = true;
@@ -65,7 +70,11 @@ public class MonitoredVM {
         if (this.address != null)
         {
             if (request.isContainer()) {
-                CLibrary.setNamespace(request.getPid());
+                boolean namespaceChanged = CLibrary.setNamespace(request.getPid());
+
+                if(!namespaceChanged) {
+                    LOGGER.warning(String.format("Cannot set namespace to pid: %d", request.getPid()));
+                }
             }
             try {
                 connection = new Connection(address);
@@ -75,26 +84,46 @@ public class MonitoredVM {
                 LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
             if (request.isContainer()) {
-                CLibrary.setInitialNamespace();
+                boolean namespaceSet = CLibrary.setInitialNamespace();
+                if(!namespaceSet) {
+                    LOGGER.severe("Cannot set initial namespace");
+                }
             }
         }
     }
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
-        CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar");
-        CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so");
-        String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-        String data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
+        String data = null;
+
+        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar") &&
+           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so")) {
+            String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+            data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
+        }
+
         CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
         CLibrary.rmFromContainer(request.getPid(), "/tmp/libsdjagentjni.so");
-        try {
-            Map<String, String> vmInfo = mapper.readValue(data, Map.class);
-            // TODO: improve parsing data from JSON, ensure name and address are not null
-            this.name = vmInfo.get("name");
-            this.address = vmInfo.get("address");
-            this.available = true;
-        } catch (IOException ex) {
-            // TODO: log exception
+
+        if (data != null && !data.isEmpty())
+        {
+            try {
+                Map<String, String> vmInfo = mapper.readValue(data, Map.class);
+                if (vmInfo.containsKey("name")) {
+                    this.name = vmInfo.get("name");
+                    this.available = true;
+                }
+                if (vmInfo.containsKey("address")) {
+                    this.address = vmInfo.get("address");
+                }
+            } catch (IOException ex) {
+                LOGGER.severe(String.format("Wrong data from getVMHandle for process (%d:%d): %s, exception: %s",
+                        request.getPid(), request.getVpid(), data, ex.getMessage()));
+            }
+        }
+        else
+        {
+            LOGGER.severe(String.format("Wrong data from getVMHandle for process (%d:%d)", request.getPid(), request
+                    .getVpid()));
         }
     }
 
