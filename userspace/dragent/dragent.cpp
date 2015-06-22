@@ -258,7 +258,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
-			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
+			std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 			return (EXIT_FAILURE);
 		});
 	}
