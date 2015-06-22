@@ -100,6 +100,7 @@ public class MonitoredVM {
             String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
             data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
         } else {
+            // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(), request.getVpid()));
         }
 

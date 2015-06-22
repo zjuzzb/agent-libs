@@ -189,9 +189,6 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 {
 	int res = 1;
 
-	java_string source_str(env, source);
-	java_string destination_str(env, destination);
-
 	// Open here the namespace so we are sure that the process is live before forking
 	char mntnspath[128];
 	snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
@@ -200,6 +197,9 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	{
 		return res;
 	}
+
+	java_string source_str(env, source);
+	java_string destination_str(env, destination);
 
 	pid_t child = fork();
 
@@ -364,6 +364,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 {
 	int res = 1;
 
+	char mntnspath[128];
+	snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
+
+	file_descriptor ns_fd(mntnspath, O_RDONLY);
+	if(!ns_fd.is_valid())
+	{
+		return res;
+	}
+
 	java_string path_str(env, path);
 
 	pid_t child = fork();
@@ -371,14 +380,6 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	if(child == 0)
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
-		char mntnspath[128];
-		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
-
-		file_descriptor ns_fd(mntnspath, O_RDONLY);
-		if(!ns_fd.is_valid())
-		{
-			exit(1);
-		}
 		setns(ns_fd.fd(), CLONE_NEWNS);
 
 		int res = remove(path_str.c_str());
