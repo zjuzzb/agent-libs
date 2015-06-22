@@ -61,9 +61,9 @@ public class MonitoredVM {
         if (request.getPid() == CLibrary.getPid() ||
                 (CLibrary.getPPid() == 1 && CLibrary.getPid() == request.getVpid())) {
             this.name = "sdjagent";
-            this.mbs = ManagementFactory.getPlatformMBeanServer();
+            //this.mbs = ManagementFactory.getPlatformMBeanServer();
             available = true;
-            agentActive = true;
+            agentActive = false;
             return;
         }
 
