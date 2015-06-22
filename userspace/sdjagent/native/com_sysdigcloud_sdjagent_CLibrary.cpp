@@ -192,13 +192,20 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	java_string source_str(env, source);
 	java_string destination_str(env, destination);
 
+	// Open here the namespace so we are sure that the process is live before forking
+	char mntnspath[128];
+	snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
+	file_descriptor ns_fd(mntnspath, O_RDONLY);
+	if(!ns_fd.is_valid())
+	{
+		return res;
+	}
+
 	pid_t child = fork();
 
 	if(child == 0)
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
-		char mntnspath[128];
-		snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 
 		file_descriptor fd_from(source_str.c_str(), O_RDONLY);
 		if(!fd_from.is_valid())
@@ -208,12 +215,6 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 
 		struct stat from_info = {0};
 		fstat(fd_from.fd(), &from_info);
-
-		file_descriptor ns_fd(mntnspath, O_RDONLY);
-		if(!ns_fd.is_valid())
-		{
-			exit(1);
-		}
 
 		setns(ns_fd.fd(), CLONE_NEWNS);
 

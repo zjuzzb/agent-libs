@@ -100,7 +100,7 @@ public class MonitoredVM {
             String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
             data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
         } else {
-            LOGGER.severe(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(), request.getVpid()));
+            LOGGER.warning(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(), request.getVpid()));
         }
 
         CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
@@ -126,7 +126,7 @@ public class MonitoredVM {
         }
         else
         {
-            LOGGER.severe(String.format("No data from getVMHandle for process (%d:%d)", request.getPid(), request
+            LOGGER.warning(String.format("No data from getVMHandle for process (%d:%d)", request.getPid(), request
                     .getVpid()));
         }
     }
