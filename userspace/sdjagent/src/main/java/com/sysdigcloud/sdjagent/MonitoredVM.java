@@ -32,7 +32,13 @@ public class MonitoredVM {
     private MBeanServerConnection mbs;
     private final int pid;
     private String name;
+    /**
+     * AgentActive means that JMX are enabled and we can get metrics from target JVM
+     */
     private boolean agentActive;
+    /**
+     * Available means that we can get at least the mainClass from target JVM
+     */
     private boolean available;
     private long lastBeanRefresh;
     private final List<Config.BeanQuery> queryList;
