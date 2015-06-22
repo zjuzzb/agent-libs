@@ -819,13 +819,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			tinfo->m_ainfo->set_cmdline_update(false);
 		}
 
-		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
-		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java")
-		{
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
-			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
-			java_process_requests.emplace_back(tinfo);
-		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -1449,6 +1442,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				m_threads_to_remove.push_back(tinfo);
 			}
 		}
+
+#ifndef _WIN32
+		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
+		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED || force_close) && tinfo->get_comm() == "java" &&
+			tinfo->m_vpid > 0)
+		{
+			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
+			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
+			java_process_requests.emplace_back(tinfo);
+		}
+#endif
 	}
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
