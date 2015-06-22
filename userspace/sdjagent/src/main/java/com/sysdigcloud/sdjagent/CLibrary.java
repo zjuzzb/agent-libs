@@ -60,7 +60,9 @@ final public class CLibrary {
 
         if (libraryLoaded) {
             initialNamespace = open_fd(String.format("%s/proc/self/ns/net", hostRoot));
-            // TODO: Add error if this open fails
+            if(initialNamespace < 0) {
+                LOGGER.severe("Error on opening self net namespace");
+            }
         } else {
             initialNamespace = 0;
         }

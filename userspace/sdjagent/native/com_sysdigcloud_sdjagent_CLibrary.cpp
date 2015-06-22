@@ -228,14 +228,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 		if(result == from_info.st_size)
 		{
 			exit(0);
-		} else {
+		}
+		else
+		{
 			exit(1);
 		}
 	}
 	else
 	{
 		int status = 0;
-		// TODO: avoid blocking?
 		waitpid(child, &status, 0);
 		if(WIFEXITED(status))
 		{
@@ -252,7 +253,10 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	int child_pipe[2];
 	char nspath[128];
 	jstring ret = NULL;
-	pipe(child_pipe);
+	if(pipe(child_pipe) != 0)
+	{
+		return ret;
+	}
 
 	java_string exe(env, command);
 
@@ -341,14 +345,15 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	else
 	{
 		int status = 0;
-		// TODO: avoid blocking?
 		waitpid(child, &status, 0);
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
 		FILE* output = fdopen(child_pipe[0], "r");
 		char output_buffer[1024];
-		fgets(output_buffer, sizeof(output_buffer), output);
-		ret = env->NewStringUTF(output_buffer);
+		if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
+		{
+			ret = env->NewStringUTF(output_buffer);
+		}
 	}
 	return ret;
 }
@@ -380,14 +385,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 		if(res == 0)
 		{
 			exit(0);
-		} else {
+		}
+		else
+		{
 			exit(1);
 		}
 	}
 	else
 	{
 		int status = 0;
-		// TODO: avoid blocking?
 		waitpid(child, &status, 0);
 		if(WIFEXITED(status))
 		{
