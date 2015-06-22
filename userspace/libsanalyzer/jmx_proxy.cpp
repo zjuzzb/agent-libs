@@ -136,7 +136,7 @@ void jmx_proxy::send_get_metrics(uint64_t id, const vector<java_process_request>
 	Json::Value command_obj;
 	command_obj["id"] = Json::UInt64(id);
 	command_obj["command"] = "getMetrics";
-	Json::Value body;
+	Json::Value body(Json::arrayValue);
 	for(const auto& process : processes)
 	{
 		body.append(process.to_json());
