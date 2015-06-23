@@ -36,61 +36,31 @@ public class JvmstatVM {
         vm.detach();
     }
 
-    private String findByName(String key)
-    {
-        String value = null;
-        try
+    private String findByName(String key) throws MonitorException {
+        Monitor m = vm.findByName(key);
+        if (m != null)
         {
-            Monitor m = vm.findByName(key);
-            if (m != null)
-            {
-                value = (String) m.getValue();
-            }
-        }
-        catch ( MonitorException ex)
-        {
-            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
-        }
-        return value;
-    }
-
-    private List<String> findByPattern(String pattern)
-    {
-        try {
-            List<Monitor> monitorList = vm.findByPattern(pattern);
-            List<String> monitorStrList = new ArrayList<String>(monitorList.size());
-            for (Monitor monitor : monitorList) {
-                monitorStrList.add(monitor.getValue().toString());
-            }
-            return monitorStrList;
-        } catch (MonitorException ex)
-        {
-            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
+            return (String) m.getValue();
+        } else {
             return null;
         }
     }
 
-    private String getJvmArgs() {
-        try
-        {
-            return MonitoredVmUtil.jvmArgs(vm);
-        } catch (MonitorException ex)
-        {
-            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
-            return null;
+    private List<String> findByPattern(String pattern) throws MonitorException {
+        List<Monitor> monitorList = vm.findByPattern(pattern);
+        List<String> monitorStrList = new ArrayList<String>(monitorList.size());
+        for (Monitor monitor : monitorList) {
+            monitorStrList.add(monitor.getValue().toString());
         }
+        return monitorStrList;
     }
 
-    public String getMainClass()
-    {
-        try
-        {
-            return MonitoredVmUtil.mainClass(vm, true);
-        } catch (MonitorException ex)
-        {
-            LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
-            return null;
-        }
+    private String getJvmArgs() throws MonitorException {
+        return MonitoredVmUtil.jvmArgs(vm);
+    }
+
+    public String getMainClass() throws MonitorException {
+        return MonitoredVmUtil.mainClass(vm, true);
     }
 
     /*
@@ -111,7 +81,7 @@ public class JvmstatVM {
         return cachedActiveVMs;
     }*/
 
-    public String getJMXAddress() {
+    public String getJMXAddress() throws MonitorException {
         String address = findByName("sun.management.JMXConnectorServer.address");
         if (address == null)
         {

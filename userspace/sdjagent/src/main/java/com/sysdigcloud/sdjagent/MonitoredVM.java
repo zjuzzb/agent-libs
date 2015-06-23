@@ -158,21 +158,19 @@ public class MonitoredVM {
             LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
         }
 
-        JvmstatVM jvmstat;
+
         try {
+            JvmstatVM jvmstat;
             jvmstat = new JvmstatVM(request.getPid());
+            this.name = jvmstat.getMainClass();
+            // Try to get local address from jvmstat
+            this.address = jvmstat.getJMXAddress();
+            jvmstat.detach();
             available = true;
         } catch (MonitorException e) {
             LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
             return;
         }
-
-        this.name = jvmstat.getMainClass();
-
-        // Try to get local address from jvmstat
-        this.address = jvmstat.getJMXAddress();
-
-        jvmstat.detach();
 
         // Try to load agent and get address from there
         if (this.address == null)
