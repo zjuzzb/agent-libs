@@ -719,6 +719,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<string> included_programs;
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
+	vector<java_process_request> java_process_requests;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -817,6 +818,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			tinfo->m_ainfo->set_cmdline_update(false);
 		}
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -1032,7 +1034,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		sinsp_threadinfo* tinfo = &it->second;
 		analyzer_container_state* container = NULL;
-
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
@@ -1441,6 +1442,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				m_threads_to_remove.push_back(tinfo);
 			}
 		}
+
+#ifndef _WIN32
+		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
+		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED || force_close) && tinfo->get_comm() == "java" &&
+			tinfo->m_vpid > 0)
+		{
+			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
+			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
+			java_process_requests.emplace_back(tinfo);
+		}
+#endif
 	}
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -1452,7 +1464,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		m_jmx_metrics.clear();
-		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns);
+		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
 	}
 #endif
 }

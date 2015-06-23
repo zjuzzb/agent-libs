@@ -123,18 +123,32 @@ jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
 {
 }
 
-void jmx_proxy::send_get_metrics(uint64_t id)
+Json::Value java_process_request::to_json() const
 {
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX with id %lu", id);
+	Json::Value ret;
+	ret["pid"] = m_pid;
+	ret["vpid"] = m_vpid;
+	return ret;
+}
+
+void jmx_proxy::send_get_metrics(uint64_t id, const vector<java_process_request>& processes)
+{
 	Json::Value command_obj;
 	command_obj["id"] = Json::UInt64(id);
 	command_obj["command"] = "getMetrics";
+	Json::Value body(Json::arrayValue);
+	for(const auto& process : processes)
+	{
+		body.append(process.to_json());
+	}
+	command_obj["body"] = body;
 	string command_data = m_json_writer.write(command_obj);
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX: %s", command_data.c_str());
 	fprintf(m_input_fd, "%s", command_data.c_str());
 	fflush(m_input_fd);
 }
 
-pair<uint64_t, unordered_map<int, java_process> > jmx_proxy::read_metrics()
+pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 {
 	uint64_t response_id = 0;
 	unordered_map<int, java_process> processes;

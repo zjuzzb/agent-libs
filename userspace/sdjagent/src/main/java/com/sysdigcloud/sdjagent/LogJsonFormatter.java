@@ -20,6 +20,7 @@ public class LogJsonFormatter extends Formatter {
         try {
             JsonGenerator jgen = JSON_FACTORY.createGenerator(jsonData);
             jgen.writeStartObject();
+            jgen.writeNumberField("pid", CLibrary.getPid());
             jgen.writeStringField("level", record.getLevel().getName());
             jgen.writeStringField("message", record.getMessage());
             jgen.writeEndObject();

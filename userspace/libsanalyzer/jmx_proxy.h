@@ -2,6 +2,7 @@
 
 #include "third-party/jsoncpp/json/json.h"
 #include <utility>
+#include "threadinfo.h"
 
 class jmx_proxy;
 class java_process;
@@ -65,12 +66,33 @@ private:
 	friend class jmx_proxy;
 };
 
+class java_process_request
+{
+public:
+	explicit java_process_request(sinsp_threadinfo* tinfo):
+		m_pid(tinfo->m_pid),
+		m_vpid(tinfo->m_vpid)
+	{
+
+	}
+	explicit java_process_request(int pid, int vpid, int uid, int gid):
+			m_pid(pid),
+			m_vpid(vpid)
+	{
+	}
+	inline Json::Value to_json() const;
+private:
+	int m_pid;
+	int m_vpid;
+};
+
 class jmx_proxy
 {
 public:
 	jmx_proxy(const std::pair<FILE*, FILE*>& fds);
 
-	void send_get_metrics(uint64_t id);
+	void send_get_metrics(uint64_t id, const vector<java_process_request>& processes);
+
 	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
 
 	// This attribute is public because is simply a switch to print

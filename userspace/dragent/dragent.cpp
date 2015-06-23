@@ -219,7 +219,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		return this->sdagent_main();
 	}, true);
 
-	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
+	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
@@ -258,7 +258,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
-			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
+			std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
 			return (EXIT_FAILURE);
 		});
 	}

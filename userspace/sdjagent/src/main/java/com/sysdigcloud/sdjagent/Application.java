@@ -41,7 +41,11 @@ public class Application {
             Application app = new Application();
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
-            app.mainLoop();
+            if(args.length > 0) {
+                app.runWithArgs(args);
+            } else {
+                app.mainLoop();
+            }
         } catch (IOException ex) {
             LOGGER.severe("IOException on main thread: " + ex.getMessage());
             System.exit(1);
@@ -68,16 +72,45 @@ public class Application {
         globalLogger.setLevel(level);
     }
 
+    private void runWithArgs(String[] args) throws IOException {
+        if(args[0].equals("getVMHandle") && args.length > 1) {
+            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[1]));
+            MonitoredVM vm = new MonitoredVM(request);
+            Map<String, Object> vmInfo = new HashMap<String, Object>();
+            vmInfo.put("available", vm.isAvailable());
+            if(vm.isAvailable()) {
+                vmInfo.put("name", vm.getName());
+                vmInfo.put("agentActive", vm.isAgentActive());
+                if (vm.isAgentActive()) {
+                    vmInfo.put("address", vm.getAddress());
+                }
+            }
+            mapper.writeValue(System.out, vmInfo);
+        } else if (args[0].equals("getMetrics") && args.length > 2) {
+            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+            MonitoredVM vm = new MonitoredVM(request);
+            vm.addQueries(config.getDefaultBeanQueries());
+            mapper.writeValue(System.out, vm.getMetrics());
+        }
+        System.out.println();
+        System.out.flush();
+    }
+
     private void mainLoop() throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         while (true)
         {
             String cmd_data = reader.readLine();
             LOGGER.fine(String.format("Received command: %s", cmd_data));
-            Map<String, String> cmd_obj = mapper.readValue(cmd_data, Map.class);
+            Map<String, Object> cmd_obj = mapper.readValue(cmd_data, Map.class);
+            List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
             if (cmd_obj.get("command").equals("getMetrics"))
             {
-                List<Map<String, Object>> vmList = getMetricsCommand();
+                List<Object> body = (List<Object>) cmd_obj.get("body");
+                for(Object item : body) {
+                    requestedVMs.add(mapper.convertValue(item, VMRequest.class));
+                }
+                List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);
                 Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
                 response_obj.put("id", cmd_obj.get("id"));
                 response_obj.put("body", vmList);
@@ -89,14 +122,17 @@ public class Application {
 
             // Cleanup
             if(System.currentTimeMillis() - lastVmsCleanup > vmsCleanupInterval) {
-                cleanup();
+                cleanup(requestedVMs);
                 lastVmsCleanup = System.currentTimeMillis();
             }
         }
     }
 
-    private void cleanup() {
-        Set<Integer> activePids = JvmstatVM.getActiveVMs();
+    private void cleanup(List<VMRequest> requestedVMs) {
+        Set<Integer> activePids = new HashSet<Integer>();
+        for (VMRequest requestedVM : requestedVMs) {
+            activePids.add(requestedVM.getPid());
+        }
         Iterator<Integer> vmsIt = vms.keySet().iterator();
         while (vmsIt.hasNext()) {
             Integer pid = vmsIt.next();
@@ -107,18 +143,17 @@ public class Application {
         }
     }
 
-    private List<Map<String, Object>> getMetricsCommand() throws IOException {
+    private List<Map<String, Object>> getMetricsCommand(List<VMRequest> requestedVMs) throws IOException {
         LOGGER.fine("Executing getMetrics");
         List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
 
-        for (Integer pid : JvmstatVM.getActiveVMs()) {
-            LOGGER.fine(String.format("Found java process %s", pid.intValue()));
+        for (VMRequest request : requestedVMs) {
             Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
-            MonitoredVM vm = vms.get(pid);
+            MonitoredVM vm = vms.get(request.getPid());
 
             if (vm == null) {
-                vm = new MonitoredVM(pid, config.getDefaultBeanQueries());
-
+                vm = new MonitoredVM(request);
+                vm.addQueries(config.getDefaultBeanQueries());
                 // Configure VM name if it matches a pattern on configurations
                 if(vm.isAvailable())
                 {
@@ -133,11 +168,11 @@ public class Application {
                 }
 
                 // Add it to known VMs
-                vms.put(pid, vm);
+                vms.put(request.getPid(), vm);
             }
 
             if (vm.isAvailable()) {
-                vmObject.put("pid", pid);
+                vmObject.put("pid", request.getPid());
                 vmObject.put("name", vm.getName());
 
                 if (vm.isAgentActive()) {

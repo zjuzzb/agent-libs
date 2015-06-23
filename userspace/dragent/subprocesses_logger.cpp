@@ -69,8 +69,9 @@ void sdjagent_parser::operator()(const string& data)
 	bool parsing_ok = m_json_reader.parse(data, sdjagent_log, false);
 	if(parsing_ok)
 	{
+		unsigned pid = sdjagent_log["pid"].asUInt();
 		string log_level = sdjagent_log["level"].asString();
-		string log_message = "sdjagent, " + sdjagent_log["message"].asString();
+		string log_message = "sdjagent[" + to_string(pid) + "]: " + sdjagent_log["message"].asString();
 		if(log_level == "SEVERE")
 		{
 			g_log->error(log_message);
