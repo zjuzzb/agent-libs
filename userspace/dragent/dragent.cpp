@@ -316,6 +316,7 @@ int dragent_app::sdagent_main()
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
+	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
 

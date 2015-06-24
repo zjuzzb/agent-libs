@@ -322,6 +322,7 @@ public:
 		return !m_java_binary.empty();
 	}
 	void refresh_aws_metadata();
+	void refresh_machine_id();
 
 private:
 	void write_statsite_configuration();
