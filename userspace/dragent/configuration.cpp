@@ -402,7 +402,6 @@ void dragent_configuration::write_statsite_configuration()
 
 void dragent_configuration::refresh_machine_id()
 {
-	printf("REFRESHING\n");
 	m_machine_id = Environment::nodeId();
 }
 
