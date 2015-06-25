@@ -6,7 +6,7 @@
 // so define it and compile our code anyway as we need it when
 // running on most recent kernels
 #ifndef F_SETPIPE_SZ
-#define F_SETPIPE_SZ	(F_LINUX_SPECIFIC_BASE + 7)
+#define F_SETPIPE_SZ 1031
 #endif
 
 pipe_manager::pipe_manager()
