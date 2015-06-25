@@ -508,3 +508,14 @@ jmx:
               alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
+
+datadog_checks:
+  - name: redis
+    pattern: "redis"
+    conf:
+      host: 127.0.0.1
+      port: 6379
+  - name: mongo
+    pattern: "mongo"
+    conf:
+      server: mongodb://localhost:27017/admin

@@ -168,7 +168,7 @@ public:
 	const vector<T> get_merged_sequence(const string& key)
 	{
 		vector<T> ret;
-		for(auto item : m_default_root[key])
+		for(auto item : m_root[key])
 		{
 			try
 			{
@@ -179,7 +179,7 @@ public:
 				m_errors.emplace_back(string("Config file error at key ") + key);
 			}
 		}
-		for(auto item : m_root[key])
+		for(auto item : m_default_root[key])
 		{
 			try
 			{
@@ -212,7 +212,7 @@ public:
 	const unordered_map<string, T> get_merged_map(const string& key)
 	{
 		unordered_map<string, T> ret;
-		for(auto item : m_default_root[key])
+		for(auto item : m_root[key])
 		{
 			try
 			{
@@ -223,7 +223,7 @@ public:
 				m_errors.emplace_back(string("Config file error at key ") + key);
 			}
 		}
-		for(auto item : m_root[key])
+		for(auto item : m_default_root[key])
 		{
 			try
 			{
