@@ -4,6 +4,8 @@
 
 pipe_manager::pipe_manager()
 {
+	static const int PIPE_BUFFER_SIZE = 1048576;
+
 	// Create pipes
 	int ret = pipe(m_inpipe);
 	if(ret != 0)
@@ -31,6 +33,18 @@ pipe_manager::pipe_manager()
 	enable_nonblocking(m_outpipe[PIPE_READ]);
 	enable_nonblocking(m_errpipe[PIPE_READ]);
 	enable_nonblocking(m_inpipe[PIPE_WRITE]);
+
+	// We need bigger buffers on pipes, for example for JMX data
+	ret = fcntl(m_inpipe[PIPE_READ], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
+	if (ret < 0)
+	{
+		cerr << "Cannot increase pipe size" << endl;
+	}
+	ret = fcntl(m_outpipe[PIPE_WRITE], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
+	if (ret < 0)
+	{
+		cerr << "Cannot increase pipe size" << endl;
+	}
 }
 
 pipe_manager::~pipe_manager()
