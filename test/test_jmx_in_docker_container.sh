@@ -100,6 +100,9 @@ function install_zookeper(){
 function install_kafka(){
     ZK_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' zookeeper)
     docker run -d --name kafka -u="root" -e "ZOOKEEPERS=$ZK_IP" -p 9092:9092 kousha/kafka
+    docker exec kafka bash -c "sed -i \"s/^advertised.host.name=.*/advertised.host.name=127.0.0.1/\" /opt/kafka_2.10-0.8.2.1/config/server.properties"
+    docker exec kafka bash -c "sed -i \"s/^metadata.broker.list=.*/metadata.broker.list=127.0.0.1:9092/\" /opt/kafka_2.10-0.8.2.1/config/producer.properties"
+    docker restart kafka
 }
 
 #main
