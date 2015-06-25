@@ -2,6 +2,13 @@
 #include "logger.h"
 #include "utils.h"
 
+// On systems with kernel < 2.6.35 we don't have this flag
+// so define it and compile our code anyway as we need it when
+// running on most recent kernels
+#ifndef F_SETPIPE_SZ
+#define F_SETPIPE_SZ	(F_LINUX_SPECIFIC_BASE + 7)
+#endif
+
 pipe_manager::pipe_manager()
 {
 	static const int PIPE_BUFFER_SIZE = 1048576;
