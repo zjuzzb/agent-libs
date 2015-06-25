@@ -1404,25 +1404,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		//
-		// Has this thread been closed during this sample?
-		//
-		bool force_close = false;
-		bool is_inactive_thread = ((tinfo->m_flags & PPM_CL_ACTIVE) == 0);
-		if(is_inactive_thread && evt != NULL)
-		{
-			uint64_t lifetime = evt->get_ts() - tinfo->m_clone_ts;
-			if(lifetime > ONE_SECOND_IN_NS)
-			{
-				force_close = true;
-			}
-		}
-
-		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
 		tinfo->m_ainfo->clear_all_metrics();
 
-		if(tinfo->m_flags & PPM_CL_CLOSED || force_close)
+		if(tinfo->m_flags & PPM_CL_CLOSED)
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -1445,7 +1431,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
-		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED || force_close) && tinfo->get_comm() == "java" &&
+		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java" &&
 			tinfo->m_vpid > 0)
 		{
 			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
