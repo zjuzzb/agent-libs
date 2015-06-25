@@ -27,7 +27,7 @@ function activemq_traffic(){
 }
 
 function kafka_traffic(){
-    sleep 20
+    sleep 30
     pip install kafka-python
     curl -Os https://raw.githubusercontent.com/mumrah/kafka-python/master/example.py
     python example.py
@@ -38,6 +38,7 @@ function install_agent(){
 }
 
 function install_agent_in_container(){
+    yum -y install kernel-devel-$(uname -r)
     docker run -d --name sysdig-agent --privileged --net host --pid host -e ACCESS_KEY=${SYSDIG_ACCESS_KEY} -e TAGS=jmx-agent-container -e COLLECTOR=${COLLECTOR_ENDPOINT} -v /var/run/docker.sock:/host/var/run/docker.sock -v /dev:/host/dev -v /proc:/host/proc:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro -v /usr:/host/usr:ro sysdig/agent
 }
 
