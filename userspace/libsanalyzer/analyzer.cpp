@@ -3418,16 +3418,28 @@ void sinsp_analyzer::emit_containers()
 		}
 	};
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	}
 	check_and_emit_containers();
 
 	m_containers.clear();
