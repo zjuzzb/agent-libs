@@ -719,12 +719,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<string> included_programs;
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
+#ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
-#ifndef _WIN32
 	if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
@@ -2446,10 +2446,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_containers();
 
+#ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
 				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), HOST_STATSD_METRIC_LIMIT);
 			}
+#endif
 			//
 			// Transactions
 			//
@@ -3406,15 +3408,18 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
 		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 	}
+#ifndef _WIN32
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
 		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(), *statsd_limit);
 		*statsd_limit -= statsd_emitted;
 	}
+#endif
 }
 
 void sinsp_analyzer::get_statsd()
 {
+#ifndef _WIN32
 	if (m_statsite_proxy)
 	{
 		m_statsd_metrics = m_statsite_proxy->read_metrics();
@@ -3423,8 +3428,10 @@ void sinsp_analyzer::get_statsd()
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
 	}
+#endif
 }
 
+#ifndef _WIN32
 unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 					   unsigned limit)
 {
@@ -3446,6 +3453,7 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 	}
 	return j;
 }
+#endif
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
 
@@ -3705,9 +3713,11 @@ bool sinsp_analyzer::driver_stopped_dropping()
 	return m_driver_stopped_dropping;
 }
 
+#ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
+#endif // _WIN32
 
 #endif // HAS_ANALYZER

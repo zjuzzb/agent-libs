@@ -1018,6 +1018,7 @@ w_conn_creation_done:
 		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
 		static const uint16_t STATSD_PORT = 8125;
 
+#ifndef _WIN32
 		if(m_analyzer->m_statsite_proxy &&
 		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT
 		    )
@@ -1048,6 +1049,7 @@ w_conn_creation_done:
 				m_analyzer->m_statsite_proxy->send_metric(data, len);
 			}
 		}
+#endif
 
 		if(fdinfo->is_role_server())
 		{

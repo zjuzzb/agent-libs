@@ -9,6 +9,7 @@ class statsite_proxy;
 class statsd_metric
 {
 public:
+#ifndef _WIN32
 	class parse_exception: public sinsp_exception
 	{
 	public:
@@ -17,6 +18,7 @@ public:
 				sinsp_exception(forward<T>(args)...)
 		{}
 	};
+#endif
 	enum class type_t
 	{
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4

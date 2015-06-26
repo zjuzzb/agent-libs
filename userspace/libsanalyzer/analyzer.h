@@ -243,7 +243,9 @@ public:
 
 	void set_statsd_capture_localhost(bool value)
 	{
+#ifndef _WIN32
 		m_statsd_capture_localhost.store(value, memory_order_relaxed);
+#endif
 	}
 
 VISIBILITY_PRIVATE
@@ -265,8 +267,10 @@ VISIBILITY_PRIVATE
 	void emit_executed_commands();
 	void get_statsd();
 	
+#ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 						   unsigned limit);
+#endif
 
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG

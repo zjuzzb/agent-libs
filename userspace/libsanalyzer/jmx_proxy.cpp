@@ -10,6 +10,7 @@
 #include "logger.h"
 #include "fcntl.h"
 
+#ifndef _WIN32
 java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	m_name(json["name"].asString()),
 	m_unit(0),
@@ -193,3 +194,5 @@ pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 	}
 	return make_pair(response_id, processes);
 }
+
+#endif // _WIN32
