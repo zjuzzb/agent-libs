@@ -17,7 +17,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
-	m_next_iflist_refresh_ns(sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS),
+	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {
 }
@@ -88,14 +88,6 @@ void sinsp_worker::init()
 	// The machine id is the MAC address of the first physical adapter
 	//
 	m_analyzer->get_configuration()->set_machine_id(m_configuration->m_machine_id);
-
-	//
-	// The customer id is currently specified by the user
-	//
-	if(m_configuration->m_customer_id.empty())
-	{
-		g_log->error("customerid not specified.");
-	}
 
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
@@ -189,6 +181,7 @@ void sinsp_worker::init()
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
+	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 }
 
 void sinsp_worker::run()
@@ -254,10 +247,10 @@ void sinsp_worker::run()
 
 		run_jobs(ev);
 
-		if(m_inspector->is_live() && (ts > m_next_iflist_refresh_ns))
+		if(m_inspector->is_live() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
 			ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
-			m_next_iflist_refresh_ns += IFLIST_REFRESH_TIMEOUT_NS;
+			m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
 		}
 		if(m_aws_metadata_refresher.done())
 		{

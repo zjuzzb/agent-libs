@@ -53,7 +53,7 @@
 // MYSQL parser
 ///////////////////////////////////////////////////////////////////////////////
 
-class sinsp_mysql_parser : sinsp_protocol_parser
+class sinsp_mysql_parser : public sinsp_protocol_parser
 {
 public:
 	enum msg_type

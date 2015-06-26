@@ -18,7 +18,8 @@ RUN apt-get update \
 	curl \
 	ca-certificates \
 	gcc \
-	gcc-4.8
+	gcc-4.8 \
+	openjdk-8-jre-headless
 
 RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \

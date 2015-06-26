@@ -2,8 +2,17 @@
 #include "logger.h"
 #include "utils.h"
 
+// On systems with kernel < 2.6.35 we don't have this flag
+// so define it and compile our code anyway as we need it when
+// running on most recent kernels
+#ifndef F_SETPIPE_SZ
+#define F_SETPIPE_SZ 1031
+#endif
+
 pipe_manager::pipe_manager()
 {
+	static const int PIPE_BUFFER_SIZE = 1048576;
+
 	// Create pipes
 	int ret = pipe(m_inpipe);
 	if(ret != 0)
@@ -31,6 +40,18 @@ pipe_manager::pipe_manager()
 	enable_nonblocking(m_outpipe[PIPE_READ]);
 	enable_nonblocking(m_errpipe[PIPE_READ]);
 	enable_nonblocking(m_inpipe[PIPE_WRITE]);
+
+	// We need bigger buffers on pipes, for example for JMX data
+	ret = fcntl(m_inpipe[PIPE_READ], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
+	if (ret < 0)
+	{
+		cerr << "Cannot increase pipe size" << endl;
+	}
+	ret = fcntl(m_outpipe[PIPE_WRITE], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
+	if (ret < 0)
+	{
+		cerr << "Cannot increase pipe size" << endl;
+	}
 }
 
 pipe_manager::~pipe_manager()
@@ -69,8 +90,9 @@ void sdjagent_parser::operator()(const string& data)
 	bool parsing_ok = m_json_reader.parse(data, sdjagent_log, false);
 	if(parsing_ok)
 	{
+		unsigned pid = sdjagent_log["pid"].asUInt();
 		string log_level = sdjagent_log["level"].asString();
-		string log_message = "sdjagent, " + sdjagent_log["message"].asString();
+		string log_message = "sdjagent[" + to_string(pid) + "]: " + sdjagent_log["message"].asString();
 		if(log_level == "SEVERE")
 		{
 			g_log->error(log_message);

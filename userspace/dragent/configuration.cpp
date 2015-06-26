@@ -85,7 +85,7 @@ Message::Priority dragent_configuration::string_to_priority(const string& priost
 
 void dragent_configuration::init(Application* app)
 {
-	m_machine_id = Environment::nodeId();
+	refresh_machine_id();
 
 	File package_dir("/opt/draios");
 	if(package_dir.exists())
@@ -194,7 +194,6 @@ void dragent_configuration::init(Application* app)
 	{
 		write_statsite_configuration();
 	}
-    refresh_aws_metadata();
 }
 
 void dragent_configuration::print_configuration()
@@ -400,3 +399,9 @@ void dragent_configuration::write_statsite_configuration()
 	}
 	ostr.close();
 }
+
+void dragent_configuration::refresh_machine_id()
+{
+	m_machine_id = Environment::nodeId();
+}
+

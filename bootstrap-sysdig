@@ -19,11 +19,11 @@ if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
 fi
 
-CMAKE_DIR=$DEPENDENCIES/cmake-3.0.0
+CMAKE_DIR=$DEPENDENCIES/cmake-3.2.2
 if [ ! -d "$CMAKE_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.0.0.tar.gz
-	tar -xzf cmake-3.0.0.tar.gz
+	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.2.2.tar.gz
+	tar -xzf cmake-3.2.2.tar.gz
 	cd $CMAKE_DIR
 	./bootstrap
 	make

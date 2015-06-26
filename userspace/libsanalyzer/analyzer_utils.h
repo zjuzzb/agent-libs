@@ -141,6 +141,7 @@ unique_ptr<T> make_unique(Ts&&... params)
 {
 	return unique_ptr<T>(new T(forward<Ts>(params)...));
 }
+
 #endif // _WIN32
 
 #ifdef SIMULATE_DROP_MODE

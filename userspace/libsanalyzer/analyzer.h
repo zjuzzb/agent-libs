@@ -1,12 +1,12 @@
 #pragma once
 
 #include <analyzer_int.h>
-#include <analyzer_utils.h>
+#include "analyzer_utils.h"
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
-#include <jmx_proxy.h>
-#include <statsite_proxy.h>
+#include "jmx_proxy.h"
+#include "statsite_proxy.h"
 #include <atomic>
 
 //
@@ -117,7 +117,7 @@ public:
 //
 // The main analyzer class
 //
-class statsite_proxy;
+
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -252,18 +252,17 @@ public:
 		}
 	}
 
-#ifndef _WIN32
 	void set_statsd_capture_localhost(bool value)
 	{
+#ifndef _WIN32
 		m_statsd_capture_localhost.store(value, memory_order_relaxed);
+#endif
 	}
-#endif 
 
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
-	void chisels_do_timeout(sinsp_evt* ev);
-	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
+	void chisels_do_timeout(sinsp_evt* ev);	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	void filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
@@ -274,11 +273,17 @@ VISIBILITY_PRIVATE
 	void emit_full_connections();
 	void emit_top_files();
 	void emit_containers();
+	void emit_container(const string &container_id, unsigned* statsd_limit);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
-	void emit_statsd();
+	void get_statsd();
+	
+#ifndef _WIN32
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+						   unsigned limit);
+#endif
 	void emit_chisel_metrics();
 
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
@@ -402,6 +407,7 @@ VISIBILITY_PRIVATE
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
 	//
@@ -431,6 +437,7 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
+	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
 #endif

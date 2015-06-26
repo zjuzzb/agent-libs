@@ -1,12 +1,9 @@
+#pragma once
+
 //
 // The analyzer emit interval
 //
 #define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000
-
-//
-// The transaction delays update interval
-//
-#define TRANSACTION_DELAYS_INTERVAL_NS (5 * ONE_SECOND_IN_NS)
 
 //
 // If this is defined, the analyzer will include process information inside
@@ -186,3 +183,11 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 #define HAS_CAPTURE_FILTERING
 
 #undef SIMULATE_DROP_MODE
+
+static const auto CONTAINERS_LIMIT = 200;
+
+static const auto HOST_STATSD_METRIC_LIMIT = 100;
+static const auto CONTAINERS_STATSD_METRIC_LIMIT = 100;
+
+static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
+static const size_t HOST_PROTOS_LIMIT = 15;

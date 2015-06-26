@@ -216,17 +216,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			ASSERT(false);
 		}
-		auto exit_code = this->sdagent_main();
-		exit(exit_code);
+		return this->sdagent_main();
 	}, true);
 
-	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
+	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
 
-		monitor_process.emplace_process("sdjagent", [this](void)
+		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
 
@@ -259,8 +258,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
-			std::cerr << "{ \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent, errno: " << errno <<"\" }" << std::endl;
+			return (EXIT_FAILURE);
 		});
 	}
 
@@ -287,7 +286,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 		});
 
-		monitor_process.emplace_process("statsite", [this](void)
+		monitor_process.emplace_process("statsite", [this](void) -> int
 		{
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
@@ -296,10 +295,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			else
 			{
-				execl("../../../../dependencies/statsite-private-master/statsite",
+				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
 					  "statsite", "-f", "statsite.ini", (char*)NULL);
 			}
-			exit(EXIT_FAILURE);
+			return (EXIT_FAILURE);
 		});
 	}
 
@@ -317,7 +316,21 @@ int dragent_app::sdagent_main()
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
+	m_configuration.refresh_machine_id();
+	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
+
+	if(m_configuration.m_customer_id.empty())
+	{
+		g_log->error("customerid not specified");
+		return Application::EXIT_SOFTWARE;
+	}
+
+	if(m_configuration.m_machine_id == "00:00:00:00:00:00")
+	{
+		g_log->error("Invalid machine_id detected");
+		return Application::EXIT_SOFTWARE;
+	}
 
 	if(m_configuration.m_watchdog_enabled)
 	{

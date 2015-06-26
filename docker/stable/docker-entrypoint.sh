@@ -30,6 +30,26 @@ if [ ! -z "$TAGS" ]; then
 	fi
 fi
 
+if [ ! -z "$COLLECTOR" ]; then
+	echo "* Setting collector endpoint"
+
+	if ! grep ^collector $CONFIG_FILE > /dev/null 2>&1; then
+		echo "collector: $COLLECTOR" >> $CONFIG_FILE
+	else
+		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$SECURE" ]; then
+	echo "* Setting connection security"
+
+	if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+		echo "ssl: $SECURE" >> $CONFIG_FILE
+	else
+		sed -i "s/^ssl.*/ssl: $SECURE/g" $CONFIG_FILE
+	fi
+fi
+
 if [ $# -eq 0 ]; then
 	if ! /usr/bin/sysdig-probe-loader; then
 		exit 1

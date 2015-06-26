@@ -13,16 +13,16 @@ namespace draiosproto
 class statsd_metric
 {
 public:
+#ifndef _WIN32
 	class parse_exception: public sinsp_exception
 	{
-#ifndef _WIN32
 	public:
 		template<typename... T>
 		parse_exception(T&&... args):
 				sinsp_exception(forward<T>(args)...)
 		{}
-#endif
 	};
+#endif
 	enum class type_t
 	{
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
@@ -40,6 +40,11 @@ public:
 	inline const string& name() const
 	{
 		return m_name;
+	}
+
+	inline const string& container_id() const
+	{
+		return m_container_id;
 	}
 
 	inline type_t type() const
@@ -69,14 +74,18 @@ public:
 
 	statsd_metric():
 			m_timestamp(0),
-			m_type(type_t::NONE)
+			m_type(type_t::NONE),
+			m_full_identifier_parsed(false)
 	{}
 
+	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
 	uint64_t m_timestamp;
 	string m_name;
 	map<string, string> m_tags;
+	string m_container_id;
 	type_t m_type;
+	bool m_full_identifier_parsed;
 
 	double m_value;
 
@@ -97,8 +106,9 @@ class statsite_proxy
 {
 public:
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	vector<statsd_metric> read_metrics();
+	unordered_map<string, vector<statsd_metric>> read_metrics();
 	void send_metric(const char *buf, uint64_t len);
+	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;

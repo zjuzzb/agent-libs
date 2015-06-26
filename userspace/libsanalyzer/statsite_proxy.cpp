@@ -6,21 +6,35 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 
-//
-// Parse a line and fill data structures
-// return false if line does not belong to this object
-// throws an exception if parsing fails
-// NOTE: not implemenetd in windows yet, but should be easy to add it there.
-//
+template<typename It>
+string sinsp_join(It begin, It end, char delim)
+{
+	std::stringstream ss;
+	ss << *begin;
+	++begin;
+	for(auto it = begin; it < end; ++it)
+	{
+		ss << delim << *it;
+	}
+	return ss.str();
+}
+
+#ifndef _WIN32
+/*
+ * Parse a line and fill data structures
+ * return false if line does not belong to this object
+ * throws an exception if parsing fails
+ */
 bool statsd_metric::parse_line(const string& line)
 {
-#ifdef _WIN32
-	return false;
-#else
+	// WARNING: Parsing is not so optimized, because if it will result
+	// a bottleneck, a better option is to use statsite binary based
+	// output, or write a protobuf output for it
+
 	// Example:
 	// counts.mycounter#xxx,yy|313.000000|1427738072
 	// timers.mytime.upper|199.000000|1427738072
-	// <type>.<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
+	// <type>.[<containerid>$]<name>[#<tags>].<subvaluetype>|<value>|<timestamp>
 	try
 	{
 		const auto line_tokens = sinsp_split(line, '|');
@@ -28,14 +42,11 @@ bool statsd_metric::parse_line(const string& line)
 
 		// parse timestamp
 		const auto timestamp = std::stoul(line_tokens.at(2));
-		if (m_timestamp == 0)
-		{
-			m_timestamp = timestamp;
-		}
-		else if (m_timestamp != timestamp)
+		if (m_full_identifier_parsed && m_timestamp != timestamp)
 		{
 			return false;
 		}
+		m_timestamp = timestamp;
 
 		const auto name_tokens = sinsp_split(line_tokens.at(0), '.');
 
@@ -60,14 +71,12 @@ bool statsd_metric::parse_line(const string& line)
 		}
 		//ASSERT(new_type != type_t::NONE);
 
-		if(m_type == type_t::NONE)
-		{
-			m_type = new_type;
-		}
-		else if(m_type != new_type)
+		if(m_full_identifier_parsed && m_type != new_type)
 		{
 			return false;
 		}
+		m_type = new_type;
+
 		//ASSERT(m_type != type_t::NONE);
 
 		// parse name
@@ -80,18 +89,42 @@ bool statsd_metric::parse_line(const string& line)
 
 		const auto name_and_tags = sinsp_join(name_start, name_end, '.');
 		const auto name_and_tags_tokens = sinsp_split(name_and_tags, '#');
-		const auto& name = name_and_tags_tokens.at(0);
+		const auto& name_and_container_id = name_and_tags_tokens.at(0);
+		const auto name_and_container_id_split = sinsp_split(name_and_container_id, CONTAINER_ID_SEPARATOR);
 
-		if (m_name.empty())
+		if(name_and_container_id_split.size() > 1)
 		{
+			const auto& name = name_and_container_id_split.at(1);
+			if(m_full_identifier_parsed && m_name != name)
+			{
+				return false;
+			}
 			m_name = name;
+
+			const auto& container_id = name_and_container_id_split.at(0);
+			if(m_full_identifier_parsed && m_container_id != container_id)
+			{
+				return false;
+
+			}
+			m_container_id = container_id;
 		}
-		else if (m_name != name)
+		else
 		{
-			return false;
+			const auto& name = name_and_container_id;
+			if(m_full_identifier_parsed && m_name != name)
+			{
+				return false;
+			}
+			m_name = name;
+
+			if(m_full_identifier_parsed && !m_container_id.empty())
+			{
+				return false;
+			}
 		}
 
-		if (name_and_tags_tokens.size() > 1)
+		if(name_and_tags_tokens.size() > 1)
 		{
 			decltype(m_tags) new_tags;
 			const auto tags_tokens = sinsp_split(name_and_tags_tokens.at(1), ',');
@@ -114,15 +147,14 @@ bool statsd_metric::parse_line(const string& line)
 					}
 				}
 			}
-			if(m_tags.empty())
-			{
-				m_tags = move(new_tags);
-			}
-			else if(new_tags != m_tags)
+			if(m_full_identifier_parsed && m_tags != new_tags)
 			{
 				return false;
 			}
+			m_tags = move(new_tags);
 		}
+
+		m_full_identifier_parsed = true;
 
 		// Parse value
 		const auto value = std::stod(line_tokens.at(1));
@@ -179,8 +211,8 @@ bool statsd_metric::parse_line(const string& line)
 		// so catch them and map as parsing exception
 		throw parse_exception(ex.what());
 	}
-#endif // _WIN32
 }
+#endif // _WIN32
 
 void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
@@ -213,22 +245,25 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	}
 }
 
-#ifndef _WIN32
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second)
 {
 }
 
-vector<statsd_metric> statsite_proxy::read_metrics()
+#ifndef _WIN32
+unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 {
-	vector<statsd_metric> ret;
+	unordered_map<string, vector<statsd_metric>> ret;
 	uint64_t timestamp = 0;
 	char buffer[300];
+	unsigned metric_count = 0;
 
 	bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 	while (continue_read)
 	{
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "Received from statsite: %s", buffer);
+		//printf(buffer);
 		try {
 			bool parsed = m_metric.parse_line(buffer);
 			if(!parsed)
@@ -238,7 +273,8 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 					timestamp = m_metric.timestamp();
 				}
 
-				ret.push_back(move(m_metric));
+				ret[m_metric.container_id()].push_back(move(m_metric));
+				++metric_count;
 				m_metric = statsd_metric();
 
 				parsed = m_metric.parse_line(buffer);
@@ -259,13 +295,14 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 	if(timestamp > 0 && timestamp == m_metric.timestamp())
 	{
 		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-		ret.push_back(move(m_metric));
+		ret[m_metric.container_id()].push_back(move(m_metric));
+		++metric_count;
 		m_metric = statsd_metric();
 	}
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %d", ret.size());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
 	if(m_metric.timestamp() > 0)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at(0).timestamp() : 0);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
 	}
 	return ret;
@@ -273,14 +310,38 @@ vector<statsd_metric> statsite_proxy::read_metrics()
 
 void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
-	char sendbuf[512];
+	char sendbuf[2048];
 	memcpy(&sendbuf, buf, len);
 	if(sendbuf[len-1] != '\n')
 	{
 		sendbuf[len] = '\n';
 		++len;
 	}
+	//sendbuf[len] = '\0';
+	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", sendbuf);
 	fwrite_unlocked(&sendbuf, sizeof(char), len, m_input_fd);
 	fflush_unlocked(m_input_fd);
+}
+
+void statsite_proxy::send_container_metric(const string &container_id, const char *data, uint64_t len)
+{
+	// Send the metric with containerid prefix
+	// Prefix container metrics with containerid and $
+	auto container_prefix = container_id + statsd_metric::CONTAINER_ID_SEPARATOR;
+
+	// Init metric data with initial container_prefix
+	auto metric_data = container_prefix;
+	metric_data.append(data, (size_t)len);
+
+	// Add container prefix to other metrics if they are present
+	auto endline_pos = metric_data.find('\n');
+	while(endline_pos != string::npos && endline_pos+1 < metric_data.size())
+	{
+		metric_data.insert(endline_pos+1, container_prefix);
+		endline_pos = metric_data.find('\n', endline_pos+1);
+	}
+	//g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
+	// send_metric does not need final \0
+	send_metric(metric_data.data(), metric_data.size());
 }
 #endif // _WIN32

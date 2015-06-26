@@ -588,7 +588,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 
 				if(idle1 < 0)
 				{
-					ASSERT(false);
+//					ASSERT(false);
 					idle1 = 0;
 				}
 
