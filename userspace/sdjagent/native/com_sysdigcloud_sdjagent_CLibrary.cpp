@@ -420,3 +420,19 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 
 	return res;
 }
+
+JNIEXPORT jlong JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getInodeOfFile
+		(JNIEnv* env, jclass, jstring path)
+{
+	java_string path_s(env, path);
+	struct stat buf;
+	int ret = stat(path_s.c_str(), &buf);
+	if (ret == 0)
+	{
+		return buf.st_ino;
+	}
+	else
+	{
+		return 0;
+	}
+}
