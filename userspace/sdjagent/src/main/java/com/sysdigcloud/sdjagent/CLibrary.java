@@ -65,6 +65,9 @@ final public class CLibrary {
                 LOGGER.severe("Error on opening self net namespace");
             }
             mntNamespaceInode = getInodeOfFile(String.format("%s/proc/self/ns/mnt", hostRoot));
+            if (mntNamespaceInode == 0) {
+                LOGGER.severe("Error on getting inode of self container");
+            }
         } else {
             initialNamespace = 0;
             mntNamespaceInode = 0;
