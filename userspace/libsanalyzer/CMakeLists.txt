@@ -15,6 +15,7 @@ add_library(sanalyzer STATIC
 	analyzer_thread.cpp
 	analyzer_utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
@@ -48,6 +49,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
   statsite_proxy.cpp)
 
