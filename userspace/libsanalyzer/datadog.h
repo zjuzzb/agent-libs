@@ -19,36 +19,16 @@ struct convert;
 class datadog_check
 {
 public:
-
-	bool match(sinsp_threadinfo* tinfo) const
-	{
-		if(!m_comm_pattern.empty() && tinfo->m_comm.find(m_comm_pattern) != string::npos)
-		{
-			return true;
-		}
-		if(!m_exe_pattern.empty() && tinfo->m_exe.find(m_exe_pattern) != string::npos)
-		{
-			return true;
-		}
-		if(m_port_pattern > 0)
-		{
-			for(auto port : tinfo->m_ainfo->listening_ports())
-			{
-				if(m_port_pattern == port)
-				{
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+	bool match(sinsp_threadinfo* tinfo) const;
 
 	const string& name() const
 	{
 		return m_name;
 	}
+
 private:
 	friend class YAML::convert<datadog_check>;
+
 	string m_comm_pattern;
 	string m_exe_pattern;
 	uint16_t m_port_pattern;
@@ -67,23 +47,7 @@ public:
 
 	}
 
-	Json::Value to_json() const
-	{
-		Json::Value ret;
-		ret["pid"] = m_pid;
-		ret["vpid"] = m_vpid;
-		ret["check"] = m_check_name;
-		ret["ports"] = Json::Value(Json::arrayValue);
-		//transform(m_ports.begin(), m_ports.end(), ret["ports"].begin(), [](const uint16_t v)
-		//{
-		//	return Json::UInt(v);
-		//});
-		for(auto port : m_ports)
-		{
-			ret["ports"].append(Json::UInt(port));
-		}
-		return ret;
-	}
+	Json::Value to_json() const;
 
 private:
 	int m_pid;
@@ -112,19 +76,7 @@ public:
 		mq_close(m_outqueue);
 	}
 
-	void send_get_metrics_cmd(uint64_t id, const vector<datadog_process>& processes)
-	{
-		Json::Value command;
-		command["id"] = Json::UInt64(id);
-		command["body"] = Json::Value(Json::arrayValue);
-		for(const auto& p : processes)
-		{
-			command["body"].append(p.to_json());
-		}
-		string data = m_json_writer.write(command);
-		g_logger.format(sinsp_logger::SEV_INFO, "Send to sdchecks: %s", data.c_str());
-		mq_send(m_outqueue, data.c_str(), data.size(), 0);
-	}
+	void send_get_metrics_cmd(uint64_t id, const vector<datadog_process>& processes);
 
 	pair<uint64_t, unordered_map<int, datadog_process_metrics>> read_metrics();
 

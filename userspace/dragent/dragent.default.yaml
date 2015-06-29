@@ -515,16 +515,16 @@ datadog_checks:
       comm: redis-server
     conf:
       host: 127.0.0.1
-      port: {port}
+      port: "{port}"
   - name: mongo
     pattern: 
       comm: mongod
     conf:
-      server: mongodb://localhost:{port}/admin
+      server: "mongodb://localhost:{port}/admin"
   - name: rabbitmq
     pattern:
       port: 5672
     conf:
-      rabbitmq_api_url: http://localhost:{port.high}/api/
+      rabbitmq_api_url: "http://localhost:{port.high}/api/"
       rabbitmq_user: guest
       rabbitmq_pass: guest
