@@ -22,10 +22,6 @@ public class VMRequest {
         return vpid;
     }
 
-    public boolean isContainer() {
-        return pid != vpid;
-    }
-
     private final int pid;
     private final int vpid;
 }

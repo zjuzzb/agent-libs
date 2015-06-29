@@ -67,7 +67,8 @@ public class MonitoredVM {
             return;
         }
 
-        if (request.isContainer()) {
+        boolean isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
+        if (isOnAnotherContainer) {
             retrieveVmInfoFromContainer(request);
         } else {
             retrieveVMInfoFromHost(request);
@@ -75,7 +76,7 @@ public class MonitoredVM {
 
         if (this.address != null)
         {
-            if (request.isContainer()) {
+            if (isOnAnotherContainer) {
                 boolean namespaceChanged = CLibrary.setNamespace(request.getPid());
 
                 if(!namespaceChanged) {
@@ -89,7 +90,7 @@ public class MonitoredVM {
             } catch (IOException e) {
                 LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
-            if (request.isContainer()) {
+            if (isOnAnotherContainer) {
                 boolean namespaceSet = CLibrary.setInitialNamespace();
                 if(!namespaceSet) {
                     LOGGER.severe("Cannot set initial namespace");
