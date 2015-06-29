@@ -189,6 +189,7 @@ void dragent_configuration::init(Application* app)
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+	m_datadog_checks = m_config->get_merged_sequence<datadog_check>("datadog_checks");
 
 	if(m_statsd_enabled)
 	{
@@ -405,3 +406,35 @@ void dragent_configuration::refresh_machine_id()
 	m_machine_id = Environment::nodeId();
 }
 
+bool YAML::convert<datadog_check>::decode(const YAML::Node &node, datadog_check &rhs)
+{
+	/*
+	 * Example:
+	 * name: redisdb
+	 *	pattern:
+	 *	  comm: redis-server
+	 *	conf:
+	 *	  host: 127.0.0.1
+	 *	  port: {port}
+	 *
+	 *	The conf part is not used by dragent
+	 */
+	rhs.m_name = node["name"].as<string>();
+	auto pattern_node = node["pattern"];
+	auto comm_node = pattern_node["comm"];
+	if(comm_node.IsScalar())
+	{
+		rhs.m_comm_pattern = comm_node.as<string>();
+	}
+	auto exe_node = pattern_node["exe"];
+	if(exe_node.IsScalar())
+	{
+		rhs.m_exe_pattern = exe_node.as<string>();
+	}
+	auto port_node = pattern_node["port"];
+	if(port_node.IsScalar())
+	{
+		rhs.m_port_pattern = port_node.as<uint16_t>();
+	}
+	return true;
+}

@@ -510,12 +510,21 @@ jmx:
       pattern: "elasticsearch"
 
 datadog_checks:
-  - name: redis
-    pattern: "redis"
+  - name: redisdb
+    pattern: 
+      comm: redis-server
     conf:
       host: 127.0.0.1
-      port: 6379
+      port: {port}
   - name: mongo
-    pattern: "mongo"
+    pattern: 
+      comm: mongod
     conf:
-      server: mongodb://localhost:27017/admin
+      server: mongodb://localhost:{port}/admin
+  - name: rabbitmq
+    pattern:
+      port: 5672
+    conf:
+      rabbitmq_api_url: http://localhost:{port.high}/api/
+      rabbitmq_user: guest
+      rabbitmq_pass: guest

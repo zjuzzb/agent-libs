@@ -8,6 +8,7 @@
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
+#include "datadog.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -246,6 +247,15 @@ public:
 		m_statsd_capture_localhost.store(value, memory_order_relaxed);
 	}
 
+	void set_datadog_checks(const vector<datadog_check>& checks)
+	{
+		m_datadog_checks = checks;
+		if(!m_datadog_checks.empty())
+		{
+			m_datadog_proxy = make_unique<datadog_checks_proxy>();
+		}
+	}
+
 VISIBILITY_PRIVATE
 	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
@@ -415,6 +425,9 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
+
+	vector<datadog_check> m_datadog_checks;
+	unique_ptr<datadog_checks_proxy> m_datadog_proxy;
 #endif
 
 	//

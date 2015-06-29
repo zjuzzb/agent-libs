@@ -49,13 +49,14 @@ add_library(sanalyzer STATIC
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	jmx_proxy.cpp
-  statsite_proxy.cpp)
+  statsite_proxy.cpp datadog.h)
 
 target_link_libraries(sanalyzer
 	scap 
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
-	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a)
+	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a
+	rt)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

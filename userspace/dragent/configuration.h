@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
+#include <datadog.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -248,6 +249,15 @@ private:
 	vector<string> m_errors;
 };
 
+namespace YAML {
+	template<>
+	struct convert<datadog_check> {
+		static Node encode(const datadog_check& rhs);
+
+		static bool decode(const Node& node, datadog_check& rhs);
+	};
+}
+
 class dragent_configuration
 {
 public:
@@ -316,6 +326,7 @@ public:
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
+	vector<datadog_check> m_datadog_checks;
 
 	bool java_present()
 	{
