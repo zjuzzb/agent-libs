@@ -50,7 +50,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	jmx_proxy.cpp
 	statsite_proxy.cpp
-	datadog.cpp)
+	app_checks.cpp)
 
 target_link_libraries(sanalyzer
 	scap 

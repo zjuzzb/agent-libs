@@ -181,7 +181,7 @@ void sinsp_worker::init()
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
-	m_analyzer->set_datadog_checks(m_configuration->m_datadog_checks);
+	m_analyzer->set_app_checks(m_configuration->m_app_checks);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 }
 

@@ -4,7 +4,7 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
-#include <datadog.h>
+#include <app_checks.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -251,10 +251,10 @@ private:
 
 namespace YAML {
 	template<>
-	struct convert<datadog_check> {
-		static Node encode(const datadog_check& rhs);
+	struct convert<app_check> {
+		static Node encode(const app_check& rhs);
 
-		static bool decode(const Node& node, datadog_check& rhs);
+		static bool decode(const Node& node, app_check& rhs);
 	};
 }
 
@@ -326,7 +326,7 @@ public:
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
-	vector<datadog_check> m_datadog_checks;
+	vector<app_check> m_app_checks;
 
 	bool java_present()
 	{

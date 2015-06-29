@@ -721,7 +721,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 	vector<java_process_request> java_process_requests;
-	vector<datadog_process> datadog_checks_processes;
+	vector<app_process> app_checks_processes;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1442,12 +1442,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->m_vpid > 0)
 		{
-			for(const auto& check : m_datadog_checks)
+			for(const auto& check : m_app_checks)
 			{
 				if(check.match(tinfo))
 				{
 					g_logger.format(sinsp_logger::SEV_INFO, "Found check %s for process %d", check.name().c_str(), tinfo->m_pid);
-					datadog_checks_processes.emplace_back(check.name(), tinfo);
+					app_checks_processes.emplace_back(check.name(), tinfo);
 				}
 			}
 		}
@@ -1465,8 +1465,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		m_jmx_metrics.clear();
 		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
 	}
-	if(m_datadog_proxy && !datadog_checks_processes.empty())
-		m_datadog_proxy->send_get_metrics_cmd(m_next_flush_time_ns, datadog_checks_processes);
+	if(m_app_proxy && !app_checks_processes.empty())
+		m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
 #endif
 }
 

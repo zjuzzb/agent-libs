@@ -189,7 +189,7 @@ void dragent_configuration::init(Application* app)
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
-	m_datadog_checks = m_config->get_merged_sequence<datadog_check>("datadog_checks");
+	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 
 	if(m_statsd_enabled)
 	{
@@ -406,7 +406,7 @@ void dragent_configuration::refresh_machine_id()
 	m_machine_id = Environment::nodeId();
 }
 
-bool YAML::convert<datadog_check>::decode(const YAML::Node &node, datadog_check &rhs)
+bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 {
 	/*
 	 * Example:

@@ -2,9 +2,9 @@
 // Created by Luca Marturana on 29/06/15.
 //
 
-#include "datadog.h"
+#include "app_checks.h"
 
-bool datadog_check::match(sinsp_threadinfo *tinfo) const
+bool app_check::match(sinsp_threadinfo *tinfo) const
 {
 	bool ret = true;
 	if(!m_comm_pattern.empty())
@@ -23,7 +23,7 @@ bool datadog_check::match(sinsp_threadinfo *tinfo) const
 	return ret;
 }
 
-Json::Value datadog_process::to_json() const
+Json::Value app_process::to_json() const
 {
 	Json::Value ret;
 	ret["pid"] = m_pid;
@@ -37,7 +37,7 @@ Json::Value datadog_process::to_json() const
 	return ret;
 }
 
-void datadog_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<datadog_process> &processes)
+void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_process> &processes)
 {
 	Json::Value command;
 	command["id"] = Json::UInt64(id);

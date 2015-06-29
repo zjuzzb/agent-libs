@@ -509,7 +509,11 @@ jmx:
     elasticsearch:
       pattern: "elasticsearch"
 
-datadog_checks:
+rabbitmq:
+  user: guest 
+  pass: guest
+
+app_checks:
   - name: redisdb
     pattern: 
       comm: redis-server
@@ -526,5 +530,5 @@ datadog_checks:
       port: 5672
     conf:
       rabbitmq_api_url: "http://localhost:{port.high}/api/"
-      rabbitmq_user: guest
-      rabbitmq_pass: guest
+      rabbitmq_user: "{rabbitmq.user}"
+      rabbitmq_pass: "{rabbitmq.pass}"

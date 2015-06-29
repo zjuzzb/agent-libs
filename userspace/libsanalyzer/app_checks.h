@@ -16,7 +16,7 @@ template<typename T>
 struct convert;
 }
 
-class datadog_check
+class app_check
 {
 public:
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -27,18 +27,18 @@ public:
 	}
 
 private:
-	friend class YAML::convert<datadog_check>;
+	friend class YAML::convert<app_check>;
 
 	string m_comm_pattern;
 	string m_exe_pattern;
-	uint16_t m_port_pattern;
+	uint16_t m_port_pattern{0};
 	string m_name;
 };
 
-class datadog_process
+class app_process
 {
 public:
-	datadog_process(string check_name, sinsp_threadinfo* tinfo):
+	app_process(string check_name, sinsp_threadinfo* tinfo):
 			m_pid(tinfo->m_pid),
 			m_vpid(tinfo->m_vpid),
 			m_check_name(move(check_name)),
@@ -56,29 +56,29 @@ private:
 	set<uint16_t> m_ports;
 };
 
-class datadog_process_metrics
+class app_process_metrics
 {
 private:
 	int m_pid;
 
 };
 
-class datadog_checks_proxy
+class app_checks_proxy
 {
 public:
-	datadog_checks_proxy()
+	app_checks_proxy()
 	{
 		m_outqueue = mq_open("/sdchecks", O_WRONLY);
 	}
 
-	~datadog_checks_proxy()
+	~app_checks_proxy()
 	{
 		mq_close(m_outqueue);
 	}
 
-	void send_get_metrics_cmd(uint64_t id, const vector<datadog_process>& processes);
+	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
 
-	pair<uint64_t, unordered_map<int, datadog_process_metrics>> read_metrics();
+	pair<uint64_t, unordered_map<int, app_process_metrics>> read_metrics();
 
 private:
 	mqd_t m_outqueue;
