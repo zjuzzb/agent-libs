@@ -242,8 +242,9 @@ public:
 		return m_errors;
 	}
 
-private:
 	YAML::Node m_root;
+
+private:
 	YAML::Node m_default_root;
 	vector<string> m_errors;
 };
@@ -316,6 +317,7 @@ public:
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
+	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()
 	{

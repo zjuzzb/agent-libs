@@ -342,6 +342,11 @@ void sinsp_analyzer::add_chisel(sinsp_chisel* ch)
 	m_run_chisels = true;
 }
 
+void sinsp_analyzer::add_chisel(sinsp_chisel_details* cd)
+{
+	ASSERT(false);
+}
+
 void sinsp_analyzer::chisels_on_capture_start()
 {
 	for(uint32_t j = 0; j < m_chisels.size(); j++)

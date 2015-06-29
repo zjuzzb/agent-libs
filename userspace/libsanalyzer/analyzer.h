@@ -156,6 +156,7 @@ public:
 	void add_chisel_dirs();
 	void initialize_chisels();
 	void add_chisel(sinsp_chisel* ch);
+	void add_chisel(sinsp_chisel_details* cd);
 	inline void add_chisel_metric(statsd_metric* metric)
 	{
 		m_chisel_metrics.push_back(*metric);
