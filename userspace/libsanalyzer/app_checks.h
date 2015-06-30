@@ -66,7 +66,7 @@ class app_metric
 public:
 	enum class type_t
 	{
-		GAUGE,
+		GAUGE = 1,
 		RATE
 	};
 	app_metric(const Json::Value& obj);
