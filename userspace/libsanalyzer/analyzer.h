@@ -32,6 +32,7 @@ class sinsp_configuration;
 class sinsp_counters;
 class sinsp_analyzer_parsers;
 class sinsp_chisel;
+class sinsp_chisel_details;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
