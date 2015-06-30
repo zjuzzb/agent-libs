@@ -15,6 +15,7 @@ final public class CLibrary {
     private static int ppid;
     private static final int initialNamespace;
     private static final String hostRoot;
+    private static final long mntNamespaceInode;
 
     static {
         if(System.getenv("SYSDIG_HOST_ROOT") != null) {
@@ -63,8 +64,13 @@ final public class CLibrary {
             if(initialNamespace < 0) {
                 LOGGER.severe("Error on opening self net namespace");
             }
+            mntNamespaceInode = getInodeOfFile(String.format("%s/proc/self/ns/mnt", hostRoot));
+            if (mntNamespaceInode == 0) {
+                LOGGER.severe("Error on getting inode of self container");
+            }
         } else {
             initialNamespace = 0;
+            mntNamespaceInode = 0;
         }
     }
 
@@ -176,6 +182,16 @@ final public class CLibrary {
         }
     }
 
+    public static boolean isOnAnotherContainer(int pid) {
+        if (libraryLoaded) {
+            final String pidMntNamespacePath = String.format("%s/proc/%d/ns/mnt", hostRoot, pid);
+            final long pidMntNamespaceInode = getInodeOfFile(pidMntNamespacePath);
+            return pidMntNamespaceInode != mntNamespaceInode;
+        } else {
+            return false;
+        }
+    }
+
     // Export C function as-is and then provide a tiny wrapper to be more Java friendly
     private static native int real_seteuid(long euid);
     private static native int real_setegid(long egid);
@@ -187,6 +203,7 @@ final public class CLibrary {
     private static native int realCopyToContainer(String source, int pid, String destination);
     private static native String realRunOnContainer(int pid, String exe, String[] command);
     private static native int realRmFromContainer(int pid, String filepath);
+    private static native long getInodeOfFile(String path);
 
     private CLibrary() {
         // Deny create instances of this class

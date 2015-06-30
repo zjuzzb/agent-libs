@@ -804,7 +804,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
-	set<string> included_programs;
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 #ifndef _WIN32
@@ -1164,40 +1163,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Keep:
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
-			int is_cs = (tinfo->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
-					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			bool include;
-
-			if(is_cs)
+			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample)
 			{
-				//
-				// If this is a client or a server, it didn't generate any activity in the sample,
-				// and another program with the same name has already been included, we can safely
-				// exclude it, since its presence would be completely redundant
-				//
-				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
-
-				if(include && (tot.m_count == 0 && procinfo->m_cpuload == 0))
-				{
-					if(included_programs.find(tinfo->m_exe) != included_programs.end())
-					{
-						include = false;
-					}
-				}
-			}
-			else
-			{
-				//
-				// If this NOT is a client or a server, skip it if it didn't generate any activity.
-				//
-				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
-			}
-
-			if(include)
-			{
-				included_programs.insert(tinfo->m_exe);
-
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
 				draiosproto::process* proc = prog->mutable_procinfo();
