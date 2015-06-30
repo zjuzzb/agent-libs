@@ -32,7 +32,7 @@ posix_queue::~posix_queue()
 	mq_close(m_queue_d);
 	if(m_direction == RECEIVE)
 	{
-		mq_unlink(m_name.c_str());
+		//mq_unlink(m_name.c_str());
 	}
 }
 
@@ -98,8 +98,8 @@ bool posix_queue::set_queue_limits()
 	if(!limits_set)
 	{
 		struct rlimit r;
-		r.rlim_cur = 4* MAX_MSGSIZE;
-		r.rlim_max = 4* MAX_MSGSIZE;
+		r.rlim_cur = 10* MAX_MSGSIZE;
+		r.rlim_max = 10* MAX_MSGSIZE;
 
 		int res = setrlimit(RLIMIT_MSGQUEUE, &r);
 		limits_set = (res == 0);

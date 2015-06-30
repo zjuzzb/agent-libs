@@ -722,7 +722,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
-
+	unordered_map<int, app_check_data> app_metrics;
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
@@ -739,7 +739,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 	if(m_app_proxy)
 	{
-		auto app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
+		app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
 	}
 #endif
 
@@ -1195,6 +1195,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					const java_process& java_process_data = m_jmx_metrics.at(tinfo->m_pid);
 					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
 					java_process_data.to_protobuf(java_proto);
+				}
+				if(m_app_proxy && app_metrics.find(tinfo->m_pid) != app_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+					const auto& app_data = app_metrics.at(tinfo->m_pid);
+					app_data.to_protobuf(proc->mutable_protos()->mutable_app());
 				}
 #endif
 

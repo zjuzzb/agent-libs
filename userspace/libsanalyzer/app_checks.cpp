@@ -77,6 +77,7 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
 			}
 			break;
 		}
+		msg = m_inqueue.receive();
 	}
 	return ret;
 }
@@ -90,19 +91,29 @@ app_check_data::app_check_data(const Json::Value &obj):
 	}
 	if(obj.isMember("metrics"))
 	{
-		auto metrics = obj["metrics"];
-		transform(metrics.begin(), metrics.end(), m_metrics.begin(),[](const Json::Value& v)
+		for(const auto& m : obj["metrics"])
 		{
-			return app_metric(v);
-		});
+			m_metrics.emplace_back(m);
+		}
 	}
 	if(obj.isMember("service_checks"))
 	{
-		auto service_checks = obj["service_checks"];
-		transform(service_checks.begin(), service_checks.end(), m_service_checks.begin(),[](const Json::Value& v)
+		for(const auto& s : obj["service_checks"])
 		{
-			return app_service_check(v);
-		});
+			m_service_checks.emplace_back(s);
+		}
+	}
+}
+
+void app_check_data::to_protobuf(draiosproto::app_info *proto) const
+{
+	for(const auto& m : m_metrics)
+	{
+		m.to_protobuf(proto->add_metrics());
+	}
+	for(const auto& s : m_service_checks)
+	{
+		s.to_protobuf(proto->add_checks());
 	}
 }
 
@@ -134,7 +145,39 @@ app_metric::app_metric(const Json::Value &obj):
 	}
 }
 
-app_service_check::app_service_check(const Json::Value &obj)
+void app_metric::to_protobuf(draiosproto::app_metric *proto) const
+{
+	proto->set_name(m_name);
+	proto->set_value(m_value);
+	proto->set_type(static_cast<draiosproto::app_metric_type>(m_type));
+}
+
+/*
+ * example:
+ * {"status": 0, "tags": ["redis_host:127.0.0.1", "redis_port:6379"],
+ *   "timestamp": 1435684284.087451, "check": "redis.can_connect",
+ *   "host_name": "vagrant-ubuntu-vivid-64", "message": null, "id": 44}
+ */
+app_service_check::app_service_check(const Json::Value &obj):
+	m_status(static_cast<status_t>(obj["status"].asUInt())),
+	m_name(obj["check"].asString())
+{
+	if(obj.isMember("tags"))
+	{
+		for(auto tag_obj : obj["tags"])
+		{
+			auto tag_as_str = tag_obj.asString();
+			auto tag_parsed = sinsp_split(tag_as_str, ':');
+			m_tags[tag_parsed.at(0)] = tag_parsed.size() > 1 ? tag_parsed.at(1) : "";
+		}
+	}
+	if(obj.isMember("message") && obj["message"].isString())
+	{
+		m_message = obj["message"].asString();
+	}
+}
+
+void app_service_check::to_protobuf(draiosproto::app_check *proto) const
 {
 
 }

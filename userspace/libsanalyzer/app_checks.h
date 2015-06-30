@@ -70,7 +70,7 @@ public:
 		RATE
 	};
 	app_metric(const Json::Value& obj);
-
+	void to_protobuf(draiosproto::app_metric* proto) const;
 private:
 	string m_name;
 	double m_value;
@@ -89,6 +89,7 @@ public:
 		UNKNOWN = 3,
 	};
 	app_service_check(const Json::Value& obj);
+	void to_protobuf(draiosproto::app_check* proto) const;
 
 private:
 	status_t m_status;
@@ -106,6 +107,8 @@ public:
 	{
 		return m_pid;
 	}
+
+	void to_protobuf(draiosproto::app_info* proto) const;
 private:
 	int m_pid;
 	string m_process_name;

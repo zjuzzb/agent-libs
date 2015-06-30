@@ -122,7 +122,8 @@ class PosixQueueType:
 class PosixQueue:
     MSGSIZE = 1 << 20
     def __init__(self, name, direction, maxmsgs=3):
-        resource.setrlimit(RLIMIT_MSGQUEUE, (4*self.MSGSIZE, 4*self.MSGSIZE))
+        self.queue = None
+        resource.setrlimit(RLIMIT_MSGQUEUE, (10*self.MSGSIZE, 10*self.MSGSIZE))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
                                             max_messages = maxmsgs, max_message_size = self.MSGSIZE,
@@ -131,8 +132,8 @@ class PosixQueue:
 
     def close(self):
         self.queue.close()
-        if self.direction == PosixQueueType.RECEIVE:
-            self.queue.unlink()
+        #if self.direction == PosixQueueType.RECEIVE:
+        #    self.queue.unlink()
         self.queue = None
 
     def send(self, msg):
@@ -159,7 +160,7 @@ def main():
 
     while True:
         command_s = inqueue.receive(None)
-        response_body = {}
+        response_body = []
         print "Received command: %s" % command_s
         command = json.loads(command_s)
         processes = command["body"]
@@ -171,8 +172,9 @@ def main():
                 check_instance = AppCheckInstance(check_conf, p)
                 known_instances[p["pid"]] = check_instance
             metrics, service_checks = check_instance.run()
-            response_body[check_instance.pid] = { "metrics": metrics,
-                               "service_checks": service_checks}
+            response_body.append({ "pid": int(check_instance.pid),
+                                             "metrics": metrics,
+                               "service_checks": service_checks})
         response = {
             "id": command["id"],
             "body": response_body
