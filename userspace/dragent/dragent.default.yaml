@@ -509,10 +509,6 @@ jmx:
     elasticsearch:
       pattern: "elasticsearch"
 
-rabbitmq:
-  user: guest 
-  pass: guest
-
 app_checks:
   - name: redisdb
     pattern: 
@@ -530,5 +526,5 @@ app_checks:
       port: 5672
     conf:
       rabbitmq_api_url: "http://localhost:{port.high}/api/"
-      rabbitmq_user: "{rabbitmq.user}"
-      rabbitmq_pass: "{rabbitmq.pass}"
+      rabbitmq_user: guest
+      rabbitmq_pass: guest

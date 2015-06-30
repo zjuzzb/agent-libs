@@ -37,6 +37,12 @@ Json::Value app_process::to_json() const
 	return ret;
 }
 
+app_checks_proxy::app_checks_proxy():
+	m_outqueue("/sdchecks", posix_queue::SEND),
+	m_inqueue("/dragent_app_checks", posix_queue::RECEIVE)
+{
+}
+
 void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_process> &processes)
 {
 	Json::Value command;
@@ -48,5 +54,6 @@ void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_proces
 	}
 	string data = m_json_writer.write(command);
 	g_logger.format(sinsp_logger::SEV_INFO, "Send to sdchecks: %s", data.c_str());
-	mq_send(m_outqueue, data.c_str(), data.size(), 0);
+	m_outqueue.send(data);
 }
+

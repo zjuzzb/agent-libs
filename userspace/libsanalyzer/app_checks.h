@@ -7,8 +7,8 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "third-party/jsoncpp/json/json.h"
-#include <mqueue.h>
 #include "analyzer_thread.h"
+#include "posix_queue.h"
 
 namespace YAML
 {
@@ -19,6 +19,10 @@ struct convert;
 class app_check
 {
 public:
+	app_check():
+		m_port_pattern(0)
+	{}
+
 	bool match(sinsp_threadinfo* tinfo) const;
 
 	const string& name() const
@@ -31,7 +35,7 @@ private:
 
 	string m_comm_pattern;
 	string m_exe_pattern;
-	uint16_t m_port_pattern{0};
+	uint16_t m_port_pattern;
 	string m_name;
 };
 
@@ -66,22 +70,15 @@ private:
 class app_checks_proxy
 {
 public:
-	app_checks_proxy()
-	{
-		m_outqueue = mq_open("/sdchecks", O_WRONLY);
-	}
-
-	~app_checks_proxy()
-	{
-		mq_close(m_outqueue);
-	}
+	app_checks_proxy();
 
 	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
 
 	pair<uint64_t, unordered_map<int, app_process_metrics>> read_metrics();
 
 private:
-	mqd_t m_outqueue;
+	posix_queue m_outqueue;
+	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
 };
