@@ -335,6 +335,42 @@ message statsd_info {
     repeated statsd_metric statsd_metrics = 1;
 }
 
+enum app_metric_type {
+    APP_METRIC_TYPE_GAUGE = 1;
+    APP_METRIC_TYPE_RATE = 2;
+}
+
+message app_tag {
+    required string name = 1;
+    optional string value = 2;
+}
+
+message app_metric {
+    optional string name = 1;
+    optional app_metric_type type = 2;
+    optional double value = 3;
+    repeated app_tag tags = 4;
+}
+
+enum app_check_value {
+    APP_CHECK_VALUE_OK = 0;
+    APP_CHECK_VALUE_WARNING = 1;
+    APP_CHECK_VALUE_CRITICAL = 2;
+    APP_CHECK_VALUE_UNKNOWN = 3;
+}
+
+message app_check {
+    optional string name = 1;
+    optional app_check_value value = 2;
+    repeated app_tag tags = 3;
+}
+
+message app_info {
+    optional string process_name = 1;
+    repeated app_metric metrics = 2;
+    repeated app_check checks = 3;
+}
+
 //
 // General protocol information
 //
@@ -345,6 +381,7 @@ message proto_info {
     optional mongodb_info mongodb = 4;
     optional java_info java = 5; // These are not protocols but as backend is structured is better to save here these info
     optional statsd_info statsd = 6;
+    optional app_info app = 7;
 }
 
 //

@@ -61,6 +61,10 @@ class java_info;
 class statsd_tag;
 class statsd_metric;
 class statsd_info;
+class app_tag;
+class app_metric;
+class app_check;
+class app_info;
 class proto_info;
 class host;
 class process;
@@ -238,6 +242,46 @@ inline bool statsd_metric_type_Parse(
     const ::std::string& name, statsd_metric_type* value) {
   return ::google::protobuf::internal::ParseNamedEnum<statsd_metric_type>(
     statsd_metric_type_descriptor(), name, value);
+}
+enum app_metric_type {
+  APP_METRIC_TYPE_GAUGE = 1,
+  APP_METRIC_TYPE_RATE = 2
+};
+bool app_metric_type_IsValid(int value);
+const app_metric_type app_metric_type_MIN = APP_METRIC_TYPE_GAUGE;
+const app_metric_type app_metric_type_MAX = APP_METRIC_TYPE_RATE;
+const int app_metric_type_ARRAYSIZE = app_metric_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* app_metric_type_descriptor();
+inline const ::std::string& app_metric_type_Name(app_metric_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    app_metric_type_descriptor(), value);
+}
+inline bool app_metric_type_Parse(
+    const ::std::string& name, app_metric_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<app_metric_type>(
+    app_metric_type_descriptor(), name, value);
+}
+enum app_check_value {
+  APP_CHECK_VALUE_OK = 0,
+  APP_CHECK_VALUE_WARNING = 1,
+  APP_CHECK_VALUE_CRITICAL = 2,
+  APP_CHECK_VALUE_UNKNOWN = 3
+};
+bool app_check_value_IsValid(int value);
+const app_check_value app_check_value_MIN = APP_CHECK_VALUE_OK;
+const app_check_value app_check_value_MAX = APP_CHECK_VALUE_UNKNOWN;
+const int app_check_value_ARRAYSIZE = app_check_value_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* app_check_value_descriptor();
+inline const ::std::string& app_check_value_Name(app_check_value value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    app_check_value_descriptor(), value);
+}
+inline bool app_check_value_Parse(
+    const ::std::string& name, app_check_value* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<app_check_value>(
+    app_check_value_descriptor(), name, value);
 }
 enum networkrole {
   NONE = 0,
@@ -3784,6 +3828,451 @@ class statsd_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class app_tag : public ::google::protobuf::Message {
+ public:
+  app_tag();
+  virtual ~app_tag();
+
+  app_tag(const app_tag& from);
+
+  inline app_tag& operator=(const app_tag& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const app_tag& default_instance();
+
+  void Swap(app_tag* other);
+
+  // implements Message ----------------------------------------------
+
+  app_tag* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const app_tag& from);
+  void MergeFrom(const app_tag& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.app_tag)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static app_tag* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class app_metric : public ::google::protobuf::Message {
+ public:
+  app_metric();
+  virtual ~app_metric();
+
+  app_metric(const app_metric& from);
+
+  inline app_metric& operator=(const app_metric& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const app_metric& default_instance();
+
+  void Swap(app_metric* other);
+
+  // implements Message ----------------------------------------------
+
+  app_metric* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const app_metric& from);
+  void MergeFrom(const app_metric& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional .draiosproto.app_metric_type type = 2;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 2;
+  inline ::draiosproto::app_metric_type type() const;
+  inline void set_type(::draiosproto::app_metric_type value);
+
+  // optional double value = 3;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 3;
+  inline double value() const;
+  inline void set_value(double value);
+
+  // repeated .draiosproto.app_tag tags = 4;
+  inline int tags_size() const;
+  inline void clear_tags();
+  static const int kTagsFieldNumber = 4;
+  inline const ::draiosproto::app_tag& tags(int index) const;
+  inline ::draiosproto::app_tag* mutable_tags(int index);
+  inline ::draiosproto::app_tag* add_tags();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >&
+      tags() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >*
+      mutable_tags();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.app_metric)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  double value_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag > tags_;
+  int type_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static app_metric* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class app_check : public ::google::protobuf::Message {
+ public:
+  app_check();
+  virtual ~app_check();
+
+  app_check(const app_check& from);
+
+  inline app_check& operator=(const app_check& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const app_check& default_instance();
+
+  void Swap(app_check* other);
+
+  // implements Message ----------------------------------------------
+
+  app_check* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const app_check& from);
+  void MergeFrom(const app_check& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional .draiosproto.app_check_value value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline ::draiosproto::app_check_value value() const;
+  inline void set_value(::draiosproto::app_check_value value);
+
+  // repeated .draiosproto.app_tag tags = 3;
+  inline int tags_size() const;
+  inline void clear_tags();
+  static const int kTagsFieldNumber = 3;
+  inline const ::draiosproto::app_tag& tags(int index) const;
+  inline ::draiosproto::app_tag* mutable_tags(int index);
+  inline ::draiosproto::app_tag* add_tags();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >&
+      tags() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >*
+      mutable_tags();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.app_check)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag > tags_;
+  int value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static app_check* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class app_info : public ::google::protobuf::Message {
+ public:
+  app_info();
+  virtual ~app_info();
+
+  app_info(const app_info& from);
+
+  inline app_info& operator=(const app_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const app_info& default_instance();
+
+  void Swap(app_info* other);
+
+  // implements Message ----------------------------------------------
+
+  app_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const app_info& from);
+  void MergeFrom(const app_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string process_name = 1;
+  inline bool has_process_name() const;
+  inline void clear_process_name();
+  static const int kProcessNameFieldNumber = 1;
+  inline const ::std::string& process_name() const;
+  inline void set_process_name(const ::std::string& value);
+  inline void set_process_name(const char* value);
+  inline void set_process_name(const char* value, size_t size);
+  inline ::std::string* mutable_process_name();
+  inline ::std::string* release_process_name();
+  inline void set_allocated_process_name(::std::string* process_name);
+
+  // repeated .draiosproto.app_metric metrics = 2;
+  inline int metrics_size() const;
+  inline void clear_metrics();
+  static const int kMetricsFieldNumber = 2;
+  inline const ::draiosproto::app_metric& metrics(int index) const;
+  inline ::draiosproto::app_metric* mutable_metrics(int index);
+  inline ::draiosproto::app_metric* add_metrics();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_metric >&
+      metrics() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_metric >*
+      mutable_metrics();
+
+  // repeated .draiosproto.app_check checks = 3;
+  inline int checks_size() const;
+  inline void clear_checks();
+  static const int kChecksFieldNumber = 3;
+  inline const ::draiosproto::app_check& checks(int index) const;
+  inline ::draiosproto::app_check* mutable_checks(int index);
+  inline ::draiosproto::app_check* add_checks();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_check >&
+      checks() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_check >*
+      mutable_checks();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.app_info)
+ private:
+  inline void set_has_process_name();
+  inline void clear_has_process_name();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* process_name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::app_metric > metrics_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::app_check > checks_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static app_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class proto_info : public ::google::protobuf::Message {
  public:
   proto_info();
@@ -3892,6 +4381,15 @@ class proto_info : public ::google::protobuf::Message {
   inline ::draiosproto::statsd_info* release_statsd();
   inline void set_allocated_statsd(::draiosproto::statsd_info* statsd);
 
+  // optional .draiosproto.app_info app = 7;
+  inline bool has_app() const;
+  inline void clear_app();
+  static const int kAppFieldNumber = 7;
+  inline const ::draiosproto::app_info& app() const;
+  inline ::draiosproto::app_info* mutable_app();
+  inline ::draiosproto::app_info* release_app();
+  inline void set_allocated_app(::draiosproto::app_info* app);
+
   // @@protoc_insertion_point(class_scope:draiosproto.proto_info)
  private:
   inline void set_has_http();
@@ -3906,6 +4404,8 @@ class proto_info : public ::google::protobuf::Message {
   inline void clear_has_java();
   inline void set_has_statsd();
   inline void clear_has_statsd();
+  inline void set_has_app();
+  inline void clear_has_app();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -3915,9 +4415,10 @@ class proto_info : public ::google::protobuf::Message {
   ::draiosproto::mongodb_info* mongodb_;
   ::draiosproto::java_info* java_;
   ::draiosproto::statsd_info* statsd_;
+  ::draiosproto::app_info* app_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11424,6 +11925,540 @@ statsd_info::mutable_statsd_metrics() {
 
 // -------------------------------------------------------------------
 
+// app_tag
+
+// required string name = 1;
+inline bool app_tag::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void app_tag::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void app_tag::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void app_tag::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& app_tag::name() const {
+  return *name_;
+}
+inline void app_tag::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_tag::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_tag::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* app_tag::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* app_tag::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void app_tag::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string value = 2;
+inline bool app_tag::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void app_tag::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void app_tag::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void app_tag::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& app_tag::value() const {
+  return *value_;
+}
+inline void app_tag::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void app_tag::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void app_tag::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* app_tag::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* app_tag::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void app_tag::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// app_metric
+
+// optional string name = 1;
+inline bool app_metric::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void app_metric::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void app_metric::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void app_metric::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& app_metric::name() const {
+  return *name_;
+}
+inline void app_metric::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_metric::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_metric::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* app_metric::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* app_metric::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void app_metric::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional .draiosproto.app_metric_type type = 2;
+inline bool app_metric::has_type() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void app_metric::set_has_type() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void app_metric::clear_has_type() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void app_metric::clear_type() {
+  type_ = 1;
+  clear_has_type();
+}
+inline ::draiosproto::app_metric_type app_metric::type() const {
+  return static_cast< ::draiosproto::app_metric_type >(type_);
+}
+inline void app_metric::set_type(::draiosproto::app_metric_type value) {
+  assert(::draiosproto::app_metric_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional double value = 3;
+inline bool app_metric::has_value() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void app_metric::set_has_value() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void app_metric::clear_has_value() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void app_metric::clear_value() {
+  value_ = 0;
+  clear_has_value();
+}
+inline double app_metric::value() const {
+  return value_;
+}
+inline void app_metric::set_value(double value) {
+  set_has_value();
+  value_ = value;
+}
+
+// repeated .draiosproto.app_tag tags = 4;
+inline int app_metric::tags_size() const {
+  return tags_.size();
+}
+inline void app_metric::clear_tags() {
+  tags_.Clear();
+}
+inline const ::draiosproto::app_tag& app_metric::tags(int index) const {
+  return tags_.Get(index);
+}
+inline ::draiosproto::app_tag* app_metric::mutable_tags(int index) {
+  return tags_.Mutable(index);
+}
+inline ::draiosproto::app_tag* app_metric::add_tags() {
+  return tags_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >&
+app_metric::tags() const {
+  return tags_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >*
+app_metric::mutable_tags() {
+  return &tags_;
+}
+
+// -------------------------------------------------------------------
+
+// app_check
+
+// optional string name = 1;
+inline bool app_check::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void app_check::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void app_check::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void app_check::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& app_check::name() const {
+  return *name_;
+}
+inline void app_check::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_check::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void app_check::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* app_check::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* app_check::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void app_check::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional .draiosproto.app_check_value value = 2;
+inline bool app_check::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void app_check::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void app_check::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void app_check::clear_value() {
+  value_ = 0;
+  clear_has_value();
+}
+inline ::draiosproto::app_check_value app_check::value() const {
+  return static_cast< ::draiosproto::app_check_value >(value_);
+}
+inline void app_check::set_value(::draiosproto::app_check_value value) {
+  assert(::draiosproto::app_check_value_IsValid(value));
+  set_has_value();
+  value_ = value;
+}
+
+// repeated .draiosproto.app_tag tags = 3;
+inline int app_check::tags_size() const {
+  return tags_.size();
+}
+inline void app_check::clear_tags() {
+  tags_.Clear();
+}
+inline const ::draiosproto::app_tag& app_check::tags(int index) const {
+  return tags_.Get(index);
+}
+inline ::draiosproto::app_tag* app_check::mutable_tags(int index) {
+  return tags_.Mutable(index);
+}
+inline ::draiosproto::app_tag* app_check::add_tags() {
+  return tags_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >&
+app_check::tags() const {
+  return tags_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_tag >*
+app_check::mutable_tags() {
+  return &tags_;
+}
+
+// -------------------------------------------------------------------
+
+// app_info
+
+// optional string process_name = 1;
+inline bool app_info::has_process_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void app_info::set_has_process_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void app_info::clear_has_process_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void app_info::clear_process_name() {
+  if (process_name_ != &::google::protobuf::internal::kEmptyString) {
+    process_name_->clear();
+  }
+  clear_has_process_name();
+}
+inline const ::std::string& app_info::process_name() const {
+  return *process_name_;
+}
+inline void app_info::set_process_name(const ::std::string& value) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(value);
+}
+inline void app_info::set_process_name(const char* value) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(value);
+}
+inline void app_info::set_process_name(const char* value, size_t size) {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  process_name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* app_info::mutable_process_name() {
+  set_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    process_name_ = new ::std::string;
+  }
+  return process_name_;
+}
+inline ::std::string* app_info::release_process_name() {
+  clear_has_process_name();
+  if (process_name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = process_name_;
+    process_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void app_info::set_allocated_process_name(::std::string* process_name) {
+  if (process_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete process_name_;
+  }
+  if (process_name) {
+    set_has_process_name();
+    process_name_ = process_name;
+  } else {
+    clear_has_process_name();
+    process_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.app_metric metrics = 2;
+inline int app_info::metrics_size() const {
+  return metrics_.size();
+}
+inline void app_info::clear_metrics() {
+  metrics_.Clear();
+}
+inline const ::draiosproto::app_metric& app_info::metrics(int index) const {
+  return metrics_.Get(index);
+}
+inline ::draiosproto::app_metric* app_info::mutable_metrics(int index) {
+  return metrics_.Mutable(index);
+}
+inline ::draiosproto::app_metric* app_info::add_metrics() {
+  return metrics_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_metric >&
+app_info::metrics() const {
+  return metrics_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_metric >*
+app_info::mutable_metrics() {
+  return &metrics_;
+}
+
+// repeated .draiosproto.app_check checks = 3;
+inline int app_info::checks_size() const {
+  return checks_.size();
+}
+inline void app_info::clear_checks() {
+  checks_.Clear();
+}
+inline const ::draiosproto::app_check& app_info::checks(int index) const {
+  return checks_.Get(index);
+}
+inline ::draiosproto::app_check* app_info::mutable_checks(int index) {
+  return checks_.Mutable(index);
+}
+inline ::draiosproto::app_check* app_info::add_checks() {
+  return checks_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::app_check >&
+app_info::checks() const {
+  return checks_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::app_check >*
+app_info::mutable_checks() {
+  return &checks_;
+}
+
+// -------------------------------------------------------------------
+
 // proto_info
 
 // optional .draiosproto.http_info http = 1;
@@ -11651,6 +12686,44 @@ inline void proto_info::set_allocated_statsd(::draiosproto::statsd_info* statsd)
     set_has_statsd();
   } else {
     clear_has_statsd();
+  }
+}
+
+// optional .draiosproto.app_info app = 7;
+inline bool proto_info::has_app() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void proto_info::set_has_app() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void proto_info::clear_has_app() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void proto_info::clear_app() {
+  if (app_ != NULL) app_->::draiosproto::app_info::Clear();
+  clear_has_app();
+}
+inline const ::draiosproto::app_info& proto_info::app() const {
+  return app_ != NULL ? *app_ : *default_instance_->app_;
+}
+inline ::draiosproto::app_info* proto_info::mutable_app() {
+  set_has_app();
+  if (app_ == NULL) app_ = new ::draiosproto::app_info;
+  return app_;
+}
+inline ::draiosproto::app_info* proto_info::release_app() {
+  clear_has_app();
+  ::draiosproto::app_info* temp = app_;
+  app_ = NULL;
+  return temp;
+}
+inline void proto_info::set_allocated_app(::draiosproto::app_info* app) {
+  delete app_;
+  app_ = app;
+  if (app) {
+    set_has_app();
+  } else {
+    clear_has_app();
   }
 }
 
@@ -17710,6 +18783,14 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::jmx_metric_type>(
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::statsd_metric_type>() {
   return ::draiosproto::statsd_metric_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::app_metric_type>() {
+  return ::draiosproto::app_metric_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::app_check_value>() {
+  return ::draiosproto::app_check_value_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::networkrole>() {

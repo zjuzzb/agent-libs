@@ -60,11 +60,57 @@ private:
 	set<uint16_t> m_ports;
 };
 
-class app_process_metrics
+
+class app_metric
 {
+public:
+	enum class type_t
+	{
+		GAUGE,
+		RATE
+	};
+	app_metric(const Json::Value& obj);
+
+private:
+	string m_name;
+	double m_value;
+	type_t m_type;
+	map<string, string> m_tags;
+};
+
+class app_service_check
+{
+public:
+	enum status_t
+	{
+		OK = 0,
+		WARNING = 1,
+		CRITICAL = 2,
+		UNKNOWN = 3,
+	};
+	app_service_check(const Json::Value& obj);
+
+private:
+	status_t m_status;
+	map<string, string> m_tags;
+	string m_name;
+	string m_message;
+};
+
+class app_check_data
+{
+public:
+	app_check_data(const Json::Value& obj);
+
+	int pid() const
+	{
+		return m_pid;
+	}
 private:
 	int m_pid;
-
+	string m_process_name;
+	vector<app_metric> m_metrics;
+	vector<app_service_check> m_service_checks;
 };
 
 class app_checks_proxy
@@ -74,7 +120,7 @@ public:
 
 	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
 
-	unordered_map<int, app_process_metrics> read_metrics(uint64_t id);
+	unordered_map<int, app_check_data> read_metrics(uint64_t id);
 
 private:
 	posix_queue m_outqueue;
