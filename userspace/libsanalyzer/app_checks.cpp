@@ -57,3 +57,20 @@ void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_proces
 	m_outqueue.send(data);
 }
 
+unordered_map<int, app_process_metrics> app_checks_proxy::read_metrics(uint64_t id)
+{
+	unordered_map<int, app_process_metrics> ret;
+	auto msg = m_inqueue.receive();
+	while(!msg.empty())
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
+		Json::Value response_obj;
+		m_json_reader.parse(msg, response_obj, false);
+		if(response_obj["id"].asUInt64() == id)
+		{
+			// Parse data
+			break;
+		}
+	}
+	return ret;
+}

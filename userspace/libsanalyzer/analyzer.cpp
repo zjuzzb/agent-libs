@@ -737,6 +737,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
 		m_jmx_metrics = jmx_metrics.second;
 	}
+	if(m_app_proxy)
+	{
+		auto app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
+	}
 #endif
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)

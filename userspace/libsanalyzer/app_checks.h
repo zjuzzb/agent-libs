@@ -74,7 +74,7 @@ public:
 
 	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
 
-	pair<uint64_t, unordered_map<int, app_process_metrics>> read_metrics();
+	unordered_map<int, app_process_metrics> read_metrics(uint64_t id);
 
 private:
 	posix_queue m_outqueue;
