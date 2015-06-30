@@ -344,7 +344,9 @@ void sinsp_analyzer::add_chisel(sinsp_chisel* ch)
 
 void sinsp_analyzer::add_chisel(sinsp_chisel_details* cd)
 {
-	ASSERT(false);
+	sinsp_chisel* ch = new sinsp_chisel(m_inspector, cd->m_name);
+	ch->set_args(cd->m_args);
+	add_chisel(cd);
 }
 
 void sinsp_analyzer::chisels_on_capture_start()
