@@ -1,27 +1,42 @@
-import yaml
-import imp
-import simplejson as json
+# std
 import os.path
 import traceback
 import inspect
-from checks import AgentCheck
-import posix_ipc
+import imp
 import os
-import nspy
 import re
 import resource
+import ctypes
+
+# project
+from checks import AgentCheck
+
+# 3rd party
+import yaml
+import simplejson as json
+import posix_ipc
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "checks.d"
 
+_LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
+__NR_setns = 308
+
+def setns(fd):
+    # TODO: test if it works on Centos64
+    if hasattr(_LIBC, "setns"):
+        return _LIBC.setns(fd, 0)
+    else:
+        return _LIBC.syscall(__NR_setns, fd, 0)
+
 class YamlConfig:
     def __init__(self):
-        #self._root = yaml.load("/opt/draios/etc/dragent.yaml")
         with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
             self._default_root = yaml.load(default_file.read())
-
+        with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
+            self._root = yaml.load(custom_file.read())
     def get_merged_sequence(self, key):
-        return self._default_root[key]
+        return self._root[key] + self._default_root[key]
 
 class AppCheck:
     def __init__(self, node):
@@ -60,8 +75,8 @@ class CannotExpandTemplate(Exception):
     pass
 
 class AppCheckInstance:
-    mymnt = nspy.open("/proc/self/ns/mnt")
-    mynet = nspy.open("/proc/self/ns/net")
+    mymnt = os.open("/proc/self/ns/mnt", os.O_RDONLY)
+    mynet = os.open("/proc/self/ns/net", os.O_RDONLY)
     TOKEN_PATTERN = re.compile("\{.+\}")
     agentConfig = {
         "is_developer_mode": False
@@ -75,8 +90,9 @@ class AppCheckInstance:
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class("testname", None, self.agentConfig, None)
         if self.vpid != self.pid:
-            self.netns = nspy.open("/proc/%d/ns/net" % self.pid)
-            self.mntns = nspy.open("/proc/%d/ns/mnt" % self.pid)
+            # TODO: Close these fd
+            self.netns = os.open("/proc/%d/ns/net" % self.pid, os.O_RDONLY)
+            self.mntns = os.open("/proc/%d/ns/mnt" % self.pid, os.O_RDONLY)
 
         self.instance_conf = {}
         for key, value in check.conf.items():
@@ -84,13 +100,20 @@ class AppCheckInstance:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
+
+    def __del__(self):
+        if hasattr(self, "netns"):
+            os.close(self.netns)
+        if hasattr(self, "mntns");
+            os.close(self.mntns)
+
     def run(self):
         if self.pid != self.vpid:
-                nspy.setns(self.netns)
-                nspy.setns(self.mntns)
+            setns(self.netns)
+            setns(self.mntns)
         self.check_instance.check(self.instance_conf)
-        nspy.setns(self.mynet)
-        nspy.setns(self.mymnt)
+        setns(self.mynet)
+        setns(self.mymnt)
         return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
 
     def _expand_template(self, value, proc_data):
@@ -122,7 +145,6 @@ class PosixQueueType:
 class PosixQueue:
     MSGSIZE = 1 << 20
     def __init__(self, name, direction, maxmsgs=3):
-        self.queue = None
         resource.setrlimit(RLIMIT_MSGQUEUE, (10*self.MSGSIZE, 10*self.MSGSIZE))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
@@ -148,7 +170,7 @@ class PosixQueue:
         return message
 
     def __del__(self):
-        if self.queue:
+        if hasattr(self, "queue"):
             self.close()
 
 def main():
