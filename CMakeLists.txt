@@ -23,6 +23,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BIN
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(userspace/sdjagent)
+add_subdirectory(userspace/sdchecks)
 add_subdirectory(scripts)
 add_subdirectory(test)
 

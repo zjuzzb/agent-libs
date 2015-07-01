@@ -24,6 +24,7 @@ __NR_setns = 308
 
 def setns(fd):
     # TODO: test if it works on Centos64
+    # TODO: raise an exception if setns fails?
     if hasattr(_LIBC, "setns"):
         return _LIBC.setns(fd, 0)
     else:
@@ -36,7 +37,7 @@ class YamlConfig:
         with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
             self._root = yaml.load(custom_file.read())
     def get_merged_sequence(self, key):
-        return self._root[key] + self._default_root[key]
+        return self._default_root[key]
 
 class AppCheck:
     def __init__(self, node):
@@ -104,7 +105,7 @@ class AppCheckInstance:
     def __del__(self):
         if hasattr(self, "netns"):
             os.close(self.netns)
-        if hasattr(self, "mntns");
+        if hasattr(self, "mntns"):
             os.close(self.mntns)
 
     def run(self):

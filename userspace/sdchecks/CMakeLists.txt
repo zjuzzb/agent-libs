@@ -1,0 +1,3 @@
+file(COPY * DESTINATION . FILES_MATCHING PATTERN *.py)
+add_custom_target(sdchecks ALL COMMAND python -m compileall ${CMAKE_CURRENT_BINARY_DIR})
+install(DIRECTORY ./ DESTINATION ${DRAIOS_BIN_PREFIX}/lib/python COMPONENT agent FILES_MATCHING PATTERN *.py*)
