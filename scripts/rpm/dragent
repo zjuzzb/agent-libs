@@ -28,13 +28,14 @@ prog="dragent"
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
 lockfile=/var/lock/subsys/$prog
+pidfile="/var/run/dragent.pid"
 
 start() {
     [ -x $exec ] || exit 5
     # [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     /sbin/modprobe sysdig-probe || return $?
-    daemon $exec --daemon --dragentpid=/var/run/dragent.pid
+    daemon $exec --daemon --dragentpid=$pidfile
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
@@ -43,7 +44,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc -p /var/run/dragent.pid
+    killproc -p $pidfile
     retval=$?
     echo
     /sbin/rmmod sysdig-probe
@@ -65,7 +66,7 @@ force_reload() {
 }
 
 rh_status() {
-    status $prog
+    status -p $pidfile $prog
 }
 
 rh_status_q() {
