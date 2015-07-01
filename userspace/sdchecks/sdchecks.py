@@ -17,7 +17,7 @@ import simplejson as json
 import posix_ipc
 
 RLIMIT_MSGQUEUE = 12
-CHECKS_DIRECTORY = "checks.d"
+CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 
 _LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 __NR_setns = 308
@@ -205,6 +205,3 @@ def main():
         response_s = json.dumps(response)
         print "Response: %s\n" % response_s
         outqueue.send(response_s)
-
-if __name__ == "__main__":
-    main()

@@ -302,6 +302,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
+	monitor_process.emplace_process("sdchecks", [](void)
+	{
+		const char* env[] = {
+				"PYTHONPATH=/opt/draios/lib/python",
+				NULL
+		};
+		execle("/opt/draios/bin/sdchecks", "sdchecks", NULL, env);
+		return (EXIT_FAILURE);
+	});
 	return monitor_process.run();
 #else
 	return sdagent_main();
