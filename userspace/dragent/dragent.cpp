@@ -305,7 +305,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	monitor_process.emplace_process("sdchecks", [](void)
 	{
 		const char* env[] = {
-				"PYTHONPATH=/opt/draios/lib/python",
+				"PYTHONPATH=/opt/draios/lib/python:/opt/draios/lib/python/site-packages",
 				NULL
 		};
 		execle("/opt/draios/bin/sdchecks", "sdchecks", NULL, env);
