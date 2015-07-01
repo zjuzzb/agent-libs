@@ -339,19 +339,19 @@ void sinsp_analyzer::initialize_chisels()
 		}
 		catch(sinsp_exception e)
 		{
-			delete (*it);
-			m_chisels.erase(it++);
-
 			g_logger.log("unable to start chisel " + (*it)->get_name() + ": " + e.what(),
 				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
 		}
 		catch(...)
 		{
-			delete (*it);
-			m_chisels.erase(it++);
-
 			g_logger.log("unable to start chisel " + (*it)->get_name() + ": unknown error",
 				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
 		}
 	}
 }
@@ -393,20 +393,20 @@ void sinsp_analyzer::chisels_on_capture_start()
 		}
 		catch(sinsp_exception e)
 		{
-			delete (*it);
-			m_chisels.erase(it++);
-
 			g_logger.log("unable to start chisel " + (*it)->get_name() + ": " + e.what(),
 				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
 		}
 		catch(...)
 		{
-			delete (*it);
-			m_chisels.erase(it++);
-
 			g_logger.log("unable to start chisel " + (*it)->get_name() + ": unknown error",
 				sinsp_logger::SEV_WARNING);
-		}
+
+			delete (*it);
+			m_chisels.erase(it);
+			}
 	}
 }
 
