@@ -153,6 +153,17 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	
 	//
+	// Load the chisels
+	//
+	for(auto chinfo : m_configuration->m_chisel_details)
+	{
+		g_log->information("Loading chisel " + chinfo.m_name);
+		m_analyzer->add_chisel(&chinfo);
+	}
+	
+	m_analyzer->initialize_chisels();
+
+	//
 	// Start the capture with sinsp
 	//
 	g_log->information("Opening the capture source");
