@@ -340,7 +340,7 @@ TEST_F(sys_call_test, forking_execve)
 				//
 				// Touch the memory so it won't generate a PF in the driver
 				//
-				printf("%s %s %s %s\n", eargv[0], eargv[1], eargv[2], eargv[3]);
+				printf("%s %s %s %s %s\n", eargv[0], eargv[1], eargv[2], eargv[3], eargv[4]);
 
 				execve("/bin/echo/", eargv, eenvp);
 				execve("/bin/echo", eargv, eenvp);
