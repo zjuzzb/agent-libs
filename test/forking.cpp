@@ -384,8 +384,8 @@ TEST_F(sys_call_test, forking_execve)
 				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
 				EXPECT_EQ("test", ti->get_comm());
 				EXPECT_GE(0, NumberParser::parse(e->get_param_value_str("res", false)));
-				EXPECT_EQ("", e->get_param_value_str("exe"));
-				EXPECT_EQ("", e->get_param_value_str("args"));
+				EXPECT_EQ("/bin/echo", e->get_param_value_str("exe"));
+				EXPECT_EQ(".aa..bb.", e->get_param_value_str("args"));
 			}
 			else
 			{
