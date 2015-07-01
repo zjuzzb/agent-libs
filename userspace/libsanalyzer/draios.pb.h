@@ -3882,17 +3882,17 @@ class app_tag : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required string name = 1;
-  inline bool has_name() const;
-  inline void clear_name();
-  static const int kNameFieldNumber = 1;
-  inline const ::std::string& name() const;
-  inline void set_name(const ::std::string& value);
-  inline void set_name(const char* value);
-  inline void set_name(const char* value, size_t size);
-  inline ::std::string* mutable_name();
-  inline ::std::string* release_name();
-  inline void set_allocated_name(::std::string* name);
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
 
   // optional string value = 2;
   inline bool has_value() const;
@@ -3908,14 +3908,14 @@ class app_tag : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:draiosproto.app_tag)
  private:
-  inline void set_has_name();
-  inline void clear_has_name();
+  inline void set_has_key();
+  inline void clear_has_key();
   inline void set_has_value();
   inline void clear_has_value();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::std::string* name_;
+  ::std::string* key_;
   ::std::string* value_;
 
   mutable int _cached_size_;
@@ -11927,73 +11927,73 @@ statsd_info::mutable_statsd_metrics() {
 
 // app_tag
 
-// required string name = 1;
-inline bool app_tag::has_name() const {
+// required string key = 1;
+inline bool app_tag::has_key() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void app_tag::set_has_name() {
+inline void app_tag::set_has_key() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void app_tag::clear_has_name() {
+inline void app_tag::clear_has_key() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void app_tag::clear_name() {
-  if (name_ != &::google::protobuf::internal::kEmptyString) {
-    name_->clear();
+inline void app_tag::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
   }
-  clear_has_name();
+  clear_has_key();
 }
-inline const ::std::string& app_tag::name() const {
-  return *name_;
+inline const ::std::string& app_tag::key() const {
+  return *key_;
 }
-inline void app_tag::set_name(const ::std::string& value) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
+inline void app_tag::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
   }
-  name_->assign(value);
+  key_->assign(value);
 }
-inline void app_tag::set_name(const char* value) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
+inline void app_tag::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
   }
-  name_->assign(value);
+  key_->assign(value);
 }
-inline void app_tag::set_name(const char* value, size_t size) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
+inline void app_tag::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
   }
-  name_->assign(reinterpret_cast<const char*>(value), size);
+  key_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* app_tag::mutable_name() {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
+inline ::std::string* app_tag::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
   }
-  return name_;
+  return key_;
 }
-inline ::std::string* app_tag::release_name() {
-  clear_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* app_tag::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = name_;
-    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void app_tag::set_allocated_name(::std::string* name) {
-  if (name_ != &::google::protobuf::internal::kEmptyString) {
-    delete name_;
+inline void app_tag::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
   }
-  if (name) {
-    set_has_name();
-    name_ = name;
+  if (key) {
+    set_has_key();
+    key_ = key;
   } else {
-    clear_has_name();
-    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

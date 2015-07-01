@@ -341,7 +341,7 @@ enum app_metric_type {
 }
 
 message app_tag {
-    required string name = 1;
+    required string key = 1;
     optional string value = 2;
 }
 
