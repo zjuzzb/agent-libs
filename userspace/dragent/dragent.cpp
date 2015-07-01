@@ -228,7 +228,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
-
 			this->m_jmx_pipes->attach_child_stdio();
 
 			// Our option parser is pretty simple, for example an arg with spaces inside
@@ -244,6 +243,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 				args[j++] = opt.c_str();
 			}
 			args[j++] = "-Djava.library.path=/opt/draios/lib";
+			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
+			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
+			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
+			args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-jar";
 			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
 			if(sdjagent_jar.exists())
