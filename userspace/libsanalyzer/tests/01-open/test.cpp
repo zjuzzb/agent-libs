@@ -637,8 +637,8 @@ int main(int argc, char **argv)
 					filter += " ";
 				}
 			}
-printf("!!!! %s\n", filter.c_str());
-			g_inspector->set_filter(filter);
+
+//			g_inspector->set_filter(filter);
 #else
 			fprintf(stderr, "filtering not supported.\n");
 			delete g_inspector;
