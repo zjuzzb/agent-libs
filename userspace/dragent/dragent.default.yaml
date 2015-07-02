@@ -530,3 +530,10 @@ app_checks:
       rabbitmq_api_url: "http://localhost:{port.high}/api/"
       rabbitmq_user: guest
       rabbitmq_pass: guest
+  - name: mcache
+    display_name: memcached
+    pattern:
+      comm: memcached
+    conf:
+      url: localhost
+      port: "{port}"

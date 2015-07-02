@@ -7,7 +7,8 @@
 
 bool app_check::match(sinsp_threadinfo *tinfo) const
 {
-	bool ret = true;
+	// At least a pattern should be specified
+	bool ret = (!m_comm_pattern.empty() || !m_exe_pattern.empty() || m_port_pattern > 0);
 	if(!m_comm_pattern.empty())
 	{
 		ret &= tinfo->m_comm.find(m_comm_pattern) != string::npos;
