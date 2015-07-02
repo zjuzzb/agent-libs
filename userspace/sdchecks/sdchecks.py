@@ -22,6 +22,11 @@ CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 _LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 __NR_setns = 308
 
+try:
+    SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
+except KeyError:
+    SYSDIG_HOST_ROOT = ""
+
 def setns(fd):
     # TODO: test if it works on Centos64
     # TODO: raise an exception if setns fails?
@@ -82,8 +87,8 @@ class CannotExpandTemplate(Exception):
     pass
 
 class AppCheckInstance:
-    mymnt = os.open("/proc/self/ns/mnt", os.O_RDONLY)
-    mynet = os.open("/proc/self/ns/net", os.O_RDONLY)
+    mymnt = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+    mynet = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
     TOKEN_PATTERN = re.compile("\{.+\}")
     agentConfig = {
         "is_developer_mode": False
@@ -100,10 +105,10 @@ class AppCheckInstance:
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class("testname", None, self.agentConfig, None)
+        # TODO: improve this check using the inode?
         if self.vpid != self.pid:
-            # TODO: Close these fd
-            self.netns = os.open("/proc/%d/ns/net" % self.pid, os.O_RDONLY)
-            self.mntns = os.open("/proc/%d/ns/mnt" % self.pid, os.O_RDONLY)
+            self.netns = os.open("%s/proc/%d/ns/net" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
+            self.mntns = os.open("%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
 
         self.instance_conf = {}
         for key, value in check.conf.items():
@@ -113,9 +118,9 @@ class AppCheckInstance:
                 self.instance_conf[key] = value
 
     def __del__(self):
-        if hasattr(self, "netns"):
+        if hasattr(self, "netns") and self.netns > 0:
             os.close(self.netns)
-        if hasattr(self, "mntns"):
+        if hasattr(self, "mntns") and self.mntns > 0:
             os.close(self.mntns)
 
     def run(self):
