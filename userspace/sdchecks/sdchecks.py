@@ -105,8 +105,9 @@ class AppCheckException(Exception):
     pass
 
 class AppCheckInstance:
-    mymnt = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
-    mynet = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+    MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+    MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
+    MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
     TOKEN_PATTERN = re.compile("\{.+\}")
     agentConfig = {
         "is_developer_mode": False
@@ -124,9 +125,13 @@ class AppCheckInstance:
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class("testname", None, self.agentConfig, None)
         # TODO: improve this check using the inode?
-        if self.vpid != self.pid:
+        mntnspath = "%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid)
+        mntns_inode = os.stat(mntnspath).st_ino
+        self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
+
+        if self.is_on_another_container:
             self.netns = os.open("%s/proc/%d/ns/net" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
-            self.mntns = os.open("%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
+            self.mntns = os.open(mntnspath, os.O_RDONLY)
 
         self.instance_conf = {}
         for key, value in check.conf.items():
@@ -142,12 +147,13 @@ class AppCheckInstance:
             os.close(self.mntns)
 
     def run(self):
-        if self.pid != self.vpid:
+        if self.is_on_another_container:
             setns(self.netns)
             setns(self.mntns)
         self.check_instance.check(self.instance_conf)
-        setns(self.mynet)
-        setns(self.mymnt)
+        if self.is_on_another_container:
+            setns(self.MYNET)
+            setns(self.MYMNT)
         return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
 
     def _expand_template(self, value, proc_data):
