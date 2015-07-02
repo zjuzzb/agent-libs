@@ -8,6 +8,7 @@ import re
 import resource
 import ctypes
 import logging
+from datetime import datetime, timedelta
 
 # project
 from checks import AgentCheck
@@ -231,32 +232,44 @@ class PosixQueue:
         if hasattr(self, "queue"):
             self.close()
 
-def main():
-    config = Config()
-    logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=config.log_level())
-    logging.info("Check config: %s", repr(config.checks))
-    known_instances = {}
-    inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
-    outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+class Application:
+    KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
+    def __init__(self):
+        self.config = Config()
+        logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
+        logging.info("Check config: %s", repr(self.config.checks))
+        self.known_instances = {}
+        self.last_known_instances_cleanup = datetime.now()
+        self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
+        self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+    
+    def cleanup(self):
+        self.inqueue.close()
+        self.outqueue.close()
 
-    try:
+    def clean_known_instances(self, last_request_pids):
+        for key in self.known_instances.keys():
+            if not key in last_request_pids:
+                del self.known_instances[key]
+
+    def main(self):
         while True:
-            command_s = inqueue.receive(None)
+            command_s = self.inqueue.receive(None)
             response_body = []
             #print "Received command: %s" % command_s
             command = json.loads(command_s)
             processes = command["body"]
             for p in processes:
                 try:
-                    check_instance = known_instances[p["pid"]]
+                    check_instance = self.known_instances[p["pid"]]
                 except KeyError:
-                    check_conf = config.checks[p["check"]]
+                    check_conf = self.config.checks[p["check"]]
                     try:
                         check_instance = AppCheckInstance(check_conf, p)
                     except AppCheckException as ex:
                         # TODO: log error
                         continue
-                    known_instances[p["pid"]] = check_instance
+                    self.known_instances[p["pid"]] = check_instance
                 try:
                     metrics, service_checks = check_instance.run()
                 except AppCheckException as ex:
@@ -273,6 +286,7 @@ def main():
             }
             response_s = json.dumps(response)
             #print "Response: %s\n" % response_s
-            outqueue.send(response_s)
-    except KeyboardInterrupt:
-        pass
+            self.outqueue.send(response_s)
+            if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
+                self.clean_known_instances([p["pid"] for p in processes])
+                self.last_known_instances_cleanup = datetime.now()

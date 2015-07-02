@@ -1,5 +1,11 @@
 #!/usr/bin/env python
-from sdchecks import main
+from sdchecks import Application
 
 if __name__ == "__main__":
-    main()
+    app = Application()
+    try:
+    	app.main()
+    except KeyboardInterrupt:
+    	pass
+    finally:
+    	app.cleanup()
