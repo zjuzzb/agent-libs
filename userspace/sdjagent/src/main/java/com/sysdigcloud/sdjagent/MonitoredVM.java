@@ -24,12 +24,12 @@ import java.util.logging.Logger;
 public class MonitoredVM {
     private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
+    private static final long RECONNECTION_TIMEOUT_MS = 1 * 60 * 1000; // 1 minute
     private static final int beansLimit = 100;
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private String address;
     private Connection connection;
-    private MBeanServerConnection mbs;
     private final int pid;
     private String name;
     /**
@@ -43,7 +43,9 @@ public class MonitoredVM {
     private long lastBeanRefresh;
     private final List<Config.BeanQuery> queryList;
     private final List<BeanInstance> matchingBeans;
-
+    private long lastDisconnectionTimestamp;
+    private final boolean isOnAnotherContainer;
+    
     public MonitoredVM(VMRequest request)
     {
         this.pid = request.getPid();
@@ -53,50 +55,24 @@ public class MonitoredVM {
         this.available = false;
         this.agentActive = false;
         this.name = "";
+        this.lastDisconnectionTimestamp = 0;
 
-        // Check if the asked pid is sdjagent itself, there are two cases:
-        // 1. sdjagent running on host, so we check the pid
-        // 2. sdjagent running on container, check the vpid,
-        //    to distiguish from the former check if parent pid is 1
-        if (request.getPid() == CLibrary.getPid() ||
-                (CLibrary.getPPid() == 1 && CLibrary.getPid() == request.getVpid())) {
+        if (request.getPid() == CLibrary.getPid()) {
             this.name = "sdjagent";
-            //this.mbs = ManagementFactory.getPlatformMBeanServer();
             available = true;
             agentActive = false;
+            isOnAnotherContainer = false;
             return;
         }
 
-        boolean isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
+        isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
         if (isOnAnotherContainer) {
             retrieveVmInfoFromContainer(request);
         } else {
             retrieveVMInfoFromHost(request);
         }
 
-        if (this.address != null)
-        {
-            if (isOnAnotherContainer) {
-                boolean namespaceChanged = CLibrary.setNamespace(request.getPid());
-
-                if(!namespaceChanged) {
-                    LOGGER.warning(String.format("Cannot set namespace to pid: %d", request.getPid()));
-                }
-            }
-            try {
-                connection = new Connection(address);
-                mbs = connection.getMbs();
-                agentActive = true;
-            } catch (IOException e) {
-                LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
-            }
-            if (isOnAnotherContainer) {
-                boolean namespaceSet = CLibrary.setInitialNamespace();
-                if(!namespaceSet) {
-                    LOGGER.severe("Cannot set initial namespace");
-                }
-            }
-        }
+        connect();
     }
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
@@ -204,6 +180,11 @@ public class MonitoredVM {
 
     public boolean isAgentActive()
     {
+        // After a period of inactivity retry to connect
+        if (address != null && lastDisconnectionTimestamp > 0 &&
+                System.currentTimeMillis() - lastDisconnectionTimestamp > RECONNECTION_TIMEOUT_MS) {
+            connect();
+        }
         return agentActive;
     }
 
@@ -227,7 +208,7 @@ public class MonitoredVM {
 
     private void refreshMatchingBeans() throws IOException {
         matchingBeans.clear();
-        Set<ObjectName> allBeans = mbs.queryNames(null, null);
+        Set<ObjectName> allBeans = connection.getMbs().queryNames(null, null);
         for (ObjectName bean : allBeans) {
             for( Config.BeanQuery query : queryList) {
                 if (query.getObjectName().apply(bean)) {
@@ -252,7 +233,7 @@ public class MonitoredVM {
 
                 for (BeanInstance bean : matchingBeans) {
                     try {
-                        BeanData beanMetrics = bean.retrieveMetrics(mbs);
+                        BeanData beanMetrics = bean.retrieveMetrics(connection.getMbs());
                         if (!beanMetrics.getAttributes().isEmpty())
                         {
                             metrics.add(beanMetrics);
@@ -267,12 +248,42 @@ public class MonitoredVM {
                 }
             } catch (IOException ex) {
                 LOGGER.warning(String.format("Process %d agent is not responding, declaring it down", pid));
-                connection = null;
-                mbs = null;
-                agentActive = false;
+                disconnect();
             }
         }
         return metrics;
+    }
+
+    private void connect() {
+        if (this.address != null)
+        {
+            if (isOnAnotherContainer) {
+                boolean namespaceChanged = CLibrary.setNamespace(pid);
+
+                if(!namespaceChanged) {
+                    LOGGER.warning(String.format("Cannot set namespace to pid: %d", pid));
+                }
+            }
+            try {
+                connection = new Connection(address);
+                agentActive = true;
+                lastDisconnectionTimestamp = 0;
+            } catch (IOException e) {
+                LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
+            }
+            if (isOnAnotherContainer) {
+                boolean namespaceSet = CLibrary.setInitialNamespace();
+                if(!namespaceSet) {
+                    LOGGER.severe("Cannot set initial namespace");
+                }
+            }
+        }
+    }
+
+    private void disconnect() {
+        lastDisconnectionTimestamp = System.currentTimeMillis();
+        connection = null;
+        agentActive = false;
     }
 
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP =

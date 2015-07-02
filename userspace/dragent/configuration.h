@@ -20,6 +20,8 @@
 //
 #define MAX_SAMPLE_STORE_SIZE 300
 
+#define SDJAGENT_JMX_TIMEOUT "2000"
+
 class aws_metadata
 {
 public:
