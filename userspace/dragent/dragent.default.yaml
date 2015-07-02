@@ -537,3 +537,9 @@ app_checks:
     conf:
       url: localhost
       port: "{port}"
+  - name: gearmand
+    pattern:
+      comm: gearmand
+    conf:
+      server: localhost
+      port: "{port}"
