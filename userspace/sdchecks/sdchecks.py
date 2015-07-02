@@ -74,7 +74,7 @@ class AppCheck:
 
         try:
             check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, self.name + ".py"))
-        except Exception, e:
+        except Exception:
             traceback_message = traceback.format_exc()
             # There is a configuration file for that check but the module can't be imported
             #init_failed_checks[check_name] = {'error':e, 'traceback':traceback_message}
@@ -121,6 +121,7 @@ class AppCheckInstance:
             self.display_name = check.display_name
         else:
             self.display_name = check.name
+        self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class("testname", None, self.agentConfig, None)
@@ -139,6 +140,7 @@ class AppCheckInstance:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
+        logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def __del__(self):
         if hasattr(self, "netns") and self.netns > 0:
@@ -150,11 +152,18 @@ class AppCheckInstance:
         if self.is_on_another_container:
             setns(self.netns)
             setns(self.mntns)
-        self.check_instance.check(self.instance_conf)
+        saved_ex = None
+        try:
+            self.check_instance.check(self.instance_conf)
+        except Exception as ex:
+            saved_ex = ex
         if self.is_on_another_container:
             setns(self.MYNET)
             setns(self.MYMNT)
-        return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
+        if saved_ex:
+            raise AppCheckException(saved_ex)
+        else:
+            return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
 
     def _expand_template(self, value, proc_data):
         try:
@@ -170,7 +179,7 @@ class AppCheckInstance:
                 ret = int(ret)
             return ret
         except Exception as ex:
-            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), e.message))
+            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), ex.message))
 
 class Config:
     def __init__(self):
@@ -248,7 +257,12 @@ def main():
                         # TODO: log error
                         continue
                     known_instances[p["pid"]] = check_instance
-                metrics, service_checks = check_instance.run()
+                try:
+                    metrics, service_checks = check_instance.run()
+                except AppCheckException as ex:
+                    logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                    metrics = []
+                    service_checks = []
                 response_body.append({ "pid": int(check_instance.pid),
                                         "display_name": check_instance.display_name,
                                                  "metrics": metrics,

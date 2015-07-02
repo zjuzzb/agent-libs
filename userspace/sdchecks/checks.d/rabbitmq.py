@@ -149,7 +149,7 @@ class RabbitMQ(AgentCheck):
             r = requests.get(url, auth=auth)
             r.raise_for_status()
             data = r.json()
-        except requests.exceptions.HTTPError as e:
+        except (requests.exceptions.HTTPError, LookupError) as e:
             raise Exception(
                 'Cannot open RabbitMQ API url: %s %s' % (url, str(e)))
         except ValueError, e:
