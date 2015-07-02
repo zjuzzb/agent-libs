@@ -307,10 +307,12 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 
 void sinsp_analyzer::add_chisel_dirs()
 {
+	m_inspector->add_chisel_dir("/opt/draios/share/chisels", false);
+
 	//
-	// Add the default chisel directory statically configured by the build system
+	// sysdig that comes with dragent is always installed in /usr
 	//
-	//m_inspector->add_chisel_dir(SYSDIG_INSTALLATION_DIR CHISELS_INSTALLATION_DIR, false);
+	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR, false);
 
 	//
 	// Add the directories configured in the SYSDIG_CHISEL_DIR environment variable
