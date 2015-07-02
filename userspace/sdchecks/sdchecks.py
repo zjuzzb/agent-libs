@@ -7,6 +7,7 @@ import os
 import re
 import resource
 import ctypes
+import logging
 
 # project
 from checks import AgentCheck
@@ -43,6 +44,23 @@ class YamlConfig:
             self._root = yaml.load(custom_file.read())
     def get_merged_sequence(self, key):
         return self._default_root[key]
+
+    def get_single(self, key, default_value=None):
+        if self._root.has_key(key):
+            return self._root[key]
+        elif self._default_root.has_key(key):
+            return self._default_root[key]
+        else:
+            return default_value
+
+    def get_single(self, key, subkey, default_value=None):
+        # TODO: Check conf file errors
+        if self._root.has_key(key) and self._root[key].has_key(subkey):
+            return self._root[key][subkey]
+        elif self._default_root.has_key(key) and self._default_root[key].has_key(subkey):
+            return self._default_root[key][subkey]
+        else:
+            return default_value
 
 class AppCheck:
     def __init__(self, node):
@@ -83,7 +101,7 @@ class AppCheck:
     def __repr__(self):
         return "AppCheck(name=%s, conf=%s, check_class=%s" % (self.name, repr(self.conf), repr(self.check_class))
 
-class CannotExpandTemplate(Exception):
+class AppCheckException(Exception):
     pass
 
 class AppCheckInstance:
@@ -145,14 +163,25 @@ class AppCheckInstance:
             if ret.isdigit():
                 ret = int(ret)
             return ret
-        except Exception, ex:
-            raise CannotExpandTemplate(ex)
+        except Exception as ex:
+            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), e.message))
 
 class Config:
     def __init__(self):
         self._yaml_config = YamlConfig()
         check_confs = self._yaml_config.get_merged_sequence("app_checks")
         self.checks = {c.name: c for c in map(lambda c: AppCheck(c), check_confs)}
+    
+    def log_level(self):
+        level = self._yaml_config.get_single("log", "file_priority", "info")
+        if level == "error":
+            return logging.ERROR
+        elif level == "warning":
+            return logging.WARNING 
+        elif level == "info":
+            return logging.INFO
+        elif level == "debug":
+            return logging.DEBUG
 
 class PosixQueueType:
     SEND = 0
@@ -189,7 +218,8 @@ class PosixQueue:
 
 def main():
     config = Config()
-    print repr(config.checks)
+    logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=config.log_level())
+    logging.info("Check config: %s", repr(config.checks))
     known_instances = {}
     inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
     outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
@@ -206,7 +236,11 @@ def main():
                     check_instance = known_instances[p["pid"]]
                 except KeyError:
                     check_conf = config.checks[p["check"]]
-                    check_instance = AppCheckInstance(check_conf, p)
+                    try:
+                        check_instance = AppCheckInstance(check_conf, p)
+                    except AppCheckException as ex:
+                        # TODO: log error
+                        continue
                     known_instances[p["pid"]] = check_instance
                 metrics, service_checks = check_instance.run()
                 response_body.append({ "pid": int(check_instance.pid),

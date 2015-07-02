@@ -306,7 +306,30 @@ int dragent_app::main(const std::vector<std::string>& args)
 	m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 	{
 		// TODO: Add log level parsing
-		g_log->information(line);
+		auto parsed_log = sinsp_split(line, ':');
+		if(parsed_log.size() >= 3)
+		{
+			auto level = parsed_log.at(1);
+			auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
+			if(level == "DEBUG")
+			{
+				g_log->debug(message);
+			}
+			else if(level == "INFO")
+			{
+				g_log->information(message);
+			}
+			else if(level == "WARNING")
+			{
+				g_log->warning(message);
+			}
+			else
+			{
+				g_log->error(message);
+			}
+		} else {
+			g_log->error("Cannot parse sdchecks log:" + line);
+		}
 	});
 	monitor_process.emplace_process("sdchecks", [this](void)
 	{
