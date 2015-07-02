@@ -85,9 +85,9 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
 app_check_data::app_check_data(const Json::Value &obj):
 	m_pid(obj["pid"].asInt())
 {
-	if(obj.isMember("process_name"))
+	if(obj.isMember("display_name"))
 	{
-		m_process_name = obj["process_name"].asString();
+		m_process_name = obj["display_name"].asString();
 	}
 	if(obj.isMember("metrics"))
 	{
@@ -107,6 +107,7 @@ app_check_data::app_check_data(const Json::Value &obj):
 
 void app_check_data::to_protobuf(draiosproto::app_info *proto) const
 {
+	proto->set_process_name(m_process_name);
 	for(const auto& m : m_metrics)
 	{
 		m.to_protobuf(proto->add_metrics());

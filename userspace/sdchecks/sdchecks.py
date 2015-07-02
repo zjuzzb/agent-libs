@@ -43,6 +43,12 @@ class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
         self.conf = node["conf"]
+
+        try:
+            self.display_name = node["display_name"]
+        except KeyError:
+            self.display_name = None
+
         try:
             check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, self.name + ".py"))
         except Exception, e:
@@ -87,6 +93,10 @@ class AppCheckInstance:
         "port.high": lambda p: p["ports"][-1],
     }
     def __init__(self, check, proc_data):
+        if check.display_name:
+            self.display_name = check.display_name
+        else:
+            self.display_name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class("testname", None, self.agentConfig, None)
@@ -195,6 +205,7 @@ def main():
                     known_instances[p["pid"]] = check_instance
                 metrics, service_checks = check_instance.run()
                 response_body.append({ "pid": int(check_instance.pid),
+                                        "display_name": check_instance.display_name,
                                                  "metrics": metrics,
                                    "service_checks": service_checks})
             response = {

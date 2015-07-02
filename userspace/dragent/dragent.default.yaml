@@ -511,12 +511,14 @@ jmx:
 
 app_checks:
   - name: redisdb
+    display_name: redis
     pattern: 
       comm: redis-server
     conf:
       host: 127.0.0.1
       port: "{port}"
   - name: mongo
+    display_name: mongodb
     pattern: 
       comm: mongod
     conf:
