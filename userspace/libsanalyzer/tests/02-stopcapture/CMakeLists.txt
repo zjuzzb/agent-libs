@@ -8,7 +8,8 @@ add_executable(sinsp-stopcapture
 	test.cpp)
 
 target_link_libraries(sinsp-stopcapture
-	sanalyzer) 
+	sanalyzer
+	dl)
 
 install(TARGETS sinsp-stopcapture 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin

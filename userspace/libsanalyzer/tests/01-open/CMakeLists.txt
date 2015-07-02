@@ -8,7 +8,8 @@ add_executable(sinsp-open
 	test.cpp)
 
 target_link_libraries(sinsp-open
-	sanalyzer) 
+	sanalyzer
+	dl)
 
 install(TARGETS sinsp-open 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
