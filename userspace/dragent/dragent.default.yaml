@@ -543,3 +543,8 @@ app_checks:
     conf:
       server: localhost
       port: "{port}"
+  - name: lighttpd
+    pattern:
+      comm: lighttpd
+    conf:
+      lighttpd_status_url: "http://localhost:{port}/server-status?auto"

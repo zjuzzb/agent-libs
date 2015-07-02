@@ -21,13 +21,13 @@ import posix_ipc
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 
-_LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
-__NR_setns = 308
-
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
 except KeyError:
     SYSDIG_HOST_ROOT = ""
+
+_LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
+__NR_setns = 308
 
 def setns(fd):
     # TODO: test if it works on Centos64
@@ -110,13 +110,15 @@ class AppCheckInstance:
     MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
     MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
     TOKEN_PATTERN = re.compile("\{.+\}")
-    agentConfig = {
+    AGENT_CONFIG = {
         "is_developer_mode": False
     }
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
+    RUN_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
+
     def __init__(self, check, proc_data):
         if check.display_name:
             self.display_name = check.display_name
@@ -125,8 +127,8 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.check_instance = check.check_class("testname", None, self.agentConfig, None)
-        # TODO: improve this check using the inode?
+        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG, None)
+        
         mntnspath = "%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid)
         mntns_inode = os.stat(mntnspath).st_ino
         self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
@@ -141,6 +143,7 @@ class AppCheckInstance:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
+        self._last_run_exception = None
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def __del__(self):
@@ -148,6 +151,16 @@ class AppCheckInstance:
             os.close(self.netns)
         if hasattr(self, "mntns") and self.mntns > 0:
             os.close(self.mntns)
+
+    def is_enabled(self):
+        if self._last_run_exception:
+            if datetime.now() - self._last_run_exception > self.RUN_EXCEPTION_RETRY_TIMEOUT:
+                self._last_run_exception = None
+                return True
+            else:
+                return False
+        else:
+            return True
 
     def run(self):
         if self.is_on_another_container:
@@ -162,6 +175,7 @@ class AppCheckInstance:
             setns(self.MYNET)
             setns(self.MYMNT)
         if saved_ex:
+            self._last_run_exception = datetime.now()
             raise AppCheckException(saved_ex)
         else:
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
@@ -270,12 +284,15 @@ class Application:
                         # TODO: log error
                         continue
                     self.known_instances[p["pid"]] = check_instance
-                try:
-                    metrics, service_checks = check_instance.run()
-                except AppCheckException as ex:
-                    logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
-                    metrics = []
-                    service_checks = []
+                metrics = []
+                service_checks = []
+                if check_instance.is_enabled():
+                    try:
+                        metrics, service_checks = check_instance.run()
+                    except AppCheckException as ex:
+                        logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                else:
+                    logging.debug("Check %s is disabled", check_instance.name)
                 response_body.append({ "pid": int(check_instance.pid),
                                         "display_name": check_instance.display_name,
                                                  "metrics": metrics,
