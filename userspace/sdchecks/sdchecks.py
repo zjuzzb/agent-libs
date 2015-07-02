@@ -155,8 +155,6 @@ class PosixQueue:
 
     def close(self):
         self.queue.close()
-        #if self.direction == PosixQueueType.RECEIVE:
-        #    self.queue.unlink()
         self.queue = None
 
     def send(self, msg):
@@ -181,27 +179,30 @@ def main():
     inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
     outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
 
-    while True:
-        command_s = inqueue.receive(None)
-        response_body = []
-        print "Received command: %s" % command_s
-        command = json.loads(command_s)
-        processes = command["body"]
-        for p in processes:
-            try:
-                check_instance = known_instances[p["pid"]]
-            except KeyError:
-                check_conf = config.checks[p["check"]]
-                check_instance = AppCheckInstance(check_conf, p)
-                known_instances[p["pid"]] = check_instance
-            metrics, service_checks = check_instance.run()
-            response_body.append({ "pid": int(check_instance.pid),
-                                             "metrics": metrics,
-                               "service_checks": service_checks})
-        response = {
-            "id": command["id"],
-            "body": response_body
-        }
-        response_s = json.dumps(response)
-        print "Response: %s\n" % response_s
-        outqueue.send(response_s)
+    try:
+        while True:
+            command_s = inqueue.receive(None)
+            response_body = []
+            #print "Received command: %s" % command_s
+            command = json.loads(command_s)
+            processes = command["body"]
+            for p in processes:
+                try:
+                    check_instance = known_instances[p["pid"]]
+                except KeyError:
+                    check_conf = config.checks[p["check"]]
+                    check_instance = AppCheckInstance(check_conf, p)
+                    known_instances[p["pid"]] = check_instance
+                metrics, service_checks = check_instance.run()
+                response_body.append({ "pid": int(check_instance.pid),
+                                                 "metrics": metrics,
+                                   "service_checks": service_checks})
+            response = {
+                "id": command["id"],
+                "body": response_body
+            }
+            response_s = json.dumps(response)
+            #print "Response: %s\n" % response_s
+            outqueue.send(response_s)
+    except KeyboardInterrupt:
+        pass

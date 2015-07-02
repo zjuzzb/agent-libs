@@ -30,10 +30,6 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 posix_queue::~posix_queue()
 {
 	mq_close(m_queue_d);
-	if(m_direction == RECEIVE)
-	{
-		//mq_unlink(m_name.c_str());
-	}
 }
 
 bool posix_queue::send(const string &msg)
@@ -105,4 +101,9 @@ bool posix_queue::set_queue_limits()
 		limits_set = (res == 0);
 	}
 	return limits_set;
+}
+
+bool posix_queue::remove(const string &name)
+{
+	return mq_unlink(name.c_str()) == 0;
 }

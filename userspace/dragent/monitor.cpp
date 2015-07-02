@@ -7,6 +7,7 @@
 #include <sys/prctl.h>
 #include "subprocesses_logger.h"
 #include <thread>
+#include <posix_queue.h>
 
 static int g_signal_received = 0;
 
@@ -169,6 +170,10 @@ int monitor::run()
 		}
 	}
 
+	for(const auto& queue : {"/sdchecks", "/dragent_app_checks"})
+	{
+		posix_queue::remove(queue);
+	}
 	delete_pid_file(m_pidfile);
 	return(EXIT_SUCCESS);
 }

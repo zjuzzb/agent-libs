@@ -25,7 +25,7 @@ public:
 	bool send(const std::string& msg);
 	string receive();
 	string receive(const uint64_t timeout_s);
-
+	static bool remove(const string& name);
 private:
 	static bool limits_set;
 	static bool set_queue_limits();

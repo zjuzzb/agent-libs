@@ -4,7 +4,7 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
 
-class pipe_manager
+class pipe_manager: noncopyable
 {
 public:
 	explicit pipe_manager();
@@ -23,9 +23,6 @@ public:
 
 	// Attach pipes to child STDIN, STDOUT and STDERR
 	void attach_child_stdio();
-
-	pipe_manager(const pipe_manager&) = delete;
-	pipe_manager& operator=(const pipe_manager&) = delete;
 private:
 	// TODO: utility, can be moved outside if needed
 	static void enable_nonblocking(int fd);
@@ -42,6 +39,30 @@ private:
 	FILE *m_input_fd;
 	FILE *m_output_fd;
 	FILE *m_error_fd;
+};
+
+// A copy of the pipe_manager but that manages only stderr
+class errpipe_manager: noncopyable
+{
+public:
+	explicit errpipe_manager();
+	~errpipe_manager();
+	void attach_child();
+	FILE* get_file()
+	{
+		return m_file;
+	}
+
+private:
+	static void enable_nonblocking(int fd);
+	enum pipe_dir
+	{
+		PIPE_READ = 0,
+		PIPE_WRITE = 1
+	};
+
+	int m_pipe[2];
+	FILE* m_file;
 };
 
 class sdjagent_parser

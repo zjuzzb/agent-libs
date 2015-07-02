@@ -302,8 +302,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
-	monitor_process.emplace_process("sdchecks", [](void)
+	m_sdchecks_pipes = make_unique<errpipe_manager>();
+	m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 	{
+		// TODO: Add log level parsing
+		g_log->information(line);
+	});
+	monitor_process.emplace_process("sdchecks", [this](void)
+	{
+		this->m_sdchecks_pipes->attach_child();
 		const char* env[] = {
 				"PYTHONPATH=/opt/draios/lib/python:/opt/draios/lib/python/site-packages",
 				NULL

@@ -4,8 +4,6 @@
 
 pipe_manager::pipe_manager()
 {
-	static const int PIPE_BUFFER_SIZE = 1048576;
-
 	// Create pipes
 	int ret = pipe(m_inpipe);
 	if(ret != 0)
@@ -69,6 +67,44 @@ void pipe_manager::attach_child_stdio()
 }
 
 void pipe_manager::enable_nonblocking(int fd)
+{
+	int flags;
+	flags = fcntl(fd, F_GETFL, 0);
+	flags |= O_NONBLOCK;
+	fcntl(fd, F_SETFL, flags);
+}
+
+errpipe_manager::errpipe_manager()
+{
+	// Create pipes
+	int ret = pipe(m_pipe);
+	if(ret != 0)
+	{
+		// We don't have logging enabled when this constructor is called
+		cerr << "Cannot create pipe()" << endl;
+	}
+
+	// transform to FILE*
+	m_file = fdopen(m_pipe[PIPE_READ], "r");
+
+	// Use non blocking io
+	enable_nonblocking(m_pipe[PIPE_READ]);
+}
+
+errpipe_manager::~errpipe_manager()
+{
+	close(m_pipe[PIPE_WRITE]);
+	fclose(m_file);
+}
+
+void errpipe_manager::attach_child()
+{
+	dup2(m_pipe[PIPE_WRITE], STDERR_FILENO);
+	// Close the other part of the pipes
+	fclose(m_file);
+}
+
+void errpipe_manager::enable_nonblocking(int fd)
 {
 	int flags;
 	flags = fcntl(fd, F_GETFL, 0);

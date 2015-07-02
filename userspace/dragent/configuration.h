@@ -21,6 +21,8 @@
 //
 #define MAX_SAMPLE_STORE_SIZE 300
 
+static const int PIPE_BUFFER_SIZE = 1048576;
+
 class aws_metadata
 {
 public:
