@@ -510,15 +510,15 @@ jmx:
       pattern: "elasticsearch"
 
 app_checks:
-  - name: redisdb
-    display_name: redis
+  - name: redis
+    check_module: redisdb
     pattern: 
       comm: redis-server
     conf:
       host: 127.0.0.1
       port: "{port}"
-  - name: mongo
-    display_name: mongodb
+  - name: mongodb
+    check_module: mongo
     pattern: 
       comm: mongod
     conf:
@@ -530,8 +530,8 @@ app_checks:
       rabbitmq_api_url: "http://localhost:15672/api/"
       rabbitmq_user: guest
       rabbitmq_pass: guest
-  - name: mcache
-    display_name: memcached
+  - name: memcached
+    check_module: mcache
     pattern:
       comm: memcached
     conf:
@@ -556,8 +556,8 @@ app_checks:
       username: stats
       password: stats
       url: http://localhost:1936/
-  - name: elastic
-    display_name: elasticsearch
+  - name: elasticsearch
+    check_module: elastic
     pattern:
       port: 9200
     conf:

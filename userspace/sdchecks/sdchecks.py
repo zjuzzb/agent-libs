@@ -88,18 +88,15 @@ class AppCheck:
         self.conf = node["conf"]
 
         try:
-            self.display_name = node["display_name"]
+            check_module_name = node["check_module"]
         except KeyError:
-            self.display_name = None
+            check_module_name = self.name
 
         try:
-            check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, self.name + ".py"))
+            check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, check_module_name + ".py"))
         except Exception:
             traceback_message = traceback.format_exc()
-            # There is a configuration file for that check but the module can't be imported
-            #init_failed_checks[check_name] = {'error':e, 'traceback':traceback_message}
-            #log.exception('Unable to import check module %s.py from checks.d' % check_name)
-            raise Exception('Unable to import check module %s.py from checks.d: %s' % (self.name, traceback_message))
+            raise Exception('Unable to import check module %s.py from checks.d: %s' % (check_module_name, traceback_message))
 
         # We make sure that there is an AgentCheck class defined
         check_class = None
@@ -114,7 +111,7 @@ class AppCheck:
                 else:
                     break
         if check_class is None:
-            raise Exception('Unable to find AgentCheck class for %s' % self.name)
+            raise Exception('Unable to find AgentCheck class for %s' % check_module_name)
         else:
             self.check_class = check_class
 
@@ -140,10 +137,6 @@ class AppCheckInstance:
     RUN_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
 
     def __init__(self, check, proc_data):
-        if check.display_name:
-            self.display_name = check.display_name
-        else:
-            self.display_name = check.name
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
@@ -175,6 +168,7 @@ class AppCheckInstance:
     def is_enabled(self):
         if self._last_run_exception:
             if datetime.now() - self._last_run_exception > self.RUN_EXCEPTION_RETRY_TIMEOUT:
+                logging.debug("Re-enable check %s for pid %d", self.name, self.pid)
                 self._last_run_exception = None
                 return True
             else:
@@ -297,16 +291,17 @@ class Application:
             command = json.loads(command_s)
             processes = command["body"]
             for p in processes:
+                pid = int(p["pid"])
                 try:
-                    check_instance = self.known_instances[p["pid"]]
+                    check_instance = self.known_instances[pid]
                 except KeyError:
                     check_conf = self.config.checks[p["check"]]
                     try:
                         check_instance = AppCheckInstance(check_conf, p)
                     except AppCheckException as ex:
-                        # TODO: log error
+                        logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
                         continue
-                    self.known_instances[p["pid"]] = check_instance
+                    self.known_instances[pid] = check_instance
                 metrics = []
                 service_checks = []
                 if check_instance.is_enabled():
@@ -316,8 +311,8 @@ class Application:
                         logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 else:
                     logging.debug("Check %s is disabled", check_instance.name)
-                response_body.append({ "pid": int(check_instance.pid),
-                                        "display_name": check_instance.display_name,
+                response_body.append({ "pid": pid,
+                                        "display_name": check_instance.name,
                                                  "metrics": metrics,
                                    "service_checks": service_checks})
             response = {
