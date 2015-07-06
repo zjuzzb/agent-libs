@@ -48,8 +48,7 @@ target_link_libraries(test
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a
-	dl)
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
 
 add_executable(resources/forking_main_thread_exit
 	resources/forking_main_thread_exit.c)

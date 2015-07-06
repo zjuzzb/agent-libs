@@ -43,7 +43,6 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/lib/libssh.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a
-	dl
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
 
