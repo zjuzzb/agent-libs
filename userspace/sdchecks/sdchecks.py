@@ -264,7 +264,7 @@ class PosixQueue:
         return message
 
     def __del__(self):
-        if hasattr(self, "queue"):
+        if hasattr(self, "queue") and self.queue:
             self.close()
 
 class Application:
