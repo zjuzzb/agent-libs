@@ -1459,6 +1459,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_INFO, "Found check %s for process %d", check.name().c_str(), tinfo->m_pid);
 					app_checks_processes.emplace_back(check.name(), tinfo);
+					break;
 				}
 			}
 		}
