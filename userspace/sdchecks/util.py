@@ -16,7 +16,6 @@ import uuid
 # 3p
 import simplejson as json
 import yaml  # noqa, let's guess, probably imported somewhere
-from tornado import ioloop
 try:
     from yaml import CLoader as yLoader
     from yaml import CDumper as yDumper
@@ -47,11 +46,6 @@ def plural(count):
     if count == 1:
         return ""
     return "s"
-
-
-def get_tornado_ioloop():
-        return ioloop.IOLoop.current()
-
 
 def get_uuid():
     # Generate a unique name that will stay constant between
@@ -84,7 +78,7 @@ def get_os():
 def headers(agentConfig):
     # Build the request headers
     return {
-        'User-Agent': 'Datadog Agent/%s' % agentConfig['version'],
+        'User-Agent': 'Sysdig Agent/%s' % agentConfig['version'],
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'text/html, */*',
     }

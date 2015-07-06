@@ -527,7 +527,7 @@ app_checks:
     pattern:
       port: 5672
     conf:
-      rabbitmq_api_url: "http://localhost:{port.high}/api/"
+      rabbitmq_api_url: "http://localhost:15672/api/"
       rabbitmq_user: guest
       rabbitmq_pass: guest
   - name: mcache
@@ -548,3 +548,17 @@ app_checks:
       comm: lighttpd
     conf:
       lighttpd_status_url: "http://localhost:{port}/server-status?auto"
+  - name: haproxy
+    pattern:
+      comm: haproxy
+      port: 1936
+    conf:
+      username: stats
+      password: stats
+      url: http://localhost:1936/
+  - name: elastic
+    display_name: elasticsearch
+    pattern:
+      port: 9200
+    conf:
+      url: http://localhost:9200

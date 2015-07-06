@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # std
 import os.path
 import traceback
@@ -9,6 +10,10 @@ import resource
 import ctypes
 import logging
 from datetime import datetime, timedelta
+
+# Fix issues with requests library used by some plugins
+import encodings.idna
+import encodings.latin_1
 
 # project
 from checks import AgentCheck
@@ -40,11 +45,25 @@ def setns(fd):
 class YamlConfig:
     def __init__(self):
         with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
-            self._default_root = yaml.load(default_file.read())
+            try:
+                self._default_root = yaml.load(default_file.read())
+            except Exception as ex:
+                self._default_root = {}
+                logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
         with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
-            self._root = yaml.load(custom_file.read())
-    def get_merged_sequence(self, key):
-        return self._default_root[key]
+            try:
+                self._root = yaml.load(custom_file.read())
+            except Exception as ex:
+                self._root = {}
+                logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
+
+    def get_merged_sequence(self, key, default=[]):
+        ret = default
+        if self._root.has_key(key):
+            ret += self._root[key]
+        if self._default_root.has_key(key):
+            ret += self._default_root[key]
+        return ret
 
     def get_single(self, key, default_value=None):
         if self._root.has_key(key):
@@ -111,7 +130,8 @@ class AppCheckInstance:
     MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
     TOKEN_PATTERN = re.compile("\{.+\}")
     AGENT_CONFIG = {
-        "is_developer_mode": False
+        "is_developer_mode": False,
+        "version": 1.0
     }
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
@@ -170,13 +190,14 @@ class AppCheckInstance:
         try:
             self.check_instance.check(self.instance_conf)
         except Exception as ex:
+            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
             saved_ex = ex
         if self.is_on_another_container:
             setns(self.MYNET)
             setns(self.MYMNT)
         if saved_ex:
             self._last_run_exception = datetime.now()
-            raise AppCheckException(saved_ex)
+            raise AppCheckException("%s, traceback: %s" % (repr(saved_ex), traceback_message))
         else:
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
 
@@ -249,6 +270,8 @@ class PosixQueue:
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     def __init__(self):
+        # Configure only format first because may happen that config file parsing fails and print some logs
+        logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s')
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
         logging.info("Check config: %s", repr(self.config.checks))
