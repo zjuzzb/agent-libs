@@ -371,7 +371,7 @@ class ESCheck(AgentCheck):
     def _process_metric(self, data, metric, xtype, path, xform=None,
                         tags=None, hostname=None):
         """data: dictionary containing all the stats
-        metric: datadog metric
+        metric: metric
         path: corresponding path in data, flattened, e.g. thread_pool.bulk.queue
         xfom: a lambda to apply to the numerical value
         """

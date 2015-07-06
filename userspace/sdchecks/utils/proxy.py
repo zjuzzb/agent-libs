@@ -26,7 +26,7 @@ def set_no_proxy_settings():
 def get_proxy(agentConfig):
     proxy_settings = {}
 
-    # First we read the proxy configuration from datadog.conf
+    # First we read the proxy configuration
     proxy_host = agentConfig.get('proxy_host')
     if proxy_host is not None:
         proxy_settings['host'] = proxy_host
@@ -42,7 +42,7 @@ def get_proxy(agentConfig):
             proxy_settings['host'], proxy_settings['port'])
         return proxy_settings
 
-    # If no proxy configuration was specified in datadog.conf
+    # If no proxy configuration was specified
     # We try to read it from the system settings
     try:
         proxy = getproxies().get('https')

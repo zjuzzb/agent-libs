@@ -22,7 +22,7 @@ def get_ntp_host(subpool=None):
         return user_ntp_settings['host']
 
     subpool = subpool or random.randint(0, 3)
-    return "{0}.datadog.pool.ntp.org".format(subpool)
+    return "{0}.pool.ntp.org".format(subpool)
 
 def get_ntp_port():
     return user_ntp_settings.get('port') or DEFAULT_PORT

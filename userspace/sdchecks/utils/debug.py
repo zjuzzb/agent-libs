@@ -4,7 +4,6 @@ import os
 from pprint import pprint
 import sys
 
-# datadog
 from config import get_checksd_path, get_confd_path
 from util import get_os
 

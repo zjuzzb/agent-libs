@@ -295,7 +295,6 @@ SELECT relname,
         if metrics is None:
             # Hack to make sure that if we have multiple instances that connect to
             # the same host, port, we don't collect metrics twice
-            # as it will result in https://github.com/DataDog/dd-agent/issues/1211
             sub_key = key[:2]
             if sub_key in self.db_instance_metrics:
                 self.instance_metrics[key] = None
@@ -323,7 +322,6 @@ SELECT relname,
         if metrics is None:
             # Hack to make sure that if we have multiple instances that connect to
             # the same host, port, we don't collect metrics twice
-            # as it will result in https://github.com/DataDog/dd-agent/issues/1211
             sub_key = key[:2]
             if sub_key in self.db_bgw_metrics:
                 self.bgw_metrics[key] = None
