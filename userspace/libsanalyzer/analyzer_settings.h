@@ -191,3 +191,4 @@ static const auto CONTAINERS_STATSD_METRIC_LIMIT = 100;
 
 static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
+static const auto ARG_SIZE_LIMIT = 100;

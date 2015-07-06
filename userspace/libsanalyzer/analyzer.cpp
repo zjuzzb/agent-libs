@@ -1247,7 +1247,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						if(*arg_it != "")
 						{
-							proc->mutable_details()->add_args(*arg_it);
+							if (arg_it->size() <= ARG_SIZE_LIMIT)
+							{
+								proc->mutable_details()->add_args(*arg_it);
+							}
+							else
+							{
+								auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+								proc->mutable_details()->add_args(arg_capped);
+							}
 						}
 					}
 
