@@ -330,6 +330,23 @@ void thread_analyzer_info::clear_role_flags()
 		AF_IS_UNIX_SERVER | AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
+void thread_analyzer_info::scan_listening_ports()
+{
+	m_listening_ports = make_unique<set<uint16_t>>();
+	auto fd_table = m_tinfo->get_fd_table();
+	for(const auto& fd : fd_table->m_table)
+	{
+		if(fd.second.m_type == SCAP_FD_IPV4_SERVSOCK)
+		{
+			m_listening_ports->insert(fd.second.m_sockinfo.m_ipv4serverinfo.m_port);
+		}
+		if(fd.second.m_type == SCAP_FD_IPV6_SERVSOCK)
+		{
+			m_listening_ports->insert(fd.second.m_sockinfo.m_ipv6serverinfo.m_port);
+		}
+	}
+}
+
 //
 // Emit all the transactions that are still inactive after timeout_ns nanoseconds
 //

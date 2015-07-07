@@ -153,23 +153,13 @@ public:
 		}
 	}
 
-	set<uint16_t> listening_ports()
+	inline set<uint16_t> listening_ports()
 	{
+		// Assume that this function is called when the process has already bound to
+		// all needed ports. Cache the result because fdtable may grow a lot for busy processes
 		if(!m_listening_ports)
 		{
-			m_listening_ports = make_unique<set<uint16_t>>();
-			auto fd_table = m_tinfo->get_fd_table();
-			for(const auto& fd : fd_table->m_table)
-			{
-				if(fd.second.m_type == SCAP_FD_IPV4_SERVSOCK)
-				{
-					m_listening_ports->insert(fd.second.m_sockinfo.m_ipv4serverinfo.m_port);
-				}
-				if(fd.second.m_type == SCAP_FD_IPV6_SERVSOCK)
-				{
-					m_listening_ports->insert(fd.second.m_sockinfo.m_ipv6serverinfo.m_port);
-				}
-			}
+			scan_listening_ports();
 		}
 		return *m_listening_ports;
 	}
@@ -208,6 +198,9 @@ public:
 	// new doesn't support it
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
+
+private:
+	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
 };
 
