@@ -307,13 +307,18 @@ class Application:
                 try:
                     check_instance = self.known_instances[pid]
                 except KeyError:
-                    check_conf = self.config.checks[p["check"]]
+                    try:
+                        check_conf = self.config.checks[p["check"]]
+                    except KeyError:
+                        logging.error("Cannot find check configuration for name: %s", p["check"])
+                        continue
                     try:
                         check_instance = AppCheckInstance(check_conf, p)
                     except AppCheckException as ex:
                         logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
                         continue
                     self.known_instances[pid] = check_instance
+                
                 metrics = []
                 service_checks = []
                 if check_instance.is_enabled():
