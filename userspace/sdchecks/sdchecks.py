@@ -74,7 +74,6 @@ class YamlConfig:
             return default_value
 
     def get_single(self, key, subkey, default_value=None):
-        # TODO: Check conf file errors
         if self._root.has_key(key) and self._root[key].has_key(subkey):
             return self._root[key][subkey]
         elif self._default_root.has_key(key) and self._default_root[key].has_key(subkey):

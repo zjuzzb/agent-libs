@@ -173,7 +173,7 @@ void subprocesses_logger::run()
 		g_log->information("subprocesses_logger: no log fds, closing");
 		return;
 	}
-	
+
 	while(!dragent_configuration::m_terminate)
 	{
 		m_last_loop_ns = sinsp_utils::get_current_time_ns();
