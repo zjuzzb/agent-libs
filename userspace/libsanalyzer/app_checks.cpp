@@ -113,10 +113,10 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto) const
 	{
 		m.to_protobuf(proto->add_metrics());
 	}
-	for(const auto& s : m_service_checks)
+	/*for(const auto& s : m_service_checks)
 	{
 		s.to_protobuf(proto->add_checks());
-	}
+	}*/
 }
 
 app_metric::app_metric(const Json::Value &obj):
