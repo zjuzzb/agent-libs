@@ -9,6 +9,8 @@ using namespace google::protobuf::io;
 #ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "metrics.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 #include "analyzer_thread.h"
 

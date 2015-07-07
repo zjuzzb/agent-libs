@@ -42,6 +42,7 @@ using namespace google::protobuf::io;
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
+#include "chisel.h"
 
 #define DUMP_TO_DISK
 
@@ -121,6 +122,10 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 
+	//
+	// Chisels init
+	//
+	add_chisel_dirs();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -209,6 +214,13 @@ sinsp_analyzer::~sinsp_analyzer()
 		fclose(m_protobuf_fp);
 	}
 
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		delete *it;
+	}
+	m_chisels.clear();
+
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -279,6 +291,11 @@ void sinsp_analyzer::on_capture_start()
 	ASSERT(m_sched_analyzer2 != NULL);
 	m_sched_analyzer2->on_capture_start();
 	m_parser->on_capture_start();
+
+	//
+	// Call the chisels on_capture_start callback
+	//
+	chisels_on_capture_start();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -286,6 +303,131 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	ASSERT(cb != NULL);
 	ASSERT(m_sample_callback == NULL);
 	m_sample_callback = cb;
+}
+
+void sinsp_analyzer::add_chisel_dirs()
+{
+	m_inspector->add_chisel_dir("/opt/draios/share/chisels", false);
+
+	//
+	// sysdig that comes with dragent is always installed in /usr
+	//
+	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR, false);
+
+	//
+	// Add the directories configured in the SYSDIG_CHISEL_DIR environment variable
+	//
+	char* s_user_cdirs = getenv("SYSDIG_CHISEL_DIR");
+
+	if(s_user_cdirs != NULL)
+	{
+		vector<string> user_cdirs = sinsp_split(s_user_cdirs, ';');
+
+		for(uint32_t j = 0; j < user_cdirs.size(); j++)
+		{
+			m_inspector->add_chisel_dir(user_cdirs[j], true);
+		}
+	}
+}
+
+void sinsp_analyzer::initialize_chisels()
+{
+	for(auto it = m_chisels.begin(); it != m_chisels.end();)
+	{
+		try
+		{
+			(*it)->on_init();
+			++it;
+		}
+		catch(sinsp_exception e)
+		{
+			g_logger.log("unable to start chisel " + (*it)->get_name() + ": " + e.what(),
+				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
+		}
+		catch(...)
+		{
+			g_logger.log("unable to start chisel " + (*it)->get_name() + ": unknown error",
+				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
+		}
+	}
+}
+
+void sinsp_analyzer::add_chisel(sinsp_chisel* ch)
+{
+	m_chisels.push_back(ch);
+	m_run_chisels = true;
+}
+
+void sinsp_analyzer::add_chisel(sinsp_chisel_details* cd)
+{
+	try
+	{
+		sinsp_chisel* ch = new sinsp_chisel(m_inspector, cd->m_name);
+		ch->set_args(cd->m_args);
+		add_chisel(ch);
+	}
+	catch(sinsp_exception e)
+	{
+		g_logger.log("unable to start chisel " + cd->m_name + ": " + e.what(),
+			sinsp_logger::SEV_WARNING);
+	}
+	catch(...)
+	{
+		g_logger.log("unable to start chisel " + cd->m_name + ": unknown error",
+			sinsp_logger::SEV_WARNING);
+	}
+}
+
+void sinsp_analyzer::chisels_on_capture_start()
+{
+	for(auto it = m_chisels.begin(); it != m_chisels.end();)
+	{
+		try
+		{
+			(*it)->on_capture_start();
+			++it;
+		}
+		catch(sinsp_exception e)
+		{
+			g_logger.log("unable to start chisel " + (*it)->get_name() + ": " + e.what(),
+				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
+		}
+		catch(...)
+		{
+			g_logger.log("unable to start chisel " + (*it)->get_name() + ": unknown error",
+				sinsp_logger::SEV_WARNING);
+
+			delete (*it);
+			m_chisels.erase(it);
+			}
+	}
+}
+
+void sinsp_analyzer::chisels_on_capture_end()
+{
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		(*it)->on_capture_end();
+	}
+}
+
+void sinsp_analyzer::chisels_do_timeout(sinsp_evt* ev)
+{
+	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
+	it != m_chisels.end(); ++it)
+	{
+		(*it)->do_timeout(ev);
+	}
 }
 
 sinsp_configuration* sinsp_analyzer::get_configuration()
@@ -717,16 +859,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
-	set<string> included_programs;
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
+#ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
 	unordered_map<int, app_check_data> app_metrics;
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
-#ifndef _WIN32
 	if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
 	{
 		pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
@@ -1082,40 +1223,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Keep:
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
-			int is_cs = (tinfo->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
-					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
-			bool include;
-
-			if(is_cs)
+			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample)
 			{
-				//
-				// If this is a client or a server, it didn't generate any activity in the sample,
-				// and another program with the same name has already been included, we can safely
-				// exclude it, since its presence would be completely redundant
-				//
-				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
-
-				if(include && (tot.m_count == 0 && procinfo->m_cpuload == 0))
-				{
-					if(included_programs.find(tinfo->m_exe) != included_programs.end())
-					{
-						include = false;
-					}
-				}
-			}
-			else
-			{
-				//
-				// If this NOT is a client or a server, skip it if it didn't generate any activity.
-				//
-				include = (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample);
-			}
-
-			if(include)
-			{
-				included_programs.insert(tinfo->m_exe);
-
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();
 				draiosproto::process* proc = prog->mutable_procinfo();
@@ -1142,7 +1252,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						if(*arg_it != "")
 						{
-							proc->mutable_details()->add_args(*arg_it);
+							if (arg_it->size() <= ARG_SIZE_LIMIT)
+							{
+								proc->mutable_details()->add_args(*arg_it);
+							}
+							else
+							{
+								auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+								proc->mutable_details()->add_args(arg_capped);
+							}
 						}
 					}
 
@@ -2442,8 +2560,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb(m_host_metrics.m_res_memory_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(m_host_metrics.m_swap_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
@@ -2471,12 +2589,26 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_top_files();
 
+			//
+			// Containers
+			//
 			emit_containers();
 
+			//
+			// Statsd metrics
+			//
+#ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
 				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), HOST_STATSD_METRIC_LIMIT);
 			}
+#endif
+
+			//
+			// Metrics coming from chisels
+			//
+			emit_chisel_metrics();
+
 			//
 			// Transactions
 			//
@@ -2819,6 +2951,20 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		{
 			return;
 		}
+
+		//
+		// if there are chisels to run, run them now, before going into the analyzer logic
+		//
+		if(m_run_chisels)
+		{
+			for(auto it = m_chisels.begin(); it != m_chisels.end(); ++it)
+			{
+				if((*it)->run(evt) == false)
+				{
+					continue;
+				}
+			}
+		}
 	}
 	else
 	{
@@ -2828,6 +2974,12 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			{
 				ts = m_next_flush_time_ns;
 				flush(evt, ts, true, flshflags);
+
+				if(m_run_chisels)
+				{
+					chisels_on_capture_end();
+				}
+
 				return;
 			}
 			else if(flshflags == DF_TIMEOUT)
@@ -3330,16 +3482,28 @@ void sinsp_analyzer::emit_containers()
 		}
 	};
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+	}
 	check_and_emit_containers();
 
-	partial_sort(containers_ids.begin(), std::min(containers_ids.begin()+CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	{
+		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+	}
 	check_and_emit_containers();
 
 	m_containers.clear();
@@ -3433,15 +3597,18 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
 		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 	}
+#ifndef _WIN32
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
 		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(), *statsd_limit);
 		*statsd_limit -= statsd_emitted;
 	}
+#endif
 }
 
 void sinsp_analyzer::get_statsd()
 {
+#ifndef _WIN32
 	if (m_statsite_proxy)
 	{
 		m_statsd_metrics = m_statsite_proxy->read_metrics();
@@ -3450,8 +3617,10 @@ void sinsp_analyzer::get_statsd()
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
 	}
+#endif
 }
 
+#ifndef _WIN32
 unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 					   unsigned limit)
 {
@@ -3472,6 +3641,37 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
 	}
 	return j;
+}
+#endif
+
+void sinsp_analyzer::emit_chisel_metrics()
+{
+	uint32_t j = 0;
+
+	m_chisel_metrics.clear();
+
+	for(const auto& chisel : m_chisels)
+	{
+		chisel->do_end_of_sample();
+	}
+
+	for(const auto& metric : m_chisel_metrics)
+	{
+		auto statsd_proto = m_metrics->mutable_protos()->mutable_statsd()->add_statsd_metrics();
+		metric.to_protobuf(statsd_proto);
+		++j;
+
+		if(j >= CHISEL_METRIC_LIMIT)
+		{
+			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
+			break;
+		}
+	}
+
+	if(j > 0)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d chisel metrics", j);
+	}
 }
 
 #define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
@@ -3732,9 +3932,11 @@ bool sinsp_analyzer::driver_stopped_dropping()
 	return m_driver_stopped_dropping;
 }
 
+#ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
+#endif // _WIN32
 
 #endif // HAS_ANALYZER

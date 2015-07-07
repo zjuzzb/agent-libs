@@ -22,6 +22,7 @@
 #define MAX_SAMPLE_STORE_SIZE 300
 
 static const int PIPE_BUFFER_SIZE = 1048576;
+#define SDJAGENT_JMX_TIMEOUT "2000"
 
 class aws_metadata
 {
@@ -245,8 +246,9 @@ public:
 		return m_errors;
 	}
 
-private:
 	YAML::Node m_root;
+
+private:
 	YAML::Node m_default_root;
 	vector<string> m_errors;
 };
@@ -329,6 +331,7 @@ public:
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
+	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()
 	{

@@ -47,6 +47,8 @@ public:
 #include "parser_mysql.h"
 #include "parser_postgres.h"
 #include "parser_mongodb.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 
 ///////////////////////////////////////////////////////////////////////////////

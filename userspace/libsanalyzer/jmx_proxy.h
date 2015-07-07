@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _WIN32
 #include "third-party/jsoncpp/json/json.h"
 #include <utility>
 #include "threadinfo.h"
@@ -107,3 +108,5 @@ private:
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
 };
+
+#endif // _WIN32

@@ -4,11 +4,16 @@
 
 #pragma once
 
-
 class statsite_proxy;
+namespace draiosproto
+{
+	class statsd_metric;
+};
+
 class statsd_metric
 {
 public:
+#ifndef _WIN32
 	class parse_exception: public sinsp_exception
 	{
 	public:
@@ -17,6 +22,7 @@ public:
 				sinsp_exception(forward<T>(args)...)
 		{}
 	};
+#endif
 	enum class type_t
 	{
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
@@ -92,6 +98,8 @@ private:
 	double m_median;
 	double m_percentile_95;
 	double m_percentile_99;
+
+	friend class lua_cbacks;
 };
 
 class statsite_proxy

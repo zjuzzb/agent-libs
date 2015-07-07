@@ -53,11 +53,6 @@ void sinsp_worker::init()
 
 	m_inspector->m_analyzer = m_analyzer;
 
-	//
-	// sysdig that comes with dragent is always installed in /usr
-	//
-	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR, false);
-
 	m_inspector->set_debug_mode(true);
 
 	//
@@ -152,6 +147,17 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	
+	//
+	// Load the chisels
+	//
+	for(auto chinfo : m_configuration->m_chisel_details)
+	{
+		g_log->information("Loading chisel " + chinfo.m_name);
+		m_analyzer->add_chisel(&chinfo);
+	}
+	
+	m_analyzer->initialize_chisels();
+
 	//
 	// Start the capture with sinsp
 	//

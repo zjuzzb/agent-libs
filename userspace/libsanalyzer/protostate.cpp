@@ -11,6 +11,8 @@
 #include "analyzer_int.h"
 #include "parser_http.h"
 #include "metrics.h"
+#undef min
+#undef max
 #include "draios.pb.h"
 #include "protostate.h"
 

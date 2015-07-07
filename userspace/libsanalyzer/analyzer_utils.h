@@ -135,11 +135,13 @@ inline string truncate_str(const string& s, unsigned int max_size = 256)
 	}
 }
 
+#ifndef _WIN32
 template<typename T, typename... Ts>
 unique_ptr<T> make_unique(Ts&&... params)
 {
 	return unique_ptr<T>(new T(forward<Ts>(params)...));
 }
+#endif // _WIN32
 
 // Use it as private superclass to make an object non copyable
 class noncopyable

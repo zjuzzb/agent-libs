@@ -191,6 +191,27 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 
+	for(auto ch : m_config->m_root["chisels"])
+	{
+		sinsp_chisel_details details;
+
+		try
+		{
+			details.m_name = ch["name"].as<string>();
+
+			for(auto arg : ch["args"])
+			{
+				details.m_args.push_back(pair<string, string>(arg.first.as<string>().c_str(), arg.second.as<string>().c_str()));
+			}
+
+			m_chisel_details.push_back(details);
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			throw sinsp_exception("config file error at key: chisels");
+		}
+	}
+
 	if(m_statsd_enabled)
 	{
 		write_statsite_configuration();

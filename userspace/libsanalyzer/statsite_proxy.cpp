@@ -19,6 +19,7 @@ string sinsp_join(It begin, It end, char delim)
 	return ss.str();
 }
 
+#ifndef _WIN32
 /*
  * Parse a line and fill data structures
  * return false if line does not belong to this object
@@ -211,6 +212,7 @@ bool statsd_metric::parse_line(const string& line)
 		throw parse_exception(ex.what());
 	}
 }
+#endif // _WIN32
 
 void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
@@ -249,6 +251,7 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 {
 }
 
+#ifndef _WIN32
 unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 {
 	unordered_map<string, vector<statsd_metric>> ret;
@@ -328,7 +331,7 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 
 	// Init metric data with initial container_prefix
 	auto metric_data = container_prefix;
-	metric_data.append(data, len);
+	metric_data.append(data, (size_t)len);
 
 	// Add container prefix to other metrics if they are present
 	auto endline_pos = metric_data.find('\n');
@@ -341,3 +344,4 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	// send_metric does not need final \0
 	send_metric(metric_data.data(), metric_data.size());
 }
+#endif // _WIN32

@@ -32,6 +32,8 @@ class sinsp_analyzer_fd_listener;
 class sinsp_configuration;
 class sinsp_counters;
 class sinsp_analyzer_parsers;
+class sinsp_chisel;
+class sinsp_chisel_details;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -151,6 +153,18 @@ public:
 	void set_configuration(const sinsp_configuration& configuration);
 
 	//
+	// Chisel helpers
+	//
+	void add_chisel_dirs();
+	void initialize_chisels();
+	void add_chisel(sinsp_chisel* ch);
+	void add_chisel(sinsp_chisel_details* cd);
+	inline void add_chisel_metric(statsd_metric* metric)
+	{
+		m_chisel_metrics.push_back(*metric);
+	}
+
+	//
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt, flush_flags flshflags);
@@ -234,7 +248,7 @@ public:
 
 	void set_sampling_ratio(uint64_t value)
 	{
-		m_sampling_ratio = value;
+		m_sampling_ratio = (uint32_t)value;
 		auto newsl = ((uint64_t) ONE_SECOND_IN_NS) / m_sampling_ratio;
 		if(newsl != m_configuration->get_analyzer_sample_len_ns())
 		{
@@ -244,7 +258,9 @@ public:
 
 	void set_statsd_capture_localhost(bool value)
 	{
+#ifndef _WIN32
 		m_statsd_capture_localhost.store(value, memory_order_relaxed);
+#endif
 	}
 
 	void set_app_checks(const vector<app_check>& checks)
@@ -257,7 +273,9 @@ public:
 	}
 
 VISIBILITY_PRIVATE
-	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
+	void chisels_on_capture_start();
+	void chisels_on_capture_end();
+	void chisels_do_timeout(sinsp_evt* ev);	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
 	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	void filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
@@ -275,8 +293,11 @@ VISIBILITY_PRIVATE
 	void emit_executed_commands();
 	void get_statsd();
 	
+#ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 						   unsigned limit);
+#endif
+	void emit_chisel_metrics();
 
 	static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
@@ -416,6 +437,13 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+
+	//
+	// Chisel-generated metrics infrastructure
+	//
+	vector<sinsp_chisel*> m_chisels;
+	vector<statsd_metric> m_chisel_metrics;
+	bool m_run_chisels;
 
 #ifndef _WIN32
 	unique_ptr<jmx_proxy> m_jmx_proxy;

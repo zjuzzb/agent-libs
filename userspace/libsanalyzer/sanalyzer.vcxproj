@@ -61,6 +61,7 @@
     <ClCompile Include="sched_analyzer.cpp" />
     <ClCompile Include="scores.cpp" />
     <ClCompile Include="sqlparser.cpp" />
+    <ClCompile Include="statsite_proxy.cpp" />
     <ClCompile Include="transactinfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -109,6 +110,7 @@
     <ClInclude Include="protostate.h" />
     <ClInclude Include="sched_analyzer.h" />
     <ClInclude Include="scores.h" />
+    <ClInclude Include="statsite_proxy.h" />
     <ClInclude Include="transactinfo.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

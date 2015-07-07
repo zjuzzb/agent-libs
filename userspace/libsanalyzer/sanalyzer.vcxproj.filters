@@ -138,6 +138,9 @@
     <ClCompile Include="..\..\..\sysdig\userspace\libsinsp\viewinfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="statsite_proxy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\dumper.h">
@@ -276,6 +279,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\sysdig\userspace\libsinsp\viewinfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="statsite_proxy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
