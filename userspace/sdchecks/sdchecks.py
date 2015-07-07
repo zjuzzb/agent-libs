@@ -215,6 +215,12 @@ class Config:
     def __init__(self):
         self._yaml_config = YamlConfig()
         check_confs = self._yaml_config.get_merged_sequence("app_checks")
+
+        # reverse the list because we are mapping them by name and we want that
+        # dragent.yaml checks override dragent.default.yaml ones
+        # the get_merged_sequence() instead puts them in the opposite order
+        check_confs.reverse()
+        
         self.checks = {c.name: c for c in map(lambda c: AppCheck(c), check_confs)}
     
     def log_level(self):
