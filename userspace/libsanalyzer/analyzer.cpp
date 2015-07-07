@@ -1562,20 +1562,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
 		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java" &&
-			tinfo->m_vpid > 0 && (m_next_flush_time_ns - tinfo->m_clone_ts) > 10*ONE_SECOND_IN_NS)
+			tinfo->m_vpid > 0 && (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
 		{
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
-			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
+							tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
 			java_process_requests.emplace_back(tinfo);
 		}
-		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->m_vpid > 0
-		   && (m_next_flush_time_ns - tinfo->m_clone_ts) > 10*ONE_SECOND_IN_NS)
+		if(m_app_proxy && tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->m_vpid > 0
+		   && (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
 		{
 			for(const auto& check : m_app_checks)
 			{
 				if(check.match(tinfo))
 				{
-					g_logger.format(sinsp_logger::SEV_INFO, "Found check %s for process %d", check.name().c_str(), tinfo->m_pid);
+					g_logger.format(sinsp_logger::SEV_INFO, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
 					app_checks_processes.emplace_back(check.name(), tinfo);
 					break;
 				}
@@ -1590,13 +1590,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 	
 #ifndef _WIN32
-	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
+	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 	{
 		m_jmx_metrics.clear();
 		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
 	}
 	if(m_app_proxy && !app_checks_processes.empty())
+	{
 		m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
+	}
 #endif
 }
 

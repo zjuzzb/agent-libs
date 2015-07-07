@@ -331,12 +331,21 @@ public:
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
+	string m_python_binary;
+	bool m_app_checks_enabled;
+
 	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()
 	{
 		return !m_java_binary.empty();
 	}
+
+	bool python_present()
+	{
+		return !m_python_binary.empty();
+	}
+
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 

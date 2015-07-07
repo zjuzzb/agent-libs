@@ -168,6 +168,12 @@ void subprocesses_logger::run()
 	m_pthread_id = pthread_self();
 	g_log->information("subprocesses_logger: Starting");
 
+	if(m_error_fds.empty())
+	{
+		g_log->information("subprocesses_logger: no log fds, closing");
+		return;
+	}
+	
 	while(!dragent_configuration::m_terminate)
 	{
 		m_last_loop_ns = sinsp_utils::get_current_time_ns();

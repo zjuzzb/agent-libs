@@ -95,6 +95,11 @@ public:
 		}
 	}
 
+	void set_app_checks_enabled(bool value)
+	{
+		m_app_checks_enabled = value;
+	}
+
 private:
 	class dump_job_state
 	{
@@ -197,6 +202,7 @@ private:
 	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
+	bool m_app_checks_enabled;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
