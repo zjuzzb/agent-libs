@@ -82,6 +82,9 @@ class YamlConfig:
         else:
             return default_value
 
+class AppCheckException(Exception):
+    pass
+
 class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
@@ -95,8 +98,8 @@ class AppCheck:
         try:
             check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, check_module_name + ".py"))
         except Exception:
-            traceback_message = traceback.format_exc()
-            raise Exception('Unable to import check module %s.py from checks.d: %s' % (check_module_name, traceback_message))
+            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
+            raise AppCheckException('Unable to import check module %s.py from checks.d: %s' % (check_module_name, traceback_message))
 
         # We make sure that there is an AgentCheck class defined
         check_class = None
@@ -111,15 +114,12 @@ class AppCheck:
                 else:
                     break
         if check_class is None:
-            raise Exception('Unable to find AgentCheck class for %s' % check_module_name)
+            raise AppCheckException('Unable to find AgentCheck class for %s' % check_module_name)
         else:
             self.check_class = check_class
 
     def __repr__(self):
         return "AppCheck(name=%s, conf=%s, check_class=%s" % (self.name, repr(self.conf), repr(self.check_class))
-
-class AppCheckException(Exception):
-    pass
 
 class AppCheckInstance:
     MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
@@ -220,8 +220,14 @@ class Config:
         # dragent.yaml checks override dragent.default.yaml ones
         # the get_merged_sequence() instead puts them in the opposite order
         check_confs.reverse()
-        
-        self.checks = {c.name: c for c in map(lambda c: AppCheck(c), check_confs)}
+
+        self.checks = {}
+        for c in check_confs:
+            try:
+                app_check = AppCheck(c)
+                self.checks[app_check.name] = app_check
+            except (Exception, IOError) as ex:
+                logging.error("Configuration error for check %s: %s", repr(c), ex.message)
     
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
