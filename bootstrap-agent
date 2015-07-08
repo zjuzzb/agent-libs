@@ -171,6 +171,19 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	python $SCONS_DIR/script/scons
 fi
 
+PYTHON_DIR=$DEPENDENCIES/Python-2.7.10
+if [ ! -d "${PYTHON_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/Python-2.7.10.tgz
+	tar xfz Python-2.7.10.tgz
+	cd $PYTHON_DIR
+	sed -i -e "s,^#SSL=.*,SSL=${OPENSSL_DIR}/target," -e 's/^#\(.*ssl.*\)/\1/' Modules/Setup.dist
+	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+	./configure --prefix=$PYTHON_DIR/target --with-ensurepip=install
+	make
+	make install
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1-dev"
 fi
