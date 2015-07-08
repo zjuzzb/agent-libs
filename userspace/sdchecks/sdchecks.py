@@ -35,11 +35,10 @@ _LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 __NR_setns = 308
 
 def setns(fd):
-    # TODO: test if it works on Centos64
-    # TODO: raise an exception if setns fails?
     if hasattr(_LIBC, "setns"):
         return _LIBC.setns(fd, 0)
     else:
+        # Call syscall directly if glib does not have setns (eg. CentOS)
         return _LIBC.syscall(__NR_setns, fd, 0)
 
 class YamlConfig:
@@ -177,8 +176,12 @@ class AppCheckInstance:
 
     def run(self):
         if self.is_on_another_container:
-            setns(self.netns)
-            setns(self.mntns)
+            ret = setns(self.netns)
+            if ret != 0:
+                logging.warning("Cannot setns net to pid: %d", self.pid)
+            ret = setns(self.mntns)
+            if ret != 0:
+                logging.warning("Cannot setns mnt to pid: %d", self.pid)
         saved_ex = None
         try:
             self.check_instance.check(self.instance_conf)
@@ -276,7 +279,6 @@ class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     def __init__(self):
         # Configure only format first because may happen that config file parsing fails and print some logs
-        logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s')
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
         logging.info("Check config: %s", repr(self.config.checks))
