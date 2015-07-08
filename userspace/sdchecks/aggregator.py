@@ -355,7 +355,7 @@ class Rate(Metric):
     def _rate(self, sample1, sample2):
         interval = sample2[0] - sample1[0]
         if interval == 0:
-            log.warn('Metric %s has an interval of 0. Not flushing.' % self.name)
+            log.debug('Metric %s has an interval of 0. Not flushing.' % self.name)
             raise Infinity()
 
         delta = sample2[1] - sample1[1]
