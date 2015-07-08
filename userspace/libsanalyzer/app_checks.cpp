@@ -113,7 +113,9 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto) const
 	{
 		m.to_protobuf(proto->add_metrics());
 	}
-	/*for(const auto& s : m_service_checks)
+	/*
+	 * Right now service checks are not supported by the backend
+	for(const auto& s : m_service_checks)
 	{
 		s.to_protobuf(proto->add_checks());
 	}*/
