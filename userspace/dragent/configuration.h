@@ -350,6 +350,7 @@ public:
 	void refresh_machine_id();
 
 private:
+	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
 	friend class aws_metadata_refresher;
 };

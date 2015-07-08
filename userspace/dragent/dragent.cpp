@@ -343,7 +343,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			this->m_sdchecks_pipes->attach_child();
 			const char* env[] = {
-					"PYTHONPATH=/opt/draios/lib/python:/opt/draios/lib/python/site-packages",
+					"PYTHONPATH=/opt/draios/lib/python:/opt/draios/lib/python-deps",
 					NULL
 			};
 			execle(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL, env);
