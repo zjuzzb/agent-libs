@@ -23,8 +23,8 @@ function build_components {
 			rm -rf agent/build || true
 			agent/bootstrap-agent
 			
-			make -C agent/build/debug package VERBOSE=1
-			make -C agent/build/release package VERBOSE=1
+			make -j2 -C agent/build/debug package VERBOSE=1
+			make -j2 -C agent/build/release package VERBOSE=1
 
 			cp agent/build/debug/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			cp agent/build/debug/*tests*tar.gz $BINARIES_DIR/debug
