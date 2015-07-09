@@ -120,9 +120,13 @@ class AppCheck:
         return "AppCheck(name=%s, conf=%s, check_class=%s" % (self.name, repr(self.conf), repr(self.check_class))
 
 class AppCheckInstance:
-    MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
-    MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
-    MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+    try:
+        MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+        MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
+        MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+        CONTAINER_SUPPORT = True
+    except OSError:
+        CONTAINER_SUPPORT = False
     TOKEN_PATTERN = re.compile("\{.+\}")
     AGENT_CONFIG = {
         "is_developer_mode": False,
@@ -140,13 +144,16 @@ class AppCheckInstance:
         self.vpid = proc_data["vpid"]
         self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG, None)
         
-        mntnspath = "%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid)
-        mntns_inode = os.stat(mntnspath).st_ino
-        self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
+        if self.CONTAINER_SUPPORT:
+            mntnspath = "%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid)
+            mntns_inode = os.stat(mntnspath).st_ino
+            self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
 
-        if self.is_on_another_container:
-            self.netns = os.open("%s/proc/%d/ns/net" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
-            self.mntns = os.open(mntnspath, os.O_RDONLY)
+            if self.is_on_another_container:
+                self.netns = os.open("%s/proc/%d/ns/net" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
+                self.mntns = os.open(mntnspath, os.O_RDONLY)
+        else:
+            self.is_on_another_container = False
 
         self.instance_conf = {}
         for key, value in check.conf.items():
@@ -175,7 +182,7 @@ class AppCheckInstance:
             return True
 
     def run(self):
-        if self.is_on_another_container:
+        if self.CONTAINER_SUPPORT and self.is_on_another_container:
             ret = setns(self.netns)
             if ret != 0:
                 logging.warning("Cannot setns net to pid: %d", self.pid)
@@ -188,7 +195,7 @@ class AppCheckInstance:
         except Exception as ex:
             traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
             saved_ex = ex
-        if self.is_on_another_container:
+        if self.CONTAINER_SUPPORT and self.is_on_another_container:
             setns(self.MYNET)
             setns(self.MYMNT)
         if saved_ex:
@@ -297,6 +304,8 @@ class Application:
                 del self.known_instances[key]
 
     def main(self):
+        logging.info("Starting")
+        logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
         while True:
             command_s = self.inqueue.receive(None)
             response_body = []
