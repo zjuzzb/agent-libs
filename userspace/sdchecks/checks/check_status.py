@@ -23,7 +23,6 @@ from util import plural
 from utils.ntp import get_ntp_args
 from utils.pidfile import PidFile
 from utils.platform import Platform
-from utils.profile import pretty_statistics
 
 
 STATUS_OK = 'OK'
