@@ -288,7 +288,7 @@ class Application:
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
-        logging.info("Check config: %s", repr(self.config.checks))
+        logging.debug("Check config: %s", repr(self.config.checks))
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
         self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
