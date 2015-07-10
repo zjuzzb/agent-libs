@@ -59,7 +59,7 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d/init.d
 	/opt)
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-
+set(CPACK_RPM_SPEC_MORE_DEFINE "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')")
 set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")
 
 include(CPack)
