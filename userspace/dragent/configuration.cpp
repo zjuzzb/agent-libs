@@ -210,7 +210,7 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
+	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", false);
 
 	for(auto ch : m_config->m_root["chisels"])
 	{
