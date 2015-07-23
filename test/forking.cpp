@@ -539,6 +539,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
+printf("1>>\n");
 		}
 		else if(e->get_type() == PPME_SYSCALL_CLOSE_E)
 		{
@@ -551,6 +552,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 				if(clfd == prfd)
 				{
 					callnum++;
+printf("2>>\n");
 				}
 			}
 		}
@@ -575,6 +577,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 			}
 
 			callnum++;
+printf("3>>\n");
 		}
 	};
 
