@@ -34,6 +34,10 @@ public class Config {
 
         yamlConfig = new YamlConfig(conf_file, defaults_file);
         defaultBeanQueries = yamlConfig.getMergedSequence("jmx.default_beans", BeanQuery.class);
+        if (defaultBeanQueries.isEmpty())
+        {
+            LOGGER.warning("jmx.default_beans is empty, probably a configuration error");
+        }
         processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
     }
 
