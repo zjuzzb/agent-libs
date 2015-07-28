@@ -62,11 +62,11 @@ final public class CLibrary {
         if (libraryLoaded) {
             initialNamespace = open_fd(String.format("%s/proc/self/ns/net", hostRoot));
             if(initialNamespace < 0) {
-                LOGGER.severe("Error on opening self net namespace");
+                LOGGER.warning("Error on opening self net namespace");
             }
             mntNamespaceInode = getInodeOfFile(String.format("%s/proc/self/ns/mnt", hostRoot));
             if (mntNamespaceInode == 0) {
-                LOGGER.severe("Error on getting inode of self container");
+                LOGGER.warning("Error on getting inode of self container");
             }
         } else {
             initialNamespace = 0;

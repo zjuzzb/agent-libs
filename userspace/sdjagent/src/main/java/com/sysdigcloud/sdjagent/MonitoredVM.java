@@ -13,7 +13,6 @@ import sun.jvmstat.monitor.MonitorException;
 
 import javax.management.*;
 import java.io.*;
-import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -23,10 +22,10 @@ import java.util.logging.Logger;
  */
 public class MonitoredVM {
     private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
-    private static final long beanRefreshInterval = 10 * 60 * 1000; // 10 minutes in ms
+    private static final long BEAN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in ms
     private static final long RECONNECTION_TIMEOUT_MS = 1 * 60 * 1000; // 1 minute
-    private static final int beansLimit = 100;
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final int BEANS_LIMIT = 100;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private String address;
     private Connection connection;
@@ -93,7 +92,7 @@ public class MonitoredVM {
         if (data != null && !data.isEmpty())
         {
             try {
-                Map<String, Object> vmInfo = mapper.readValue(data, Map.class);
+                Map<String, Object> vmInfo = MAPPER.readValue(data, Map.class);
                 if (vmInfo.containsKey("available")) {
                     this.available = (Boolean)vmInfo.get("available");
                     if (vmInfo.containsKey("name")) {
@@ -216,7 +215,7 @@ public class MonitoredVM {
                     break;
                 }
             }
-            if (matchingBeans.size() >= beansLimit) {
+            if (matchingBeans.size() >= BEANS_LIMIT) {
                 break;
             }
         }
@@ -226,7 +225,7 @@ public class MonitoredVM {
         final List<BeanData> metrics = new LinkedList<BeanData>();
         if (agentActive) {
             try {
-                if(System.currentTimeMillis() - lastBeanRefresh > beanRefreshInterval ) {
+                if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
                     refreshMatchingBeans();
                     lastBeanRefresh = System.currentTimeMillis();
                 }
@@ -242,7 +241,10 @@ public class MonitoredVM {
                         LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
                         lastBeanRefresh = 0;
                     } catch (ReflectionException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getName().getCanonicalName(), pid));
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
+                        lastBeanRefresh = 0;
+                    } catch (SecurityException e) {
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
                         lastBeanRefresh = 0;
                     }
                 }

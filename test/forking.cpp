@@ -580,7 +580,10 @@ TEST_F(sys_call_test, forking_clone_fs)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
-	EXPECT_EQ(6, callnum);
+	if(callnum != 6 && callnum != 7)
+	{
+		FAIL();
+	}
 }
 
 TEST_F(sys_call_test, forking_clone_nofs)
@@ -725,7 +728,10 @@ TEST_F(sys_call_test, forking_clone_nofs)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
-	EXPECT_EQ(6, callnum);
+	if(callnum != 6 && callnum != 7)
+	{
+		FAIL();
+	}
 }
 
 static int clone_callback_2(void *arg)

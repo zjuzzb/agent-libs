@@ -22,15 +22,15 @@ import java.util.logging.*;
  */
 public class Application {
     private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private static final long vmsCleanupInterval = 10 * 60 * 1000;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final long VMS_CLEANUP_INTERVAL = 10 * 60 * 1000;
 
     static {
-        mapper.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
-        mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+        MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
+        MAPPER.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
         FilterProvider filters = new SimpleFilterProvider().addFilter("BeanAttributeDataFilter", new BeanData
                 .BeanAttributeDataFilter());
-        mapper.setFilters(filters);
+        MAPPER.setFilters(filters);
     }
 
     /**
@@ -85,12 +85,12 @@ public class Application {
                     vmInfo.put("address", vm.getAddress());
                 }
             }
-            mapper.writeValue(System.out, vmInfo);
+            MAPPER.writeValue(System.out, vmInfo);
         } else if (args[0].equals("getMetrics") && args.length > 2) {
             VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
             MonitoredVM vm = new MonitoredVM(request);
             vm.addQueries(config.getDefaultBeanQueries());
-            mapper.writeValue(System.out, vm.getMetrics());
+            MAPPER.writeValue(System.out, vm.getMetrics());
         }
         System.out.println();
         System.out.flush();
@@ -102,26 +102,26 @@ public class Application {
         {
             String cmd_data = reader.readLine();
             LOGGER.fine(String.format("Received command: %s", cmd_data));
-            Map<String, Object> cmd_obj = mapper.readValue(cmd_data, Map.class);
+            Map<String, Object> cmd_obj = MAPPER.readValue(cmd_data, Map.class);
             List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
             if (cmd_obj.get("command").equals("getMetrics"))
             {
                 List<Object> body = (List<Object>) cmd_obj.get("body");
                 for(Object item : body) {
-                    requestedVMs.add(mapper.convertValue(item, VMRequest.class));
+                    requestedVMs.add(MAPPER.convertValue(item, VMRequest.class));
                 }
                 List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);
                 Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
                 response_obj.put("id", cmd_obj.get("id"));
                 response_obj.put("body", vmList);
-                mapper.writeValue(System.out, response_obj);
+                MAPPER.writeValue(System.out, response_obj);
                 System.out.println();
                 System.out.flush();
                 LOGGER.fine("End getMetrics command");
             }
 
             // Cleanup
-            if(System.currentTimeMillis() - lastVmsCleanup > vmsCleanupInterval) {
+            if(System.currentTimeMillis() - lastVmsCleanup > VMS_CLEANUP_INTERVAL) {
                 cleanup(requestedVMs);
                 lastVmsCleanup = System.currentTimeMillis();
             }

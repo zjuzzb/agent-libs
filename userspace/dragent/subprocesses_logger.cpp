@@ -148,7 +148,7 @@ void sdjagent_parser::operator()(const string& data)
 	}
 	else
 	{
-		g_log->error("Cannot parse Log from sdjagent: " + data);
+		g_log->error("sdjagent, " + data);
 	}
 }
 
