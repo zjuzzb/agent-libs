@@ -2,7 +2,6 @@ package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.scanner.ScannerException;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -17,8 +16,8 @@ import java.util.logging.Logger;
  */
 public class YamlConfig {
     private static final Logger LOGGER = Logger.getLogger(YamlConfig.class.getName());
-    private static final Yaml yaml = new Yaml();
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Yaml YAML = new Yaml();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private Map<String, Object> conf;
     private Map<String, Object> defaults_conf;
 
@@ -26,7 +25,7 @@ public class YamlConfig {
         if (conf_file != null) {
             FileInputStream conf_file_stream = new FileInputStream(conf_file);
             try {
-                conf = (Map<String, Object>) yaml.load(conf_file_stream);
+                conf = (Map<String, Object>) YAML.load(conf_file_stream);
             } catch (Exception ex) {
                 LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", conf_file));
             }
@@ -37,7 +36,7 @@ public class YamlConfig {
         if (defaults_file != null) {
             FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
             try {
-                defaults_conf = (Map<String, Object>) yaml.load(defaults_file_stream);
+                defaults_conf = (Map<String, Object>) YAML.load(defaults_file_stream);
             } catch (Exception ex) {
                 LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", defaults_file));
             }
@@ -51,14 +50,14 @@ public class YamlConfig {
         T value = null;
 
         try {
-            value = (T) mapper.convertValue(getNodeValue(conf, key), default_value.getClass());
+            value = (T) MAPPER.convertValue(getNodeValue(conf, key), default_value.getClass());
         } catch (IllegalArgumentException ex) {
             LOGGER.severe(String.format("Config file error at %s", key));
         }
 
         if (value == null ) {
             try {
-                value = (T) mapper.convertValue(getNodeValue(defaults_conf, key), default_value.getClass());
+                value = (T) MAPPER.convertValue(getNodeValue(defaults_conf, key), default_value.getClass());
             } catch (IllegalArgumentException ex) {
                 LOGGER.severe(String.format("Config file error at %s", key));
             }
@@ -78,7 +77,7 @@ public class YamlConfig {
             List<Object> values = (List<Object>) value;
             for (Object subvalue : values) {
                 try {
-                    ret.add(mapper.convertValue(subvalue, classType));
+                    ret.add(MAPPER.convertValue(subvalue, classType));
                 } catch (Exception ex) {
                     LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
                 }
@@ -89,7 +88,7 @@ public class YamlConfig {
             List<Object> values = (List<Object>) value;
             for (Object subvalue : values) {
                 try {
-                    ret.add(mapper.convertValue(subvalue, classType));
+                    ret.add(MAPPER.convertValue(subvalue, classType));
                 } catch (Exception ex) {
                     LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
                 }
@@ -105,7 +104,7 @@ public class YamlConfig {
             Map<String, Object> values = (Map<String, Object>) value;
             for (Map.Entry<String, Object> subvalue : values.entrySet()) {
                 try {
-                    ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                    ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
                 } catch (Exception ex) {
                     LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
                 }
@@ -116,7 +115,7 @@ public class YamlConfig {
             Map<String, Object> values = (Map<String, Object>) value;
             for (Map.Entry<String, Object> subvalue : values.entrySet()) {
                 try {
-                    ret.put(subvalue.getKey(), mapper.convertValue(subvalue.getValue(), classType));
+                    ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
                 } catch (Exception ex) {
                     LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
                 }

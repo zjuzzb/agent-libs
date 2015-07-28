@@ -22,15 +22,15 @@ import java.util.logging.Logger;
 public class Config {
     private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
-    private static final String[] configFiles = {"dragent.yaml", "/opt/draios/etc/dragent.yaml" };
-    private static final String[] defaultConfigFiles = {"dragent.default.yaml", "/opt/draios/etc/dragent.default.yaml" };
+    private static final String[] CONFIG_FILES = {"dragent.yaml", "/opt/draios/etc/dragent.yaml" };
+    private static final String[] DEFAULT_CONFIG_FILES = {"dragent.default.yaml", "/opt/draios/etc/dragent.default.yaml" };
 
     private List<BeanQuery> defaultBeanQueries;
     private Map<String, Process> processes;
 
     public Config() throws FileNotFoundException {
-        String conf_file = getFirstAvailableFile(configFiles);
-        String defaults_file = getFirstAvailableFile(defaultConfigFiles);
+        String conf_file = getFirstAvailableFile(CONFIG_FILES);
+        String defaults_file = getFirstAvailableFile(DEFAULT_CONFIG_FILES);
 
         yamlConfig = new YamlConfig(conf_file, defaults_file);
         defaultBeanQueries = yamlConfig.getMergedSequence("jmx.default_beans", BeanQuery.class);

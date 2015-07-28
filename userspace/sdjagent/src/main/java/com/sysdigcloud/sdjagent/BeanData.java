@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class BeanData {
     private final ObjectName name;
     private final List<BeanAttributeData> attributes;
-    static private final Pattern tokenPattern = Pattern.compile("\\{.+\\}");
+    static private final Pattern TOKEN_PATTERN = Pattern.compile("\\{.+\\}");
 
     @SuppressWarnings("unused")
     public String getName() {
@@ -44,7 +44,7 @@ public class BeanData {
     private String expandAlias(String alias)
     {
         StringBuilder ret = new StringBuilder(alias.length());
-        Matcher m = tokenPattern.matcher(alias);
+        Matcher m = TOKEN_PATTERN.matcher(alias);
         int lastpos = 0;
         while(m.find())
         {

@@ -22,7 +22,7 @@ public class Connection {
     private static final long CONNECTION_TIMEOUT = 10000;
     private static final long JMX_TIMEOUT = 20;
     private final static Logger LOGGER = Logger.getLogger(Connection.class.getName());
-    private static final ThreadFactory daemonThreadFactory = new DaemonThreadFactory();
+    private static final ThreadFactory DAEMON_THREAD_FACTORY = new DaemonThreadFactory();
     private JMXConnector connector;
     private MBeanServerConnection mbs;
     private HashMap<String, Object> env;
@@ -62,7 +62,7 @@ public class Connection {
 
         final BlockingQueue<Object> mailbox = new ArrayBlockingQueue<Object>(1);
 
-        ExecutorService executor = Executors.newSingleThreadExecutor(daemonThreadFactory);
+        ExecutorService executor = Executors.newSingleThreadExecutor(DAEMON_THREAD_FACTORY);
         executor.submit(new Runnable() {
             public void run() {
                 try {
