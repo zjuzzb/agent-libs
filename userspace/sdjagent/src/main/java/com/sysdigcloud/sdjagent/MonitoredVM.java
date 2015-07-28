@@ -243,13 +243,13 @@ public class MonitoredVM {
                     } catch (ReflectionException e) {
                         LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
                         lastBeanRefresh = 0;
-                    } catch (SecurityException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
-                        lastBeanRefresh = 0;
                     }
                 }
             } catch (IOException ex) {
                 LOGGER.warning(String.format("Process %d agent is not responding, declaring it down", pid));
+                disconnect();
+            } catch (SecurityException e) {
+                LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
                 disconnect();
             }
         }
@@ -270,6 +270,7 @@ public class MonitoredVM {
                 connection = new Connection(address);
                 agentActive = true;
                 lastDisconnectionTimestamp = 0;
+                lastBeanRefresh = 0;
             } catch (IOException e) {
                 LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
