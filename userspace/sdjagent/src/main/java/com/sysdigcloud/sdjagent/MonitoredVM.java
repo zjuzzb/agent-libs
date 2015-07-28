@@ -241,7 +241,10 @@ public class MonitoredVM {
                         LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
                         lastBeanRefresh = 0;
                     } catch (ReflectionException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d", bean.getName().getCanonicalName(), pid));
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
+                        lastBeanRefresh = 0;
+                    } catch (SecurityException e) {
+                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
                         lastBeanRefresh = 0;
                     }
                 }
