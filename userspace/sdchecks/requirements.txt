@@ -1,4 +1,4 @@
-ntplib==0.3.2
+ntplib==0.3.3
 # the libyaml bindings are optional
 pyyaml==3.11
 # note: requests is also used in many checks
