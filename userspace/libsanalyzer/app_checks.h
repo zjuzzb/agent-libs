@@ -1,0 +1,133 @@
+//
+// Created by Luca Marturana on 23/06/15.
+//
+#pragma once
+
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "analyzer_int.h"
+#include "third-party/jsoncpp/json/json.h"
+#include "analyzer_thread.h"
+#include "posix_queue.h"
+
+namespace YAML
+{
+template<typename T>
+struct convert;
+}
+
+class app_check
+{
+public:
+	app_check():
+		m_port_pattern(0)
+	{}
+
+	bool match(sinsp_threadinfo* tinfo) const;
+
+	const string& name() const
+	{
+		return m_name;
+	}
+
+private:
+	friend class YAML::convert<app_check>;
+
+	string m_comm_pattern;
+	string m_exe_pattern;
+	uint16_t m_port_pattern;
+	string m_name;
+};
+
+class app_process
+{
+public:
+	app_process(string check_name, sinsp_threadinfo* tinfo):
+			m_pid(tinfo->m_pid),
+			m_vpid(tinfo->m_vpid),
+			m_check_name(move(check_name)),
+			m_ports(tinfo->m_ainfo->listening_ports())
+	{
+
+	}
+
+	Json::Value to_json() const;
+
+private:
+	int m_pid;
+	int m_vpid;
+	string m_check_name;
+	set<uint16_t> m_ports;
+};
+
+
+class app_metric
+{
+public:
+	enum class type_t
+	{
+		GAUGE = 1,
+		RATE
+	};
+	app_metric(const Json::Value& obj);
+	void to_protobuf(draiosproto::app_metric* proto) const;
+private:
+	string m_name;
+	double m_value;
+	type_t m_type;
+	map<string, string> m_tags;
+};
+
+class app_service_check
+{
+public:
+	enum status_t
+	{
+		OK = 0,
+		WARNING = 1,
+		CRITICAL = 2,
+		UNKNOWN = 3,
+	};
+	app_service_check(const Json::Value& obj);
+	void to_protobuf(draiosproto::app_check* proto) const;
+
+private:
+	status_t m_status;
+	map<string, string> m_tags;
+	string m_name;
+	string m_message;
+};
+
+class app_check_data
+{
+public:
+	app_check_data(const Json::Value& obj);
+
+	int pid() const
+	{
+		return m_pid;
+	}
+
+	void to_protobuf(draiosproto::app_info* proto) const;
+private:
+	int m_pid;
+	string m_process_name;
+	vector<app_metric> m_metrics;
+	vector<app_service_check> m_service_checks;
+};
+
+class app_checks_proxy
+{
+public:
+	app_checks_proxy();
+
+	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
+
+	unordered_map<int, app_check_data> read_metrics(uint64_t id);
+
+private:
+	posix_queue m_outqueue;
+	posix_queue m_inqueue;
+	Json::Reader m_json_reader;
+	Json::FastWriter m_json_writer;
+};

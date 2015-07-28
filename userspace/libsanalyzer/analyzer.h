@@ -8,6 +8,7 @@
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
+#include "app_checks.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -262,6 +263,15 @@ public:
 #endif
 	}
 
+	void set_app_checks(const vector<app_check>& checks)
+	{
+		m_app_checks = checks;
+		if(!m_app_checks.empty())
+		{
+			m_app_proxy = make_unique<app_checks_proxy>();
+		}
+	}
+
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -443,6 +453,9 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
+
+	vector<app_check> m_app_checks;
+	unique_ptr<app_checks_proxy> m_app_proxy;
 #endif
 
 	//

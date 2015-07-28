@@ -53,6 +53,7 @@ dragent_configuration::dragent_configuration()
 	m_ssh_enabled = true;
 	m_statsd_enabled = true;
 	m_sdjagent_enabled = true;
+	m_app_checks_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -189,6 +190,27 @@ void dragent_configuration::init(Application* app)
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
+	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
+										"/usr/bin/python2.6", "/usr/bin/python26"};
+	auto python_binary_path = m_config->get_scalar<string>("python_binary", "");
+	if(!python_binary_path.empty() && is_executable(python_binary_path))
+	{
+		m_python_binary = python_binary_path;
+	}
+	else
+	{
+		for(const auto& python : default_pythons)
+		{
+			if (is_executable(python))
+			{
+				m_python_binary = python;
+				break;
+			}
+		}
+	}
+
+	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
 
 	for(auto ch : m_config->m_root["chisels"])
 	{
@@ -267,6 +289,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
+	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
+	g_log->information("python binary: " + m_python_binary);
 
 	if(m_aws_metadata.m_valid)
 	{
@@ -426,3 +450,41 @@ void dragent_configuration::refresh_machine_id()
 	m_machine_id = Environment::nodeId();
 }
 
+bool dragent_configuration::is_executable(const string &path)
+{
+	File file(path);
+	return file.exists() && file.canExecute();
+}
+
+bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
+{
+	/*
+	 * Example:
+	 * name: redisdb
+	 *	pattern:
+	 *	  comm: redis-server
+	 *	conf:
+	 *	  host: 127.0.0.1
+	 *	  port: {port}
+	 *
+	 *	The conf part is not used by dragent
+	 */
+	rhs.m_name = node["name"].as<string>();
+	auto pattern_node = node["pattern"];
+	auto comm_node = pattern_node["comm"];
+	if(comm_node.IsScalar())
+	{
+		rhs.m_comm_pattern = comm_node.as<string>();
+	}
+	auto exe_node = pattern_node["exe"];
+	if(exe_node.IsScalar())
+	{
+		rhs.m_exe_pattern = exe_node.as<string>();
+	}
+	auto port_node = pattern_node["port"];
+	if(port_node.IsScalar())
+	{
+		rhs.m_port_pattern = port_node.as<uint16_t>();
+	}
+	return true;
+}

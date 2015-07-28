@@ -863,7 +863,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
-
+	vector<app_process> app_checks_processes;
+	unordered_map<int, app_check_data> app_metrics;
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
@@ -876,6 +877,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
 		m_jmx_metrics = jmx_metrics.second;
+	}
+	if(m_app_proxy)
+	{
+		app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
 	}
 #endif
 
@@ -1309,6 +1314,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
 					java_process_data.to_protobuf(java_proto);
 				}
+				if(m_app_proxy && app_metrics.find(tinfo->m_pid) != app_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+					const auto& app_data = app_metrics.at(tinfo->m_pid);
+					app_data.to_protobuf(proc->mutable_protos()->mutable_app());
+				}
 #endif
 
 				//
@@ -1551,11 +1562,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
 		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java" &&
-			tinfo->m_vpid > 0)
+			(m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
 		{
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Adding to jmx process %d:%d, comm: %s, exe:%s",
-			//				tinfo->m_pid, tinfo->m_vpid, tinfo->get_comm().c_str(), tinfo->get_exe().c_str());
 			java_process_requests.emplace_back(tinfo);
+		}
+		if(m_app_proxy && tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED)
+		   && (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
+		{
+			for(const auto& check : m_app_checks)
+			{
+				if(check.match(tinfo))
+				{
+					g_logger.format(sinsp_logger::SEV_INFO, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+					app_checks_processes.emplace_back(check.name(), tinfo);
+					break;
+				}
+			}
 		}
 #endif
 	}
@@ -1566,10 +1588,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 	
 #ifndef _WIN32
-	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
+	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 	{
 		m_jmx_metrics.clear();
 		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
+	}
+	if(m_app_proxy && !app_checks_processes.empty())
+	{
+		m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
 	}
 #endif
 }

@@ -17,6 +17,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
+	m_app_checks_enabled(false),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {
@@ -187,6 +188,10 @@ void sinsp_worker::init()
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
+	if(m_app_checks_enabled)
+	{
+		m_analyzer->set_app_checks(m_configuration->m_app_checks);
+	}
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 }
 

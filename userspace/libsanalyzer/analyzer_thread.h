@@ -153,6 +153,17 @@ public:
 		}
 	}
 
+	inline set<uint16_t> listening_ports()
+	{
+		// Assume that this function is called when the process has already bound to
+		// all needed ports. Cache the result because fdtable may grow a lot for busy processes
+		if(!m_listening_ports)
+		{
+			scan_listening_ports();
+		}
+		return *m_listening_ports;
+	}
+
 	// Global state
 	sinsp *m_inspector;
 	sinsp_analyzer* m_analyzer;
@@ -187,6 +198,10 @@ public:
 	// new doesn't support it
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
+
+private:
+	void scan_listening_ports();
+	unique_ptr<set<uint16_t>> m_listening_ports;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

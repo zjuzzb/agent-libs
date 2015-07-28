@@ -23,6 +23,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BIN
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(userspace/sdjagent)
+add_subdirectory(userspace/sdchecks)
 add_subdirectory(scripts)
 add_subdirectory(test)
 
@@ -45,11 +46,11 @@ set(CPACK_DEB_COMPONENT_INSTALL "ON")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Sysdig <support@sysdig.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.sysdig.com")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "sysdig (${SYSDIG_VERSION_EXPRESSION})")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "sysdig (${SYSDIG_VERSION_EXPRESSION}), python")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/scripts/debian/postinst;${PROJECT_SOURCE_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
-set(CPACK_RPM_PACKAGE_REQUIRES "sysdig ${SYSDIG_VERSION_EXPRESSION}, gcc, make, kernel-devel, perl")
+set(CPACK_RPM_PACKAGE_REQUIRES "sysdig ${SYSDIG_VERSION_EXPRESSION}, gcc, make, kernel-devel, perl, python")
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
@@ -58,7 +59,7 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d/init.d
 	/opt)
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-
+set(CPACK_RPM_SPEC_MORE_DEFINE "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')")
 set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")
 
 include(CPack)

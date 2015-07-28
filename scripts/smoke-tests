@@ -33,7 +33,8 @@ function smoke_tests {
 	# The agent should correctly detect Java
 	cat /opt/draios/logs/* | grep "java detected: true"
 	cat /opt/draios/logs/* | grep "HeapMemoryUsage"
-
+	cat /opt/draios/logs/* | grep "memcache.fill_percent"
+	
 	# The agent should restart if it dies unexpectedly
 	kill -SIGKILL $AGENT_PID
 	sleep 2
@@ -139,6 +140,20 @@ function uninstall {
 	rm -rf ./opt || true
 	rm -rf /opt/draios || true
 }
+
+function install_memcached {
+	# Used as monitored app to check if app_checks are working
+	if [ -f /etc/debian_version ]; then
+		apt-get -y install memcached
+	elif [ -f /etc/system-release-cpe ]; then
+		yum -y install memcached
+	else
+	    echo "Unable to detect operating system."
+	    exit 1
+	fi
+}
+
+install_memcached
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY

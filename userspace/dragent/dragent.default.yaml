@@ -508,3 +508,57 @@ jmx:
               alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
+
+app_checks:
+  - name: redis
+    check_module: redisdb
+    pattern: 
+      comm: redis-server
+    conf:
+      host: 127.0.0.1
+      port: "{port}"
+  - name: mongodb
+    check_module: mongo
+    pattern: 
+      comm: mongod
+    conf:
+      server: "mongodb://localhost:{port}/admin"
+  - name: rabbitmq
+    pattern:
+      port: 5672
+    conf:
+      rabbitmq_api_url: "http://localhost:15672/api/"
+      rabbitmq_user: guest
+      rabbitmq_pass: guest
+  - name: memcached
+    check_module: mcache
+    pattern:
+      comm: memcached
+    conf:
+      url: localhost
+      port: "{port}"
+  - name: gearmand
+    pattern:
+      comm: gearmand
+    conf:
+      server: localhost
+      port: "{port}"
+  - name: lighttpd
+    pattern:
+      comm: lighttpd
+    conf:
+      lighttpd_status_url: "http://localhost:{port}/server-status?auto"
+  - name: haproxy
+    pattern:
+      comm: haproxy
+      port: 1936
+    conf:
+      username: stats
+      password: stats
+      url: http://localhost:1936/
+  - name: elasticsearch
+    check_module: elastic
+    pattern:
+      port: 9200
+    conf:
+      url: http://localhost:9200

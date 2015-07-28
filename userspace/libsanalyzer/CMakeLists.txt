@@ -51,13 +51,15 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
-  statsite_proxy.cpp)
+	statsite_proxy.cpp
+	app_checks.cpp posix_queue.h posix_queue.cpp)
 
 target_link_libraries(sanalyzer
 	scap 
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a
+	rt
 	dl)
 
 add_subdirectory(tests/01-open)

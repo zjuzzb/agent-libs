@@ -48,6 +48,7 @@ private:
 	protocol_queue m_queue;
 	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
+	unique_ptr<errpipe_manager> m_sdchecks_pipes;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;

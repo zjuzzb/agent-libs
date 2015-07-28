@@ -29,7 +29,7 @@ add_executable(dragent
 	update_worker.cpp
 	subprocesses_logger.cpp)
 
-add_dependencies(dragent sdjagent sdjagentjni)
+add_dependencies(dragent sdjagent sdjagentjni sdchecks)
 
 target_link_libraries(dragent
 	pthread

@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
+#include <app_checks.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -20,6 +21,7 @@
 //
 #define MAX_SAMPLE_STORE_SIZE 300
 
+static const int PIPE_BUFFER_SIZE = 1048576;
 #define SDJAGENT_JMX_TIMEOUT "2000"
 
 class aws_metadata
@@ -170,7 +172,7 @@ public:
 	const vector<T> get_merged_sequence(const string& key)
 	{
 		vector<T> ret;
-		for(auto item : m_default_root[key])
+		for(auto item : m_root[key])
 		{
 			try
 			{
@@ -181,7 +183,7 @@ public:
 				m_errors.emplace_back(string("Config file error at key ") + key);
 			}
 		}
-		for(auto item : m_root[key])
+		for(auto item : m_default_root[key])
 		{
 			try
 			{
@@ -214,7 +216,7 @@ public:
 	const unordered_map<string, T> get_merged_map(const string& key)
 	{
 		unordered_map<string, T> ret;
-		for(auto item : m_default_root[key])
+		for(auto item : m_root[key])
 		{
 			try
 			{
@@ -225,7 +227,7 @@ public:
 				m_errors.emplace_back(string("Config file error at key ") + key);
 			}
 		}
-		for(auto item : m_root[key])
+		for(auto item : m_default_root[key])
 		{
 			try
 			{
@@ -250,6 +252,15 @@ private:
 	YAML::Node m_default_root;
 	vector<string> m_errors;
 };
+
+namespace YAML {
+	template<>
+	struct convert<app_check> {
+		static Node encode(const app_check& rhs);
+
+		static bool decode(const Node& node, app_check& rhs);
+	};
+}
 
 class dragent_configuration
 {
@@ -319,16 +330,27 @@ public:
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;
 	bool m_sdjagent_enabled;
+	vector<app_check> m_app_checks;
+	string m_python_binary;
+	bool m_app_checks_enabled;
+
 	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()
 	{
 		return !m_java_binary.empty();
 	}
+
+	bool python_present()
+	{
+		return !m_python_binary.empty();
+	}
+
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 
 private:
+	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
 	friend class aws_metadata_refresher;
 };

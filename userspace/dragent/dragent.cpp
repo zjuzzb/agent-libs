@@ -305,6 +305,52 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
+	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
+	{
+		m_sdchecks_pipes = make_unique<errpipe_manager>();
+		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
+		{
+			auto parsed_log = sinsp_split(line, ':');
+			if(parsed_log.size() >= 3 && isdigit(parsed_log.at(0).at(0)))
+			{
+				auto level = parsed_log.at(1);
+				auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
+				for(auto it = parsed_log.begin()+3; it < parsed_log.end(); ++it)
+				{
+					message += ":" + *it;
+				}
+				if(level == "DEBUG")
+				{
+					g_log->debug(message);
+				}
+				else if(level == "INFO")
+				{
+					g_log->information(message);
+				}
+				else if(level == "WARNING")
+				{
+					g_log->warning(message);
+				}
+				else
+				{
+					g_log->error(message);
+				}
+			} else {
+				g_log->error("Cannot parse sdchecks log:" + line);
+			}
+		});
+		monitor_process.emplace_process("sdchecks", [this](void)
+		{
+			this->m_sdchecks_pipes->attach_child();
+			const char* env[] = {
+					"PYTHONPATH=/opt/draios/lib/python:/opt/draios/lib/python-deps",
+					NULL
+			};
+			execle(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL, env);
+			return (EXIT_FAILURE);
+		});
+		m_sinsp_worker.set_app_checks_enabled(true);
+	}
 	return monitor_process.run();
 #else
 	return sdagent_main();
