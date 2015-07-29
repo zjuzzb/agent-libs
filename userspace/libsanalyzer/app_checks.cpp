@@ -55,7 +55,7 @@ void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_proces
 		command["body"].append(p.to_json());
 	}
 	string data = m_json_writer.write(command);
-	g_logger.format(sinsp_logger::SEV_INFO, "Send to sdchecks: %s", data.c_str());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);
 }
 
