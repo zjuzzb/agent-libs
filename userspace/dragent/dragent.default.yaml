@@ -564,6 +564,7 @@ app_checks:
       url: http://localhost:9200
   - name: jenkins
     pattern:
+      comm: java
       port: 50000
     conf:
       name: default
