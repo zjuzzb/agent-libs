@@ -41,6 +41,9 @@ def setns(fd):
         # Call syscall directly if glib does not have setns (eg. CentOS)
         return _LIBC.syscall(__NR_setns, fd, 0)
 
+def build_ns_path(pid, ns):
+    return "%s/proc/%d/ns/%s" % (SYSDIG_HOST_ROOT, pid, ns)
+
 class YamlConfig:
     def __init__(self):
         with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
@@ -64,15 +67,8 @@ class YamlConfig:
             ret += self._default_root[key]
         return ret
 
-    def get_single(self, key, default_value=None):
-        if self._root.has_key(key):
-            return self._root[key]
-        elif self._default_root.has_key(key):
-            return self._default_root[key]
-        else:
-            return default_value
-
     def get_single(self, key, subkey, default_value=None):
+        # TODO: now works only for key.subkey, more general implementation may be needed
         if self._root.has_key(key) and self._root[key].has_key(subkey):
             return self._root[key][subkey]
         elif self._default_root.has_key(key) and self._default_root[key].has_key(subkey):
@@ -145,13 +141,8 @@ class AppCheckInstance:
         self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG, None)
         
         if self.CONTAINER_SUPPORT:
-            mntnspath = "%s/proc/%d/ns/mnt" % (SYSDIG_HOST_ROOT, self.pid)
-            mntns_inode = os.stat(mntnspath).st_ino
+            mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
             self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
-
-            if self.is_on_another_container:
-                self.netns = os.open("%s/proc/%d/ns/net" % (SYSDIG_HOST_ROOT, self.pid), os.O_RDONLY)
-                self.mntns = os.open(mntnspath, os.O_RDONLY)
         else:
             self.is_on_another_container = False
 
@@ -163,12 +154,6 @@ class AppCheckInstance:
                 self.instance_conf[key] = value
         self._last_run_exception = None
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
-
-    def __del__(self):
-        if hasattr(self, "netns") and self.netns > 0:
-            os.close(self.netns)
-        if hasattr(self, "mntns") and self.mntns > 0:
-            os.close(self.mntns)
 
     def is_enabled(self):
         if self._last_run_exception:
@@ -183,10 +168,16 @@ class AppCheckInstance:
 
     def run(self):
         if self.CONTAINER_SUPPORT and self.is_on_another_container:
-            ret = setns(self.netns)
+            # We need to open and close ns on every iteration
+            # because otherwise we lock container deletion
+            netns = os.open(build_ns_path(self.pid, "net"), os.O_RDONLY)
+            ret = setns(netns)
+            os.close(netns)
             if ret != 0:
                 logging.warning("Cannot setns net to pid: %d", self.pid)
-            ret = setns(self.mntns)
+            mntns = os.open(build_ns_path(self.pid, "mnt"), os.O_RDONLY)
+            ret = setns(mntns)
+            os.close(mntns)
             if ret != 0:
                 logging.warning("Cannot setns mnt to pid: %d", self.pid)
         saved_ex = None
