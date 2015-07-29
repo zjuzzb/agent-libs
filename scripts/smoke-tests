@@ -8,7 +8,7 @@ CONFIG_FILE=/opt/draios/etc/dragent.yaml
 function smoke_tests {
 	killall -9 test || true
 
-	cat $CONFIG_FILE | grep "access_key"
+	cat $CONFIG_FILE | grep "342b8432-12ee-4b75-915f-df5422e40de9"
 
 	echo "watchdog_enabled: false" >> $CONFIG_FILE
 	echo "protobuf_print: true" >> $CONFIG_FILE
@@ -153,17 +153,27 @@ function install_memcached {
 	fi
 }
 
+function run_java_test_app {
+	# Assume java already installed
+	if [ -f "TestJMX.jar" ]; then
+		wget https://s3.amazonaws.com/download.draios.com/TestJMX.jar
+	fi
+	sudo java -jar TestJMX.jar &
+	pgrep java
+}
+
+run_java_test_app
 install_memcached
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY
-curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s access_key
+curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
 install_tests
 smoke_tests
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY-debug
-curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s access_key
+curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
 install_tests
 smoke_tests
 
