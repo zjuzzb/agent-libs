@@ -58,10 +58,10 @@ public class Application {
 
     private Application() throws FileNotFoundException {
         LogManager.getLogManager().reset();
-        Logger globalLogger = Logger.getLogger("");
+        Logger appLogger = Logger.getLogger(Application.class.getPackage().getName());
         ConsoleHandler console = new ConsoleHandler();
         console.setFormatter(new LogJsonFormatter());
-        globalLogger.addHandler(console);
+        appLogger.addHandler(console);
 
         vms = new HashMap<Integer, MonitoredVM>();
         lastVmsCleanup = 0;
@@ -69,7 +69,7 @@ public class Application {
 
         Level level = config.getLogLevel();
         console.setLevel(level);
-        globalLogger.setLevel(level);
+        appLogger.setLevel(level);
     }
 
     private void runWithArgs(String[] args) throws IOException {
