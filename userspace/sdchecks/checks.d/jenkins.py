@@ -21,6 +21,7 @@ class Skip(Exception):
 
 
 class Jenkins(AgentCheck):
+    NEEDED_NS = ("mnt", )
     datetime_format = '%Y-%m-%d_%H-%M-%S'
 
     def __init__(self, name, init_config, agentConfig):

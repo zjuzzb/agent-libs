@@ -11,10 +11,6 @@ import ctypes
 import logging
 from datetime import datetime, timedelta
 
-# Fix issues with requests library used by some plugins
-import encodings.idna
-import encodings.latin_1
-
 # project
 from checks import AgentCheck
 
@@ -138,7 +134,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG, None)
+        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
             mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
@@ -170,16 +166,12 @@ class AppCheckInstance:
         if self.CONTAINER_SUPPORT and self.is_on_another_container:
             # We need to open and close ns on every iteration
             # because otherwise we lock container deletion
-            netns = os.open(build_ns_path(self.pid, "net"), os.O_RDONLY)
-            ret = setns(netns)
-            os.close(netns)
-            if ret != 0:
-                logging.warning("Cannot setns net to pid: %d", self.pid)
-            mntns = os.open(build_ns_path(self.pid, "mnt"), os.O_RDONLY)
-            ret = setns(mntns)
-            os.close(mntns)
-            if ret != 0:
-                logging.warning("Cannot setns mnt to pid: %d", self.pid)
+            for ns in self.check_instance.NEEDED_NS:
+                nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                ret = setns(nsfd)
+                os.close(nsfd)
+                if ret != 0:
+                    logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
         saved_ex = None
         try:
             self.check_instance.check(self.instance_conf)

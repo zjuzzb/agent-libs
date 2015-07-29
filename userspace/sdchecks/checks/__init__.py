@@ -295,6 +295,8 @@ class AgentCheck(object):
 
     DEFAULT_MIN_COLLECTION_INTERVAL = 0
 
+    NEEDED_NS = ( "net", )
+
     def __init__(self, name, init_config, agentConfig, instances=None):
         """
         Initialize a new check.

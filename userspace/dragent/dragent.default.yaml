@@ -562,3 +562,9 @@ app_checks:
       port: 9200
     conf:
       url: http://localhost:9200
+  - name: jenkins
+    pattern:
+      port: 50000
+    conf:
+      name: default
+      jenkins_home: /var/lib/jenkins
