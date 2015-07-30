@@ -151,6 +151,7 @@ function install_memcached {
 	    echo "Unable to detect operating system."
 	    exit 1
 	fi
+	service memcached start || true
 	pgrep memcached
 }
 
@@ -159,7 +160,7 @@ function run_java_test_app {
 	if [ -f "TestJMX.jar" ]; then
 		wget https://s3.amazonaws.com/download.draios.com/TestJMX.jar
 	fi
-	sudo java -jar TestJMX.jar &
+	java -jar TestJMX.jar &
 	pgrep java
 }
 
