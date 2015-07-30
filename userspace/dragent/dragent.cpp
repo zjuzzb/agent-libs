@@ -336,7 +336,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 					g_log->error(message);
 				}
 			} else {
-				g_log->error("Cannot parse sdchecks log:" + line);
+				g_log->error("sdchecks, " + line);
 			}
 		});
 		monitor_process.emplace_process("sdchecks", [this](void)
