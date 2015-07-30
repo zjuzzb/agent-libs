@@ -151,6 +151,7 @@ function install_memcached {
 	    echo "Unable to detect operating system."
 	    exit 1
 	fi
+	pgrep memcached
 }
 
 function run_java_test_app {
