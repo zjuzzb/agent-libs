@@ -488,3 +488,25 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	}
 	return true;
 }
+
+bool YAML::convert<container_matcher>::decode(const YAML::Node &node, container_matcher &rhs)
+{
+	if(node.IsScalar())
+	{
+		rhs.m_name_pattern = node.as<string>();
+	}
+	else
+	{
+		auto name_node = node["name"];
+		if(name_node.IsScalar())
+		{
+			rhs.m_name_pattern = name_node.as<string>();
+		}
+		auto image_node = node["image"];
+		if(image_node.IsScalar())
+		{
+			rhs.m_image_pattern = image_node.as<string>();
+		}
+	}
+	return true;
+}

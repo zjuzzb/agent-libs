@@ -121,6 +121,21 @@ public:
 // The main analyzer class
 //
 
+class container_matcher
+{
+public:
+	container_matcher() = default;
+	container_matcher(string name, string pattern=""):
+		m_name_pattern(move(name)),
+		m_image_pattern(move(pattern))
+	{}
+	bool match(const sinsp_container_info& container_info) const;
+private:
+	friend class YAML::convert<container_matcher>;
+	string m_name_pattern;
+	string m_image_pattern;
+};
+
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -458,6 +473,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<app_checks_proxy> m_app_proxy;
 #endif
 
+	vector<container_matcher> m_container_matchers;
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

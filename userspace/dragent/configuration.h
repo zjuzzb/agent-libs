@@ -5,6 +5,7 @@
 #include <yaml-cpp/yaml.h>
 #include <atomic>
 #include <app_checks.h>
+#include <analyzer.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -259,6 +260,15 @@ namespace YAML {
 		static Node encode(const app_check& rhs);
 
 		static bool decode(const Node& node, app_check& rhs);
+	};
+}
+
+namespace YAML {
+	template<>
+	struct convert<container_matcher> {
+		static Node encode(const container_matcher& rhs);
+
+		static bool decode(const Node& node, container_matcher& rhs);
 	};
 }
 
