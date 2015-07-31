@@ -137,8 +137,11 @@ class AppCheckInstance:
         self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
-            mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
-            self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
+            try:
+                mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
+                self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
+            except OSError as ex:
+                raise AppCheckException(ex.message)
         else:
             self.is_on_another_container = False
 
