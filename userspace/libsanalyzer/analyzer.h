@@ -121,21 +121,6 @@ public:
 // The main analyzer class
 //
 
-class container_matcher
-{
-public:
-	container_matcher() = default;
-	container_matcher(string name, string pattern=""):
-		m_name_pattern(move(name)),
-		m_image_pattern(move(pattern))
-	{}
-	bool match(const sinsp_container_info& container_info) const;
-private:
-	friend class YAML::convert<container_matcher>;
-	string m_name_pattern;
-	string m_image_pattern;
-};
-
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -290,6 +275,11 @@ public:
 	void set_containers_limit(const uint32_t value)
 	{
 		m_containers_limit = std::min(value, CONTAINERS_HARD_LIMIT);
+	}
+
+	void set_container_patterns(const vector<string>& patterns)
+	{
+		m_container_patterns = patterns;
 	}
 
 VISIBILITY_PRIVATE
@@ -478,7 +468,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<app_checks_proxy> m_app_proxy;
 #endif
 
-	vector<container_matcher> m_container_matchers;
+	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 
 	//

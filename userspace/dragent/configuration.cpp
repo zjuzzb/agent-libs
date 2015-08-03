@@ -212,6 +212,7 @@ void dragent_configuration::init(Application* app)
 
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
+	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 
 	for(auto ch : m_config->m_root["chisels"])
 	{
@@ -486,28 +487,6 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	if(port_node.IsScalar())
 	{
 		rhs.m_port_pattern = port_node.as<uint16_t>();
-	}
-	return true;
-}
-
-bool YAML::convert<container_matcher>::decode(const YAML::Node &node, container_matcher &rhs)
-{
-	if(node.IsScalar())
-	{
-		rhs.m_name_pattern = node.as<string>();
-	}
-	else
-	{
-		auto name_node = node["name"];
-		if(name_node.IsScalar())
-		{
-			rhs.m_name_pattern = name_node.as<string>();
-		}
-		auto image_node = node["image"];
-		if(image_node.IsScalar())
-		{
-			rhs.m_image_pattern = image_node.as<string>();
-		}
 	}
 	return true;
 }

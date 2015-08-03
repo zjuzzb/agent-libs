@@ -126,8 +126,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	// Chisels init
 	//
 	add_chisel_dirs();
-
-	m_container_matchers = { { "redis" }, { "memcache" }};
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -3463,14 +3461,16 @@ void sinsp_analyzer::emit_containers()
 	for(const auto& container_id_and_info : *m_inspector->m_container_manager.get_containers())
 	{
 		const auto& id = container_id_and_info.first;
+		const auto& container_info = container_id_and_info.second;
 		auto analyzer_it = m_containers.find(id);
 		if(analyzer_it != m_containers.end() &&
-		   (m_container_matchers.empty() ||
-			std::find_if(m_container_matchers.begin(), m_container_matchers.end(),
-						 [&container_id_and_info](const container_matcher& matcher)
+		   (m_container_patterns.empty() ||
+			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
+						 [&container_info](const string& pattern)
 						 {
-							 return matcher.match(container_id_and_info.second);
-						 }) != m_container_matchers.end())
+							 return container_info.m_name.find(pattern) != string::npos ||
+									container_info.m_image.find(pattern) != string::npos;
+						 }) != m_container_patterns.end())
 				)
 		{
 			containers_ids.push_back(id);
@@ -3953,13 +3953,5 @@ void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 }
 #endif // _WIN32
-
-bool container_matcher::match(const sinsp_container_info& container_info) const
-{
-	bool ret = !m_name_pattern.empty() || !m_image_pattern.empty();
-	ret &= container_info.m_name.find(m_name_pattern) != string::npos;
-	ret &= container_info.m_image.find(m_image_pattern) != string::npos;
-	return ret;
-}
 
 #endif // HAS_ANALYZER
