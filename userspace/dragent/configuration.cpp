@@ -211,6 +211,7 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
+	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 
 	for(auto ch : m_config->m_root["chisels"])
 	{

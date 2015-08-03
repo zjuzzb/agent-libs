@@ -287,6 +287,11 @@ public:
 		}
 	}
 
+	void set_containers_limit(const uint32_t value)
+	{
+		m_containers_limit = std::min(value, CONTAINERS_HARD_LIMIT);
+	}
+
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -474,6 +479,8 @@ VISIBILITY_PRIVATE
 #endif
 
 	vector<container_matcher> m_container_matchers;
+	uint32_t m_containers_limit;
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

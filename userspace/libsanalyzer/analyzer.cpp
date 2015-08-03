@@ -3480,40 +3480,41 @@ void sinsp_analyzer::emit_containers()
 	// Pick top N from top_by_file_io which are not already taken by top_cpu and top_mem
 	// Etc ...
 
-	static const auto CONTAINERS_LIMIT_BY_TYPE = CONTAINERS_LIMIT/4;
+	const auto containers_limit_by_type = m_containers_limit/4;
+	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
-	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit]()
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit](const uint32_t containers_limit)
 	{
-		for(auto j = 0; j < CONTAINERS_LIMIT_BY_TYPE && !containers_ids.empty(); ++j)
+		for(auto j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
 			this->emit_container(containers_ids.front(), &statsd_limit);
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
 
-	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	if(containers_ids.size() > containers_limit_by_type + containers_limit_by_type_remainder)
 	{
-		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
 	}
-	check_and_emit_containers();
+	check_and_emit_containers(containers_limit_by_type+containers_limit_by_type_remainder);
 
-	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
 	}
-	check_and_emit_containers();
+	check_and_emit_containers(containers_limit_by_type);
 
-	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
 	}
-	check_and_emit_containers();
+	check_and_emit_containers(containers_limit_by_type);
 
-	if(containers_ids.size() > CONTAINERS_LIMIT_BY_TYPE)
+	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), std::min(containers_ids.begin() + CONTAINERS_LIMIT_BY_TYPE, containers_ids.end()), containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
-	check_and_emit_containers();
+	check_and_emit_containers(containers_limit_by_type);
 
 	m_containers.clear();
 }

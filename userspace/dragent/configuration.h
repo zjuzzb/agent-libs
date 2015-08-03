@@ -343,6 +343,7 @@ public:
 	vector<app_check> m_app_checks;
 	string m_python_binary;
 	bool m_app_checks_enabled;
+	uint32_t m_containers_limit;
 
 	vector<sinsp_chisel_details> m_chisel_details;
 

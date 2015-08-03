@@ -192,6 +192,8 @@ void sinsp_worker::init()
 	{
 		m_analyzer->set_app_checks(m_configuration->m_app_checks);
 	}
+	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
+
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 }
 
