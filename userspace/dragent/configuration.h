@@ -198,41 +198,6 @@ public:
 		return ret;
 	}
 
-	/*template<typename T>
-	const vector<T> get_merged_sequence(const string& key, const string& subkey)
-	{
-		vector<T> ret;
-		if(m_root[key].IsMap() && m_root[key][subkey].IsArray())
-		{
-			for(auto item : m_root[key][subkey])
-			{
-				try
-				{
-					ret.push_back(item.as<T>());
-				}
-				catch (const YAML::BadConversion& ex)
-				{
-					m_errors.emplace_back(string("Config file error at key ") + key);
-				}
-			}
-		}
-		if(m_default_root[key].IsMap() && m_default_root[key][subkey].IsArray())
-		{
-			for(auto item : m_default_root[key][subkey])
-			{
-				try
-				{
-					ret.push_back(item.as<T>());
-				}
-				catch (const YAML::BadConversion& ex)
-				{
-					m_errors.emplace_back(string("Default config file error at key: ") + key);
-				}
-			}
-		}
-		return ret;
-	}*/
-
 	/**
 	* Get data from a map of objects, they
 	* will be merged between settings and
