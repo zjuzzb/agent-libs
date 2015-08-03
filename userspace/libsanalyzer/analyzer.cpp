@@ -3463,13 +3463,18 @@ void sinsp_analyzer::emit_containers()
 	for(const auto& container_id_and_info : *m_inspector->m_container_manager.get_containers())
 	{
 		const auto& id = container_id_and_info.first;
-		for(const auto& matcher : m_container_matchers)
+		auto analyzer_it = m_containers.find(id);
+		if(analyzer_it != m_containers.end() &&
+		   (m_container_matchers.empty() ||
+			std::find_if(m_container_matchers.begin(), m_container_matchers.end(),
+						 [&container_id_and_info](const container_matcher& matcher)
+						 {
+							 return matcher.match(container_id_and_info.second);
+						 }) != m_container_matchers.end())
+				)
 		{
-			if(matcher.match(container_id_and_info.second))
-			{
-				containers_ids.push_back(id);
-				containers_protostate_marker.add(m_containers.at(id).m_metrics.m_protostate);
-			}
+			containers_ids.push_back(id);
+			containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
 		}
 	}
 
@@ -3485,7 +3490,7 @@ void sinsp_analyzer::emit_containers()
 	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit](const uint32_t containers_limit)
 	{
-		for(auto j = 0; j < containers_limit && !containers_ids.empty(); ++j)
+		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
 			this->emit_container(containers_ids.front(), &statsd_limit);
 			containers_ids.erase(containers_ids.begin());
