@@ -295,7 +295,7 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	void emit_top_files();
-	void emit_containers();
+	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);

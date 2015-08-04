@@ -862,6 +862,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	threadinfo_map_iterator_t it;
 	set<uint64_t> proctids;
 	unordered_map<size_t, sinsp_threadinfo*> progtable;
+	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
@@ -1116,6 +1117,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Use first found thread of a program to collect all metrics
 		if(mtinfo->m_tid == tinfo->m_tid)
 		{
+			if(container)
+			{
+				progtable_by_container[mtinfo->m_container_id].emplace_back(mtinfo);
+			}
 			ainfo->set_main_program_thread(true);
 		}
 		else
@@ -1163,12 +1168,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
+	auto emitted_containers = emit_containers();
+
 	if(m_inspector->m_islive)
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
 			filter_top_noncs_programs(&progtable);
 			filter_top_cs_programs(&progtable);
+			for(const auto& container_id : emitted_containers)
+			{
+				const auto& progs = progtable_by_container.at(container_id);
+				progs.front()->m_ainfo->m_procinfo->m_exclude_from_sample = true;
+			}
 		}
 	}
 
@@ -2593,7 +2605,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Containers
 			//
-			emit_containers();
+			//emit_containers();
 
 			//
 			// Statsd metrics
@@ -3431,7 +3443,7 @@ private:
 	Extractor m_extractor;
 };
 
-void sinsp_analyzer::emit_containers()
+vector<string> sinsp_analyzer::emit_containers()
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -3455,6 +3467,7 @@ void sinsp_analyzer::emit_containers()
 		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
 	};
 
+	vector<string> emitted_containers;
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
 	sinsp_protostate_marker containers_protostate_marker;
@@ -3489,11 +3502,12 @@ void sinsp_analyzer::emit_containers()
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
-	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit](const uint32_t containers_limit)
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers](const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
 			this->emit_container(containers_ids.front(), &statsd_limit);
+			emitted_containers.emplace_back(containers_ids.front());
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
@@ -3535,6 +3549,7 @@ void sinsp_analyzer::emit_containers()
 	check_and_emit_containers(containers_limit_by_type);
 
 	m_containers.clear();
+	return emitted_containers;
 }
 
 void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit)
