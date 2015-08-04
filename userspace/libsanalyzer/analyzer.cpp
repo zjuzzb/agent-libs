@@ -680,29 +680,28 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 	}
 }
 
-void sinsp_analyzer::filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany)
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
 	vector<sinsp_threadinfo*> prog_sortable_list;
 
-	unordered_map<size_t, sinsp_threadinfo*>::iterator ptit;
-
-	for(ptit = progtable->begin(); ptit != progtable->end(); ++ptit)
+	for(auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
 	{
 		if(cs_only)
 		{
-			int is_cs = (ptit->second->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+			int is_cs = ((*ptit)->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 					thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT | thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT));
 
 			if(is_cs)
 			{
-				prog_sortable_list.push_back(ptit->second);
+				prog_sortable_list.push_back(*ptit);
 			}
 		}
 		else
 		{
-			prog_sortable_list.push_back(ptit->second);
+			prog_sortable_list.push_back(*ptit);
 		}
 	}
 
@@ -839,20 +838,6 @@ void sinsp_analyzer::filter_top_programs(unordered_map<size_t, sinsp_threadinfo*
 	//}
 }
 
-void sinsp_analyzer::filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable)
-{
-	filter_top_programs(progtable, 
-		false,
-		TOP_PROCESSES_IN_SAMPLE);
-}
-
-void sinsp_analyzer::filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable)
-{
-	filter_top_programs(progtable, 
-		true,
-		TOP_PROCESSES_IN_SAMPLE);
-}
-
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	int64_t delta;
@@ -861,7 +846,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
 	set<uint64_t> proctids;
-	unordered_map<size_t, sinsp_threadinfo*> progtable;
+	auto prog_hasher = [](sinsp_threadinfo* tinfo)
+	{
+		return tinfo->m_program_hash;
+	};
+	unordered_set<sinsp_threadinfo*, decltype(prog_hasher)> progtable(50, prog_hasher);
 	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
@@ -1113,7 +1102,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		ASSERT(tinfo->m_program_hash != 0);
 
-		auto mtinfo = progtable.emplace(main_tinfo->m_program_hash, &it->second).first->second;
+		auto mtinfo = *progtable.emplace(&it->second).first;
 		// Use first found thread of a program to collect all metrics
 		if(mtinfo->m_tid == tinfo->m_tid)
 		{
@@ -1174,12 +1163,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
 		{
-			filter_top_noncs_programs(&progtable);
-			filter_top_cs_programs(&progtable);
+			// Filter top active programs
+			filter_top_programs(progtable.begin(),
+								progtable.end(),
+								false,
+								TOP_PROCESSES_IN_SAMPLE);
+			// Filter top client/server programs
+			filter_top_programs(progtable.begin(),
+								progtable.end(),
+								true,
+								TOP_PROCESSES_IN_SAMPLE);
+			// Add at list one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
 				const auto& progs = progtable_by_container.at(container_id);
-				progs.front()->m_ainfo->m_procinfo->m_exclude_from_sample = true;
+				filter_top_programs(progs.begin(), progs.end(), false, 1);
 			}
 		}
 	}
