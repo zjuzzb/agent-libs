@@ -718,38 +718,20 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top CPU consumers
 	//
-	if(cs_only)
-	{
-		partial_sort(prog_sortable_list.begin(), 
-			prog_sortable_list.begin() + howmany, 
-			prog_sortable_list.end(),
-			(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
 
-		for(j = 0; j < howmany; j++)
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
 		{
-			if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
-			{
-				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-			}
-			else
-			{
-				break;
-			}
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
 		}
-	}
-	else
-	{
-		partial_sort(prog_sortable_list.begin(), 
-			prog_sortable_list.begin() + howmany, 
-			prog_sortable_list.end(),
-			(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
-
-		for(j = 0; j < prog_sortable_list.size(); j++)
+		else
 		{
-			if(j >= howmany || prog_sortable_list[j]->m_ainfo->m_cpuload <= 0)
-			{
-				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = true;
-			}
+			break;
 		}
 	}
 
@@ -1158,10 +1140,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//       process CPU and memory.
 	//
 	auto emitted_containers = emit_containers();
+	bool progtable_needs_filtering = false;
 
 	if(m_inspector->m_islive)
 	{
-		if(progtable.size() > TOP_PROCESSES_IN_SAMPLE)
+		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
+		if(progtable_needs_filtering)
 		{
 			// Filter top active programs
 			filter_top_programs(progtable.begin(),
@@ -1235,7 +1219,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//  - top 30 clients/servers
 			//  - top 30 programs that were active
 
-			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample)
+			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
 			{
 #ifdef ANALYZER_EMITS_PROGRAMS
 				draiosproto::program* prog = m_metrics->add_programs();

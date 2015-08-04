@@ -27,7 +27,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_procinfo::clear()
 {
-	m_exclude_from_sample = false;
+	m_exclude_from_sample = true;
 	m_proc_metrics.clear();
 	m_proc_transaction_metrics.clear();
 	m_connection_queue_usage_pct = 0;
