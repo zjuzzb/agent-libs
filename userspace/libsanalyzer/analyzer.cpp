@@ -121,7 +121,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
-
+	m_containers_limit = CONTAINERS_HARD_LIMIT;
+	
 	//
 	// Chisels init
 	//
@@ -3499,25 +3500,37 @@ void sinsp_analyzer::emit_containers()
 
 	if(containers_ids.size() > containers_limit_by_type + containers_limit_by_type_remainder)
 	{
-		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
+		partial_sort(containers_ids.begin(),
+					 containers_ids.begin() + containers_limit_by_type + containers_limit_by_type_remainder,
+					 containers_ids.end(),
+					 containers_cmp<decltype(mem_extractor)>(&m_containers, move(mem_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type+containers_limit_by_type_remainder);
 
 	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
+		partial_sort(containers_ids.begin(),
+					 containers_ids.begin() + containers_limit_by_type,
+					 containers_ids.end(),
+					 containers_cmp<decltype(file_io_extractor)>(&m_containers, move(file_io_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type);
 
 	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+		partial_sort(containers_ids.begin(),
+					 containers_ids.begin() + containers_limit_by_type,
+					 containers_ids.end(),
+					 containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type);
 
 	if(containers_ids.size() > containers_limit_by_type)
 	{
-		partial_sort(containers_ids.begin(), containers_ids.begin() + containers_limit_by_type, containers_ids.end(), containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
+		partial_sort(containers_ids.begin(),
+					 containers_ids.begin() + containers_limit_by_type,
+					 containers_ids.end(),
+					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type);
 
