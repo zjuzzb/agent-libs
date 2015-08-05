@@ -1161,7 +1161,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			for(const auto& container_id : emitted_containers)
 			{
 				const auto& progs = progtable_by_container.at(container_id);
-				filter_top_programs(progs.begin(), progs.end(), false, 1);
+				filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
 			}
 		}
 	}
@@ -2583,11 +2583,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//emit_executed_commands();
 
 			emit_top_files();
-
-			//
-			// Containers
-			//
-			//emit_containers();
 
 			//
 			// Statsd metrics
