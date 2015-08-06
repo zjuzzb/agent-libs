@@ -166,35 +166,29 @@ class AppCheckInstance:
             return True
 
     def run(self):
-        if self.CONTAINER_SUPPORT and self.is_on_another_container:
-            # We need to open and close ns on every iteration
-            # because otherwise we lock container deletion
-            for ns in self.check_instance.NEEDED_NS:
-                try:
+        try:
+            if self.is_on_another_container:
+                # We need to open and close ns on every iteration
+                # because otherwise we lock container deletion
+                for ns in self.check_instance.NEEDED_NS:
                     nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
                     ret = setns(nsfd)
                     os.close(nsfd)
                     if ret != 0:
                         logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
-                except OSError as ex:
-                    # go back to initial namespace
-                    setns(self.MYNET)
-                    setns(self.MYMNT)
-                    raise AppCheckException(ex.message)
-        saved_ex = None
-        try:
             self.check_instance.check(self.instance_conf)
-        except Exception as ex:
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            saved_ex = ex
-        if self.CONTAINER_SUPPORT and self.is_on_another_container:
-            setns(self.MYNET)
-            setns(self.MYMNT)
-        if saved_ex:
-            self._last_run_exception = datetime.now()
-            raise AppCheckException("%s, traceback: %s" % (repr(saved_ex), traceback_message))
-        else:
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
+        except OSError as ex: # Raised from os.open() or setns()
+            self._last_run_exception = datetime.now()
+            raise AppCheckException(ex.message)
+        except Exception as ex: # Raised from check run
+            self._last_run_exception = datetime.now()
+            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
+            raise AppCheckException("%s, traceback: %s" % (repr(ex), traceback_message))
+        finally:
+            if self.is_on_another_container:
+                setns(self.MYNET)
+                setns(self.MYMNT)
 
     def _expand_template(self, value, proc_data):
         try:
