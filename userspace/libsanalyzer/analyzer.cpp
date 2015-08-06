@@ -1167,8 +1167,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Add at list one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
-				const auto& progs = progtable_by_container.at(container_id);
-				filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
+				auto progs_it = progtable_by_container.find(container_id);
+				if(progs_it != progtable_by_container.end())
+				{
+					auto progs = progs_it->second;
+					filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
+				}
 			}
 		}
 	}
