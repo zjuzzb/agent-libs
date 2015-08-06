@@ -830,9 +830,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	set<uint64_t> proctids;
 	auto prog_hasher = [](sinsp_threadinfo* tinfo)
 	{
-		return tinfo->m_program_hash;
+		return tinfo->get_main_thread()->m_program_hash;
 	};
-	unordered_set<sinsp_threadinfo*, decltype(prog_hasher)> progtable(50, prog_hasher);
+	auto prog_cmp = [](sinsp_threadinfo* lhs, sinsp_threadinfo* rhs)
+	{
+		return lhs->get_main_thread()->m_program_hash == rhs->get_main_thread()->m_program_hash;
+	};
+	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(TOP_PROCESSES_IN_SAMPLE, prog_hasher, prog_cmp);
 	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
@@ -1084,9 +1088,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		ASSERT(tinfo->m_program_hash != 0);
 
-		auto mtinfo = *progtable.emplace(&it->second).first;
+		auto emplaced = progtable.emplace(tinfo);
+		auto mtinfo = *emplaced.first;
 		// Use first found thread of a program to collect all metrics
-		if(mtinfo->m_tid == tinfo->m_tid)
+		if(emplaced.second)
 		{
 			if(container)
 			{
@@ -1141,6 +1146,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//
 	auto emitted_containers = emit_containers();
 	bool progtable_needs_filtering = false;
+
+	g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
 
 	if(m_inspector->m_islive)
 	{
