@@ -1147,8 +1147,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	auto emitted_containers = emit_containers();
 	bool progtable_needs_filtering = false;
 
-	g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
-
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
+	}
+	
 	if(m_inspector->m_islive)
 	{
 		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
