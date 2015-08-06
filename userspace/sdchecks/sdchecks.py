@@ -170,11 +170,17 @@ class AppCheckInstance:
             # We need to open and close ns on every iteration
             # because otherwise we lock container deletion
             for ns in self.check_instance.NEEDED_NS:
-                nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
-                ret = setns(nsfd)
-                os.close(nsfd)
-                if ret != 0:
-                    logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
+                try:
+                    nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                    ret = setns(nsfd)
+                    os.close(nsfd)
+                    if ret != 0:
+                        logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
+                except OSError as ex:
+                    # go back to initial namespace
+                    setns(self.MYNET)
+                    setns(self.MYMNT)
+                    raise AppCheckException(ex.message)
         saved_ex = None
         try:
             self.check_instance.check(self.instance_conf)
