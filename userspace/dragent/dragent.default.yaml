@@ -522,7 +522,7 @@ app_checks:
     pattern: 
       comm: mongod
     conf:
-      server: "mongodb://localhost:{port}/admin"
+      server: "mongodb://localhost:27017/admin"
   - name: rabbitmq
     pattern:
       port: 5672
@@ -556,6 +556,11 @@ app_checks:
       username: stats
       password: stats
       url: http://localhost:1936/
+      status_check: True
+      collect_aggregates_only: True
+      collect_status_metrics: True
+      collect_status_metrics_by_host: True
+      tag_service_check_by_host: True
   - name: elasticsearch
     check_module: elastic
     pattern:
@@ -569,3 +574,21 @@ app_checks:
     conf:
       name: default
       jenkins_home: /var/lib/jenkins
+  - name: nginx 
+    check_module: nginx
+    pattern:
+      comm: nginx
+      port: 80
+    conf:
+      nginx_status_url: http://localhost/nginx_status/
+  - name: apache
+    check_module: apache
+    pattern: 
+      comm: apache2
+      port: 8010
+    conf:
+      apache_status_url: http://localhost:8010/server-status?auto
+
+
+
+
