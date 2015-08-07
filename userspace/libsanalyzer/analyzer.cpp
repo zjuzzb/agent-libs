@@ -1139,11 +1139,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
-	//
-	// Filter out the programs that didn't generate enough activity to go in the sample.
-	// Note: we only do this when we're live, because in offline captures we don't have
-	//       process CPU and memory.
-	//
+	// Filter and emit containers, we do it now because when filtering processes we add
+	// at least one process for each container
 	auto emitted_containers = emit_containers();
 	bool progtable_needs_filtering = false;
 
@@ -1151,7 +1148,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
 	}
-	
+
+	//
+	// Filter out the programs that didn't generate enough activity to go in the sample.
+	// Note: we only do this when we're live, because in offline captures we don't have
+	//       process CPU and memory.
+	//
 	if(m_inspector->m_islive)
 	{
 		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
