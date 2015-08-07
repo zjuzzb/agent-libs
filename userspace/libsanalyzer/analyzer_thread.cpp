@@ -330,27 +330,21 @@ void thread_analyzer_info::clear_role_flags()
 		AF_IS_UNIX_SERVER | AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
-set<uint16_t> thread_analyzer_info::listening_ports()
+void thread_analyzer_info::scan_listening_ports()
 {
-	set<uint16_t> listening_ports;
-	auto fd_table = m_tinfo->get_fd_table()->m_table;
-	// Assume that the listening socket is on the fd from 1 to MAX_LISTENING_FD
-	// to avoid scanning the entire fd table
-	for(int64_t j = 0; j < std::min(static_cast<int64_t>(fd_table.size()), MAX_LISTENING_FD); ++j)
+	m_listening_ports = make_unique<set<uint16_t>>();
+	auto fd_table = m_tinfo->get_fd_table();
+	for(const auto& fd : fd_table->m_table)
 	{
-		auto fd_it = fd_table.find(j);
-		if(fd_it != fd_table.end())
+		if(fd.second.m_type == SCAP_FD_IPV4_SERVSOCK)
 		{
-			if(fd_it->second.m_type == SCAP_FD_IPV4_SERVSOCK)
-			{
-				listening_ports.insert(fd_it->second.m_sockinfo.m_ipv4serverinfo.m_port);
-			} else if(fd_it->second.m_type == SCAP_FD_IPV6_SERVSOCK)
-			{
-				listening_ports.insert(fd_it->second.m_sockinfo.m_ipv6serverinfo.m_port);
-			}
+			m_listening_ports->insert(fd.second.m_sockinfo.m_ipv4serverinfo.m_port);
+		}
+		if(fd.second.m_type == SCAP_FD_IPV6_SERVSOCK)
+		{
+			m_listening_ports->insert(fd.second.m_sockinfo.m_ipv6serverinfo.m_port);
 		}
 	}
-	return listening_ports;
 }
 
 //
