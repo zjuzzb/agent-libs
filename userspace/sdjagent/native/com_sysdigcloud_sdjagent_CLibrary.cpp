@@ -129,7 +129,7 @@ const char* scap_get_host_root()
 
 // Use raw setns syscall for versions of glibc that don't include it (namely glibc-2.12)
 #if __GLIBC__ == 2 && __GLIBC_MINOR__ < 14
-#define _GNU_SOURCE
+//#define _GNU_SOURCE
 #include "syscall.h"
 #if defined(__NR_setns) && !defined(SYS_setns)
 #define SYS_setns __NR_setns
