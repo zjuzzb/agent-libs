@@ -24,11 +24,11 @@
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
 
-#if 0
+#if 1
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include <parsers.h>
-#include "appevts.h"
+#include "markers.h"
 
 using namespace std;
 
@@ -37,9 +37,9 @@ using Poco::NumberFormatter;
 using Poco::NumberParser;
 
 
-TEST_F(sys_call_test, usrevts_1)
+TEST_F(sys_call_test, markers_1)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 12435, [\"mysql\", \"query\", \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 	char buffer[sizeof(doc)];
@@ -47,7 +47,7 @@ TEST_F(sys_call_test, usrevts_1)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -55,9 +55,9 @@ TEST_F(sys_call_test, usrevts_1)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_2)
+TEST_F(sys_call_test, markers_2)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[, <, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -65,12 +65,12 @@ TEST_F(sys_call_test, usrevts_2)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_NE(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_NE(sinsp_markerparser::RES_OK, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_3)
+TEST_F(sys_call_test, markers_3)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[123, a, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -78,12 +78,12 @@ TEST_F(sys_call_test, usrevts_3)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_4)
+TEST_F(sys_call_test, markers_4)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[123 >, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -91,12 +91,12 @@ TEST_F(sys_call_test, usrevts_4)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_5)
+TEST_F(sys_call_test, markers_5)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[123, > [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -104,12 +104,12 @@ TEST_F(sys_call_test, usrevts_5)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_6)
+TEST_F(sys_call_test, markers_6)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"] [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -117,12 +117,12 @@ TEST_F(sys_call_test, usrevts_6)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_7)
+TEST_F(sys_call_test, markers_7)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, \"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -130,12 +130,12 @@ TEST_F(sys_call_test, usrevts_7)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_8)
+TEST_F(sys_call_test, markers_8)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\", [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -143,12 +143,12 @@ TEST_F(sys_call_test, usrevts_8)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_9)
+TEST_F(sys_call_test, markers_9)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, \"mysql\", [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -156,12 +156,12 @@ TEST_F(sys_call_test, usrevts_9)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_10)
+TEST_F(sys_call_test, markers_10)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[[123], >, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -169,12 +169,12 @@ TEST_F(sys_call_test, usrevts_10)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_11)
+TEST_F(sys_call_test, markers_11)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -182,12 +182,12 @@ TEST_F(sys_call_test, usrevts_11)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_12)
+TEST_F(sys_call_test, markers_12)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -195,12 +195,12 @@ TEST_F(sys_call_test, usrevts_12)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_13)
+TEST_F(sys_call_test, markers_13)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"]]";
 	char buffer[sizeof(doc)];
@@ -208,12 +208,12 @@ TEST_F(sys_call_test, usrevts_13)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_14)
+TEST_F(sys_call_test, markers_14)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [\"argname1\":\"argval1\"]]";
 	char buffer[sizeof(doc)];
@@ -221,12 +221,12 @@ TEST_F(sys_call_test, usrevts_14)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_15)
+TEST_F(sys_call_test, markers_15)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}, {\"argname1\":\"argval1\"]]";
 	char buffer[sizeof(doc)];
@@ -234,12 +234,12 @@ TEST_F(sys_call_test, usrevts_15)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_16)
+TEST_F(sys_call_test, markers_16)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}, \"argname1\":\"argval1\"]]";
 	char buffer[sizeof(doc)];
@@ -247,12 +247,12 @@ TEST_F(sys_call_test, usrevts_16)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_17)
+TEST_F(sys_call_test, markers_17)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [mysql], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -260,12 +260,12 @@ TEST_F(sys_call_test, usrevts_17)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_18)
+TEST_F(sys_call_test, markers_18)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{argname1:\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -273,12 +273,12 @@ TEST_F(sys_call_test, usrevts_18)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_19)
+TEST_F(sys_call_test, markers_19)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":argval1}]]";
 	char buffer[sizeof(doc)];
@@ -286,12 +286,12 @@ TEST_F(sys_call_test, usrevts_19)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_20)
+TEST_F(sys_call_test, markers_20)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -299,12 +299,12 @@ TEST_F(sys_call_test, usrevts_20)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_21)
+TEST_F(sys_call_test, markers_21)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}, {\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -312,12 +312,12 @@ TEST_F(sys_call_test, usrevts_21)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_22)
+TEST_F(sys_call_test, markers_22)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"} {\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -325,12 +325,12 @@ TEST_F(sys_call_test, usrevts_22)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_23)
+TEST_F(sys_call_test, markers_23)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 123, [\"mysql\"], [{\"argname1\":\"argval1\"}{\"argname1\":\"argval1\"}]]";
 	char buffer[sizeof(doc)];
@@ -338,12 +338,12 @@ TEST_F(sys_call_test, usrevts_23)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_24)
+TEST_F(sys_call_test, markers_24)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 12, [\"mysql\"], []]";
 	char buffer[sizeof(doc)];
@@ -351,7 +351,7 @@ TEST_F(sys_call_test, usrevts_24)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12, (int)p.m_id);
 	EXPECT_EQ(1, (int)p.m_tags.size());
@@ -359,9 +359,9 @@ TEST_F(sys_call_test, usrevts_24)
 	EXPECT_EQ(0, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_25)
+TEST_F(sys_call_test, markers_25)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 12, [], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}]]]";
 	char buffer[sizeof(doc)];
@@ -369,7 +369,7 @@ TEST_F(sys_call_test, usrevts_25)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12, (int)p.m_id);
 	EXPECT_EQ(0, (int)p.m_tags.size());
@@ -377,9 +377,9 @@ TEST_F(sys_call_test, usrevts_25)
 	EXPECT_EQ(2, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_26)
+TEST_F(sys_call_test, markers_26)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", 12, [], []]]";
 	char buffer[sizeof(doc)];
@@ -387,7 +387,7 @@ TEST_F(sys_call_test, usrevts_26)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12, (int)p.m_id);
 	EXPECT_EQ(0, (int)p.m_tags.size());
@@ -395,9 +395,9 @@ TEST_F(sys_call_test, usrevts_26)
 	EXPECT_EQ(0, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_27)
+TEST_F(sys_call_test, markers_27)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "        [\">\", 12, [], []]]        ";
 	char buffer[sizeof(doc)];
@@ -405,7 +405,7 @@ TEST_F(sys_call_test, usrevts_27)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12, (int)p.m_id);
 	EXPECT_EQ(0, (int)p.m_tags.size());
@@ -413,9 +413,9 @@ TEST_F(sys_call_test, usrevts_27)
 	EXPECT_EQ(0, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_28)
+TEST_F(sys_call_test, markers_28)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "        [\">\"             ,      12  , [], [  ]    ]         ]        ";
 	char buffer[sizeof(doc)];
@@ -423,7 +423,7 @@ TEST_F(sys_call_test, usrevts_28)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12, (int)p.m_id);
 	EXPECT_EQ(0, (int)p.m_tags.size());
@@ -431,9 +431,9 @@ TEST_F(sys_call_test, usrevts_28)
 	EXPECT_EQ(0, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_29)
+TEST_F(sys_call_test, markers_29)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\">\", ";
 	char buffer[sizeof(doc)];
@@ -441,26 +441,26 @@ TEST_F(sys_call_test, usrevts_29)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 }
 
-TEST_F(sys_call_test, usrevts_31)
+TEST_F(sys_call_test, markers_31)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "[\">\", 12435, [\"mysql\", \"query\", \"in";
 	char doc2[] = "it\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"";
 	char doc3[] = "}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -468,23 +468,23 @@ TEST_F(sys_call_test, usrevts_31)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_32)
+TEST_F(sys_call_test, markers_32)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "[\">\", 12435, [\"mysql\", \"query\"";
 	char doc2[] = ", \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":";
 	char doc3[] = "\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -492,23 +492,23 @@ TEST_F(sys_call_test, usrevts_32)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_33)
+TEST_F(sys_call_test, markers_33)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "[\">\", 12435, [\"mys";
 	char doc2[] = "ql\", \"query\", \"init\"], [{\"argname1\":\"argval1\"}";
 	char doc3[] = ", {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -516,23 +516,23 @@ TEST_F(sys_call_test, usrevts_33)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_34)
+TEST_F(sys_call_test, markers_34)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "[\">\", 12435,";
 	char doc2[] = " [\"mysql\", \"query\", ";
 	char doc3[] = "\"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -540,23 +540,23 @@ TEST_F(sys_call_test, usrevts_34)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_35)
+TEST_F(sys_call_test, markers_35)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "[\">\", 12435";
 	char doc2[] = ", [\"mysql\", \"query\",";
 	char doc3[] = " \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -564,23 +564,23 @@ TEST_F(sys_call_test, usrevts_35)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_39)
+TEST_F(sys_call_test, markers_39)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc1[] = "";
 	char doc2[] = "";
 	char doc3[] = "[\">\", 12435, [\"mysql\", \"query\", \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 
 	p.process_event_data(doc1, sizeof(doc1) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 
 	p.process_event_data(doc2, sizeof(doc2) - 1, 10);
-	EXPECT_EQ(sinsp_appevtparser::RES_FAILED, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_FAILED, p.m_res);
 
 	p.process_event_data(doc3, sizeof(doc3) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -588,9 +588,9 @@ TEST_F(sys_call_test, usrevts_39)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_40)
+TEST_F(sys_call_test, markers_40)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 	char tb[2];
 	tb[1] = 0;
 	uint32_t k;
@@ -601,13 +601,13 @@ TEST_F(sys_call_test, usrevts_40)
 	{
 		tb[0] = doc[k];
 		p.process_event_data(tb, 1, 10);
-		EXPECT_EQ(sinsp_appevtparser::RES_TRUNCATED, p.m_res);
+		EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 	}
 
 	tb[0] = doc[k];
 	p.process_event_data(tb, 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
@@ -615,9 +615,9 @@ TEST_F(sys_call_test, usrevts_40)
 	EXPECT_EQ(3, (int)p.m_argvals.size());
 }
 
-TEST_F(sys_call_test, usrevts_41)
+TEST_F(sys_call_test, markers_41)
 {
-	sinsp_appevtparser p(NULL);
+	sinsp_markerparser p(NULL);
 
 	char doc[] = "[\"\\\">\", 12435, [\"my\\\"\\\"sql\", \"query\", \"init\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}, {\"argname3\":\"argval3\"}]]";
 	char buffer[sizeof(doc)];
@@ -625,7 +625,7 @@ TEST_F(sys_call_test, usrevts_41)
 
 	p.process_event_data(buffer, sizeof(doc) - 1, 10);
 
-	EXPECT_EQ(sinsp_appevtparser::RES_OK, p.m_res);
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ("\\\">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
 	EXPECT_EQ(3, (int)p.m_tags.size());
