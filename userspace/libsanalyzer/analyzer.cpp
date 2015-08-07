@@ -869,19 +869,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
-	if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0)
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
-		do
+		if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000) % m_jmx_sampling == 0)
 		{
-			jmx_metrics = m_jmx_proxy->read_metrics();
+			pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
+			do
+			{
+				jmx_metrics = m_jmx_proxy->read_metrics();
+			}
+			while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
+			m_jmx_metrics = jmx_metrics.second;
 		}
-		while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
-		m_jmx_metrics = jmx_metrics.second;
-	}
-	if(m_app_proxy)
-	{
-		app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
+		if(m_app_proxy)
+		{
+			app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
+		}
 	}
 #endif
 
@@ -1589,14 +1592,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 	
 #ifndef _WIN32
-	if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
+	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		m_jmx_metrics.clear();
-		m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
-	}
-	if(m_app_proxy && !app_checks_processes.empty())
-	{
-		m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
+		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
+		{
+			m_jmx_metrics.clear();
+			m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
+		}
+		if(m_app_proxy && !app_checks_processes.empty())
+		{
+			m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
+		}
 	}
 #endif
 }
@@ -2357,7 +2363,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			get_statsd();
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				get_statsd();
+			}
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
