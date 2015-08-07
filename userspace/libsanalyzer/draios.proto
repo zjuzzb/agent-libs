@@ -535,6 +535,11 @@ message container_port_mapping {
     optional uint32 container_port = 4;
 }
 
+message container_label {
+    required string key = 1;
+    optional string value = 2;
+}
+
 message container {
     required string id = 1;
     optional container_type type = 2;
@@ -553,6 +558,7 @@ message container {
     optional counter_syscall_errors syscall_errors = 14; // Syscall error counter
     repeated container_port_mapping port_mappings = 18;
     optional proto_info protos = 19;
+    repeated container_label labels = 20;
 }
 
 //

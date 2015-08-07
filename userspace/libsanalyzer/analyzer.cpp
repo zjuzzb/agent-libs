@@ -3591,6 +3591,15 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		mapping->set_container_port(it_ports->m_container_port);
 	}
 
+	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
+		it_labels != it->second.m_labels.end(); ++it_labels)
+	{
+		draiosproto::container_label* label = container->add_labels();
+
+		label->set_key(it_labels->first);
+		label->set_value(it_labels->second);
+	}
+
 	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
