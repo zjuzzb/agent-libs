@@ -23,6 +23,7 @@ add_executable(test
 	event_capture.cpp
 	forking.cpp
 	fs.cpp
+	markers.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
