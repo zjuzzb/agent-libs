@@ -112,7 +112,7 @@ int main(void)
 	close(sock); 
 }
 */
-#if 1
+/*
 #define TMP_FILE_NAME "/tmp/sysdig_test.txt"
 #define BIGBUFSIZE 5000
 
@@ -141,12 +141,12 @@ int main(void)
 
 	gettimeofday(&start_time, NULL);
 
-	for(j = 0; j < 1000000; j++)
+	for(j = 0; j < 10; j++)
 	{
 		FILE* tf1;
 
 		generate_sysdig_event(f, "[\">\", 1, [\"lorisapp\", \"loop\"], []]");
-/*
+
 		tf1 = fopen(TMP_FILE_NAME, "w");
 		generate_sysdig_event(f, "[\">\", 2, [\"lorisapp\", \"loop\", \"write\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}]]");
 		fwrite("hello world", strlen("hello world"), 1, tf1);
@@ -156,7 +156,7 @@ int main(void)
 		unlink(TMP_FILE_NAME);
 		
 		usleep(1000);
-*/
+
 		generate_sysdig_event(f, "[\"<\", 1, [\"lorisapp\", \"loop\"], []]");		
 	}
 
@@ -167,9 +167,7 @@ int main(void)
 
 	printf("%lf\n", duration);
 }
-
-#endif
-
+*/
 /*
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,3 +224,66 @@ int main(void)
 	printf("%lf\n", duration);
 }
 */
+
+
+#define TMP_FILE_NAME "/tmp/sysdig_test.txt"
+#define BIGBUFSIZE 5000
+
+void generate_sysdig_event(FILE* f, char* text, int size)
+{
+	fwrite(text, size, 1, f);
+	fflush(f);
+}
+
+//
+// Fast format
+//
+int main(void)
+{
+	int j;
+	int res;
+	struct timeval start_time, end_time;
+	double duration;
+	FILE* f = fopen("/dev/sysdig-events", "wb");
+
+	printf("%p\n", f);
+
+	char* bigbuf = (char*)malloc(BIGBUFSIZE);
+	for(j = 0; j < BIGBUFSIZE; j++)
+	{
+		bigbuf[j] = '1' + (j % 5);
+	}
+	bigbuf[BIGBUFSIZE - 1] = 0;
+
+	gettimeofday(&start_time, NULL);
+
+	for(j = 0; j < 3000000; j++)
+	{
+		FILE* tf1;
+
+//		generate_sysdig_event(f, ">\0001\0lorisapp,loop\0",
+//			sizeof(">\0001\0lorisapp,loop\0"));
+
+//		tf1 = fopen(TMP_FILE_NAME, "w");
+		generate_sysdig_event(f, ">\0002\0lorisapp,loop,write\0argname1:argval1,argname2:argval2\0",
+			sizeof(">\0002\0lorisapp,loop,write\0argname1:argval1,argname2:argval2\0"));
+//		fwrite("hello world", strlen("hello world"), 1, tf1);
+		generate_sysdig_event(f, "<\0002\0lorisapp,loop,write\0",
+			sizeof("<\0002\0lorisapp,loop,write\0"));
+//		fclose(tf1);
+
+//		unlink(TMP_FILE_NAME);
+		
+//		usleep(1000);
+
+//		generate_sysdig_event(f, "<\0001\0lorisapp,loop\0",
+//			sizeof("<\0001\0lorisapp,loop\0"));		
+	}
+
+	gettimeofday(&end_time, NULL);
+
+	duration = (end_time.tv_sec - start_time.tv_sec);
+	duration += (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
+
+	printf("%lf\n", duration);
+}
