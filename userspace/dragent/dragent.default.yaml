@@ -525,7 +525,7 @@ app_checks:
       server: "mongodb://localhost:{port}/admin"
   - name: rabbitmq
     pattern:
-      port: 5672
+      port: 15672
     conf:
       rabbitmq_api_url: "http://localhost:15672/api/"
       rabbitmq_user: guest
