@@ -99,6 +99,11 @@ class MongoDb(AgentCheck):
         "metrics.repl.oplog.insertBytes",
         "metrics.ttl.deletedDocuments",
         "metrics.ttl.passes",
+
+        "stats.indexSize",
+        "stats.objects",
+        "stats.dataSize",
+        "stats.storageSize",
     ]
 
     METRICS = GAUGES + RATES
