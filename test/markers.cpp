@@ -637,7 +637,7 @@ TEST_F(sys_call_test, markers_fast_1)
 {
 	sinsp_markerparser p(NULL);
 
-	char doc[] = ">:12345:mysql.query.init:argname1=argval1,argname2=argval2,argname3=argval3";
+	char doc[] = ">:12435:mysql.query.init:argname1=argval1,argname2=argval2,argname3=argval3";
 	char buffer[sizeof(doc)];
 	memcpy(buffer, doc, sizeof(doc));
 
@@ -646,9 +646,158 @@ TEST_F(sys_call_test, markers_fast_1)
 	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
 	EXPECT_EQ(">", string(p.m_type_str));
 	EXPECT_EQ(12435, (int)p.m_id);
+	EXPECT_EQ(string("mysql"), string(p.m_tags[0]));
+	EXPECT_EQ(string("query"), string(p.m_tags[1]));
+	EXPECT_EQ(string("init"), string(p.m_tags[2]));
 	EXPECT_EQ(3, (int)p.m_tags.size());
 	EXPECT_EQ(3, (int)p.m_argnames.size());
 	EXPECT_EQ(3, (int)p.m_argvals.size());
+}
+
+TEST_F(sys_call_test, markers_fast_2)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">::mysql.query.init:argname1=argval1,argname2=argval2,argname3=argval3";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
+	EXPECT_EQ(">", string(p.m_type_str));
+	EXPECT_EQ(0, (int)p.m_id);
+	EXPECT_EQ(3, (int)p.m_tags.size());
+	EXPECT_EQ(3, (int)p.m_argnames.size());
+	EXPECT_EQ(3, (int)p.m_argvals.size());
+}
+
+TEST_F(sys_call_test, markers_fast_3)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = "<::mysql.query:argname1=argval1,argname2=argval2,argname3=argval3";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
+	EXPECT_EQ("<", string(p.m_type_str));
+	EXPECT_EQ(0, (int)p.m_id);
+	EXPECT_EQ(2, (int)p.m_tags.size());
+	EXPECT_EQ(3, (int)p.m_argnames.size());
+	EXPECT_EQ(3, (int)p.m_argvals.size());
+}
+
+TEST_F(sys_call_test, markers_fast_4)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = "<:12345:mysql:argname1=argval1,argname2=argval2,argname3=argval3";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
+	EXPECT_EQ("<", string(p.m_type_str));
+	EXPECT_EQ(12345, (int)p.m_id);
+	EXPECT_EQ(1, (int)p.m_tags.size());
+	EXPECT_EQ(string("mysql"), string(p.m_tags[0]));
+	EXPECT_EQ(3, (int)p.m_argnames.size());
+	EXPECT_EQ(3, (int)p.m_argvals.size());
+}
+
+TEST_F(sys_call_test, markers_fast_5)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = "-:12345:mysql:argname1=argval1,argname2=argval2,argname3=argval3";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_NE(sinsp_markerparser::RES_OK, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_6)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ":12345:mysql:argname1=argval1,argname2=argval2,argname3=argval3";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_NE(sinsp_markerparser::RES_OK, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_7)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">:123";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_8)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">:12345:mysql:argnam";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_9)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">::mysql.query.init:argname1=arg";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_10)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">:12345:mysql:argname1=argval1,";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
+}
+
+TEST_F(sys_call_test, markers_fast_11)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">::mysql.";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_TRUNCATED, p.m_res);
 }
 
 #endif // 0
