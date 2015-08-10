@@ -456,6 +456,7 @@ VISIBILITY_PRIVATE
 	bool m_run_chisels;
 
 #ifndef _WIN32
+	uint64_t m_external_command_id;
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
