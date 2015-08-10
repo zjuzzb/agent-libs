@@ -127,6 +127,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	// Chisels init
 	//
 	add_chisel_dirs();
+
+	m_external_command_id = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -878,12 +880,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				jmx_metrics = m_jmx_proxy->read_metrics();
 			}
-			while(jmx_metrics.first != 0 && jmx_metrics.first != m_prev_flush_time_ns);
+			while(jmx_metrics.first != 0 && jmx_metrics.first != m_external_command_id);
 			m_jmx_metrics = jmx_metrics.second;
 		}
 		if(m_app_proxy)
 		{
-			app_metrics = m_app_proxy->read_metrics(m_prev_flush_time_ns);
+			app_metrics = m_app_proxy->read_metrics(m_external_command_id);
 		}
 	}
 #endif
@@ -1594,14 +1596,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
+		++m_external_command_id;
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 		{
 			m_jmx_metrics.clear();
-			m_jmx_proxy->send_get_metrics(m_next_flush_time_ns, java_process_requests);
+			m_jmx_proxy->send_get_metrics(m_external_command_id, java_process_requests);
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
 		{
-			m_app_proxy->send_get_metrics_cmd(m_next_flush_time_ns, app_checks_processes);
+			m_app_proxy->send_get_metrics_cmd(m_external_command_id, app_checks_processes);
 		}
 	}
 #endif
