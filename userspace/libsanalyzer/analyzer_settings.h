@@ -120,6 +120,7 @@
 //	Max number of processes that can go in a sample
 //
 #define TOP_PROCESSES_IN_SAMPLE 30
+const unsigned TOP_PROCESSES_PER_CONTAINER = 1;
 
 //
 // Max number of files per category that can go in a sample, so the worst case is 4X
