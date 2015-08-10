@@ -881,7 +881,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				jmx_metrics = m_jmx_proxy->read_metrics();
 			}
 			while(jmx_metrics.first != 0 && jmx_metrics.first != m_external_command_id);
-			m_jmx_metrics = jmx_metrics.second;
+			m_jmx_metrics = move(jmx_metrics.second);
 		}
 		if(m_app_proxy)
 		{
@@ -3651,8 +3651,14 @@ void sinsp_analyzer::get_statsd()
 #ifndef _WIN32
 	if (m_statsite_proxy)
 	{
-		m_statsd_metrics = m_statsite_proxy->read_metrics();
-		while(!m_statsd_metrics.empty() && m_statsd_metrics.at("").at(0).timestamp() == m_prev_flush_time_ns / ONE_SECOND_IN_NS)
+		// Look for statsite sample m_prev_flush_time_ns (now) - 1s which should be
+		// always ready
+		auto look_for_ts = ((m_prev_flush_time_ns - ONE_SECOND_IN_NS) / ONE_SECOND_IN_NS);
+		if(m_statsd_metrics.empty())
+		{
+			m_statsd_metrics = m_statsite_proxy->read_metrics();
+		}
+		while(!m_statsd_metrics.empty() && m_statsd_metrics.at("").at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
