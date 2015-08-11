@@ -522,10 +522,10 @@ app_checks:
     pattern: 
       comm: mongod
     conf:
-      server: "mongodb://localhost:27017/admin"
+      server: "mongodb://localhost:{port}/admin"
   - name: rabbitmq
     pattern:
-      port: 5672
+      port: 15672
     conf:
       rabbitmq_api_url: "http://localhost:15672/api/"
       rabbitmq_user: guest
@@ -578,17 +578,11 @@ app_checks:
     check_module: nginx
     pattern:
       comm: nginx
-      port: 80
     conf:
-      nginx_status_url: http://localhost/nginx_status/
+      nginx_status_url: "http://localhost:{port}/nginx_status/"
   - name: apache
     check_module: apache
     pattern: 
       comm: apache2
-      port: 8010
     conf:
-      apache_status_url: http://localhost:8010/server-status?auto
-
-
-
-
+      apache_status_url: "http://localhost:{port}/server-status?auto"
