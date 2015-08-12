@@ -267,6 +267,8 @@ public:
 			}
 			else if(etype == PPME_SOCKET_ACCEPT_X ||
 				etype == PPME_SOCKET_ACCEPT4_X ||
+				etype == PPME_SOCKET_ACCEPT_5_X ||
+				etype == PPME_SOCKET_ACCEPT4_5_X ||
 				etype == PPME_SOCKET_CONNECT_X ||
 				etype == PPME_SOCKET_BIND_X)
 			{

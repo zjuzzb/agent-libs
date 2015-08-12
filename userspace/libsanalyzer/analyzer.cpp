@@ -3096,7 +3096,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	// For our purposes, accept() is wait, not networking
 	//
-	if(etype == PPME_SOCKET_ACCEPT_E || etype == PPME_SOCKET_ACCEPT_X)
+	if(etype == PPME_SOCKET_ACCEPT_E || etype == PPME_SOCKET_ACCEPT_X
+		|| etype == PPME_SOCKET_ACCEPT_5_E || etype == PPME_SOCKET_ACCEPT_5_X)
 	{
 		cat.m_category = EC_WAIT;
 	}
