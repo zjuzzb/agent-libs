@@ -9,6 +9,7 @@
 #include "statsite_proxy.h"
 #include <atomic>
 #include "app_checks.h"
+#include <unordered_set>
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -285,9 +286,9 @@ public:
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
-	void chisels_do_timeout(sinsp_evt* ev);	void filter_top_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable, bool cs_only, uint32_t howmany);
-	void filter_top_noncs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
-	void filter_top_cs_programs(unordered_map<size_t, sinsp_threadinfo*>* progtable);
+	void chisels_do_timeout(sinsp_evt* ev);
+	template<class Iterator>
+	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
@@ -295,7 +296,7 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	void emit_top_files();
-	void emit_containers();
+	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
@@ -456,6 +457,7 @@ VISIBILITY_PRIVATE
 	bool m_run_chisels;
 
 #ifndef _WIN32
+	uint64_t m_external_command_id;
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;

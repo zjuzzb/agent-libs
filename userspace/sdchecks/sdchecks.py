@@ -128,7 +128,6 @@ class AppCheckInstance:
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-    RUN_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
 
     def __init__(self, check, proc_data):
         self.name = check.name
@@ -151,44 +150,30 @@ class AppCheckInstance:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
-        self._last_run_exception = None
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
-    def is_enabled(self):
-        if self._last_run_exception:
-            if datetime.now() - self._last_run_exception > self.RUN_EXCEPTION_RETRY_TIMEOUT:
-                logging.debug("Re-enable check %s for pid %d", self.name, self.pid)
-                self._last_run_exception = None
-                return True
-            else:
-                return False
-        else:
-            return True
-
     def run(self):
-        if self.CONTAINER_SUPPORT and self.is_on_another_container:
-            # We need to open and close ns on every iteration
-            # because otherwise we lock container deletion
-            for ns in self.check_instance.NEEDED_NS:
-                nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
-                ret = setns(nsfd)
-                os.close(nsfd)
-                if ret != 0:
-                    logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
-        saved_ex = None
         try:
+            if self.is_on_another_container:
+                # We need to open and close ns on every iteration
+                # because otherwise we lock container deletion
+                for ns in self.check_instance.NEEDED_NS:
+                    nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                    ret = setns(nsfd)
+                    os.close(nsfd)
+                    if ret != 0:
+                        logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
             self.check_instance.check(self.instance_conf)
-        except Exception as ex:
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            saved_ex = ex
-        if self.CONTAINER_SUPPORT and self.is_on_another_container:
-            setns(self.MYNET)
-            setns(self.MYMNT)
-        if saved_ex:
-            self._last_run_exception = datetime.now()
-            raise AppCheckException("%s, traceback: %s" % (repr(saved_ex), traceback_message))
-        else:
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
+        except OSError as ex: # Raised from os.open() or setns()
+            raise AppCheckException(ex.message)
+        except Exception as ex: # Raised from check run
+            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
+            raise AppCheckException("%s, traceback: %s" % (repr(ex), traceback_message))
+        finally:
+            if self.is_on_another_container:
+                setns(self.MYNET)
+                setns(self.MYMNT)
 
     def _expand_template(self, value, proc_data):
         try:
@@ -270,6 +255,7 @@ class PosixQueue:
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
+    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
     def __init__(self):
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
@@ -281,7 +267,9 @@ class Application:
         self.last_known_instances_cleanup = datetime.now()
         self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
         self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
-    
+        self.blacklisted_pids = set()
+        self.last_blacklisted_pids_cleanup = datetime.now()
+
     def cleanup(self):
         self.inqueue.close()
         self.outqueue.close()
@@ -302,6 +290,10 @@ class Application:
             processes = command["body"]
             for p in processes:
                 pid = int(p["pid"])
+                if pid in self.blacklisted_pids:
+                    logging.debug("Process with pid=%d is blacklisted", pid)
+                    continue
+
                 try:
                     check_instance = self.known_instances[pid]
                 except KeyError:
@@ -314,18 +306,17 @@ class Application:
                         check_instance = AppCheckInstance(check_conf, p)
                     except AppCheckException as ex:
                         logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
+                        self.blacklisted_pids.add(pid)
                         continue
                     self.known_instances[pid] = check_instance
                 
                 metrics = []
                 service_checks = []
-                if check_instance.is_enabled():
-                    try:
-                        metrics, service_checks = check_instance.run()
-                    except AppCheckException as ex:
-                        logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
-                else:
-                    logging.debug("Check %s is disabled", check_instance.name)
+                try:
+                    metrics, service_checks = check_instance.run()
+                except AppCheckException as ex:
+                    logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                    self.blacklisted_pids.add(pid)
                 response_body.append({ "pid": pid,
                                         "display_name": check_instance.name,
                                                  "metrics": metrics,
@@ -340,3 +331,6 @@ class Application:
             if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances([p["pid"] for p in processes])
                 self.last_known_instances_cleanup = datetime.now()
+            if datetime.now() - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
+                self.blacklisted_pids.clear()
+                self.last_blacklisted_pids_cleanup = datetime.now()

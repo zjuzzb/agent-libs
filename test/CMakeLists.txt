@@ -23,6 +23,7 @@ add_executable(test
 	event_capture.cpp
 	forking.cpp
 	fs.cpp
+	markers.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
@@ -35,7 +36,6 @@ add_executable(test
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
-	userevts.cpp
 	main.cpp
 	yaml_configuration.cpp
   statsd.cpp

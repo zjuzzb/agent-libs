@@ -99,9 +99,14 @@ class MongoDb(AgentCheck):
         "metrics.repl.oplog.insertBytes",
         "metrics.ttl.deletedDocuments",
         "metrics.ttl.passes",
+
+        "stats.indexSize",
+        "stats.objects",
+        "stats.dataSize",
+        "stats.storageSize",
     ]
 
-    METRICS = GAUGES + RATES
+    METRICS = set(GAUGES + RATES)
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -302,9 +307,9 @@ class MongoDb(AgentCheck):
 
             # Check if metric is a gauge or rate
             if m in self.GAUGES:
-                m = self.normalize(m.lower(), 'mongodb')
-                self.gauge(m, value, tags=tags)
+                m_norm = self.normalize(m.lower(), 'mongodb')
+                self.gauge(m_norm, value, tags=tags)
 
             if m in self.RATES:
-                m = self.normalize(m.lower(), 'mongodb') + "ps"
-                self.rate(m, value, tags=tags)
+                m_norm = self.normalize(m.lower(), 'mongodb') + "ps"
+                self.rate(m_norm, value, tags=tags)

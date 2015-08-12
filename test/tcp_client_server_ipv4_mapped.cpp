@@ -557,12 +557,12 @@ void runtest_ipv4m(iotype iot,
 			log_param(param);
 			callnum++;
 		}
-		else if(evt->get_type() == PPME_SOCKET_ACCEPT4_E)
+		else if(evt->get_type() == PPME_SOCKET_ACCEPT4_5_E)
 		{
 			EXPECT_EQ("0", evt->get_param_value_str("flags"));
 		}
-		else if(evt->get_type() == PPME_SOCKET_ACCEPT_X ||
-			evt->get_type() == PPME_SOCKET_ACCEPT4_X)
+		else if(evt->get_type() == PPME_SOCKET_ACCEPT_5_X ||
+			evt->get_type() == PPME_SOCKET_ACCEPT4_5_X)
 		{
 			StringTokenizer tst(evt->get_param_value_str("tuple"), ">");
 			EXPECT_EQ(2, (int)tst.count());

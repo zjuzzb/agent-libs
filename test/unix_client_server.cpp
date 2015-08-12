@@ -251,7 +251,7 @@ TEST_F(sys_call_test, unix_client_server)
 
 			callnum++;
 		}
-		else if(evt->get_type() == PPME_SOCKET_ACCEPT_X)
+		else if(evt->get_type() == PPME_SOCKET_ACCEPT_5_X)
 		{
 			string tuple = evt->get_param_value_str("tuple");
 			string addrs = tuple.substr(0, tuple.find(" "));
