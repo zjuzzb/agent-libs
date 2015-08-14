@@ -83,12 +83,6 @@ public:
 	void add_logfd(FILE* fd, function<void(const string&)>&& parser)
 	{
 		m_error_fds.emplace(fd, parser);
-		auto fdno = fileno(fd);
-		if (fdno > m_max_fd)
-		{
-			m_max_fd = fdno;
-		}
-		FD_SET(fdno, &m_readset);
 	}
 
 	void run();
@@ -107,9 +101,6 @@ private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
 	map<FILE *, function<void(const string&)>> m_error_fds;
-	struct timeval m_timeout;
-	fd_set m_readset;
-	int m_max_fd;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 };

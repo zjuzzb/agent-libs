@@ -155,12 +155,8 @@ void sdjagent_parser::operator()(const string& data)
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
 		m_configuration(configuration),
 		m_log_reporter(reporter),
-		m_max_fd(0),
 		m_last_loop_ns(0)
 {
-	FD_ZERO(&m_readset);
-	memset(&m_timeout, 0, sizeof(struct timeval));
-	m_timeout.tv_sec = 1;
 }
 
 void subprocesses_logger::run()
@@ -177,12 +173,19 @@ void subprocesses_logger::run()
 	while(!dragent_configuration::m_terminate)
 	{
 		m_last_loop_ns = sinsp_utils::get_current_time_ns();
-		fd_set readset_w;
-		memcpy(&readset_w, &m_readset, sizeof(fd_set));
-		struct timeval timeout_w;
-		memcpy(&timeout_w, &m_timeout, sizeof(timeval));
 
-		int result = select(m_max_fd+1, &readset_w, NULL, NULL, &timeout_w);
+		int max_fd = 0;
+		fd_set readset_w;
+		FD_ZERO(&readset_w);
+		for(const auto& fds : m_error_fds)
+		{
+			auto fd = fileno(fds.first);
+			FD_SET(fd, &readset_w);
+			max_fd = std::max(fd, max_fd);
+		}
+		struct timeval timeout_w = { 0 };
+
+		int result = select(max_fd+1, &readset_w, NULL, NULL, &timeout_w);
 
 		if(result > 0 )
 		{
@@ -204,7 +207,13 @@ void subprocesses_logger::run()
 				}
 			}
 		}
-
+		else
+		{
+			if(errno != EINTR)
+			{
+				Thread::sleep(1000);
+			}
+		}
 		if(dragent_configuration::m_send_log_report)
 		{
 			m_log_reporter->send_report();
