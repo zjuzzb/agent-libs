@@ -51,6 +51,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		return false;
 	case PPME_SOCKET_ACCEPT_X:
 	case PPME_SOCKET_ACCEPT4_X:
+	case PPME_SOCKET_ACCEPT_5_X:
+	case PPME_SOCKET_ACCEPT4_5_X:
 		parse_accept_exit(evt);;
 		return true;
 	case PPME_SYSCALL_SELECT_X:

@@ -75,6 +75,7 @@ class ipv4_network_interface;
 class mounted_fs;
 class file_stat;
 class container_port_mapping;
+class container_label;
 class container;
 class metrics;
 class dump_request_start;
@@ -5764,6 +5765,108 @@ class container_port_mapping : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class container_label : public ::google::protobuf::Message {
+ public:
+  container_label();
+  virtual ~container_label();
+
+  container_label(const container_label& from);
+
+  inline container_label& operator=(const container_label& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const container_label& default_instance();
+
+  void Swap(container_label* other);
+
+  // implements Message ----------------------------------------------
+
+  container_label* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const container_label& from);
+  void MergeFrom(const container_label& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // optional string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.container_label)
+ private:
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* key_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static container_label* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class container : public ::google::protobuf::Message {
  public:
   container();
@@ -5959,6 +6062,18 @@ class container : public ::google::protobuf::Message {
   inline ::draiosproto::proto_info* release_protos();
   inline void set_allocated_protos(::draiosproto::proto_info* protos);
 
+  // repeated .draiosproto.container_label labels = 20;
+  inline int labels_size() const;
+  inline void clear_labels();
+  static const int kLabelsFieldNumber = 20;
+  inline const ::draiosproto::container_label& labels(int index) const;
+  inline ::draiosproto::container_label* mutable_labels(int index);
+  inline ::draiosproto::container_label* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >*
+      mutable_labels();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6006,10 +6121,11 @@ class container : public ::google::protobuf::Message {
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping > port_mappings_;
   ::draiosproto::proto_info* protos_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label > labels_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14708,6 +14824,150 @@ inline void container_port_mapping::set_container_port(::google::protobuf::uint3
 
 // -------------------------------------------------------------------
 
+// container_label
+
+// required string key = 1;
+inline bool container_label::has_key() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void container_label::set_has_key() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void container_label::clear_has_key() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void container_label::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& container_label::key() const {
+  return *key_;
+}
+inline void container_label::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void container_label::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void container_label::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container_label::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* container_label::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container_label::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string value = 2;
+inline bool container_label::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void container_label::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void container_label::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void container_label::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& container_label::value() const {
+  return *value_;
+}
+inline void container_label::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void container_label::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void container_label::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container_label::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* container_label::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container_label::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // container
 
 // required string id = 1;
@@ -15314,6 +15574,31 @@ inline void container::set_allocated_protos(::draiosproto::proto_info* protos) {
   } else {
     clear_has_protos();
   }
+}
+
+// repeated .draiosproto.container_label labels = 20;
+inline int container::labels_size() const {
+  return labels_.size();
+}
+inline void container::clear_labels() {
+  labels_.Clear();
+}
+inline const ::draiosproto::container_label& container::labels(int index) const {
+  return labels_.Get(index);
+}
+inline ::draiosproto::container_label* container::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::draiosproto::container_label* container::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >&
+container::labels() const {
+  return labels_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >*
+container::mutable_labels() {
+  return &labels_;
 }
 
 // -------------------------------------------------------------------
