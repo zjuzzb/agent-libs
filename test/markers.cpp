@@ -890,4 +890,21 @@ TEST_F(sys_call_test, markers_fast_15)
 	}
 }
 
+TEST_F(sys_call_test, markers_fast_16)
+{
+	sinsp_markerparser p(NULL);
+
+	char doc[] = ">:12345:mysql::";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_markerparser::RES_OK, p.m_res);
+	EXPECT_EQ(">", string(p.m_type_str));
+	EXPECT_EQ(12345, (int)p.m_id);
+	EXPECT_EQ(1, (int)p.m_tags.size());
+	EXPECT_EQ(string("mysql"), string(p.m_tags[0]));
+}
+
 #endif // 0
