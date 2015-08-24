@@ -348,6 +348,8 @@ message app_tag {
 message app_metric {
     optional string name = 1;
     optional app_metric_type type = 2;
+
+    // Valid on GAUGE and RATE
     optional double value = 3;
     repeated app_tag tags = 4;
 }
@@ -568,19 +570,20 @@ message metrics {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required host hostinfo = 4; // The list of processes
+    optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
+    optional string host_custom_name = 11; // This machines's user-set custom name for the draios map.
+    optional string host_tags = 12; // This machines's user-set list of tags for the draios map.
+    // NEVER USED optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI.
+    optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map.
+    optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map.
+    optional string version = 16; // Agent/libsanalyzer/sysdig version
+    optional string instance_id = 21; // AWS instance id
+
+    optional host hostinfo = 4; // The list of processes
     repeated program programs = 9; // The list of programs
     // NEVER USED repeated process processes = 5; // The list of processes
     repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-    optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
-    optional string host_custom_name = 11; // This machines's user-set custom name for the draios map.
-    optional string host_tags = 12; // This machines's user-set list of tags for the draios map. 
-    // NEVER USED optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI. 
-    optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map. 
-    optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map. 
-    optional string version = 16; // Agent/libsanalyzer/sysdig version
-    optional string instance_id = 21; // AWS instance id
     repeated command_details commands = 17; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
