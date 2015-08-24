@@ -244,6 +244,9 @@ class PosixQueue:
             return True
         except posix_ipc.BusyError:
             return False
+        except ValueError as ex:
+            logging.error("Cannot send: %s, size=%dB" % (ex.message, len(msg)))
+            return False
 
     def receive(self, timeout=1):
         message, _ = self.queue.receive(timeout)
@@ -326,7 +329,7 @@ class Application:
                 "body": response_body
             }
             response_s = json.dumps(response)
-            #print "Response: %s\n" % response_s
+            logging.debug("Response size is %d" % len(response_s))
             self.outqueue.send(response_s)
             if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances([p["pid"] for p in processes])
