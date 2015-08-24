@@ -66,6 +66,7 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
 	while(!msg.empty())
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
 		Json::Value response_obj;
 		m_json_reader.parse(msg, response_obj, false);
 		if(response_obj["id"].asUInt64() == id)
@@ -106,13 +107,20 @@ app_check_data::app_check_data(const Json::Value &obj):
 	}
 }
 
-void app_check_data::to_protobuf(draiosproto::app_info *proto) const
+uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limit) const
 {
 	proto->set_process_name(m_process_name);
+	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
+		if(limit_used >= limit)
+		{
+			break;
+		}
 		m.to_protobuf(proto->add_metrics());
+		++limit_used;
 	}
+	return limit_used;
 	/*
 	 * Right now service checks are not supported by the backend
 	for(const auto& s : m_service_checks)
@@ -123,7 +131,8 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto) const
 
 app_metric::app_metric(const Json::Value &obj):
 	m_name(obj[0].asString()),
-	m_value(obj[2].asDouble())
+	m_value(obj[2].asDouble()),
+	m_type(type_t::GAUGE)
 {
 	auto metadata = obj[3];
 	if(metadata.isMember("type"))
@@ -133,7 +142,7 @@ app_metric::app_metric(const Json::Value &obj):
 		{
 			m_type = type_t::GAUGE;
 		}
-		else if (type == "rate")
+		else if(type == "rate")
 		{
 			m_type = type_t::RATE;
 		}

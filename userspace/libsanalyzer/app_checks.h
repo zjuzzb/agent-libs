@@ -108,7 +108,7 @@ public:
 		return m_pid;
 	}
 
-	void to_protobuf(draiosproto::app_info* proto) const;
+	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
 private:
 	int m_pid;
 	string m_process_name;

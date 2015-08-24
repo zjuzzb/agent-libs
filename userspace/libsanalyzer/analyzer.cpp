@@ -844,6 +844,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
 	unordered_map<int, app_check_data> app_metrics;
+	uint16_t app_checks_limit = APP_METRICS_LIMIT;
+
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
@@ -1334,7 +1336,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
 					const auto& app_data = app_metrics.at(tinfo->m_pid);
-					app_data.to_protobuf(proc->mutable_protos()->mutable_app());
+					app_checks_limit -= app_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
 				}
 #endif
 
@@ -1596,6 +1598,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 #endif
+	}
+
+	if(app_checks_limit == 0)
+	{
+		g_logger.log("App checks metrics limit reached", sinsp_logger::SEV_WARNING);
 	}
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
