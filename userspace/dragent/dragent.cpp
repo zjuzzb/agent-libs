@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "monitor.h"
 #include "utils.h"
+#include <sys/sysinfo.h>
 
 static void g_signal_callback(int sig)
 {
@@ -364,6 +365,17 @@ int dragent_app::sdagent_main()
 	initialize_logging();
 
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
+
+	struct sysinfo info;
+	auto error = sysinfo(&info);
+	if(error == 0)
+	{
+		g_log->information("System uptime: " + NumberFormatter::format(info.uptime) + "s");
+	}
+	else
+	{
+		g_log->warning("Cannot get system uptime");
+	}
 
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
