@@ -24,6 +24,9 @@ public class Application {
     private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long VMS_CLEANUP_INTERVAL = 10 * 60 * 1000;
+    private static final double JAVA_VERSION;
+    private static final double MIN_JAVA_VERSION = 1.6;
+    private static final int MONITOR_DONT_RESTART_CODE = 17;
 
     static {
         MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
@@ -31,6 +34,11 @@ public class Application {
         FilterProvider filters = new SimpleFilterProvider().addFilter("BeanAttributeDataFilter", new BeanData
                 .BeanAttributeDataFilter());
         MAPPER.setFilters(filters);
+
+        String version = System.getProperty("java.version");
+        int pos = version.indexOf('.');
+        pos = version.indexOf('.', pos+1);
+        JAVA_VERSION = Double.parseDouble(version.substring (0, pos));
     }
 
     /**
@@ -40,7 +48,12 @@ public class Application {
         try {
             Application app = new Application();
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
+            LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
+            if(JAVA_VERSION < MIN_JAVA_VERSION) {
+                LOGGER.severe("Java version unsupported");
+                System.exit(MONITOR_DONT_RESTART_CODE);
+            }
             if(args.length > 0) {
                 app.runWithArgs(args);
             } else {

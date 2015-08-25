@@ -112,6 +112,15 @@ int monitor::run()
 
 				if(!process.is_main())
 				{
+					if(WIFEXITED(status) && WEXITSTATUS(status) == DONT_RESTART_EXIT_CODE)
+					{
+						// errorcode=17 tells monitor to not retry
+						// when a process fails (does not regard
+						// our dragent)
+						process.disable();
+						continue;
+					}
+
 					// Notify main process to send log report
 					for(const auto& process : m_processes)
 					{
@@ -120,15 +129,6 @@ int monitor::run()
 							kill(process.pid(), SIGUSR2);
 							break;
 						}
-					}
-
-					if(WIFEXITED(status) && WEXITSTATUS(status) == 17)
-					{
-						// errorcode=17 tells monitor to not retry
-						// when a process fails (does not regard
-						// our dragent)
-						process.disable();
-						continue;
 					}
 				}
 

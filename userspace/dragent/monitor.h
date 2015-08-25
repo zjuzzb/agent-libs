@@ -63,6 +63,7 @@ public:
 		m_processes.emplace_back(forward<Ts>(args)...);
 	}
 
+	static const uint8_t DONT_RESTART_EXIT_CODE = 17;
 private:
 	string m_pidfile;
 	vector<monitored_process> m_processes;
