@@ -313,6 +313,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 		else
 		{
 			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 
@@ -433,6 +434,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		else
 		{
 			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 	return ret;
@@ -483,6 +485,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 		else
 		{
 			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 
