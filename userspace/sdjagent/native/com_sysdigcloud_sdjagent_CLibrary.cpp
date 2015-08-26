@@ -306,7 +306,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	else
 	{
 		auto wait_res = wait_pid.wait(child);
-		if(wait_res > 0)
+		if(wait_res >= 0)
 		{
 			res = wait_res;
 		}
@@ -421,7 +421,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
 		auto wait_res = wait_pid.wait(child);
-		if(wait_res > 0)
+		if(wait_res >= 0)
 		{
 			FILE* output = fdopen(child_pipe[0], "r");
 			char output_buffer[1024];
@@ -476,7 +476,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	else
 	{
 		auto wait_res = wait_pid.wait(child);
-		if(wait_res > 0)
+		if(wait_res >= 0)
 		{
 			res = wait_res;
 		}
