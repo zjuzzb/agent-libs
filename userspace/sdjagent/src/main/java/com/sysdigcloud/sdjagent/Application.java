@@ -29,7 +29,10 @@ public class Application {
     private static final double JAVA_VERSION;
     private static final double MIN_JAVA_VERSION = 1.6;
     private static final int MONITOR_DONT_RESTART_CODE = 17;
-
+    private static final String HELP_TEXT = "Available commands:\n" +
+            "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
+            "availableMetrics <pid> <vpid> - Print all available beans from specified JVM, " +
+                    "they are printed in a similar YAML to be easily copied to conf file\n";
     static {
         MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         MAPPER.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
@@ -131,6 +134,8 @@ public class Application {
             }
             MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
             MAPPER.writeValue(System.out, vm.getMetrics());
+        } else {
+            System.out.print(HELP_TEXT);
         }
         System.out.println();
         System.out.flush();
