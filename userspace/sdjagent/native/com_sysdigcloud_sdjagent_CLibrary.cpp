@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
+#include <signal.h>
 
 using namespace std;
 
@@ -127,6 +129,57 @@ const char* scap_get_host_root()
 	return p;
 }
 
+//
+// Returns status code of exited process or -1 if it did not exit in specified timeout
+//
+
+class timed_waitpid final
+{
+public:
+	explicit timed_waitpid()
+	{
+		// Block child signal, so we can use sigtimedwait()
+		sigset_t mask;
+		sigemptyset (&mask);
+		sigaddset (&mask, SIGCHLD);
+
+		sigprocmask(SIG_BLOCK, &mask, &m_orig_set);
+	}
+	~timed_waitpid()
+	{
+		// Restore previous sigmask
+		sigprocmask(SIG_SETMASK, &m_orig_set, NULL);
+	}
+
+	int wait(pid_t pid, unsigned timeout_s=3)
+	{
+		sigset_t mask;
+		sigemptyset(&mask);
+		sigaddset(&mask, SIGCHLD);
+
+		struct timespec timeout;
+		timeout.tv_sec = timeout_s;
+		timeout.tv_nsec = 0;
+
+		auto sig = sigtimedwait(&mask, NULL, &timeout);
+		cerr << "sigtimedwait return: " << sig << endl;
+
+		int status = 0;
+		int wait_res = waitpid(pid, &status, WNOHANG);
+
+		if(wait_res > 0 && WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		return -1;
+	}
+
+	timed_waitpid(const timed_waitpid&) = delete;
+	timed_waitpid& operator=(const timed_waitpid&) = delete;
+private:
+	sigset_t m_orig_set;
+};
+
 // Use raw setns syscall for versions of glibc that don't include it (namely glibc-2.12)
 #if __GLIBC__ == 2 && __GLIBC_MINOR__ < 14
 //#define _GNU_SOURCE
@@ -202,6 +255,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_close_1fd
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContainer
 		(JNIEnv* env, jclass, jstring source, jint pid, jstring destination)
 {
+	timed_waitpid wait_pid;
 	int res = 1;
 
 	// Open here the namespace so we are sure that the process is live before forking
@@ -252,11 +306,16 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
-		if(WIFEXITED(status))
+		cerr << "wait at" << __FILE__ << ":" << __LINE__ << endl;
+		auto wait_res = wait_pid.wait(child);
+		cerr << "end wait at" << __FILE__ << ":" << __LINE__ << endl;
+		if(wait_res > 0)
 		{
-			res = WEXITSTATUS(status);
+			res = wait_res;
+		}
+		else
+		{
+			kill(child, SIGKILL);
 		}
 	}
 
@@ -266,6 +325,8 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
 		(JNIEnv* env, jclass, jint pid, jstring command, jobjectArray commandArgs)
 {
+	timed_waitpid wait_pid;
+
 	int child_pipe[2];
 	char nspath[128];
 	jstring ret = NULL;
@@ -360,15 +421,23 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
-		FILE* output = fdopen(child_pipe[0], "r");
-		char output_buffer[1024];
-		if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
+		cerr << "wait at" << __FILE__ << ":" << __LINE__ << endl;
+		int wait_res = wait_pid.wait(child);
+		cerr << "end wait at" << __FILE__ << ":" << __LINE__ << endl;
+		if(wait_res > 0)
 		{
-			ret = env->NewStringUTF(output_buffer);
+			FILE* output = fdopen(child_pipe[0], "r");
+			char output_buffer[1024];
+			if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
+			{
+				ret = env->NewStringUTF(output_buffer);
+			}
+		}
+		else
+		{
+			kill(child, SIGKILL);
 		}
 	}
 	return ret;
@@ -377,6 +446,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContainer
 		(JNIEnv* env, jclass, jint pid, jstring path)
 {
+	timed_waitpid wait_pid;
 	int res = 1;
 
 	char mntnspath[128];
@@ -410,11 +480,16 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
-		if(WIFEXITED(status))
+		cerr << "wait at " << __FILE__ << ":" << __LINE__ << endl;
+		auto wait_res = wait_pid.wait(child);
+		cerr << "end wait at " << __FILE__ << ":" << __LINE__ << endl;
+		if(wait_res > 0)
 		{
-			res = WEXITSTATUS(status);
+			res = wait_res;
+		}
+		else
+		{
+			kill(child, SIGKILL);
 		}
 	}
 
