@@ -161,8 +161,7 @@ public:
 		timeout.tv_sec = timeout_s;
 		timeout.tv_nsec = 0;
 
-		auto sig = sigtimedwait(&mask, NULL, &timeout);
-		cerr << "sigtimedwait return: " << sig << endl;
+		sigtimedwait(&mask, NULL, &timeout);
 
 		int status = 0;
 		int wait_res = waitpid(pid, &status, WNOHANG);
@@ -306,9 +305,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	}
 	else
 	{
-		cerr << "wait at" << __FILE__ << ":" << __LINE__ << endl;
 		auto wait_res = wait_pid.wait(child);
-		cerr << "end wait at" << __FILE__ << ":" << __LINE__ << endl;
 		if(wait_res > 0)
 		{
 			res = wait_res;
@@ -423,9 +420,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	{
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
-		cerr << "wait at" << __FILE__ << ":" << __LINE__ << endl;
-		int wait_res = wait_pid.wait(child);
-		cerr << "end wait at" << __FILE__ << ":" << __LINE__ << endl;
+		auto wait_res = wait_pid.wait(child);
 		if(wait_res > 0)
 		{
 			FILE* output = fdopen(child_pipe[0], "r");
@@ -480,9 +475,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	}
 	else
 	{
-		cerr << "wait at " << __FILE__ << ":" << __LINE__ << endl;
 		auto wait_res = wait_pid.wait(child);
-		cerr << "end wait at " << __FILE__ << ":" << __LINE__ << endl;
 		if(wait_res > 0)
 		{
 			res = wait_res;
