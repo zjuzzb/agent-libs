@@ -80,10 +80,12 @@ public class MonitoredVM {
         if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar") &&
            CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so")) {
             String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-            data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
+            String javaExe = String.format("/proc/%d/exe", request.getVpid());
+            data = CLibrary.runOnContainer(request.getPid(), javaExe, command);
         } else {
             // These logs are with debug priority because may happen for every short lived java process
-            LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(), request.getVpid()));
+            LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
+                    request.getVpid()));
         }
 
         CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
@@ -219,6 +221,41 @@ public class MonitoredVM {
                 break;
             }
         }
+    }
+
+    public List<Map<String, Object>> availableMetrics() throws IOException {
+        final Set<ObjectName> allBeans = connection.getMbs().queryNames(null, null);
+        final List<Map<String, Object>> availableMetrics = new ArrayList<Map<String, Object>>(allBeans.size());
+        for (final ObjectName bean : allBeans) {
+            try {
+                final Map<String, Object> beanData = new HashMap<String, Object>();
+                beanData.put("query", bean.getCanonicalName());
+                final MBeanInfo beanInfo = connection.getMbs().getMBeanInfo(bean);
+                final MBeanAttributeInfo[] attributeInfos = beanInfo.getAttributes();
+                final List<String> attributes = new ArrayList<String>(attributeInfos.length);
+                for(int j = 0; j < attributeInfos.length; ++j) {
+                    final Set<String> acceptedTypes = new HashSet<String>();
+                    acceptedTypes.add("int");
+                    acceptedTypes.add("float");
+                    acceptedTypes.add("double");
+                    acceptedTypes.add("long");
+                    if (acceptedTypes.contains(attributeInfos[j].getType())) {
+                        attributes.add(attributeInfos[j].getName());
+                    }
+                }
+                beanData.put("attributes", attributes);
+                if(!attributes.isEmpty()) {
+                    availableMetrics.add(beanData);
+                }
+            } catch (InstanceNotFoundException e) {
+                // TODO: log it
+            } catch (IntrospectionException e) {
+                // TODO: log it
+            } catch (ReflectionException e) {
+                // TODO: log it
+            }
+        }
+        return availableMetrics;
     }
 
     public List<BeanData> getMetrics() {

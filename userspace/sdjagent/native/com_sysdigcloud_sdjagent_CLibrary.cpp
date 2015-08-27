@@ -11,6 +11,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
+#include <signal.h>
+#include <string.h>
 
 using namespace std;
 
@@ -127,6 +130,56 @@ const char* scap_get_host_root()
 	return p;
 }
 
+//
+// Returns status code of exited process or -1 if it did not exit in specified timeout
+//
+
+class timed_waitpid final
+{
+public:
+	explicit timed_waitpid()
+	{
+		// Block child signal, so we can use sigtimedwait()
+		sigset_t mask;
+		sigemptyset (&mask);
+		sigaddset (&mask, SIGCHLD);
+
+		sigprocmask(SIG_BLOCK, &mask, &m_orig_set);
+	}
+	~timed_waitpid()
+	{
+		// Restore previous sigmask
+		sigprocmask(SIG_SETMASK, &m_orig_set, NULL);
+	}
+
+	int wait(pid_t pid, unsigned timeout_s=3)
+	{
+		sigset_t mask;
+		sigemptyset(&mask);
+		sigaddset(&mask, SIGCHLD);
+
+		struct timespec timeout;
+		timeout.tv_sec = timeout_s;
+		timeout.tv_nsec = 0;
+
+		sigtimedwait(&mask, NULL, &timeout);
+
+		int status = 0;
+		int wait_res = waitpid(pid, &status, WNOHANG);
+
+		if(wait_res > 0 && WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		return -1;
+	}
+
+	timed_waitpid(const timed_waitpid&) = delete;
+	timed_waitpid& operator=(const timed_waitpid&) = delete;
+private:
+	sigset_t m_orig_set;
+};
+
 // Use raw setns syscall for versions of glibc that don't include it (namely glibc-2.12)
 #if __GLIBC__ == 2 && __GLIBC_MINOR__ < 14
 //#define _GNU_SOURCE
@@ -202,6 +255,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_close_1fd
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContainer
 		(JNIEnv* env, jclass, jstring source, jint pid, jstring destination)
 {
+	timed_waitpid wait_pid;
 	int res = 1;
 
 	// Open here the namespace so we are sure that the process is live before forking
@@ -252,11 +306,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
-		if(WIFEXITED(status))
+		auto wait_res = wait_pid.wait(child);
+		if(wait_res >= 0)
 		{
-			res = WEXITSTATUS(status);
+			res = wait_res;
+		}
+		else
+		{
+			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 
@@ -266,6 +324,8 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
 		(JNIEnv* env, jclass, jint pid, jstring command, jobjectArray commandArgs)
 {
+	timed_waitpid wait_pid;
+
 	int child_pipe[2];
 	char nspath[128];
 	jstring ret = NULL;
@@ -314,6 +374,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
+		close(child_pipe[0]);
 
 		// Copy environment of the target process
 		const char* container_environ_ptr[100];
@@ -357,18 +418,30 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(usernsfd.fd(), CLONE_NEWUSER);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
+		cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent inside container, errno: " << strerror(errno) <<"\" }" << endl;
+		exit(1);
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
+		close(child_pipe[1]);
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
-		FILE* output = fdopen(child_pipe[0], "r");
-		char output_buffer[1024];
-		if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
+		auto wait_res = wait_pid.wait(child);
+		if(wait_res >= 0)
 		{
-			ret = env->NewStringUTF(output_buffer);
+			FILE* output = fdopen(child_pipe[0], "r");
+			char output_buffer[1024];
+			if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
+			{
+				ret = env->NewStringUTF(output_buffer);
+			}
+			fclose(output);
+		}
+		else
+		{
+			close(child_pipe[0]);
+			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 	return ret;
@@ -377,6 +450,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContainer
 		(JNIEnv* env, jclass, jint pid, jstring path)
 {
+	timed_waitpid wait_pid;
 	int res = 1;
 
 	char mntnspath[128];
@@ -410,11 +484,15 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 	}
 	else
 	{
-		int status = 0;
-		waitpid(child, &status, 0);
-		if(WIFEXITED(status))
+		auto wait_res = wait_pid.wait(child);
+		if(wait_res >= 0)
 		{
-			res = WEXITSTATUS(status);
+			res = wait_res;
+		}
+		else
+		{
+			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
 		}
 	}
 

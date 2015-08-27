@@ -76,11 +76,6 @@ public:
 	{
 
 	}
-	explicit java_process_request(int pid, int vpid, int uid, int gid):
-			m_pid(pid),
-			m_vpid(vpid)
-	{
-	}
 	inline Json::Value to_json() const;
 private:
 	int m_pid;
