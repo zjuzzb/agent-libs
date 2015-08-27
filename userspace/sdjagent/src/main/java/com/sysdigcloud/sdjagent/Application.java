@@ -92,9 +92,9 @@ public class Application {
 
     private void runWithArgs(String[] args) throws IOException {
         if(args[0].equals("getVMHandle") && args.length > 1) {
-            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[1]));
-            MonitoredVM vm = new MonitoredVM(request);
-            Map<String, Object> vmInfo = new HashMap<String, Object>();
+            final VMRequest request = new VMRequest(args);
+            final MonitoredVM vm = new MonitoredVM(request);
+            final Map<String, Object> vmInfo = new HashMap<String, Object>();
             vmInfo.put("available", vm.isAvailable());
             if (vm.isAvailable()) {
                 vmInfo.put("name", vm.getName());
@@ -105,7 +105,7 @@ public class Application {
             }
             MAPPER.writeValue(System.out, vmInfo);
         } else if (args[0].equals("availableMetrics") && args.length > 1) {
-            final VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[args.length > 2 ? 2 : 1]));
+            final VMRequest request = new VMRequest(args);
             final MonitoredVM vm = new MonitoredVM(request);
 
             if(vm.isAgentActive()) {
@@ -121,8 +121,8 @@ public class Application {
                 System.out.println(dump);
             }
         } else if (args[0].equals("getMetrics") && args.length > 1) {
-            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[args.length > 2 ? 2 : 1]));
-            MonitoredVM vm = new MonitoredVM(request);
+            final VMRequest request = new VMRequest(args);
+            final MonitoredVM vm = new MonitoredVM(request);
             vm.addQueries(config.getDefaultBeanQueries());
             if(vm.isAgentActive()) {
                 Map<String, Config.Process> processes = config.getProcesses();

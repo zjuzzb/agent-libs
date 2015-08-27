@@ -80,7 +80,8 @@ public class MonitoredVM {
         if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar") &&
            CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so")) {
             String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-            data = CLibrary.runOnContainer(request.getPid(), "/usr/bin/java", command);
+            String javaExe = String.format("/proc/%d/exe", request.getVpid());
+            data = CLibrary.runOnContainer(request.getPid(), javaExe, command);
         } else {
             // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
