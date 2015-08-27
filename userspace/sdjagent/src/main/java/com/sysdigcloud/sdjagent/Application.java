@@ -108,21 +108,23 @@ public class Application {
             final VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[args.length > 2 ? 2 : 1]));
             final MonitoredVM vm = new MonitoredVM(request);
 
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
+            if(vm.isAgentActive()) {
+                DumperOptions options = new DumperOptions();
+                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+                Yaml yaml = new Yaml(options);
 
-            Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
-            vmInfo.put("pattern", vm.getName());
-            vmInfo.put("beans", vm.availableMetrics());
+                Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
+                vmInfo.put("pattern", vm.getName());
+                vmInfo.put("beans", vm.availableMetrics());
 
-            final String dump = yaml.dump(vmInfo);
-            System.out.println(dump);
+                final String dump = yaml.dump(vmInfo);
+                System.out.println(dump);
+            }
         } else if (args[0].equals("getMetrics") && args.length > 1) {
             VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[args.length > 2 ? 2 : 1]));
             MonitoredVM vm = new MonitoredVM(request);
             vm.addQueries(config.getDefaultBeanQueries());
-            if(vm.isAvailable()) {
+            if(vm.isAgentActive()) {
                 Map<String, Config.Process> processes = config.getProcesses();
                 for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
                     if (vm.getName().contains(config.getValue().getPattern())) {
@@ -131,9 +133,9 @@ public class Application {
                         break;
                     }
                 }
+                MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+                MAPPER.writeValue(System.out, vm.getMetrics());
             }
-            MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-            MAPPER.writeValue(System.out, vm.getMetrics());
         } else {
             System.out.print(HELP_TEXT);
         }

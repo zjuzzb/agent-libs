@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include <signal.h>
+#include <string.h>
 
 using namespace std;
 
@@ -373,6 +374,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 	{
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 		dup2(child_pipe[1], STDOUT_FILENO);
+		close(child_pipe[0]);
 
 		// Copy environment of the target process
 		const char* container_environ_ptr[100];
@@ -416,9 +418,12 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(usernsfd.fd(), CLONE_NEWUSER);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
+		cerr << "{ \"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent inside container, errno: " << strerror(errno) <<"\" }" << endl;
+		exit(1);
 	}
 	else
 	{
+		close(child_pipe[1]);
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
 		auto wait_res = wait_pid.wait(child);
@@ -430,9 +435,11 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			{
 				ret = env->NewStringUTF(output_buffer);
 			}
+			fclose(output);
 		}
 		else
 		{
+			close(child_pipe[0]);
 			kill(child, SIGKILL);
 			waitpid(child, NULL, 0);
 		}
