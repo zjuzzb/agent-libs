@@ -25,16 +25,69 @@ def mark( string ):
     markerfile.flush();
     return
 
+def cpu_ops( tag, num ):
+    mark(">:t:%s.processing::" % tag)
+    
+    mark(">:t:%s.processing.prepare::" % tag)
+    k = 0
+    for j in range(0, num):
+        k = k + 1
+    mark("<:t:%s.processing.prepare::" % tag)
+    
+    mark(">:t:%s.processing.run::" % tag)
+    for j in range(0, num):
+        k = k + j * 1000 % 500
+    mark("<:t:%s.processing.run::" % tag)
+    
+    mark(">:t:%s.processing.reduce::" % tag)
+    for j in range(0, num / 3):
+        k = k + j * 1000 % 500
+    mark("<:t:%s.processing.reduce::" % tag)
+
+    mark("<:t:%s.processing::" % tag)
+    
+    return
+
+def io_ops( tag, num ):
+    log("EEEE")
+    mark(">:t:%s.data_write::" % tag)
+    
+    tfile = open("tfile.out", "w")
+    for j in range(0, num):
+        tfile.write("132467890123456790132467890123456790132467890123456790132467890123456790132467890123456790");
+    tfile.close()
+
+    mark("<:t:%s.data_write::" % tag)
+    
+    return
+
 try:
+    #
+    # Extract the operational constants
+    #
     NCHILDS = int(os.environ['NC'])
     NAME = os.environ['NAME']
+    try:
+        CPU_OPS = int(os.environ['CPU_OPS'])
+    except Exception as e:
+        CPU_OPS = 0
+    try:
+        IO_OPS = int(os.environ['IO_OPS'])
+    except Exception as e:
+        IO_OPS = 0
 
+    #
+    # Initial logging
+    #
+    log("NAME: %s\n" % NAME)
     log("simple service daemon starting\n")
     log("linked service dependencies: %d\n" % NCHILDS)
     for j in range(0, NCHILDS):
         # Create the child name
         chname = "srvc_next" + str(j)
         log("  %s\n" % chname)
+    log("CPU_OPS: %d\n" % CPU_OPS)
+    log("IO_OPS: %d\n" % IO_OPS)
 
     if os.environ['ROLE'] == 'root':
         log("Starting request generation loop...\n")
@@ -46,7 +99,8 @@ try:
         #    sys.exit(0)
 
         while True:
-            mark(">:t:us::")
+        #for x in range(0, 10):
+            mark(">:t:%s::" % NAME)
 
             for j in range(0, NCHILDS):
 
@@ -55,6 +109,8 @@ try:
 
                 # Create the child name
                 chname = "srvc_next" + str(j)
+                depname = NAME + ".req" + str(j)
+                tag = "%s" % depname
 
                 # Connect to the child
                 s.connect((chname, 8080))
@@ -62,20 +118,26 @@ try:
                 # Protocol exchange - sends and receives
                 #s.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
 
-                mark(">:t:us.%s::" % chname)
-                s.send(NAME)
+                mark(">:t:%s::" % tag)
+                s.send(tag)
 
                 while True:
                     resp = s.recv(1024)
                     if resp == "": break
                     print resp,
 
-                mark("<:t:us.%s::" % chname)
+                mark("<:t:%s::" % tag)
 
                 # Close the connection when completed
                 s.close()
 
-            mark("<:t:us::")
+            if CPU_OPS != 0:
+                cpu_ops(NAME, CPU_OPS)
+
+            if IO_OPS != 0:
+                io_ops(NAME, IO_OPS)
+
+            mark("<:t:%s::" % NAME)
 
             time.sleep(0.1)
 
@@ -100,23 +162,36 @@ try:
 
             # Receive up to 1024 bytes
             resp = (connect.recv(1024)).strip()
+            tag = resp + "." + NAME
+
+            mark(">:t:%s::" % tag)
+
+            if CPU_OPS != 0:
+                cpu_ops(tag, CPU_OPS)
+
+            if IO_OPS != 0:
+                io_ops(tag, IO_OPS)
 
             ###########################################
             # Talk to the next tier
             ###########################################
             for j in range(0, NCHILDS):
-                # Set up a TCP/IP socket
-                sc = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-
                 # Create the child name
                 chname = "srvc_next" + str(j)
+                depname = "req" + str(j)
+                subtag = tag + "." + depname
+
+                mark(">:t:%s::" % subtag)
+
+                # Set up a TCP/IP socket
+                sc = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
                 # Connect to the child
                 sc.connect((chname, 8080))
 
                 # Protocol exchange - sends and receives
                 #sc.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
-                sc.send(resp + '.' + NAME)
+                sc.send(subtag)
                 while True:
                     respc = sc.recv(1024)
                     if respc == "": break
@@ -125,13 +200,15 @@ try:
                 # Close the connection when completed
                 print sc.getsockname()
                 sc.close()
+                mark("<:t:%s::" % subtag)
 
             # Send an answer
-            connect.send("You said '" + resp + "' to me\n")
+            connect.send("sent:" + resp)
 
             # Done with thw connection. Close it.
             connect.close()
-            print "\ndone",address
+
+            mark("<:t:%s::" % tag)
 
 except Exception as e:
     log("error: " + str(e))
