@@ -42,18 +42,18 @@ def build_ns_path(pid, ns):
 
 class YamlConfig:
     def __init__(self):
-        with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
-            try:
+        try:
+            with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
                 self._default_root = yaml.load(default_file.read())
-            except Exception as ex:
-                self._default_root = {}
-                logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
-        with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
-            try:
+        except Exception as ex:
+            self._default_root = {}
+            logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
+        try:
+            with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
                 self._root = yaml.load(custom_file.read())
-            except Exception as ex:
-                self._root = {}
-                logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
+        except Exception as ex:
+            self._root = {}
+            logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
 
     def get_merged_sequence(self, key, default=[]):
         ret = default
