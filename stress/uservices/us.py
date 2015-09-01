@@ -26,38 +26,37 @@ def mark( string ):
     return
 
 def cpu_ops( tag, num ):
-    mark(">:t:%s.processing::" % tag)
+    mark(">:%s.processing::" % tag)
     
-    mark(">:t:%s.processing.prepare::" % tag)
+    mark(">:%s.processing.prepare::" % tag)
     k = 0
     for j in range(0, num):
         k = k + 1
-    mark("<:t:%s.processing.prepare::" % tag)
+    mark("<:%s.processing.prepare::" % tag)
     
-    mark(">:t:%s.processing.run::" % tag)
+    mark(">:%s.processing.run::" % tag)
     for j in range(0, num):
         k = k + j * 1000 % 500
-    mark("<:t:%s.processing.run::" % tag)
+    mark("<:%s.processing.run::" % tag)
     
-    mark(">:t:%s.processing.reduce::" % tag)
+    mark(">:%s.processing.reduce::" % tag)
     for j in range(0, num / 3):
         k = k + j * 1000 % 500
-    mark("<:t:%s.processing.reduce::" % tag)
+    mark("<:%s.processing.reduce::" % tag)
 
-    mark("<:t:%s.processing::" % tag)
+    mark("<:%s.processing::" % tag)
     
     return
 
 def io_ops( tag, num ):
-    log("EEEE")
-    mark(">:t:%s.data_write::" % tag)
+    mark(">:%s.data_write::" % tag)
     
     tfile = open("tfile.out", "w")
     for j in range(0, num):
         tfile.write("132467890123456790132467890123456790132467890123456790132467890123456790132467890123456790");
     tfile.close()
 
-    mark("<:t:%s.data_write::" % tag)
+    mark("<:%s.data_write::" % tag)
     
     return
 
@@ -90,6 +89,7 @@ try:
     log("IO_OPS: %d\n" % IO_OPS)
 
     if os.environ['ROLE'] == 'root':
+        reqid = 0
         log("Starting request generation loop...\n")
 
         #try:
@@ -100,10 +100,10 @@ try:
 
         while True:
         #for x in range(0, 10):
-            mark(">:t:%s::" % NAME)
+            reqid = reqid + 1
+            mark(">:%d:%s::" % (reqid, NAME))
 
             for j in range(0, NCHILDS):
-
                 # Set up a TCP/IP socket
                 s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
@@ -118,15 +118,17 @@ try:
                 # Protocol exchange - sends and receives
                 #s.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
 
-                mark(">:t:%s::" % tag)
-                s.send(tag)
+                mark(">:%d:%s::" % (reqid, tag))
+                payload = "%d:%s" % (reqid, tag)
+                log(payload)
+                s.send(payload)
 
                 while True:
                     resp = s.recv(1024)
                     if resp == "": break
                     print resp,
 
-                mark("<:t:%s::" % tag)
+                mark("<:%d:%s::" % (reqid, tag))
 
                 # Close the connection when completed
                 s.close()
@@ -137,7 +139,7 @@ try:
             if IO_OPS != 0:
                 io_ops(NAME, IO_OPS)
 
-            mark("<:t:%s::" % NAME)
+            mark("<:%d:%s::" % (reqid, NAME))
 
             time.sleep(0.1)
 
@@ -164,7 +166,7 @@ try:
             resp = (connect.recv(1024)).strip()
             tag = resp + "." + NAME
 
-            mark(">:t:%s::" % tag)
+            mark(">:%s::" % tag)
 
             if CPU_OPS != 0:
                 cpu_ops(tag, CPU_OPS)
@@ -181,7 +183,7 @@ try:
                 depname = "req" + str(j)
                 subtag = tag + "." + depname
 
-                mark(">:t:%s::" % subtag)
+                mark(">:%s::" % subtag)
 
                 # Set up a TCP/IP socket
                 sc = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -200,7 +202,7 @@ try:
                 # Close the connection when completed
                 print sc.getsockname()
                 sc.close()
-                mark("<:t:%s::" % subtag)
+                mark("<:%s::" % subtag)
 
             # Send an answer
             connect.send("sent:" + resp)
@@ -208,7 +210,7 @@ try:
             # Done with thw connection. Close it.
             connect.close()
 
-            mark("<:t:%s::" % tag)
+            mark("<:%s::" % tag)
 
 except Exception as e:
     log("error: " + str(e))
