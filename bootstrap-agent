@@ -159,18 +159,6 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-if [ -z $STATSITE_VERSION ]; then
-  STATSITE_VERSION=0.7.0-sysdig3
-fi
-STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
-if [ ! -d "${STATSITE_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/statsite-private-$STATSITE_VERSION.zip
-	unzip statsite-private-$STATSITE_VERSION.zip
-	cd $STATSITE_DIR
-	python $SCONS_DIR/script/scons
-fi
-
 PYTHON_DIR=$DEPENDENCIES/Python-2.7.10
 if [ ! -d "${PYTHON_DIR}" ]; then
 	cd $DEPENDENCIES
@@ -182,6 +170,18 @@ if [ ! -d "${PYTHON_DIR}" ]; then
 	./configure --prefix=$PYTHON_DIR/target --with-ensurepip=install
 	make
 	make install
+fi
+
+if [ -z $STATSITE_VERSION ]; then
+  STATSITE_VERSION=0.7.0-sysdig3
+fi
+STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
+if [ ! -d "${STATSITE_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/statsite-private-$STATSITE_VERSION.zip
+	unzip statsite-private-$STATSITE_VERSION.zip
+	cd $STATSITE_DIR
+	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
 fi
 
 if [ -z "$AGENT_VERSION" ]; then
