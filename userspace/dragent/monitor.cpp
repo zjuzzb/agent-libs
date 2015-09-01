@@ -65,6 +65,7 @@ int monitor::run()
 	signal(SIGQUIT, g_monitor_signal_callback);
 	signal(SIGTERM, g_monitor_signal_callback);
 	signal(SIGUSR1, SIG_IGN);
+	signal(SIGUSR2, SIG_IGN);
 
 	for(auto& process : m_processes)
 	{
