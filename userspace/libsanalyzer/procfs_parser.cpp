@@ -2,7 +2,7 @@
 // links:
 //   http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //   http://stackoverflow.com/questions/1420426/calculating-cpu-usage-of-a-process-in-linux
-// 
+//
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -401,7 +401,7 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 
 	fclose(f);
 
-	return res;	
+	return res;
 }
 
 //
@@ -449,10 +449,14 @@ void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list, bool 
 #ifdef _WIN32
 return;
 #else
-	FILE* fp = setmntent("/etc/mtab", "r");
+
+	string root = scap_get_host_root();
+	string mtab = root + "/etc/mtab";
+
+	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
 	{
-		throw sinsp_exception("error opening /etc/mtab");
+		throw sinsp_exception(string("error opening ").append(mtab).c_str());
 	}
 
 	while(true)
@@ -500,9 +504,10 @@ return;
 		}
 
 		struct statvfs statfs;
-		if(statvfs(entry->mnt_dir, &statfs) < 0)
+		string dir = root + entry->mnt_dir;
+		if(statvfs(dir.c_str(), &statfs) < 0)
 		{
-			g_logger.log("error getting details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
+			g_logger.log("error getting details for " + dir + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
 			continue;
 		}
 
@@ -526,8 +531,8 @@ return;
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
 		fs.type =  entry->mnt_type;
-		fs.available_bytes = blocksize * statfs.f_bavail; 
-		fs.size_bytes = blocksize * statfs.f_blocks; 
+		fs.available_bytes = blocksize * statfs.f_bavail;
+		fs.size_bytes = blocksize * statfs.f_blocks;
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 
 		fs_list->push_back(fs);
@@ -588,4 +593,3 @@ return "";
 	return string(name);
 #endif
 }
-
