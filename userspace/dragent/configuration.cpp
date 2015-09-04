@@ -4,6 +4,7 @@
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
 #include "Poco/StreamCopier.h"
+#include <netdb.h>
 
 #include "logger.h"
 
@@ -467,49 +468,13 @@ bool dragent_configuration::is_executable(const string &path)
 
 void dragent_configuration::parse_services_file()
 {
-	char *p, *cp;
-	char line[512];
-	auto servf = fopen("/opt/draios/etc/services", "r" );
-
-	while ((p = fgets(line, sizeof(line), servf)) != NULL)
+	auto service = getservent();
+	while(service != NULL)
 	{
-		// Parsing copied from:
-		// https://github.com/kristopolous/services-parser/blob/master/servparse.cpp#L84
-		if (*p == '#')
-		{
-			continue;
-		}
-
-		cp = strpbrk(p, "#\n");
-		if (cp == NULL)
-		{
-			continue;
-		}
-
-		*cp = '\0';
-
-		p = strpbrk(p, " \t");
-		if (p == NULL)
-		{
-			continue;
-		}
-		*p++ = '\0';
-
-		while (*p == ' ' || *p == '\t')
-		{
-			p++;
-		}
-
-		cp = strpbrk(p, ",/");
-		if (cp == NULL)
-		{
-			continue;
-		}
-
-		*cp++ = '\0';
-		m_known_server_ports.set((uint16_t)atoi(p));
+		m_known_server_ports.set(ntohs(service->s_port));
+		service = getservent();
 	}
-	fclose(servf);
+	endservent();
 }
 
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
