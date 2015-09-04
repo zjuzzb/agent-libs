@@ -335,7 +335,7 @@ public:
 	bool m_app_checks_enabled;
 	uint32_t m_containers_limit;
 	vector<string> m_container_patterns;
-	known_ports_set m_known_server_ports;
+	ports_set m_known_server_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()

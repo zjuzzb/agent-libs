@@ -622,7 +622,7 @@ int main(int argc, char **argv)
 //analyzer->get_configuration()->set_inactive_thread_scan_time_ns(ONE_SECOND_IN_NS);
 
 		// Get transactions from all ports as here we don't have services file
-		known_ports_set known_ports;
+		ports_set known_ports;
 		known_ports.set();
 		known_ports.reset(32000);
 		known_ports.reset(31000);

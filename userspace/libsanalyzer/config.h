@@ -4,7 +4,7 @@
 #include <bitset>
 #include <limits>
 
-using known_ports_set = bitset<numeric_limits<uint16_t>::max()>;
+using ports_set = bitset<numeric_limits<uint16_t>::max()>;
 
 class SINSP_PUBLIC sinsp_configuration
 {
@@ -59,8 +59,8 @@ public:
 	void set_version(const string& version);
 	const string& get_instance_id() const;
 	void set_instance_id(const string& instance_id);
-	void set_known_ports(const known_ports_set & v);
-	const known_ports_set & get_known_ports() const;
+	void set_known_ports(const ports_set & v);
+	const ports_set & get_known_ports() const;
 
 private:
 	uint64_t m_connection_pruning_interval_ns;
@@ -86,7 +86,7 @@ private:
 	string m_host_custom_map;
 	string m_version;
 	string m_instance_id;
-	known_ports_set m_known_ports;
+	ports_set m_known_ports;
 };
 
 #endif // HAS_ANALYZER
