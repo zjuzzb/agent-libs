@@ -58,7 +58,7 @@ public:
 class sinsp_proto_detector
 {
 public:
-	sinsp_proto_detector();
+	sinsp_proto_detector(sinsp_configuration* config);
 
 	sinsp_partial_transaction::type detect_proto(sinsp_evt *evt, 
 		sinsp_partial_transaction *trinfo, 
@@ -80,7 +80,7 @@ private:
 	uint32_t m_http_trace_intval;
 	uint32_t m_http_connect_intval;
 	uint32_t m_http_resp_intval;
-	unordered_set<uint16_t> m_known_services_ports;
+	sinsp_configuration* m_sinsp_config;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

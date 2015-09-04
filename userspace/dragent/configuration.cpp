@@ -213,6 +213,11 @@ void dragent_configuration::init(Application* app)
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
+	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
+	for(auto p : known_server_ports)
+	{
+		m_known_server_ports.set(p);
+	}
 
 	for(auto ch : m_config->m_root["chisels"])
 	{
@@ -239,6 +244,7 @@ void dragent_configuration::init(Application* app)
 	{
 		write_statsite_configuration();
 	}
+	parse_services_file();
 }
 
 void dragent_configuration::print_configuration()
@@ -293,6 +299,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
+	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 
 	if(m_aws_metadata.m_valid)
 	{
@@ -456,6 +463,53 @@ bool dragent_configuration::is_executable(const string &path)
 {
 	File file(path);
 	return file.exists() && file.canExecute();
+}
+
+void dragent_configuration::parse_services_file()
+{
+	char *p, *cp;
+	char line[512];
+	auto servf = fopen("/opt/draios/etc/services", "r" );
+
+	while ((p = fgets(line, sizeof(line), servf)) != NULL)
+	{
+		// Parsing copied from:
+		// https://github.com/kristopolous/services-parser/blob/master/servparse.cpp#L84
+		if (*p == '#')
+		{
+			continue;
+		}
+
+		cp = strpbrk(p, "#\n");
+		if (cp == NULL)
+		{
+			continue;
+		}
+
+		*cp = '\0';
+
+		p = strpbrk(p, " \t");
+		if (p == NULL)
+		{
+			continue;
+		}
+		*p++ = '\0';
+
+		while (*p == ' ' || *p == '\t')
+		{
+			p++;
+		}
+
+		cp = strpbrk(p, ",/");
+		if (cp == NULL)
+		{
+			continue;
+		}
+
+		*cp++ = '\0';
+		m_known_server_ports.set((uint16_t)atoi(p));
+	}
+	fclose(servf);
 }
 
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)

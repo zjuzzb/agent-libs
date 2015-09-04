@@ -147,7 +147,8 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
-	
+	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
+
 	//
 	// Load the chisels
 	//

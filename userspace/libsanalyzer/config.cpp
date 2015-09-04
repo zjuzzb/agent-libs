@@ -305,4 +305,13 @@ void sinsp_configuration::set_instance_id(const string& instance_id)
 	m_instance_id = instance_id;
 }
 
+void sinsp_configuration::set_known_ports(const known_ports_set &v)
+{
+	m_known_ports = v;
+}
+
+const known_ports_set& sinsp_configuration::get_known_ports() const
+{
+	return m_known_ports;
+}
 #endif // HAS_ANALYZER

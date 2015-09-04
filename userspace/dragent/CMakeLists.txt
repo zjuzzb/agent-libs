@@ -73,6 +73,10 @@ install(FILES dragent.default.yaml
 	DESTINATION ${DRAIOS_BIN_PREFIX}/etc
 	COMPONENT agent)
 
+install(FILES services
+		DESTINATION ${DRAIOS_BIN_PREFIX}/etc
+		COMPONENT agent)
+
 install(DIRECTORY chisels
 	DESTINATION ${DRAIOS_BIN_PREFIX}/share
 	COMPONENT agent)
