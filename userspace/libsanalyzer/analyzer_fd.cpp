@@ -247,7 +247,7 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
-		else
+		else if(m_known_services_ports.find(serverport) != m_known_services_ports.end())
 		{
 			//ASSERT(trinfo->m_protoparser == NULL);
 			trinfo->m_protoparser = NULL;
@@ -276,7 +276,7 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 
 	//ASSERT(trinfo->m_protoparser == NULL);
 	trinfo->m_protoparser = NULL;
-	return sinsp_partial_transaction::TYPE_IP;		
+	return sinsp_partial_transaction::TYPE_UNKNOWN;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -731,21 +731,24 @@ r_conn_creation_done:
 		//
 		// Update the transaction state.
 		//
-		trinfo->update(m_analyzer,
-			evt->m_tinfo,
-			fdinfo,
-			connection,
-			evt->m_tinfo->m_lastevent_ts, 
-			evt->get_ts(), 
-			evt->get_cpuid(),
-			trdir,
+		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
+		{
+			trinfo->update(m_analyzer,
+						   evt->m_tinfo,
+						   fdinfo,
+						   connection,
+						   evt->m_tinfo->m_lastevent_ts,
+						   evt->get_ts(),
+						   evt->get_cpuid(),
+						   trdir,
 #if _DEBUG
-			evt,
-			fd,
+						   evt,
+						   fd,
 #endif
-			data,
-			original_len,
-			len);
+						   data,
+						   original_len,
+						   len);
+		}
 	}
 #ifdef HAS_PIPE_CONNECTIONS
 	else if(fdinfo->is_pipe())
@@ -1103,24 +1106,27 @@ w_conn_creation_done:
 			}
 		}
 
-		//
-		// Update the transaction state.
-		//
-		trinfo->update(m_analyzer,
-			evt->m_tinfo,
-			fdinfo,
-			connection,
-			evt->m_tinfo->m_lastevent_ts, 
-			evt->get_ts(), 
-			evt->get_cpuid(),
-			sinsp_partial_transaction::DIR_OUT, 
+		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
+		{
+			//
+			// Update the transaction state.
+			//
+			trinfo->update(m_analyzer,
+						   evt->m_tinfo,
+						   fdinfo,
+						   connection,
+						   evt->m_tinfo->m_lastevent_ts,
+						   evt->get_ts(),
+						   evt->get_cpuid(),
+						   sinsp_partial_transaction::DIR_OUT,
 #if _DEBUG
-			evt,
-			fd,
+						   evt,
+						   fd,
 #endif
-			data,
-			original_len,
-			len);
+						   data,
+						   original_len,
+						   len);
+		}
 	}
 #ifdef HAS_PIPE_CONNECTIONS
 	else if(fdinfo->is_pipe())

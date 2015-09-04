@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional> 
+#include <unordered_set>
 
 #define SRV_PORT_MYSQL 3306
 #define SRV_PORT_POSTGRES 5432
@@ -79,6 +80,7 @@ private:
 	uint32_t m_http_trace_intval;
 	uint32_t m_http_connect_intval;
 	uint32_t m_http_resp_intval;
+	unordered_set<uint16_t> m_known_services_ports;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

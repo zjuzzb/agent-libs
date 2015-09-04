@@ -167,9 +167,9 @@ class SINSP_PUBLIC sinsp_partial_transaction
 public:
 	enum type
 	{
-	    TYPE_UNKNOWN = 0,
-	    TYPE_IP = 1,
-	    TYPE_HTTP = 2,
+	    TYPE_UNKNOWN = 0, // Unknown protocols, don't count requests
+	    TYPE_IP = 1, // Known client/server protocols, count requests
+	    TYPE_HTTP = 2, // as for TYPE_IP but also parse protocol
 	    TYPE_MYSQL = 3,
 		TYPE_POSTGRES = 4,
 		TYPE_MONGODB = 5,
