@@ -17,7 +17,7 @@ function start() {
 
 #	docker run -d --name=srvc_node6 -e ROLE=node -e NAME=srvc_node6 -e NC=0 us
 #	docker run -d --name=srvc_node2 --link srvc_node6:srvc_next0 -e ROLE=node -e NAME=srvc_node2 -e NC=1 us
-#	docker run -d --name=srvc_node1 --link srvc_node2:srvc_next0 -e ROLE=root -e NAME=srvc_node1 -e NC=1 us
+#	docker run -d --name=srvc_node1 --link srvc_node2:srvc_next0 -e ROLE=root -e NAME=srvc_node1 -e NC=1 -e CPU_OPS=20000 us
 }
 
 case "$1" in

@@ -120,7 +120,6 @@ try:
 
                 mark(">:%d:%s::" % (reqid, tag))
                 payload = "%d:%s" % (reqid, tag)
-                log(payload)
                 s.send(payload)
 
                 while True:
@@ -134,10 +133,10 @@ try:
                 s.close()
 
             if CPU_OPS != 0:
-                cpu_ops(NAME, CPU_OPS)
+                cpu_ops("%d:%s" % (reqid, tag), CPU_OPS)
 
             if IO_OPS != 0:
-                io_ops(NAME, IO_OPS)
+                io_ops("%d:%s" % (reqid, tag), IO_OPS)
 
             mark("<:%d:%s::" % (reqid, NAME))
 
