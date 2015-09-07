@@ -89,7 +89,7 @@ try:
     log("IO_OPS: %d\n" % IO_OPS)
 
     if os.environ['ROLE'] == 'root':
-        reqid = 0
+        reqid = 1
         log("Starting request generation loop...\n")
 
         #try:
@@ -99,7 +99,7 @@ try:
         #    sys.exit(0)
 
         while True:
-        #for x in range(0, 10):
+        #for x in range(0, 2):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
@@ -133,10 +133,10 @@ try:
                 s.close()
 
             if CPU_OPS != 0:
-                cpu_ops("%d:%s" % (reqid, tag), CPU_OPS)
+                cpu_ops("%d:%s" % (reqid, NAME), CPU_OPS)
 
             if IO_OPS != 0:
-                io_ops("%d:%s" % (reqid, tag), IO_OPS)
+                io_ops("%d:%s" % (reqid, NAME), IO_OPS)
 
             mark("<:%d:%s::" % (reqid, NAME))
 
@@ -206,10 +206,10 @@ try:
             # Send an answer
             connect.send("sent:" + resp)
 
+            mark("<:%s::" % tag)
+
             # Done with thw connection. Close it.
             connect.close()
-
-            mark("<:%s::" % tag)
 
 except Exception as e:
     log("error: " + str(e))
