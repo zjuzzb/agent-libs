@@ -4,8 +4,6 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
-#include <app_checks.h>
-#include <analyzer.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
