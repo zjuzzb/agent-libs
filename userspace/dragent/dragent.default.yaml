@@ -602,8 +602,6 @@ known_ports:
   - 1527 # Apache Derby
   - 1528 # Oracle database alternative
   - 1666 # Perforce
-  - 1719 # H.323 VOIP
-  - 1720 # H.323 VOIP
   - 2082 # CPanel
   - 2083 # CPanel SSL
   - 2086 # WebHost Manager
