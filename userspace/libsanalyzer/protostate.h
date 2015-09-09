@@ -3,7 +3,6 @@
 #pragma once
 
 #include <functional> 
-#include <unordered_set>
 
 #define SRV_PORT_MYSQL 3306
 #define SRV_PORT_POSTGRES 5432

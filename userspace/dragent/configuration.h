@@ -4,8 +4,6 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
-#include <limits>
-#include <bitset>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
