@@ -254,6 +254,14 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 #ifndef _WIN32
 unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 {
+	// Sample data from statsite
+	// counts.statsd.test.1|1.000000|1441746724
+	// counts.statsd.test.1|1.000000|1441746725
+	// counts.statsd.test.1|1.000000|1441746726
+	// The logic is a bit complicated here, there are two main problems to address:
+	// 1. bunch of metrics with different timestamps are not separated by each other
+	// 2. more lines sometimes are parsed to a single metric (eg. histograms)
+
 	unordered_map<string, vector<statsd_metric>> ret;
 	uint64_t timestamp = 0;
 	char buffer[300];
@@ -292,7 +300,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 
 		continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 	}
-	if(timestamp > 0 && timestamp == m_metric.timestamp())
+	if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 	{
 		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
 		ret[m_metric.container_id()].push_back(move(m_metric));
