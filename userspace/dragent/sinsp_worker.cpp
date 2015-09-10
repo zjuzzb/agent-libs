@@ -41,7 +41,7 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 
-	if (m_jmx_pipes)
+	if(m_jmx_pipes)
 	{
 		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds(), m_configuration->m_print_protobuf);
 		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
@@ -55,7 +55,8 @@ void sinsp_worker::init()
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_inspector->set_debug_mode(true);
-
+	m_inspector->set_hostname_and_port_resolution_mode(false);
+	
 	//
 	// Attach our transmit callback to the analyzer
 	//
