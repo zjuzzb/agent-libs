@@ -2597,19 +2597,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
-			vector<sinsp_procfs_parser::mounted_fs> fs_list;
-			m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
-			for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
-				it != fs_list.end(); ++it)
+			if(m_inspector->is_live())
 			{
-				draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+				vector<sinsp_procfs_parser::mounted_fs> fs_list;
+				m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
+				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
+					it != fs_list.end(); ++it)
+				{
+					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
 
-				fs->set_device(it->device);
-				fs->set_mount_dir(it->mount_dir);
-				fs->set_type(it->type);
-				fs->set_size_bytes(it->size_bytes);
-				fs->set_used_bytes(it->used_bytes);
-				fs->set_available_bytes(it->available_bytes);
+					fs->set_device(it->device);
+					fs->set_mount_dir(it->mount_dir);
+					fs->set_type(it->type);
+					fs->set_size_bytes(it->size_bytes);
+					fs->set_used_bytes(it->used_bytes);
+					fs->set_available_bytes(it->available_bytes);
+				}
 			}
 
 			//
