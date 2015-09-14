@@ -608,7 +608,7 @@ known_ports:
   - 2087 # WebHost Manager SSL
   - 2095 # CPanel Web mail
   - 2096 # CPanel Web mail SSL
-  - 2182 # Apache Zookeeper
+  - 2181 # Apache Zookeeper
   - 2375 # Docker
   - 2376 # Docker SSL
   - 2380 # etc server-to-server
