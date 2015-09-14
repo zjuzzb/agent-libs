@@ -290,7 +290,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 		if(e->get_type() == PPME_SOCKET_SENDTO_E)
 		{
 			string tuple = e->get_param_value_str("tuple");
-			EXPECT_TRUE(tuple == "0.0.0.0:tcpmux->127.0.0.1:0");
+			EXPECT_TRUE(tuple == "0.0.0.0:1->127.0.0.1:0");
 
 			//
 			// The first one doesn't have fd set
