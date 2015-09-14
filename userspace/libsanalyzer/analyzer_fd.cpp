@@ -248,12 +248,6 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
-		else if(m_sinsp_config->get_known_ports().test(serverport))
-		{
-			//ASSERT(trinfo->m_protoparser == NULL);
-			trinfo->m_protoparser = NULL;
-			return sinsp_partial_transaction::TYPE_IP;
-		}
 	}
 
 	if(serverport == SRV_PORT_MYSQL)
@@ -276,8 +270,17 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 	}
 
 	//ASSERT(trinfo->m_protoparser == NULL);
-	trinfo->m_protoparser = NULL;
-	return sinsp_partial_transaction::TYPE_UNKNOWN;
+	// If we have not yet recognized a protocol, fallback to known client/server ports
+	if(m_sinsp_config->get_known_ports().test(serverport))
+	{
+		trinfo->m_protoparser = NULL;
+		return sinsp_partial_transaction::TYPE_IP;
+	}
+	else
+	{
+		trinfo->m_protoparser = NULL;
+		return sinsp_partial_transaction::TYPE_UNKNOWN;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
