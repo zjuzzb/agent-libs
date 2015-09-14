@@ -202,6 +202,12 @@ TEST_F(sys_call_test, net_web_requests)
 	sinsp_configuration configuration;
 	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 
+	// Set DNS port, /etc/services is read only from dragent context
+	// port 80 is not needed, because it's http protocol and is autodiscovered
+	ports_set known_ports;
+	known_ports.set(53);
+	configuration.set_known_ports(known_ports);
+
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
 	ASSERT_EQ(N_CONNECTIONS, nconns);
