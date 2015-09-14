@@ -26,7 +26,8 @@ public:
 		PROTO_HTTP,
 		PROTO_MYSQL,
 		PROTO_POSTGRES,
-		PROTO_MONGODB
+		PROTO_MONGODB,
+		PROTO_TLS
 	};
 
 	sinsp_protocol_parser();
@@ -47,6 +48,7 @@ public:
 #include "parser_mysql.h"
 #include "parser_postgres.h"
 #include "parser_mongodb.h"
+#include "parser_tls.h"
 #undef min
 #undef max
 #include "draios.pb.h"

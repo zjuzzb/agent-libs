@@ -86,8 +86,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		tr->m_prev_prev_end_time = tr->m_prev_end_time;
 		tr->m_prev_prev_start_of_transaction_time = tr->m_prev_start_of_transaction_time;
 	}
-	else if(tr->m_prev_direction == enddir ||
-	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE)
+	else if( (tr->m_protoparser == NULL || tr->m_protoparser->m_is_valid ) && (tr->m_prev_direction == enddir ||
+	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE))
 	{
 		if(tr->m_prev_prev_start_time == 0)
 		{

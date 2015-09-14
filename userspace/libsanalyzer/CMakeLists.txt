@@ -37,6 +37,7 @@ add_library(sanalyzer STATIC
 	parser_mysql.cpp
 	parser_postgres.cpp
   parser_mongodb.cpp
+        parser_tls.cpp
 	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
@@ -52,7 +53,8 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
 	statsite_proxy.cpp
-	app_checks.cpp posix_queue.h posix_queue.cpp)
+	app_checks.cpp
+    posix_queue.cpp)
 
 target_link_libraries(sanalyzer
 	scap 

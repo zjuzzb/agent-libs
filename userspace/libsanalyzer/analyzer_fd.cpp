@@ -248,6 +248,11 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
+		else if(serverport == 9000 || serverport == 443)
+		{
+			trinfo->m_protoparser = new sinsp_tls_parser();
+			return sinsp_partial_transaction::TYPE_TLS;
+		}
 	}
 
 	if(serverport == SRV_PORT_MYSQL)
