@@ -86,8 +86,15 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		tr->m_prev_prev_end_time = tr->m_prev_end_time;
 		tr->m_prev_prev_start_of_transaction_time = tr->m_prev_start_of_transaction_time;
 	}
-	else if( (tr->m_protoparser == NULL || tr->m_protoparser->m_is_valid ) && (tr->m_prev_direction == enddir ||
-	        tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE))
+	// Emit transaction only if protoparser is null or if it has parsed a valid protocol
+	// right now apply protocol validation also on TLS. Because in case of subsampling
+	// protocol parsing may fail for other protocols and return wrong result. On TLS instead
+	// a strict protocol parsing is needed
+	else if( (tr->m_protoparser == nullptr ||
+			tr->m_protoparser->get_type() != sinsp_protocol_parser::PROTO_TLS ||
+			  (tr->m_protoparser->get_type() == sinsp_protocol_parser::PROTO_TLS && tr->m_protoparser->m_is_valid)
+			 ) &&
+			(tr->m_prev_direction == enddir || tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE))
 	{
 		if(tr->m_prev_prev_start_time == 0)
 		{
