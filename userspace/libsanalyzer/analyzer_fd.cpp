@@ -249,8 +249,8 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
 		else if((buf[0] >= 0x14 && buf[0] <= 0x18) && // First byte matches TLS frame type
-				 buf[2] == 3 && // Matches TLS major version
-				(buf[3] >= 0 && buf[3] <= 3)) // Matched TLS minor version
+				 buf[1] == 3 && // Matches TLS major version
+				(buf[2] >= 0 && buf[2] <= 3)) // Matched TLS minor version
 		{
 			trinfo->m_protoparser = new sinsp_tls_parser();
 			return sinsp_partial_transaction::TYPE_TLS;
