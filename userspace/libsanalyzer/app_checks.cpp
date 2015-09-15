@@ -3,6 +3,9 @@
 //
 
 #include "app_checks.h"
+#include "sinsp_int.h"
+#include "analyzer_int.h"
+#include "analyzer_thread.h"
 #include <utils.h>
 
 bool app_check::match(sinsp_threadinfo *tinfo) const
@@ -23,6 +26,15 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 		ret &= ports.find(m_port_pattern) != ports.end();
 	}
 	return ret;
+}
+
+app_process::app_process(string check_name, sinsp_threadinfo *tinfo):
+	m_pid(tinfo->m_pid),
+	m_vpid(tinfo->m_vpid),
+	m_check_name(move(check_name)),
+	m_ports(tinfo->m_ainfo->listening_ports())
+{
+
 }
 
 Json::Value app_process::to_json() const
