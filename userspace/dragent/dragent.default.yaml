@@ -586,3 +586,69 @@ app_checks:
       comm: apache2
     conf:
       apache_status_url: "http://localhost:{port}/server-status?auto"
+
+known_ports:
+  - 902 # VMware 
+  - 903 # VMware
+  - 944 # NFS
+  - 1025 # NFS
+  - 1098 # RMI Activation - Java
+  - 1099 # RMI Registry - Java
+  - 1293 # IPSec
+  - 1337 # neo4j-shell
+  - 1494 # Citrix XenAPP thin client
+  - 1512 # Microsoft WINS
+  - 1521 # Oracle database
+  - 1527 # Apache Derby
+  - 1528 # Oracle database alternative
+  - 1666 # Perforce
+  - 2082 # CPanel
+  - 2083 # CPanel SSL
+  - 2086 # WebHost Manager
+  - 2087 # WebHost Manager SSL
+  - 2095 # CPanel Web mail
+  - 2096 # CPanel Web mail SSL
+  - 2181 # Apache Zookeeper
+  - 2375 # Docker
+  - 2376 # Docker SSL
+  - 2380 # etc server-to-server
+  - 2424 # OrientDB
+  - 2483 # Oracle database
+  - 2484 # Oracle SSL
+  - 2809 # IBM WebSphere
+  - 3020 # CIFS / SMB
+  - 3306 # MySQL
+  - 3478 # STUN
+  - 4369 # Erlang epmd
+  - 4730 # gearmand
+  - 5222 # XMPP
+  - 5223 # XMPP SSL
+  - 5432 # Postgres
+  - 5672 # AMQP
+  - 5984 # CouchDB
+  - 6379 # Redis
+  - 6543 # Pylons Pyramid
+  - 7000 # Cassandra Cluster
+  - 7199 # JMX
+  - 7474 # Neo4j
+  - 8087 # Riak protocolbuffer
+  - 8092 # Couchbase
+  - 8099 # Riak handoff
+  - 8139 # Puppet
+  - 8140 # Puppet
+  - 8243 # HTTPS for Apache Synapse
+  - 8332 # Bitcoin
+  - 8333 # Bitcoin
+  - 8880 # IBM WebSphere SOAP
+  - 8983 # Apache SOLR
+  - 9160 # Cassandra Thrift
+  - 9200 # Elastic search
+  - 9332 # Litecoin
+  - 9333 # Litecoin
+  - 9997 # Splunk
+  - 11211 # memcached
+  - 11214 # memached SSL
+  - 11215 # memcached SSL
+  - 15433 # pgbouncer
+  - 26379 # Redis sentinel
+  - 27017 # MongoDB

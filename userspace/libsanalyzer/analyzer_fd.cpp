@@ -40,7 +40,7 @@ const char* sql_querystart_toks[] = {"select",
 		"alter"
 };
 
-sinsp_proto_detector::sinsp_proto_detector()
+sinsp_proto_detector::sinsp_proto_detector(sinsp_configuration* config)
 {
 	m_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
 	m_http_get_intval = (*(uint32_t*)HTTP_GET_STR);
@@ -51,6 +51,7 @@ sinsp_proto_detector::sinsp_proto_detector()
 	m_http_trace_intval = (*(uint32_t*)HTTP_TRACE_STR);
 	m_http_connect_intval = (*(uint32_t*)HTTP_CONNECT_STR);
 	m_http_resp_intval = (*(uint32_t*)HTTP_RESP_STR);
+	m_sinsp_config = config;
 }
 
 sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *evt, 
@@ -247,12 +248,6 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 			trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 			return sinsp_partial_transaction::TYPE_MONGODB;
 		}
-		else
-		{
-			//ASSERT(trinfo->m_protoparser == NULL);
-			trinfo->m_protoparser = NULL;
-			return sinsp_partial_transaction::TYPE_IP;
-		}
 	}
 
 	if(serverport == SRV_PORT_MYSQL)
@@ -275,14 +270,24 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 	}
 
 	//ASSERT(trinfo->m_protoparser == NULL);
-	trinfo->m_protoparser = NULL;
-	return sinsp_partial_transaction::TYPE_IP;		
+	// If we have not yet recognized a protocol, fallback to known client/server ports
+	if(m_sinsp_config->get_known_ports().test(serverport))
+	{
+		trinfo->m_protoparser = NULL;
+		return sinsp_partial_transaction::TYPE_IP;
+	}
+	else
+	{
+		trinfo->m_protoparser = NULL;
+		return sinsp_partial_transaction::TYPE_UNKNOWN;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_analyzer_fd_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer)
+sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer):
+	m_proto_detector(analyzer->get_configuration())
 {
 	m_inspector = inspector; 
 	m_analyzer = analyzer;
@@ -731,21 +736,24 @@ r_conn_creation_done:
 		//
 		// Update the transaction state.
 		//
-		trinfo->update(m_analyzer,
-			evt->m_tinfo,
-			fdinfo,
-			connection,
-			evt->m_tinfo->m_lastevent_ts, 
-			evt->get_ts(), 
-			evt->get_cpuid(),
-			trdir,
+		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
+		{
+			trinfo->update(m_analyzer,
+						   evt->m_tinfo,
+						   fdinfo,
+						   connection,
+						   evt->m_tinfo->m_lastevent_ts,
+						   evt->get_ts(),
+						   evt->get_cpuid(),
+						   trdir,
 #if _DEBUG
-			evt,
-			fd,
+						   evt,
+						   fd,
 #endif
-			data,
-			original_len,
-			len);
+						   data,
+						   original_len,
+						   len);
+		}
 	}
 #ifdef HAS_PIPE_CONNECTIONS
 	else if(fdinfo->is_pipe())
@@ -1103,24 +1111,27 @@ w_conn_creation_done:
 			}
 		}
 
-		//
-		// Update the transaction state.
-		//
-		trinfo->update(m_analyzer,
-			evt->m_tinfo,
-			fdinfo,
-			connection,
-			evt->m_tinfo->m_lastevent_ts, 
-			evt->get_ts(), 
-			evt->get_cpuid(),
-			sinsp_partial_transaction::DIR_OUT, 
+		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
+		{
+			//
+			// Update the transaction state.
+			//
+			trinfo->update(m_analyzer,
+						   evt->m_tinfo,
+						   fdinfo,
+						   connection,
+						   evt->m_tinfo->m_lastevent_ts,
+						   evt->get_ts(),
+						   evt->get_cpuid(),
+						   sinsp_partial_transaction::DIR_OUT,
 #if _DEBUG
-			evt,
-			fd,
+						   evt,
+						   fd,
 #endif
-			data,
-			original_len,
-			len);
+						   data,
+						   original_len,
+						   len);
+		}
 	}
 #ifdef HAS_PIPE_CONNECTIONS
 	else if(fdinfo->is_pipe())

@@ -167,7 +167,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		
 		if(m_is_req_valid == false)
 		{
-			if(buf[j] == ' ' || buf[j] == '?')
+			if(buf[j] == ' ' || buf[j] == '?' || buf[j] == ';')
 			{
 				if(path == NULL)
 				{

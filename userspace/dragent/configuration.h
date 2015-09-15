@@ -4,8 +4,6 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
-#include <app_checks.h>
-#include <analyzer.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -335,7 +333,7 @@ public:
 	bool m_app_checks_enabled;
 	uint32_t m_containers_limit;
 	vector<string> m_container_patterns;
-
+	ports_set m_known_server_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 
 	bool java_present()
@@ -354,6 +352,7 @@ public:
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
+	void parse_services_file();
 	friend class aws_metadata_refresher;
 };
 
