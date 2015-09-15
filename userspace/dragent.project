@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Project Name="dragent" InternalType="Console">
+  <VirtualDirectory Name="sdjagent">
+    <VirtualDirectory Name="native">
+      <File Name="sdjagent/native/com_sysdigcloud_sdjagent_CLibrary.h"/>
+      <File Name="sdjagent/native/com_sysdigcloud_sdjagent_CLibrary.cpp"/>
+    </VirtualDirectory>
+  </VirtualDirectory>
+  <VirtualDirectory Name="libsanalyzer">
+    <VirtualDirectory Name="tests">
+      <VirtualDirectory Name="01-open">
+        <VirtualDirectory Name="win32">
+          <File Name="libsanalyzer/tests/01-open/win32/getopt.c"/>
+          <File Name="libsanalyzer/tests/01-open/win32/getopt.h"/>
+        </VirtualDirectory>
+        <File Name="libsanalyzer/tests/01-open/test.cpp"/>
+      </VirtualDirectory>
+      <VirtualDirectory Name="02-stopcapture">
+        <File Name="libsanalyzer/tests/02-stopcapture/test.cpp"/>
+      </VirtualDirectory>
+    </VirtualDirectory>
+    <File Name="libsanalyzer/posix_queue.h"/>
+    <File Name="libsanalyzer/jmx_proxy.cpp"/>
+    <File Name="libsanalyzer/metrics.cpp"/>
+    <File Name="libsanalyzer/connectinfo.cpp"/>
+    <File Name="libsanalyzer/parser_http.cpp"/>
+    <File Name="libsanalyzer/sched_analyzer.cpp"/>
+    <File Name="libsanalyzer/analyzer_parsers.h"/>
+    <File Name="libsanalyzer/config.cpp"/>
+    <File Name="libsanalyzer/analyzer_thread.h"/>
+    <File Name="libsanalyzer/analyzer_utils.h"/>
+    <File Name="libsanalyzer/connectinfo.h"/>
+    <File Name="libsanalyzer/delays.h"/>
+    <File Name="libsanalyzer/protostate.h"/>
+    <File Name="libsanalyzer/posix_queue.cpp"/>
+    <File Name="libsanalyzer/container_analyzer.h"/>
+    <File Name="libsanalyzer/analyzer_fd.h"/>
+    <File Name="libsanalyzer/sqlparser.h"/>
+    <File Name="libsanalyzer/scores.h"/>
+    <File Name="libsanalyzer/sqlparser.cpp"/>
+    <File Name="libsanalyzer/transactinfo.h"/>
+    <File Name="libsanalyzer/config.h"/>
+    <File Name="libsanalyzer/scores.cpp"/>
+    <File Name="libsanalyzer/analyzer_parsers.cpp"/>
+    <File Name="libsanalyzer/analyzer_settings.h"/>
+    <File Name="libsanalyzer/parser_mongodb.cpp"/>
+    <File Name="libsanalyzer/statsite_proxy.h"/>
+    <File Name="libsanalyzer/statsite_proxy.cpp"/>
+    <File Name="libsanalyzer/parser_postgres.cpp"/>
+    <File Name="libsanalyzer/procfs_parser.cpp"/>
+    <File Name="libsanalyzer/parser_mysql.h"/>
+    <File Name="libsanalyzer/draios.pb.h"/>
+    <File Name="libsanalyzer/transactinfo.cpp"/>
+    <File Name="libsanalyzer/metrics.h"/>
+    <File Name="libsanalyzer/app_checks.h"/>
+    <File Name="libsanalyzer/analyzer.cpp"/>
+    <File Name="libsanalyzer/parser_mysql.cpp"/>
+    <File Name="libsanalyzer/parser_postgres.h"/>
+    <File Name="libsanalyzer/parser_http.h"/>
+    <File Name="libsanalyzer/delays.cpp"/>
+    <File Name="libsanalyzer/analyzer.h"/>
+    <File Name="libsanalyzer/procfs_parser.h"/>
+    <File Name="libsanalyzer/analyzer_int.h"/>
+    <File Name="libsanalyzer/analyzer_utils.cpp"/>
+    <File Name="libsanalyzer/draios.pb.cc"/>
+    <File Name="libsanalyzer/parser_mongodb.h"/>
+    <File Name="libsanalyzer/analyzer_fd.cpp"/>
+    <File Name="libsanalyzer/sched_analyzer.h"/>
+    <File Name="libsanalyzer/jmx_proxy.h"/>
+    <File Name="libsanalyzer/protostate.cpp"/>
+    <File Name="libsanalyzer/analyzer_thread.cpp"/>
+    <File Name="libsanalyzer/app_checks.cpp"/>
+    <File Name="libsanalyzer/draios.proto"/>
+  </VirtualDirectory>
+  <Description/>
+  <Dependencies/>
+  <VirtualDirectory Name="dragent">
+    <File Name="dragent/logger.h"/>
+    <File Name="dragent/configuration.h"/>
+    <File Name="dragent/error_handler.h"/>
+    <File Name="dragent/configuration.cpp"/>
+    <File Name="dragent/update_worker.h"/>
+    <File Name="dragent/crash_handler.h"/>
+    <File Name="dragent/error_handler.cpp"/>
+    <File Name="dragent/blocking_queue.h"/>
+    <File Name="dragent/subprocesses_logger.cpp"/>
+    <File Name="dragent/connection_manager.h"/>
+    <File Name="dragent/connection_manager.cpp"/>
+    <File Name="dragent/main.cpp"/>
+    <File Name="dragent/main.h"/>
+    <File Name="dragent/dragent.h"/>
+    <File Name="dragent/sinsp_worker.cpp"/>
+    <File Name="dragent/subprocesses_logger.h"/>
+    <File Name="dragent/sinsp_worker.h"/>
+    <File Name="dragent/crash_handler.cpp"/>
+    <File Name="dragent/monitor.cpp"/>
+    <File Name="dragent/sinsp_data_handler.cpp"/>
+    <File Name="dragent/protocol.h"/>
+    <File Name="dragent/logger.cpp"/>
+    <File Name="dragent/protocol.cpp"/>
+    <File Name="dragent/dragent.cpp"/>
+    <File Name="dragent/update_worker.cpp"/>
+    <File Name="dragent/sinsp_data_handler.h"/>
+    <File Name="dragent/ssh_worker.cpp"/>
+    <File Name="dragent/ssh_worker.h"/>
+    <File Name="dragent/monitor.h"/>
+  </VirtualDirectory>
+  <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="" C_Options="" Assembler="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
+    <Configuration Name="Debug" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;-O0;-Wall" C_Options="-g;-O0;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="../build/debug/userspace/dragent/dragent" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand>make -C ../build/debug dragent</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Release" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall" C_Options="-O2;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <Preprocessor Value="NDEBUG"/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Release" Command="../build/release/userspace/dragent/dragent" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand>make -C ../build/release dragent</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+  </Settings>
+</CodeLite_Project>
