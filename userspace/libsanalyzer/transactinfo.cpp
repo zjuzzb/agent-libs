@@ -306,29 +306,8 @@ sinsp_partial_transaction::~sinsp_partial_transaction()
 {
 	if(m_protoparser)
 	{
-		if(m_type == TYPE_HTTP)
-		{
-			delete (sinsp_http_parser*)m_protoparser;			
-		}
-		else if(m_type == TYPE_MYSQL)
-		{
-			delete (sinsp_mysql_parser*)m_protoparser;			
-		}
-		else if(m_type == TYPE_POSTGRES)
-		{
-			delete (sinsp_postgres_parser*)m_protoparser;
-		}
-		else if(m_type == TYPE_MONGODB)
-		{
-			delete (sinsp_mongodb_parser*)m_protoparser;
-		}
-		else
-		{
-			ASSERT(false);
-			throw sinsp_exception("unsupported transaction protocol");
-		}
-		
-		m_protoparser = NULL;
+		delete m_protoparser;
+		m_protoparser = nullptr;
 	}
 }
 
@@ -336,7 +315,7 @@ sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transac
 {
 	*this = other;
 
-	m_protoparser = NULL;
+	m_protoparser = nullptr;
 	m_reassembly_buffer.reset();
 }
 
