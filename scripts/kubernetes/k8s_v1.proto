@@ -1,140 +1,40 @@
-////////////////////////
-// Kubernetes
-////////////////////////
-
 message k8s_pair {
     required string key = 1;
     required string value = 2;
 }
 
-message k8s_metadata {
-    required string name = 1;
-    optional string generateName = 2;
-    required string namespace = 3;
-    required string selfLink = 4;
-    required string uid = 5;
-    required string resourceVersion = 6;
-    optional int32 generation = 7;
-    required string creationTimestamp = 8;
-    repeated k8s_pair labels = 9;
-    //TODO: optional annotations
+message k8s_common {
+    required string event_type = 1; // ADDED, MODIFIED, DELETED, or ERROR
+    required string name = 2;
+    required string uid = 3;
+    optional string namespace = 4;
+    optional k8s_pair labels = 5;
+    optional k8s_pair selectors = 6;
 }
 
-message k8s_object {
-    optional string kind = 1;
-    optional string apiVersion = 2;
-    optional k8s_metadata meta_data = 3;
+message k8s_namespace {
+    required k8s_common common = 1;
 }
 
-message k8s_port {
-    required string protocol = 1;
-    required int32 port = 2;
-    required int32 target_port = 3;
-    required int32 node_port = 4;
+message k8s_node {
+    required k8s_common common = 1;
+    // TODO pod_count
 }
 
-message k8s_node_spec {
-    required string external_id = 1;
-}
-
-message k8s_node_status {
-    repeated k8s_pair capacity = 1;
-    //TODO repeated k8s_pair conditions = 2;
-    //TODO repeated k8s_pair addresses = 3;
-    repeated k8s_pair node_info = 4;
-}
-
-message k8s_pod_spec {
-    // TODO containers = 1;
-    required string restart_policy = 2;
-    required string dns_policy = 3;
-    required string node_name = 4;
-    //TODO container_statuses = 5;
-}
-
-message k8s_pod_status {
-    required string phase = 1;
-    //TODO conditions = 2;
+message k8s_pod {
+    required k8s_common common = 1;
+    repeated string container_ids = 2;
     required string host_ip = 3;
-    required string pod_ip = 4;
-    required string start_time = 5;
-    //TODO container_statuses = 6;
+    required string internal_ip = 4;
+    // TODO pod_details
 }
 
-message k8s_replicationcontroller_spec {
-    required int32 replicas = 1;
-    required k8s_pair selector = 2;
-    //TODO template
+message k8s_replication_controller {
+    required k8s_common common = 1;
+    // TODO replica_count
 }
 
-message k8s_replicationcontroller_status {
-    required int32 replicas = 1;
-    required int32 observed_generation = 2;
-}
-
-message k8s_service_spec {
-    repeated k8s_port port = 1;
-    required string cluster_ip = 2;
-    required string type = 3;
-    required string session_affinity = 4;
-}
-
-message k8s_service_status {
-    //TODO
-}
-
-//
-// watch individual changes to a list of Node (json.WatchEvent)
-//
-message k8s_nodes {
-    // the type of watch event; may be ADDED, MODIFIED, DELETED, or ERROR
-    required string type = 1;
-
-    // the object being watched; will match the type of the resource endpoint or be a Status object if the type is ERROR
-    required k8s_object object = 2;
-    
-    required k8s_node_spec spec = 3;
-    required k8s_node_status status = 4;
-}
-
-//
-// watch individual changes to a list of Pod (json.WatchEvent)
-//
-message k8s_pods {
-    // the type of watch event; may be ADDED, MODIFIED, DELETED, or ERROR
-    required string type = 1;
-
-    // the object being watched; will match the type of the resource endpoint or be a Status object if the type is ERROR
-    required k8s_object endpoints = 2;
-    
-    required k8s_pod_spec spec = 3;
-    required k8s_pod_status status = 4;
-}
-
-//
-// watch individual changes to a list of ReplicationController (json.WatchEvent)
-//
-message k8s_replicationcontrollers {
-    // the type of watch event; may be ADDED, MODIFIED, DELETED, or ERROR
-    required string type = 1;
-
-    // the object being watched; will match the type of the resource endpoint or be a Status object if the type is ERROR
-    required k8s_object endpoints = 2;
-    
-    required k8s_replicationcontroller_spec spec = 3;
-    required k8s_replicationcontroller_status status = 4;
-}
-
-//
-// watch individual changes to a list of Service (json.WatchEvent)
-//
-message k8s_services {
-    // the type of watch event; may be ADDED, MODIFIED, DELETED, or ERROR
-    required string type = 1;
-
-    // the object being watched; will match the type of the resource endpoint or be a Status object if the type is ERROR
-    required k8s_object endpoints = 2;
-    
-    required k8s_service_spec spec = 3;
-    required k8s_service_status status = 4;
+message k8s_service {
+    required k8s_common common = 1;
+    // TODO ports
 }
