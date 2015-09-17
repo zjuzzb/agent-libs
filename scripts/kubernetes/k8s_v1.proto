@@ -8,8 +8,8 @@ message k8s_common {
     required string name = 2;
     required string uid = 3;
     optional string namespace = 4;
-    optional k8s_pair labels = 5;
-    optional k8s_pair selectors = 6;
+    repeated k8s_pair labels = 5;
+    repeated k8s_pair selectors = 6;
 }
 
 message k8s_namespace {
