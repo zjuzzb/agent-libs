@@ -1908,7 +1908,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "\026.draiosproto.file_stat\022\'\n\006protos\030\024 \001(\0132"
     "\027.draiosproto.proto_info\022*\n\ncontainers\030\026"
     " \003(\0132\026.draiosproto.container\022*\n\nkubernet"
-    "es\030\027 \001(\0132\026.draiosproto.k8s_state\"\232\001\n\022dum"
+    "es\030\030 \001(\0132\026.draiosproto.k8s_state\"\232\001\n\022dum"
     "p_request_start\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n"
     "\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023"
     "\n\013duration_ns\030\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010"
@@ -22912,12 +22912,12 @@ bool metrics::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(178)) goto parse_containers;
-        if (input->ExpectTag(186)) goto parse_kubernetes;
+        if (input->ExpectTag(194)) goto parse_kubernetes;
         break;
       }
 
-      // optional .draiosproto.k8s_state kubernetes = 23;
-      case 23: {
+      // optional .draiosproto.k8s_state kubernetes = 24;
+      case 24: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_kubernetes:
@@ -23080,10 +23080,10 @@ void metrics::SerializeWithCachedSizes(
       22, this->containers(i), output);
   }
 
-  // optional .draiosproto.k8s_state kubernetes = 23;
+  // optional .draiosproto.k8s_state kubernetes = 24;
   if (has_kubernetes()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      23, this->kubernetes(), output);
+      24, this->kubernetes(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -23242,11 +23242,11 @@ void metrics::SerializeWithCachedSizes(
         22, this->containers(i), target);
   }
 
-  // optional .draiosproto.k8s_state kubernetes = 23;
+  // optional .draiosproto.k8s_state kubernetes = 24;
   if (has_kubernetes()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        23, this->kubernetes(), target);
+        24, this->kubernetes(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -23346,7 +23346,7 @@ int metrics::ByteSize() const {
           this->protos());
     }
 
-    // optional .draiosproto.k8s_state kubernetes = 23;
+    // optional .draiosproto.k8s_state kubernetes = 24;
     if (has_kubernetes()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(

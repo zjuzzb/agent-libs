@@ -7284,10 +7284,10 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container >*
       mutable_containers();
 
-  // optional .draiosproto.k8s_state kubernetes = 23;
+  // optional .draiosproto.k8s_state kubernetes = 24;
   inline bool has_kubernetes() const;
   inline void clear_kubernetes();
-  static const int kKubernetesFieldNumber = 23;
+  static const int kKubernetesFieldNumber = 24;
   inline const ::draiosproto::k8s_state& kubernetes() const;
   inline ::draiosproto::k8s_state* mutable_kubernetes();
   inline ::draiosproto::k8s_state* release_kubernetes();
@@ -18382,7 +18382,7 @@ metrics::mutable_containers() {
   return &containers_;
 }
 
-// optional .draiosproto.k8s_state kubernetes = 23;
+// optional .draiosproto.k8s_state kubernetes = 24;
 inline bool metrics::has_kubernetes() const {
   return (_has_bits_[0] & 0x00080000u) != 0;
 }

@@ -133,8 +133,8 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="yes">
-        <RebuildCommand/>
-        <CleanCommand/>
+        <RebuildCommand>make -C ../build/debug all</RebuildCommand>
+        <CleanCommand>make -C ../build/debug clean</CleanCommand>
         <BuildCommand>make -C ../build/debug dragent</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
@@ -172,8 +172,8 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="yes">
-        <RebuildCommand/>
-        <CleanCommand/>
+        <RebuildCommand>make -C ../build/release all</RebuildCommand>
+        <CleanCommand>make -C ../build/release clean</CleanCommand>
         <BuildCommand>make -C ../build/release dragent</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>

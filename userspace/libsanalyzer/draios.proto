@@ -642,7 +642,7 @@ message metrics {
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
-    optional k8s_state kubernetes = 23; // kubernetes cluster state
+    optional k8s_state kubernetes = 24; // kubernetes cluster state
 }
 
 message dump_request_start {
