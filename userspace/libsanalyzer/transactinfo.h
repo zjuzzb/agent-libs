@@ -173,6 +173,7 @@ public:
 	    TYPE_MYSQL = 3,
 		TYPE_POSTGRES = 4,
 		TYPE_MONGODB = 5,
+		TYPE_TLS = 6
 	};
 
 	enum family

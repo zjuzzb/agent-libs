@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 # project
 from checks import AgentCheck
+from util import get_hostname
 
 # 3rd party
 import yaml
@@ -122,7 +123,8 @@ class AppCheckInstance:
     TOKEN_PATTERN = re.compile("\{.+\}")
     AGENT_CONFIG = {
         "is_developer_mode": False,
-        "version": 1.0
+        "version": 1.0,
+        "hostname": get_hostname()
     }
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
