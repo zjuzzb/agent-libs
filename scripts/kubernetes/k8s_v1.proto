@@ -39,8 +39,8 @@ message k8s_node_spec {
 
 message k8s_node_status {
     repeated k8s_pair capacity = 1;
-    repeated k8s_pair conditions = 2;
-    repeated k8s_pair addresses = 3;
+    //TODO repeated k8s_pair conditions = 2;
+    //TODO repeated k8s_pair addresses = 3;
     repeated k8s_pair node_info = 4;
 }
 
