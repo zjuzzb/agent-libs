@@ -17,14 +17,16 @@ message k8s_namespace {
 
 message k8s_node {
     required k8s_common common = 1;
+    required string host_ip = 2;
     // TODO pod_count
 }
 
 message k8s_pod {
     required k8s_common common = 1;
     repeated string container_ids = 2;
-    optional string host_ip = 3;
-    optional string internal_ip = 4;
+    optional string node_name = 3;
+    optional string host_ip = 4;
+    optional string internal_ip = 5;
     // TODO pod_details
 }
 
