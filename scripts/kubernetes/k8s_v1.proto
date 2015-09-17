@@ -45,11 +45,20 @@ message k8s_node_status {
 }
 
 message k8s_pod_spec {
-    //TODO
+    // TODO containers = 1;
+    required string restart_policy = 2;
+    required string dns_policy = 3;
+    required string node_name = 4;
+    //TODO container_statuses = 5;
 }
 
 message k8s_pod_status {
-    //TODO
+    required string phase = 1;
+    //TODO conditions = 2;
+    required string host_ip = 3;
+    required string pod_ip = 4;
+    required string start_time = 5;
+    //TODO container_statuses = 6;
 }
 
 message k8s_replicationcontroller_spec {
