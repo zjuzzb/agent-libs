@@ -74,6 +74,10 @@ try:
         IO_OPS = int(os.environ['IO_OPS'])
     except Exception as e:
         IO_OPS = 0
+    try:
+        SYNC = os.environ['SYNC']
+    except Exception as e:
+        SYNC = 'true'
 
     #
     # Initial logging
@@ -87,9 +91,10 @@ try:
         log("  %s\n" % chname)
     log("CPU_OPS: %d\n" % CPU_OPS)
     log("IO_OPS: %d\n" % IO_OPS)
+    log("SYNC: %s\n" % SYNC)
 
     if os.environ['ROLE'] == 'root':
-        reqid = 1
+        reqid = 0
         log("Starting request generation loop...\n")
 
         #try:
@@ -98,39 +103,67 @@ try:
         #    log("error: cannot open usapp.cfg for reading")
         #    sys.exit(0)
 
-        while True:
-        #for x in range(0, 2):
+        #while True:
+        for x in range(0, 20):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
+            chnames = []
+            depnames = []
+            tags = []
             for j in range(0, NCHILDS):
-                # Set up a TCP/IP socket
-                s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+                # Create the child name and tag
+                chnames.append("srvc_next" + str(j))
+                dn = NAME + ".req" + str(j)
+                depnames.append(dn)
+                tags.append("%s" % dn)
 
-                # Create the child name
-                chname = "srvc_next" + str(j)
-                depname = NAME + ".req" + str(j)
-                tag = "%s" % depname
+            if SYNC == 'true':
+                for j in range(0, NCHILDS):
+                    # Set up a TCP/IP socket
+                    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
-                # Connect to the child
-                s.connect((chname, 8080))
+                    # Connect to the child
+                    s.connect((chnames[j], 8080))
 
-                # Protocol exchange - sends and receives
-                #s.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
+                    # Protocol exchange - sends and receives
+                    #s.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
+                    mark(">:%d:%s:n=%d:" % (reqid, tags[j], reqid))
+                    payload = "%d:%s" % (reqid, tags[j])
+                    s.send(payload)
 
-                mark(">:%d:%s::" % (reqid, tag))
-                payload = "%d:%s" % (reqid, tag)
-                s.send(payload)
+                    while True:
+                        resp = s.recv(1024)
+                        if resp == "": break
+                        print resp,
 
-                while True:
-                    resp = s.recv(1024)
-                    if resp == "": break
-                    print resp,
+                    mark("<:%d:%s::" % (reqid, tags[j]))
 
-                mark("<:%d:%s::" % (reqid, tag))
+                    # Close the connection when completed
+                    s.close()
+            else:
+                ss = []
+                for j in range(0, NCHILDS):
+                    # Set up a TCP/IP socket
+                    ss.append(socket.socket(socket.AF_INET,socket.SOCK_STREAM))
 
-                # Close the connection when completed
-                s.close()
+                    # Connect to the child
+                    ss[j].connect((chnames[j], 8080))
+
+                    mark(">:%d:%s:n=%d:" % (reqid, tags[j], reqid))
+                    payload = "%d:%s" % (reqid, tags[j])
+                    ss[j].send(payload)
+
+                for j in range(0, NCHILDS):
+                    while True:
+                        resp = ss[j].recv(1024)
+                        if resp == "": break
+                        print resp,
+
+                    mark("<:%d:%s::" % (reqid, tags[j]))
+
+                    # Close the connection when completed
+                    ss[j].close()
 
             if CPU_OPS != 0:
                 cpu_ops("%d:%s" % (reqid, NAME), CPU_OPS)
@@ -166,6 +199,9 @@ try:
             tag = resp + "." + NAME
 
             mark(">:%s::" % tag)
+
+            ##################################################################################################################3
+            #time.sleep(0.2)
 
             if CPU_OPS != 0:
                 cpu_ops(tag, CPU_OPS)

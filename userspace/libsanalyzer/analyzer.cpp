@@ -3158,7 +3158,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		//
 		// If this is an fd-based syscall that comes after a wait, update the wait time
 		//
-		ppm_event_flags eflags = evt->get_flags();
+		ppm_event_flags eflags = evt->get_info_flags();
 		if(eflags & EF_USES_FD)
 		{
 			add_wait_time(evt, &cat);
