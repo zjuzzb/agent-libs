@@ -591,6 +591,7 @@ message k8s_node {
 
 message k8s_pod {
     required k8s_common common = 1;
+    // pods have no selectors
     repeated string container_ids = 2;
     optional string node_name = 3;
     optional string host_ip = 4;
