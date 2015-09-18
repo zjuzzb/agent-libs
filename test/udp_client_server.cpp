@@ -475,7 +475,12 @@ TEST_F(sys_call_test, udp_client_server)
 			break;
 		}
 	};
-	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+
+	sinsp_configuration configuration;
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
 }
 
 TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
@@ -544,7 +549,12 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 			transaction_count = ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in;
 		}
 	};
-	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+
+	sinsp_configuration configuration;
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
 	ASSERT_EQ(1, callnum);
 	ASSERT_EQ((size_t)NTRANSACTIONS, transaction_count);
 }
@@ -649,7 +659,12 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+	sinsp_configuration configuration;
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
+
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
 }
 
 TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
@@ -751,5 +766,10 @@ TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+	sinsp_configuration configuration;
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
+
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
 }

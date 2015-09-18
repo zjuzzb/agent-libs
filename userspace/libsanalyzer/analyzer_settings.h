@@ -194,3 +194,4 @@ static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
+static const auto APP_METRICS_LIMIT = 300;

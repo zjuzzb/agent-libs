@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 # project
 from checks import AgentCheck
+from util import get_hostname
 
 # 3rd party
 import yaml
@@ -42,18 +43,18 @@ def build_ns_path(pid, ns):
 
 class YamlConfig:
     def __init__(self):
-        with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
-            try:
+        try:
+            with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
                 self._default_root = yaml.load(default_file.read())
-            except Exception as ex:
-                self._default_root = {}
-                logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
-        with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
-            try:
+        except Exception as ex:
+            self._default_root = {}
+            logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
+        try:
+            with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
                 self._root = yaml.load(custom_file.read())
-            except Exception as ex:
-                self._root = {}
-                logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
+        except Exception as ex:
+            self._root = {}
+            logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
 
     def get_merged_sequence(self, key, default=[]):
         ret = default
@@ -122,7 +123,8 @@ class AppCheckInstance:
     TOKEN_PATTERN = re.compile("\{.+\}")
     AGENT_CONFIG = {
         "is_developer_mode": False,
-        "version": 1.0
+        "version": 1.0,
+        "hostname": get_hostname()
     }
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
@@ -244,6 +246,9 @@ class PosixQueue:
             return True
         except posix_ipc.BusyError:
             return False
+        except ValueError as ex:
+            logging.error("Cannot send: %s, size=%dB" % (ex.message, len(msg)))
+            return False
 
     def receive(self, timeout=1):
         message, _ = self.queue.receive(timeout)
@@ -326,7 +331,7 @@ class Application:
                 "body": response_body
             }
             response_s = json.dumps(response)
-            #print "Response: %s\n" % response_s
+            logging.debug("Response size is %d" % len(response_s))
             self.outqueue.send(response_s)
             if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances([p["pid"] for p in processes])

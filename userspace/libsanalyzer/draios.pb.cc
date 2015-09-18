@@ -1034,10 +1034,6 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, customer_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, hostinfo_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, programs_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, ipv4_connections_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, ipv4_network_interfaces_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, sampling_ratio_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_custom_name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, host_tags_),
@@ -1045,6 +1041,10 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, hidden_processes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, version_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, instance_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, hostinfo_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, programs_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, ipv4_connections_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, ipv4_network_interfaces_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, commands_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, mounts_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, top_files_),
@@ -1682,15 +1682,15 @@ void protobuf_AddDesc_draios_2eproto() {
     "\n\006labels\030\024 \003(\0132\034.draiosproto.container_l"
     "abel\"\211\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022\022"
     "\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022"
-    "#\n\010hostinfo\030\004 \002(\0132\021.draiosproto.host\022&\n\010"
-    "programs\030\t \003(\0132\024.draiosproto.program\0226\n\020"
-    "ipv4_connections\030\007 \003(\0132\034.draiosproto.ipv"
-    "4_connection\022D\n\027ipv4_network_interfaces\030"
-    "\010 \003(\0132#.draiosproto.ipv4_network_interfa"
-    "ce\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_custo"
-    "m_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\026\n\016is_ho"
-    "st_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001("
-    "\t\022\017\n\007version\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022"
+    "\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_custom_n"
+    "ame\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\026\n\016is_host_"
+    "hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017"
+    "\n\007version\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022#\n\010"
+    "hostinfo\030\004 \001(\0132\021.draiosproto.host\022&\n\010pro"
+    "grams\030\t \003(\0132\024.draiosproto.program\0226\n\020ipv"
+    "4_connections\030\007 \003(\0132\034.draiosproto.ipv4_c"
+    "onnection\022D\n\027ipv4_network_interfaces\030\010 \003"
+    "(\0132#.draiosproto.ipv4_network_interface\022"
     ".\n\010commands\030\021 \003(\0132\034.draiosproto.command_"
     "details\022\'\n\006mounts\030\022 \003(\0132\027.draiosproto.mo"
     "unted_fs\022)\n\ttop_files\030\023 \003(\0132\026.draiosprot"
@@ -19761,10 +19761,6 @@ void container::Swap(container* other) {
 const int metrics::kTimestampNsFieldNumber;
 const int metrics::kMachineIdFieldNumber;
 const int metrics::kCustomerIdFieldNumber;
-const int metrics::kHostinfoFieldNumber;
-const int metrics::kProgramsFieldNumber;
-const int metrics::kIpv4ConnectionsFieldNumber;
-const int metrics::kIpv4NetworkInterfacesFieldNumber;
 const int metrics::kSamplingRatioFieldNumber;
 const int metrics::kHostCustomNameFieldNumber;
 const int metrics::kHostTagsFieldNumber;
@@ -19772,6 +19768,10 @@ const int metrics::kIsHostHiddenFieldNumber;
 const int metrics::kHiddenProcessesFieldNumber;
 const int metrics::kVersionFieldNumber;
 const int metrics::kInstanceIdFieldNumber;
+const int metrics::kHostinfoFieldNumber;
+const int metrics::kProgramsFieldNumber;
+const int metrics::kIpv4ConnectionsFieldNumber;
+const int metrics::kIpv4NetworkInterfacesFieldNumber;
 const int metrics::kCommandsFieldNumber;
 const int metrics::kMountsFieldNumber;
 const int metrics::kTopFilesFieldNumber;
@@ -19800,7 +19800,6 @@ void metrics::SharedCtor() {
   timestamp_ns_ = GOOGLE_ULONGLONG(0);
   machine_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   customer_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  hostinfo_ = NULL;
   sampling_ratio_ = 0u;
   host_custom_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   host_tags_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
@@ -19808,6 +19807,7 @@ void metrics::SharedCtor() {
   hidden_processes_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   instance_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  hostinfo_ = NULL;
   protos_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -19878,12 +19878,7 @@ void metrics::Clear() {
         customer_id_->clear();
       }
     }
-    if (has_hostinfo()) {
-      if (hostinfo_ != NULL) hostinfo_->::draiosproto::host::Clear();
-    }
     sampling_ratio_ = 0u;
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_host_custom_name()) {
       if (host_custom_name_ != &::google::protobuf::internal::kEmptyString) {
         host_custom_name_->clear();
@@ -19900,6 +19895,8 @@ void metrics::Clear() {
         hidden_processes_->clear();
       }
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_version()) {
       if (version_ != &::google::protobuf::internal::kEmptyString) {
         version_->clear();
@@ -19909,6 +19906,9 @@ void metrics::Clear() {
       if (instance_id_ != &::google::protobuf::internal::kEmptyString) {
         instance_id_->clear();
       }
+    }
+    if (has_hostinfo()) {
+      if (hostinfo_ != NULL) hostinfo_->::draiosproto::host::Clear();
     }
   }
   if (_has_bits_[17 / 32] & (0xffu << (17 % 32))) {
@@ -19982,7 +19982,7 @@ bool metrics::MergePartialFromCodedStream(
         break;
       }
 
-      // required .draiosproto.host hostinfo = 4;
+      // optional .draiosproto.host hostinfo = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -20273,7 +20273,7 @@ void metrics::SerializeWithCachedSizes(
       3, this->customer_id(), output);
   }
 
-  // required .draiosproto.host hostinfo = 4;
+  // optional .draiosproto.host hostinfo = 4;
   if (has_hostinfo()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       4, this->hostinfo(), output);
@@ -20415,7 +20415,7 @@ void metrics::SerializeWithCachedSizes(
         3, this->customer_id(), target);
   }
 
-  // required .draiosproto.host hostinfo = 4;
+  // optional .draiosproto.host hostinfo = 4;
   if (has_hostinfo()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -20570,13 +20570,6 @@ int metrics::ByteSize() const {
           this->customer_id());
     }
 
-    // required .draiosproto.host hostinfo = 4;
-    if (has_hostinfo()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->hostinfo());
-    }
-
     // optional uint32 sampling_ratio = 10;
     if (has_sampling_ratio()) {
       total_size += 1 +
@@ -20584,8 +20577,6 @@ int metrics::ByteSize() const {
           this->sampling_ratio());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional string host_custom_name = 11;
     if (has_host_custom_name()) {
       total_size += 1 +
@@ -20612,6 +20603,8 @@ int metrics::ByteSize() const {
           this->hidden_processes());
     }
 
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     // optional string version = 16;
     if (has_version()) {
       total_size += 2 +
@@ -20624,6 +20617,13 @@ int metrics::ByteSize() const {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->instance_id());
+    }
+
+    // optional .draiosproto.host hostinfo = 4;
+    if (has_hostinfo()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->hostinfo());
     }
 
   }
@@ -20734,14 +20734,9 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_customer_id()) {
       set_customer_id(from.customer_id());
     }
-    if (from.has_hostinfo()) {
-      mutable_hostinfo()->::draiosproto::host::MergeFrom(from.hostinfo());
-    }
     if (from.has_sampling_ratio()) {
       set_sampling_ratio(from.sampling_ratio());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_host_custom_name()) {
       set_host_custom_name(from.host_custom_name());
     }
@@ -20754,11 +20749,16 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_hidden_processes()) {
       set_hidden_processes(from.hidden_processes());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_version()) {
       set_version(from.version());
     }
     if (from.has_instance_id()) {
       set_instance_id(from.instance_id());
+    }
+    if (from.has_hostinfo()) {
+      mutable_hostinfo()->::draiosproto::host::MergeFrom(from.hostinfo());
     }
   }
   if (from._has_bits_[17 / 32] & (0xffu << (17 % 32))) {
@@ -20782,7 +20782,7 @@ void metrics::CopyFrom(const metrics& from) {
 }
 
 bool metrics::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   if (has_hostinfo()) {
     if (!this->hostinfo().IsInitialized()) return false;
@@ -20819,10 +20819,6 @@ void metrics::Swap(metrics* other) {
     std::swap(timestamp_ns_, other->timestamp_ns_);
     std::swap(machine_id_, other->machine_id_);
     std::swap(customer_id_, other->customer_id_);
-    std::swap(hostinfo_, other->hostinfo_);
-    programs_.Swap(&other->programs_);
-    ipv4_connections_.Swap(&other->ipv4_connections_);
-    ipv4_network_interfaces_.Swap(&other->ipv4_network_interfaces_);
     std::swap(sampling_ratio_, other->sampling_ratio_);
     std::swap(host_custom_name_, other->host_custom_name_);
     std::swap(host_tags_, other->host_tags_);
@@ -20830,6 +20826,10 @@ void metrics::Swap(metrics* other) {
     std::swap(hidden_processes_, other->hidden_processes_);
     std::swap(version_, other->version_);
     std::swap(instance_id_, other->instance_id_);
+    std::swap(hostinfo_, other->hostinfo_);
+    programs_.Swap(&other->programs_);
+    ipv4_connections_.Swap(&other->ipv4_connections_);
+    ipv4_network_interfaces_.Swap(&other->ipv4_network_interfaces_);
     commands_.Swap(&other->commands_);
     mounts_.Swap(&other->mounts_);
     top_files_.Swap(&other->top_files_);

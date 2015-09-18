@@ -699,6 +699,9 @@ void runtest(iotype iot,
 	//
 	sinsp_configuration configuration;
 	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
 
 	ASSERT_NO_FATAL_FAILURE( { event_capture::run(test, callback, filter, configuration);});
 	
@@ -802,7 +805,12 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 	client_thread.start(client_runnable);
 	client.wait_till_ready();
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	sinsp_configuration configuration;
+	ports_set known_ports;
+	known_ports.set(SERVER_PORT);
+	configuration.set_known_ports(known_ports);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 	ASSERT_EQ(1, state);
 
 }

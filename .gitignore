@@ -63,6 +63,7 @@ driver/ppm.mod.c
 # astyle file backup
 *.orig
 .libs/
+statsite.ini
 
 # ignore test result files
 test_detail.xml
@@ -79,3 +80,6 @@ metrics
 .idea
 sdjagent.iml
 userspace/sdjagent/target
+
+#CodeLite
+.codelite

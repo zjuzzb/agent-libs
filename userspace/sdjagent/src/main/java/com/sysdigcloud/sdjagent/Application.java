@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 
 import java.io.*;
@@ -24,13 +26,24 @@ public class Application {
     private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long VMS_CLEANUP_INTERVAL = 10 * 60 * 1000;
-
+    private static final double JAVA_VERSION;
+    private static final double MIN_JAVA_VERSION = 1.6;
+    private static final int MONITOR_DONT_RESTART_CODE = 17;
+    private static final String HELP_TEXT = "Available commands:\n" +
+            "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
+            "availableMetrics <pid> <vpid> - Print all available beans from specified JVM, " +
+                    "they are printed in a similar YAML to be easily copied to conf file\n";
     static {
         MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         MAPPER.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
         FilterProvider filters = new SimpleFilterProvider().addFilter("BeanAttributeDataFilter", new BeanData
                 .BeanAttributeDataFilter());
         MAPPER.setFilters(filters);
+
+        String version = System.getProperty("java.version");
+        int pos = version.indexOf('.');
+        pos = version.indexOf('.', pos+1);
+        JAVA_VERSION = Double.parseDouble(version.substring (0, pos));
     }
 
     /**
@@ -40,7 +53,12 @@ public class Application {
         try {
             Application app = new Application();
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
+            LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
+            if(JAVA_VERSION < MIN_JAVA_VERSION) {
+                LOGGER.severe("Java version unsupported");
+                System.exit(MONITOR_DONT_RESTART_CODE);
+            }
             if(args.length > 0) {
                 app.runWithArgs(args);
             } else {
@@ -74,11 +92,11 @@ public class Application {
 
     private void runWithArgs(String[] args) throws IOException {
         if(args[0].equals("getVMHandle") && args.length > 1) {
-            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[1]));
-            MonitoredVM vm = new MonitoredVM(request);
-            Map<String, Object> vmInfo = new HashMap<String, Object>();
+            final VMRequest request = new VMRequest(args);
+            final MonitoredVM vm = new MonitoredVM(request);
+            final Map<String, Object> vmInfo = new HashMap<String, Object>();
             vmInfo.put("available", vm.isAvailable());
-            if(vm.isAvailable()) {
+            if (vm.isAvailable()) {
                 vmInfo.put("name", vm.getName());
                 vmInfo.put("agentActive", vm.isAgentActive());
                 if (vm.isAgentActive()) {
@@ -86,11 +104,40 @@ public class Application {
                 }
             }
             MAPPER.writeValue(System.out, vmInfo);
-        } else if (args[0].equals("getMetrics") && args.length > 2) {
-            VMRequest request = new VMRequest(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
-            MonitoredVM vm = new MonitoredVM(request);
+        } else if (args[0].equals("availableMetrics") && args.length > 1) {
+            final VMRequest request = new VMRequest(args);
+            final MonitoredVM vm = new MonitoredVM(request);
+
+            if(vm.isAgentActive()) {
+                DumperOptions options = new DumperOptions();
+                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+                Yaml yaml = new Yaml(options);
+
+                Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
+                vmInfo.put("pattern", vm.getName());
+                vmInfo.put("beans", vm.availableMetrics());
+
+                final String dump = yaml.dump(vmInfo);
+                System.out.println(dump);
+            }
+        } else if (args[0].equals("getMetrics") && args.length > 1) {
+            final VMRequest request = new VMRequest(args);
+            final MonitoredVM vm = new MonitoredVM(request);
             vm.addQueries(config.getDefaultBeanQueries());
-            MAPPER.writeValue(System.out, vm.getMetrics());
+            if(vm.isAgentActive()) {
+                Map<String, Config.Process> processes = config.getProcesses();
+                for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
+                    if (vm.getName().contains(config.getValue().getPattern())) {
+                        vm.setName(config.getKey());
+                        vm.addQueries(config.getValue().getQueries());
+                        break;
+                    }
+                }
+                MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+                MAPPER.writeValue(System.out, vm.getMetrics());
+            }
+        } else {
+            System.out.print(HELP_TEXT);
         }
         System.out.println();
         System.out.flush();

@@ -202,9 +202,99 @@ TEST_F(sys_call_test, net_web_requests)
 	sinsp_configuration configuration;
 	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 
+	// Set DNS port, /etc/services is read only from dragent context
+	// port 80 is not needed, because it's http protocol and is autodiscovered
+	ports_set known_ports;
+	known_ports.set(53);
+	configuration.set_known_ports(known_ports);
+
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
 	ASSERT_EQ(N_CONNECTIONS, nconns);
+}
+
+TEST_F(sys_call_test, net_ssl_requests)
+{
+	auto ret = system("which curl > /dev/null");
+	if(ret != 0)
+	{
+		fprintf(stderr, "Cannot run, curl is not present\n");
+		return;
+	}
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		return (tinfo != nullptr && tinfo->m_comm == "curl") || m_tid_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto ret = system("curl https://www.google.com > /dev/null 2>&1");
+		EXPECT_EQ(0, ret);
+
+		// We use a random call to tee to signal that we're done
+		tee(-1, -1, 0, 0);
+
+		return 0;
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt *evt = param.m_evt;
+
+		if(evt->get_type() == PPME_GENERIC_E &&
+		   NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+		{
+			// curl uses multiple threads so collect all stats
+			auto threadtable = param.m_inspector->m_thread_manager->get_threads();
+			sinsp_transaction_counters transaction_metrics;
+			transaction_metrics.clear();
+			for(auto it = threadtable->begin(); it != threadtable->end(); ++it)
+			{
+				if(it->second.m_comm == "curl")
+				{
+					transaction_metrics.add(&it->second.m_ainfo->m_transaction_metrics);
+				}
+			}
+
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_count_in);
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_min_counter()->m_count_in);
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_min_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_count_in);
+			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_in);
+
+			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_out);
+			EXPECT_NE((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_out);
+			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_min_counter()->m_count_out);
+			EXPECT_NE((uint64_t) 0, transaction_metrics.get_min_counter()->m_time_ns_out);
+			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_max_counter()->m_count_out);
+			EXPECT_NE((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_out);
+			EXPECT_LE(transaction_metrics.get_min_counter()->m_time_ns_out,
+					  transaction_metrics.get_max_counter()->m_time_ns_out);
+		}
+	};
+
+	//
+	// Set a very long sample time, so we're sure no connection is removed
+	//
+	sinsp_configuration configuration;
+	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
+	ports_set ports;
+	ports.set(443);
+	configuration.set_known_ports(ports);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }
 
 //

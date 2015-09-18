@@ -844,6 +844,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
 	unordered_map<int, app_check_data> app_metrics;
+	uint16_t app_checks_limit = APP_METRICS_LIMIT;
+
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
@@ -1334,7 +1336,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
 					const auto& app_data = app_metrics.at(tinfo->m_pid);
-					app_data.to_protobuf(proc->mutable_protos()->mutable_app());
+					app_checks_limit -= app_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
 				}
 #endif
 
@@ -1596,6 +1598,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 #endif
+	}
+
+	if(app_checks_limit == 0)
+	{
+		g_logger.log("App checks metrics limit reached", sinsp_logger::SEV_WARNING);
 	}
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2590,19 +2597,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
-			vector<sinsp_procfs_parser::mounted_fs> fs_list;
-			m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
-			for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
-				it != fs_list.end(); ++it)
+			if(m_inspector->is_live())
 			{
-				draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+				vector<sinsp_procfs_parser::mounted_fs> fs_list;
+				m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
+				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
+					it != fs_list.end(); ++it)
+				{
+					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
 
-				fs->set_device(it->device);
-				fs->set_mount_dir(it->mount_dir);
-				fs->set_type(it->type);
-				fs->set_size_bytes(it->size_bytes);
-				fs->set_used_bytes(it->used_bytes);
-				fs->set_available_bytes(it->available_bytes);
+					fs->set_device(it->device);
+					fs->set_mount_dir(it->mount_dir);
+					fs->set_type(it->type);
+					fs->set_size_bytes(it->size_bytes);
+					fs->set_used_bytes(it->used_bytes);
+					fs->set_available_bytes(it->available_bytes);
+				}
 			}
 
 			//

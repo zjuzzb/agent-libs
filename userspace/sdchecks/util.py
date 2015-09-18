@@ -169,13 +169,12 @@ def get_hostname(config=None):
     """
     hostname = None
 
-    # first, try the config
-    if config is None:
-        from config import get_config
-        config = get_config(parse_args=True)
-    config_hostname = config.get('hostname')
-    if config_hostname and is_valid_hostname(config_hostname):
-        return config_hostname
+    #Try config
+
+    if config is not None:
+        config_hostname = config.get('hostname')
+        if config_hostname and is_valid_hostname(config_hostname):
+            return config_hostname
 
     #Try to get GCE instance name
     if hostname is None:

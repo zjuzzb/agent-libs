@@ -4,11 +4,9 @@
 #pragma once
 
 #include "sinsp.h"
-#include "sinsp_int.h"
-#include "analyzer_int.h"
 #include "third-party/jsoncpp/json/json.h"
-#include "analyzer_thread.h"
 #include "posix_queue.h"
+#include "draios.pb.h"
 
 namespace YAML
 {
@@ -42,14 +40,7 @@ private:
 class app_process
 {
 public:
-	app_process(string check_name, sinsp_threadinfo* tinfo):
-			m_pid(tinfo->m_pid),
-			m_vpid(tinfo->m_vpid),
-			m_check_name(move(check_name)),
-			m_ports(tinfo->m_ainfo->listening_ports())
-	{
-
-	}
+	explicit app_process(string check_name, sinsp_threadinfo* tinfo);
 
 	Json::Value to_json() const;
 
@@ -69,7 +60,7 @@ public:
 		GAUGE = 1,
 		RATE
 	};
-	app_metric(const Json::Value& obj);
+	explicit app_metric(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_metric* proto) const;
 private:
 	string m_name;
@@ -108,7 +99,7 @@ public:
 		return m_pid;
 	}
 
-	void to_protobuf(draiosproto::app_info* proto) const;
+	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
 private:
 	int m_pid;
 	string m_process_name;

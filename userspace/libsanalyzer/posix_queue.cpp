@@ -3,6 +3,7 @@
 //
 
 #include "posix_queue.h"
+#include <sinsp_int.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
 
