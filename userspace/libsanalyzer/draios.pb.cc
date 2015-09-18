@@ -1878,7 +1878,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "\003(\0132\025.draiosproto.k8s_pair\"8\n\rk8s_namesp"
     "ace\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_co"
     "mmon\"D\n\010k8s_node\022\'\n\006common\030\001 \002(\0132\027.draio"
-    "sproto.k8s_common\022\017\n\007host_ip\030\002 \002(\t\"\202\001\n\007k"
+    "sproto.k8s_common\022\017\n\007host_ip\030\002 \003(\t\"\202\001\n\007k"
     "8s_pod\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s"
     "_common\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\tnode_n"
     "ame\030\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013internal_i"
@@ -20935,7 +20935,6 @@ k8s_node::k8s_node(const k8s_node& from)
 void k8s_node::SharedCtor() {
   _cached_size_ = 0;
   common_ = NULL;
-  host_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -20944,9 +20943,6 @@ k8s_node::~k8s_node() {
 }
 
 void k8s_node::SharedDtor() {
-  if (host_ip_ != &::google::protobuf::internal::kEmptyString) {
-    delete host_ip_;
-  }
   if (this != default_instance_) {
     delete common_;
   }
@@ -20978,12 +20974,8 @@ void k8s_node::Clear() {
     if (has_common()) {
       if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
     }
-    if (has_host_ip()) {
-      if (host_ip_ != &::google::protobuf::internal::kEmptyString) {
-        host_ip_->clear();
-      }
-    }
   }
+  host_ip_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -21007,19 +20999,21 @@ bool k8s_node::MergePartialFromCodedStream(
         break;
       }
 
-      // required string host_ip = 2;
+      // repeated string host_ip = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_host_ip:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_host_ip()));
+                input, this->add_host_ip()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->host_ip().data(), this->host_ip().length(),
+            this->host_ip(this->host_ip_size() - 1).data(),
+            this->host_ip(this->host_ip_size() - 1).length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(18)) goto parse_host_ip;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -21048,13 +21042,13 @@ void k8s_node::SerializeWithCachedSizes(
       1, this->common(), output);
   }
 
-  // required string host_ip = 2;
-  if (has_host_ip()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->host_ip().data(), this->host_ip().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
+  // repeated string host_ip = 2;
+  for (int i = 0; i < this->host_ip_size(); i++) {
+  ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+    this->host_ip(i).data(), this->host_ip(i).length(),
+    ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->host_ip(), output);
+      2, this->host_ip(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -21072,14 +21066,13 @@ void k8s_node::SerializeWithCachedSizes(
         1, this->common(), target);
   }
 
-  // required string host_ip = 2;
-  if (has_host_ip()) {
+  // repeated string host_ip = 2;
+  for (int i = 0; i < this->host_ip_size(); i++) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->host_ip().data(), this->host_ip().length(),
+      this->host_ip(i).data(), this->host_ip(i).length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->host_ip(), target);
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteStringToArray(2, this->host_ip(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -21100,14 +21093,14 @@ int k8s_node::ByteSize() const {
           this->common());
     }
 
-    // required string host_ip = 2;
-    if (has_host_ip()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->host_ip());
-    }
-
   }
+  // repeated string host_ip = 2;
+  total_size += 1 * this->host_ip_size();
+  for (int i = 0; i < this->host_ip_size(); i++) {
+    total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
+      this->host_ip(i));
+  }
+
   if (!unknown_fields().empty()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
@@ -21133,12 +21126,10 @@ void k8s_node::MergeFrom(const ::google::protobuf::Message& from) {
 
 void k8s_node::MergeFrom(const k8s_node& from) {
   GOOGLE_CHECK_NE(&from, this);
+  host_ip_.MergeFrom(from.host_ip_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_common()) {
       mutable_common()->::draiosproto::k8s_common::MergeFrom(from.common());
-    }
-    if (from.has_host_ip()) {
-      set_host_ip(from.host_ip());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -21157,7 +21148,7 @@ void k8s_node::CopyFrom(const k8s_node& from) {
 }
 
 bool k8s_node::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
   if (has_common()) {
     if (!this->common().IsInitialized()) return false;
@@ -21168,7 +21159,7 @@ bool k8s_node::IsInitialized() const {
 void k8s_node::Swap(k8s_node* other) {
   if (other != this) {
     std::swap(common_, other->common_);
-    std::swap(host_ip_, other->host_ip_);
+    host_ip_.Swap(&other->host_ip_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

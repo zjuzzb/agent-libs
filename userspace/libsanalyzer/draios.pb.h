@@ -6536,29 +6536,31 @@ class k8s_node : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_common* release_common();
   inline void set_allocated_common(::draiosproto::k8s_common* common);
 
-  // required string host_ip = 2;
-  inline bool has_host_ip() const;
+  // repeated string host_ip = 2;
+  inline int host_ip_size() const;
   inline void clear_host_ip();
   static const int kHostIpFieldNumber = 2;
-  inline const ::std::string& host_ip() const;
-  inline void set_host_ip(const ::std::string& value);
-  inline void set_host_ip(const char* value);
-  inline void set_host_ip(const char* value, size_t size);
-  inline ::std::string* mutable_host_ip();
-  inline ::std::string* release_host_ip();
-  inline void set_allocated_host_ip(::std::string* host_ip);
+  inline const ::std::string& host_ip(int index) const;
+  inline ::std::string* mutable_host_ip(int index);
+  inline void set_host_ip(int index, const ::std::string& value);
+  inline void set_host_ip(int index, const char* value);
+  inline void set_host_ip(int index, const char* value, size_t size);
+  inline ::std::string* add_host_ip();
+  inline void add_host_ip(const ::std::string& value);
+  inline void add_host_ip(const char* value);
+  inline void add_host_ip(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& host_ip() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_host_ip();
 
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_node)
  private:
   inline void set_has_common();
   inline void clear_has_common();
-  inline void set_has_host_ip();
-  inline void clear_has_host_ip();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::k8s_common* common_;
-  ::std::string* host_ip_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> host_ip_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
@@ -16992,74 +16994,48 @@ inline void k8s_node::set_allocated_common(::draiosproto::k8s_common* common) {
   }
 }
 
-// required string host_ip = 2;
-inline bool k8s_node::has_host_ip() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void k8s_node::set_has_host_ip() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void k8s_node::clear_has_host_ip() {
-  _has_bits_[0] &= ~0x00000002u;
+// repeated string host_ip = 2;
+inline int k8s_node::host_ip_size() const {
+  return host_ip_.size();
 }
 inline void k8s_node::clear_host_ip() {
-  if (host_ip_ != &::google::protobuf::internal::kEmptyString) {
-    host_ip_->clear();
-  }
-  clear_has_host_ip();
+  host_ip_.Clear();
 }
-inline const ::std::string& k8s_node::host_ip() const {
-  return *host_ip_;
+inline const ::std::string& k8s_node::host_ip(int index) const {
+  return host_ip_.Get(index);
 }
-inline void k8s_node::set_host_ip(const ::std::string& value) {
-  set_has_host_ip();
-  if (host_ip_ == &::google::protobuf::internal::kEmptyString) {
-    host_ip_ = new ::std::string;
-  }
-  host_ip_->assign(value);
+inline ::std::string* k8s_node::mutable_host_ip(int index) {
+  return host_ip_.Mutable(index);
 }
-inline void k8s_node::set_host_ip(const char* value) {
-  set_has_host_ip();
-  if (host_ip_ == &::google::protobuf::internal::kEmptyString) {
-    host_ip_ = new ::std::string;
-  }
-  host_ip_->assign(value);
+inline void k8s_node::set_host_ip(int index, const ::std::string& value) {
+  host_ip_.Mutable(index)->assign(value);
 }
-inline void k8s_node::set_host_ip(const char* value, size_t size) {
-  set_has_host_ip();
-  if (host_ip_ == &::google::protobuf::internal::kEmptyString) {
-    host_ip_ = new ::std::string;
-  }
-  host_ip_->assign(reinterpret_cast<const char*>(value), size);
+inline void k8s_node::set_host_ip(int index, const char* value) {
+  host_ip_.Mutable(index)->assign(value);
 }
-inline ::std::string* k8s_node::mutable_host_ip() {
-  set_has_host_ip();
-  if (host_ip_ == &::google::protobuf::internal::kEmptyString) {
-    host_ip_ = new ::std::string;
-  }
+inline void k8s_node::set_host_ip(int index, const char* value, size_t size) {
+  host_ip_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* k8s_node::add_host_ip() {
+  return host_ip_.Add();
+}
+inline void k8s_node::add_host_ip(const ::std::string& value) {
+  host_ip_.Add()->assign(value);
+}
+inline void k8s_node::add_host_ip(const char* value) {
+  host_ip_.Add()->assign(value);
+}
+inline void k8s_node::add_host_ip(const char* value, size_t size) {
+  host_ip_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+k8s_node::host_ip() const {
   return host_ip_;
 }
-inline ::std::string* k8s_node::release_host_ip() {
-  clear_has_host_ip();
-  if (host_ip_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = host_ip_;
-    host_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void k8s_node::set_allocated_host_ip(::std::string* host_ip) {
-  if (host_ip_ != &::google::protobuf::internal::kEmptyString) {
-    delete host_ip_;
-  }
-  if (host_ip) {
-    set_has_host_ip();
-    host_ip_ = host_ip;
-  } else {
-    clear_has_host_ip();
-    host_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+k8s_node::mutable_host_ip() {
+  return &host_ip_;
 }
 
 // -------------------------------------------------------------------
