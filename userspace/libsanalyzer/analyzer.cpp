@@ -3597,6 +3597,9 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	case CT_LIBVIRT_LXC:
 		container->set_type(draiosproto::LIBVIRT_LXC);
 		break;
+	case CT_MESOS:
+		container->set_type(draiosproto::MESOS);
+		break;
 	default:
 		ASSERT(false);
 	}
