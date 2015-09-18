@@ -585,7 +585,7 @@ message k8s_namespace {
 
 message k8s_node {
     required k8s_common common = 1;
-    repeated string host_ip = 2;
+    repeated string host_ips = 2;
     // TODO pod_count
 }
 
