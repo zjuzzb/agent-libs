@@ -185,11 +185,11 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 fi
 
 if [ -z "$AGENT_VERSION" ]; then
-	AGENT_VERSION="0.1.1-dev"
+	AGENT_VERSION="0.1.1dev"
 fi
 
 if [ -z "$SYSDIG_VERSION_EXPRESSION" ]; then
-	SYSDIG_VERSION_EXPRESSION=">= 0.1.1-dev"
+	SYSDIG_VERSION_EXPRESSION=">= 0.1.1dev"
 fi
 
 AGENT_BUILD_DIR=$WORKDIR/agent/build

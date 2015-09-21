@@ -30,7 +30,7 @@ if [ ! -d "$CMAKE_DIR" ]; then
 fi
 
 if [ -z "$SYSDIG_VERSION" ]; then
-	SYSDIG_VERSION="0.1.1-dev"
+	SYSDIG_VERSION="0.1.1dev"
 fi
 
 SYSDIG_BUILD_DIR=$WORKDIR/sysdig/build
