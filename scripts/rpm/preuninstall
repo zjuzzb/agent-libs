@@ -3,6 +3,8 @@ if [ $1 = 0 ]; then
 	/sbin/chkconfig --del dragent
 fi
 
+dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade
+
 # Clean all generated Python bytecode
 find /opt/draios/lib -iname "*.pyc" -delete > /dev/null 2>&1
 find /opt/draios/lib -iname "*.pyo" -delete > /dev/null 2>&1
