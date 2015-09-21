@@ -41,6 +41,7 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CM
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/description.txt")
 set(CPACK_PROJECT_CONFIG_FILE "${PROJECT_SOURCE_DIR}/CMakeCPackOptions.cmake")
 set(CPACK_STRIP_FILES "ON")
+set(CPACK_PACKAGE_RELOCATABLE "OFF")
 
 set(CPACK_GENERATOR DEB RPM TGZ)
 
@@ -63,5 +64,6 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 set(CPACK_RPM_SPEC_MORE_DEFINE "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')")
 set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")
+set(CPACK_RPM_PACKAGE_RELOCATABLE "OFF")
 
 include(CPack)
