@@ -186,7 +186,11 @@ final public class CLibrary {
         if (libraryLoaded) {
             final String pidMntNamespacePath = String.format("%s/proc/%d/ns/mnt", hostRoot, pid);
             final long pidMntNamespaceInode = getInodeOfFile(pidMntNamespacePath);
-            return pidMntNamespaceInode != mntNamespaceInode;
+            if (pidMntNamespaceInode > 0) {
+                return pidMntNamespaceInode != mntNamespaceInode;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }
