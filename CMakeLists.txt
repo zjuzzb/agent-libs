@@ -19,6 +19,8 @@ set(DRAIOS_BIN_PREFIX "/opt/draios")
 
 set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8")
 set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a")
+add_custom_target(zlib)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)

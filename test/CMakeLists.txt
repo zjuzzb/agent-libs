@@ -16,7 +16,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/include)
 
 add_definitions( -DHAS_ANALYZER )
 
-add_executable(test 
+add_executable(tests
 	analyzer_test.cpp
 	capture_to_file_test.cpp
 	container.cpp
@@ -41,7 +41,7 @@ add_executable(test
   statsd.cpp
 	jmx_proxy.cpp)
 
-target_link_libraries(test
+target_link_libraries(tests
 	pthread
 	sanalyzer 
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
@@ -50,22 +50,22 @@ target_link_libraries(test
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
 
-add_executable(resources/forking_main_thread_exit
+add_executable(forking_main_thread_exit
 	resources/forking_main_thread_exit.c)
 
-target_link_libraries(resources/forking_main_thread_exit
+target_link_libraries(forking_main_thread_exit
 	pthread) 
 
-add_executable(resources/forking_nested
+add_executable(forking_nested
 	resources/forking_nested.c)
 
-target_link_libraries(resources/forking_nested
+target_link_libraries(forking_nested
 	pthread) 
 
-add_executable(resources/chname
+add_executable(chname
 	resources/chname.cpp)
 
-target_link_libraries(resources/chname
+target_link_libraries(chname
 	pthread)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
@@ -78,17 +78,17 @@ install(DIRECTORY
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test
 	COMPONENT tests)
-install(TARGETS test 
+install(TARGETS tests 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
 	COMPONENT tests)
-install(TARGETS resources/forking_main_thread_exit 
+install(TARGETS forking_main_thread_exit 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
 
-install(TARGETS resources/forking_nested 
+install(TARGETS forking_nested 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
 
-install(TARGETS resources/chname 
+install(TARGETS chname 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
