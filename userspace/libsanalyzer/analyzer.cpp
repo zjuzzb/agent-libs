@@ -1325,18 +1325,36 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 				// Add JMX metrics
-				if (m_jmx_proxy && m_jmx_metrics.find(tinfo->m_pid) != m_jmx_metrics.end())
+				if (m_jmx_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-					const java_process& java_process_data = m_jmx_metrics.at(tinfo->m_pid);
-					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
-					java_process_data.to_protobuf(java_proto);
+					auto jmx_metrics_it = m_jmx_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
+							++pid_it)
+					{
+						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
+					}
+					if(jmx_metrics_it != m_jmx_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+						auto java_proto = proc->mutable_protos()->mutable_java();
+						jmx_metrics_it->second.to_protobuf(java_proto);
+					}
 				}
-				if(m_app_proxy && app_metrics.find(tinfo->m_pid) != app_metrics.end())
+				if(m_app_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
-					const auto& app_data = app_metrics.at(tinfo->m_pid);
-					app_checks_limit -= app_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					auto app_data_it = app_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+						pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+						++pid_it)
+					{
+						app_data_it = app_metrics.find(*pid_it);
+					}
+					if(app_data_it != app_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+						app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					}
 				}
 #endif
 
