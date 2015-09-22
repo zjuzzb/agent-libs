@@ -173,8 +173,8 @@ class AppCheckInstance:
         except OSError as ex: # Raised from os.open() or setns()
             raise AppCheckException(ex.message)
         except Exception as ex: # Raised from check run
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            raise AppCheckException("%s, traceback: %s" % (repr(ex), traceback_message))
+            traceback_message = traceback.format_exc()
+            raise AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
             if self.is_on_another_container:
                 setns(self.MYNET)
