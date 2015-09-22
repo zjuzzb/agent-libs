@@ -25,6 +25,13 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 		auto ports = tinfo->m_ainfo->listening_ports();
 		ret &= ports.find(m_port_pattern) != ports.end();
 	}
+	if(!m_arg_pattern.empty())
+	{
+		ret &= find_if(tinfo->m_args.begin(), tinfo->m_args.end(), [this](const string& arg)
+		{
+			return arg.find(m_arg_pattern) != string::npos;
+		}) != tinfo->m_args.end();
+	}
 	return ret;
 }
 
@@ -121,7 +128,8 @@ app_check_data::app_check_data(const Json::Value &obj):
 
 uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limit) const
 {
-	proto->set_process_name(m_process_name);
+	// Right now process name is not used by backend
+	//proto->set_process_name(m_process_name);
 	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
@@ -132,13 +140,20 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 		m.to_protobuf(proto->add_metrics());
 		++limit_used;
 	}
-	return limit_used;
 	/*
 	 * Right now service checks are not supported by the backend
+	 * we are sending them as 1/0 metrics
+	 */
 	for(const auto& s : m_service_checks)
 	{
-		s.to_protobuf(proto->add_checks());
-	}*/
+		if(limit_used >= limit)
+		{
+			break;
+		}
+		s.to_protobuf_as_metric(proto->add_metrics());
+		++limit_used;
+	}
+	return limit_used;
 }
 
 app_metric::app_metric(const Json::Value &obj):
@@ -215,6 +230,28 @@ void app_service_check::to_protobuf(draiosproto::app_check *proto) const
 {
 	proto->set_name(m_name);
 	proto->set_value(static_cast<draiosproto::app_check_value>(m_status));
+	for(const auto& tag : m_tags)
+	{
+		auto tag_proto = proto->add_tags();
+		tag_proto->set_key(tag.first);
+		if (!tag.second.empty())
+		{
+			tag_proto->set_value(tag.second);
+		}
+	}
+}
+
+void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) const
+{
+	proto->set_name(m_name);
+	if(m_status == status_t::OK)
+	{
+		proto->set_value(1.0);
+	}
+	else
+	{
+		proto->set_value(0.0);
+	}
 	for(const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();

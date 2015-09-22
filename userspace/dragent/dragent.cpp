@@ -10,6 +10,7 @@
 #include "monitor.h"
 #include "utils.h"
 #include <sys/sysinfo.h>
+#include <sys/utsname.h>
 
 static void g_signal_callback(int sig)
 {
@@ -376,7 +377,15 @@ int dragent_app::sdagent_main()
 	{
 		g_log->warning("Cannot get system uptime");
 	}
-
+	struct utsname osname;
+	if(uname(&osname) == 0)
+	{
+		g_log->information(string("Kernel version: ") + osname.release);
+	}
+	else
+	{
+		g_log->warning("Cannot get kernel version");
+	}
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();

@@ -195,3 +195,11 @@ static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
 static const auto APP_METRICS_LIMIT = 300;
+
+static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
+#ifdef _DEBUG
+		1*60; // 1 minutes
+#else
+5*60; // 5 minutes
+#endif
+

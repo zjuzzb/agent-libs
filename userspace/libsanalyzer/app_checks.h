@@ -17,7 +17,7 @@ struct convert;
 class app_check
 {
 public:
-	app_check():
+	explicit app_check():
 		m_port_pattern(0)
 	{}
 
@@ -34,6 +34,7 @@ private:
 	string m_comm_pattern;
 	string m_exe_pattern;
 	uint16_t m_port_pattern;
+	string m_arg_pattern;
 	string m_name;
 };
 
@@ -79,9 +80,9 @@ public:
 		CRITICAL = 2,
 		UNKNOWN = 3,
 	};
-	app_service_check(const Json::Value& obj);
+	explicit app_service_check(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_check* proto) const;
-
+	void to_protobuf_as_metric(draiosproto::app_metric* proto) const;
 private:
 	status_t m_status;
 	map<string, string> m_tags;
@@ -92,7 +93,7 @@ private:
 class app_check_data
 {
 public:
-	app_check_data(const Json::Value& obj);
+	explicit app_check_data(const Json::Value& obj);
 
 	int pid() const
 	{
