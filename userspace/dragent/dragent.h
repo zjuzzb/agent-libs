@@ -42,6 +42,7 @@ private:
 	void mark_clean_shutdown();
 
 	bool m_help_requested;
+	bool m_version_requested;
 	string m_pidfile;
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
