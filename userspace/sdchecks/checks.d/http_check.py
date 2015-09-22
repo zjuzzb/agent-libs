@@ -11,7 +11,7 @@ from urlparse import urlparse
 import requests
 
 # project
-from checks.network_checks import EventType, NetworkCheck, Status
+from checks.network_checks import EventType, Status
 from config import _is_affirmative
 from util import headers as agent_headers
 
@@ -31,7 +31,7 @@ def get_ca_certs_path():
     return None
 
 
-class HTTPCheck(NetworkCheck):
+class HTTPCheck(AgentCheck):
     SOURCE_TYPE_NAME = 'system'
     SC_STATUS = 'http.can_connect'
     SC_SSL_CERT = 'http.ssl_cert'
@@ -171,6 +171,11 @@ class HTTPCheck(NetworkCheck):
             ))
 
         return service_checks
+    
+    def check(self, instance):
+        statuses = self._check(instance)
+        for name, status, msg in statuses:
+            self.report_as_service_check(name, status, instance, msg)
 
     # FIXME: 5.3 drop this function
     def _create_status_event(self, sc_name, status, msg, instance):

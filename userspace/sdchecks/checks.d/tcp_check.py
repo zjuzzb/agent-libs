@@ -5,12 +5,13 @@ import time
 # project
 from checks.network_checks import EventType, NetworkCheck, Status
 
+from checks import AgentCheck
 
 class BadConfException(Exception):
     pass
 
 
-class TCPCheck(NetworkCheck):
+class TCPCheck(AgentCheck):
 
     SOURCE_TYPE_NAME = 'system'
     SERVICE_CHECK_NAME = 'tcp.can_connect'
@@ -94,6 +95,10 @@ class TCPCheck(NetworkCheck):
 
         self.log.debug("%s:%s is UP" % (addr, port))
         return Status.UP, "UP"
+
+    def check(self, instance):
+        status, msg = self._check(instance)
+        self.report_as_service_check(None, status, instance, msg)
 
     # FIXME: 5.3 remove that
     def _create_status_event(self, sc_name, status, msg, instance):

@@ -121,9 +121,6 @@ class AppCheckInstance:
     except OSError:
         CONTAINER_SUPPORT = False
     TOKEN_PATTERN = re.compile("\{.+\}")
-    INIT_CONFIG = {
-        "threads_count": 1 # needed by tcp_check and http_check
-    }
     AGENT_CONFIG = {
         "is_developer_mode": False,
         "version": 1.0,
@@ -137,7 +134,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
+        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
             try:
