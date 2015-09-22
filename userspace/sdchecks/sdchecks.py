@@ -79,7 +79,7 @@ class AppCheckException(Exception):
 class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
-        self.conf = node["conf"]
+        self.conf = node.get("conf", {})
 
         try:
             check_module_name = node["check_module"]
@@ -122,7 +122,7 @@ class AppCheckInstance:
         CONTAINER_SUPPORT = False
     TOKEN_PATTERN = re.compile("\{.+\}")
     INIT_CONFIG = {
-        "threads_count": 0 # needed by tcp_check and http_check
+        "threads_count": 1 # needed by tcp_check and http_check
     }
     AGENT_CONFIG = {
         "is_developer_mode": False,
@@ -133,7 +133,6 @@ class AppCheckInstance:
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-
     def __init__(self, check, proc_data):
         self.name = check.name
         self.pid = proc_data["pid"]
@@ -149,12 +148,21 @@ class AppCheckInstance:
         else:
             self.is_on_another_container = False
 
-        self.instance_conf = {}
+        # Add some default values to instance conf, from process data
+        self.instance_conf = {
+            "host": "localhost",
+            "name": self.name,
+            "ports": proc_data["ports"]
+        }
+        if len(proc_data["ports"]) > 0:
+            self.instance_conf["port"] = proc_data["ports"][0]
+
         for key, value in check.conf.items():
             if type(value) is str:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
+
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
