@@ -71,6 +71,8 @@
     <File Name="libsanalyzer/analyzer_thread.cpp"/>
     <File Name="libsanalyzer/app_checks.cpp"/>
     <File Name="libsanalyzer/draios.proto"/>
+    <File Name="libsanalyzer/kubernetes.cpp"/>
+    <File Name="libsanalyzer/kubernetes.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

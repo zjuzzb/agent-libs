@@ -43,7 +43,7 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
-
+#include "kubernetes.h"
 #define DUMP_TO_DISK
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -2620,6 +2620,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
+			emit_kubernetes();
+
 			emit_top_files();
 
 			//
@@ -3348,6 +3350,12 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 		default:
 			ASSERT(false);
 	}
+}
+
+void sinsp_analyzer::emit_kubernetes()
+{
+	kubernetes k8s(Poco::URI("http://54.173.200.44:8080/"), *m_metrics);
+	k8s.get_proto();
 }
 
 void sinsp_analyzer::emit_top_files()

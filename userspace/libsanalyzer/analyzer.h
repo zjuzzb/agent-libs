@@ -295,6 +295,7 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	void emit_kubernetes();
 	void emit_top_files();
 	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
