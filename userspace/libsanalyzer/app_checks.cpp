@@ -78,7 +78,7 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
 	while(!msg.empty())
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
 		Json::Value response_obj;
 		m_json_reader.parse(msg, response_obj, false);
 		if(response_obj["id"].asUInt64() == id)
