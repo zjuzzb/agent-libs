@@ -32,7 +32,7 @@ file(COPY fake_backend.cert
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test
 	COMPONENT tests)
 

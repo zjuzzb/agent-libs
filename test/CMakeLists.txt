@@ -40,7 +40,7 @@ add_executable(tests
 	unix_udp_client_server.cpp
 	main.cpp
 	yaml_configuration.cpp
-  statsd.cpp
+	statsd.cpp
 	jmx_proxy.cpp)
 
 target_link_libraries(tests
