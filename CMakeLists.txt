@@ -46,6 +46,11 @@ install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
 
+install(PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	RENAME sysdigcloud-probe-loader
+	COMPONENT agent)
+
 set(CPACK_PACKAGE_NAME "draios")
 set(CPACK_PACKAGE_VENDOR "Sysdig Inc.")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sysdig Cloud Agent")
