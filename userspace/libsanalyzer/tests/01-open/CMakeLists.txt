@@ -8,6 +8,7 @@ add_executable(sinsp-open
 	test.cpp)
 
 target_link_libraries(sinsp-open
+	pthread
 	sanalyzer)
 
 install(TARGETS sinsp-open 

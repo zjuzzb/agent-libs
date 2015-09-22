@@ -8,6 +8,7 @@ add_executable(sinsp-stopcapture
 	test.cpp)
 
 target_link_libraries(sinsp-stopcapture
+	pthread
 	sanalyzer)
 
 install(TARGETS sinsp-stopcapture 
