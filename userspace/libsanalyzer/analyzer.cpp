@@ -921,7 +921,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// that the "main" thread stays mostly idle, without getting memory events then
 	///////////////////////////////////////////////////////////////////////////
 
-	bool forced_cmd_update = (m_next_flush_time_ns / 1000000000) % CMDLINE_UPDATE_INTERVAL_S == 0;
+	bool forced_cmd_update = (m_next_flush_time_ns / ONE_SECOND_IN_NS) % CMDLINE_UPDATE_INTERVAL_S == 0;
 
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)

@@ -12,6 +12,7 @@ import requests
 
 # project
 from checks.network_checks import EventType, NetworkCheck, Status
+from checks import AgentCheck
 from config import _is_affirmative
 from util import headers as agent_headers
 
@@ -31,14 +32,14 @@ def get_ca_certs_path():
     return None
 
 
-class HTTPCheck(NetworkCheck):
+class HTTPCheck(AgentCheck):
     SOURCE_TYPE_NAME = 'system'
     SC_STATUS = 'http.can_connect'
     SC_SSL_CERT = 'http.ssl_cert'
 
-    def __init__(self, name, init_config, agentConfig, instances):
+    def __init__(self, name, init_config, agentConfig, instances=None):
         self.ca_certs = init_config.get('ca_certs', get_ca_certs_path())
-        NetworkCheck.__init__(self, name, init_config, agentConfig, instances)
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
     def _load_conf(self, instance):
         # Fetches the conf
@@ -46,7 +47,7 @@ class HTTPCheck(NetworkCheck):
         username = instance.get('username')
         password = instance.get('password')
         http_response_status_code = str(instance.get('http_response_status_code', "(1|2|3)\d\d"))
-        timeout = int(instance.get('timeout', 10))
+        timeout = int(instance.get('timeout', 1))
         config_headers = instance.get('headers', {})
         headers = agent_headers(self.agentConfig)
         headers.update(config_headers)
@@ -171,6 +172,11 @@ class HTTPCheck(NetworkCheck):
             ))
 
         return service_checks
+    
+    def check(self, instance):
+        statuses = self._check(instance)
+        for name, status, msg in statuses:
+            self.report_as_service_check(name, status, instance, msg)
 
     # FIXME: 5.3 drop this function
     def _create_status_event(self, sc_name, status, msg, instance):
@@ -264,7 +270,6 @@ class HTTPCheck(NetworkCheck):
 
                 msg = "%d %s\n\n%s" % (code, reason, content)
                 msg = msg.rstrip()
-
         self.service_check(sc_name,
                            NetworkCheck.STATUS_TO_SERVICE_CHECK[status],
                            tags=tags,

@@ -79,7 +79,7 @@ class AppCheckException(Exception):
 class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
-        self.conf = node["conf"]
+        self.conf = node.get("conf", {})
 
         try:
             check_module_name = node["check_module"]
@@ -126,16 +126,16 @@ class AppCheckInstance:
         "version": 1.0,
         "hostname": get_hostname()
     }
+    INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-
     def __init__(self, check, proc_data):
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG)
+        self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
             try:
@@ -146,12 +146,21 @@ class AppCheckInstance:
         else:
             self.is_on_another_container = False
 
-        self.instance_conf = {}
+        # Add some default values to instance conf, from process data
+        self.instance_conf = {
+            "host": "localhost",
+            "name": self.name,
+            "ports": proc_data["ports"]
+        }
+        if len(proc_data["ports"]) > 0:
+            self.instance_conf["port"] = proc_data["ports"][0]
+
         for key, value in check.conf.items():
             if type(value) is str:
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
+
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
@@ -164,14 +173,14 @@ class AppCheckInstance:
                     ret = setns(nsfd)
                     os.close(nsfd)
                     if ret != 0:
-                        logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
+                        raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
         except OSError as ex: # Raised from os.open() or setns()
             raise AppCheckException(ex.message)
         except Exception as ex: # Raised from check run
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            raise AppCheckException("%s, traceback: %s" % (repr(ex), traceback_message))
+            traceback_message = traceback.format_exc()
+            raise AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
             if self.is_on_another_container:
                 setns(self.MYNET)
