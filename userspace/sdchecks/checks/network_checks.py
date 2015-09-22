@@ -19,7 +19,7 @@ class EventType:
     UP = "servicecheck.state_change.up"
 
 
-class NetworkCheck(AgentCheck):
+class NetworkCheck:
     SOURCE_TYPE_NAME = 'servicecheck'
     SERVICE_CHECK_PREFIX = 'network_check'
 

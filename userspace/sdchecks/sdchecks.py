@@ -126,6 +126,7 @@ class AppCheckInstance:
         "version": 1.0,
         "hostname": get_hostname()
     }
+    INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
@@ -134,7 +135,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.check_instance = check.check_class(self.name, None, self.AGENT_CONFIG)
+        self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
             try:

@@ -11,7 +11,8 @@ from urlparse import urlparse
 import requests
 
 # project
-from checks.network_checks import EventType, Status
+from checks.network_checks import EventType, NetworkCheck, Status
+from checks import AgentCheck
 from config import _is_affirmative
 from util import headers as agent_headers
 
@@ -36,9 +37,9 @@ class HTTPCheck(AgentCheck):
     SC_STATUS = 'http.can_connect'
     SC_SSL_CERT = 'http.ssl_cert'
 
-    def __init__(self, name, init_config, agentConfig, instances):
+    def __init__(self, name, init_config, agentConfig, instances=None):
         self.ca_certs = init_config.get('ca_certs', get_ca_certs_path())
-        NetworkCheck.__init__(self, name, init_config, agentConfig, instances)
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
     def _load_conf(self, instance):
         # Fetches the conf
@@ -46,7 +47,7 @@ class HTTPCheck(AgentCheck):
         username = instance.get('username')
         password = instance.get('password')
         http_response_status_code = str(instance.get('http_response_status_code', "(1|2|3)\d\d"))
-        timeout = int(instance.get('timeout', 10))
+        timeout = int(instance.get('timeout', 1))
         config_headers = instance.get('headers', {})
         headers = agent_headers(self.agentConfig)
         headers.update(config_headers)
@@ -269,7 +270,6 @@ class HTTPCheck(AgentCheck):
 
                 msg = "%d %s\n\n%s" % (code, reason, content)
                 msg = msg.rstrip()
-
         self.service_check(sc_name,
                            NetworkCheck.STATUS_TO_SERVICE_CHECK[status],
                            tags=tags,
