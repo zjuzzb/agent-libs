@@ -175,7 +175,7 @@ class AppCheckInstance:
                     ret = setns(nsfd)
                     os.close(nsfd)
                     if ret != 0:
-                        logging.warning("Cannot setns %s to pid: %d", ns, self.pid)
+                        raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
         except OSError as ex: # Raised from os.open() or setns()
