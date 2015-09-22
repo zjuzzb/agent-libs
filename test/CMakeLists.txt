@@ -1,3 +1,5 @@
+add_subdirectory(resources)
+
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
@@ -50,45 +52,12 @@ target_link_libraries(tests
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
 
-add_executable(forking_main_thread_exit
-	resources/forking_main_thread_exit.c)
-
-target_link_libraries(forking_main_thread_exit
-	pthread) 
-
-add_executable(forking_nested
-	resources/forking_nested.c)
-
-target_link_libraries(forking_nested
-	pthread) 
-
-add_executable(chname
-	resources/chname.cpp)
-
-target_link_libraries(chname
-	pthread)
-
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 install(DIRECTORY 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/captures
 	COMPONENT tests)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test
-	COMPONENT tests)
+
 install(TARGETS tests 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
-	COMPONENT tests)
-install(TARGETS forking_main_thread_exit 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-	COMPONENT tests)
-
-install(TARGETS forking_nested 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-	COMPONENT tests)
-
-install(TARGETS chname 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
