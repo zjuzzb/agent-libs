@@ -20,7 +20,7 @@ class TCPCheck(AgentCheck):
         # Fetches the conf
 
         port = instance.get('port', None)
-        timeout = float(instance.get('timeout', 10))
+        timeout = float(instance.get('timeout', 1))
         response_time = instance.get('collect_response_time', False)
         socket_type = None
         try:
