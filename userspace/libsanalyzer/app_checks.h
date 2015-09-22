@@ -34,6 +34,7 @@ private:
 	string m_comm_pattern;
 	string m_exe_pattern;
 	uint16_t m_port_pattern;
+	string m_arg_pattern;
 	string m_name;
 };
 

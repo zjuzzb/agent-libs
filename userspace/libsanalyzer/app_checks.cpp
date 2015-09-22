@@ -25,6 +25,13 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 		auto ports = tinfo->m_ainfo->listening_ports();
 		ret &= ports.find(m_port_pattern) != ports.end();
 	}
+	if(!m_arg_pattern.empty())
+	{
+		ret &= find_if(tinfo->m_args.begin(), tinfo->m_args.end(), [this](const string& arg)
+		{
+			return arg.find(m_arg_pattern) != string::npos;
+		}) != tinfo->m_args.end();
+	}
 	return ret;
 }
 
