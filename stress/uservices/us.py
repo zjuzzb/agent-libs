@@ -104,7 +104,7 @@ try:
         #    sys.exit(0)
 
         #while True:
-        for x in range(0, 20):
+        for x in range(0, 1):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
@@ -112,6 +112,7 @@ try:
             depnames = []
             tags = []
             for j in range(0, NCHILDS):
+                log("***")
                 # Create the child name and tag
                 chnames.append("srvc_next" + str(j))
                 dn = NAME + ".req" + str(j)
@@ -120,6 +121,8 @@ try:
 
             if SYNC == 'true':
                 for j in range(0, NCHILDS):
+                    log("transaction start\n")
+
                     # Set up a TCP/IP socket
                     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
@@ -175,6 +178,8 @@ try:
 
             time.sleep(0.1)
 
+        sys.exit(0)
+
     log("Starting request server\n")
 
     # Establish a TCP/IP socket
@@ -200,6 +205,8 @@ try:
 
             mark(">:%s::" % tag)
 
+            log("received connection\n")
+            
             ##################################################################################################################3
             #time.sleep(0.2)
 
