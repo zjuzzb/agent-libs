@@ -39,7 +39,7 @@ public:
 
 	vector<string> read_process_cmdline(uint64_t pid);
 	string read_process_name(uint64_t pid);
-
+	int64_t read_cgroup_used_memory(const string& memory_cgroup);
 private:
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;

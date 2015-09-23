@@ -589,3 +589,15 @@ return "";
 #endif
 }
 
+int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &memory_cgroup)
+{
+	char filename[SCAP_MAX_PATH_SIZE];
+	snprintf(filename, sizeof(filename),
+			 "%s/sys/fs/cgroup/memory/%s/memory.usage_in_bytes",
+			 scap_get_host_root(), memory_cgroup.c_str());
+	ifstream used_memory_f(filename);
+	int64_t ret;
+	used_memory_f >> ret;
+	return ret;
+}
+
