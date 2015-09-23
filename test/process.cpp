@@ -967,7 +967,7 @@ TEST_F(sys_call_test, process_scap_proc_get)
 					}
 				}
 
-				EXPECT_EQ(0, nsocks);
+				EXPECT_EQ(0U, nsocks);
 
 				//
 				// try with scan_sockets=false
@@ -983,7 +983,7 @@ TEST_F(sys_call_test, process_scap_proc_get)
 					}
 				}
 
-				EXPECT_EQ(0, nsocks);
+				EXPECT_EQ(0U, nsocks);
 			}
 
 			callnum++;
