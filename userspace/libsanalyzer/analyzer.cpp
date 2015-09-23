@@ -921,7 +921,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// that the "main" thread stays mostly idle, without getting memory events then
 	///////////////////////////////////////////////////////////////////////////
 
-	bool forced_cmd_update = (m_next_flush_time_ns / 1000000000) % CMDLINE_UPDATE_INTERVAL_S == 0;
+	bool forced_cmd_update = (m_next_flush_time_ns / ONE_SECOND_IN_NS) % CMDLINE_UPDATE_INTERVAL_S == 0;
 
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
@@ -1325,18 +1325,36 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 				// Add JMX metrics
-				if (m_jmx_proxy && m_jmx_metrics.find(tinfo->m_pid) != m_jmx_metrics.end())
+				if (m_jmx_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-					const java_process& java_process_data = m_jmx_metrics.at(tinfo->m_pid);
-					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
-					java_process_data.to_protobuf(java_proto);
+					auto jmx_metrics_it = m_jmx_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
+							++pid_it)
+					{
+						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
+					}
+					if(jmx_metrics_it != m_jmx_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+						auto java_proto = proc->mutable_protos()->mutable_java();
+						jmx_metrics_it->second.to_protobuf(java_proto);
+					}
 				}
-				if(m_app_proxy && app_metrics.find(tinfo->m_pid) != app_metrics.end())
+				if(m_app_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
-					const auto& app_data = app_metrics.at(tinfo->m_pid);
-					app_checks_limit -= app_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					auto app_data_it = app_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+						pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+						++pid_it)
+					{
+						app_data_it = app_metrics.find(*pid_it);
+					}
+					if(app_data_it != app_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+						app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					}
 				}
 #endif
 
@@ -1578,22 +1596,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 #ifndef _WIN32
-		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 &&
-		   tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) && tinfo->get_comm() == "java" &&
-			(m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
+		if(tinfo->is_main_thread() &&
+		   !(tinfo->m_flags & PPM_CL_CLOSED) &&
+		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+			tinfo->m_vpid > 0)
 		{
-			java_process_requests.emplace_back(tinfo);
-		}
-		if(m_app_proxy && tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED)
-		   && (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS)
-		{
-			for(const auto& check : m_app_checks)
+			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
 			{
-				if(check.match(tinfo))
+				java_process_requests.emplace_back(tinfo);
+			}
+			if(m_app_proxy)
+			{
+				for(const auto& check : m_app_checks)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-					app_checks_processes.emplace_back(check.name(), tinfo);
-					break;
+					if(check.match(tinfo))
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+						app_checks_processes.emplace_back(check.name(), tinfo);
+						break;
+					}
 				}
 			}
 		}
@@ -3596,6 +3617,9 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		break;
 	case CT_LIBVIRT_LXC:
 		container->set_type(draiosproto::LIBVIRT_LXC);
+		break;
+	case CT_MESOS:
+		container->set_type(draiosproto::MESOS);
 		break;
 	default:
 		ASSERT(false);

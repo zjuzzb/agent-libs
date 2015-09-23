@@ -1,1 +1,1 @@
-Draios Agent
+Sysdig Cloud Agent

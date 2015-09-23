@@ -1,3 +1,5 @@
+add_subdirectory(resources)
+
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-1.7.0/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
@@ -16,7 +18,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/include)
 
 add_definitions( -DHAS_ANALYZER )
 
-add_executable(test 
+add_executable(tests
 	analyzer_test.cpp
 	capture_to_file_test.cpp
 	container.cpp
@@ -38,10 +40,10 @@ add_executable(test
 	unix_udp_client_server.cpp
 	main.cpp
 	yaml_configuration.cpp
-  statsd.cpp
+	statsd.cpp
 	jmx_proxy.cpp)
 
-target_link_libraries(test
+target_link_libraries(tests
 	pthread
 	sanalyzer 
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
@@ -50,45 +52,12 @@ target_link_libraries(test
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
 
-add_executable(resources/forking_main_thread_exit
-	resources/forking_main_thread_exit.c)
-
-target_link_libraries(resources/forking_main_thread_exit
-	pthread) 
-
-add_executable(resources/forking_nested
-	resources/forking_nested.c)
-
-target_link_libraries(resources/forking_nested
-	pthread) 
-
-add_executable(resources/chname
-	resources/chname.cpp)
-
-target_link_libraries(resources/chname
-	pthread)
-
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 install(DIRECTORY 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/captures
 	COMPONENT tests)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test
-	COMPONENT tests)
-install(TARGETS test 
+
+install(TARGETS tests 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
-	COMPONENT tests)
-install(TARGETS resources/forking_main_thread_exit 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-	COMPONENT tests)
-
-install(TARGETS resources/forking_nested 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-	COMPONENT tests)
-
-install(TARGETS resources/chname 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)

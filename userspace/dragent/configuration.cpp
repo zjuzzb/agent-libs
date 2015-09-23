@@ -507,5 +507,10 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	{
 		rhs.m_port_pattern = port_node.as<uint16_t>();
 	}
+	auto arg_node = pattern_node["arg"];
+	if(arg_node.IsScalar())
+	{
+		rhs.m_arg_pattern = arg_node.as<string>();
+	}
 	return true;
 }

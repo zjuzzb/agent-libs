@@ -51,7 +51,7 @@ if [ ! -z "$SECURE" ]; then
 fi
 
 if [ $# -eq 0 ]; then
-	if ! /usr/bin/sysdig-probe-loader; then
+	if ! /opt/draios/bin/sysdigcloud-probe-loader; then
 		exit 1
 	fi
 

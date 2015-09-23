@@ -10,6 +10,7 @@
 #include "monitor.h"
 #include "utils.h"
 #include <sys/sysinfo.h>
+#include <sys/utsname.h>
 
 static void g_signal_callback(int sig)
 {
@@ -31,6 +32,7 @@ static void g_usr2_signal_callback(int sig)
 
 dragent_app::dragent_app(): 
 	m_help_requested(false),
+	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
@@ -113,6 +115,11 @@ void dragent_app::defineOptions(OptionSet& options)
 			.required(false)
 			.repeatable(false)
 			.argument("dragentpid"));
+
+	options.addOption(
+		Option("version", "v", "display version")
+			.required(false)
+			.repeatable(false));
 }
 
 void dragent_app::handleOption(const std::string& name, const std::string& value)
@@ -155,6 +162,10 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_pidfile = value;
 	}
+	else if(name == "version")
+	{
+		m_version_requested = true;
+	}
 }
 
 void dragent_app::displayHelp()
@@ -171,6 +182,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_help_requested)
 	{
 		displayHelp();
+		return Application::EXIT_OK;
+	}
+
+	if(m_version_requested)
+	{
+		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
 
@@ -376,7 +393,15 @@ int dragent_app::sdagent_main()
 	{
 		g_log->warning("Cannot get system uptime");
 	}
-
+	struct utsname osname;
+	if(uname(&osname) == 0)
+	{
+		g_log->information(string("Kernel version: ") + osname.release);
+	}
+	else
+	{
+		g_log->warning("Cannot get kernel version");
+	}
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
