@@ -2,6 +2,7 @@
 set -exuo pipefail
 
 rmmod sysdig-probe || true
+rmmod sysdigcloud-probe || true
 rm -rf agent/build || true
 rm -rf sysdig/build || true
 agent/bootstrap-agent
@@ -9,26 +10,30 @@ agent/bootstrap-sysdig
 
 make -C agent/build/debug VERBOSE=1
 make -C sysdig/build/debug VERBOSE=1
-insmod sysdig/driver/sysdig-probe.ko
+insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/debug/test
-./test
+./tests
 cd -
+insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/debug/userspace/sysdig
 ./sysdig -n 50
 ./sysdig -cl
 ./sysdig -cstdout -n 50
 cd -
 rmmod sysdig-probe
+rmmod sysdigcloud-probe
 
 make -C agent/build/release VERBOSE=1
 make -C sysdig/build/release VERBOSE=1
-insmod sysdig/driver/sysdig-probe.ko
+insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/release/test
-./test
+./tests
 cd -
+insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/release/userspace/sysdig
 ./sysdig -n 50
 ./sysdig -cl
 ./sysdig -cstdout -n 50
 cd -
 rmmod sysdig-probe
+rmmod sysdigcloud-probe

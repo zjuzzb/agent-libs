@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Installer for Draios agent
+# Installer for Sysdig Cloud Agent
 # www.draios.com
 #
-# (c) 2013-2014 Draios Inc.
+# (c) 2013-2015 Sysdig Inc.
 #
 
 set -e
@@ -25,9 +25,9 @@ function install_rpm {
 		fi
 	fi
 
-	echo "* Installing Draios public key"
+	echo "* Installing Sysdig public key"
 	rpm --quiet --import https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public
-	echo "* Installing Draios repository"
+	echo "* Installing Sysdig repository"
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.draios.com/_REPOSITORY_NAME_/rpm/draios.repo
 	echo "* Installing kernel headers"
 	KERNEL_VERSION=$(uname -r)
@@ -39,8 +39,8 @@ function install_rpm {
 	else
 		yum -q -y install kernel-devel-$KERNEL_VERSION || kernel_warning
 	fi
-	echo "* Installing Draios agent"
-	yum -q -y install draios-agent sysdig
+	echo "* Installing Sysdig Cloud agent"
+	yum -q -y install draios-agent
 	service dragent start
 }
 
@@ -52,15 +52,15 @@ function install_deb {
 		apt-get -qq -y install curl < /dev/null
 	fi
 
-	echo "* Installing Draios public key"
+	echo "* Installing Sysdig public key"
 	curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add -
-	echo "* Installing Draios repository"
+	echo "* Installing Sysdig repository"
 	curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/_REPOSITORY_NAME_/deb/draios.list
 	apt-get -qq update < /dev/null
 	echo "* Installing kernel headers"
 	apt-get -qq -y install linux-headers-$(uname -r) < /dev/null || kernel_warning
-	echo "* Installing Draios agent"
-	apt-get -qq -y install draios-agent sysdig < /dev/null
+	echo "* Installing Sysdig Cloud agent"
+	apt-get -qq -y install draios-agent < /dev/null
 }
 
 function unsupported {

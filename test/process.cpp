@@ -204,7 +204,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 		{
 			if(callnum == 3)
 			{
-				EXPECT_EQ("test", e->get_param_value_str("pid"));
+				EXPECT_EQ("tests", e->get_param_value_str("pid"));
 				EXPECT_EQ(ctid, NumberParser::parse(e->get_param_value_str("pid", false)));
 				EXPECT_EQ("SIGTERM", e->get_param_value_str("sig"));
 				EXPECT_EQ(SIGTERM, NumberParser::parse(e->get_param_value_str("sig", false)));
@@ -212,7 +212,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 			}
 			else if(callnum == 5)
 			{
-				EXPECT_EQ("test", e->get_param_value_str("pid"));
+				EXPECT_EQ("tests", e->get_param_value_str("pid"));
 				EXPECT_EQ(ctid, NumberParser::parse(e->get_param_value_str("pid", false)));
 				EXPECT_EQ("SIGINT", e->get_param_value_str("sig"));
 				EXPECT_EQ(SIGINT, NumberParser::parse(e->get_param_value_str("sig", false)));
