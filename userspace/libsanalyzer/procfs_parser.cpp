@@ -41,7 +41,7 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
 				hasmntopt(entry, "memory") != NULL)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Found memory cgroup dir: %s", entry->mnt_dir);
+			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
 			m_memory_cgroup_dir = entry->mnt_dir;
 			break;
 		}
