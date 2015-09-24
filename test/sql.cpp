@@ -108,17 +108,17 @@ TEST_F(sys_call_test, sql_operation)
 	}
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["CREATE"], 39846);
-	EXPECT_EQ(opmap["DELETE"], 19880);
-	EXPECT_EQ(opmap["DROP"], 49267);
-	EXPECT_EQ(opmap["INSERT"], 118131);
-	EXPECT_EQ(opmap["LOCK"], 19);
-	EXPECT_EQ(opmap["REPLACE"], 3);
-	EXPECT_EQ(opmap["SELECT"], 7198764);
-	EXPECT_EQ(opmap["SET"], 11);
-	EXPECT_EQ(opmap["SHOW"], 60);
-	EXPECT_EQ(opmap["UNLOCK"], 19);
-	EXPECT_EQ(opmap["UPDATE"], 16);
+	EXPECT_EQ(opmap["CREATE"], 39846U);
+	EXPECT_EQ(opmap["DELETE"], 19880U);
+	EXPECT_EQ(opmap["DROP"], 49267U);
+	EXPECT_EQ(opmap["INSERT"], 118131U);
+	EXPECT_EQ(opmap["LOCK"], 19U);
+	EXPECT_EQ(opmap["REPLACE"], 3U);
+	EXPECT_EQ(opmap["SELECT"], 7198764U);
+	EXPECT_EQ(opmap["SET"], 11U);
+	EXPECT_EQ(opmap["SHOW"], 60U);
+	EXPECT_EQ(opmap["UNLOCK"], 19U);
+	EXPECT_EQ(opmap["UPDATE"], 16U);
 
 	printf("Elapsed time: %.3lf\n", duration);
 

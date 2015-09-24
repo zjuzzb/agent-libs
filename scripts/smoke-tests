@@ -6,7 +6,7 @@ BASE_REPOSITORY=$1
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 
 function smoke_tests {
-	killall -9 test || true
+	killall -9 tests || true
 
 	cat $CONFIG_FILE | grep "342b8432-12ee-4b75-915f-df5422e40de9"
 
@@ -98,12 +98,9 @@ function smoke_tests {
 	rm -rf /etc/hosts
 	mv /etc/hosts.bak /etc/hosts
 	
-	modprobe sysdig-probe
-	sh -c "cd ./opt/draios/test; ./test"
-	sysdig -n 50
-	sysdig -cl
-	sysdig -cstdout -n 50
-	rmmod sysdig-probe
+	modprobe sysdigcloud-probe
+	sh -c "cd ./opt/draios/test; ./tests"
+	rmmod sysdigcloud-probe
 }
 
 function install_tests {
@@ -157,7 +154,7 @@ function install_memcached {
 
 function run_java_test_app {
 	# Assume java already installed
-	if [ -f "TestJMX.jar" ]; then
+	if [ ! -f "TestJMX.jar" ]; then
 		wget https://s3.amazonaws.com/download.draios.com/TestJMX.jar
 	fi
 	java -jar TestJMX.jar &
@@ -184,9 +181,11 @@ REPOSITORY=$BASE_REPOSITORY-debug
 curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
+rmmod sysdig-probe
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY
 curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
+rmmod sysdig-probe
