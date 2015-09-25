@@ -598,7 +598,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
 		{
 			lookup_memory_cgroup_dir();
 		}
-		if(!m_memory_cgroup_dir->empty())
+		if(m_memory_cgroup_dir && !m_memory_cgroup_dir->empty())
 		{
 			// Using scap_get_host_root() is not necessary here because
 			// m_memory_cgroup_dir is taken from /etc/mtab
