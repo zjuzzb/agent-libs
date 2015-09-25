@@ -11,6 +11,7 @@
 #include "utils.h"
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
+#include <procfs_parser.h>
 
 static void g_signal_callback(int sig)
 {
@@ -369,6 +370,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
 	}
+	// TODO: Run this process only when dragent is inside a container
+	// TODO: set flag on analyzer to read data from it
+	monitor_process.emplace_process("mountedfs_reader", [this](void)
+	{
+		mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
+		return proc.run();
+	});
 	return monitor_process.run();
 #else
 	return sdagent_main();

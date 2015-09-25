@@ -1,5 +1,8 @@
 #pragma once
 
+#include "posix_queue.h"
+#include "third-party/jsoncpp/json/json.h"
+
 class sinsp_procfs_parser
 {
 public:
@@ -11,7 +14,13 @@ public:
 			available_bytes(0)
 		{
 		}
-		
+
+		explicit mounted_fs(const Json::Value& json);
+		Json::Value to_json() const;
+
+		static Json::Value vector_to_json(const vector<sinsp_procfs_parser::mounted_fs>&);
+		static vector<sinsp_procfs_parser::mounted_fs> vector_from_json(const Json::Value& json);
+
 		string device;
 		string mount_dir;
 		string type;
@@ -25,7 +34,7 @@ public:
 	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap);
 
-	void get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs_enabled);
+	vector<sinsp_procfs_parser::mounted_fs> get_mounted_fs_list(bool remotefs_enabled);
 
 	//
 	// must call get_total_cpu_load to update the system time before calling this
@@ -53,3 +62,25 @@ private:
 	uint64_t m_old_global_work_jiffies;
 };
 
+class mounted_fs_proxy
+{
+public:
+	explicit mounted_fs_proxy();
+	const vector<sinsp_procfs_parser::mounted_fs>& get_mounted_fs_list();
+private:
+	vector<sinsp_procfs_parser::mounted_fs> fs_list;
+	Json::Reader m_json_reader;
+	posix_queue m_input;
+};
+
+class mounted_fs_reader
+{
+public:
+	explicit mounted_fs_reader(bool remotefs);
+	int run();
+private:
+	posix_queue m_output;
+	sinsp_procfs_parser m_procfs_parser;
+	bool m_remotefs;
+	Json::FastWriter m_json_writer;
+};

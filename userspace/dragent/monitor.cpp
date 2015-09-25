@@ -171,7 +171,7 @@ int monitor::run()
 		}
 	}
 
-	for(const auto& queue : {"/sdchecks", "/dragent_app_checks"})
+	for(const auto& queue : {"/sdchecks", "/dragent_app_checks", "/mounted_fs_reader_out"})
 	{
 		posix_queue::remove(queue);
 	}

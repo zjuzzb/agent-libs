@@ -2621,7 +2621,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(m_inspector->is_live())
 			{
 				vector<sinsp_procfs_parser::mounted_fs> fs_list;
-				m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
+				if(m_mounted_fs_proxy)
+				{
+					fs_list = m_mounted_fs_proxy->get_mounted_fs_list();
+				}
+				else
+				{
+					fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				}
 				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
 					it != fs_list.end(); ++it)
 				{
@@ -4037,4 +4044,15 @@ void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 }
 #endif // _WIN32
 
+void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
+{
+	if(value)
+	{
+		m_mounted_fs_proxy = make_unique<mounted_fs_proxy>();
+	}
+	else
+	{
+		m_mounted_fs_proxy.reset();
+	}
+}
 #endif // HAS_ANALYZER
