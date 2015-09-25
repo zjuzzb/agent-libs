@@ -41,10 +41,15 @@ public:
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
 private:
+	void lookup_memory_cgroup_dir();
+
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
 	bool m_is_live_capture;
-	string m_memory_cgroup_dir;
+
+	// nullptr means that lookup have not yet take place
+	// "" means that it cannot find memory cgroup mount point
+	unique_ptr<string> m_memory_cgroup_dir;
 
 	vector<uint64_t> m_old_total_jiffies;
 	vector<uint64_t> m_old_work_jiffies;

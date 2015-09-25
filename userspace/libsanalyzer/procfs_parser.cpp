@@ -30,28 +30,6 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
-
-	// Look for mount point of cgroup memory filesystem
-	// It should be already mounted on the host or by
-	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/etc/mtab", "r");
-	struct mntent* entry = getmntent(fp);
-	while(entry != NULL)
-	{
-		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-				hasmntopt(entry, "memory") != NULL)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
-			m_memory_cgroup_dir = entry->mnt_dir;
-			break;
-		}
-		entry = getmntent(fp);
-	}
-	endmntent(fp);
-	if(m_memory_cgroup_dir.empty())
-	{
-		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
-	}
 }
 
 double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
@@ -614,19 +592,51 @@ return "";
 int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
 {
 	int64_t ret = -1;
-	if(m_is_live_capture && !m_memory_cgroup_dir.empty())
+	if(m_is_live_capture)
 	{
-		// Using scap_get_host_root() is not necessary here because
-		// m_memory_cgroup_dir is taken from /etc/mtab
-		char filename[SCAP_MAX_PATH_SIZE];
-		snprintf(filename, sizeof(filename),
-				 "%s/%s/memory.usage_in_bytes",
-				 m_memory_cgroup_dir.c_str(), container_memory_cgroup.c_str());
-		ifstream used_memory_f(filename);
-		if(used_memory_f.good())
+		if(!m_memory_cgroup_dir)
 		{
-			used_memory_f >> ret;
+			lookup_memory_cgroup_dir();
+		}
+		if(!m_memory_cgroup_dir->empty())
+		{
+			// Using scap_get_host_root() is not necessary here because
+			// m_memory_cgroup_dir is taken from /etc/mtab
+			char filename[SCAP_MAX_PATH_SIZE];
+			snprintf(filename, sizeof(filename),
+					 "%s/%s/memory.usage_in_bytes",
+					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
+			ifstream used_memory_f(filename);
+			if(used_memory_f.good())
+			{
+				used_memory_f >> ret;
+			}
 		}
 	}
 	return ret;
+}
+
+void sinsp_procfs_parser::lookup_memory_cgroup_dir()
+{
+	// Look for mount point of cgroup memory filesystem
+	// It should be already mounted on the host or by
+	// our docker-entrypoint.sh script
+	FILE* fp = setmntent("/etc/mtab", "r");
+	struct mntent* entry = getmntent(fp);
+	while(entry != NULL)
+	{
+		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
+		   hasmntopt(entry, "memory") != NULL)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
+			m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
+			break;
+		}
+		entry = getmntent(fp);
+	}
+	endmntent(fp);
+	if(!m_memory_cgroup_dir)
+	{
+		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
+	}
 }
