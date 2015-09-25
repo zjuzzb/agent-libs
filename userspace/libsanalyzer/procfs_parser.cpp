@@ -638,5 +638,6 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	if(!m_memory_cgroup_dir)
 	{
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
+		m_memory_cgroup_dir = make_unique<string>();
 	}
 }
