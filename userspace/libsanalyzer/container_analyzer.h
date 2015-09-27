@@ -11,4 +11,5 @@ public:
 	sinsp_delays_info m_transaction_delays;
 	vector<vector<sinsp_trlist_entry>> m_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions;
+	string m_memory_cgroup;
 };
