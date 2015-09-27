@@ -7,6 +7,7 @@ import socket
 logfile = None
 markerfile = None
 
+'''
 def log( string ):
     global logfile
 
@@ -15,6 +16,12 @@ def log( string ):
     logfile.write(string);
     logfile.flush();
     return
+'''
+def log( string ):
+    sys.stdout.write(string);
+    sys.stdout.flush();
+    return
+
 
 def mark( string ):
     global markerfile
@@ -104,7 +111,7 @@ try:
         #    sys.exit(0)
 
         #while True:
-        for x in range(0, 1):
+        for x in range(0, 10):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
@@ -112,7 +119,6 @@ try:
             depnames = []
             tags = []
             for j in range(0, NCHILDS):
-                log("***")
                 # Create the child name and tag
                 chnames.append("srvc_next" + str(j))
                 dn = NAME + ".req" + str(j)
@@ -121,7 +127,7 @@ try:
 
             if SYNC == 'true':
                 for j in range(0, NCHILDS):
-                    log("transaction start\n")
+                    log("Child transaction start\n")
 
                     # Set up a TCP/IP socket
                     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -132,13 +138,15 @@ try:
                     # Protocol exchange - sends and receives
                     #s.send("GET /API/info HTTP/1.1\nx-SDMarker: %s\n\n" % NAME)
                     mark(">:%d:%s:n=%d:" % (reqid, tags[j], reqid))
+                    log("Sending request to " + chnames[j])
+
+                    log("warn: ciao")
                     payload = "%d:%s" % (reqid, tags[j])
                     s.send(payload)
 
                     while True:
                         resp = s.recv(1024)
                         if resp == "": break
-                        print resp,
 
                     mark("<:%d:%s::" % (reqid, tags[j]))
 
