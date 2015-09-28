@@ -680,15 +680,15 @@ const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_
 		bool parsed = m_json_reader.parse(msg, json);
 		if(parsed)
 		{
-			fs_list.clear();
+			m_fs_list.clear();
 			for(unsigned j = 0; j < json.size(); ++j)
 			{
-				fs_list.emplace_back(json[j]);
+				m_fs_list.emplace_back(json[j]);
 			}
 		}
 		msg = m_input.receive();
 	}
-	return fs_list;
+	return m_fs_list;
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):

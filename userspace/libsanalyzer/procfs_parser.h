@@ -71,7 +71,7 @@ public:
 	explicit mounted_fs_proxy();
 	const vector<sinsp_procfs_parser::mounted_fs>& get_mounted_fs_list();
 private:
-	vector<sinsp_procfs_parser::mounted_fs> fs_list;
+	vector<sinsp_procfs_parser::mounted_fs> m_fs_list;
 	Json::Reader m_json_reader;
 	posix_queue m_input;
 };
