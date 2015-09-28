@@ -589,6 +589,33 @@ return "";
 #endif
 }
 
+int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
+{
+	int64_t ret = -1;
+	if(m_is_live_capture)
+	{
+		if(!m_memory_cgroup_dir)
+		{
+			lookup_memory_cgroup_dir();
+		}
+		if(m_memory_cgroup_dir && !m_memory_cgroup_dir->empty())
+		{
+			// Using scap_get_host_root() is not necessary here because
+			// m_memory_cgroup_dir is taken from /etc/mtab
+			char filename[SCAP_MAX_PATH_SIZE];
+			snprintf(filename, sizeof(filename),
+					 "%s/%s/memory.usage_in_bytes",
+					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
+			ifstream used_memory_f(filename);
+			if(used_memory_f.good())
+			{
+				used_memory_f >> ret;
+			}
+		}
+	}
+	return ret;
+}
+
 void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 {
 	// Look for mount point of cgroup memory filesystem
@@ -635,33 +662,6 @@ Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
 	ret["size_bytes"] = static_cast<Json::UInt64>(size_bytes);
 	ret["used_bytes"] = static_cast<Json::UInt64>(used_bytes);
 	ret["available_bytes"] = static_cast<Json::UInt64>(available_bytes);
-	return ret;
-}
-
-int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
-{
-	int64_t ret = -1;
-	if(m_is_live_capture)
-	{
-		if(!m_memory_cgroup_dir)
-		{
-			lookup_memory_cgroup_dir();
-		}
-		if(m_memory_cgroup_dir && !m_memory_cgroup_dir->empty())
-		{
-			// Using scap_get_host_root() is not necessary here because
-			// m_memory_cgroup_dir is taken from /etc/mtab
-			char filename[SCAP_MAX_PATH_SIZE];
-			snprintf(filename, sizeof(filename),
-					 "%s/%s/memory.usage_in_bytes",
-					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
-			ifstream used_memory_f(filename);
-			if(used_memory_f.good())
-			{
-				used_memory_f >> ret;
-			}
-		}
-	}
 	return ret;
 }
 
