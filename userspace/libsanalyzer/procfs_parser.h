@@ -18,9 +18,6 @@ public:
 		explicit mounted_fs(const Json::Value& json);
 		Json::Value to_json() const;
 
-		static Json::Value vector_to_json(const vector<sinsp_procfs_parser::mounted_fs>&);
-		static vector<sinsp_procfs_parser::mounted_fs> vector_from_json(const Json::Value& json);
-
 		string device;
 		string mount_dir;
 		string type;

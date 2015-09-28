@@ -589,6 +589,32 @@ return "";
 #endif
 }
 
+void sinsp_procfs_parser::lookup_memory_cgroup_dir()
+{
+	// Look for mount point of cgroup memory filesystem
+	// It should be already mounted on the host or by
+	// our docker-entrypoint.sh script
+	FILE* fp = setmntent("/etc/mtab", "r");
+	struct mntent* entry = getmntent(fp);
+	while(entry != NULL)
+	{
+		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
+		   hasmntopt(entry, "memory") != NULL)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
+			m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
+			break;
+		}
+		entry = getmntent(fp);
+	}
+	endmntent(fp);
+	if(!m_memory_cgroup_dir)
+	{
+		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
+		m_memory_cgroup_dir = make_unique<string>();
+	}
+}
+
 sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
 	device(json["device"].asString()),
 	mount_dir(json["mount_dir"].asString()),
@@ -609,26 +635,6 @@ Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
 	ret["size_bytes"] = static_cast<Json::UInt64>(size_bytes);
 	ret["used_bytes"] = static_cast<Json::UInt64>(used_bytes);
 	ret["available_bytes"] = static_cast<Json::UInt64>(available_bytes);
-	return ret;
-}
-
-vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::mounted_fs::vector_from_json(const Json::Value &json)
-{
-	vector<mounted_fs> ret;
-	for(unsigned j = 0; j < json.size(); ++j)
-	{
-		ret.emplace_back(json[j]);
-	}
-	return ret;
-}
-
-Json::Value sinsp_procfs_parser::mounted_fs::vector_to_json(const vector<sinsp_procfs_parser::mounted_fs> &v)
-{
-	auto ret = Json::Value(Json::arrayValue);
-	for(const auto &fs : v)
-	{
-		ret.append(fs.to_json());
-	}
 	return ret;
 }
 
@@ -668,23 +674,29 @@ mounted_fs_proxy::mounted_fs_proxy():
 const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_list()
 {
 	auto msg = m_input.receive();
-	if(!msg.empty())
+	while(!msg.empty())
 	{
 		Json::Value json;
 		bool parsed = m_json_reader.parse(msg, json);
 		if(parsed)
 		{
-			fs_list = sinsp_procfs_parser::mounted_fs::vector_from_json(json);
+			fs_list.clear();
+			for(unsigned j = 0; j < json.size(); ++j)
+			{
+				fs_list.emplace_back(json[j]);
+			}
 		}
+		msg = m_input.receive();
 	}
 	return fs_list;
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
-	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND, 1),
+	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
 {
+	g_logger.add_stderr_log();
 }
 
 int mounted_fs_reader::run()
@@ -694,45 +706,30 @@ int mounted_fs_reader::run()
 	auto fd = open(filename, O_RDONLY);
 	if(fd > 0)
 	{
-		setns(fd, CLONE_NEWNS);
+		auto ret = setns(fd, CLONE_NEWNS);
 		close(fd);
+		if(ret != 0)
+		{
+			g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
+			return 17;
+		}
 	}
 	else
 	{
+		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
 		return 17;
 	}
+	g_logger.log("Starting mounted_fs_reader", sinsp_logger::SEV_INFO);
 	while(true)
 	{
 		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
-		auto msg = m_json_writer.write(sinsp_procfs_parser::mounted_fs::vector_to_json(fs_list));
+		auto fs_list_json = Json::Value(Json::arrayValue);
+		for(const auto& fs : fs_list)
+		{
+			fs_list_json.append(fs.to_json());
+		}
+		auto msg = m_json_writer.write(fs_list_json);
 		m_output.send(msg);
 		sleep(1);
-	}
-	return 0;
-}
-
-void sinsp_procfs_parser::lookup_memory_cgroup_dir()
-{
-	// Look for mount point of cgroup memory filesystem
-	// It should be already mounted on the host or by
-	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/etc/mtab", "r");
-	struct mntent* entry = getmntent(fp);
-	while(entry != NULL)
-	{
-		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-		   hasmntopt(entry, "memory") != NULL)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
-			m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
-			break;
-		}
-		entry = getmntent(fp);
-	}
-	endmntent(fp);
-	if(!m_memory_cgroup_dir)
-	{
-		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
-		m_memory_cgroup_dir = make_unique<string>();
 	}
 }
