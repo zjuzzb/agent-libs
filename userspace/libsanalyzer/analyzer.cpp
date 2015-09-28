@@ -3357,7 +3357,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 
 void sinsp_analyzer::emit_kubernetes()
 {
-	kubernetes k8s(Poco::URI("http://127.0.0.1:8080/"), *m_metrics);
+	kubernetes k8s(*m_metrics, Poco::URI("http://127.0.0.1:8080/"));
 	k8s.get_proto();
 }
 
