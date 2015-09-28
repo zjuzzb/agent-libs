@@ -10,6 +10,7 @@
 #include "kubernetes.h"
 #include "Poco/URI.h"
 #include "Poco/Exception.h"
+#include <iostream>
 
 
 using Poco::URI;

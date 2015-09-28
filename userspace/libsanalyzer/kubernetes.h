@@ -4,10 +4,10 @@
 // extracts needed data from the kubernetes REST API interface
 //
 
-#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPSClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
-#include <Poco/Net/HTTPCredentials.h>
+#include "Poco/Net/HTTPCredentials.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/NullStream.h"
 #include "Poco/SharedPtr.h"
@@ -28,8 +28,8 @@ public:
 	kubernetes(const Poco::URI& uri = Poco::URI("http://localhost:80"),
 		const std::string& api = "/api/v1/");
 
-	kubernetes(const Poco::URI& uri,
-		draiosproto::metrics& metrics,
+	kubernetes(draiosproto::metrics& metrics,
+		const Poco::URI& uri,
 		const std::string& api = "/api/v1/");
 
 	~kubernetes();
@@ -116,6 +116,8 @@ private:
 		std::vector<k8s_rc_s> rcs;
 		std::vector<k8s_service_s> services;
 	};
+
+	void get_session();
 
 	void init();
 

@@ -64,6 +64,8 @@ driver/ppm.mod.c
 *.orig
 .libs/
 statsite.ini
+.dep/
+bin/
 
 # ignore test result files
 test_detail.xml
@@ -83,3 +85,4 @@ userspace/sdjagent/target
 
 #CodeLite
 .codelite
+.directory

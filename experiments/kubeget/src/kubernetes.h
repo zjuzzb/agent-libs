@@ -4,10 +4,10 @@
 // extracts needed data from the kubernetes REST API interface
 //
 
-#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPSClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
-#include <Poco/Net/HTTPCredentials.h>
+#include "Poco/Net/HTTPCredentials.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/NullStream.h"
 #include "Poco/SharedPtr.h"
@@ -25,7 +25,11 @@
 class kubernetes
 {
 public:
-	kubernetes(Poco::URI uri = Poco::URI("http://localhost:80"),
+	kubernetes(const Poco::URI& uri = Poco::URI("http://localhost:80"),
+		const std::string& api = "/api/v1/");
+
+	kubernetes(draiosproto::metrics& metrics,
+		const Poco::URI& uri,
 		const std::string& api = "/api/v1/");
 
 	~kubernetes();
@@ -113,16 +117,20 @@ private:
 		std::vector<k8s_service_s> services;
 	};
 
+	void get_session();
+
+	void init();
+
 	bool send_request(Poco::Net::HTTPClientSession& session,
-        Poco::Net::HTTPRequest& request,
-        Poco::Net::HTTPResponse& response,
+		Poco::Net::HTTPRequest& request,
+		Poco::Net::HTTPResponse& response,
 		const component_map::value_type& component);
 
 	void add_object_entry(Component component, const std::string& name, k8s_pair_s&& p);
 
 	// extracts labels or selectors
 	void extract_object(Component component, const Json::Value& object, const std::string& name);
-	
+
 	void extract_nodes_addresses(const Json::Value& status);
 
 	void extract_pods_data(const Json::Value& item);
@@ -167,7 +175,8 @@ private:
 	Poco::URI                     m_uri;
 	Poco::Net::HTTPCredentials*   m_credentials;
 	Poco::Net::HTTPClientSession* m_session;
-	draiosproto::k8s_state        m_k8s_state;
+	draiosproto::k8s_state&       m_k8s_state;
+	bool                          m_own_state;
 	k8s_state_s                   m_state;
 	static const component_map    m_components;
 };
