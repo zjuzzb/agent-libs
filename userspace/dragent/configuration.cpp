@@ -242,6 +242,9 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
+	// Detect if running inside container using SYSDIG_HOST_ROOT
+	m_running_in_container = (strcmp(scap_get_host_root(),"") != 0);
+
 	if(m_statsd_enabled)
 	{
 		write_statsite_configuration();
@@ -302,6 +305,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
+	g_log->information("Running inside container: " + bool_as_text(m_running_in_container));
+
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));

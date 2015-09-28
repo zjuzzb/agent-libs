@@ -11,6 +11,7 @@
 #include "utils.h"
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
+#include <procfs_parser.h>
 
 static void g_signal_callback(int sig)
 {
@@ -368,6 +369,29 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
+	}
+	if(m_configuration.m_running_in_container)
+	{
+		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
+		{
+			// Right now we are using default sinsp stderror logger
+			// it does not send priority so we are using a simple euristic
+			if(s.find("Cannot") != string::npos || s.find("error") != string::npos)
+			{
+				g_log->error(s);
+			}
+			else
+			{
+				g_log->information(s);
+			}
+		});
+		monitor_process.emplace_process("mountedfs_reader", [this](void)
+		{
+			m_mounted_fs_reader_pipe->attach_child();
+			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
+			return proc.run();
+		});
 	}
 	return monitor_process.run();
 #else
