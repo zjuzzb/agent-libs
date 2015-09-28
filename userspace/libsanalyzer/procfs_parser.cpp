@@ -666,7 +666,7 @@ Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE, 1)
+	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE)
 {
 
 }
