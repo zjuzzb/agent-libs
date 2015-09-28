@@ -187,7 +187,7 @@ def get_hostname(config=None):
         def _get_hostname_unix():
             try:
                 # try fqdn
-                p = subprocess.Popen(['/bin/hostname', '-f'], stdout=subprocess.PIPE)
+                p = subprocess.Popen(['/bin/hostname'], stdout=subprocess.PIPE)
                 out, err = p.communicate()
                 if p.returncode == 0:
                     return out.strip()

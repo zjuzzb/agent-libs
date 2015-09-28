@@ -1202,6 +1202,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			if(container->m_memory_cgroup.empty())
+			{
+				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+												[](const pair<string, string>& cgroup)
+												{
+													return cgroup.first == "memory";
+												});
+				if(memory_cgroup_it != tinfo->m_cgroups.cend())
+				{
+					container->m_memory_cgroup = memory_cgroup_it->second;
+				}
+			}
 		}
 
 		//
@@ -3666,7 +3678,16 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 	container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
-	container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
+	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_kb;
+	if(!it_analyzer->second.m_memory_cgroup.empty())
+	{
+		auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
+		if(cgroup_memory > 0)
+		{
+			res_memory_kb = cgroup_memory / 1024;
+		}
+	}
+	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
 	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
