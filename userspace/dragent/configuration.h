@@ -4,7 +4,6 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
-#include <unordered_map>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
