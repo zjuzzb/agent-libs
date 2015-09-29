@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <yaml-cpp/yaml.h>
 #include <atomic>
+#include <unordered_map>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -317,6 +318,8 @@ public:
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_dirty_shutdown_report_log_size_b;
+	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
+	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
 	uint16_t m_jmx_sampling;

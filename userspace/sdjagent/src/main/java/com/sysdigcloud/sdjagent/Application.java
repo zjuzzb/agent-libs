@@ -145,8 +145,12 @@ public class Application {
 
     private void mainLoop() throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        Runtime runtime = Runtime.getRuntime();
         while (true)
         {
+            System.err.print(String.format("HB,%d,%d,%d\n", CLibrary.getPid(),
+                                    runtime.totalMemory()/1024, System.currentTimeMillis()/1000));
+            System.err.flush();
             String cmd_data = reader.readLine();
             LOGGER.fine(String.format("Received command: %s", cmd_data));
             Map<String, Object> cmd_obj = MAPPER.readValue(cmd_data, Map.class);

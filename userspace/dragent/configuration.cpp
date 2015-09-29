@@ -173,6 +173,8 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
 	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 256);
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 27U }, {"sdjagent", 256U}, {"mountedfs_reader", 20U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 9U}});
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
