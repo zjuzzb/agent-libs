@@ -219,7 +219,7 @@ void subprocesses_logger::run()
 														 stoul(tokenizer[2]),
 														 stoul(tokenizer[3]));
 							}
-							g_log->information(string("Received heartbeat: ") + data);
+							g_log->debug("Received heartbeat: " + data);
 						}
 						else
 						{
