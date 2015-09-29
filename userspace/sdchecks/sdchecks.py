@@ -10,6 +10,7 @@ import resource
 import ctypes
 import logging
 from datetime import datetime, timedelta
+import sys
 
 # project
 from checks import AgentCheck
@@ -260,8 +261,11 @@ class PosixQueue:
             return False
 
     def receive(self, timeout=1):
-        message, _ = self.queue.receive(timeout)
-        return message
+        try:
+            message, _ = self.queue.receive(timeout)
+            return message
+        except posix_ipc.BusyError:
+            return None
 
     def __del__(self):
         if hasattr(self, "queue") and self.queue:
@@ -283,7 +287,7 @@ class Application:
         self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
-
+        self.leak = []
     def cleanup(self):
         self.inqueue.close()
         self.outqueue.close()
@@ -293,58 +297,68 @@ class Application:
             if not key in last_request_pids:
                 del self.known_instances[key]
 
+    def handle_command(self, command_s):
+        response_body = []
+        #print "Received command: %s" % command_s
+        command = json.loads(command_s)
+        processes = command["body"]
+        for p in processes:
+            pid = int(p["pid"])
+            if pid in self.blacklisted_pids:
+                logging.debug("Process with pid=%d is blacklisted", pid)
+                continue
+
+            try:
+                check_instance = self.known_instances[pid]
+            except KeyError:
+                try:
+                    check_conf = self.config.checks[p["check"]]
+                except KeyError:
+                    logging.error("Cannot find check configuration for name: %s", p["check"])
+                    continue
+                try:
+                    check_instance = AppCheckInstance(check_conf, p)
+                except AppCheckException as ex:
+                    logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
+                    self.blacklisted_pids.add(pid)
+                    continue
+                self.known_instances[pid] = check_instance
+            
+            metrics = []
+            service_checks = []
+            try:
+                metrics, service_checks = check_instance.run()
+            except AppCheckException as ex:
+                logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                self.blacklisted_pids.add(pid)
+            response_body.append({ "pid": pid,
+                                    "display_name": check_instance.name,
+                                             "metrics": metrics,
+                               "service_checks": service_checks})
+        response = {
+            "id": command["id"],
+            "body": response_body
+        }
+        response_s = json.dumps(response)
+        logging.debug("Response size is %d" % len(response_s))
+        self.outqueue.send(response_s)
+
     def main(self):
         logging.info("Starting")
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+        pid = os.getpid()
         while True:
-            command_s = self.inqueue.receive(None)
-            response_body = []
-            #print "Received command: %s" % command_s
-            command = json.loads(command_s)
-            processes = command["body"]
-            for p in processes:
-                pid = int(p["pid"])
-                if pid in self.blacklisted_pids:
-                    logging.debug("Process with pid=%d is blacklisted", pid)
-                    continue
-
-                try:
-                    check_instance = self.known_instances[pid]
-                except KeyError:
-                    try:
-                        check_conf = self.config.checks[p["check"]]
-                    except KeyError:
-                        logging.error("Cannot find check configuration for name: %s", p["check"])
-                        continue
-                    try:
-                        check_instance = AppCheckInstance(check_conf, p)
-                    except AppCheckException as ex:
-                        logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
-                        self.blacklisted_pids.add(pid)
-                        continue
-                    self.known_instances[pid] = check_instance
-                
-                metrics = []
-                service_checks = []
-                try:
-                    metrics, service_checks = check_instance.run()
-                except AppCheckException as ex:
-                    logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
-                    self.blacklisted_pids.add(pid)
-                response_body.append({ "pid": pid,
-                                        "display_name": check_instance.name,
-                                                 "metrics": metrics,
-                                   "service_checks": service_checks})
-            response = {
-                "id": command["id"],
-                "body": response_body
-            }
-            response_s = json.dumps(response)
-            logging.debug("Response size is %d" % len(response_s))
-            self.outqueue.send(response_s)
-            if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
+            command_s = self.inqueue.receive(1)
+            if command_s:
+                self.handle_command(command_s)
+            self.leak.append("v"*1024*30)
+            now = datetime.now()
+            if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances([p["pid"] for p in processes])
                 self.last_known_instances_cleanup = datetime.now()
-            if datetime.now() - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
+            if now - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
                 self.blacklisted_pids.clear()
                 self.last_blacklisted_pids_cleanup = datetime.now()
+            ru = resource.getrusage(resource.RUSAGE_SELF)
+            sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
+            sys.stderr.flush()
