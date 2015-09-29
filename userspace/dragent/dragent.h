@@ -32,9 +32,9 @@ public:
 
 	void reset(pid_t pid, uint64_t memory_used, uint64_t last_loop_s)
 	{
-		m_pid.store(pid);
 		m_memory_used.store(memory_used);
 		m_last_loop_s.store(last_loop_s);
+		m_pid.store(pid);
 	}
 
 	void reset()
@@ -46,6 +46,7 @@ public:
 	{
 		return m_pid.load() > 0;
 	}
+	
 private:
 	atomic<pid_t> m_pid;
 	atomic<uint64_t> m_memory_used;
