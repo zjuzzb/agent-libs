@@ -739,6 +739,6 @@ int mounted_fs_reader::run()
 		}
 		auto msg = m_json_writer.write(fs_list_json);
 		m_output.send(msg);
-		sleep(10);
+		sleep(1);
 	}
 }
