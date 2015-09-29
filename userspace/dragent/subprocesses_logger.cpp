@@ -1,6 +1,7 @@
 #include "subprocesses_logger.h"
 #include "logger.h"
 #include "utils.h"
+#include "dragent.h"
 
 // On systems with kernel < 2.6.35 we don't have this flag
 // so define it and compile our code anyway as we need it when
@@ -159,6 +160,11 @@ subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, l
 {
 }
 
+void subprocesses_logger::add_logfd(FILE *fd, function<void(const string &)> &&parser, watchdog_state* state)
+{
+	m_error_fds.emplace(fd, make_pair(parser, state));
+}
+
 void subprocesses_logger::run()
 {
 	m_pthread_id = pthread_self();
@@ -184,6 +190,7 @@ void subprocesses_logger::run()
 			max_fd = std::max(fd, max_fd);
 		}
 		struct timeval timeout_w = { 0 };
+		timeout_w.tv_sec = 1;
 
 		int result = select(max_fd+1, &readset_w, NULL, NULL, &timeout_w);
 
@@ -201,17 +208,26 @@ void subprocesses_logger::run()
 					{
 						string data(buffer);
 						trim(data);
-						fds.second(data);
+						if(fds.second.second != nullptr && data.find("HB,") == 0)
+						{
+							// This is an heartbeat message, so parse and store values
+							// for watchdog, format: HB,pid,memory_used,last_loop_ts
+							StringTokenizer tokenizer(data, ",");
+							if(tokenizer.count() > 3)
+							{
+								fds.second.second->reset(stoul(tokenizer[1]),
+														 stoul(tokenizer[2]),
+														 stoul(tokenizer[3]));
+							}
+							g_log->information(string("Received heartbeat: ") + data);
+						}
+						else
+						{
+							fds.second.first(data);
+						}
 						fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					}
 				}
-			}
-		}
-		else
-		{
-			if(errno != EINTR)
-			{
-				Thread::sleep(1000);
 			}
 		}
 		if(dragent_configuration::m_send_log_report)
