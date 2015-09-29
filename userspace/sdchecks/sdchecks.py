@@ -293,7 +293,7 @@ class Application:
         self.inqueue.close()
         self.outqueue.close()
 
-    def clean_known_instances(self, last_request_pids):
+    def clean_known_instances(self):
         for key in self.known_instances.keys():
             if not key in self.last_request_pids:
                 del self.known_instances[key]
@@ -304,7 +304,7 @@ class Application:
         command = json.loads(command_s)
         processes = command["body"]
         self.last_request_pids.clear()
-        
+
         for p in processes:
             pid = int(p["pid"])
             self.last_request_pids.add(pid)
