@@ -287,6 +287,7 @@ class Application:
         self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
+        self.last_request_pids = set()
 
     def cleanup(self):
         self.inqueue.close()
@@ -294,7 +295,7 @@ class Application:
 
     def clean_known_instances(self, last_request_pids):
         for key in self.known_instances.keys():
-            if not key in last_request_pids:
+            if not key in self.last_request_pids:
                 del self.known_instances[key]
 
     def handle_command(self, command_s):
@@ -302,8 +303,12 @@ class Application:
         #print "Received command: %s" % command_s
         command = json.loads(command_s)
         processes = command["body"]
+        self.last_request_pids.clear()
+        
         for p in processes:
             pid = int(p["pid"])
+            self.last_request_pids.add(pid)
+
             if pid in self.blacklisted_pids:
                 logging.debug("Process with pid=%d is blacklisted", pid)
                 continue
@@ -356,13 +361,13 @@ class Application:
             # Do some cleanup
             now = datetime.now()
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
-                self.clean_known_instances([p["pid"] for p in processes])
+                self.clean_known_instances()
                 self.last_known_instances_cleanup = datetime.now()
             if now - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
                 self.blacklisted_pids.clear()
                 self.last_blacklisted_pids_cleanup = datetime.now()
 
-            # Send heartbeat
+            # Send heartbeat 
             ru = resource.getrusage(resource.RUSAGE_SELF)
             sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
             sys.stderr.flush()
