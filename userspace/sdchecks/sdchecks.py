@@ -287,7 +287,7 @@ class Application:
         self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
-        self.leak = []
+
     def cleanup(self):
         self.inqueue.close()
         self.outqueue.close()
@@ -348,10 +348,12 @@ class Application:
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
         pid = os.getpid()
         while True:
+            # Handle received message
             command_s = self.inqueue.receive(1)
             if command_s:
                 self.handle_command(command_s)
-            self.leak.append("v"*1024*30)
+
+            # Do some cleanup
             now = datetime.now()
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances([p["pid"] for p in processes])
@@ -359,6 +361,8 @@ class Application:
             if now - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
                 self.blacklisted_pids.clear()
                 self.last_blacklisted_pids_cleanup = datetime.now()
+
+            # Send heartbeat
             ru = resource.getrusage(resource.RUSAGE_SELF)
             sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
             sys.stderr.flush()
