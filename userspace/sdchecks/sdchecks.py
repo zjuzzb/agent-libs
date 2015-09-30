@@ -165,6 +165,7 @@ class AppCheckInstance:
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
+        ex = None
         try:
             if self.is_on_another_container:
                 # We need to open and close ns on every iteration
@@ -176,16 +177,19 @@ class AppCheckInstance:
                     if ret != 0:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
-            return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
         except OSError as ex: # Raised from os.open() or setns()
-            raise AppCheckException(ex.message)
+            ex = AppCheckException(ex.message)
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
-            raise AppCheckException("%s\n%s" % (repr(ex), traceback_message))
+            ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
+            # We don't need them, but this method clears them so we avoid memory growing
+            self.check_instance.get_events() 
+            # Return metrics and checks instead
+            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), ex
 
     def _expand_template(self, value, proc_data):
         try:
@@ -220,7 +224,7 @@ class Config:
                 self.checks[app_check.name] = app_check
             except (Exception, IOError) as ex:
                 logging.error("Configuration error for check %s: %s", repr(c), ex.message)
-    
+
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
         if level == "error":
@@ -285,8 +289,15 @@ class Application:
         self.last_known_instances_cleanup = datetime.now()
         self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
         self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+
+        # Blacklist works in two ways
+        # 1. for pids where we cannot create an AppCheckInstance, skip them
+        # 2. for pids when AppCheckInstance.run raises exception, run them but don't print errors
+        # We need the latter because a check can create checks or metrics even if it raises
+        # exceptions
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
+        
         self.last_request_pids = set()
 
     def cleanup(self):
@@ -306,16 +317,15 @@ class Application:
         self.last_request_pids.clear()
 
         for p in processes:
-            pid = int(p["pid"])
+            pid = p["pid"]
             self.last_request_pids.add(pid)
-
-            if pid in self.blacklisted_pids:
-                logging.debug("Process with pid=%d is blacklisted", pid)
-                continue
 
             try:
                 check_instance = self.known_instances[pid]
             except KeyError:
+                if pid in self.blacklisted_pids:
+                    logging.debug("Process with pid=%d is blacklisted", pid)
+                    continue
                 try:
                     check_conf = self.config.checks[p["check"]]
                 except KeyError:
@@ -329,11 +339,9 @@ class Application:
                     continue
                 self.known_instances[pid] = check_instance
             
-            metrics = []
-            service_checks = []
-            try:
-                metrics, service_checks = check_instance.run()
-            except AppCheckException as ex:
+            metrics, service_checks, ex = check_instance.run()
+
+            if ex and pid not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 self.blacklisted_pids.add(pid)
             response_body.append({ "pid": pid,
