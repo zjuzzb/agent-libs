@@ -187,7 +187,9 @@ class AppCheckInstance:
                 setns(self.MYNET)
                 setns(self.MYMNT)
             # We don't need them, but this method clears them so we avoid memory growing
-            self.check_instance.get_events() 
+            self.check_instance.get_events()
+            self.check_instance.get_service_metadata()
+            
             # Return metrics and checks instead
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), ex
 
