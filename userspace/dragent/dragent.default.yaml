@@ -577,7 +577,7 @@ app_checks:
   - name: nginx 
     check_module: nginx
     pattern:
-      comm: nginx
+      exe: "nginx: master process" # nginx overwrites argv[0] that is parsed as exe on sysdig
     conf:
       nginx_status_url: "http://localhost:{port}/nginx_status/"
   - name: apache
