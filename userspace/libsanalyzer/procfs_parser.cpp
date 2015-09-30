@@ -727,10 +727,13 @@ int mounted_fs_reader::run()
 	uint64_t m_last_loop_s = 0;
 	while(true)
 	{
+		// Send heartbeat
 		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
 		getrusage(RUSAGE_SELF, &mem_usage);
 		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
 		fflush(stderr);
+
+		// Get a sample of filesystem usage and send
 		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
 		auto fs_list_json = Json::Value(Json::arrayValue);
 		for(const auto& fs : fs_list)
@@ -739,6 +742,7 @@ int mounted_fs_reader::run()
 		}
 		auto msg = m_json_writer.write(fs_list_json);
 		m_output.send(msg);
+
 		sleep(1);
 	}
 }
