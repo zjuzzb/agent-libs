@@ -189,7 +189,7 @@ class AppCheckInstance:
             # We don't need them, but this method clears them so we avoid memory growing
             self.check_instance.get_events()
             self.check_instance.get_service_metadata()
-            
+
             # Return metrics and checks instead
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), ex
 
@@ -346,10 +346,10 @@ class Application:
             if ex and pid not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 self.blacklisted_pids.add(pid)
-            response_body.append({ "pid": pid,
+            response_body.append({  "pid": pid,
                                     "display_name": check_instance.name,
-                                             "metrics": metrics,
-                               "service_checks": service_checks})
+                                    "metrics": metrics,
+                                    "service_checks": service_checks})
         response = {
             "id": command["id"],
             "body": response_body
