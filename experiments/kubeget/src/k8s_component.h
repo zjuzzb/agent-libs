@@ -163,6 +163,8 @@ public:
 class k8s_state_s
 {
 public:
+	k8s_state_s();
+
 	// namespaces
 	const std::vector<k8s_ns_s>& get_namespaces() const;
 
@@ -198,6 +200,7 @@ public:
 
 	void emplace_service(k8s_service_s&& service);
 
+	// general
 	void emplace_item(k8s_component::type t, const std::string& name, k8s_pair_s&& item);
 
 	void add_common_single_value(k8s_component::type component, const std::string& name, const std::string& uid, const std::string& ns);
@@ -220,7 +223,226 @@ private:
 	std::vector<k8s_service_s> m_services;
 };
 
+//
+// component
+//
 
+inline const std::string& k8s_component::get_name() const
+{
+	return m_name;
+}
+
+inline void k8s_component::set_name(const std::string& name)
+{
+	m_name = name;
+}
+
+inline const std::string& k8s_component::get_uid() const{
+	
+	return m_uid;
+}
+
+inline void k8s_component::set_uid(const std::string& uid)
+{
+	m_uid = uid;
+}
+
+inline const std::string& k8s_component::get_namespace() const
+{
+	return m_ns;
+}
+
+inline void k8s_component::set_namespace(const std::string& ns)
+{
+	m_ns = ns;
+}
+
+inline const k8s_pair_list& k8s_component::get_labels() const
+{
+	return m_labels;
+}
+
+inline void k8s_component::push_label(const k8s_pair_s& label)
+{
+	m_labels.push_back(label);
+}
+
+inline void k8s_component::emplace_label(const k8s_pair_s& label)
+{
+	m_labels.emplace_back(label);
+}
+
+inline const k8s_pair_list& k8s_component::get_selectors() const
+{
+	return m_selectors;
+}
+
+inline void k8s_component::push_selector(const k8s_pair_s& selector)
+{
+	m_selectors.push_back(selector);
+}
+
+inline void k8s_component::emplace_selector(k8s_pair_s&& selector)
+{
+	m_selectors.emplace_back(std::forward<k8s_pair_s>(selector));
+}
+
+
+//
+// node
+//
+
+inline const std::vector<std::string>& k8s_node_s::get_host_ips() const
+{
+	return host_ips;
+}
+
+inline void k8s_node_s::push_host_ip(const std::string& host_ip)
+{
+	host_ips.push_back(host_ip);
+}
+
+inline void k8s_node_s::emplace_host_ip(std::string&& host_ip)
+{
+	host_ips.emplace_back(std::forward<std::string>(host_ip));
+}
+
+
+//
+// pod 
+//
+
+inline const std::vector<std::string>& k8s_pod_s::get_container_ids() const
+{
+	return m_container_ids;
+}
+
+inline void k8s_pod_s::push_container_id(const std::string& container_id)
+{
+	m_container_ids.push_back(container_id);
+}
+
+inline void k8s_pod_s::emplace_container_id(std::string&& container_id)
+{
+	m_container_ids.emplace_back(std::forward<std::string>(container_id));
+}
+
+inline const std::string& k8s_pod_s::get_node_name() const
+{
+	return m_node_name;
+}
+
+inline void k8s_pod_s::set_node_name(const std::string& name)
+{
+	m_node_name = name;
+}
+
+inline const std::string& k8s_pod_s::get_host_ip() const
+{
+	return m_host_ip;
+}
+
+inline void k8s_pod_s::set_host_ip(const std::string& host_ip)
+{
+	m_host_ip = host_ip;
+}
+
+inline const std::string& k8s_pod_s::get_internal_ip() const
+{
+	return m_internal_ip;
+}
+
+inline void k8s_pod_s::set_internal_ip(const std::string& internal_ip)
+{
+	m_internal_ip = internal_ip;
+}
+
+
+//
+// state
+//
+
+// namespaces
+inline const std::vector<k8s_ns_s>& k8s_state_s::get_namespaces() const
+{
+	return m_nss;
+}
+
+inline void k8s_state_s::push_namespace(const k8s_ns_s& ns)
+{
+	m_nss.push_back(ns);
+}
+
+inline void k8s_state_s::emplace_namespace(k8s_ns_s&& ns)
+{
+	m_nss.emplace_back(std::forward<k8s_ns_s>(ns));
+}
+
+// nodes
+inline const std::vector<k8s_node_s>& k8s_state_s::get_nodes() const
+{
+	return m_nodes;
+}
+
+inline void k8s_state_s::push_node(const k8s_node_s& node)
+{
+	m_nodes.push_back(node);
+}
+
+inline void k8s_state_s::emplace_node(k8s_node_s&& node)
+{
+	m_nodes.emplace_back(std::forward<k8s_node_s>(node));
+}
+
+// pods
+inline const std::vector<k8s_pod_s>& k8s_state_s::get_pods() const
+{
+	return m_pods;
+}
+
+inline void k8s_state_s::push_pod(const k8s_pod_s& pod)
+{
+	m_pods.push_back(pod);
+}
+
+inline void k8s_state_s::emplace_pod(k8s_pod_s&& pod)
+{
+	m_pods.emplace_back(std::forward<k8s_pod_s>(pod));
+}
+
+// replication controllers
+inline const std::vector<k8s_rc_s>& k8s_state_s::get_rcs() const
+{
+	return m_rcs;
+}
+
+inline void k8s_state_s::push_rc(const k8s_rc_s& rc)
+{
+	m_rcs.push_back(rc);
+}
+
+inline void k8s_state_s::emplace_rc(k8s_rc_s&& rc)
+{
+	m_rcs.emplace_back(std::forward<k8s_rc_s>(rc));
+}
+
+// services
+inline const std::vector<k8s_service_s>& k8s_state_s::get_services() const
+{
+	return m_services;
+}
+
+inline void k8s_state_s::push_service(const k8s_service_s& service)
+{
+	m_services.push_back(service);
+}
+
+inline void k8s_state_s::emplace_service(k8s_service_s&& service)
+{
+	m_services.emplace_back(std::forward<k8s_service_s>(service));
+}
+
+// general
 inline void k8s_state_s::set_last_pod_node_name(const std::string& name)
 {
 	m_pods.back().set_node_name(name);
