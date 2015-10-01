@@ -11,7 +11,7 @@
 #include "k8s_net.h"
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
-#include <strstream>
+#include <sstream>
 #include <utility>
 
 class k8s

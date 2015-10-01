@@ -7,7 +7,7 @@
 #include "k8s_component.h"
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
-#include <strstream>
+#include <sstream>
 #include <utility>
 #include <memory>
 #include <iostream>
