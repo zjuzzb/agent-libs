@@ -17,7 +17,7 @@ public:
 	{
 		SEND = O_WRONLY, RECEIVE = O_RDONLY
 	};
-	posix_queue(std::string name, direction_t dir, long maxmsgs=3);
+	posix_queue(std::string name, direction_t dir, long maxmsgs=MAX_MSGS);
 	~posix_queue();
 
 	bool send(const std::string& msg);
@@ -31,4 +31,6 @@ private:
 	direction_t m_direction;
 	string m_name;
 	static const long MAX_MSGSIZE = 1 << 20; // 1 MiB
+	static const long MAX_QUEUES = 10;
+	static const long MAX_MSGS = 3;
 };

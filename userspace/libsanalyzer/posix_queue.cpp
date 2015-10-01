@@ -95,8 +95,8 @@ bool posix_queue::set_queue_limits()
 	if(!limits_set)
 	{
 		struct rlimit r;
-		r.rlim_cur = 100* MAX_MSGSIZE;
-		r.rlim_max = 100* MAX_MSGSIZE;
+		r.rlim_cur = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
+		r.rlim_max = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
 
 		int res = setrlimit(RLIMIT_MSGQUEUE, &r);
 		limits_set = (res == 0);
