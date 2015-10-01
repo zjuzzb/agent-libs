@@ -1188,14 +1188,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-		vector<pair<string, pid_t>> containers_for_mounted_fs;
-		for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+		if(m_mounted_fs_proxy)
 		{
-			containers_for_mounted_fs.emplace_back(it->first, it->second.front()->m_pid);
+			vector<pair<string, pid_t>> containers_for_mounted_fs;
+			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+			{
+				containers_for_mounted_fs.emplace_back(it->first, it->second.front()->m_pid);
+			}
+			// Add host
+			containers_for_mounted_fs.emplace_back("host", 1);
+			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
-		// Add host
-		containers_for_mounted_fs.emplace_back("host", 1);
-		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
