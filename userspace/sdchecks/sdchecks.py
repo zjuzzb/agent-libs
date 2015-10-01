@@ -237,8 +237,11 @@ class PosixQueueType:
 
 class PosixQueue:
     MSGSIZE = 1 << 20
-    def __init__(self, name, direction, maxmsgs=3):
-        resource.setrlimit(RLIMIT_MSGQUEUE, (10*self.MSGSIZE, 10*self.MSGSIZE))
+    MAXMSGS = 3
+    MAXQUEUES = 10
+    def __init__(self, name, direction, maxmsgs=MAXMSGS):
+        limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
+        resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
                                             max_messages = maxmsgs, max_message_size = self.MSGSIZE,
