@@ -25,6 +25,7 @@ typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 #ifdef HAS_ANALYZER
 class sinsp_scores;
 class sinsp_procfs_parser;
+class mounted_fs_proxy;
 class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
@@ -283,6 +284,8 @@ public:
 		m_container_patterns = patterns;
 	}
 
+	void set_fs_usage_from_external_proc(bool value);
+
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -462,6 +465,7 @@ VISIBILITY_PRIVATE
 
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
+	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 #endif
 
 	vector<string> m_container_patterns;

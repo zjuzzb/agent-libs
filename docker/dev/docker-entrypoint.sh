@@ -50,8 +50,12 @@ if [ ! -z "$SECURE" ]; then
 	fi
 fi
 
+echo "* Mounting memory cgroup fs"
+mkdir -p $SYSDIG_HOST_ROOT/cgroup/memory
+mount -t cgroup -o memory,ro none $SYSDIG_HOST_ROOT/cgroup/memory
+
 if [ $# -eq 0 ]; then
-	if ! /usr/bin/sysdig-probe-loader; then
+	if ! /opt/draios/bin/sysdigcloud-probe-loader; then
 		exit 1
 	fi
 

@@ -182,11 +182,13 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
-			if((!agentvalid) && ((str = check_and_extract(buf + j,
-				buflen - j,
-				(char*)"user-agent:",
-				sizeof("user-agent:")-1,
-				&strlen)) != NULL))
+			if((!agentvalid) &&
+				buf[j - 1] == '\n' &&
+				((str = check_and_extract(buf + j,
+					buflen - j,
+					(char*)"user-agent:",
+					sizeof("user-agent:")-1,
+					&strlen)) != NULL))
 			{
 				agentvalid = true;
 				req_assign(&m_agent, str, strlen);
@@ -198,11 +200,13 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 				continue;
 			}
-			else if((!hostvalid) && ((str = check_and_extract(buf + j, 
-				buflen - j,
-				(char*)"host:",
-				sizeof("host:")-1,
-				&strlen)) != NULL))
+			else if((!hostvalid) &&
+				buf[j - 1] == '\n' &&
+				((str = check_and_extract(buf + j, 
+					buflen - j,
+					(char*)"host:",
+					sizeof("host:")-1,
+					&strlen)) != NULL))
 			{
 				hostvalid = true;
 				host = str;

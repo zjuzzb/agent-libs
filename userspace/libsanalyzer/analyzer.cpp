@@ -1202,6 +1202,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			if(container->m_memory_cgroup.empty())
+			{
+				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+												[](const pair<string, string>& cgroup)
+												{
+													return cgroup.first == "memory";
+												});
+				if(memory_cgroup_it != tinfo->m_cgroups.cend())
+				{
+					container->m_memory_cgroup = memory_cgroup_it->second;
+				}
+			}
 		}
 
 		//
@@ -1325,18 +1337,36 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 				// Add JMX metrics
-				if (m_jmx_proxy && m_jmx_metrics.find(tinfo->m_pid) != m_jmx_metrics.end())
+				if (m_jmx_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-					const java_process& java_process_data = m_jmx_metrics.at(tinfo->m_pid);
-					draiosproto::java_info* java_proto = proc->mutable_protos()->mutable_java();
-					java_process_data.to_protobuf(java_proto);
+					auto jmx_metrics_it = m_jmx_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
+							++pid_it)
+					{
+						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
+					}
+					if(jmx_metrics_it != m_jmx_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+						auto java_proto = proc->mutable_protos()->mutable_java();
+						jmx_metrics_it->second.to_protobuf(java_proto);
+					}
 				}
-				if(m_app_proxy && app_metrics.find(tinfo->m_pid) != app_metrics.end())
+				if(m_app_proxy)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
-					const auto& app_data = app_metrics.at(tinfo->m_pid);
-					app_checks_limit -= app_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					auto app_data_it = app_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+						pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+						++pid_it)
+					{
+						app_data_it = app_metrics.find(*pid_it);
+					}
+					if(app_data_it != app_metrics.end())
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+						app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+					}
 				}
 #endif
 
@@ -2603,7 +2633,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			if(m_inspector->is_live())
 			{
 				vector<sinsp_procfs_parser::mounted_fs> fs_list;
-				m_procfs_parser->get_mounted_fs_list(&fs_list, m_remotefs_enabled);
+				if(m_mounted_fs_proxy)
+				{
+					fs_list = m_mounted_fs_proxy->get_mounted_fs_list();
+				}
+				else
+				{
+					fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				}
 				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
 					it != fs_list.end(); ++it)
 				{
@@ -3649,7 +3686,16 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 	container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
-	container->mutable_resource_counters()->set_resident_memory_usage_kb(it_analyzer->second.m_metrics.m_res_memory_kb);
+	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_kb;
+	if(!it_analyzer->second.m_memory_cgroup.empty())
+	{
+		auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
+		if(cgroup_memory > 0)
+		{
+			res_memory_kb = cgroup_memory / 1024;
+		}
+	}
+	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
 	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
@@ -4027,4 +4073,15 @@ void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 }
 #endif // _WIN32
 
+void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
+{
+	if(value)
+	{
+		m_mounted_fs_proxy = make_unique<mounted_fs_proxy>();
+	}
+	else
+	{
+		m_mounted_fs_proxy.reset();
+	}
+}
 #endif // HAS_ANALYZER

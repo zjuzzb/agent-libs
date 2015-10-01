@@ -298,6 +298,7 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_a
 {
 	m_inspector = inspector; 
 	m_analyzer = analyzer;
+	m_sinsp_config = analyzer->get_configuration();
 }
 
 bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, 
@@ -501,7 +502,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 #endif // HAS_UNIX_CONNECTIONS
 
 		}
-		else if(fdinfo->is_ipv4_socket())
+		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
 			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 			
@@ -902,7 +903,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			return;
 #endif // HAS_UNIX_CONNECTIONS
 		}
-		else if(fdinfo->is_ipv4_socket())
+		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
 			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 
@@ -1183,7 +1184,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 
 	uint8_t family = *packed_data;
 
-	if(family == PPM_AF_INET || family == PPM_AF_INET6)
+	if((family == PPM_AF_INET || family == PPM_AF_INET6) &&
+			should_report_network(evt->m_fdinfo))
 	{
 		//
 		// Mark this fd as a transaction
@@ -1276,7 +1278,7 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	string scomm = evt->m_tinfo->get_comm();
 	int64_t tid = evt->get_tid();
 
-	if(new_fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+	if(new_fdinfo->m_type == SCAP_FD_IPV4_SOCK && should_report_network(new_fdinfo))
 	{
 		//
 		// Add the tuple to the connection table
@@ -1535,4 +1537,8 @@ analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_thread
 	return &it->second;
 }
 
+bool sinsp_analyzer_fd_listener::should_report_network(sinsp_fdinfo_t *fdinfo)
+{
+	return !m_sinsp_config->get_blacklisted_ports().test(fdinfo->get_serverport());
+}
 #endif // HAS_ANALYZER

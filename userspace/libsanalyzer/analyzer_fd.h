@@ -75,10 +75,12 @@ public:
 	unordered_map<string, analyzer_file_stat> m_files_stat;
 
 private:
+	inline bool should_report_network(sinsp_fdinfo_t* fdinfo);
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
 	void flush_transaction(erase_fd_params* params);
 
 	sinsp* m_inspector; 
 	sinsp_analyzer* m_analyzer;
 	sinsp_proto_detector m_proto_detector;
+	sinsp_configuration* m_sinsp_config;
 };

@@ -11,6 +11,7 @@
 #include "utils.h"
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
+#include <procfs_parser.h>
 
 static void g_signal_callback(int sig)
 {
@@ -32,6 +33,7 @@ static void g_usr2_signal_callback(int sig)
 
 dragent_app::dragent_app(): 
 	m_help_requested(false),
+	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
@@ -114,6 +116,11 @@ void dragent_app::defineOptions(OptionSet& options)
 			.required(false)
 			.repeatable(false)
 			.argument("dragentpid"));
+
+	options.addOption(
+		Option("version", "v", "display version")
+			.required(false)
+			.repeatable(false));
 }
 
 void dragent_app::handleOption(const std::string& name, const std::string& value)
@@ -156,6 +163,10 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_pidfile = value;
 	}
+	else if(name == "version")
+	{
+		m_version_requested = true;
+	}
 }
 
 void dragent_app::displayHelp()
@@ -172,6 +183,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_help_requested)
 	{
 		displayHelp();
+		return Application::EXIT_OK;
+	}
+
+	if(m_version_requested)
+	{
+		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
 
@@ -352,6 +369,29 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
+	}
+	if(m_configuration.m_running_in_container)
+	{
+		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
+		{
+			// Right now we are using default sinsp stderror logger
+			// it does not send priority so we are using a simple euristic
+			if(s.find("Cannot") != string::npos || s.find("error") != string::npos)
+			{
+				g_log->error(s);
+			}
+			else
+			{
+				g_log->information(s);
+			}
+		});
+		monitor_process.emplace_process("mountedfs_reader", [this](void)
+		{
+			m_mounted_fs_reader_pipe->attach_child();
+			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
+			return proc.run();
+		});
 	}
 	return monitor_process.run();
 #else
