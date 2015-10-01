@@ -444,9 +444,9 @@ return;
 #endif // _WIN32
 }
 
-vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
 {
-	vector<sinsp_procfs_parser::mounted_fs> ret;
+	vector<mounted_fs> ret;
 #ifndef _WIN32
 	FILE* fp = setmntent("/etc/mtab", "r");
 	if(fp == NULL)
@@ -642,7 +642,7 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
-sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
+mounted_fs::mounted_fs(const Json::Value &json):
 	device(json["device"].asString()),
 	mount_dir(json["mount_dir"].asString()),
 	type(json["type"].asString()),
@@ -653,7 +653,17 @@ sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
 
 }
 
-Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
+void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs)
+{
+	fs->set_device(device);
+	fs->set_mount_dir(mount_dir);
+	fs->set_type(type);
+	fs->set_size_bytes(size_bytes);
+	fs->set_used_bytes(used_bytes);
+	fs->set_available_bytes(available_bytes);
+}
+
+Json::Value mounted_fs::to_json() const
 {
 	Json::Value ret;
 	ret["device"] = device;
@@ -666,32 +676,59 @@ Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE)
+	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
+	m_output("/mounted_fs_reader_in", posix_queue::direction_t::SEND)
 {
 
 }
 
-const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_list()
+unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
+	unordered_map<string, vector<mounted_fs>> fs_map;
 	auto msg = m_input.receive();
 	while(!msg.empty())
 	{
-		Json::Value json;
-		bool parsed = m_json_reader.parse(msg, json);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
+		Json::Value response_j;
+		bool parsed = m_json_reader.parse(msg, response_j);
 		if(parsed)
 		{
-			m_fs_list.clear();
-			for(unsigned j = 0; j < json.size(); ++j)
+			cerr << __FUNCTION__ << ":" << __LINE__ << endl;
+			for(unsigned j = 0; j < response_j.size(); ++j)
 			{
-				m_fs_list.emplace_back(json[j]);
+				auto container_j = response_j[j];
+				auto id = container_j["id"].asString();
+				auto fslist_j = container_j["fslist"];
+				vector<mounted_fs> fslist;
+				for(unsigned k = 0; k < fslist_j.size(); ++k)
+				{
+					fslist.emplace_back(fslist_j[k]);
+				}
+				fs_map.emplace(move(id), move(fslist));
 			}
+			cerr << __FUNCTION__ << ":" << __LINE__ << endl;
 		}
 		msg = m_input.receive();
 	}
-	return m_fs_list;
+	return fs_map;
+}
+
+bool mounted_fs_proxy::send_container_list(const vector<pair<string, pid_t>> &containers)
+{
+	auto containers_j = Json::Value(Json::arrayValue);
+	for(const auto& item : containers)
+	{
+		auto container_j = Json::Value(Json::objectValue);
+		container_j["id"] = item.first;
+		container_j["pid"] = item.second;
+		containers_j.append(container_j);
+	}
+	auto containers_s = m_json_writer.write(containers_j);
+	return m_output.send(containers_s);
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
+	m_input("/mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
 	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
@@ -699,37 +736,92 @@ mounted_fs_reader::mounted_fs_reader(bool remotefs):
 	g_logger.add_stderr_log();
 }
 
-int mounted_fs_reader::run()
+int mounted_fs_reader::open_ns_fd(int pid)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/1/ns/mnt", scap_get_host_root());
-	auto fd = open(filename, O_RDONLY);
-	if(fd > 0)
-	{
-		auto ret = setns(fd, CLONE_NEWNS);
-		close(fd);
-		if(ret != 0)
-		{
-			g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
-			return 17;
-		}
-	}
-	else
+	snprintf(filename, sizeof(filename), "%s/proc/%u/ns/mnt", scap_get_host_root(), pid);
+	return open(filename, O_RDONLY);
+}
+
+bool mounted_fs_reader::change_ns(int destpid)
+{
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Set to ns pid %d", destpid);
+	// Go to container mnt ns
+	auto fd = open_ns_fd(destpid);
+	if(fd <= 0)
 	{
 		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
-		return 17;
+		return false;
 	}
-	g_logger.log("Starting mounted_fs_reader", sinsp_logger::SEV_INFO);
+	if(setns(fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
+int mounted_fs_reader::run()
+{
+	auto pid = getpid();
+	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
+	auto home_fd = open_ns_fd(pid);
+	if(home_fd <= 0)
+	{
+		return DONT_RESTART_EXIT;
+	}
 	while(true)
 	{
-		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
-		auto fs_list_json = Json::Value(Json::arrayValue);
-		for(const auto& fs : fs_list)
+		auto request_s = m_input.receive(1);
+		if(!request_s.empty())
 		{
-			fs_list_json.append(fs.to_json());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent: %s", request_s.c_str());
+			Json::Value request_j;
+			auto parsed_ok = m_json_reader.parse(request_s, request_j);
+			if(parsed_ok)
+			{
+				auto response_j = Json::Value(Json::arrayValue);
+				for(unsigned j = 0; j < request_j.size(); ++j)
+				{
+					// Extract container info
+					auto container_j = request_j[j];
+					auto container_pid = container_j["pid"].asUInt();
+					auto container_id = container_j["id"].asString();
+
+					// Go to container mnt ns
+					auto changed = change_ns(container_pid);
+					if(changed)
+					{
+						try
+						{
+							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
+							auto fs_list_json = Json::Value(Json::arrayValue);
+							for(const auto& fs : fs_list)
+							{
+								fs_list_json.append(fs.to_json());
+							}
+							auto container_response_j = Json::Value(Json::objectValue);
+							container_response_j["id"] = container_id;
+							container_response_j["fslist"] = fs_list_json;
+							request_j.append(container_response_j);
+						}
+						catch (const sinsp_exception& ex)
+						{
+							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_id.c_str(), container_pid, ex.what());
+						}
+					}
+					// Back home
+					if(setns(home_fd, CLONE_NEWNS) != 0)
+					{
+						g_logger.log("Cannot setns home, exiting", sinsp_logger::SEV_ERROR);
+						return ERROR_EXIT;
+					};
+				}
+				auto response_s = m_json_writer.write(response_j);
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Sending to dragent: %s", response_s.c_str());
+				m_output.send(response_s);
+			}
 		}
-		auto msg = m_json_writer.write(fs_list_json);
-		m_output.send(msg);
-		sleep(1);
 	}
 }
