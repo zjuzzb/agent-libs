@@ -373,12 +373,16 @@
       <File Name="src/json/json-forwards.h"/>
     </VirtualDirectory>
     <File Name="src/draios.pb.cpp"/>
-    <File Name="src/kubernetes.cpp"/>
     <File Name="src/draios.pb.h"/>
-    <File Name="src/kubernetes.h"/>
     <File Name="src/jsoncpp.cpp"/>
     <File Name="src/kubeget.cpp"/>
     <File Name="Makefile" ExcludeProjConfig="Debug"/>
+    <File Name="src/k8s_component.h"/>
+    <File Name="src/k8s_component.cpp"/>
+    <File Name="src/k8s_net.cpp"/>
+    <File Name="src/k8s_net.h"/>
+    <File Name="src/k8s.cpp"/>
+    <File Name="src/k8s.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
@@ -398,7 +402,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="bin/Linux/x86_64/static/kubegetd" CommandArguments="https://vagrant:vagrant@10.245.1.2" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)]]>
