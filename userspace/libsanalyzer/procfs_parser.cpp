@@ -444,14 +444,14 @@ return;
 #endif // _WIN32
 }
 
-vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled, const string& mtab)
 {
 	vector<mounted_fs> ret;
 #ifndef _WIN32
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
 	{
-		throw sinsp_exception("error opening /etc/mtab");
+		throw sinsp_exception("error opening " + mtab);
 	}
 
 	while(true)
@@ -693,20 +693,17 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 		bool parsed = m_json_reader.parse(msg, response_j);
 		if(parsed)
 		{
-			cerr << __FUNCTION__ << ":" << __LINE__ << endl;
-			for(unsigned j = 0; j < response_j.size(); ++j)
+			for(const auto& container_j : response_j)
 			{
-				auto container_j = response_j[j];
 				auto id = container_j["id"].asString();
 				auto fslist_j = container_j["fslist"];
 				vector<mounted_fs> fslist;
-				for(unsigned k = 0; k < fslist_j.size(); ++k)
+				for(auto fs_j : fslist_j)
 				{
-					fslist.emplace_back(fslist_j[k]);
+					fslist.emplace_back(fs_j);
 				}
 				fs_map.emplace(move(id), move(fslist));
 			}
-			cerr << __FUNCTION__ << ":" << __LINE__ << endl;
 		}
 		msg = m_input.receive();
 	}
@@ -782,10 +779,10 @@ int mounted_fs_reader::run()
 			if(parsed_ok)
 			{
 				auto response_j = Json::Value(Json::arrayValue);
-				for(unsigned j = 0; j < request_j.size(); ++j)
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_j.size());
+				for(const auto& container_j : request_j)
 				{
 					// Extract container info
-					auto container_j = request_j[j];
 					auto container_pid = container_j["pid"].asUInt();
 					auto container_id = container_j["id"].asString();
 
@@ -795,7 +792,7 @@ int mounted_fs_reader::run()
 					{
 						try
 						{
-							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
+							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, "/proc/1/mounts");
 							auto fs_list_json = Json::Value(Json::arrayValue);
 							for(const auto& fs : fs_list)
 							{
@@ -804,7 +801,7 @@ int mounted_fs_reader::run()
 							auto container_response_j = Json::Value(Json::objectValue);
 							container_response_j["id"] = container_id;
 							container_response_j["fslist"] = fs_list_json;
-							request_j.append(container_response_j);
+							response_j.append(container_response_j);
 						}
 						catch (const sinsp_exception& ex)
 						{
@@ -819,7 +816,6 @@ int mounted_fs_reader::run()
 					};
 				}
 				auto response_s = m_json_writer.write(response_j);
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Sending to dragent: %s", response_s.c_str());
 				m_output.send(response_s);
 			}
 		}

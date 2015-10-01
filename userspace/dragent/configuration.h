@@ -336,7 +336,7 @@ public:
 	ports_set m_known_server_ports;
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
-	bool m_running_in_container;
+	bool m_system_supports_containers;
 
 	bool java_present()
 	{

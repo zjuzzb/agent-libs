@@ -285,6 +285,8 @@ public:
 		m_container_patterns = patterns;
 	}
 
+	void set_fs_usage_from_external_proc(bool value);
+
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
