@@ -3739,6 +3739,15 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
+	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
+	if(fs_list != m_mounted_fs_map.end())
+	{
+		for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+		{
+			auto proto_fs = container->add_mounts();
+			it->to_protobuf(proto_fs);
+		}
+	}
 }
 
 void sinsp_analyzer::get_statsd()
