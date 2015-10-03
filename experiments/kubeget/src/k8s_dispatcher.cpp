@@ -163,14 +163,14 @@ void k8s_dispatcher::dispatch()
 						throw std::invalid_argument(os.str());
 					}
 				}
-				++it;
+				// TODO: update master state
 			}
 			else
 			{
 				// TODO: bad value found - discard silently?
-				it = m_messages.erase(it);
 				std::cout << "Bad message received." << std::endl;
 			}
+			it = m_messages.erase(it);
 		}
 		else
 		{
