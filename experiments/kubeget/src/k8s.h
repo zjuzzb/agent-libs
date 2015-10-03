@@ -13,6 +13,9 @@
 #include "google/protobuf/text_format.h"
 #include <sstream>
 #include <utility>
+#include <mutex>
+
+class k8s_dispatcher;
 
 class k8s
 {
@@ -26,9 +29,11 @@ public:
 
 	~k8s();
 
-	const draiosproto::k8s_state& get_proto();
+	const draiosproto::k8s_state& get_proto(bool watch = true);
 
 	std::size_t count(k8s_component::type component) const;
+
+	void on_watch_data(const k8s_net::event_args& msg);
 
 private:
 	void init();
@@ -38,8 +43,6 @@ private:
 		Poco::Net::HTTPResponse& response,
 		const k8s_component::component_map::value_type& component);
 
-	void add_object_entry(k8s_component::type component, const std::string& name, k8s_pair_s&& p);
-
 	// extracts labels or selectors
 	void extract_object(k8s_component::type component, const Json::Value& object, const std::string& name);
 
@@ -48,8 +51,6 @@ private:
 	void extract_pods_data(const Json::Value& item);
 
 	void extract_pod_containers(const Json::Value& item);
-
-	void add_common_single_value(k8s_component::type component, const std::string& name, const std::string& uid, const std::string& ns = "");
 
 	void extract_data(const Json::Value& items, k8s_component::type component);
 
@@ -84,9 +85,18 @@ private:
 
 	void parse_json(const std::string& json, const k8s_component::component_map::value_type& component);
 
-	k8s_net                                   m_net;
-	draiosproto::k8s_state&                   m_k8s_state;
-	bool                                      m_own_state;
-	k8s_state_s                               m_state;
+	// due to deleted default dispatcher constructor, g++ has trouble instantiating map with values,
+	// so we have to go with the forward declaration above and pointers here ...
+	typedef std::map<k8s_component::type, k8s_dispatcher*> dispatch_map;
+
+	static dispatch_map make_dispatch_map(k8s_state_s& state);
+
+	k8s_net                 m_net;
+	draiosproto::k8s_state& m_proto;
+	bool                    m_own_proto;
+	k8s_state_s             m_state;
+	dispatch_map            m_dispatch;
+	std::mutex              m_mutex;
+
 	static const k8s_component::component_map m_components;
 };

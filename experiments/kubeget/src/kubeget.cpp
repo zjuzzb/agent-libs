@@ -31,15 +31,16 @@ int main(int argc, char** argv)
 		Stopwatch sw;
 		sw.start();
 		k8s kube(uri, api);
-		kube.get_proto();
+		kube.get_proto(/*false*/);
 		sw.stop();
-		std::cout << kube.get_proto().DebugString() << std::endl;
+		//std::cout << kube.get_proto(false).DebugString() << std::endl;
 		std::cout << "JSON fetched, parsed and protobuf populated in " << sw.elapsed() / 1000 << " [ms]" << std::endl;
 		std::cout << "Nodes:\t\t" << kube.count(k8s_component::K8S_NODES) << std::endl;
 		std::cout << "Namespaces:\t" << kube.count(k8s_component::K8S_NAMESPACES) << std::endl;
 		std::cout << "Pods:\t\t" << kube.count(k8s_component::K8S_PODS) << std::endl;
 		std::cout << "Controllers:\t" << kube.count(k8s_component::K8S_REPLICATIONCONTROLLERS) << std::endl;
 		std::cout << "Services:\t" << kube.count(k8s_component::K8S_SERVICES) << std::endl;
+		sleep(100);
 	}
 	catch (Exception& exc)
 	{

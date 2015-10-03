@@ -5,11 +5,13 @@
 
 #include "k8s.h"
 #include "k8s_component.h"
+#include "k8s_dispatcher.h"
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
 #include <sstream>
 #include <utility>
 #include <memory>
+#include <algorithm>
 #include <iostream>
 
 
@@ -18,45 +20,64 @@ using namespace draiosproto;
 
 const k8s_component::component_map k8s::m_components =
 {
-	{ k8s_component::K8S_NODES, "nodes" },
-	{ k8s_component::K8S_NAMESPACES, "namespaces" },
-	{ k8s_component::K8S_PODS, "pods" },
+	{ k8s_component::K8S_NODES,                  "nodes"                  },
+	{ k8s_component::K8S_NAMESPACES,             "namespaces"             },
+	{ k8s_component::K8S_PODS,                   "pods"                   },
 	{ k8s_component::K8S_REPLICATIONCONTROLLERS, "replicationcontrollers" },
-	{ k8s_component::K8S_SERVICES, "services" }
+	{ k8s_component::K8S_SERVICES,               "services"               }
 };
 
 
-k8s::k8s(const std::string& uri, const std::string& api) : m_net(uri, api),
-		m_k8s_state(*new draiosproto::k8s_state),
-		m_own_state(true)
+k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state)
+{
+	return dispatch_map
+	{
+		{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES, state)                  },
+		{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES, state)             },
+		{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS, state)                   },
+		{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state) },
+		{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES, state)               }
+	};
+}
+
+
+k8s::k8s(const std::string& uri, const std::string& api) : m_net(*this, uri, api),
+		m_proto(*new draiosproto::k8s_state),
+		m_own_proto(true),
+		m_dispatch(make_dispatch_map(m_state))
 {
 	init();
 }
 
 k8s::k8s(draiosproto::metrics& met,
 	const std::string& uri,
-	const std::string& api) : m_net(uri, api),
-		m_k8s_state(*met.mutable_kubernetes()),
-		m_own_state(false)
+	const std::string& api) : m_net(*this, uri, api),
+		m_proto(*met.mutable_kubernetes()),
+		m_own_proto(false),
+		m_dispatch(make_dispatch_map(m_state))
 {
 	init();
 }
 
 k8s::~k8s()
 {
-	if (m_own_state)
+	m_net.stop();
+	for (auto& update : m_dispatch)
 	{
-		delete &m_k8s_state;
+		delete update.second;
+	}
+
+	if (m_own_proto)
+	{
+		delete &m_proto;
 	}
 }
 
 void k8s::init()
 {
-	//subscribe();
-	//m_dispatch_thread.join();
 }
 
-const draiosproto::k8s_state& k8s::get_proto()
+const draiosproto::k8s_state& k8s::get_proto(bool watch)
 {
 	std::ostringstream os;
 	for (auto& component : m_components)
@@ -66,7 +87,17 @@ const draiosproto::k8s_state& k8s::get_proto()
 		os.str("");
 	}
 	make_protobuf();
-	return m_k8s_state;
+	if (watch)
+	{
+		m_net.start();
+	}
+	return m_proto;
+}
+
+void k8s::on_watch_data(const k8s_net::event_args& msg)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_dispatch[msg.component()]->enqueue(msg.data());
 }
 
 std::size_t k8s::count(k8s_component::type component) const
@@ -93,11 +124,6 @@ std::size_t k8s::count(k8s_component::type component) const
 		Poco::format("Unknown component [%d]", static_cast<int>(component)));
 }
 
-void k8s::add_object_entry(k8s_component::type component, const std::string& name, k8s_pair_s&& p)
-{
-	m_state.emplace_item(component, name, std::forward<k8s_pair_s>(p));
-}
-
 // extracts labels or selectors
 void k8s::extract_object(k8s_component::type component, const Json::Value& object, const std::string& name)
 {
@@ -112,7 +138,7 @@ void k8s::extract_object(k8s_component::type component, const Json::Value& objec
 				Json::Value val = entries[member];
 				if (!val.isNull())
 				{
-					add_object_entry(component, name, k8s_pair_s(member, val.asString()));
+					m_state.emplace_item(component, name, k8s_pair_s(member, val.asString()));
 				}
 			}
 		}
@@ -197,15 +223,12 @@ void k8s::extract_pod_containers(const Json::Value& item)
 	}
 }
 
-void k8s::add_common_single_value(k8s_component::type component, const std::string& name, const std::string& uid, const std::string& ns)
-{
-	m_state.add_common_single_value(component, name, uid, ns);
-}
-
 void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 {
 	if (items.isArray())
 	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
 		for (auto& item : items)
 		{
 			Json::Value obj = item["metadata"];
@@ -217,8 +240,7 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				{
 					nspace = ns.asString();
 				}
-				add_common_single_value(component, obj["name"].asString(), obj["uid"].asString(), nspace);
-
+				m_state.add_common_single_value(component, obj["name"].asString(), obj["uid"].asString(), nspace);
 
 				Json::Value metadata = item["metadata"];
 				if (!metadata.isNull())
@@ -249,12 +271,12 @@ void k8s::make_protobuf()
 {
 	for (auto& ns : m_state.get_namespaces())
 	{
-		populate_component(ns, m_k8s_state.add_namespaces(), k8s_component::K8S_NAMESPACES);
+		populate_component(ns, m_proto.add_namespaces(), k8s_component::K8S_NAMESPACES);
 	}
 
 	for (auto& node : m_state.get_nodes())
 	{
-		k8s_node* nodes = m_k8s_state.add_nodes();
+		k8s_node* nodes = m_proto.add_nodes();
 		populate_component(node, nodes, k8s_component::K8S_NODES);
 		for (auto& host_ip : node.get_host_ips())
 		{
@@ -265,7 +287,7 @@ void k8s::make_protobuf()
 
 	for (auto& pod : m_state.get_pods())
 	{
-		k8s_pod* pods = m_k8s_state.add_pods();
+		k8s_pod* pods = m_proto.add_pods();
 		populate_component(pod, pods, k8s_component::K8S_PODS);
 		for (auto& container_id : pod.get_container_ids())
 		{
@@ -279,12 +301,12 @@ void k8s::make_protobuf()
 
 	for (auto& rc : m_state.get_rcs())
 	{
-		populate_component(rc, m_k8s_state.add_controllers(), k8s_component::K8S_REPLICATIONCONTROLLERS);
+		populate_component(rc, m_proto.add_controllers(), k8s_component::K8S_REPLICATIONCONTROLLERS);
 	}
 
 	for (auto& service : m_state.get_services())
 	{
-		populate_component(service, m_k8s_state.add_services(), k8s_component::K8S_SERVICES);
+		populate_component(service, m_proto.add_services(), k8s_component::K8S_SERVICES);
 	}
 }
 
@@ -295,7 +317,18 @@ void k8s::parse_json(const std::string& json, const k8s_component::component_map
 	if (reader.parse(json, root, false))
 	{
 		Json::Value items = root["items"];
-		extract_data(items, component.first);
-		//std::cout << std::endl << root.toStyledString() << std::endl;
+		if (!root.isNull())
+		{
+			extract_data(items, component.first);
+			//std::cout << std::endl << root.toStyledString() << std::endl;
+		}
+		else
+		{
+			throw std::invalid_argument("Invalid JSON");
+		}
+	}
+	else
+	{
+		throw std::runtime_error("JSON parsing failed");
 	}
 }

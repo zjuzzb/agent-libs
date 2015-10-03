@@ -6,7 +6,7 @@
   </Environment>
   <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="Yes"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="no">
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
       <Project Name="dragent" ConfigName="Debug"/>
       <Project Name="kubeget" ConfigName="Debug"/>
     </WorkspaceConfiguration>

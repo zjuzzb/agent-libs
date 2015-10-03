@@ -383,6 +383,8 @@
     <File Name="src/k8s_net.h"/>
     <File Name="src/k8s.cpp"/>
     <File Name="src/k8s.h"/>
+    <File Name="src/k8s_dispatcher.cpp"/>
+    <File Name="src/k8s_dispatcher.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

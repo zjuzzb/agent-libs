@@ -5,12 +5,14 @@
 
 #include "k8s_net.h"
 #include "k8s_component.h"
+#include "k8s.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/KeyConsoleHandler.h"
 #include "Poco/Net/ConsoleCertificateHandler.h"
 #include "Poco/Net/NetException.h"
 #include "Poco/String.h"
 #include "Poco/Delegate.h"
+#include "Poco/EventArgs.h"
 #include <sstream>
 #include <utility>
 #include <memory>
@@ -38,6 +40,7 @@ using Poco::Path;
 using Poco::format;
 using Poco::replaceInPlace;
 using Poco::delegate;
+using Poco::EventArgs;
 using Poco::Exception;
 
 
@@ -56,22 +59,12 @@ public:
 };
 
 
-const k8s_component::component_map k8s_net::m_components =
-{
-	{ k8s_component::K8S_NODES, "nodes" },
-	{ k8s_component::K8S_NAMESPACES, "namespaces" },
-	{ k8s_component::K8S_PODS, "pods" },
-	{ k8s_component::K8S_REPLICATIONCONTROLLERS, "replicationcontrollers" },
-	{ k8s_component::K8S_SERVICES, "services" }
-};
-
-
-k8s_net::k8s_net(const std::string& uri, const std::string& api) :
+k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_k8s(kube),
 		m_uri(uri + api),
 		m_credentials(0),
 		m_session(0),
 		m_dispatcher(*this, &k8s_net::dispatch_events),
-		m_stopped(false)
+		m_stopped(true)
 {
 	init();
 }
@@ -98,9 +91,6 @@ void k8s_net::init()
 	}
 	
 	m_session = get_http_session();
-
-	//subscribe();
-	//m_dispatch_thread.join();
 }
 
 HTTPClientSession* k8s_net::get_http_session()
@@ -125,10 +115,21 @@ HTTPClientSession* k8s_net::get_http_session()
 	}
 }
 
+void k8s_net::start()
+{
+	if (m_stopped)
+	{
+		subscribe();
+		m_stopped = false;
+		std::cout << "TYPE ID: " << typeid(&k8s_net::on_watch_data).name() << std::endl;
+		m_dispatch_thread.start(m_dispatcher);
+	}
+}
+	
 void k8s_net::subscribe()
 {
 	std::string path;
-	for (auto& component : m_components)
+	for (auto& component : k8s_component::list)
 	{
 		path = m_uri.toString() +  "watch/" + component.second;
 		std::cout << "Connecting to " << path << std::endl;
@@ -155,22 +156,45 @@ void k8s_net::subscribe()
 				}
 			}
 		}
-		m_sockets.emplace_back(session->detachSocket());
+		m_sockets[session->detachSocket()] = component.first;
 	}
 	std::cout << "Watching " << m_sockets.size() << " sockets." << std::endl;
-	m_watch_event += delegate(this, &k8s_net::on_watch_data);
-	m_dispatch_thread.start(m_dispatcher);
+}
+
+void k8s_net::stop()
+{
+	if (!m_stopped)
+	{
+		m_stopped = true;
+		m_dispatch_thread.join();
+		unsubscribe();
+	}
+}
+	
+void k8s_net::unsubscribe()
+{
+	for (auto& socket : m_sockets)
+	{
+		socket.first.impl()->shutdown();
+		socket.first.impl()->close();
+	}
 }
 
 void k8s_net::dispatch_events()
 {
+	Poco::Net::Socket::SocketList sockets;
+	for (auto& socket : m_sockets)
+	{
+		sockets.push_back(socket.first);
+	}
+
 	while (!m_stopped)
 	{
 		try
 		{
-			Poco::Net::Socket::SocketList readList(m_sockets);
+			Poco::Net::Socket::SocketList readList(sockets);
 			Poco::Net::Socket::SocketList writeList;
-			Poco::Net::Socket::SocketList exceptList(m_sockets);
+			Poco::Net::Socket::SocketList exceptList(sockets);
 		
 			Poco::Timespan timeout(500);
 			int n = Poco::Net::Socket::select(readList, writeList, exceptList, timeout);
@@ -183,13 +207,12 @@ void k8s_net::dispatch_events()
 					int c = it->impl()->receiveBytes(buf, len);
 					if (c > 0)
 					{
-						std::string data(buf, c);
-						m_watch_event.notifyAsync(this, data);
+						m_k8s.on_watch_data(event_args(m_sockets[*it], buf, c));
 					}
 				}
 			}
-			readList = m_sockets;
-			exceptList = m_sockets;
+			readList = sockets;
+			exceptList = sockets;
 		}
 		catch (Poco::Exception& exc)
 		{
@@ -198,9 +221,9 @@ void k8s_net::dispatch_events()
 	}
 }
 
-void k8s_net::on_watch_data(const void*, const std::string& data)
+void k8s_net::on_watch_data(const void*, event_args& msg)
 {
-	std::cout << data << std::flush;
+	std::cout << msg.component() << ':' << msg.data() << std::flush;
 }
 
 void k8s_net::get_all_data(const k8s_component::component_map::value_type& component, std::ostream& out)
