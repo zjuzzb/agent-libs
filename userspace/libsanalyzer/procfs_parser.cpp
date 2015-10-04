@@ -444,11 +444,10 @@ return;
 #endif // _WIN32
 }
 
-void sinsp_procfs_parser::get_mounted_fs_list(vector<mounted_fs>* fs_list, bool remotefs_enabled)
+vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
 {
-#ifdef _WIN32
-return;
-#else
+	vector<sinsp_procfs_parser::mounted_fs> ret;
+#ifndef _WIN32
 	FILE* fp = setmntent("/etc/mtab", "r");
 	if(fp == NULL)
 	{
@@ -530,11 +529,12 @@ return;
 		fs.size_bytes = blocksize * statfs.f_blocks; 
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 
-		fs_list->push_back(fs);
+		ret.emplace_back(move(fs));
 	}
 
 	endmntent(fp);
 #endif
+	return ret;
 }
 
 vector<string> sinsp_procfs_parser::read_process_cmdline(uint64_t pid)
@@ -639,5 +639,97 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	{
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
 		m_memory_cgroup_dir = make_unique<string>();
+	}
+}
+
+sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
+	device(json["device"].asString()),
+	mount_dir(json["mount_dir"].asString()),
+	type(json["type"].asString()),
+	size_bytes(json["size_bytes"].asUInt64()),
+	used_bytes(json["used_bytes"].asUInt64()),
+	available_bytes(json["available_bytes"].asUInt64())
+{
+
+}
+
+Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
+{
+	Json::Value ret;
+	ret["device"] = device;
+	ret["mount_dir"] = mount_dir;
+	ret["type"] = type;
+	ret["size_bytes"] = static_cast<Json::UInt64>(size_bytes);
+	ret["used_bytes"] = static_cast<Json::UInt64>(used_bytes);
+	ret["available_bytes"] = static_cast<Json::UInt64>(available_bytes);
+	return ret;
+}
+
+mounted_fs_proxy::mounted_fs_proxy():
+	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE)
+{
+
+}
+
+const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_list()
+{
+	auto msg = m_input.receive();
+	while(!msg.empty())
+	{
+		Json::Value json;
+		bool parsed = m_json_reader.parse(msg, json);
+		if(parsed)
+		{
+			m_fs_list.clear();
+			for(unsigned j = 0; j < json.size(); ++j)
+			{
+				m_fs_list.emplace_back(json[j]);
+			}
+		}
+		msg = m_input.receive();
+	}
+	return m_fs_list;
+}
+
+mounted_fs_reader::mounted_fs_reader(bool remotefs):
+	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
+	m_procfs_parser(0, 0, true),
+	m_remotefs(remotefs)
+{
+	g_logger.add_stderr_log();
+}
+
+int mounted_fs_reader::run()
+{
+	char filename[SCAP_MAX_PATH_SIZE];
+	snprintf(filename, sizeof(filename), "%s/proc/1/ns/mnt", scap_get_host_root());
+	auto fd = open(filename, O_RDONLY);
+	if(fd > 0)
+	{
+		auto ret = setns(fd, CLONE_NEWNS);
+		close(fd);
+		if(ret != 0)
+		{
+			g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
+			return 17;
+		}
+	}
+	else
+	{
+		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
+		return 17;
+	}
+	g_logger.log("Starting mounted_fs_reader", sinsp_logger::SEV_INFO);
+	while(true)
+	{
+		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
+		auto fs_list_json = Json::Value(Json::arrayValue);
+		for(const auto& fs : fs_list)
+		{
+			fs_list_json.append(fs.to_json());
+		}
+		auto msg = m_json_writer.write(fs_list_json);
+		m_output.send(msg);
+		sleep(1);
 	}
 }
