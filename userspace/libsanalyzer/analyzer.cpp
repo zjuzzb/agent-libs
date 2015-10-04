@@ -3384,6 +3384,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 			metrics->m_wait_other.add(cnt_delta, delta);
 			break;
 		case EC_SCHEDULER:
+		case EC_INTERNAL:
 			break;
 		default:
 			ASSERT(false);
