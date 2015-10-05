@@ -383,7 +383,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			else
 			{
-				g_log->information(s);
+				g_log->debug(s);
 			}
 		});
 		monitor_process.emplace_process("mountedfs_reader", [this](void)

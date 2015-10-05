@@ -690,7 +690,7 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	{
 		fs_map.clear();
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
+		// g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
 		Json::Value response_j;
 		bool parsed = m_json_reader.parse(msg, response_j);
 		if(parsed)
