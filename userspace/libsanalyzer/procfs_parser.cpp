@@ -739,7 +739,7 @@ mounted_fs_reader::mounted_fs_reader(bool remotefs):
 int mounted_fs_reader::open_ns_fd(int pid)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/%u/ns/mnt", scap_get_host_root(), pid);
+	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
 	return open(filename, O_RDONLY);
 }
 
@@ -750,12 +750,12 @@ bool mounted_fs_reader::change_ns(int destpid)
 	auto fd = open_ns_fd(destpid);
 	if(fd <= 0)
 	{
-		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot open namespace fd for pid=%d", destpid);
 		return false;
 	}
 	if(setns(fd, CLONE_NEWNS) != 0)
 	{
-		g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot setns to pid=%d", destpid);
 		return false;
 	}
 	close(fd);
