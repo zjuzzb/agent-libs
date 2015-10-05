@@ -2665,7 +2665,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
-			else
+			else if(m_inspector->is_live()) // When not live, fs stats break regression tests causing false positives
 			{
 				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
 				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
