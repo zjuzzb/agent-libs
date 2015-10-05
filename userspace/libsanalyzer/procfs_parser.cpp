@@ -712,14 +712,15 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	return fs_map;
 }
 
-bool mounted_fs_proxy::send_container_list(const vector<pair<string, pid_t>> &containers)
+bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
 {
 	auto containers_j = Json::Value(Json::arrayValue);
 	for(const auto& item : containers)
 	{
 		auto container_j = Json::Value(Json::objectValue);
-		container_j["id"] = item.first;
-		container_j["pid"] = item.second;
+		container_j["id"] = get<0>(item);
+		container_j["pid"] = get<1>(item);
+		container_j["vpid"] = get<2>(item);
 		containers_j.append(container_j);
 	}
 	auto containers_s = m_json_writer.write(containers_j);
@@ -786,6 +787,7 @@ int mounted_fs_reader::run()
 				{
 					// Extract container info
 					auto container_pid = container_j["pid"].asUInt();
+					auto container_vpid = container_j["vpid"].asUInt();
 					auto container_id = container_j["id"].asString();
 
 					// Go to container mnt ns
@@ -794,7 +796,9 @@ int mounted_fs_reader::run()
 					{
 						try
 						{
-							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, "/proc/1/mounts");
+							char filename[SCAP_MAX_PATH_SIZE];
+							snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
+							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
 							auto fs_list_json = Json::Value(Json::arrayValue);
 							for(const auto& fs : fs_list)
 							{

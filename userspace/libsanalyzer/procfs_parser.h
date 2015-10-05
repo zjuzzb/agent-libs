@@ -70,12 +70,13 @@ private:
 	uint64_t m_old_global_work_jiffies;
 };
 
+
 class mounted_fs_proxy
 {
 public:
 	explicit mounted_fs_proxy();
 	unordered_map<string, vector<mounted_fs>> receive_mounted_fs_list();
-	bool send_container_list(const vector<pair<string, pid_t>>& containers);
+	bool send_container_list(const vector<tuple<string, pid_t, pid_t>>& containers);
 private:
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;

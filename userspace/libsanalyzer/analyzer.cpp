@@ -617,8 +617,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
-		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
 			m_my_cpuload,
@@ -1190,13 +1190,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(m_mounted_fs_proxy)
 		{
-			vector<pair<string, pid_t>> containers_for_mounted_fs;
+			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
-				containers_for_mounted_fs.emplace_back(it->first, it->second.front()->m_pid);
+				containers_for_mounted_fs.emplace_back(it->first, it->second.front()->m_pid,
+													   it->second.front()->m_vpid);
 			}
 			// Add host
-			containers_for_mounted_fs.emplace_back("host", 1);
+			containers_for_mounted_fs.emplace_back("host", 1, 1);
 			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
 	}
