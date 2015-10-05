@@ -676,8 +676,8 @@ Json::Value mounted_fs::to_json() const
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
-	m_output("/mounted_fs_reader_in", posix_queue::direction_t::SEND)
+	m_input("/sdc_mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_in", posix_queue::direction_t::SEND)
 {
 
 }
@@ -728,8 +728,8 @@ bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
-	m_input("/mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
-	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
+	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
 {

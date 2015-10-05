@@ -282,8 +282,8 @@ class Application:
         logging.getLogger("requests").setLevel(logging.WARNING)
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
-        self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
-        self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND)
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
 

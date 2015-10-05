@@ -17,6 +17,9 @@ public:
 	{
 		SEND = O_WRONLY, RECEIVE = O_RDONLY
 	};
+	/**
+	 * @param name use format: sdc_<module>_{in|out}
+	 */
 	posix_queue(std::string name, direction_t dir, long maxmsgs=MAX_MSGS);
 	~posix_queue();
 

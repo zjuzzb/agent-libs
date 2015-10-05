@@ -11,6 +11,7 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
 	m_name(move(name))
 {
+	ASSERT(name.size() <= NAME_MAX);
 	if(!set_queue_limits())
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot increase posix queue limits");
