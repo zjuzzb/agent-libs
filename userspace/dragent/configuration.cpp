@@ -306,7 +306,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
-	g_log->information("Running inside container: " + bool_as_text(m_system_supports_containers));
+	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 
 	if(!m_blacklisted_ports.empty())
 	{
