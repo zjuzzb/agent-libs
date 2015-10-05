@@ -15,9 +15,15 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot increase posix queue limits");
 	}
-	int flags = dir | O_NONBLOCK | O_CREAT;
-	struct mq_attr queue_attrs;
-	queue_attrs.mq_flags = O_NONBLOCK;
+	int flags = dir | O_CREAT;
+	struct mq_attr queue_attrs = {0};
+	if(m_direction == SEND)
+	{
+		// We need non_blocking mode only for send
+		// on receive we use a timeout
+		flags |= O_NONBLOCK;
+		queue_attrs.mq_flags = O_NONBLOCK;
+	}
 	queue_attrs.mq_maxmsg = maxmsgs;
 	queue_attrs.mq_msgsize = MAX_MSGSIZE;
 	queue_attrs.mq_curmsgs = 0;
@@ -30,7 +36,10 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 
 posix_queue::~posix_queue()
 {
-	mq_close(m_queue_d);
+	if(m_queue_d > 0)
+	{
+		mq_close(m_queue_d);
+	}
 }
 
 bool posix_queue::send(const string &msg)
@@ -58,25 +67,12 @@ bool posix_queue::send(const string &msg)
 	}
 }
 
-string posix_queue::receive()
-{
-	char msgbuffer[MAX_MSGSIZE];
-	auto res = mq_receive(m_queue_d, msgbuffer, MAX_MSGSIZE, NULL);
-	if(res > 0)
-	{
-		return string(msgbuffer, res);
-	}
-	else
-	{
-		return "";
-	}
-}
-
 string posix_queue::receive(uint64_t timeout_s)
 {
 	char msgbuffer[MAX_MSGSIZE];
 	struct timespec ts = {0};
-	ts.tv_sec = timeout_s;
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
 	auto res = mq_timedreceive(m_queue_d, msgbuffer, MAX_MSGSIZE, NULL, &ts);
 	if(res > 0)
 	{

@@ -21,8 +21,7 @@ public:
 	~posix_queue();
 
 	bool send(const std::string& msg);
-	string receive();
-	string receive(const uint64_t timeout_s);
+	string receive(const uint64_t timeout_s=0);
 	static bool remove(const string& name);
 private:
 	static bool limits_set;
