@@ -1193,8 +1193,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
-				containers_for_mounted_fs.emplace_back(it->first, it->second.front()->m_pid,
-													   it->second.front()->m_vpid);
+				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+				{
+					return (m_next_flush_time_ns - tinfo->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+				});
+				if(long_running_proc != it->second.end())
+				{
+					containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
+														   (*long_running_proc)->m_vpid);
+				}
 			}
 			// Add host
 			containers_for_mounted_fs.emplace_back("host", 1, 1);
