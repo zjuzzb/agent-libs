@@ -32,11 +32,11 @@ k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state)
 {
 	return dispatch_map
 	{
-		{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES, state)                  },
-		{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES, state)             },
-		{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS, state)                   },
+		{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state) },
+		{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state) },
+		{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state) },
 		{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state) },
-		{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES, state)               }
+		{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state) }
 	};
 }
 
@@ -94,10 +94,10 @@ const draiosproto::k8s_state& k8s::get_proto(bool watch)
 	return m_proto;
 }
 
-void k8s::on_watch_data(const k8s_net::event_args& msg)
+void k8s::on_watch_data(k8s_event_data&& msg)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
-	m_dispatch[msg.component()]->enqueue(msg.data());
+	m_dispatch[msg.component()]->enqueue(std::move(msg));
 }
 
 std::size_t k8s::count(k8s_component::type component) const

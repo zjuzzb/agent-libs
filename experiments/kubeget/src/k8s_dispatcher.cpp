@@ -4,6 +4,7 @@
 
 #include "k8s_dispatcher.h"
 #include "json/json.h"
+#include <assert.h>
 #include <stdexcept>
 #include <algorithm>
 #include <sstream>
@@ -15,40 +16,41 @@ k8s_dispatcher::k8s_dispatcher(k8s_component::type t, k8s_state_s& state) :
 {
 }
 
-void k8s_dispatcher::enqueue(const std::string& data)
+void k8s_dispatcher::enqueue(k8s_event_data&& event_data)
 {
+	assert(event_data.component() == m_type);
+
+	std::string&& data = event_data.data();
+
 	if (m_messages.size() == 0)
 	{
 		m_messages.push_back("");
 	}
 
-	std::string& msg = m_messages.back();
-	std::string::size_type pos = msg.find_first_of('\n');
-	if (pos != std::string::npos)
+	std::string* msg = &m_messages.back();
+	std::string::size_type pos = msg->find_first_of('\n');
+	
+	// previous msg full, this is a beginning of new message
+	if (pos != std::string::npos && pos == (msg->size() - 1))
 	{
-		if (pos == msg.size() - 1) // last message was complete. this is a new message
-		{
-			m_messages.push_back(data);
-		}
-		else // EOL can be only at the end
-		{
-			throw std::invalid_argument("End of line character found in the string.");
-		}
+		m_messages.push_back("");
+		msg = &m_messages.back();
 	}
-	else // append
+
+	while ((pos = data.find_first_of('\n')) != std::string::npos)
 	{
-		pos = data.find_first_of('\n');
-		if (pos != std::string::npos)
-		{
-			msg += data.substr(0, pos);
-			m_messages.push_back(data.substr(pos));
-		}
-		else
-		{
-			m_messages.push_back(data);
-		}
+		msg->append((data.substr(0, pos + 1)));
+		data = data.substr(pos + 1);
+		m_messages.push_back("");
+		msg = &m_messages.back();
+	};
+
+	if (data.size() > 0)
+	{
+		msg->append((data));
 	}
-	dispatch(); // in separate thread?
+
+	dispatch(); // ?TODO: in separate thread?
 }
 
 bool k8s_dispatcher::is_valid(const std::string& msg)
@@ -138,8 +140,6 @@ void k8s_dispatcher::dispatch()
 	{
 		if (is_ready(*it))
 		{
-			// ADDED, MODIFIED, DELETED, or ERROR
-			//std::cout << "JSON:[" << *it << ']' << std::flush;
 			msg_data data = get_msg_data(*it);
 			if (data.is_valid())
 			{

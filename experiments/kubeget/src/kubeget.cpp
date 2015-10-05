@@ -32,8 +32,8 @@ int main(int argc, char** argv)
 		sw.start();
 		k8s kube(uri, api);
 		kube.get_proto(/*false*/);
-		sw.stop();
 		//std::cout << kube.get_proto(false).DebugString() << std::endl;
+		sw.stop();
 		std::cout << "JSON fetched, parsed and protobuf populated in " << sw.elapsed() / 1000 << " [ms]" << std::endl;
 		std::cout << "Nodes:\t\t" << kube.count(k8s_component::K8S_NODES) << std::endl;
 		std::cout << "Namespaces:\t" << kube.count(k8s_component::K8S_NAMESPACES) << std::endl;

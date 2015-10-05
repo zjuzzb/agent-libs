@@ -7,6 +7,7 @@
 #pragma once
 
 #include "k8s_component.h"
+#include "k8s_event_data.h"
 #include <deque>
 #include <string>
 
@@ -40,7 +41,7 @@ public:
 	
 	k8s_dispatcher(k8s_component::type t, k8s_state_s& state);
 
-	void enqueue(const std::string& data);
+	void enqueue(k8s_event_data&& data);
 
 private:
 	const std::string& next_msg();

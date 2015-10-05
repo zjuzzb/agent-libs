@@ -207,7 +207,7 @@ void k8s_net::dispatch_events()
 					int c = it->impl()->receiveBytes(buf, len);
 					if (c > 0)
 					{
-						m_k8s.on_watch_data(event_args(m_sockets[*it], buf, c));
+						m_k8s.on_watch_data(k8s_event_data(m_sockets[*it], buf, c));
 					}
 				}
 			}
@@ -221,7 +221,7 @@ void k8s_net::dispatch_events()
 	}
 }
 
-void k8s_net::on_watch_data(const void*, event_args& msg)
+void k8s_net::on_watch_data(const void*, k8s_event_data& msg)
 {
 	std::cout << msg.component() << ':' << msg.data() << std::flush;
 }

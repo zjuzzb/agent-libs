@@ -347,7 +347,7 @@ inline void k8s_component::push_selector(const k8s_pair_s& selector)
 
 inline void k8s_component::emplace_selector(k8s_pair_s&& selector)
 {
-	m_selectors.emplace_back(std::forward<k8s_pair_s>(selector));
+	m_selectors.emplace_back(std::move(selector));
 }
 
 
@@ -367,7 +367,7 @@ inline void k8s_node_s::push_host_ip(const std::string& host_ip)
 
 inline void k8s_node_s::emplace_host_ip(std::string&& host_ip)
 {
-	host_ips.emplace_back(std::forward<std::string>(host_ip));
+	host_ips.emplace_back(std::move(host_ip));
 }
 
 
@@ -387,7 +387,7 @@ inline void k8s_pod_s::push_container_id(const std::string& container_id)
 
 inline void k8s_pod_s::emplace_container_id(std::string&& container_id)
 {
-	m_container_ids.emplace_back(std::forward<std::string>(container_id));
+	m_container_ids.emplace_back(std::move(container_id));
 }
 
 inline const std::string& k8s_pod_s::get_node_name() const
@@ -443,7 +443,7 @@ inline void k8s_state_s::push_namespace(const k8s_ns_s& ns)
 
 inline void k8s_state_s::emplace_namespace(k8s_ns_s&& ns)
 {
-	m_namespaces.emplace_back(std::forward<k8s_ns_s>(ns));
+	m_namespaces.emplace_back(std::move(ns));
 }
 
 // nodes
@@ -464,7 +464,7 @@ inline void k8s_state_s::push_node(const k8s_node_s& node)
 
 inline void k8s_state_s::emplace_node(k8s_node_s&& node)
 {
-	m_nodes.emplace_back(std::forward<k8s_node_s>(node));
+	m_nodes.emplace_back(std::move(node));
 }
 
 // pods
@@ -485,7 +485,7 @@ inline void k8s_state_s::push_pod(const k8s_pod_s& pod)
 
 inline void k8s_state_s::emplace_pod(k8s_pod_s&& pod)
 {
-	m_pods.emplace_back(std::forward<k8s_pod_s>(pod));
+	m_pods.emplace_back(std::move(pod));
 }
 
 // replication controllers
@@ -506,7 +506,7 @@ inline void k8s_state_s::push_rc(const k8s_rc_s& rc)
 
 inline void k8s_state_s::emplace_rc(k8s_rc_s&& rc)
 {
-	m_controllers.emplace_back(std::forward<k8s_rc_s>(rc));
+	m_controllers.emplace_back(std::move(rc));
 }
 
 // services
@@ -527,7 +527,7 @@ inline void k8s_state_s::push_service(const k8s_service_s& service)
 
 inline void k8s_state_s::emplace_service(k8s_service_s&& service)
 {
-	m_services.emplace_back(std::forward<k8s_service_s>(service));
+	m_services.emplace_back(std::move(service));
 }
 
 // general
@@ -548,10 +548,10 @@ inline void k8s_state_s::set_last_pod_internal_ip(const std::string& internal_ip
 
 inline void k8s_state_s::add_last_node_ip(std::string&& ip)
 {
-	m_nodes.back().emplace_host_ip(std::forward<std::string>(ip));
+	m_nodes.back().emplace_host_ip(std::move(ip));
 }
 
 inline void k8s_state_s::add_last_pod_container_id(std::string&& container_id)
 {
-	m_pods.back().emplace_container_id(std::forward<std::string>(container_id));
+	m_pods.back().emplace_container_id(std::move(container_id));
 }

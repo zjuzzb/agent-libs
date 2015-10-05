@@ -8,6 +8,7 @@
 
 #include "json/json.h"
 #include "k8s_component.h"
+#include "k8s_event_data.h"
 #include "k8s_net.h"
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
@@ -33,7 +34,7 @@ public:
 
 	std::size_t count(k8s_component::type component) const;
 
-	void on_watch_data(const k8s_net::event_args& msg);
+	void on_watch_data(k8s_event_data&& msg);
 
 private:
 	void init();

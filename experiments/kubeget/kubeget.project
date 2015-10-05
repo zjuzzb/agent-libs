@@ -385,6 +385,8 @@
     <File Name="src/k8s.h"/>
     <File Name="src/k8s_dispatcher.cpp"/>
     <File Name="src/k8s_dispatcher.h"/>
+    <File Name="src/k8s_event_data.cpp"/>
+    <File Name="src/k8s_event_data.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

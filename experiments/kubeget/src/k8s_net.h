@@ -15,12 +15,13 @@
 #include "Poco/NullStream.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/RunnableAdapter.h"
-#include "Poco/BasicEvent.h"
+#include "Poco/Thread.h"
 #include "Poco/URI.h"
 #include "Poco/Path.h"
 #include "Poco/Format.h"
 #include "Poco/Exception.h"
 #include "k8s_component.h"
+#include "k8s_event_data.h"
 #include <sstream>
 #include <utility>
 
@@ -31,54 +32,6 @@ class k8s;
 class k8s_net
 {
 public:
-	class event_args
-	{
-	public:
-		event_args() = delete;
-		
-		event_args(k8s_component::type component, const char* data, int len):
-			m_component(component),
-			m_data(data, len)
-		{
-		}
-/*
-		event_args(const event_args& other):
-			m_component(other.m_component),
-			m_data(other.m_data)
-		{
-		}
-
-		event_args(event_args&& other):
-			m_component(std::move(other.m_component)),
-			m_data(std::move(other.m_data))
-		{
-		}
-
-		event_args& operator=(event_args&& other)
-		{
-			if (this != &other)
-			{
-				m_component = other.m_component;
-				m_data = other.m_data;
-			}
-			return *this;
-		}
-*/
-		k8s_component::type component() const
-		{
-			return m_component;
-		}
-		
-		const std::string& data() const
-		{
-			return m_data;
-		}
-
-	private:
-		k8s_component::type m_component;
-		std::string         m_data;
-	};
-
 	k8s_net(k8s& kube, const std::string& uri = "http://localhost:80",
 		const std::string& api = "/api/v1/");
 
@@ -109,10 +62,9 @@ private:
 
 	bool is_secure();
 
-	void on_watch_data(const void*, event_args& msg);
+	void on_watch_data(const void*, k8s_event_data& msg);
 
 	typedef std::map<Poco::Net::Socket, k8s_component::type> socket_map;
-	typedef Poco::BasicEvent<event_args>                     watch_event;
 
 	k8s&                           m_k8s;
 	Poco::URI                      m_uri;
