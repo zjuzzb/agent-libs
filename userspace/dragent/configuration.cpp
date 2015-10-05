@@ -242,10 +242,8 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	// Detect if running inside container using SYSDIG_HOST_ROOT
-	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/self/ns/mnt", scap_get_host_root());
-	File nsfile(filename);
+	// Check existence of namespace to see if kernel supports containers
+	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = nsfile.exists();;
 
 	if(m_statsd_enabled)
