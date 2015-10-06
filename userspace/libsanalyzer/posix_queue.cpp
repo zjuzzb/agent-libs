@@ -6,6 +6,7 @@
 #include <sinsp_int.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <limits.h>
 
 posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
