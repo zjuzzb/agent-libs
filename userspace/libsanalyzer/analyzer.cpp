@@ -98,6 +98,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 
+	m_is_k8s_master = false;
+
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
 
@@ -2660,7 +2662,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
-			emit_kubernetes();
+			if (m_is_k8s_master)
+			{
+				emit_kubernetes();
+			}
 
 			emit_top_files();
 
@@ -3394,8 +3399,15 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 
 void sinsp_analyzer::emit_kubernetes()
 {
-	kubernetes k8s(*m_metrics, Poco::URI("http://127.0.0.1:8080/"));
-	k8s.get_proto();
+	try
+	{
+		kubernetes k8s(*m_metrics, Poco::URI("http://127.0.0.1:8080/"));
+		k8s.get_proto();
+	}
+	catch (std::exception& e)
+	{
+		g_logger.log(std::string("error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_WARNING);
+	}
 }
 
 void sinsp_analyzer::emit_top_files()
@@ -3541,7 +3553,7 @@ vector<string> sinsp_analyzer::emit_containers()
 		const auto& id = container_id_and_info.first;
 		const auto& container_info = container_id_and_info.second;
 		auto analyzer_it = m_containers.find(id);
-		if(analyzer_it != m_containers.end() &&
+		if(analyzer_it != m_containers.end() && container_info.m_name.find("k8s_POD") == std::string::npos &&
 		   (m_container_patterns.empty() ||
 			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
 						 [&container_info](const string& pattern)
@@ -3553,6 +3565,12 @@ vector<string> sinsp_analyzer::emit_containers()
 		{
 			containers_ids.push_back(id);
 			containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+		}
+		
+		// TODO: need a more robust detection here
+		if (container_info.m_name.find("k8s_kube-apiserver") != std::string::npos)
+		{
+			m_is_k8s_master = true;
 		}
 	}
 

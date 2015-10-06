@@ -468,6 +468,9 @@ VISIBILITY_PRIVATE
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 #endif
 
+	// kubernetes
+	bool m_is_k8s_master;
+
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 
