@@ -223,6 +223,18 @@ void k8s::extract_pod_containers(const Json::Value& item)
 	}
 }
 
+void k8s::extract_services_data(const Json::Value& spec)
+{
+	if (!spec.isNull())
+	{
+		Json::Value cluster_ip = spec["clusterIP"];
+		if (!cluster_ip.isNull())
+		{
+			m_state.get_services().back().set_cluster_ip(cluster_ip.asString());
+		}
+	}
+}
+
 void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 {
 	if (items.isArray())
@@ -261,6 +273,10 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				else if (component == k8s_component::K8S_PODS)
 				{
 					extract_pods_data(item);
+				}
+				else if (component == k8s_component::K8S_SERVICES)
+				{
+					extract_services_data(item["spec"]);
 				}
 			}
 		}
@@ -306,7 +322,9 @@ void k8s::make_protobuf()
 
 	for (auto& service : m_state.get_services())
 	{
-		populate_component(service, m_proto.add_services(), k8s_component::K8S_SERVICES);
+		k8s_service* services = m_proto.add_services();
+		populate_component(service, services, k8s_component::K8S_SERVICES);
+		services->set_cluster_ip(service.get_cluster_ip());
 	}
 }
 

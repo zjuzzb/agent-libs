@@ -607,6 +607,7 @@ message k8s_replication_controller {
 
 message k8s_service {
     required k8s_common common = 1;
+    optional string cluster_ip = 2;
     // TODO ports
 }
 

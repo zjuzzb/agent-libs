@@ -6868,17 +6868,32 @@ class k8s_service : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_common* release_common();
   inline void set_allocated_common(::draiosproto::k8s_common* common);
 
+  // optional string cluster_ip = 2;
+  inline bool has_cluster_ip() const;
+  inline void clear_cluster_ip();
+  static const int kClusterIpFieldNumber = 2;
+  inline const ::std::string& cluster_ip() const;
+  inline void set_cluster_ip(const ::std::string& value);
+  inline void set_cluster_ip(const char* value);
+  inline void set_cluster_ip(const char* value, size_t size);
+  inline ::std::string* mutable_cluster_ip();
+  inline ::std::string* release_cluster_ip();
+  inline void set_allocated_cluster_ip(::std::string* cluster_ip);
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_service)
  private:
   inline void set_has_common();
   inline void clear_has_common();
+  inline void set_has_cluster_ip();
+  inline void clear_has_cluster_ip();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::k8s_common* common_;
+  ::std::string* cluster_ip_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -17416,6 +17431,76 @@ inline void k8s_service::set_allocated_common(::draiosproto::k8s_common* common)
     set_has_common();
   } else {
     clear_has_common();
+  }
+}
+
+// optional string cluster_ip = 2;
+inline bool k8s_service::has_cluster_ip() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_service::set_has_cluster_ip() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_service::clear_has_cluster_ip() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_service::clear_cluster_ip() {
+  if (cluster_ip_ != &::google::protobuf::internal::kEmptyString) {
+    cluster_ip_->clear();
+  }
+  clear_has_cluster_ip();
+}
+inline const ::std::string& k8s_service::cluster_ip() const {
+  return *cluster_ip_;
+}
+inline void k8s_service::set_cluster_ip(const ::std::string& value) {
+  set_has_cluster_ip();
+  if (cluster_ip_ == &::google::protobuf::internal::kEmptyString) {
+    cluster_ip_ = new ::std::string;
+  }
+  cluster_ip_->assign(value);
+}
+inline void k8s_service::set_cluster_ip(const char* value) {
+  set_has_cluster_ip();
+  if (cluster_ip_ == &::google::protobuf::internal::kEmptyString) {
+    cluster_ip_ = new ::std::string;
+  }
+  cluster_ip_->assign(value);
+}
+inline void k8s_service::set_cluster_ip(const char* value, size_t size) {
+  set_has_cluster_ip();
+  if (cluster_ip_ == &::google::protobuf::internal::kEmptyString) {
+    cluster_ip_ = new ::std::string;
+  }
+  cluster_ip_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* k8s_service::mutable_cluster_ip() {
+  set_has_cluster_ip();
+  if (cluster_ip_ == &::google::protobuf::internal::kEmptyString) {
+    cluster_ip_ = new ::std::string;
+  }
+  return cluster_ip_;
+}
+inline ::std::string* k8s_service::release_cluster_ip() {
+  clear_has_cluster_ip();
+  if (cluster_ip_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = cluster_ip_;
+    cluster_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void k8s_service::set_allocated_cluster_ip(::std::string* cluster_ip) {
+  if (cluster_ip_ != &::google::protobuf::internal::kEmptyString) {
+    delete cluster_ip_;
+  }
+  if (cluster_ip) {
+    set_has_cluster_ip();
+    cluster_ip_ = cluster_ip;
+  } else {
+    clear_has_cluster_ip();
+    cluster_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

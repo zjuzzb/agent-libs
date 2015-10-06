@@ -53,6 +53,8 @@ private:
 
 	void extract_pod_containers(const Json::Value& item);
 
+	void extract_services_data(const Json::Value& spec);
+
 	void extract_data(const Json::Value& items, k8s_component::type component);
 
 	template <typename V, typename C>

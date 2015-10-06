@@ -156,6 +156,13 @@ class k8s_service_s : public k8s_component
 {
 public:
 	k8s_service_s(const std::string& name, const std::string& uid, const std::string& ns = "");
+
+	const std::string& get_cluster_ip() const;
+
+	void set_cluster_ip(const std::string& cluster_ip);
+
+private:
+	std::string m_cluster_ip;
 };
 
 
@@ -418,6 +425,21 @@ inline const std::string& k8s_pod_s::get_internal_ip() const
 inline void k8s_pod_s::set_internal_ip(const std::string& internal_ip)
 {
 	m_internal_ip = internal_ip;
+}
+
+
+//
+// service
+//
+
+inline const std::string& k8s_service_s::get_cluster_ip() const
+{
+	return m_cluster_ip;
+}
+
+inline void k8s_service_s::set_cluster_ip(const std::string& cluster_ip)
+{
+	m_cluster_ip = cluster_ip;
 }
 
 
