@@ -124,117 +124,6 @@ std::size_t k8s::count(k8s_component::type component) const
 		Poco::format("Unknown component [%d]", static_cast<int>(component)));
 }
 
-// extracts labels or selectors
-void k8s::extract_object(k8s_component::type component, const Json::Value& object, const std::string& name)
-{
-	if (!object.isNull())
-	{
-		Json::Value entries = object[name];
-		if (!entries.isNull())
-		{
-			Json::Value::Members members = entries.getMemberNames();
-			for (auto& member : members)
-			{
-				Json::Value val = entries[member];
-				if (!val.isNull())
-				{
-					m_state.emplace_item(component, name, k8s_pair_s(member, val.asString()));
-				}
-			}
-		}
-	}
-}
-
-void k8s::extract_nodes_addresses(const Json::Value& status)
-{
-	if (!status.isNull())
-	{
-		Json::Value addresses = status["addresses"];
-		if (!addresses.isNull())
-		{
-			for (auto& address : addresses)
-			{
-				if (address.isObject())
-				{
-					Json::Value::Members addr_list = address.getMemberNames();
-					for (auto& entry : addr_list)
-					{
-						if (entry == "address")
-						{
-							Json::Value ip = address[entry];
-							if (!ip.isNull())
-							{
-								m_state.add_last_node_ip(ip.asString());
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-void k8s::extract_pods_data(const Json::Value& item)
-{
-	extract_pod_containers(item);
-
-	Json::Value spec = item["spec"];
-	if (!spec.isNull())
-	{
-		Json::Value node_name = spec["nodeName"];
-		if (!node_name.isNull())
-		{
-			m_state.set_last_pod_node_name(node_name.asString());
-		}
-		Json::Value status = item["status"];
-		if (!status.isNull())
-		{
-			Json::Value host_ip = status["hostIP"];
-			if (!host_ip.isNull())
-			{
-				m_state.set_last_pod_host_ip(host_ip.asString());
-			}
-			Json::Value pod_ip = status["podIP"];
-			if (!pod_ip.isNull())
-			{
-				m_state.set_last_pod_internal_ip(pod_ip.asString());
-			}
-		}
-	}
-}
-
-void k8s::extract_pod_containers(const Json::Value& item)
-{
-	Json::Value spec = item["status"];
-	if (!spec.isNull())
-	{
-		Json::Value containers = spec["containerStatuses"];
-		if (!containers.isNull())
-		{
-			for (auto& container : containers)
-			{
-				Json::Value container_id = container["containerID"];
-				if (!container_id.isNull())
-				{
-					m_state.add_last_pod_container_id(container_id.asString());
-				}
-			}
-		}
-	}
-}
-
-void k8s::extract_services_data(const Json::Value& spec)
-{
-	if (!spec.isNull())
-	{
-		Json::Value cluster_ip = spec["clusterIP"];
-		if (!cluster_ip.isNull())
-		{
-			m_state.get_services().back().set_cluster_ip(cluster_ip.asString());
-		}
-	}
-}
-
 void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 {
 	if (items.isArray())
@@ -257,26 +146,40 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				Json::Value metadata = item["metadata"];
 				if (!metadata.isNull())
 				{
-					extract_object(component, metadata, "labels");
+					std::vector<k8s_pair_s> entries = k8s_component::extract_object(metadata, "labels");
+					for (auto& entry : entries)
+					{
+						m_state.emplace_item(component, "labels", std::move(entry));
+					}
 				}
 
 				Json::Value spec = item["spec"];
 				if (!metadata.isNull())
 				{
-					extract_object(component, spec, "selector");
+					std::vector<k8s_pair_s> entries = k8s_component::extract_object(metadata, "selector");
+					for (auto& entry : entries)
+					{
+						m_state.emplace_item(component, "selector", std::move(entry));
+					}
 				}
 
 				if (component == k8s_component::K8S_NODES)
 				{
-					extract_nodes_addresses(item["status"]);
+					std::vector<std::string> addresses = k8s_component::extract_nodes_addresses(item["status"]);
+					for (auto&& address : addresses)
+					{
+						m_state.add_last_node_ip(std::move(address));
+					}
 				}
 				else if (component == k8s_component::K8S_PODS)
 				{
-					extract_pods_data(item);
+					std::vector<std::string> containers = k8s_component::extract_pod_containers(item);
+					m_state.get_pods().back().get_container_ids() = std::move(containers);
+					k8s_component::extract_pod_data(item, m_state.get_pods().back());
 				}
 				else if (component == k8s_component::K8S_SERVICES)
 				{
-					extract_services_data(item["spec"]);
+					k8s_component::extract_services_data(item["spec"], m_state.get_services().back());
 				}
 			}
 		}
@@ -310,9 +213,21 @@ void k8s::make_protobuf()
 			auto container_ids = pods->add_container_ids();
 			container_ids->assign(container_id.begin(), container_id.end());
 		}
-		pods->set_node_name(pod.get_node_name());
-		pods->set_host_ip(pod.get_host_ip());
-		pods->set_internal_ip(pod.get_internal_ip());
+		const std::string& nn = pod.get_node_name();
+		if (!nn.empty())
+		{
+			pods->set_node_name(nn);
+		}
+		const std::string& hip = pod.get_host_ip();
+		if (!hip.empty())
+		{
+			pods->set_host_ip(hip);
+		}
+		const std::string& ip = pod.get_internal_ip();
+		if (!ip.empty())
+		{
+			pods->set_internal_ip(ip);
+		}
 	}
 
 	for (auto& rc : m_state.get_rcs())

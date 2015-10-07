@@ -7,11 +7,15 @@
 
 #pragma once
 
+#include "json/json.h"
 #include <vector>
 #include <map>
 
 typedef std::pair<std::string, std::string> k8s_pair_s;
 typedef std::vector<k8s_pair_s>             k8s_pair_list;
+
+class k8s_pod_s;
+class k8s_service_s;
 
 // 
 // component
@@ -50,15 +54,34 @@ public:
 
 	const k8s_pair_list& get_labels() const;
 
+	k8s_pair_list& get_labels();
+
+	void swap_labels(k8s_pair_list& new_labels);
+
 	void push_label(const k8s_pair_s& label);
 
 	void emplace_label(const k8s_pair_s& label);
 
 	const k8s_pair_list& get_selectors() const;
 
+	k8s_pair_list& get_selectors();
+
+	void swap_selectors(k8s_pair_list& new_selectors);
+
 	void push_selector(const k8s_pair_s& selector);
 
 	void emplace_selector(k8s_pair_s&& selector);
+
+	static std::vector<std::string> extract_nodes_addresses(const Json::Value& status);
+
+	// extracts labels or selectors
+	static k8s_pair_list extract_object(const Json::Value& object, const std::string& name);
+
+	static std::vector<std::string> extract_pod_containers(const Json::Value& item);
+
+	static void extract_pod_data(const Json::Value& item, k8s_pod_s& pod);
+
+	static void extract_services_data(const Json::Value& spec, k8s_service_s& service);
 
 private:
 	std::string   m_name;
@@ -93,6 +116,8 @@ public:
 	
 	const std::vector<std::string>& get_host_ips() const;
 
+	std::vector<std::string>& get_host_ips();
+
 	void push_host_ip(const std::string& host_ip);
 
 	void emplace_host_ip(std::string&& host_ip);
@@ -112,6 +137,8 @@ public:
 	k8s_pod_s(const std::string& name, const std::string& uid, const std::string& ns = "");
 	
 	const std::vector<std::string>& get_container_ids() const;
+
+	std::vector<std::string>& get_container_ids();
 
 	void push_container_id(const std::string& container_id);
 
@@ -173,14 +200,22 @@ private:
 class k8s_state_s
 {
 public:
+
+	typedef std::vector<k8s_ns_s>      namespaces;
+	typedef std::vector<k8s_node_s>    nodes;
+	typedef std::vector<k8s_pod_s>     pods;
+	typedef std::vector<k8s_rc_s>      controllers;
+	typedef std::vector<k8s_service_s> services;
+
 	k8s_state_s();
 
 	//
 	// namespaces
 	//
 
-	const std::vector<k8s_ns_s>& get_namespaces() const;
-	std::vector<k8s_ns_s>& get_namespaces();
+	const namespaces& get_namespaces() const;
+
+	namespaces& get_namespaces();
 
 	void push_namespace(const k8s_ns_s& ns);
 
@@ -190,8 +225,11 @@ public:
 	// nodes
 	//
 
-	const std::vector<k8s_node_s>& get_nodes() const;
-	std::vector<k8s_node_s>& get_nodes();
+	const nodes& get_nodes() const;
+
+	nodes& get_nodes();
+
+	k8s_node_s* get_node(const std::string& uid);
 
 	void push_node(const k8s_node_s& node);
 
@@ -201,8 +239,9 @@ public:
 	// pods
 	//
 
-	const std::vector<k8s_pod_s>& get_pods() const;
-	std::vector<k8s_pod_s>& get_pods();
+	const pods& get_pods() const;
+
+	pods& get_pods();
 
 	void push_pod(const k8s_pod_s& pod);
 
@@ -212,8 +251,9 @@ public:
 	// replication controllers
 	//
 
-	const std::vector<k8s_rc_s>& get_rcs() const;
-	std::vector<k8s_rc_s>& get_rcs();
+	const controllers& get_rcs() const;
+
+	controllers& get_rcs();
 
 	void push_rc(const k8s_rc_s& rc);
 
@@ -223,8 +263,9 @@ public:
 	// services
 	//
 
-	const std::vector<k8s_service_s>& get_services() const;
-	std::vector<k8s_service_s>& get_services();
+	const services& get_services() const;
+
+	services& get_services();
 
 	void push_service(const k8s_service_s& service);
 
@@ -235,6 +276,8 @@ public:
 	//
 
 	void emplace_item(k8s_component::type t, const std::string& name, k8s_pair_s&& item);
+
+	void append_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>& items);
 
 	k8s_component& add_common_single_value(k8s_component::type component, const std::string& name, const std::string& uid, const std::string& ns);
 	
@@ -262,17 +305,11 @@ public:
 		return false;
 	}
 
-	typedef std::vector<k8s_ns_s>      namespaces;
-	typedef std::vector<k8s_node_s>    nodes;
-	typedef std::vector<k8s_pod_s>     pods;
-	typedef std::vector<k8s_rc_s>      controllers;
-	typedef std::vector<k8s_service_s> services;
-
 	// Returns the reference to existing component, if it exists.
 	// If component does not exist, it emplaces it to the back of the
 	// container and returns the reference of the added component.
 	template <typename C, typename T>
-	T& get(C& container, const std::string& name, const std::string& uid, const std::string& ns)
+	T& get_component(C& container, const std::string& name, const std::string& uid, const std::string& ns = "")
 	{
 		for (auto& comp : container)
 		{
@@ -283,6 +320,24 @@ public:
 		}
 		container.emplace_back(T(name, uid, ns));
 		return container.back();
+	}
+
+	template <typename C>
+	bool delete_component(C& components, const std::string& uid)
+	{
+		for (typename C::iterator component = components.begin(),
+			end = components.end();
+			component != end;
+			++component)
+		{
+			if (component->get_uid() == uid)
+			{
+				components.erase(component);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 private:
@@ -332,6 +387,16 @@ inline const k8s_pair_list& k8s_component::get_labels() const
 	return m_labels;
 }
 
+inline k8s_pair_list& k8s_component::get_labels()
+{
+	return m_labels;
+}
+
+inline void k8s_component::swap_labels(k8s_pair_list& new_labels)
+{
+	m_labels.swap(new_labels);
+}
+
 inline void k8s_component::push_label(const k8s_pair_s& label)
 {
 	m_labels.push_back(label);
@@ -345,6 +410,16 @@ inline void k8s_component::emplace_label(const k8s_pair_s& label)
 inline const k8s_pair_list& k8s_component::get_selectors() const
 {
 	return m_selectors;
+}
+
+inline k8s_pair_list& k8s_component::get_selectors()
+{
+	return m_selectors;
+}
+
+inline void k8s_component::swap_selectors(k8s_pair_list& new_selectors)
+{
+	m_selectors.swap(new_selectors);
 }
 
 inline void k8s_component::push_selector(const k8s_pair_s& selector)
@@ -367,6 +442,11 @@ inline const std::vector<std::string>& k8s_node_s::get_host_ips() const
 	return host_ips;
 }
 
+inline std::vector<std::string>& k8s_node_s::get_host_ips()
+{
+	return host_ips;
+}
+
 inline void k8s_node_s::push_host_ip(const std::string& host_ip)
 {
 	host_ips.push_back(host_ip);
@@ -383,6 +463,11 @@ inline void k8s_node_s::emplace_host_ip(std::string&& host_ip)
 //
 
 inline const std::vector<std::string>& k8s_pod_s::get_container_ids() const
+{
+	return m_container_ids;
+}
+
+inline std::vector<std::string>& k8s_pod_s::get_container_ids()
 {
 	return m_container_ids;
 }
@@ -448,12 +533,12 @@ inline void k8s_service_s::set_cluster_ip(const std::string& cluster_ip)
 //
 
 // namespaces
-inline const std::vector<k8s_ns_s>& k8s_state_s::get_namespaces() const
+inline const k8s_state_s::namespaces& k8s_state_s::get_namespaces() const
 {
 	return m_namespaces;
 }
 
-inline std::vector<k8s_ns_s>& k8s_state_s::get_namespaces()
+inline k8s_state_s::namespaces& k8s_state_s::get_namespaces()
 {
 	return m_namespaces;
 }
@@ -469,12 +554,12 @@ inline void k8s_state_s::emplace_namespace(k8s_ns_s&& ns)
 }
 
 // nodes
-inline const std::vector<k8s_node_s>& k8s_state_s::get_nodes() const
+inline const k8s_state_s::nodes& k8s_state_s::get_nodes() const
 {
 	return m_nodes;
 }
 
-inline std::vector<k8s_node_s>& k8s_state_s::get_nodes()
+inline k8s_state_s::nodes& k8s_state_s::get_nodes()
 {
 	return m_nodes;
 }
@@ -490,12 +575,12 @@ inline void k8s_state_s::emplace_node(k8s_node_s&& node)
 }
 
 // pods
-inline const std::vector<k8s_pod_s>& k8s_state_s::get_pods() const
+inline const k8s_state_s::pods& k8s_state_s::get_pods() const
 {
 	return m_pods;
 }
 
-inline std::vector<k8s_pod_s>& k8s_state_s::get_pods()
+inline k8s_state_s::pods& k8s_state_s::get_pods()
 {
 	return m_pods;
 }
@@ -511,12 +596,12 @@ inline void k8s_state_s::emplace_pod(k8s_pod_s&& pod)
 }
 
 // replication controllers
-inline const std::vector<k8s_rc_s>& k8s_state_s::get_rcs() const
+inline const k8s_state_s::controllers& k8s_state_s::get_rcs() const
 {
 	return m_controllers;
 }
 
-inline std::vector<k8s_rc_s>& k8s_state_s::get_rcs()
+inline k8s_state_s::controllers& k8s_state_s::get_rcs()
 {
 	return m_controllers;
 }
@@ -532,12 +617,12 @@ inline void k8s_state_s::emplace_rc(k8s_rc_s&& rc)
 }
 
 // services
-inline const std::vector<k8s_service_s>& k8s_state_s::get_services() const
+inline const k8s_state_s::services& k8s_state_s::get_services() const
 {
 	return m_services;
 }
 
-inline std::vector<k8s_service_s>& k8s_state_s::get_services()
+inline k8s_state_s::services& k8s_state_s::get_services()
 {
 	return m_services;
 }

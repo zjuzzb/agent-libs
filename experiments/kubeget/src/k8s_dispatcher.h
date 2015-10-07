@@ -8,6 +8,7 @@
 
 #include "k8s_component.h"
 #include "k8s_event_data.h"
+#include "json/json.h"
 #include <deque>
 #include <string>
 
@@ -46,7 +47,7 @@ public:
 private:
 	const std::string& next_msg();
 	
-	msg_data get_msg_data(const std::string& json);
+	msg_data get_msg_data(const Json::Value& root);
 
 	bool is_valid(const std::string& msg);
 
@@ -55,9 +56,13 @@ private:
 	void remove();
 
 	void dispatch();
-
-	void handle(k8s_component::type type);
 	
+	void handle_node(const Json::Value& root, const msg_data& data);
+	void handle_namespace(const Json::Value& root, const msg_data& data);
+	void handle_pod(const Json::Value& root, const msg_data& data);
+	void handle_rc(const Json::Value& root, const msg_data& data);
+	void handle_service(const Json::Value& root, const msg_data& data);
+
 	std::string to_reason_desc(msg_reason reason)
 	{
 		switch (reason)

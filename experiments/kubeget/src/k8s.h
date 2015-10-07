@@ -44,17 +44,6 @@ private:
 		Poco::Net::HTTPResponse& response,
 		const k8s_component::component_map::value_type& component);
 
-	// extracts labels or selectors
-	void extract_object(k8s_component::type component, const Json::Value& object, const std::string& name);
-
-	void extract_nodes_addresses(const Json::Value& status);
-
-	void extract_pods_data(const Json::Value& item);
-
-	void extract_pod_containers(const Json::Value& item);
-
-	void extract_services_data(const Json::Value& spec);
-
 	void extract_data(const Json::Value& items, k8s_component::type component);
 
 	template <typename V, typename C>
