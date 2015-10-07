@@ -204,14 +204,14 @@ k8s_state_s::k8s_state_s()
 {
 }
 
-void k8s_state_s::emplace_item(k8s_component::type t, const std::string& name, k8s_pair_s&& item)
+void k8s_state_s::replace_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>&& items)
 {
 	switch (t)
 	{
 	case k8s_component::K8S_NODES:
 		if (name == "labels")
 		{
-			m_nodes.back().m_labels.emplace_back(item);
+			m_nodes.back().m_labels = std::move(items);
 			return;
 		}
 		break;
@@ -219,7 +219,7 @@ void k8s_state_s::emplace_item(k8s_component::type t, const std::string& name, k
 	case k8s_component::K8S_NAMESPACES:
 		if (name == "labels")
 		{
-			m_namespaces.back().m_labels.emplace_back(item);
+			m_namespaces.back().m_labels = std::move(items);
 			return;
 		}
 		break;
@@ -227,7 +227,7 @@ void k8s_state_s::emplace_item(k8s_component::type t, const std::string& name, k
 	case k8s_component::K8S_PODS:
 		if (name == "labels")
 		{
-			m_pods.back().m_labels.emplace_back(item);
+			m_pods.back().m_labels = std::move(items);
 			return;
 		}
 		break;
@@ -235,12 +235,12 @@ void k8s_state_s::emplace_item(k8s_component::type t, const std::string& name, k
 	case k8s_component::K8S_REPLICATIONCONTROLLERS:
 		if (name == "labels")
 		{
-			m_controllers.back().m_labels.emplace_back(item);
+			m_controllers.back().m_labels = std::move(items);
 			return;
 		}
 		else if (name == "selector")
 		{
-			m_controllers.back().m_selectors.emplace_back(item);
+			m_controllers.back().m_selectors = std::move(items);
 			return;
 		}
 		break;
@@ -248,80 +248,12 @@ void k8s_state_s::emplace_item(k8s_component::type t, const std::string& name, k
 	case k8s_component::K8S_SERVICES:
 		if (name == "labels")
 		{
-			m_services.back().m_labels.emplace_back(item);
+			m_services.back().m_labels = std::move(items);
 			return;
 		}
 		else if (name == "selector")
 		{
-			m_services.back().m_selectors.emplace_back(item);
-			return;
-		}
-		break;
-	}
-
-	std::ostringstream os;
-	os << "Unknown component type " << static_cast<int>(t) <<
-		" or object name " << name;
-	throw std::invalid_argument(os.str().c_str());
-}
-
-void k8s_state_s::append_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>& items)
-{
-	switch (t)
-	{
-	case k8s_component::K8S_NODES:
-		if (name == "labels")
-		{
-			auto& labels = m_nodes.back().m_labels;
-			labels.insert(labels.end(), items.begin(), items.end());
-			return;
-		}
-		break;
-
-	case k8s_component::K8S_NAMESPACES:
-		if (name == "labels")
-		{
-			auto& labels = m_namespaces.back().m_labels;
-			labels.insert(labels.end(), items.begin(), items.end());
-			return;
-		}
-		break;
-
-	case k8s_component::K8S_PODS:
-		if (name == "labels")
-		{
-			auto& labels = m_pods.back().m_labels;
-			labels.insert(labels.end(), items.begin(), items.end());
-			return;
-		}
-		break;
-	// only controllers and services can have selectors
-	case k8s_component::K8S_REPLICATIONCONTROLLERS:
-		if (name == "labels")
-		{
-			auto& labels = m_controllers.back().m_labels;
-			labels.insert(labels.end(), items.begin(), items.end());
-			return;
-		}
-		else if (name == "selector")
-		{
-			auto& selectors = m_controllers.back().m_selectors;
-			selectors.insert(selectors.end(), items.begin(), items.end());
-			return;
-		}
-		break;
-
-	case k8s_component::K8S_SERVICES:
-		if (name == "labels")
-		{
-			auto& labels = m_services.back().m_labels;
-			labels.insert(labels.end(), items.begin(), items.end());
-			return;
-		}
-		else if (name == "selector")
-		{
-			auto& selectors = m_services.back().m_selectors;
-			selectors.insert(selectors.end(), items.begin(), items.end());
+			m_services.back().m_selectors = std::move(items);
 			return;
 		}
 		break;

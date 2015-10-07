@@ -147,19 +147,19 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				if (!metadata.isNull())
 				{
 					std::vector<k8s_pair_s> entries = k8s_component::extract_object(metadata, "labels");
-					for (auto& entry : entries)
+					if (entries.size() > 0)
 					{
-						m_state.emplace_item(component, "labels", std::move(entry));
+						m_state.replace_items(component, "labels", std::move(entries));
 					}
 				}
 
 				Json::Value spec = item["spec"];
-				if (!metadata.isNull())
+				if (!spec.isNull())
 				{
-					std::vector<k8s_pair_s> entries = k8s_component::extract_object(metadata, "selector");
-					for (auto& entry : entries)
+					std::vector<k8s_pair_s> entries = k8s_component::extract_object(spec, "selector");
+					if (entries.size() > 0)
 					{
-						m_state.emplace_item(component, "selector", std::move(entry));
+						m_state.replace_items(component, "selector", std::move(entries));
 					}
 				}
 

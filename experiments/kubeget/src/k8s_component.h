@@ -275,9 +275,7 @@ public:
 	// general
 	//
 
-	void emplace_item(k8s_component::type t, const std::string& name, k8s_pair_s&& item);
-
-	void append_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>& items);
+	void replace_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>&& items);
 
 	k8s_component& add_common_single_value(k8s_component::type component, const std::string& name, const std::string& uid, const std::string& ns);
 	
