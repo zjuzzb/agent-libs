@@ -1247,6 +1247,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 			}
 
+#ifndef _WIN32
+			auto main_thread = tinfo->get_main_thread();
+			if(!(main_thread->m_flags & PPM_CL_CLOSED) &&
+			   (m_next_flush_time_ns - main_thread->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+					main_thread->m_vpid > 0)
+			{
+				if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
+				{
+					java_process_requests.emplace_back(main_thread);
+				}
+				if(m_app_proxy)
+				{
+					for(const auto& check : m_app_checks)
+					{
+						if(check.match(main_thread))
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), main_thread->m_pid, main_thread->m_vpid);
+							app_checks_processes.emplace_back(check.name(), main_thread);
+							break;
+						}
+					}
+				}
+			}
+#endif
 			//
 			// Inclusion logic
 			//
@@ -1607,30 +1631,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-#ifndef _WIN32
-		if(tinfo->is_main_thread() &&
-		   !(tinfo->m_flags & PPM_CL_CLOSED) &&
-		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
-			tinfo->m_vpid > 0)
-		{
-			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
-			{
-				java_process_requests.emplace_back(tinfo);
-			}
-			if(m_app_proxy)
-			{
-				for(const auto& check : m_app_checks)
-				{
-					if(check.match(tinfo))
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-						app_checks_processes.emplace_back(check.name(), tinfo);
-						break;
-					}
-				}
-			}
-		}
-#endif
 	}
 
 	if(app_checks_limit == 0)
