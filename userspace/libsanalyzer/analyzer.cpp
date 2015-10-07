@@ -43,7 +43,7 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
-#include "kubernetes.h"
+#include "k8s.h"
 #define DUMP_TO_DISK
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -3401,8 +3401,8 @@ void sinsp_analyzer::emit_kubernetes()
 {
 	try
 	{
-		kubernetes k8s(*m_metrics, Poco::URI("http://127.0.0.1:8080/"));
-		k8s.get_proto();
+		k8s kube(*m_metrics, "http://127.0.0.1:8080/");
+		kube.get_proto(false);
 	}
 	catch (std::exception& e)
 	{

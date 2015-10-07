@@ -606,9 +606,15 @@ message k8s_replication_controller {
 }
 
 message k8s_service {
+    message net_port {
+        required uint32 port = 1;
+        required uint32 target_port = 2;
+        optional string protocol = 3;
+        optional uint32 node_port = 4;
+    }
     required k8s_common common = 1;
     optional string cluster_ip = 2;
-    // TODO ports
+    repeated net_port ports = 3;
 }
 
 message k8s_state {

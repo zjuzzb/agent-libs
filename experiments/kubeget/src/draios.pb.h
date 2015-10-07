@@ -84,6 +84,7 @@ class k8s_node;
 class k8s_pod;
 class k8s_replication_controller;
 class k8s_service;
+class k8s_service_net_port;
 class k8s_state;
 class metrics;
 class dump_request_start;
@@ -6805,6 +6806,123 @@ class k8s_replication_controller : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class k8s_service_net_port : public ::google::protobuf::Message {
+ public:
+  k8s_service_net_port();
+  virtual ~k8s_service_net_port();
+
+  k8s_service_net_port(const k8s_service_net_port& from);
+
+  inline k8s_service_net_port& operator=(const k8s_service_net_port& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_service_net_port& default_instance();
+
+  void Swap(k8s_service_net_port* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_service_net_port* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_service_net_port& from);
+  void MergeFrom(const k8s_service_net_port& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 port = 1;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 1;
+  inline ::google::protobuf::uint32 port() const;
+  inline void set_port(::google::protobuf::uint32 value);
+
+  // required uint32 target_port = 2;
+  inline bool has_target_port() const;
+  inline void clear_target_port();
+  static const int kTargetPortFieldNumber = 2;
+  inline ::google::protobuf::uint32 target_port() const;
+  inline void set_target_port(::google::protobuf::uint32 value);
+
+  // optional string protocol = 3;
+  inline bool has_protocol() const;
+  inline void clear_protocol();
+  static const int kProtocolFieldNumber = 3;
+  inline const ::std::string& protocol() const;
+  inline void set_protocol(const ::std::string& value);
+  inline void set_protocol(const char* value);
+  inline void set_protocol(const char* value, size_t size);
+  inline ::std::string* mutable_protocol();
+  inline ::std::string* release_protocol();
+  inline void set_allocated_protocol(::std::string* protocol);
+
+  // optional uint32 node_port = 4;
+  inline bool has_node_port() const;
+  inline void clear_node_port();
+  static const int kNodePortFieldNumber = 4;
+  inline ::google::protobuf::uint32 node_port() const;
+  inline void set_node_port(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_service.net_port)
+ private:
+  inline void set_has_port();
+  inline void clear_has_port();
+  inline void set_has_target_port();
+  inline void clear_has_target_port();
+  inline void set_has_protocol();
+  inline void clear_has_protocol();
+  inline void set_has_node_port();
+  inline void clear_has_node_port();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint32 port_;
+  ::google::protobuf::uint32 target_port_;
+  ::std::string* protocol_;
+  ::google::protobuf::uint32 node_port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_service_net_port* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class k8s_service : public ::google::protobuf::Message {
  public:
   k8s_service();
@@ -6857,6 +6975,8 @@ class k8s_service : public ::google::protobuf::Message {
 
   // nested types ----------------------------------------------------
 
+  typedef k8s_service_net_port net_port;
+
   // accessors -------------------------------------------------------
 
   // required .draiosproto.k8s_common common = 1;
@@ -6880,6 +7000,18 @@ class k8s_service : public ::google::protobuf::Message {
   inline ::std::string* release_cluster_ip();
   inline void set_allocated_cluster_ip(::std::string* cluster_ip);
 
+  // repeated .draiosproto.k8s_service.net_port ports = 3;
+  inline int ports_size() const;
+  inline void clear_ports();
+  static const int kPortsFieldNumber = 3;
+  inline const ::draiosproto::k8s_service_net_port& ports(int index) const;
+  inline ::draiosproto::k8s_service_net_port* mutable_ports(int index);
+  inline ::draiosproto::k8s_service_net_port* add_ports();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service_net_port >&
+      ports() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service_net_port >*
+      mutable_ports();
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_service)
  private:
   inline void set_has_common();
@@ -6891,9 +7023,10 @@ class k8s_service : public ::google::protobuf::Message {
 
   ::draiosproto::k8s_common* common_;
   ::std::string* cluster_ip_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service_net_port > ports_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -17394,6 +17527,146 @@ inline void k8s_replication_controller::set_allocated_common(::draiosproto::k8s_
 
 // -------------------------------------------------------------------
 
+// k8s_service_net_port
+
+// required uint32 port = 1;
+inline bool k8s_service_net_port::has_port() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_service_net_port::set_has_port() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_service_net_port::clear_has_port() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_service_net_port::clear_port() {
+  port_ = 0u;
+  clear_has_port();
+}
+inline ::google::protobuf::uint32 k8s_service_net_port::port() const {
+  return port_;
+}
+inline void k8s_service_net_port::set_port(::google::protobuf::uint32 value) {
+  set_has_port();
+  port_ = value;
+}
+
+// required uint32 target_port = 2;
+inline bool k8s_service_net_port::has_target_port() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_service_net_port::set_has_target_port() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_service_net_port::clear_has_target_port() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_service_net_port::clear_target_port() {
+  target_port_ = 0u;
+  clear_has_target_port();
+}
+inline ::google::protobuf::uint32 k8s_service_net_port::target_port() const {
+  return target_port_;
+}
+inline void k8s_service_net_port::set_target_port(::google::protobuf::uint32 value) {
+  set_has_target_port();
+  target_port_ = value;
+}
+
+// optional string protocol = 3;
+inline bool k8s_service_net_port::has_protocol() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_service_net_port::set_has_protocol() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_service_net_port::clear_has_protocol() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_service_net_port::clear_protocol() {
+  if (protocol_ != &::google::protobuf::internal::kEmptyString) {
+    protocol_->clear();
+  }
+  clear_has_protocol();
+}
+inline const ::std::string& k8s_service_net_port::protocol() const {
+  return *protocol_;
+}
+inline void k8s_service_net_port::set_protocol(const ::std::string& value) {
+  set_has_protocol();
+  if (protocol_ == &::google::protobuf::internal::kEmptyString) {
+    protocol_ = new ::std::string;
+  }
+  protocol_->assign(value);
+}
+inline void k8s_service_net_port::set_protocol(const char* value) {
+  set_has_protocol();
+  if (protocol_ == &::google::protobuf::internal::kEmptyString) {
+    protocol_ = new ::std::string;
+  }
+  protocol_->assign(value);
+}
+inline void k8s_service_net_port::set_protocol(const char* value, size_t size) {
+  set_has_protocol();
+  if (protocol_ == &::google::protobuf::internal::kEmptyString) {
+    protocol_ = new ::std::string;
+  }
+  protocol_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* k8s_service_net_port::mutable_protocol() {
+  set_has_protocol();
+  if (protocol_ == &::google::protobuf::internal::kEmptyString) {
+    protocol_ = new ::std::string;
+  }
+  return protocol_;
+}
+inline ::std::string* k8s_service_net_port::release_protocol() {
+  clear_has_protocol();
+  if (protocol_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = protocol_;
+    protocol_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void k8s_service_net_port::set_allocated_protocol(::std::string* protocol) {
+  if (protocol_ != &::google::protobuf::internal::kEmptyString) {
+    delete protocol_;
+  }
+  if (protocol) {
+    set_has_protocol();
+    protocol_ = protocol;
+  } else {
+    clear_has_protocol();
+    protocol_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 node_port = 4;
+inline bool k8s_service_net_port::has_node_port() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void k8s_service_net_port::set_has_node_port() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void k8s_service_net_port::clear_has_node_port() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void k8s_service_net_port::clear_node_port() {
+  node_port_ = 0u;
+  clear_has_node_port();
+}
+inline ::google::protobuf::uint32 k8s_service_net_port::node_port() const {
+  return node_port_;
+}
+inline void k8s_service_net_port::set_node_port(::google::protobuf::uint32 value) {
+  set_has_node_port();
+  node_port_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // k8s_service
 
 // required .draiosproto.k8s_common common = 1;
@@ -17502,6 +17775,31 @@ inline void k8s_service::set_allocated_cluster_ip(::std::string* cluster_ip) {
     clear_has_cluster_ip();
     cluster_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// repeated .draiosproto.k8s_service.net_port ports = 3;
+inline int k8s_service::ports_size() const {
+  return ports_.size();
+}
+inline void k8s_service::clear_ports() {
+  ports_.Clear();
+}
+inline const ::draiosproto::k8s_service_net_port& k8s_service::ports(int index) const {
+  return ports_.Get(index);
+}
+inline ::draiosproto::k8s_service_net_port* k8s_service::mutable_ports(int index) {
+  return ports_.Mutable(index);
+}
+inline ::draiosproto::k8s_service_net_port* k8s_service::add_ports() {
+  return ports_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service_net_port >&
+k8s_service::ports() const {
+  return ports_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service_net_port >*
+k8s_service::mutable_ports() {
+  return &ports_;
 }
 
 // -------------------------------------------------------------------
