@@ -805,7 +805,18 @@ int mounted_fs_reader::run()
 						try
 						{
 							char filename[SCAP_MAX_PATH_SIZE];
-							snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
+							// Use mtab if it's not a symlink to /proc/self/mounts
+							// Because when entering a mount namespace, we don't have
+							// a self entry on /proc
+							struct stat mtab_stat;
+							if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
+							{
+								snprintf(filename, sizeof(filename), "/etc/mtab");
+							}
+							else
+							{
+								snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
+							}
 							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
 							auto fs_list_json = Json::Value(Json::arrayValue);
 							for(const auto& fs : fs_list)
