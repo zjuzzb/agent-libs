@@ -498,6 +498,14 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			}
 		}
 
+		if(strstr(entry->mnt_dir, "/etc") == entry->mnt_dir)
+		{
+			// Skipping /etc mounts, because inside docker containers
+			// there are always /etc/hosts, /etc/resolv.conf etc
+			// Usually they are just noise
+			continue;
+		}
+
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
