@@ -5,10 +5,6 @@
 //
 #pragma once
 
-#ifdef K8S_STANDALONE
-#include "logger.h"
-#endif
-
 #include "Poco/Net/HTTPSClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"

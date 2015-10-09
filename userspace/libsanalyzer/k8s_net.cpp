@@ -6,6 +6,8 @@
 #include "k8s_net.h"
 #include "k8s_component.h"
 #include "k8s.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/KeyConsoleHandler.h"
 #include "Poco/Net/ConsoleCertificateHandler.h"
@@ -129,7 +131,7 @@ void k8s_net::subscribe()
 	for (auto& component : k8s_component::list)
 	{
 		path = m_uri.toString() +  "watch/" + component.second;
-		//g_logger.log(std::string("Connecting to ") + path);
+		g_logger.log(std::string("Connecting to ") + path, sinsp_logger::SEV_INFO);
 
 		std::unique_ptr<HTTPClientSession> session(get_http_session());
 		HTTPRequest request(HTTPRequest::HTTP_GET, path);
@@ -212,10 +214,10 @@ void k8s_net::dispatch_events()
 		}
 		catch (std::exception& exc)
 		{
-			//g_logger.log(std::string("Exception in main thread: ") + exc.what(), sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("Exception in main thread: ") + exc.what(), sinsp_logger::SEV_ERROR);
 		}
 	}
-	//g_logger.log("Thread done.", sinsp_logger::SEV_DEBUG);
+	g_logger.log("Thread done.", sinsp_logger::SEV_DEBUG);
 }
 
 void k8s_net::get_all_data(const k8s_component::component_map::value_type& component, std::ostream& out)

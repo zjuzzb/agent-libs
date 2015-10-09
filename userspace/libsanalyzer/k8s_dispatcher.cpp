@@ -3,6 +3,8 @@
 //
 
 #include "k8s_dispatcher.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include <assert.h>
 #include <stdexcept>
 #include <algorithm>
@@ -150,12 +152,12 @@ void k8s_dispatcher::handle_node(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_nodes(), data.m_uid))
 		{
-			//g_logger.log(std::string("NODE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("NODE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		//g_logger.log("Bad NODE watch message.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Bad NODE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -182,12 +184,12 @@ void k8s_dispatcher::handle_namespace(const Json::Value& root, const msg_data& d
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			//g_logger.log(std::string("NAMESPACE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("NAMESPACE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		//g_logger.log("Bad NAMESPACE watch message.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Bad NAMESPACE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -217,12 +219,12 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			//g_logger.log(std::string("POD not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("POD not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		//g_logger.log("Bad POD watch message.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Bad POD watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -259,12 +261,12 @@ void k8s_dispatcher::handle_rc(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			//g_logger.log(std::string("CONTROLLER not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("CONTROLLER not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		//g_logger.log("Bad CONTROLLER watch message.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Bad CONTROLLER watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -292,12 +294,12 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			//g_logger.log(std::string("SERVICE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("SERVICE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		//g_logger.log("Bad SERVICE watch message.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Bad SERVICE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -346,14 +348,14 @@ void k8s_dispatcher::dispatch()
 						}
 					}
 					os << data.m_name << ',' << data.m_uid << ',' << data.m_namespace << ']';
-					//g_logger.log(os.str(), sinsp_logger::SEV_INFO);
-					//g_logger.log(root.toStyledString());
+					g_logger.log(os.str(), sinsp_logger::SEV_INFO);
+					//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
 				}
 			}
 			else
 			{
 				// TODO: bad notification - discard or throw?
-				//g_logger.log("Bad JSON message received.", sinsp_logger::SEV_ERROR);
+				g_logger.log("Bad JSON message received.", sinsp_logger::SEV_ERROR);
 			}
 			it = m_messages.erase(it);
 		}

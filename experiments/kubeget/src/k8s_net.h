@@ -5,10 +5,6 @@
 //
 #pragma once
 
-#ifdef K8S_STANDALONE
-#include "logger.h"
-#endif
-
 #include "Poco/Net/HTTPSClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
@@ -65,8 +61,6 @@ private:
 		std::ostream& out);
 
 	bool is_secure();
-
-	void on_watch_data(const void*, k8s_event_data& msg);
 
 	typedef std::map<Poco::Net::Socket, k8s_component::type> socket_map;
 

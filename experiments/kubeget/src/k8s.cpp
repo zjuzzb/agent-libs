@@ -7,6 +7,8 @@
 #include "k8s_component.h"
 #include "k8s_dispatcher.h"
 #include "draios.pb.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include "google/protobuf/text_format.h"
 #include <sstream>
 #include <utility>
@@ -268,7 +270,7 @@ void k8s::parse_json(const std::string& json, const k8s_component::component_map
 		if (!root.isNull())
 		{
 			extract_data(items, component.first);
-			//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
+			g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
 		}
 		else
 		{

@@ -30,7 +30,6 @@ public:
 		std::string m_name;
 		std::string m_uid;
 		std::string m_namespace;
-		// TODO ...
 
 		bool is_valid() const
 		{

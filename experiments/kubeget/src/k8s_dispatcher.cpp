@@ -3,6 +3,8 @@
 //
 
 #include "k8s_dispatcher.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include <assert.h>
 #include <stdexcept>
 #include <algorithm>
@@ -347,7 +349,7 @@ void k8s_dispatcher::dispatch()
 					}
 					os << data.m_name << ',' << data.m_uid << ',' << data.m_namespace << ']';
 					g_logger.log(os.str(), sinsp_logger::SEV_INFO);
-					//g_logger.log(root.toStyledString());
+					//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
 				}
 			}
 			else

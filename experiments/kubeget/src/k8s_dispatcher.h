@@ -6,10 +6,6 @@
 
 #pragma once
 
-#ifdef K8S_STANDALONE
-#include "logger.h"
-#endif
-
 #include "k8s_component.h"
 #include "k8s_event_data.h"
 #include "json/json.h"
@@ -34,7 +30,6 @@ public:
 		std::string m_name;
 		std::string m_uid;
 		std::string m_namespace;
-		// TODO ...
 
 		bool is_valid() const
 		{

@@ -7,10 +7,6 @@
 
 #pragma once
 
-#ifdef K8S_STANDALONE
-#include "logger.h"
-#endif
-
 #include "json/json.h"
 #include <vector>
 #include <map>

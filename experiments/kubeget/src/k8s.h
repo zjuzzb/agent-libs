@@ -6,10 +6,6 @@
 
 #pragma once
 
-#ifdef K8S_STANDALONE
-#include "logger.h"
-#endif
-
 #include "json/json.h"
 #include "k8s_component.h"
 #include "k8s_event_data.h"

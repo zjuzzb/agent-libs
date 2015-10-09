@@ -8,7 +8,7 @@
 //
 
 
-#include "logger.h"
+#include "sinsp.h"
 #include "k8s.h"
 #include "Poco/Stopwatch.h"
 #include "Poco/Exception.h"

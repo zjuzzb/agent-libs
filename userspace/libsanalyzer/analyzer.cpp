@@ -3402,6 +3402,7 @@ void sinsp_analyzer::emit_kubernetes()
 {
 	try
 	{
+		// in order to have watch, set 3rd argument to true and make kube a member
 		k8s kube(*m_metrics, "http://127.0.0.1:8080/", false /*true to watch*/);
 		kube.get_proto();
 	}
