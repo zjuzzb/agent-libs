@@ -470,6 +470,8 @@ VISIBILITY_PRIVATE
 
 	// kubernetes
 	bool m_is_k8s_master;
+	//k8s m_k8s;
+	// end kubernetes
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

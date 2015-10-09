@@ -5,6 +5,10 @@
 //
 #pragma once
 
+#ifdef K8S_STANDALONE
+#include "logger.h"
+#endif
+
 #include "k8s_component.h"
 
 

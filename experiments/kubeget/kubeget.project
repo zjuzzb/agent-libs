@@ -372,11 +372,9 @@
       <File Name="src/json/json.h"/>
       <File Name="src/json/json-forwards.h"/>
     </VirtualDirectory>
-    <File Name="src/draios.pb.cpp"/>
     <File Name="src/draios.pb.h"/>
     <File Name="src/jsoncpp.cpp"/>
     <File Name="src/kubeget.cpp"/>
-    <File Name="Makefile" ExcludeProjConfig="Debug"/>
     <File Name="src/k8s_component.h"/>
     <File Name="src/k8s_component.cpp"/>
     <File Name="src/k8s_net.cpp"/>
@@ -387,6 +385,11 @@
     <File Name="src/k8s_dispatcher.h"/>
     <File Name="src/k8s_event_data.cpp"/>
     <File Name="src/k8s_event_data.h"/>
+    <File Name="Makefile"/>
+    <File Name="src/jsoncpp.h"/>
+    <File Name="src/draios.pb.cc"/>
+    <File Name="src/logger.h"/>
+    <File Name="src/draios.pb.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

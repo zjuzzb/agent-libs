@@ -126,7 +126,6 @@ void k8s_dispatcher::handle_node(const Json::Value& root, const msg_data& data)
 {
 	if (data.m_reason == COMPONENT_ADDED || data.m_reason == COMPONENT_MODIFIED)
 	{
-		std::cout << "NODE,";
 		std::vector<std::string> addresses = k8s_component::extract_nodes_addresses(root["status"]);
 		k8s_node_s& node = m_state.get_component<k8s_state_s::nodes, k8s_node_s>(m_state.get_nodes(), data.m_name, data.m_uid);
 		if (addresses.size() > 0)
@@ -151,12 +150,12 @@ void k8s_dispatcher::handle_node(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_nodes(), data.m_uid))
 		{
-			// log warning: node not found
+			g_logger.log(std::string("NODE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		// log error
+		g_logger.log("Bad NODE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -164,7 +163,6 @@ void k8s_dispatcher::handle_namespace(const Json::Value& root, const msg_data& d
 {
 	if (data.m_reason == COMPONENT_ADDED || data.m_reason == COMPONENT_MODIFIED)
 	{
-		std::cout << "NAMESPACE,";
 		k8s_ns_s& node = m_state.get_component<k8s_state_s::namespaces, k8s_ns_s>(m_state.get_namespaces(), data.m_name, data.m_uid);
 		Json::Value object = root["object"];
 		if (!object.isNull())
@@ -184,12 +182,12 @@ void k8s_dispatcher::handle_namespace(const Json::Value& root, const msg_data& d
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			// log warning: namespace not found
+			g_logger.log(std::string("NAMESPACE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		// log error
+		g_logger.log("Bad NAMESPACE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -197,7 +195,6 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 {
 	if (data.m_reason == COMPONENT_ADDED || data.m_reason == COMPONENT_MODIFIED)
 	{
-		std::cout << "POD,";
 		Json::Value object = root["object"];
 		if (!object.isNull())
 		{
@@ -220,12 +217,12 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			// log warning: namespace not found
+			g_logger.log(std::string("POD not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		// log error
+		g_logger.log("Bad POD watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -233,7 +230,6 @@ void k8s_dispatcher::handle_rc(const Json::Value& root, const msg_data& data)
 {
 	if (data.m_reason == COMPONENT_ADDED || data.m_reason == COMPONENT_MODIFIED)
 	{
-		std::cout << "REPLICATION_CONTROLLER,";
 		k8s_rc_s& rc = m_state.get_component<k8s_state_s::controllers, k8s_rc_s>(m_state.get_rcs(), data.m_name, data.m_uid, data.m_namespace);
 		Json::Value object = root["object"];
 		if (!object.isNull())
@@ -263,12 +259,12 @@ void k8s_dispatcher::handle_rc(const Json::Value& root, const msg_data& data)
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			// log warning: namespace not found
+			g_logger.log(std::string("CONTROLLER not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		// log error
+		g_logger.log("Bad CONTROLLER watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -276,7 +272,6 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 {
 	if (data.m_reason == COMPONENT_ADDED || data.m_reason == COMPONENT_MODIFIED)
 	{
-		std::cout << "SERVICE,";
 		Json::Value object = root["object"];
 		if (!object.isNull())
 		{
@@ -297,12 +292,12 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 	{
 		if (!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
 		{
-			// log warning: namespace not found
+			g_logger.log(std::string("SERVICE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
 	}
 	else // COMPONENT_ERROR
 	{
-		// log error
+		g_logger.log("Bad SERVICE watch message.", sinsp_logger::SEV_ERROR);
 	}
 }
 
@@ -316,42 +311,49 @@ void k8s_dispatcher::dispatch()
 			Json::Reader reader;
 			if (reader.parse(*it, root, false))
 			{
+				std::ostringstream os;
 				msg_data data = get_msg_data(root);
 				if (data.is_valid())
 				{
-					std::cout << '[' << to_reason_desc(data.m_reason) << ',';
+					os << '[' << to_reason_desc(data.m_reason) << ',';
 					switch (m_type)
 					{
 						case k8s_component::K8S_NODES:
+							os << "NODE,";
 							handle_node(root, data);
 							break;
 						case k8s_component::K8S_NAMESPACES:
+							os << "NAMESPACE,";
 							handle_namespace(root, data);
 							break;
 						case k8s_component::K8S_PODS:
+							os << "POD,";
 							handle_pod(root, data);
 							break;
 						case k8s_component::K8S_REPLICATIONCONTROLLERS:
+							os << "REPLICATION_CONTROLLER,";
 							handle_rc(root, data);
 							break;
 						case k8s_component::K8S_SERVICES:
+							os << "SERVICE,";
 							handle_service(root, data);
 							break;
 						default:
 						{
-							std::ostringstream os;
-							os << "Unknown component: " << static_cast<int>(m_type);
+							std::ostringstream eos;
+							eos << "Unknown component: " << static_cast<int>(m_type);
 							throw std::invalid_argument(os.str());
 						}
 					}
-					std::cout << data.m_name << ',' << data.m_uid << ',' << data.m_namespace << ']' << std::endl;
-					//std::cout << std::endl << root.toStyledString() << std::endl;
+					os << data.m_name << ',' << data.m_uid << ',' << data.m_namespace << ']';
+					g_logger.log(os.str(), sinsp_logger::SEV_INFO);
+					//g_logger.log(root.toStyledString());
 				}
 			}
 			else
 			{
-				// TODO: bad notification - discard silently?
-				std::cout << "Bad message received." << std::endl;
+				// TODO: bad notification - discard or throw?
+				g_logger.log("Bad JSON message received.", sinsp_logger::SEV_ERROR);
 			}
 			it = m_messages.erase(it);
 		}

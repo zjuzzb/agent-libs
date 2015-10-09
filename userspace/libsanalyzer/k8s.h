@@ -22,15 +22,17 @@ class k8s
 {
 public:
 	k8s(const std::string& uri = "http://localhost:80",
+		bool watch = false,
 		const std::string& api = "/api/v1/");
 
 	k8s(draiosproto::metrics& metrics,
 		const std::string& uri,
+		bool watch = false,
 		const std::string& api = "/api/v1/");
 
 	~k8s();
 
-	const draiosproto::k8s_state& get_proto(bool watch = true);
+	const draiosproto::k8s_state& get_proto();
 
 	std::size_t count(k8s_component::type component) const;
 
@@ -45,7 +47,7 @@ private:
 	void extract_data(const Json::Value& items, k8s_component::type component);
 
 	template <typename V, typename C>
-	void populate_component(V& component, C* k8s_component, k8s_component::type type)
+	void populate_component(V& component, C* k8s_component)
 	{
 		draiosproto::k8s_common* common = k8s_component->mutable_common();
 		common->set_name(component.get_name());
@@ -82,6 +84,7 @@ private:
 	static dispatch_map make_dispatch_map(k8s_state_s& state);
 
 	k8s_net                 m_net;
+	bool                    m_watch;
 	draiosproto::k8s_state& m_proto;
 	bool                    m_own_proto;
 	k8s_state_s             m_state;

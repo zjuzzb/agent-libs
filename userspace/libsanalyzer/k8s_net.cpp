@@ -63,7 +63,6 @@ k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_
 		m_uri(uri + api),
 		m_credentials(0),
 		m_session(0),
-		m_dispatcher(*this, &k8s_net::dispatch_events),
 		m_stopped(true)
 {
 	init();
@@ -71,7 +70,6 @@ k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_
 
 k8s_net::~k8s_net()
 {
-	m_stopped = true;
 	delete m_session;
 	delete m_credentials;
 }
@@ -115,14 +113,13 @@ HTTPClientSession* k8s_net::get_http_session()
 	}
 }
 
-void k8s_net::start()
+void k8s_net::start_watching()
 {
 	if (m_stopped)
 	{
 		subscribe();
 		m_stopped = false;
-		std::cout << "TYPE ID: " << typeid(&k8s_net::on_watch_data).name() << std::endl;
-		m_dispatch_thread.start(m_dispatcher);
+		m_thread = std::move(std::thread(&k8s_net::dispatch_events, this));
 	}
 }
 	
@@ -132,7 +129,7 @@ void k8s_net::subscribe()
 	for (auto& component : k8s_component::list)
 	{
 		path = m_uri.toString() +  "watch/" + component.second;
-		std::cout << "Connecting to " << path << std::endl;
+		//g_logger.log(std::string("Connecting to ") + path);
 
 		std::unique_ptr<HTTPClientSession> session(get_http_session());
 		HTTPRequest request(HTTPRequest::HTTP_GET, path);
@@ -158,16 +155,15 @@ void k8s_net::subscribe()
 		}
 		m_sockets[session->detachSocket()] = component.first;
 	}
-	std::cout << "Watching " << m_sockets.size() << " sockets." << std::endl;
 }
 
-void k8s_net::stop()
+void k8s_net::stop_watching()
 {
 	if (!m_stopped)
 	{
 		m_stopped = true;
-		m_dispatch_thread.join();
 		unsubscribe();
+		m_thread.join();
 	}
 }
 	
@@ -214,16 +210,12 @@ void k8s_net::dispatch_events()
 			readList = sockets;
 			exceptList = sockets;
 		}
-		catch (Poco::Exception& exc)
+		catch (std::exception& exc)
 		{
-			//_pContext->logger().error("Exception in main thread: " + exc.displayText());
+			//g_logger.log(std::string("Exception in main thread: ") + exc.what(), sinsp_logger::SEV_ERROR);
 		}
 	}
-}
-
-void k8s_net::on_watch_data(const void*, k8s_event_data& msg)
-{
-	std::cout << msg.component() << ':' << msg.data() << std::flush;
+	//g_logger.log("Thread done.", sinsp_logger::SEV_DEBUG);
 }
 
 void k8s_net::get_all_data(const k8s_component::component_map::value_type& component, std::ostream& out)
@@ -231,10 +223,10 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 	std::string path = m_uri.toString() + component.second;
 	HTTPRequest request(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
 	HTTPResponse response;
-	if (!send_request(*m_session, request, response, component, out))
+	if (!send_request(*m_session, request, response, out))
 	{
 		m_credentials->authenticate(request, response);
-		if (!send_request(*m_session, request, response, component, out))
+		if (!send_request(*m_session, request, response, out))
 		{
 			throw Poco::InvalidAccessException("Invalid username/password.");
 		}
@@ -243,7 +235,6 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 
 bool k8s_net::send_request(HTTPClientSession& session, HTTPRequest& request,
 	HTTPResponse& response,
-	const k8s_component::component_map::value_type& component,
 	std::ostream& out)
 {
 	session.sendRequest(request);

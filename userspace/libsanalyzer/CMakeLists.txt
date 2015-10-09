@@ -42,8 +42,8 @@ add_library(sanalyzer STATIC
 	parser_http.cpp
 	parser_mysql.cpp
 	parser_postgres.cpp
-  parser_mongodb.cpp
-        parser_tls.cpp
+	parser_mongodb.cpp
+	parser_tls.cpp
 	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	procfs_parser.cpp
@@ -68,10 +68,15 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
 	rt
-	dl)
+	dl
+	ssl
+	crypto)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

@@ -1,24 +1,34 @@
-#
-# Makefile
-#
-# $Id: //poco/1.4/Net/samples/kubeget/Makefile#1 $
-#
-# Makefile for Poco kubeget
-#
+SDIR =./src
+IDIR =./src
+CC=g++
+CFLAGS=-DK8S_STANDALONE -std=c++11 -Wall -Wextra -I$(IDIR) -lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lpthread -lssl -lcrypto -lz -ldl
+#-fno-omit-frame-pointer
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Crypto/include
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/NetSSL_OpenSSL/include
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/XML/include
+CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Util/include
+CFLAGS+=-I../../dependencies/protobuf-2.5.0/src
+CFLAGS+=-L../../dependencies/poco-1.4.6p4-all/lib/Linux/x86_64
+CFLAGS+=-L../../dependencies/protobuf-2.5.0/src/.libs
 
-LINKMODE = STATIC
+ODIR=obj
 
-include $(POCO_BASE)/build/rules/global
+_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h draios.pb.h
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-CXXFLAGS += -std=c++11 -fno-omit-frame-pointer
+_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o jsoncpp.o draios.pb.o
+OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
-SYSLIBS += -L$(PROJECT_BASE)/../../dependencies/protobuf-2.5.0/src/.libs -lprotobuf -lssl -lcrypto -lz -ldl
-INCLUDE += -I$(PROJECT_BASE)/../../dependencies/protobuf-2.5.0/src
 
-objects = kubeget k8s k8s_net k8s_component k8s_dispatcher k8s_event_data jsoncpp draios.pb
+$(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-target         = kubeget
-target_version = 1
-target_libs    = PocoNetSSL PocoNet PocoUtil PocoXML PocoCrypto PocoFoundation
+kubeget: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-include $(POCO_BASE)/build/rules/exec
+.PHONY: clean
+
+clean:
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 

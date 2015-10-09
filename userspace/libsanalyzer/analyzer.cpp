@@ -3401,8 +3401,8 @@ void sinsp_analyzer::emit_kubernetes()
 {
 	try
 	{
-		k8s kube(*m_metrics, "http://127.0.0.1:8080/");
-		kube.get_proto(false);
+		k8s kube(*m_metrics, "http://127.0.0.1:8080/", false /*true to watch*/);
+		kube.get_proto();
 	}
 	catch (std::exception& e)
 	{
