@@ -370,7 +370,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
 	}
-	if(m_configuration.m_running_in_container)
+	if(m_configuration.m_system_supports_containers)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
@@ -383,7 +383,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			else
 			{
-				g_log->information(s);
+				g_log->debug(s);
 			}
 		});
 		monitor_process.emplace_process("mountedfs_reader", [this](void)

@@ -617,8 +617,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
-		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
 			m_my_cpuload,
@@ -1186,6 +1186,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
 				}
 			}
+		}
+
+		if(m_mounted_fs_proxy)
+		{
+			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
+			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+			{
+				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+				{
+					return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+				});
+				if(long_running_proc != it->second.end())
+				{
+					containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
+														   (*long_running_proc)->m_vpid);
+				}
+			}
+			// Add host
+			containers_for_mounted_fs.emplace_back("host", 1, 1);
+			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
 	}
 
@@ -2416,13 +2436,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_inspector->is_live())
 			{
 				get_statsd();
+				if(m_mounted_fs_proxy)
+				{
+					// Get last filesystem stats, list of containers is sent on emit_processes
+					auto new_fs_map = m_mounted_fs_proxy->receive_mounted_fs_list();
+					if(!new_fs_map.empty())
+					{
+						m_mounted_fs_map = move(new_fs_map);
+					}
+				}
 			}
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
+
 			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			////////////////////////////////////////////////////////////////////////////
@@ -2630,31 +2660,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
-			if(m_inspector->is_live())
+			if(m_mounted_fs_proxy)
 			{
-				vector<sinsp_procfs_parser::mounted_fs> fs_list;
-				if(m_mounted_fs_proxy)
+				auto fs_list = m_mounted_fs_map.find("host");
+				if(fs_list != m_mounted_fs_map.end())
 				{
-					fs_list = m_mounted_fs_proxy->get_mounted_fs_list();
-				}
-				else
-				{
-					fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
-				}
-				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
-					it != fs_list.end(); ++it)
-				{
-					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
-
-					fs->set_device(it->device);
-					fs->set_mount_dir(it->mount_dir);
-					fs->set_type(it->type);
-					fs->set_size_bytes(it->size_bytes);
-					fs->set_used_bytes(it->used_bytes);
-					fs->set_available_bytes(it->available_bytes);
+					for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+					{
+						draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+						it->to_protobuf(fs);
+					}
 				}
 			}
-
+			else if(m_inspector->is_live()) // When not live, fs stats break regression tests causing false positives
+			{
+				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
+				{
+					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+					it->to_protobuf(fs);
+				}
+			}
 			//
 			// Executed commands
 			//
@@ -3725,6 +3751,15 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
+	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
+	if(fs_list != m_mounted_fs_map.end())
+	{
+		for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+		{
+			auto proto_fs = container->add_mounts();
+			it->to_protobuf(proto_fs);
+		}
+	}
 }
 
 void sinsp_analyzer::get_statsd()

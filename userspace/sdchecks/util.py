@@ -139,14 +139,14 @@ def get_next_id(name):
     return current_id
 
 def is_valid_hostname(hostname):
-    if hostname.lower() in set([
-        'localhost',
-        'localhost.localdomain',
-        'localhost6.localdomain6',
-        'ip6-localhost',
-    ]):
-        log.warning("Hostname: %s is local" % hostname)
-        return False
+    #if hostname.lower() in set([
+    #    'localhost',
+    #    'localhost.localdomain',
+    #    'localhost6.localdomain6',
+    #    'ip6-localhost',
+    #]):
+    #    log.warning("Hostname: %s is local" % hostname)
+    #    return False
     if len(hostname) > MAX_HOSTNAME_LEN:
         log.warning("Hostname: %s is too long (max length is  %s characters)" % (hostname, MAX_HOSTNAME_LEN))
         return False
@@ -216,7 +216,6 @@ def get_hostname(config=None):
             hostname = socket_hostname
 
     if hostname is None:
-        log.critical('Unable to reliably determine host name.')
         raise Exception('Unable to reliably determine host name.')
     else:
         return hostname
