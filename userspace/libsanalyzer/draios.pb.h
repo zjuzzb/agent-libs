@@ -6075,6 +6075,18 @@ class container : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >*
       mutable_labels();
 
+  // repeated .draiosproto.mounted_fs mounts = 21;
+  inline int mounts_size() const;
+  inline void clear_mounts();
+  static const int kMountsFieldNumber = 21;
+  inline const ::draiosproto::mounted_fs& mounts(int index) const;
+  inline ::draiosproto::mounted_fs* mutable_mounts(int index);
+  inline ::draiosproto::mounted_fs* add_mounts();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+      mounts() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+      mutable_mounts();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6123,10 +6135,11 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping > port_mappings_;
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label > labels_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -15600,6 +15613,31 @@ container::labels() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >*
 container::mutable_labels() {
   return &labels_;
+}
+
+// repeated .draiosproto.mounted_fs mounts = 21;
+inline int container::mounts_size() const {
+  return mounts_.size();
+}
+inline void container::clear_mounts() {
+  mounts_.Clear();
+}
+inline const ::draiosproto::mounted_fs& container::mounts(int index) const {
+  return mounts_.Get(index);
+}
+inline ::draiosproto::mounted_fs* container::mutable_mounts(int index) {
+  return mounts_.Mutable(index);
+}
+inline ::draiosproto::mounted_fs* container::add_mounts() {
+  return mounts_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+container::mounts() const {
+  return mounts_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+container::mutable_mounts() {
+  return &mounts_;
 }
 
 // -------------------------------------------------------------------

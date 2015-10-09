@@ -244,8 +244,11 @@ class PosixQueueType:
 
 class PosixQueue:
     MSGSIZE = 1 << 20
-    def __init__(self, name, direction, maxmsgs=3):
-        resource.setrlimit(RLIMIT_MSGQUEUE, (10*self.MSGSIZE, 10*self.MSGSIZE))
+    MAXMSGS = 3
+    MAXQUEUES = 10
+    def __init__(self, name, direction, maxmsgs=MAXMSGS):
+        limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
+        resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
                                             max_messages = maxmsgs, max_message_size = self.MSGSIZE,
@@ -289,8 +292,9 @@ class Application:
         logging.getLogger("requests").setLevel(logging.WARNING)
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
-        self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
-        self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+
+        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND)
 
         # Blacklist works in two ways
         # 1. for pids where we cannot create an AppCheckInstance, skip them

@@ -246,8 +246,9 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	// Detect if running inside container using SYSDIG_HOST_ROOT
-	m_running_in_container = (strcmp(scap_get_host_root(),"") != 0);
+	// Check existence of namespace to see if kernel supports containers
+	File nsfile("/proc/self/ns/mnt");
+	m_system_supports_containers = nsfile.exists();;
 
 	if(m_statsd_enabled)
 	{
@@ -309,7 +310,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
-	g_log->information("Running inside container: " + bool_as_text(m_running_in_container));
+	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 
 	if(!m_blacklisted_ports.empty())
 	{

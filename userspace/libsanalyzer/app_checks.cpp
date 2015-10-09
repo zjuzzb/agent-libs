@@ -59,8 +59,8 @@ Json::Value app_process::to_json() const
 }
 
 app_checks_proxy::app_checks_proxy():
-	m_outqueue("/sdchecks", posix_queue::SEND),
-	m_inqueue("/dragent_app_checks", posix_queue::RECEIVE)
+	m_outqueue("/sdc_app_checks_in", posix_queue::SEND),
+	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE)
 {
 }
 

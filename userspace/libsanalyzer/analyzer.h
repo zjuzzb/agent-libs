@@ -24,6 +24,7 @@ typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
 #ifdef HAS_ANALYZER
 class sinsp_scores;
+class mounted_fs;
 class sinsp_procfs_parser;
 class mounted_fs_proxy;
 class sinsp_sched_analyzer;
@@ -465,6 +466,7 @@ VISIBILITY_PRIVATE
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
+	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
 
 	vector<string> m_container_patterns;
