@@ -287,7 +287,7 @@ class Application:
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
-        logging.debug("Check config: %s", repr(self.config.checks))
+        # logging.debug("Check config: %s", repr(self.config.checks))
         # requests generates too noise on information level
         logging.getLogger("requests").setLevel(logging.WARNING)
         self.known_instances = {}
