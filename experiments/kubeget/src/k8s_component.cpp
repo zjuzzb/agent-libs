@@ -4,6 +4,7 @@
 
 #include "k8s_component.h"
 #include <sstream>
+#include <iostream>
 
 //
 // component
@@ -108,7 +109,7 @@ void k8s_component::extract_pod_data(const Json::Value& item, k8s_pod_s& pod)
 
 std::vector<std::string> k8s_component::extract_nodes_addresses(const Json::Value& status)
 {
-	std::vector<std::string> addr_list;
+	std::vector<std::string> address_list;
 	if (!status.isNull())
 	{
 		Json::Value addresses = status["addresses"];
@@ -126,7 +127,7 @@ std::vector<std::string> k8s_component::extract_nodes_addresses(const Json::Valu
 							Json::Value ip = address[entry];
 							if (!ip.isNull())
 							{
-								addr_list.emplace_back(std::move(ip.asString()));
+								address_list.emplace_back(std::move(ip.asString()));
 							}
 						}
 					}
@@ -134,7 +135,7 @@ std::vector<std::string> k8s_component::extract_nodes_addresses(const Json::Valu
 			}
 		}
 	}
-	return addr_list;
+	return address_list;
 }
 
 void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s& service)

@@ -1,7 +1,7 @@
 SDIR =./src
 IDIR =./src
 CC=g++
-CFLAGS=-DK8S_STANDALONE -std=c++11 -Wall -Wextra -I$(IDIR) -lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lpthread -lssl -lcrypto -lz -ldl
+CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) 
 #-fno-omit-frame-pointer
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
@@ -10,8 +10,15 @@ CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/NetSSL_OpenSSL/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/XML/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Util/include
 CFLAGS+=-I../../dependencies/protobuf-2.5.0/src
-CFLAGS+=-L../../dependencies/poco-1.4.6p4-all/lib/Linux/x86_64
-CFLAGS+=-L../../dependencies/protobuf-2.5.0/src/.libs
+CFLAGS+=-I../../dependencies/curl-7.45.0/src
+
+LFLAGS=-L../../dependencies/poco-1.4.6p4-all/lib/Linux/x86_64
+LFLAGS+=-L../../dependencies/protobuf-2.5.0/src/.libs
+LFLAGS+=-L../../dependencies/curl-7.45.0/lib/.libs
+LFLAGS+=-lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lpthread -lssl -lcrypto -lz -ldl -lcurl
+
+FLAGS=$(CFLAGS)
+FLAGS+=$(LFLAGS)
 
 ODIR=obj
 
@@ -23,10 +30,10 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -c -o $@ $< $(FLAGS)
 
 kubeget: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(FLAGS) $(LIBS)
 
 .PHONY: clean
 
