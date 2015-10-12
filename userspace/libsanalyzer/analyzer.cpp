@@ -971,6 +971,23 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container = &m_containers[tinfo->m_container_id];
 		}
 
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+			if(container->m_memory_cgroup.empty())
+			{
+				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+												[](const pair<string, string>& cgroup)
+												{
+													return cgroup.first == "memory";
+												});
+				if(memory_cgroup_it != tinfo->m_cgroups.cend())
+				{
+					container->m_memory_cgroup = memory_cgroup_it->second;
+				}
+			}
+		}
+
 		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -1219,22 +1236,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		sinsp_threadinfo* tinfo = &it->second;
 		analyzer_container_state* container = NULL;
-		if(!tinfo->m_container_id.empty())
-		{
-			container = &m_containers[tinfo->m_container_id];
-			if(container->m_memory_cgroup.empty())
-			{
-				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
-												[](const pair<string, string>& cgroup)
-												{
-													return cgroup.first == "memory";
-												});
-				if(memory_cgroup_it != tinfo->m_cgroups.cend())
-				{
-					container->m_memory_cgroup = memory_cgroup_it->second;
-				}
-			}
-		}
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
