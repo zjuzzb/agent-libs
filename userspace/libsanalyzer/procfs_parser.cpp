@@ -490,7 +490,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		if(!remotefs_enabled)
 		{
 			// if remotefs are disabled, recognize them and skip
-			if(strchr(entry->mnt_fsname, ':') != NULL
+			if((strchr(entry->mnt_fsname, ':') != NULL && strstr(entry->mnt_fsname, "docker") == NULL)
 				|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
 				|| strcmp(entry->mnt_type, "smbfs") == 0
 				|| strcmp(entry->mnt_type, "cifs") == 0)
