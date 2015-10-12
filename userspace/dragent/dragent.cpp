@@ -242,7 +242,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_jmx_pipes = make_shared<pipe_manager>();
 		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
-		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser());
+		auto* state = &m_subprocesses_state["sdjagent"];
+		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser(), state);
 
 		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
@@ -327,6 +328,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
+		auto state = &m_subprocesses_state["sdchecks"];
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 		{
 			auto parsed_log = sinsp_split(line, ':');
@@ -357,7 +359,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			} else {
 				g_log->error("sdchecks, " + line);
 			}
-		});
+		}, state);
 		monitor_process.emplace_process("sdchecks", [this](void)
 		{
 			this->m_sdchecks_pipes->attach_child();
@@ -373,6 +375,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_configuration.m_system_supports_containers)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
+		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
 		{
 			// Right now we are using default sinsp stderror logger
@@ -385,7 +388,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			{
 				g_log->debug(s);
 			}
-		});
+		}, state);
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
@@ -623,6 +626,33 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		snprintf(line, sizeof(line), "watchdog: committing suicide\n");
 		crash_handler::log_crashdump_message(line);
 		kill(getpid(), SIGKILL);
+	}
+
+	for(auto& proc : m_subprocesses_state)
+	{
+		auto& state = proc.second;
+		if(state.valid())
+		{
+			bool to_kill = false;
+			if(m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.find(proc.first) != m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.end() &&
+			   state.memory_used()/1024 > m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
+			{
+				g_log->critical("watchdog: " + proc.first + " using " + to_string(state.memory_used()) + " of memory, killing");
+				to_kill = true;
+			}
+			uint64_t diff = (sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS) - state.last_loop_s();
+			if(m_configuration.m_watchdog_subprocesses_timeout_s.find(proc.first) != m_configuration.m_watchdog_subprocesses_timeout_s.end() &&
+			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
+			{
+				g_log->critical("watchdog: " + proc.first + " last activity " + NumberFormatter::format(diff) + " ns ago");
+				to_kill = true;
+			}
+			if(to_kill)
+			{
+				kill(state.pid(), SIGKILL);
+				state.reset();
+			}
+		}
 	}
 }
 
