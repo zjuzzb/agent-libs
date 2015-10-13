@@ -915,6 +915,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
+	// Emit process has 4 cycles on thread_table:
+	// 1. Emit memory metrics from threads to main_threads
+	// 2. Aggregate process into programs
+	// 3. (only on programs) aggregate programs metrics to host and container ones
+	// 4. Write programs on protobuf
+
+
 	///////////////////////////////////////////////////////////////////////////
 	// Propagate the memory information from child thread to main thread:
 	// since memory is updated at context-switch intervals, it can happen
@@ -1168,14 +1175,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		sinsp_threadinfo* tinfo = *it;
 		analyzer_container_state* container = NULL;
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
-
-/*		if(proctids.size() != 0)
-		{
-			if(proctids.find(it->first) == proctids.end())
-			{
-				tinfo->m_flags |= PPM_CL_CLOSED;
-			}
-		}*/
 
 		sinsp_counter_time tot;
 
