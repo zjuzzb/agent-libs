@@ -777,7 +777,19 @@ int mounted_fs_reader::run()
 	uint64_t m_last_loop_s = 0;
 	struct rusage mem_usage;
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
-	auto home_fd = open_ns_fd(pid);
+	int home_fd = 0;
+	if(getppid() == 1)
+	{
+		// If `--pid host` is not used, we take the mnt from /proc
+		// as we don't know our hostpid
+		char filename[SCAP_MAX_PATH_SIZE];
+		snprintf(filename, sizeof(filename), "/proc/%d/ns/mnt", pid);
+		home_fd = open(filename, O_RDONLY);
+	}
+	else
+	{
+		home_fd = open_ns_fd(pid);
+	}
 	if(home_fd <= 0)
 	{
 		return DONT_RESTART_EXIT;
