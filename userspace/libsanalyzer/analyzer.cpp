@@ -1174,6 +1174,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		sinsp_threadinfo* tinfo = *it;
 		analyzer_container_state* container = NULL;
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+		}
+
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 		sinsp_counter_time tot;
@@ -1402,7 +1407,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
-		analyzer_container_state* container = NULL;
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
