@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <string>
+#include "Poco/Format.h"
 
 struct sinsp_logger
 {
@@ -26,10 +28,7 @@ extern sinsp_logger g_logger;
 #define ASSERT(X) \
 	if(!(X)) \
 	{ \
-		if(g_log) \
-		{ \
-			g_log->error(Poco::format("ASSERTION %s at %s:%d", string(#X), string(__FILE__), __LINE__)); \
-		} \
+		g_logger.log(Poco::format("ASSERTION %s at %s:%d", std::string(#X), std::string(__FILE__), __LINE__), sinsp_logger::SEV_ERROR); \
 		assert(X); \
 	} 
 #else // _DEBUG

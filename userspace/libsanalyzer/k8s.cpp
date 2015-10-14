@@ -85,6 +85,7 @@ const draiosproto::k8s_state& k8s::get_proto()
 	std::ostringstream os;
 	for (auto& component : m_components)
 	{
+		m_state.clear(component.first);
 		m_net.get_all_data(component, os);
 		parse_json(os.str(), component);
 		os.str("");
@@ -121,10 +122,15 @@ std::size_t k8s::count(k8s_component::type component) const
 
 	case k8s_component::K8S_SERVICES:
 		return m_state.get_services().size();
+
+	case k8s_component::K8S_COMPONENT_COUNT:
+	default:
+		break;
 	}
 
-	throw Poco::InvalidAccessException(
-		Poco::format("Unknown component [%d]", static_cast<int>(component)));
+	std::ostringstream os;
+	os << "Unknown component " << static_cast<int>(component);
+	throw std::invalid_argument(os.str());
 }
 
 void k8s::extract_data(const Json::Value& items, k8s_component::type component)

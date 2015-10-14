@@ -30,9 +30,11 @@ public:
 		K8S_NAMESPACES,
 		K8S_PODS,
 		K8S_REPLICATIONCONTROLLERS,
-		K8S_SERVICES
+		K8S_SERVICES,
+		K8S_COMPONENT_COUNT
 	};
 
+	typedef std::pair<type, std::string> component_pair;
 	typedef std::map<type, std::string> component_map;
 	static const component_map list;
 
@@ -41,15 +43,15 @@ public:
 	k8s_component(const std::string& name, const std::string& uid, const std::string& ns = "");
 
 	const std::string& get_name() const;
-	
+
 	void set_name(const std::string& name);
 
 	const std::string& get_uid() const;
-	
+
 	void set_uid(const std::string& uid);
 
 	const std::string& get_namespace() const;
-	
+
 	void set_namespace(const std::string& ns);
 
 	const k8s_pair_list& get_labels() const;
@@ -83,13 +85,21 @@ public:
 
 	static void extract_services_data(const Json::Value& spec, k8s_service_s& service);
 
+	static const std::string& get_name(const component_pair& p);
+
+	static std::string get_name(type t);
+
+	static type get_type(const component_pair& p);
+
+	static type get_type(const std::string& name);
+
 private:
 	std::string   m_name;
 	std::string   m_uid;
 	std::string   m_ns;
 	k8s_pair_list m_labels;
 	k8s_pair_list m_selectors;
-	
+
 	friend class k8s_state_s;
 };
 
@@ -113,7 +123,7 @@ class k8s_node_s : public k8s_component
 {
 public:
 	k8s_node_s(const std::string& name, const std::string& uid, const std::string& ns = "");
-	
+
 	const std::vector<std::string>& get_host_ips() const;
 
 	std::vector<std::string>& get_host_ips();
@@ -135,7 +145,7 @@ class k8s_pod_s : public k8s_component
 {
 public:
 	k8s_pod_s(const std::string& name, const std::string& uid, const std::string& ns = "");
-	
+
 	const std::vector<std::string>& get_container_ids() const;
 
 	std::vector<std::string>& get_container_ids();
@@ -145,15 +155,15 @@ public:
 	void emplace_container_id(std::string&& container_id);
 
 	const std::string& get_node_name() const;
-	
+
 	void set_node_name(const std::string& name);
 
 	const std::string& get_host_ip() const;
-	
+
 	void set_host_ip(const std::string& host_ip);
 
 	const std::string& get_internal_ip() const;
-	
+
 	void set_internal_ip(const std::string& internal_ip);
 
 private:
@@ -199,7 +209,7 @@ public:
 	void set_cluster_ip(const std::string& cluster_ip);
 
 	const port_list& get_port_list() const;
-	
+
 	void set_port_list(port_list&& ports);
 
 private:
@@ -249,7 +259,7 @@ public:
 	void push_node(const k8s_node_s& node);
 
 	void emplace_node(k8s_node_s&& node);
-	
+
 	//
 	// pods
 	//
@@ -353,6 +363,8 @@ public:
 		return false;
 	}
 
+	void clear(k8s_component::type type = k8s_component::K8S_COMPONENT_COUNT);
+
 private:
 	namespaces  m_namespaces;
 	nodes       m_nodes;
@@ -445,6 +457,15 @@ inline void k8s_component::emplace_selector(k8s_pair_s&& selector)
 	m_selectors.emplace_back(std::move(selector));
 }
 
+inline const std::string& k8s_component::get_name(const component_pair& p)
+{
+	return p.second;
+}
+
+inline k8s_component::type k8s_component::get_type(const component_pair& p)
+{
+	return p.first;
+}
 
 //
 // node

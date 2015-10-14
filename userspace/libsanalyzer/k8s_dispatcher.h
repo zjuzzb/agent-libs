@@ -62,34 +62,9 @@ private:
 	void handle_rc(const Json::Value& root, const msg_data& data);
 	void handle_service(const Json::Value& root, const msg_data& data);
 
-	std::string to_reason_desc(msg_reason reason)
-	{
-		switch (reason)
-		{
-		case COMPONENT_ADDED:
-			return "ADDED";
-		case COMPONENT_MODIFIED:
-			return "MODIFIED";
-		case COMPONENT_DELETED:
-			return "DELETED";
-		case COMPONENT_ERROR:
-			return "ERROR";
-		case COMPONENT_UNKNOWN:
-			return "UNKNOWN";
-		default:
-			return "";
-		}
-	}
+	static std::string to_reason_desc(msg_reason reason);
 	
-	msg_reason to_reason(const std::string& desc)
-	{
-		if (desc == "ADDED") { return COMPONENT_ADDED; }
-		else if (desc == "MODIFIED") { return COMPONENT_MODIFIED; }
-		else if (desc == "DELETED") { return COMPONENT_DELETED; }
-		else if (desc == "ERROR") { return COMPONENT_ERROR; }
-		else if (desc == "UNKNOWN") { return COMPONENT_UNKNOWN; }
-		throw std::invalid_argument(desc);
-	}
+	static msg_reason to_reason(const std::string& desc);
 
 	typedef std::deque<std::string> list;
 

@@ -30,7 +30,7 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
-	$(CC) -g -c -O -o $@ $< $(FLAGS)
+	$(CC) -g -c -D_DEBUG -O -o $@ $< $(FLAGS)
 
 kubeget: $(OBJ)
 	$(CC) -o $@ $^ $(FLAGS) $(LIBS)

@@ -12,11 +12,11 @@
 
 const k8s_component::component_map k8s_component::list =
 {
-	{ k8s_component::K8S_NODES, "nodes" },
-	{ k8s_component::K8S_NAMESPACES, "namespaces" },
-	{ k8s_component::K8S_PODS, "pods" },
+	{ k8s_component::K8S_NODES,                  "nodes"                  },
+	{ k8s_component::K8S_NAMESPACES,             "namespaces"             },
+	{ k8s_component::K8S_PODS,                   "pods"                   },
 	{ k8s_component::K8S_REPLICATIONCONTROLLERS, "replicationcontrollers" },
-	{ k8s_component::K8S_SERVICES, "services" }
+	{ k8s_component::K8S_SERVICES,               "services"               }
 };
 
 k8s_component::k8s_component(const std::string& name, const std::string& uid, const std::string& ns) : 
@@ -197,6 +197,59 @@ void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s
 	}
 }
 
+
+std::string k8s_component::get_name(type t)
+{
+	switch (t)
+	{
+	case K8S_NAMESPACES:
+		return "namespaces";
+	case K8S_NODES:
+		return "nodes";
+	case K8S_PODS:
+		return "pods";
+	case K8S_REPLICATIONCONTROLLERS:
+		return "replicationcontrollers";
+	case K8S_SERVICES:
+		return "services";
+	case K8S_COMPONENT_COUNT:
+	default:
+		break;
+	}
+
+	std::ostringstream os;
+	os << "Unknown component type " << static_cast<int>(t);
+	throw std::invalid_argument(os.str().c_str());
+}
+
+k8s_component::type k8s_component::get_type(const std::string& name)
+{
+	if (name == "namespaces")
+	{
+		return K8S_NAMESPACES;
+	}
+	else if (name == "nodes")
+	{
+		return K8S_NODES;
+	}
+	else if (name == "pods")
+	{
+		return K8S_PODS;
+	}
+	else if (name == "replicationcontrollers")
+	{
+		return K8S_REPLICATIONCONTROLLERS;
+	}
+	else if (name == "services")
+	{
+		return K8S_SERVICES;
+	}
+
+	std::ostringstream os;
+	os << "Unknown component name " << name;
+	throw std::invalid_argument(os.str().c_str());
+}
+
 //
 // namespace
 //
@@ -305,6 +358,9 @@ void k8s_state_s::replace_items(k8s_component::type t, const std::string& name, 
 			return;
 		}
 		break;
+	case k8s_component::K8S_COMPONENT_COUNT:
+	default:
+		break;
 	}
 
 	std::ostringstream os;
@@ -331,6 +387,10 @@ k8s_component& k8s_state_s::add_common_single_value(k8s_component::type componen
 
 		case k8s_component::K8S_SERVICES:
 			return get_component<services, k8s_service_s>(m_services, name, uid, ns);
+
+		case k8s_component::K8S_COMPONENT_COUNT:
+		default:
+			break;
 	}
 
 	std::ostringstream os;
@@ -351,3 +411,38 @@ k8s_node_s* k8s_state_s::get_node(const std::string& uid)
 	return nullptr;
 }
 
+void k8s_state_s::clear(k8s_component::type type)
+{
+	if (type == k8s_component::K8S_COMPONENT_COUNT)
+	{
+		m_namespaces.clear();
+		m_nodes.clear();
+		m_pods.clear();
+		m_controllers.clear();
+		m_services.clear();
+	}
+	else
+	{
+		switch (type)
+		{
+		case k8s_component::K8S_NODES:
+			m_nodes.clear();
+			break;
+		case k8s_component::K8S_NAMESPACES:
+			m_namespaces.clear();
+			break;
+		case k8s_component::K8S_PODS:
+			m_pods.clear();
+			break;
+		case k8s_component::K8S_REPLICATIONCONTROLLERS:
+			m_controllers.clear();
+			break;
+		case k8s_component::K8S_SERVICES:
+			m_services.clear();
+			break;
+		case k8s_component::K8S_COMPONENT_COUNT:
+		default:
+			break;
+		}
+	}
+}

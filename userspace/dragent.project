@@ -83,6 +83,10 @@
     <File Name="libsanalyzer/k8s_dispatcher.h"/>
     <File Name="libsanalyzer/parser_tls.h"/>
     <File Name="libsanalyzer/k8s_component.h"/>
+    <File Name="libsanalyzer/k8s_http.cpp"/>
+    <File Name="libsanalyzer/k8s_poller.h"/>
+    <File Name="libsanalyzer/k8s_poller.cpp"/>
+    <File Name="libsanalyzer/k8s_http.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

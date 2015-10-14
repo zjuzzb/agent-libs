@@ -5,21 +5,12 @@
 //
 #pragma once
 
-#include "Poco/Net/HTTPSClientSession.h"
-#include "Poco/Net/HTTPRequest.h"
-#include "Poco/Net/HTTPResponse.h"
-#include "Poco/Net/HTTPCredentials.h"
-#include "Poco/Net/WebSocket.h"
-#include "Poco/Net/StreamSocket.h"
-#include "Poco/StreamCopier.h"
-#include "Poco/NullStream.h"
-#include "Poco/SharedPtr.h"
+
 #include "Poco/URI.h"
-#include "Poco/Path.h"
-#include "Poco/Format.h"
-#include "Poco/Exception.h"
 #include "k8s_component.h"
 #include "k8s_event_data.h"
+#include "k8s_http.h"
+#include "k8s_poller.h"
 #include <thread>
 #include <sstream>
 #include <utility>
@@ -45,8 +36,6 @@ public:
 	bool is_watching() const;
 
 private:
-	Poco::Net::HTTPClientSession* get_http_session();
-
 	void subscribe();
 	
 	void unsubscribe();
@@ -55,22 +44,17 @@ private:
 
 	void init();
 
-	bool send_request(Poco::Net::HTTPClientSession& session,
-		Poco::Net::HTTPRequest& request,
-		Poco::Net::HTTPResponse& response,
-		std::ostream& out);
-
 	bool is_secure();
 
-	typedef std::map<Poco::Net::Socket, k8s_component::type> socket_map;
+	typedef std::map<k8s_component::type, k8s_http*> api_map_t;
 
-	k8s&                           m_k8s;
-	Poco::URI                      m_uri;
-	Poco::Net::HTTPCredentials*    m_credentials;
-	Poco::Net::HTTPClientSession*  m_session;
-	socket_map                     m_sockets;
-	std::thread                    m_thread;
-	bool                           m_stopped;
+	k8s&        m_k8s;
+	Poco::URI   m_uri;
+	std::string m_creds;
+	std::thread m_thread;
+	bool        m_stopped;
+	api_map_t   m_api_interfaces;
+	k8s_poller  m_poller;
 };
 
 inline bool k8s_net::is_secure()
@@ -82,3 +66,5 @@ inline bool k8s_net::is_watching() const
 {
 	return !m_stopped;
 }
+
+

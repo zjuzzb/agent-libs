@@ -39,11 +39,6 @@ public:
 	void on_watch_data(k8s_event_data&& msg);
 
 private:
-	bool send_request(Poco::Net::HTTPClientSession& session,
-		Poco::Net::HTTPRequest& request,
-		Poco::Net::HTTPResponse& response,
-		const k8s_component::component_map::value_type& component);
-
 	void extract_data(const Json::Value& items, k8s_component::type component);
 
 	template <typename V, typename C>
