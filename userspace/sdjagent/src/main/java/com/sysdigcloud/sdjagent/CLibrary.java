@@ -26,7 +26,7 @@ final public class CLibrary {
 
         try {
             // Read pid and ppid from file instead of calling getpid() because it
-            // will work event we cannot load our `libsdjagent.so` library
+            // will work even if we cannot load our `libsdjagent.so` library
             FileInputStream procStatusFile = new FileInputStream("/proc/self/status");
             Scanner procStatusReader = new Scanner(procStatusFile);
             while (procStatusReader.hasNextLine()) {
@@ -34,7 +34,7 @@ final public class CLibrary {
                 if (line.startsWith("Pid:")) {
                     // Example:
                     // Pid:	1020
-                    // Uid: <pid>
+                    // Pid: <pid>
                     String[] parsed = line.split("\\s+");
                     pid = Integer.parseInt(parsed[1]);
 
