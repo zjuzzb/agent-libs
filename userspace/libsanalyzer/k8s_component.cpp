@@ -119,8 +119,8 @@ std::vector<std::string> k8s_component::extract_nodes_addresses(const Json::Valu
 			{
 				if (address.isObject())
 				{
-					Json::Value::Members addr_list = address.getMemberNames();
-					for (auto& entry : addr_list)
+					Json::Value::Members addr_names_list = address.getMemberNames();
+					for (auto& entry : addr_names_list)
 					{
 						if (entry == "address")
 						{

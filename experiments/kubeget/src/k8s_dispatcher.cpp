@@ -71,7 +71,7 @@ bool k8s_dispatcher::is_valid(const std::string& msg)
 bool k8s_dispatcher::is_ready(const std::string& msg)
 {
 	// absurd minimum ( "{}\n" ) but it's hard to tell 
-	// what minimal size is, so there
+	// what minimal size is, so there ...
 	if (msg.size() < 3) 
 	{
 		return false;
@@ -366,3 +366,31 @@ void k8s_dispatcher::dispatch()
 	}
 }
 
+std::string k8s_dispatcher::to_reason_desc(msg_reason reason)
+{
+	switch (reason)
+	{
+	case COMPONENT_ADDED:
+		return "ADDED";
+	case COMPONENT_MODIFIED:
+		return "MODIFIED";
+	case COMPONENT_DELETED:
+		return "DELETED";
+	case COMPONENT_ERROR:
+		return "ERROR";
+	case COMPONENT_UNKNOWN:
+		return "UNKNOWN";
+	default:
+		return "";
+	}
+}
+
+k8s_dispatcher::msg_reason k8s_dispatcher::to_reason(const std::string& desc)
+{
+	if (desc == "ADDED") { return COMPONENT_ADDED; }
+	else if (desc == "MODIFIED") { return COMPONENT_MODIFIED; }
+	else if (desc == "DELETED") { return COMPONENT_DELETED; }
+	else if (desc == "ERROR") { return COMPONENT_ERROR; }
+	else if (desc == "UNKNOWN") { return COMPONENT_UNKNOWN; }
+	throw std::invalid_argument(desc);
+}

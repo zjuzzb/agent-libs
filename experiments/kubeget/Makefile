@@ -10,7 +10,7 @@ CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/NetSSL_OpenSSL/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/XML/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Util/include
 CFLAGS+=-I../../dependencies/protobuf-2.5.0/src
-CFLAGS+=-I../../dependencies/curl-7.45.0/src
+CFLAGS+=-I../../dependencies/curl-7.45.0/include
 
 LFLAGS=-L../../dependencies/poco-1.4.6p4-all/lib/Linux/x86_64
 LFLAGS+=-L../../dependencies/protobuf-2.5.0/src/.libs
@@ -22,15 +22,15 @@ FLAGS+=$(LFLAGS)
 
 ODIR=obj
 
-_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h draios.pb.h
+_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h draios.pb.h k8s_http.h k8s_poller.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o jsoncpp.o draios.pb.o
+_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o jsoncpp.o draios.pb.o k8s_http.o k8s_poller.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(FLAGS)
+	$(CC) -g -c -O -o $@ $< $(FLAGS)
 
 kubeget: $(OBJ)
 	$(CC) -o $@ $^ $(FLAGS) $(LIBS)
@@ -38,4 +38,4 @@ kubeget: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ ./kubeget ./kubegetd

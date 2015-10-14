@@ -388,11 +388,18 @@
     <File Name="Makefile"/>
     <File Name="src/jsoncpp.h"/>
     <File Name="src/draios.pb.cc"/>
-    <File Name="src/logger.h"/>
     <File Name="src/draios.pb.cpp"/>
+    <File Name="src/sinsp_int.h"/>
+    <File Name="src/sinsp.h"/>
+    <File Name="src/k8s_http.cpp"/>
+    <File Name="src/k8s_http.h"/>
+    <File Name="src/k8s_poller.cpp"/>
+    <File Name="src/k8s_poller.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
   <Settings Type="Executable">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -409,10 +416,11 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="bin/Linux/x86_64/static/kubegetd" CommandArguments="https://vagrant:vagrant@10.245.1.2" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/kubeget/kubegetd" CommandArguments="54.210.22.252:8080 http" UseSeparateDebugArgs="no" DebugArguments="https://vagrant:vagrant@10.245.1.2" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
-PROJECT_BASE=$(shell pwd)]]>
+PROJECT_BASE=$(shell pwd)
+LD_LIBRARY_PATH=/home/alex/sysdig/agent/dependencies/protobuf-2.5.0/src/.libs]]>
       </Environment>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="yes">
         <DebuggerSearchPaths/>
@@ -483,6 +491,4 @@ PROJECT_BASE=$(shell pwd)]]>
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="Debug"/>
-  <Dependencies Name="Release"/>
 </CodeLite_Project>
