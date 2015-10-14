@@ -189,6 +189,9 @@ public class Application {
             Integer pid = vmsIt.next();
             if (!activePids.contains(pid)) {
                 LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
+                // Cleanup resources on MonitoredVM before removing it
+                MonitoredVM vm = vms.get(pid);
+                vm.cleanUp();
                 vmsIt.remove();
             }
         }
