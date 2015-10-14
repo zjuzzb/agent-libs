@@ -316,10 +316,13 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
 	}
-	if(m_aws_metadata.m_valid)
+	if(!m_aws_metadata.m_instance_id.empty())
+	{
+		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
+	}
+	if(m_aws_metadata.m_public_ipv4)
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
-		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
 }
 
@@ -345,11 +348,12 @@ void dragent_configuration::refresh_aws_metadata()
 
 			if(inet_aton(s.c_str(), &addr) == 0)
 			{
-				m_aws_metadata.m_valid = false;
-				return;
+				m_aws_metadata.m_public_ipv4 = 0;
 			}
-
-			m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			else
+			{
+				m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			}
 #endif
 		}
 
@@ -361,13 +365,16 @@ void dragent_configuration::refresh_aws_metadata()
 			std::istream& rs = client.receiveResponse(response); 
 
 			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
+			if(m_aws_metadata.m_instance_id.find("i-") != 0)
+			{
+				m_aws_metadata.m_instance_id.clear();
+			}
 		}
-
-		m_aws_metadata.m_valid = true;
 	}
 	catch(Poco::Exception& e)
 	{
-		m_aws_metadata.m_valid = false;
+		m_aws_metadata.m_public_ipv4 = 0;
+		m_aws_metadata.m_instance_id.clear();
 	}
 }
 

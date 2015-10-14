@@ -26,7 +26,10 @@ static const int PIPE_BUFFER_SIZE = 1048576;
 class aws_metadata
 {
 public:
-	bool m_valid;
+	aws_metadata():
+		m_public_ipv4(0)
+	{}
+	
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
