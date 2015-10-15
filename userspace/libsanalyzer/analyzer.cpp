@@ -1168,6 +1168,39 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_my_cpuload = 0;
 #endif
 		}
+
+#ifndef _WIN32
+		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
+		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+				tinfo->m_vpid > 0)
+		{
+			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
+			{
+				java_process_requests.emplace_back(tinfo);
+			}
+			// May happen that for processes like apache with mpm_prefork there are hundred of
+			// apache processes with some comm, cmdline and ports, some of them are always alive,
+			// some die and are recreated.
+			// We send to app_checks only processes up at least for 10 seconds. But the programs aggregation
+			// may choose the one young one.
+			// So now we are trying to match a check for every process in the program grouping and
+			// when we found a matching check, we mark it on the main_thread of the group as
+			// we don't need more checks instances for each process.
+			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
+			{
+				for(const auto& check : m_app_checks)
+				{
+					if(check.match(tinfo))
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+						app_checks_processes.emplace_back(check.name(), tinfo);
+						mtinfo->m_ainfo->set_app_check_found();
+						break;
+					}
+				}
+			}
+		}
+#endif
 	}
 
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -1365,7 +1398,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								progtable.end(),
 								true,
 								TOP_PROCESSES_IN_SAMPLE);
-			// Add at list one process per emitted_container
+			// Add at least one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
 				auto progs_it = progtable_by_container.find(container_id);
@@ -1438,31 +1471,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 			}
-
-#ifndef _WIN32
-			auto main_thread = tinfo->get_main_thread();
-			if(!(main_thread->m_flags & PPM_CL_CLOSED) &&
-			   (m_next_flush_time_ns - main_thread->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
-					main_thread->m_vpid > 0)
-			{
-				if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
-				{
-					java_process_requests.emplace_back(main_thread);
-				}
-				if(m_app_proxy)
-				{
-					for(const auto& check : m_app_checks)
-					{
-						if(check.match(main_thread))
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), main_thread->m_pid, main_thread->m_vpid);
-							app_checks_processes.emplace_back(check.name(), main_thread);
-							break;
-						}
-					}
-				}
-			}
-#endif
 			//
 			// Inclusion logic
 			//
