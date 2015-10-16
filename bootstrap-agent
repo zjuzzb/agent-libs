@@ -211,7 +211,7 @@ if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1dev"
 fi
 
-if [ -z "$BUILD_DRIVER"]; then
+if [ -z "$BUILD_DRIVER" ]; then
 	BUILD_DRIVER=ON
 fi
 

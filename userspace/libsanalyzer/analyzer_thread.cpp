@@ -322,6 +322,7 @@ void thread_analyzer_info::clear_all_metrics()
 
 	m_dynstate->m_protostate.clear();
 	m_called_execve = false;
+	m_th_analysis_flags &= ~AF_APP_CHECK_FOUND;
 }
 
 void thread_analyzer_info::clear_role_flags()

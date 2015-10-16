@@ -150,7 +150,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
-	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_running_in_container);
+	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 	//
 	// Load the chisels
 	//
@@ -181,7 +181,7 @@ void sinsp_worker::init()
 		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
-	if(m_configuration->m_aws_metadata.m_valid)
+	if(m_configuration->m_aws_metadata.m_public_ipv4)
 	{
 		sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4, 
 			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
@@ -272,7 +272,7 @@ void sinsp_worker::run()
 		{
 			g_log->information("Refresh network interfaces list");
 			m_inspector->refresh_ifaddr_list();
-			if(m_configuration->m_aws_metadata.m_valid)
+			if(m_configuration->m_aws_metadata.m_public_ipv4)
 			{
 				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
 												m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");

@@ -12,6 +12,7 @@
 #include <mntent.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #else
 #include <time.h>
 #endif
@@ -444,14 +445,14 @@ return;
 #endif // _WIN32
 }
 
-vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled, const string& mtab)
 {
-	vector<sinsp_procfs_parser::mounted_fs> ret;
+	vector<mounted_fs> ret;
 #ifndef _WIN32
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
 	{
-		throw sinsp_exception("error opening /etc/mtab");
+		throw sinsp_exception("error opening " + mtab);
 	}
 
 	while(true)
@@ -489,13 +490,21 @@ vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list
 		if(!remotefs_enabled)
 		{
 			// if remotefs are disabled, recognize them and skip
-			if(strchr(entry->mnt_fsname, ':') != NULL
+			if((strchr(entry->mnt_fsname, ':') != NULL && strstr(entry->mnt_fsname, "docker") == NULL)
 				|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
 				|| strcmp(entry->mnt_type, "smbfs") == 0
 				|| strcmp(entry->mnt_type, "cifs") == 0)
 			{
 				continue;
 			}
+		}
+
+		if(strstr(entry->mnt_dir, "/etc") == entry->mnt_dir)
+		{
+			// Skipping /etc mounts, because inside docker containers
+			// there are always /etc/hosts, /etc/resolv.conf etc
+			// Usually they are just noise
+			continue;
 		}
 
 		struct statvfs statfs;
@@ -642,7 +651,7 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
-sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
+mounted_fs::mounted_fs(const Json::Value &json):
 	device(json["device"].asString()),
 	mount_dir(json["mount_dir"].asString()),
 	type(json["type"].asString()),
@@ -653,7 +662,17 @@ sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
 
 }
 
-Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
+void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs)
+{
+	fs->set_device(device);
+	fs->set_mount_dir(mount_dir);
+	fs->set_type(type);
+	fs->set_size_bytes(size_bytes);
+	fs->set_used_bytes(used_bytes);
+	fs->set_available_bytes(available_bytes);
+}
+
+Json::Value mounted_fs::to_json() const
 {
 	Json::Value ret;
 	ret["device"] = device;
@@ -666,70 +685,184 @@ Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE)
+	m_input("/sdc_mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_in", posix_queue::direction_t::SEND)
 {
 
 }
 
-const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_list()
+unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
+	unordered_map<string, vector<mounted_fs>> fs_map;
 	auto msg = m_input.receive();
 	while(!msg.empty())
 	{
-		Json::Value json;
-		bool parsed = m_json_reader.parse(msg, json);
+		fs_map.clear();
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
+		// g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
+		Json::Value response_j;
+		bool parsed = m_json_reader.parse(msg, response_j);
 		if(parsed)
 		{
-			m_fs_list.clear();
-			for(unsigned j = 0; j < json.size(); ++j)
+			for(const auto& container_j : response_j)
 			{
-				m_fs_list.emplace_back(json[j]);
+				auto id = container_j["id"].asString();
+				auto fslist_j = container_j["fslist"];
+				vector<mounted_fs> fslist;
+				for(auto fs_j : fslist_j)
+				{
+					fslist.emplace_back(fs_j);
+				}
+				fs_map.emplace(move(id), move(fslist));
 			}
 		}
 		msg = m_input.receive();
 	}
-	return m_fs_list;
+	return fs_map;
+}
+
+bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
+{
+	auto containers_j = Json::Value(Json::arrayValue);
+	for(const auto& item : containers)
+	{
+		auto container_j = Json::Value(Json::objectValue);
+		container_j["id"] = get<0>(item);
+		container_j["pid"] = get<1>(item);
+		container_j["vpid"] = get<2>(item);
+		containers_j.append(container_j);
+	}
+	auto containers_s = m_json_writer.write(containers_j);
+	return m_output.send(containers_s);
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
-	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
+	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
 {
 	g_logger.add_stderr_log();
 }
 
-int mounted_fs_reader::run()
+int mounted_fs_reader::open_ns_fd(int pid)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/1/ns/mnt", scap_get_host_root());
-	auto fd = open(filename, O_RDONLY);
-	if(fd > 0)
+	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
+	return open(filename, O_RDONLY);
+}
+
+bool mounted_fs_reader::change_ns(int destpid)
+{
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Set to ns pid %d", destpid);
+	// Go to container mnt ns
+	auto fd = open_ns_fd(destpid);
+	if(fd <= 0)
 	{
-		auto ret = setns(fd, CLONE_NEWNS);
-		close(fd);
-		if(ret != 0)
-		{
-			g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
-			return 17;
-		}
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot open namespace fd for pid=%d", destpid);
+		return false;
+	}
+	if(setns(fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot setns to pid=%d", destpid);
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
+int mounted_fs_reader::run()
+{
+	auto pid = getpid();
+	uint64_t m_last_loop_s = 0;
+	struct rusage mem_usage;
+	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
+	int home_fd = 0;
+	if(getppid() == 1)
+	{
+		// If `--pid host` is not used, we take the mnt from /proc
+		// as we don't know our hostpid
+		char filename[SCAP_MAX_PATH_SIZE];
+		snprintf(filename, sizeof(filename), "/proc/%d/ns/mnt", pid);
+		home_fd = open(filename, O_RDONLY);
 	}
 	else
 	{
-		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
-		return 17;
+		home_fd = open_ns_fd(pid);
 	}
-	g_logger.log("Starting mounted_fs_reader", sinsp_logger::SEV_INFO);
+	if(home_fd <= 0)
+	{
+		return DONT_RESTART_EXIT;
+	}
 	while(true)
 	{
-		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
-		auto fs_list_json = Json::Value(Json::arrayValue);
-		for(const auto& fs : fs_list)
+		// Send heartbeat
+		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
+		getrusage(RUSAGE_SELF, &mem_usage);
+		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
+		fflush(stderr);
+		auto request_s = m_input.receive(1);
+		if(!request_s.empty())
 		{
-			fs_list_json.append(fs.to_json());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent: %s", request_s.c_str());
+			Json::Value request_j;
+			auto parsed_ok = m_json_reader.parse(request_s, request_j);
+			if(parsed_ok)
+			{
+				auto response_j = Json::Value(Json::arrayValue);
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_j.size());
+				for(const auto& container_j : request_j)
+				{
+					// Extract container info
+					auto container_pid = container_j["pid"].asUInt();
+					auto container_vpid = container_j["vpid"].asUInt();
+					auto container_id = container_j["id"].asString();
+
+					// Go to container mnt ns
+					auto changed = change_ns(container_pid);
+					if(changed)
+					{
+						try
+						{
+							char filename[SCAP_MAX_PATH_SIZE];
+							// Use mtab if it's not a symlink to /proc/self/mounts
+							// Because when entering a mount namespace, we don't have
+							// a self entry on /proc
+							struct stat mtab_stat;
+							if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
+							{
+								snprintf(filename, sizeof(filename), "/etc/mtab");
+							}
+							else
+							{
+								snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
+							}
+							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
+							auto fs_list_json = Json::Value(Json::arrayValue);
+							for(const auto& fs : fs_list)
+							{
+								fs_list_json.append(fs.to_json());
+							}
+							auto container_response_j = Json::Value(Json::objectValue);
+							container_response_j["id"] = container_id;
+							container_response_j["fslist"] = fs_list_json;
+							response_j.append(container_response_j);
+						}
+						catch (const sinsp_exception& ex)
+						{
+							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_id.c_str(), container_pid, ex.what());
+						}
+					}
+					// Back home
+					if(setns(home_fd, CLONE_NEWNS) != 0)
+					{
+						g_logger.log("Cannot setns home, exiting", sinsp_logger::SEV_ERROR);
+						return ERROR_EXIT;
+					};
+				}
+				auto response_s = m_json_writer.write(response_j);
+				m_output.send(response_s);
+			}
 		}
-		auto msg = m_json_writer.write(fs_list_json);
-		m_output.send(msg);
-		sleep(1);
 	}
 }

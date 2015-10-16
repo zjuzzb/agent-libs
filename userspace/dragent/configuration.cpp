@@ -173,6 +173,10 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
 	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 256);
+	// Right now these two entries does not support merging between defaults and specified on config file
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}});
+
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
@@ -242,8 +246,9 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	// Detect if running inside container using SYSDIG_HOST_ROOT
-	m_running_in_container = (strcmp(scap_get_host_root(),"") != 0);
+	// Check existence of namespace to see if kernel supports containers
+	File nsfile("/proc/self/ns/mnt");
+	m_system_supports_containers = nsfile.exists();;
 
 	if(m_statsd_enabled)
 	{
@@ -305,16 +310,19 @@ void dragent_configuration::print_configuration()
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
-	g_log->information("Running inside container: " + bool_as_text(m_running_in_container));
+	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
 	}
-	if(m_aws_metadata.m_valid)
+	if(!m_aws_metadata.m_instance_id.empty())
+	{
+		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
+	}
+	if(m_aws_metadata.m_public_ipv4)
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
-		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
 }
 
@@ -340,11 +348,12 @@ void dragent_configuration::refresh_aws_metadata()
 
 			if(inet_aton(s.c_str(), &addr) == 0)
 			{
-				m_aws_metadata.m_valid = false;
-				return;
+				m_aws_metadata.m_public_ipv4 = 0;
 			}
-
-			m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			else
+			{
+				m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			}
 #endif
 		}
 
@@ -356,13 +365,16 @@ void dragent_configuration::refresh_aws_metadata()
 			std::istream& rs = client.receiveResponse(response); 
 
 			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
+			if(m_aws_metadata.m_instance_id.find("i-") != 0)
+			{
+				m_aws_metadata.m_instance_id.clear();
+			}
 		}
-
-		m_aws_metadata.m_valid = true;
 	}
 	catch(Poco::Exception& e)
 	{
-		m_aws_metadata.m_valid = false;
+		m_aws_metadata.m_public_ipv4 = 0;
+		m_aws_metadata.m_instance_id.clear();
 	}
 }
 

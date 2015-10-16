@@ -619,8 +619,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
-		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
 			m_my_cpuload,
@@ -917,6 +917,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
+	// Emit process has 4 cycles on thread_table:
+	// 1. Emit memory metrics from threads to main_threads
+	// 2. Aggregate process into programs
+	// 3. (only on programs) aggregate programs metrics to host and container ones
+	// 4. Write programs on protobuf
+
+
 	///////////////////////////////////////////////////////////////////////////
 	// Propagate the memory information from child thread to main thread:
 	// since memory is updated at context-switch intervals, it can happen
@@ -973,6 +980,23 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container = &m_containers[tinfo->m_container_id];
 		}
 
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+			if(container->m_memory_cgroup.empty())
+			{
+				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+												[](const pair<string, string>& cgroup)
+												{
+													return cgroup.first == "memory";
+												});
+				if(memory_cgroup_it != tinfo->m_cgroups.cend())
+				{
+					container->m_memory_cgroup = memory_cgroup_it->second;
+				}
+			}
+		}
+
 		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -986,6 +1010,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
+				
+				// detect k8s master
+				if ((main_tinfo->m_exe.find("kube_apiserver") != std::string::npos) ||
+					((main_tinfo->m_exe.find("hyperkube") != std::string::npos) &&
+					(main_tinfo->m_exe.find("api") != std::string::npos)))
+				{
+					m_is_k8s_master = true;
+				}
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->set_cmdline_update(true);
@@ -1146,8 +1178,206 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_my_cpuload = 0;
 #endif
 		}
+
+#ifndef _WIN32
+		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
+		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+				tinfo->m_vpid > 0)
+		{
+			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
+			{
+				java_process_requests.emplace_back(tinfo);
+			}
+			// May happen that for processes like apache with mpm_prefork there are hundred of
+			// apache processes with some comm, cmdline and ports, some of them are always alive,
+			// some die and are recreated.
+			// We send to app_checks only processes up at least for 10 seconds. But the programs aggregation
+			// may choose the one young one.
+			// So now we are trying to match a check for every process in the program grouping and
+			// when we found a matching check, we mark it on the main_thread of the group as
+			// we don't need more checks instances for each process.
+			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
+			{
+				for(const auto& check : m_app_checks)
+				{
+					if(check.match(tinfo))
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+						app_checks_processes.emplace_back(check.name(), tinfo);
+						mtinfo->m_ainfo->set_app_check_found();
+						break;
+					}
+				}
+			}
+		}
+#endif
 	}
 
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
+	{
+		sinsp_threadinfo* tinfo = *it;
+		analyzer_container_state* container = NULL;
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+		}
+
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
+		sinsp_counter_time tot;
+
+		ASSERT(procinfo != NULL);
+
+		procinfo->m_proc_metrics.get_total(&tot);
+		if(!m_inspector->m_islive)
+		{
+			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+		}
+
+		if(tot.m_count != 0)
+		{
+			sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+			if(container)
+			{
+				m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions,
+														   &container->m_client_transactions, &container->m_server_transactions, tinfo, prog_delays);
+			}
+			else
+			{
+				m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, NULL, NULL, tinfo, prog_delays);
+			}
+
+#ifdef _DEBUG
+			procinfo->m_proc_metrics.calculate_totals();
+			double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
+							procinfo->m_proc_metrics.get_file_percentage() +
+							procinfo->m_proc_metrics.get_net_percentage() +
+							procinfo->m_proc_metrics.get_other_percentage();
+			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
+#endif // _DEBUG
+
+			//
+			// Main metrics
+			//
+			// NOTE ABOUT THE FOLLOWING TWO LINES: computing processing time by looking at gaps
+			// among system calls doesn't work if we are dropping all the non essential events,
+			// which the aagent does by default, because a ton of time gets accountd as processing.
+			// To avoid the issue, we patch the processing time with the actual CPU time for the
+			// process, normalized accodring to the sampling ratio
+			//
+			procinfo->m_proc_metrics.m_processing.clear();
+			procinfo->m_proc_metrics.m_processing.add(1, (uint64_t)(procinfo->m_cpuload * (1000000000 / 100) / m_sampling_ratio));
+
+			//
+			// Health-related metrics
+			//
+			if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			{
+				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
+																						 prog_delays,
+																						 (uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
+																						 m_prev_flush_time_ns, sample_duration);
+
+				procinfo->m_capacity_score = scores.m_current_capacity;
+				procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
+			}
+			else
+			{
+				procinfo->m_capacity_score = -1;
+				procinfo->m_stolen_capacity_score = 0;
+			}
+
+			//
+			// Update the host capcity score
+			//
+			if(procinfo->m_capacity_score != -1)
+			{
+				m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
+												  procinfo->m_stolen_capacity_score,
+												  procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+
+				if(container)
+				{
+					container->m_metrics.add_capacity_score(procinfo->m_capacity_score,
+															procinfo->m_stolen_capacity_score,
+															procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+				}
+			}
+
+#if 1
+			if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			{
+				uint64_t trtimein = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_in;
+				uint64_t trtimeout = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_out;
+				uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
+				uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
+
+				if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
+									tinfo->m_comm.c_str(),
+									tinfo->m_tid,
+									(uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
+									procinfo->m_capacity_score,
+									procinfo->m_stolen_capacity_score,
+									(float)procinfo->m_cpuload,
+									procinfo->m_fd_usage_pct,
+									procinfo->m_connection_queue_usage_pct);
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
+									procinfo->m_proc_transaction_metrics.get_counter()->m_count_in * m_sampling_ratio,
+									procinfo->m_proc_transaction_metrics.get_counter()->m_count_out * m_sampling_ratio,
+									trcountin? ((double)trtimein) / sample_duration : 0,
+									trcountout? ((double)trtimeout) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
+							//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
+							//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
+									procinfo->m_proc_metrics.get_processing_percentage() * 100,
+									procinfo->m_proc_metrics.get_file_percentage() * 100,
+									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
+									procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
+									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
+									procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
+									procinfo->m_proc_metrics.get_net_percentage() * 100,
+							//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
+									procinfo->m_proc_metrics.get_other_percentage() * 100);
+				}
+			}
+#endif
+		}
+
+		//
+		// Update the host metrics with the info coming from this process
+		//
+		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+		{
+			m_host_req_metrics.add(&procinfo->m_proc_metrics);
+
+			if(container)
+			{
+				container->m_req_metrics.add(&procinfo->m_proc_metrics);
+			}
+		}
+
+		//
+		// Note how we only include server processes.
+		// That's because these are transaction time metrics, and therefore we don't
+		// want to use processes that don't serve transactions.
+		//
+		m_host_metrics.add(procinfo);
+
+		if(container)
+		{
+			container->m_metrics.add(procinfo);
+		}
+	}
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
 	auto emitted_containers = emit_containers();
@@ -1178,7 +1408,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								progtable.end(),
 								true,
 								TOP_PROCESSES_IN_SAMPLE);
-			// Add at list one process per emitted_container
+			// Add at least one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
 				auto progs_it = progtable_by_container.find(container_id);
@@ -1188,6 +1418,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
 				}
 			}
+		}
+
+		if(m_mounted_fs_proxy)
+		{
+			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
+			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+			{
+				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+				{
+					return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+				});
+				if(long_running_proc != it->second.end())
+				{
+					containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
+														   (*long_running_proc)->m_vpid);
+				}
+			}
+			// Add host
+			containers_for_mounted_fs.emplace_back("host", 1, 1);
+			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
 	}
 
@@ -1200,23 +1450,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
-		analyzer_container_state* container = NULL;
-		if(!tinfo->m_container_id.empty())
-		{
-			container = &m_containers[tinfo->m_container_id];
-			if(container->m_memory_cgroup.empty())
-			{
-				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
-												[](const pair<string, string>& cgroup)
-												{
-													return cgroup.first == "memory";
-												});
-				if(memory_cgroup_it != tinfo->m_cgroups.cend())
-				{
-					container->m_memory_cgroup = memory_cgroup_it->second;
-				}
-			}
-		}
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
@@ -1248,31 +1481,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
 			}
-
-#ifndef _WIN32
-			auto main_thread = tinfo->get_main_thread();
-			if(!(main_thread->m_flags & PPM_CL_CLOSED) &&
-			   (m_next_flush_time_ns - main_thread->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
-					main_thread->m_vpid > 0)
-			{
-				if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
-				{
-					java_process_requests.emplace_back(main_thread);
-				}
-				if(m_app_proxy)
-				{
-					for(const auto& check : m_app_checks)
-					{
-						if(check.match(main_thread))
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), main_thread->m_pid, main_thread->m_vpid);
-							app_checks_processes.emplace_back(check.name(), main_thread);
-							break;
-						}
-					}
-				}
-			}
-#endif
 			//
 			// Inclusion logic
 			//
@@ -1422,36 +1630,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				if(tot.m_count != 0)
 				{
 					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-					if(container)
-					{
-						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, 
-							&container->m_client_transactions, &container->m_server_transactions, tinfo, prog_delays);
-					}
-					else
-					{
-						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, NULL, NULL, tinfo, prog_delays);
-					}
-
-#ifdef _DEBUG
-					procinfo->m_proc_metrics.calculate_totals();
-					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
-						procinfo->m_proc_metrics.get_file_percentage() + 
-						procinfo->m_proc_metrics.get_net_percentage() +
-						procinfo->m_proc_metrics.get_other_percentage();
-					ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
-#endif // _DEBUG
 
 					//
 					// Main metrics
-					//
-					// NOTE ABOUT THE FOLLOWING TWO LINES: computing processing time by looking at gaps 
-					// among system calls doesn't work if we are dropping all the non essential events, 
-					// which the aagent does by default, because a ton of time gets accountd as processing.
-					// To avoid the issue, we patch the processing time with the actual CPU time for the 
-					// process, normalized accodring to the sampling ratio
-					// 
-					procinfo->m_proc_metrics.m_processing.clear();
-					procinfo->m_proc_metrics.m_processing.add(1, (uint64_t)(procinfo->m_cpuload * (1000000000 / 100) / m_sampling_ratio));
 
 					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
 
@@ -1469,42 +1650,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						proc->mutable_max_transaction_counters(),
 						m_sampling_ratio);
 
-					//
-					// Health-related metrics
-					//
-					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-					{
-						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
-							prog_delays,
-							(uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
-							m_prev_flush_time_ns, sample_duration);
-
-							procinfo->m_capacity_score = scores.m_current_capacity;
-							procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
-					}
-					else
-					{
-						procinfo->m_capacity_score = -1;
-						procinfo->m_stolen_capacity_score = 0;
-					}
-
-					//
-					// Update the host capcity score
-					//
-					if(procinfo->m_capacity_score != -1)
-					{
-						m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
-							procinfo->m_stolen_capacity_score,
-							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
-
-						if(container)
-						{
-							container->m_metrics.add_capacity_score(procinfo->m_capacity_score,
-								procinfo->m_stolen_capacity_score,
-								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
-						}
-					}
-
 					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
 					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
 					proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
@@ -1521,89 +1666,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					//
 //					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 //						m_sampling_ratio);
-
-#if 1
-					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-					{
-						uint64_t trtimein = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_in;
-						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_out;
-						uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
-						uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
-
-						if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-								tinfo->m_comm.c_str(),
-								tinfo->m_tid,
-								(uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
-								procinfo->m_capacity_score,
-								procinfo->m_stolen_capacity_score,
-								(float)procinfo->m_cpuload,
-								procinfo->m_fd_usage_pct,
-								procinfo->m_connection_queue_usage_pct);
-
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-								procinfo->m_proc_transaction_metrics.get_counter()->m_count_in * m_sampling_ratio,
-								procinfo->m_proc_transaction_metrics.get_counter()->m_count_out * m_sampling_ratio,
-								trcountin? ((double)trtimein) / sample_duration : 0,
-								trcountout? ((double)trtimeout) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
-
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
-								//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
-								//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
-								procinfo->m_proc_metrics.get_processing_percentage() * 100,
-								procinfo->m_proc_metrics.get_file_percentage() * 100,
-								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
-								procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
-								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
-								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
-								procinfo->m_proc_metrics.get_net_percentage() * 100,
-								//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
-								procinfo->m_proc_metrics.get_other_percentage() * 100);
-						}
-					}
-#endif
 					proc->set_start_count(procinfo->m_start_count);
 				}
 #endif // ANALYZER_EMITS_PROCESSES
-			}
-
-			//
-			// Update the host metrics with the info coming from this process
-			//
-			if(procinfo != NULL)
-			{
-				if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-				{
-					m_host_req_metrics.add(&procinfo->m_proc_metrics);
-
-					if(container)
-					{
-						container->m_req_metrics.add(&procinfo->m_proc_metrics);
-					}
-				}
-
-				//
-				// Note how we only include server processes.
-				// That's because these are transaction time metrics, and therefore we don't 
-				// want to use processes that don't serve transactions.
-				//
-				m_host_metrics.add(procinfo);
-
-				if(container)
-				{
-					container->m_metrics.add(procinfo);
-				}
-			}
-			else
-			{
-				ASSERT(false);
 			}
 		}
 
@@ -2418,13 +2483,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_inspector->is_live())
 			{
 				get_statsd();
+				if(m_mounted_fs_proxy)
+				{
+					// Get last filesystem stats, list of containers is sent on emit_processes
+					auto new_fs_map = m_mounted_fs_proxy->receive_mounted_fs_list();
+					if(!new_fs_map.empty())
+					{
+						m_mounted_fs_map = move(new_fs_map);
+					}
+				}
 			}
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
+
 			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			////////////////////////////////////////////////////////////////////////////
@@ -2632,31 +2707,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
-			if(m_inspector->is_live())
+			if(m_mounted_fs_proxy)
 			{
-				vector<sinsp_procfs_parser::mounted_fs> fs_list;
-				if(m_mounted_fs_proxy)
+				auto fs_list = m_mounted_fs_map.find("host");
+				if(fs_list != m_mounted_fs_map.end())
 				{
-					fs_list = m_mounted_fs_proxy->get_mounted_fs_list();
-				}
-				else
-				{
-					fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
-				}
-				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
-					it != fs_list.end(); ++it)
-				{
-					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
-
-					fs->set_device(it->device);
-					fs->set_mount_dir(it->mount_dir);
-					fs->set_type(it->type);
-					fs->set_size_bytes(it->size_bytes);
-					fs->set_used_bytes(it->used_bytes);
-					fs->set_available_bytes(it->available_bytes);
+					for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+					{
+						draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+						it->to_protobuf(fs);
+					}
 				}
 			}
-
+			else if(m_inspector->is_live()) // When not live, fs stats break regression tests causing false positives
+			{
+				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
+				{
+					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+					it->to_protobuf(fs);
+				}
+			}
 			//
 			// Executed commands
 			//
@@ -3568,12 +3639,6 @@ vector<string> sinsp_analyzer::emit_containers()
 			containers_ids.push_back(id);
 			containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
 		}
-		
-		// TODO: need a more robust detection here
-		if (container_info.m_name.find("k8s_kube-apiserver") != std::string::npos)
-		{
-			m_is_k8s_master = true;
-		}
 	}
 
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
@@ -3752,6 +3817,15 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
+	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
+	if(fs_list != m_mounted_fs_map.end())
+	{
+		for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+		{
+			auto proto_fs = container->add_mounts();
+			it->to_protobuf(proto_fs);
+		}
+	}
 }
 
 void sinsp_analyzer::get_statsd()

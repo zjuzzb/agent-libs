@@ -103,7 +103,8 @@ public:
 		AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
 		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
-		AF_CMDLINE_UPDATED = (1 << 9)
+		AF_CMDLINE_UPDATED = (1 << 9),
+		AF_APP_CHECK_FOUND = (1 << 10),
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -134,6 +135,16 @@ public:
 		{
 			m_th_analysis_flags &= ~AF_IS_MAIN_PROGRAM_THREAD;
 		}
+	}
+
+	inline bool app_check_found()
+	{
+		return (m_th_analysis_flags & AF_APP_CHECK_FOUND) != 0;
+	}
+
+	inline void set_app_check_found()
+	{
+		m_th_analysis_flags |= AF_APP_CHECK_FOUND;
 	}
 
 	inline bool is_cmdline_updated()

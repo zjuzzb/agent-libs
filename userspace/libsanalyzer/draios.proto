@@ -562,6 +562,7 @@ message container {
     repeated container_port_mapping port_mappings = 18;
     optional proto_info protos = 19;
     repeated container_label labels = 20;
+    repeated mounted_fs mounts = 21;
 }
 
 //

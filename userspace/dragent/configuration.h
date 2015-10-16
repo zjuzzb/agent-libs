@@ -26,7 +26,10 @@ static const int PIPE_BUFFER_SIZE = 1048576;
 class aws_metadata
 {
 public:
-	bool m_valid;
+	aws_metadata():
+		m_public_ipv4(0)
+	{}
+	
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
@@ -317,6 +320,8 @@ public:
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_dirty_shutdown_report_log_size_b;
+	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
+	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
 	uint16_t m_jmx_sampling;
@@ -336,7 +341,7 @@ public:
 	ports_set m_known_server_ports;
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
-	bool m_running_in_container;
+	bool m_system_supports_containers;
 
 	bool java_present()
 	{
