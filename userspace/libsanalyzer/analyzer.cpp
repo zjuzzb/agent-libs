@@ -1012,11 +1012,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 				
 				// detect k8s master
-				if ((main_tinfo->m_exe.find("kube_apiserver") != std::string::npos) ||
-					((main_tinfo->m_exe.find("hyperkube") != std::string::npos) &&
-					(main_tinfo->m_exe.find("api") != std::string::npos)))
+				if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 				{
 					m_is_k8s_master = true;
+				}
+				else if((main_tinfo->m_exe.find("hyperkube") != std::string::npos))
+				{
+					for(const auto& arg : main_tinfo->m_args)
+					{
+						if(arg.find("api") != std::string::npos)
+						{
+							m_is_k8s_master = true;
+							break;
+						}
+					}
 				}
 			}
 			main_tinfo->compute_program_hash();
