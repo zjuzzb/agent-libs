@@ -1020,7 +1020,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					for(const auto& arg : main_tinfo->m_args)
 					{
-						if(arg == "api")
+						if(arg == "apiserver")
 						{
 							m_is_k8s_master = true;
 							break;
