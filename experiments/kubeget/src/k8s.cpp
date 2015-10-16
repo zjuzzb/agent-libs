@@ -5,7 +5,6 @@
 #include "k8s.h"
 #include "k8s_component.h"
 #include "k8s_dispatcher.h"
-#include "k8s_proto.h"
 #include "draios.pb.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
