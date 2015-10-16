@@ -5,6 +5,7 @@
 #include "k8s_http.h"
 #include "curl/easy.h"
 #include "curl/curlbuild.h"
+#define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -159,7 +160,7 @@ void k8s_http::on_data()
 		{
 			m_k8s.on_watch_data(k8s_event_data(k8s_component::get_type(m_component), buf, iolen));
 		}
-		else // wait for a single line with "\r\n" only
+		else // wait for a line with "\r\n" only
 		{
 			std::string data(buf, iolen);
 			std::string end = "\r\n\r\n";

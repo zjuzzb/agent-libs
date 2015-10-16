@@ -1,7 +1,7 @@
 SDIR =./src
 IDIR =./src
 CC=g++
-CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER -DBUFFERSIZE=512
+CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER
 #-fno-omit-frame-pointer
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
