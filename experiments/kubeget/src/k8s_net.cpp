@@ -2,7 +2,6 @@
 // k8s_net.cpp
 //
 
-
 #include "k8s_net.h"
 #include "k8s_component.h"
 #include "k8s.h"
@@ -37,11 +36,10 @@ void k8s_net::init()
 	std::string::size_type endpos = uri.find_first_of('@');
 	if (endpos != std::string::npos)
 	{
-		std::string::size_type beginpos = uri.find("://");
+		std::string::size_type beginpos = uri.find("://") + 3;
 		if (beginpos != std::string::npos)
 		{
-			m_creds = uri.substr(beginpos + 3, endpos);
-			std::cout << m_creds << std::endl;
+			m_creds = uri.substr(beginpos, endpos - beginpos);
 		}
 		else
 		{

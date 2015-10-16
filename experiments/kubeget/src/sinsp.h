@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <cassert>
 #include "Poco/Format.h"
 
 struct sinsp_logger
