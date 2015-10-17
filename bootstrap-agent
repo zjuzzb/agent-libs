@@ -121,7 +121,38 @@ if [ ! -d "$CURL_DIR" ]; then
 	wget $DEPENDENCIES_URL/$CURL_NAME.$CURL_EXT
 	tar -xjf $CURL_NAME.$CURL_EXT
 	cd $CURL_DIR
-	./configure
+	./configure --enable-optimize \
+		--disable-curldebug   \
+		--disable-rt          \
+		--enable-http         \
+		--disable-ftp         \
+		--disable-file        \
+		--disable-ldap        \
+		--disable-ldaps       \
+		--disable-rtsp        \
+		--disable-telnet      \
+		--disable-tftp        \
+		--disable-pop3        \
+		--disable-imap        \
+		--disable-smb         \
+		--disable-smtp        \
+		--disable-gopher      \
+		--disable-sspi        \
+		--disable-ntlm-wb     \
+		--disable-tls-srp     \
+		--without-winssl      \
+		--without-darwinssl   \
+		--with-ssl=$DEPENDENCIES/openssl-1.0.1h \
+		--without-polarssl    \
+		--without-cyassl      \
+		--without-nss         \
+		--without-axtls       \
+		--without-ca-path     \
+		--without-libmetalink \
+		--without-librtmp     \
+		--without-winidn      \
+		--without-libidn      \
+		--without-nghttp2
 	make
 fi
 
