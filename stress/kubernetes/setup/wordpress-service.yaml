@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata: 
+  labels: 
+    name: wordpress
+  name: wordpress
+  annotations:
+    monitoring-dashboards: "resource_usage, mysql, top_tables"
+    monitoring-user: "ld@sysdig.com"
+    monitoring-granularity: "1s"
+    alerts: "cpu.used.percent by container.id > 80, memory.used.percent by pod.name > 50"
+    alert-targets: "ld@sysdig.com, devs@sysdig.com"
+spec: 
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    name: wordpress 
+    app: demo
+    role: frontend

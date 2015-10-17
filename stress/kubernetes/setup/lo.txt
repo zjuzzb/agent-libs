@@ -1,0 +1,115 @@
+{
+  "kind": "ServiceList",
+  "apiVersion": "v1",
+  "metadata": {
+    "selfLink": "/api/v1/services",
+    "resourceVersion": "3972"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "kubernetes",
+        "namespace": "default",
+        "selfLink": "/api/v1/namespaces/default/services/kubernetes",
+        "uid": "172a7a1e-739c-11e5-8f10-000c297da085",
+        "resourceVersion": "6",
+        "creationTimestamp": "2015-10-16T00:23:14Z",
+        "labels": {
+          "component": "apiserver",
+          "provider": "kubernetes"
+        }
+      },
+      "spec": {
+        "ports": [
+          {
+            "protocol": "TCP",
+            "port": 443,
+            "targetPort": 443,
+            "nodePort": 0
+          }
+        ],
+        "clusterIP": "10.0.0.1",
+        "type": "ClusterIP",
+        "sessionAffinity": "None"
+      },
+      "status": {
+        "loadBalancer": {}
+      }
+    },
+    {
+      "metadata": {
+        "name": "mysql",
+        "namespace": "loris",
+        "selfLink": "/api/v1/namespaces/loris/services/mysql",
+        "uid": "e4670192-73a4-11e5-8f10-000c297da085",
+        "resourceVersion": "2058",
+        "creationTimestamp": "2015-10-16T01:26:14Z",
+        "labels": {
+          "name": "mysql"
+        }
+      },
+      "spec": {
+        "ports": [
+          {
+            "protocol": "TCP",
+            "port": 3306,
+            "targetPort": 3306,
+            "nodePort": 0
+          }
+        ],
+        "selector": {
+          "app": "demo",
+          "name": "mysql",
+          "role": "mysqldb"
+        },
+        "clusterIP": "10.0.0.26",
+        "type": "ClusterIP",
+        "sessionAffinity": "None"
+      },
+      "status": {
+        "loadBalancer": {}
+      }
+    },
+    {
+      "metadata": {
+        "name": "wordpress",
+        "namespace": "loris",
+        "selfLink": "/api/v1/namespaces/loris/services/wordpress",
+        "uid": "e4876529-73a4-11e5-8f10-000c297da085",
+        "resourceVersion": "2072",
+        "creationTimestamp": "2015-10-16T01:26:15Z",
+        "labels": {
+          "name": "wordpress"
+        },
+        "annotations": {
+          "alert-targets": "ld@sysdig.com, devs@sysdig.com",
+          "alerts": "cpu.used.percent by container.id \u003e 80, memory.used.percent by pod.name \u003e 50",
+          "monitoring-dashboards": "resource_usage, mysql, top_tables",
+          "monitoring-granularity": "1s",
+          "monitoring-user": "ld@sysdig.com"
+        }
+      },
+      "spec": {
+        "ports": [
+          {
+            "protocol": "TCP",
+            "port": 80,
+            "targetPort": 80,
+            "nodePort": 0
+          }
+        ],
+        "selector": {
+          "app": "demo",
+          "name": "wordpress",
+          "role": "frontend"
+        },
+        "clusterIP": "10.0.0.47",
+        "type": "ClusterIP",
+        "sessionAffinity": "None"
+      },
+      "status": {
+        "loadBalancer": {}
+      }
+    }
+  ]
+}
