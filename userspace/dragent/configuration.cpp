@@ -246,9 +246,12 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
+	m_k8s_api_server = m_config->get_scalar<string>("k8s_api", "");
+	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", false);
+	
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
-	m_system_supports_containers = nsfile.exists();;
+	m_system_supports_containers = nsfile.exists();
 
 	if(m_statsd_enabled)
 	{

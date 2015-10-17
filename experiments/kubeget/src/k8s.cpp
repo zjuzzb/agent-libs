@@ -43,6 +43,7 @@ k8s::k8s(const std::string& uri, bool watch, const std::string& api) : m_net(*th
 		m_own_proto(true),
 		m_dispatch(make_dispatch_map(m_state))
 {
+	get_state(true);
 }
 
 k8s::~k8s()

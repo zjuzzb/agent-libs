@@ -37,7 +37,6 @@ int main(int argc, char** argv)
 		Stopwatch sw;
 		sw.start();
 		k8s kube(host, true);
-		kube.get_state(true);
 		draiosproto::metrics met;
 		k8s_proto kube_proto(met);
 		const draiosproto::k8s_state& proto = kube_proto.get_proto(kube.get_state());

@@ -342,6 +342,8 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+	std::string m_k8s_api_server;
+	bool m_k8s_autodetect;
 
 	bool java_present()
 	{

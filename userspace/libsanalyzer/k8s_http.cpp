@@ -5,11 +5,14 @@
 #include "k8s_http.h"
 #include "curl/easy.h"
 #include "curl/curlbuild.h"
+#define BUFFERSIZE 512 // b64 needs this macro
+#include "b64/encode.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "k8s.h"
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 #include <stdexcept>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -30,6 +33,10 @@ k8s_http::k8s_http(k8s& k8s,
 		m_watch_socket(0),
 		m_data_ready(false)
 {
+	if (!m_curl)
+	{
+		throw std::runtime_error("CURL initialization failed.");
+	}
 	std::ostringstream url;
 	url << m_protocol << "://";
 	if (!m_credentials.empty())
@@ -43,7 +50,10 @@ k8s_http::k8s_http(k8s& k8s,
 
 k8s_http::~k8s_http()
 {
-	curl_easy_cleanup(m_curl);
+	if (m_curl)
+	{
+		curl_easy_cleanup(m_curl);
+	}
 }
 
 size_t k8s_http::write_data(void *ptr, size_t size, size_t nmemb, void *cb)
@@ -59,11 +69,9 @@ bool k8s_http::get_all_data(std::ostream& os)
 	curl_easy_setopt(m_curl, CURLOPT_URL, m_url.c_str());
 	curl_easy_setopt(m_curl, CURLOPT_FOLLOWLOCATION, 1L);
 	
-	if (m_protocol == "https") // TODO: k8s certificates
+	if (m_protocol == "https")
 	{
 		curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYPEER , 0);
-		//curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYHOST , 1);
-		//curl_easy_setopt(m_curl, CURLOPT_CAINFO, "/home/alex/sysdig/agent/experiments/kubeget/ca-bundle.crt");//"ca-bundle.crt");
 	}
 
 	curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1); //Prevent "longjmp causes uninitialized stack frame" bug
@@ -119,13 +127,6 @@ int k8s_http::get_watch_socket()
 
 		curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
 		curl_easy_setopt(m_curl, CURLOPT_CONNECT_ONLY, 1L);
-		
-		if (m_protocol == "https") // TODO: k8s certificates
-		{
-			curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYPEER , 0);
-			curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYHOST , 0);
-			//curl_easy_setopt(m_curl, CURLOPT_CAINFO, "/home/alex/sysdig/agent/experiments/kubeget/cacert.pem");
-		}
 
 		check_error(curl_easy_perform(m_curl));
 		check_error(curl_easy_getinfo(m_curl, CURLINFO_LASTSOCKET, &sockextr));
@@ -138,9 +139,18 @@ int k8s_http::get_watch_socket()
 		}
 
 		std::ostringstream request;
-		request << "GET /api/v1/watch/" << m_component << " HTTP/1.0\r\nHost: " << m_host_and_port << "\r\n\r\n";
+		request << "GET /api/v1/watch/" << m_component << " HTTP/1.0\r\nHost: " << m_host_and_port << "\r\n";
+		if (!m_credentials.empty())
+		{
+			std::istringstream is(m_credentials);
+			std::ostringstream os;
+			base64::encoder().encode(is, os);
+			request << "Authorization: Basic " << os.str() << "\r\n";
+		}
+		request << "\r\n";
 		check_error(curl_easy_send(m_curl, request.str().c_str(), request.str().size(), &iolen));
 		ASSERT (request.str().size() == iolen);
+
 		g_logger.log(std::string("Polling ") + url, sinsp_logger::SEV_DEBUG);
 	}
 
@@ -158,7 +168,7 @@ void k8s_http::on_data()
 		{
 			m_k8s.on_watch_data(k8s_event_data(k8s_component::get_type(m_component), buf, iolen));
 		}
-		else // wait for a single line with "\r\n" only
+		else // wait for a line with "\r\n" only
 		{
 			std::string data(buf, iolen);
 			std::string end = "\r\n\r\n";
@@ -203,3 +213,11 @@ void k8s_http::check_error(CURLcode res)
 	}
 }
 
+// find substring (case insensitive)
+int k8s_http::ci_find_substr(const std::string& str1, const std::string& str2)
+{
+	std::string::const_iterator it = std::search(str1.begin(), str1.end(), 
+		str2.begin(), str2.end(), my_equal());
+	if (it != str1.end()) return it - str1.begin();
+	else return -1; // not found
+}

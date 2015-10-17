@@ -32,6 +32,10 @@ k8s_http::k8s_http(k8s& k8s,
 		m_watch_socket(0),
 		m_data_ready(false)
 {
+	if (!m_curl)
+	{
+		throw std::runtime_error("CURL initialization failed.");
+	}
 	std::ostringstream url;
 	url << m_protocol << "://";
 	if (!m_credentials.empty())
@@ -45,7 +49,10 @@ k8s_http::k8s_http(k8s& k8s,
 
 k8s_http::~k8s_http()
 {
-	curl_easy_cleanup(m_curl);
+	if (m_curl)
+	{
+		curl_easy_cleanup(m_curl);
+	}
 }
 
 size_t k8s_http::write_data(void *ptr, size_t size, size_t nmemb, void *cb)

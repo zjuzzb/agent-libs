@@ -44,6 +44,8 @@ using namespace google::protobuf::io;
 #include "analyzer_parsers.h"
 #include "chisel.h"
 #include "k8s.h"
+#include "k8s_proto.h"
+#include "curl/easy.h"
 #define DUMP_TO_DISK
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -98,8 +100,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 
-	m_is_k8s_master = false;
-
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
 
@@ -126,6 +126,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
 	
 	//
+	// Kubernetes
+	//
+	m_k8s = 0;
+	
+	//
 	// Chisels init
 	//
 	add_chisel_dirs();
@@ -135,84 +140,28 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if(m_metrics)
-	{
-		delete m_metrics;
-	}
-
-	if(m_serialization_buffer)
-	{
-		free(m_serialization_buffer);
-	}
-
-	if(m_score_calculator)
-	{
-		delete m_score_calculator;
-	}
-
-	if(m_procfs_parser)
-	{
-		delete m_procfs_parser;
-	}
-
-	if(m_sched_analyzer2)
-	{
-		delete m_sched_analyzer2;
-	}
-
-	if(m_delay_calculator)
-	{
-		delete m_delay_calculator;
-	}
-
-	if(m_threadtable_listener)
-	{
-		delete(m_threadtable_listener);
-	}
-
-	if(m_fd_listener)
-	{
-		delete m_fd_listener;
-	}
-
-	if(m_reduced_ipv4_connections)
-	{
-		delete m_reduced_ipv4_connections;
-	}
-
-	if(m_ipv4_connections)
-	{
-		delete m_ipv4_connections;
-	}
+	delete m_metrics;
+	free(m_serialization_buffer);
+	delete m_score_calculator;
+	delete m_procfs_parser;
+	delete m_sched_analyzer2;
+	delete m_delay_calculator;
+	delete(m_threadtable_listener);
+	delete m_fd_listener;
+	delete m_reduced_ipv4_connections;
+	delete m_ipv4_connections;
 
 #ifdef HAS_UNIX_CONNECTIONS
-	if(m_unix_connections)
-	{
-		delete m_unix_connections;
-	}
+	delete m_unix_connections;
 #endif
 
 #ifdef HAS_PIPE_CONNECTIONS
-	if(m_pipe_connections)
-	{
-		delete m_pipe_connections;
-	}
+	delete m_pipe_connections;
 #endif
 
-	if(m_trans_table)
-	{
-		delete m_trans_table;
-	}
-
-	if(m_configuration)
-	{
-		delete m_configuration;
-	}
-
-	if(m_parser)
-	{
-		delete m_parser;
-	}
+	delete m_trans_table;
+	delete m_configuration;
+	delete m_parser;
 
 	if(m_protobuf_fp != NULL)
 	{
@@ -225,6 +174,8 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
+
+	delete m_k8s;
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -824,6 +775,51 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo)
+{
+	bool is_k8s_master = false;
+	if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+	{
+		is_k8s_master = true;
+	}
+	else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+	{
+		for(const auto& arg : main_tinfo->m_args)
+		{
+			if(arg == "apiserver")
+			{
+				is_k8s_master = true;
+				break;
+			}
+		}
+	}
+	bool auto_detect = m_configuration->get_k8s_autodetect_enabled();
+	string k8s_api = m_configuration->get_k8s_api_server();
+	if((is_k8s_master && auto_detect) || !k8s_api.empty())
+	{
+		if(k8s_api.empty() && auto_detect && is_k8s_master)
+		{
+			k8s_api = "http://localhost:8080";
+		}
+		if(!k8s_api.empty())
+		{
+			CURL* curl = curl_easy_init();
+			if(curl)
+			{
+				curl_easy_setopt(curl, CURLOPT_URL, k8s_api.c_str());
+				curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
+				if(CURLE_OK == curl_easy_perform(curl))
+				{
+					curl_easy_cleanup(curl);
+					return new k8s(k8s_api, false);// true to enable watch
+				}
+				curl_easy_cleanup(curl);
+			}
+		}
+	}
+	return 0;
+}
+				
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	int64_t delta;
@@ -1011,22 +1007,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 				
-				// detect k8s master
-				if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
-				{
-					m_is_k8s_master = true;
-				}
-				else if((main_tinfo->m_exe.find("hyperkube") != std::string::npos))
-				{
-					for(const auto& arg : main_tinfo->m_args)
-					{
-						if(arg == "apiserver")
-						{
-							m_is_k8s_master = true;
-							break;
-						}
-					}
-				}
+				m_k8s = get_k8s(main_tinfo);
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->set_cmdline_update(true);
@@ -2742,9 +2723,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
-			if (m_is_k8s_master)
+			if (m_k8s)
 			{
-				emit_kubernetes();
+				emit_k8s();
 			}
 
 			emit_top_files();
@@ -3478,13 +3459,12 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 	}
 }
 
-void sinsp_analyzer::emit_kubernetes()
+void sinsp_analyzer::emit_k8s()
 {
 	try
 	{
-		// in order to have watch, set 3rd argument to true and make kube a member
-		k8s kube(*m_metrics, "http://127.0.0.1:8080/", false /*true to watch*/);
-		kube.get_proto();
+		ASSERT(m_k8s);
+		k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 	}
 	catch (std::exception& e)
 	{

@@ -188,6 +188,11 @@ void sinsp_worker::init()
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
 
+	if(!m_configuration->m_k8s_api_server.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
+	}
+	
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
