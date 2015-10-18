@@ -9,25 +9,52 @@ TOKEN = "b6643f9e-950a-42cf-975f-0dd97d0f0510"
 #
 # Dashboard Creation
 #
-def create_dash_from_template(name, templatename, servicename):
+def create_dash_from_template(newdashname, templatename, servicename):
 	#
 	# setup the headers
 	#
 	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
 
 	#
-	# Find our template dashboard
+	# Get the list of dashboards from the server
 	#
 	r = requests.get(SYSDIG_URL + "/ui/dashboards", headers=hdrs)
 	j = r.json()
 
+	#
+	# Find our template dashboard
+	#
 	for db in j['dashboards']:
 		if db['name'] == templatename:
 			dboard = db
+			break
 
 	if dboard == None:
 		print "can't find dashboard " + templatename
 		sys.exit(0)
+
+	#
+	# Create the dashboard name
+	#
+	if newdashname:
+		dname = newdashname
+	else:
+		dname = dboard['name'] + ' for ' + service
+
+	#
+	# If this dashboard already exists, don't create it another time
+	#
+	for db in j['dashboards']:
+		if db['name'] == dname:
+			print 'dashboard ' + dname + ' already exists'
+			return
+
+	#
+	# Clean up the dashboard we retireved so it's ready to be pushed
+	#
+	dboard['id'] = None
+	dboard['version'] = None
+	dboard['name'] = dname
 
 	#
 	# create the configuration ID
@@ -45,14 +72,6 @@ def create_dash_from_template(name, templatename, servicename):
 	}
 
 	r = requests.post(SYSDIG_URL + "/api/groupConfigurations", headers=hdrs, data = json.dumps(gconf))
-
-	#
-	#   Clean up the dashboard we retireved so it's ready to be pushed
-	#
-	dboard['id'] = None
-	dboard['version'] = None
-	dname = dboard['name']
-	dboard['name'] = dname + ' for ' + service
 
 	#
 	# Modify the filter of each view to point to this service
@@ -105,11 +124,17 @@ for item in j["items"]:
 				dashes = json.loads(md)
 
 				for dash in dashes:
-					if "template" in dash:
+					if "name" in dash:
 						name = dash["name"]
+
+					if "template" in dash:
 						template = dash["template"]
-						print "  Creating Dashboard %s for user %s based on template %s" %(name, user, template)
-						create_dash_from_template(name, template, service)
+					else:
+						print "monitoring-dashboards entry missing the template property"
+						sys.exit(0)
+
+					print "  Creating Dashboard %s for user %s based on template %s" %(name, user, template)
+					create_dash_from_template(name, template, service)
 
 	
 

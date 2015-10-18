@@ -140,7 +140,7 @@ metadata:
     name: wordpress
   name: wordpress
   annotations:
-    monitoring-dashboards: '[{"name": "D1", "template": "template-dash"}, {"name": "D2", "template": "template-dash"}]'
+    monitoring-dashboards: '[{"name": "D3", "template": "template-dash"}, {"name": "D4", "template": "template-dash"}]'
     monitoring-user: "ld@sysdig.com"
     monitoring-granularity: "1s"
     alerts: "cpu.used.percent by container.id > 80, memory.used.percent by pod.name > 50"
