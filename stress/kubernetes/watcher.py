@@ -51,6 +51,8 @@ def create_dash_from_template(name, templatename, servicename):
 	#
 	dboard['id'] = None
 	dboard['version'] = None
+	dname = dboard['name']
+	dboard['name'] = dname + ' for ' + service
 
 	#
 	# Modify the filter of each view to point to this service
@@ -59,7 +61,7 @@ def create_dash_from_template(name, templatename, servicename):
 		"metric" : "kubernetes.service.name",
 		"op" : "=",
 		"value" : servicename,
-		"filters" : "null"
+		"filters" : None
 		}
 	}
 

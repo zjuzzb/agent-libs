@@ -9,6 +9,19 @@ TOKEN = "b6643f9e-950a-42cf-975f-0dd97d0f0510"
 #
 # Dashboard Creation
 #
+def delete_dash(id):
+	#
+	# setup the headers
+	#
+	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
+
+	#
+	# delete the dashboard
+	#
+	r = requests.delete(SYSDIG_URL + "/ui/dashboards/" + str (id), headers=hdrs)
+
+	print id
+
 def delete_dashes():
 	#
 	# setup the headers
@@ -24,8 +37,11 @@ def delete_dashes():
 	for db in j['dashboards']:
 		id = db['id']
 
-		print id
+		delete_dash(id)
 
-		r = requests.delete(SYSDIG_URL + "/ui/dashboards/" + str (id), headers=hdrs)
 
-delete_dashes()
+if len(sys.argv) > 1:
+	for j in range(1, len(sys.argv)):
+		delete_dash(sys.argv[j])
+else:
+	delete_dashes()
