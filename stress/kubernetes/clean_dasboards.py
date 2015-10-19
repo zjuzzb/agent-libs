@@ -22,6 +22,23 @@ def delete_dash(id):
 
 	print id
 
+def delete_dash_by_name(name):
+	#
+	# setup the headers
+	#
+	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
+
+	#
+	# Iterate through the dashboards
+	#
+	r = requests.get(SYSDIG_URL + "/ui/dashboards", headers=hdrs)
+	j = r.json()
+
+	for db in j['dashboards']:
+		if db['name'] == name:
+			id = db['id']
+			delete_dash(id)
+
 def delete_dashes():
 	#
 	# setup the headers
@@ -43,5 +60,6 @@ def delete_dashes():
 if len(sys.argv) > 1:
 	for j in range(1, len(sys.argv)):
 		delete_dash(sys.argv[j])
+		delete_dash_by_name(sys.argv[j])
 else:
 	delete_dashes()
