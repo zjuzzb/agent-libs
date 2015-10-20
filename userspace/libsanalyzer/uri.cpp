@@ -40,7 +40,8 @@ std::string uri::head_chunk(std::string &subject, std::string delimiter)
 	auto delimiter_location = subject.find(delimiter);
 	auto delimiter_length = delimiter.length();
 	std::string output;
-	if (delimiter_location < std::string::npos) {
+	if (delimiter_location < std::string::npos)
+	{
 		output = subject.substr(0, delimiter_location);
 		subject = subject.substr(delimiter_location + delimiter_length, subject.length() - (delimiter_location + delimiter_length));
 	}
@@ -51,8 +52,14 @@ int uri::extract_port(std::string& hostport)
 {
 	int m_port;
 	std::string portstring = tail_chunk(hostport, ":");
-	try { m_port = atoi(portstring.c_str()); }
-	catch (std::exception e) { m_port = -1; }
+	try
+	{
+		m_port = atoi(portstring.c_str()); 
+	}
+	catch (std::exception e)
+	{
+		m_port = 0;
+	}
 	return m_port;
 }
 

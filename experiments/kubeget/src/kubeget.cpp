@@ -68,16 +68,3 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-#if 0
-
-#include "uri.h"
-
-int main(void)
-{
-	std::string s("https://vagrant:vagrant@10.245.1.2:8080/api/v1?param1=one");
-	uri u(s);
-	std::cout << "schema: " << u.get_scheme() << "\nhost: " << u.get_host() << "\nport: " << u.get_port() << "\nusername: " << u.get_user() << "\npassword: " << u.get_password() << "\npath: " << u.get_path() << "\nquery: " << u.get_query() << std::endl;
-	std::cout << u.to_string() << std::endl;
-	return 0;
-}
-#endif
