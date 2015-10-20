@@ -44,8 +44,8 @@ int main(int argc, char** argv)
 		kube.start_watching();
 		g_logger.log(proto.DebugString());
 		sleep(10);
-		kube.stop_watching();
-		g_logger.log("Stopped.");
+		//kube.stop_watching();
+		//g_logger.log("Stopped.");
 		/*
 		sleep(5);
 		kube.start_watching();

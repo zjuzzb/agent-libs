@@ -211,3 +211,4 @@ void k8s_http::check_error(CURLcode res)
 		throw std::runtime_error(os.str());
 	}
 }
+

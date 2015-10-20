@@ -90,7 +90,12 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 	{
 		std::string protocol = m_uri.get_scheme();
 		std::ostringstream os;
-		os << m_uri.get_host() << ':' << m_uri.get_port();
+		os << m_uri.get_host();
+		int port = m_uri.get_port();
+		if (port)
+		{
+			os << ':' << port;
+		}
 		m_api_interfaces[component.first] = new k8s_http(m_k8s, component.second, os.str(), protocol, m_creds);
 	}
 	

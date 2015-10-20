@@ -65,7 +65,10 @@ void k8s::build_state()
 	std::ostringstream os;
 	for (auto& component : m_components)
 	{
-		m_state.clear(component.first);
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			m_state.clear(component.first);
+		}
 		m_net.get_all_data(component, os);
 		parse_json(os.str(), component);
 		os.str("");
@@ -112,6 +115,8 @@ void k8s::on_watch_data(k8s_event_data&& msg)
 
 std::size_t k8s::count(k8s_component::type component) const
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
+
 	switch (component)
 	{
 	case k8s_component::K8S_NODES:
@@ -143,13 +148,13 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 {
 	if(items.isArray())
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
-
 		for (auto& item : items)
 		{
 			Json::Value obj = item["metadata"];
 			if(obj.isObject())
 			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+
 				Json::Value ns = obj["namespace"];
 				std::string nspace;
 				if(!ns.isNull())

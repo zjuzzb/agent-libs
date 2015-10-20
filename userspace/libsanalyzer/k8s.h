@@ -48,12 +48,12 @@ private:
 
 	static dispatch_map make_dispatch_map(k8s_state_s& state, std::mutex& mut);
 
-	std::mutex   m_mutex;
-	k8s_net      m_net;
-	bool         m_watch;
-	bool         m_own_proto;
-	k8s_state_s  m_state;
-	dispatch_map m_dispatch;
+	mutable std::mutex m_mutex;
+	k8s_net            m_net;
+	bool               m_watch;
+	bool               m_own_proto;
+	k8s_state_s        m_state;
+	dispatch_map       m_dispatch;
 	
 	static const k8s_component::component_map m_components;
 };
