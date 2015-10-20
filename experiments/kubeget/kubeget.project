@@ -397,6 +397,8 @@
     <File Name="src/k8s_poller.h"/>
     <File Name="src/k8s_proto.cpp"/>
     <File Name="src/k8s_proto.h"/>
+    <File Name="src/uri.h"/>
+    <File Name="src/uri.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

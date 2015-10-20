@@ -24,10 +24,10 @@ FLAGS+=$(LFLAGS)
 
 ODIR=obj
 
-_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_poller.h
+_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_poller.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_poller.o
+_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_poller.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
