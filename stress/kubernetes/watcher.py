@@ -9,7 +9,7 @@ TOKEN = "b6643f9e-950a-42cf-975f-0dd97d0f0510"
 #
 # Dashboard Creation
 #
-def create_dash_from_template(newdashname, templatename, servicename):
+def create_dash_from_template(newdashname, serviceuid, templatename, servicename):
 	#
 	# setup the headers
 	#
@@ -24,6 +24,8 @@ def create_dash_from_template(newdashname, templatename, servicename):
 	#
 	# Find our template dashboard
 	#
+	dboard = None
+
 	for db in j['dashboards']:
 		if db['name'] == templatename:
 			dboard = db
@@ -55,37 +57,43 @@ def create_dash_from_template(newdashname, templatename, servicename):
 	dboard['id'] = None
 	dboard['version'] = None
 	dboard['name'] = dname
-
+	
 	#
-	# create the configuration ID
+	# Assign the filter and the group ID to each view to point to this service
 	#
-	gconf = { "id": "group-configuration-id",
-	    "groups": [
-	        {
-	            "groupBy": [
-	                {
-	                    "metric": "kubernetes.namespace.name"
-	                }
-	            ]
-	        }
-	    ]
-	}
-
-	r = requests.post(SYSDIG_URL + "/api/groupConfigurations", headers=hdrs, data = json.dumps(gconf))
-
-	#
-	# Modify the filter of each view to point to this service
-	#
-	filter = {"filter" : {
+	filter = {
 		"metric" : "kubernetes.service.name",
 		"op" : "=",
 		"value" : servicename,
 		"filters" : None
-		}
 	}
 
+	j = 0
+
 	for view in dboard['items']:
+		j = j + 1
+
+		#
+		# create the configuration ID
+		#
+		confid = newdashname + '-' + serviceuid + '-' + str(j)
+
+		gconf = { "id": confid,
+		    "groups": [
+		        {
+		            "groupBy": [
+		                {
+		                    "metric": "kubernetes.service.name"
+		                }
+		            ]
+		        }
+		    ]
+		}
+
+		r = requests.post(SYSDIG_URL + "/api/groupConfigurations", headers=hdrs, data = json.dumps(gconf))
+
 		view['filter'] = filter
+		view['groupId'] = confid
 
 #	print json.dumps(dboard, indent=4, separators=(',', ': '))
 
@@ -109,6 +117,8 @@ j =r.json()
 for item in j["items"]:
 	if "metadata" in item:
 		service = item["metadata"]["name"]
+		serviceuid = item["metadata"]["uid"]
+
 		print "Discovered service " + service
 
 		metadata = item["metadata"]
@@ -134,7 +144,7 @@ for item in j["items"]:
 						sys.exit(0)
 
 					print "  Creating Dashboard %s for user %s based on template %s" %(name, user, template)
-					create_dash_from_template(name, template, service)
+					create_dash_from_template(name, serviceuid, template, service)
 
 	
 
