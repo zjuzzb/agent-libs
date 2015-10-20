@@ -59,9 +59,9 @@ int main(int argc, char** argv)
 		*/
 		sleep(100);
 	}
-	catch (Exception& exc)
+	catch (std::exception& exc)
 	{
-		g_logger.log(exc.displayText());
+		g_logger.log(exc.what());
 		return 1;
 	}
 
