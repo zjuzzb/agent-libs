@@ -4,16 +4,20 @@ import sys
 
 SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
 TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
-#2ece4c07-bab4-41c7-9e9c-a716129aa950
 
 #
 # Dashboard Creation
 #
-def create_dash_from_template(newdashname, serviceuid, servicenspace, templatename, servicename):
+def create_service_dash_from_template(newdashname, serviceuid, servicenspace, templatename, servicename):
 	#
 	# setup the headers
 	#
 	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
+
+	#
+	# Create the unique ID for this view
+	#
+	baseconfid = newdashname + '-' + servicenspace + '-' + serviceuid + '-'
 
 	#
 	# Get the list of dashboards from the server
@@ -48,8 +52,10 @@ def create_dash_from_template(newdashname, serviceuid, servicenspace, templatena
 	#
 	for db in j['dashboards']:
 		if db['name'] == dname:
-			print 'dashboard ' + dname + ' already exists'
-			return
+			for view in db['items']:
+				if view['groupId'][0:len(baseconfid)] == baseconfid:
+					print 'dashboard ' + dname + ' for service ' + servicename + ' already exists'
+					return
 
 	#
 	# Clean up the dashboard we retireved so it's ready to be pushed
@@ -88,9 +94,9 @@ def create_dash_from_template(newdashname, serviceuid, servicenspace, templatena
 		j = j + 1
 
 		#
-		# create the configuration ID
+		# create the grouping configuration
 		#
-		confid = newdashname + '-' + serviceuid + '-' + str(j)
+		confid = baseconfid + str(j)
 
 		gconf = { 'id': confid,
 		    'groups': [
@@ -129,16 +135,6 @@ def create_dash_from_template(newdashname, serviceuid, servicenspace, templatena
 r = requests.get('http://localhost:8080/api/v1/services')
 j =r.json()
 
-#print j
-
-'''	
-	filter = {
-		'metric' : 'kubernetes.service.name',
-		'op' : '=',
-		'value' : servicename,
-		'filters' : None
-	}
-'''
 
 for item in j['items']:
 	if 'metadata' in item:
@@ -153,7 +149,6 @@ for item in j['items']:
 			annotations = metadata['annotations']
 
 			user = annotations['monitoring-user']
-			#def create_dash_from_template(templatename):
 
 			if 'monitoring-dashboards' in annotations:
 				md = annotations['monitoring-dashboards']
@@ -171,7 +166,7 @@ for item in j['items']:
 						sys.exit(0)
 
 					print '  Creating Dashboard %s for user %s based on template %s' %(name, user, template)
-					create_dash_from_template(name, serviceuid, namespace, template, service)
+					create_service_dash_from_template(name, serviceuid, namespace, template, service)
 
 	
 
@@ -243,5 +238,14 @@ for user in j["users"]:
 	            }
 	        ]
 	    }
+	}
+'''
+
+'''	
+	filter = {
+		'metric' : 'kubernetes.service.name',
+		'op' : '=',
+		'value' : servicename,
+		'filters' : None
 	}
 '''
