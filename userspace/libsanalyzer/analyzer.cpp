@@ -1109,11 +1109,33 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						{
 							m_total_process_cpu += ainfo->m_cpuload;
 						}
+#if defined(HAS_CAPTURE)
+						if(it->first == m_inspector->m_sysdig_pid)
+						{
+							m_my_cpuload = ainfo->m_cpuload;
+						}
+#else
+						m_my_cpuload = 0;
+#endif
 					}
 				}
 			}
 		}
-		
+
+		if(tinfo->m_flags & PPM_CL_CLOSED &&
+				!(evt != NULL &&
+				  (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
+				  && evt->m_tinfo == tinfo))
+		{
+			//
+			// Yes, remove the thread from the table, but NOT if the event currently under processing is
+			// an exit for this process. In that case we wait until next sample.
+			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
+			//       not actually remove the thread if it has childs.
+			//
+			m_threads_to_remove.push_back(tinfo);
+		}
+
 		//
 		// Add this thread's counters to the process ones...
 		//
@@ -1155,18 +1177,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			m_server_programs.insert(mtinfo->m_tid);
 			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
-		}
-
-		if(m_inspector->m_islive)
-		{
-#if defined(HAS_CAPTURE)
-			if(it->first == m_inspector->m_sysdig_pid)
-			{
-				m_my_cpuload = ainfo->m_cpuload;
-			}
-#else
-			m_my_cpuload = 0;
-#endif
 		}
 
 #ifndef _WIN32
@@ -1666,28 +1676,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Clear the thread metrics, so we're ready for the next sample
 		//
 		tinfo->m_ainfo->clear_all_metrics();
-
-		if(tinfo->m_flags & PPM_CL_CLOSED)
-		{
-			//
-			// Yes, remove the thread from the table, but NOT if the event currently under processing is
-			// an exit for this process. In that case we wait until next sample.
-			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
-			//       not actually remove the thread if it has childs.
-			//
-
-			if(evt != NULL && 
-				(evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
-				&& evt->m_tinfo == tinfo)
-			{
-				++it;
-			}
-			else
-			{
-				m_threads_to_remove.push_back(tinfo);
-			}
-		}
-
 	}
 
 	if(app_checks_limit == 0)
