@@ -1136,6 +1136,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_threads_to_remove.push_back(tinfo);
 		}
 
+		if(proctids.size() != 0 && proctids.find(tinfo->m_pid) == proctids.end())
+		{
+			tinfo->m_flags |= PPM_CL_CLOSED;
+		}
 		//
 		// Add this thread's counters to the process ones...
 		//
@@ -1458,14 +1462,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// section too
 		//
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
-
-		if(proctids.size() != 0)
-		{
-			if(proctids.find(tinfo->m_pid) == proctids.end())
-			{
-				tinfo->m_flags |= PPM_CL_CLOSED;
-			}
-		}
 
 #ifdef ANALYZER_EMITS_PROCESSES
 		sinsp_counter_time tot;
