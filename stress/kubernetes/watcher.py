@@ -2,14 +2,14 @@ import requests
 import json
 import sys
 
-SYSDIG_URL = "https://app-staging2.sysdigcloud.com"
-TOKEN = "b6643f9e-950a-42cf-975f-0dd97d0f0510"
+SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
+TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
 #2ece4c07-bab4-41c7-9e9c-a716129aa950
 
 #
 # Dashboard Creation
 #
-def create_dash_from_template(newdashname, serviceuid, templatename, servicename):
+def create_dash_from_template(newdashname, serviceuid, servicenspace, templatename, servicename):
 	#
 	# setup the headers
 	#
@@ -18,7 +18,7 @@ def create_dash_from_template(newdashname, serviceuid, templatename, servicename
 	#
 	# Get the list of dashboards from the server
 	#
-	r = requests.get(SYSDIG_URL + "/ui/dashboards", headers=hdrs)
+	r = requests.get(SYSDIG_URL + '/ui/dashboards', headers=hdrs)
 	j = r.json()
 
 	#
@@ -32,7 +32,7 @@ def create_dash_from_template(newdashname, serviceuid, templatename, servicename
 			break
 
 	if dboard == None:
-		print "can't find dashboard " + templatename
+		print 'can\'t find dashboard ' + templatename + ' to use asa template'
 		sys.exit(0)
 
 	#
@@ -62,10 +62,24 @@ def create_dash_from_template(newdashname, serviceuid, templatename, servicename
 	# Assign the filter and the group ID to each view to point to this service
 	#
 	filter = {
-		"metric" : "kubernetes.service.name",
-		"op" : "=",
-		"value" : servicename,
-		"filters" : None
+		'filters' : 
+		{
+			'logic' : 'and',
+			'filters' : [ 
+				{
+					'metric' : 'kubernetes.namespace.name',
+					'op' : '=',
+					'value' : servicenspace,
+					'filters' : None
+				},
+				{
+					'metric' : 'kubernetes.service.name',
+					'op' : '=',
+					'value' : servicename,
+					'filters' : None
+				}
+			]
+		}
 	}
 
 	j = 0
@@ -78,19 +92,22 @@ def create_dash_from_template(newdashname, serviceuid, templatename, servicename
 		#
 		confid = newdashname + '-' + serviceuid + '-' + str(j)
 
-		gconf = { "id": confid,
-		    "groups": [
+		gconf = { 'id': confid,
+		    'groups': [
 		        {
-		            "groupBy": [
+		            'groupBy': [
 		                {
-		                    "metric": "kubernetes.service.name"
+		                    'metric': 'kubernetes.namespace.name'
+		                },
+		                {
+		                    'metric': 'kubernetes.service.name'
 		                }
 		            ]
 		        }
 		    ]
 		}
 
-		r = requests.post(SYSDIG_URL + "/api/groupConfigurations", headers=hdrs, data = json.dumps(gconf))
+		r = requests.post(SYSDIG_URL + '/api/groupConfigurations', headers=hdrs, data = json.dumps(gconf))
 
 		view['filter'] = filter
 		view['groupId'] = confid
@@ -102,7 +119,7 @@ def create_dash_from_template(newdashname, serviceuid, templatename, servicename
 	#
 	# Create the new dashboard
 	#
-	r = requests.post(SYSDIG_URL + "/ui/dashboards", headers=hdrs, data = json.dumps(ddboard))
+	r = requests.post(SYSDIG_URL + '/ui/dashboards', headers=hdrs, data = json.dumps(ddboard))
 	j = r.json()
 	print j
 
@@ -114,37 +131,47 @@ j =r.json()
 
 #print j
 
-for item in j["items"]:
-	if "metadata" in item:
-		service = item["metadata"]["name"]
-		serviceuid = item["metadata"]["uid"]
+'''	
+	filter = {
+		'metric' : 'kubernetes.service.name',
+		'op' : '=',
+		'value' : servicename,
+		'filters' : None
+	}
+'''
 
-		print "Discovered service " + service
+for item in j['items']:
+	if 'metadata' in item:
+		service = item['metadata']['name']
+		serviceuid = item['metadata']['uid']
+		namespace = item['metadata']['namespace']
 
-		metadata = item["metadata"]
-		if "annotations" in metadata:
-			annotations = metadata["annotations"]
+		print 'Discovered service ' + namespace + ':' + service
 
-			user = annotations["monitoring-user"]
+		metadata = item['metadata']
+		if 'annotations' in metadata:
+			annotations = metadata['annotations']
+
+			user = annotations['monitoring-user']
 			#def create_dash_from_template(templatename):
 
-			if "monitoring-dashboards" in annotations:
-				md = annotations["monitoring-dashboards"]
+			if 'monitoring-dashboards' in annotations:
+				md = annotations['monitoring-dashboards']
 	
 				dashes = json.loads(md)
 
 				for dash in dashes:
-					if "name" in dash:
-						name = dash["name"]
+					if 'name' in dash:
+						name = dash['name']
 
-					if "template" in dash:
-						template = dash["template"]
+					if 'template' in dash:
+						template = dash['template']
 					else:
-						print "monitoring-dashboards entry missing the template property"
+						print 'monitoring-dashboards entry missing the template property'
 						sys.exit(0)
 
-					print "  Creating Dashboard %s for user %s based on template %s" %(name, user, template)
-					create_dash_from_template(name, serviceuid, template, service)
+					print '  Creating Dashboard %s for user %s based on template %s' %(name, user, template)
+					create_dash_from_template(name, serviceuid, namespace, template, service)
 
 	
 
