@@ -5,19 +5,19 @@ import sys
 SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
 TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
 
-#
-# Dashboard Creation
-#
-def create_service_dash_from_template(newdashname, serviceuid, servicenspace, templatename, servicename):
+###############################################################################
+# Create a dashboard for a service
+###############################################################################
+def create_service_dash_from_template(newdashname, namespace, templatename, servicename):
 	#
 	# setup the headers
 	#
 	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
 
 	#
-	# Create the unique ID for this view
+	# Create the unique ID for this dashboard
 	#
-	baseconfid = newdashname + '-' + servicenspace + '-' + serviceuid + '-'
+	baseconfid = newdashname + '-' + namespace + '-' + servicename + '-'
 
 	#
 	# Get the list of dashboards from the server
@@ -75,7 +75,7 @@ def create_service_dash_from_template(newdashname, serviceuid, servicenspace, te
 				{
 					'metric' : 'kubernetes.namespace.name',
 					'op' : '=',
-					'value' : servicenspace,
+					'value' : namespace,
 					'filters' : None
 				},
 				{
@@ -129,6 +129,68 @@ def create_service_dash_from_template(newdashname, serviceuid, servicenspace, te
 	j = r.json()
 	print j
 
+###############################################################################
+# Create an alert for a service
+###############################################################################
+def create_service_alert(name, condition, namespace, servicename):
+	#
+	# setup the headers
+	#
+	hdrs = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}
+
+	#
+	# Create the unique description for this alert
+	#
+	alert_desc = name + ' for service ' + servicename + ' in namespace ' + namespace
+
+	#
+	# Get the list of alerts from the server
+	#
+	r = requests.get(SYSDIG_URL + '/api/alerts', headers=hdrs)
+	j = r.json()
+
+	#
+	# Create the alert name
+	#
+	if name:
+		aname = name
+	else:
+		aname = condition + ' for ' + service
+
+	print '  Creating alert %s for service %s' %(aname, servicename)
+
+	#
+	# If this alert already exists, don't create it again
+	#
+	for db in j['alerts']:
+		if db['description'] == alert_desc:
+			print 'alert ' + db['name'] + ' for service ' + servicename + ' already exists'
+			return
+
+	#
+	# Populate the alert information
+	#
+	alert_json = {
+		'alert' : {
+			"type" : "MANUAL",
+			"name" : name,
+			"description" : alert_desc,
+			"enabled" : False,
+			"filter" : 'kubernetes.namespace.name = "loris" and kubernetes.service.name = "mysql"',
+			"severity" : 7,
+			"notify" : [ "EMAIL" ],
+			"timespan" : 600000000,
+			"condition" : condition
+		}
+	}
+
+  	#
+	# Create the new alert
+	#
+	r = requests.post(SYSDIG_URL + '/api/alerts', headers=hdrs, data = json.dumps(alert_json))
+	j = r.json()
+	print j
+
 #
 # Get the list of k8s services
 #
@@ -139,7 +201,6 @@ j =r.json()
 for item in j['items']:
 	if 'metadata' in item:
 		service = item['metadata']['name']
-		serviceuid = item['metadata']['uid']
 		namespace = item['metadata']['namespace']
 
 		print 'Discovered service ' + namespace + ':' + service
@@ -165,8 +226,10 @@ for item in j['items']:
 						print 'monitoring-dashboards entry missing the template property'
 						sys.exit(0)
 
-					print '  Creating Dashboard %s for user %s based on template %s' %(name, user, template)
-					create_service_dash_from_template(name, serviceuid, namespace, template, service)
+					#print '  Creating Dashboard %s for user %s based on template %s' %(name, user, template)
+					#create_service_dash_from_template(name, namespace, template, service)
+
+					create_service_alert(name, "avg(cpu.used.percent) >= 80", namespace, service)
 
 	
 
