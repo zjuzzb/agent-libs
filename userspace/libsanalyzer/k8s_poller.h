@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include "sinsp.h"
 #include <map>
-#include <mutex>
 
 class k8s_http;
 
@@ -40,7 +40,7 @@ private:
 	bool         m_loop;
 	long         m_timeout_ms;
 	bool         m_stopped;
-	mutable std::mutex m_mutex;
+	K8S_DECLARE_MUTEX;
 };
 
 inline void k8s_poller::stop()

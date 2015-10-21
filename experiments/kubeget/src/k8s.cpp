@@ -22,25 +22,49 @@ const k8s_component::component_map k8s::m_components =
 	{ k8s_component::K8S_SERVICES,               "services"               }
 };
 
-k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state, std::mutex& mut)
-{
-	return dispatch_map
+#ifdef K8S_DISABLE_THREAD
+	k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state)
 	{
-		{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state, mut) },
-		{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state, mut) },
-		{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state, mut) },
-		{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state, mut) },
-		{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state, mut) }
-	};
-}
+		return dispatch_map
+		{
+			{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state)},
+			{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state)},
+			{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state)},
+			{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state)},
+			{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state)}
+		};
+	}
+#else
+	k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state, std::mutex& mut)
+	{
+		return dispatch_map
+		{
+			{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state, mut)},
+			{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state, mut)},
+			{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state, mut)},
+			{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state, mut)},
+			{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state, mut)}
+		};
+	}
+#endif // K8S_DISABLE_THREAD
 
 k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const std::string& api) :
 		m_watch(start_watch),
 		m_watch_in_thread(start_watch && watch_in_thread),
 		m_net(*this, uri, api),
 		m_own_proto(true),
+	#ifndef K8S_DISABLE_THREAD
 		m_dispatch(std::move(make_dispatch_map(m_state, m_mutex)))
+	#else
+		m_dispatch(std::move(make_dispatch_map(m_state)))
+	#endif
 {
+#ifdef K8S_DISABLE_THREAD
+	if (watch_in_thread)
+	{
+		g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
+	}
+#endif // K8S_DISABLE_THREAD
 	get_state(true);
 	if (m_watch)
 	{
@@ -71,7 +95,7 @@ void k8s::build_state()
 	for (auto& component : m_components)
 	{
 		{
-			std::lock_guard<std::mutex> lock(m_mutex);
+			K8S_LOCK_GUARD_MUTEX;
 			m_state.clear(component.first);
 		}
 		m_net.get_all_data(component, os);
@@ -120,7 +144,7 @@ void k8s::on_watch_data(k8s_event_data&& msg)
 
 std::size_t k8s::count(k8s_component::type component) const
 {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	K8S_LOCK_GUARD_MUTEX;
 
 	switch (component)
 	{
@@ -158,8 +182,7 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 			Json::Value obj = item["metadata"];
 			if(obj.isObject())
 			{
-				std::lock_guard<std::mutex> lock(m_mutex);
-
+				K8S_LOCK_GUARD_MUTEX;
 				Json::Value ns = obj["namespace"];
 				std::string nspace;
 				if(!ns.isNull())

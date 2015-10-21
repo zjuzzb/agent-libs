@@ -31,16 +31,24 @@ int main(int argc, char** argv)
 	try
 	{
 		std::string host("http://localhost:80");
-		bool run_watch_thread = true;
-		
 		if(argc >= 2) host = argv[1];
-		if(argc >= 3)
+
+#ifndef K8S_DISABLE_THREAD
+		bool run_watch_thread = true;
+        if(argc >= 3)
 		{
 			if (std::string(argv[2]) == "false")
 			{
 				run_watch_thread = false;
 			}
 		}
+#else
+		bool run_watch_thread = false;
+		if(argc >= 3 && std::string(argv[2]) == "true")
+		{
+			g_logger.log(Poco::format("Argument ignored: run_watch_thread=%s", std::string(argv[2])));
+		}
+#endif
 
 		Stopwatch sw;
 		sw.start();

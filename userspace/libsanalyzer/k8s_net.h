@@ -10,9 +10,11 @@
 #include "k8s_http.h"
 #include "k8s_poller.h"
 #include "uri.h"
-#include <thread>
 #include <sstream>
 #include <utility>
+#ifndef K8S_DISABLE_THREAD
+#include <thread>
+#endif
 
 class k8s;
 
@@ -34,7 +36,7 @@ public:
 
 private:
 	void subscribe();
-	
+
 	void unsubscribe();
 
 	void dispatch_events();
@@ -48,10 +50,12 @@ private:
 	k8s&         m_k8s;
 	uri          m_uri;
 	std::string  m_creds;
-	std::thread* m_thread;
 	bool         m_stopped;
 	api_map_t    m_api_interfaces;
 	k8s_poller   m_poller;
+#ifndef K8S_DISABLE_THREAD
+	std::thread* m_thread;
+#endif
 };
 
 inline bool k8s_net::is_secure()

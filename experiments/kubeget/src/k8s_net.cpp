@@ -14,16 +14,20 @@
 
 k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_k8s(kube),
 		m_uri(uri + api),
-		m_thread(0),
 		m_stopped(true),
 		m_poller(kube.watch_in_thread())
+#ifndef K8S_DISABLE_THREAD
+		,m_thread(0)
+#endif
 {
 	init();
 }
 
 k8s_net::~k8s_net()
 {
+#ifndef K8S_DISABLE_THREAD
 	delete m_thread;
+#endif
 
 	for (auto& component : k8s_component::list)
 	{
@@ -57,13 +61,21 @@ void k8s_net::init()
 void k8s_net::watch()
 {
 	bool in_thread = m_k8s.watch_in_thread();
+#ifdef K8S_DISABLE_THREAD
+	if(in_thread)
+	{
+		g_logger.log("Thread run requested for non-thread binary.", sinsp_logger::SEV_WARNING);
+	}
+#else
 	if(m_stopped && in_thread)
 	{
 		subscribe();
 		m_stopped = false;
 		m_thread = new std::thread(&k8s_poller::poll, &m_poller);
 	}
-	else if (!in_thread)
+	else
+#endif // K8S_DISABLE_THREAD
+	if(!in_thread)
 	{
 		if (!m_poller.subscription_count())
 		{
@@ -93,10 +105,12 @@ void k8s_net::stop_watching()
 	{
 		m_stopped = true;
 		unsubscribe();
+#ifndef K8S_DISABLE_THREAD
 		if(m_thread)
 		{
 			m_thread->join();
 		}
+#endif
 	}
 }
 
