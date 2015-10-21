@@ -39,12 +39,23 @@ bool connection_manager::init()
 		{
 			g_log->information("SSL enabled, initializing context");
 
+			Poco::Net::Context::VerificationMode verification_mode;
+
+			if(m_configuration->m_ssl_verify_certificate)
+			{
+				verification_mode = Poco::Net::Context::VERIFY_STRICT;
+			}
+			else
+			{
+				verification_mode = Poco::Net::Context::VERIFY_NONE;
+			}
+
 			Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
 				Poco::Net::Context::CLIENT_USE, 
 				"", 
 				"", 
 				m_configuration->m_ssl_ca_certificate, 
-				Poco::Net::Context::VERIFY_STRICT, 
+				verification_mode,
 				9, 
 				false, 
 				"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
