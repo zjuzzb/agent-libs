@@ -33,20 +33,40 @@ fi
 if [ ! -z "$COLLECTOR" ]; then
 	echo "* Setting collector endpoint"
 
-	if ! grep ^collector $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^collector: $CONFIG_FILE > /dev/null 2>&1; then
 		echo "collector: $COLLECTOR" >> $CONFIG_FILE
 	else
-		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
+		sed -i "s/^collector:.*/collector: $COLLECTOR/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$COLLECTOR_PORT" ]; then
+	echo "* Setting collector port"
+
+	if ! grep ^collector_port $CONFIG_FILE > /dev/null 2>&1; then
+		echo "collector_port: $COLLECTOR_PORT" >> $CONFIG_FILE
+	else
+		sed -i "s/^collector_port.*/collector_port: $COLLECTOR_PORT/g" $CONFIG_FILE
 	fi
 fi
 
 if [ ! -z "$SECURE" ]; then
 	echo "* Setting connection security"
 
-	if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^ssl: $CONFIG_FILE > /dev/null 2>&1; then
 		echo "ssl: $SECURE" >> $CONFIG_FILE
 	else
-		sed -i "s/^ssl.*/ssl: $SECURE/g" $CONFIG_FILE
+		sed -i "s/^ssl:.*/ssl: $SECURE/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$CHECK_CERTIFICATE" ]; then
+	echo "* Setting SSL certificate check level"
+
+	if ! grep ^ssl_verify_certificate $CONFIG_FILE > /dev/null 2>&1; then
+		echo "ssl_verify_certificate: $CHECK_CERTIFICATE" >> $CONFIG_FILE
+	else
+		sed -i "s/^ssl_verify_certificate.*/ssl_verify_certificate: $CHECK_CERTIFICATE/g" $CONFIG_FILE
 	fi
 fi
 

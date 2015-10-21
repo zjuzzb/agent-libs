@@ -295,6 +295,7 @@ public:
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
 	bool m_ssl_enabled;
+	bool m_ssl_verify_certificate;
 	string m_ssl_ca_certificate;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
