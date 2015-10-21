@@ -20,7 +20,8 @@ class k8s
 {
 public:
 	k8s(const std::string& uri = "http://localhost:80",
-		bool watch = false,
+		bool start_watch = false,
+		bool watch_in_thread = false,
 		const std::string& api = "/api/v1/");
 
 	~k8s();
@@ -31,7 +32,9 @@ public:
 
 	const k8s_state_s& get_state(bool rebuild = false);
 
-	void start_watching();
+	bool watch_in_thread() const;
+
+	void watch();
 
 	void stop_watching();
 
@@ -49,11 +52,17 @@ private:
 	static dispatch_map make_dispatch_map(k8s_state_s& state, std::mutex& mut);
 
 	mutable std::mutex m_mutex;
-	k8s_net            m_net;
 	bool               m_watch;
+	bool               m_watch_in_thread;
+	k8s_net            m_net;
 	bool               m_own_proto;
 	k8s_state_s        m_state;
 	dispatch_map       m_dispatch;
 	
 	static const k8s_component::component_map m_components;
 };
+
+inline bool k8s::watch_in_thread() const
+{
+	return m_watch_in_thread;
+}

@@ -14,13 +14,17 @@
 
 k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_k8s(kube),
 		m_uri(uri + api),
-		m_stopped(true)
+		m_thread(0),
+		m_stopped(true),
+		m_poller(kube.watch_in_thread())
 {
 	init();
 }
 
 k8s_net::~k8s_net()
 {
+	delete m_thread;
+
 	for (auto& component : k8s_component::list)
 	{
 		delete m_api_interfaces[component.first];
@@ -50,13 +54,22 @@ void k8s_net::init()
 	}
 }
 
-void k8s_net::start_watching()
+void k8s_net::watch()
 {
-	if(m_stopped)
+	bool in_thread = m_k8s.watch_in_thread();
+	if(m_stopped && in_thread)
 	{
 		subscribe();
 		m_stopped = false;
-		m_thread = std::move(std::thread(&k8s_poller::poll, &m_poller));
+		m_thread = new std::thread(&k8s_poller::poll, &m_poller);
+	}
+	else if (!in_thread)
+	{
+		if (!m_poller.subscription_count())
+		{
+			subscribe();
+		}
+		m_poller.poll();
 	}
 }
 	
@@ -80,7 +93,10 @@ void k8s_net::stop_watching()
 	{
 		m_stopped = true;
 		unsubscribe();
-		m_thread.join();
+		if(m_thread)
+		{
+			m_thread->join();
+		}
 	}
 }
 

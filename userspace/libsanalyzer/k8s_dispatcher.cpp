@@ -14,7 +14,8 @@
 k8s_dispatcher::k8s_dispatcher(k8s_component::type t, k8s_state_s& state, std::mutex& mut) :
 	m_type(t),
 	m_state(state),
-	m_mutex(mut)
+	m_mutex(mut),
+	m_counter(0)
 {
 }
 
@@ -497,7 +498,8 @@ void k8s_dispatcher::dispatch()
 				msg_data data = get_msg_data(root);
 				if(data.is_valid())
 				{
-					os << '[' << to_reason_desc(data.m_reason) << ',';
+					std::ostringstream os;
+					os << '[' << m_counter++ << ',' << to_reason_desc(data.m_reason) << ',';
 					switch (m_type)
 					{
 						case k8s_component::K8S_NODES:

@@ -75,6 +75,7 @@ private:
 	list                m_messages;
 	k8s_state_s&        m_state;
 	std::mutex&         m_mutex;
+	unsigned            m_counter;
 };
 
 

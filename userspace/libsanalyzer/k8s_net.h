@@ -26,7 +26,7 @@ public:
 
 	void get_all_data(const k8s_component::component_map::value_type& component, std::ostream& out);
 
-	void start_watching();
+	void watch();
 	
 	void stop_watching();
 
@@ -45,13 +45,13 @@ private:
 
 	typedef std::map<k8s_component::type, k8s_http*> api_map_t;
 
-	k8s&        m_k8s;
-	uri         m_uri;
-	std::string m_creds;
-	std::thread m_thread;
-	bool        m_stopped;
-	api_map_t   m_api_interfaces;
-	k8s_poller  m_poller;
+	k8s&         m_k8s;
+	uri          m_uri;
+	std::string  m_creds;
+	std::thread* m_thread;
+	bool         m_stopped;
+	api_map_t    m_api_interfaces;
+	k8s_poller   m_poller;
 };
 
 inline bool k8s_net::is_secure()

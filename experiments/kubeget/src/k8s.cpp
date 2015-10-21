@@ -34,12 +34,18 @@ k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state, std::mutex& mut)
 	};
 }
 
-k8s::k8s(const std::string& uri, bool watch, const std::string& api) : m_net(*this, uri, api),
-		m_watch(watch),
+k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const std::string& api) :
+		m_watch(start_watch),
+		m_watch_in_thread(start_watch && watch_in_thread),
+		m_net(*this, uri, api),
 		m_own_proto(true),
-		m_dispatch(make_dispatch_map(m_state, m_mutex))
+		m_dispatch(std::move(make_dispatch_map(m_state, m_mutex)))
 {
 	get_state(true);
+	if (m_watch)
+	{
+		watch();
+	}
 }
 
 k8s::~k8s()
@@ -91,11 +97,11 @@ const k8s_state_s& k8s::get_state(bool rebuild)
 	return m_state;
 }
 
-void k8s::start_watching()
+void k8s::watch()
 {
-	if(m_watch && !m_net.is_watching())
+	if((m_watch && !m_net.is_watching()) || !m_watch_in_thread)
 	{
-		m_net.start_watching();
+		m_net.watch();
 	}
 }
 

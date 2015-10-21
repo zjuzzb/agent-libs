@@ -1,8 +1,7 @@
 SDIR =./src
 IDIR =./src
 CC=g++
-CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER
-#-fno-omit-frame-pointer
+CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER -fno-omit-frame-pointer
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Crypto/include
@@ -17,7 +16,7 @@ LFLAGS=-L../../dependencies/poco-1.4.6p4-all/lib/Linux/x86_64
 LFLAGS+=-L../../dependencies/protobuf-2.5.0/src/.libs
 LFLAGS+=-L../../dependencies/curl-7.45.0/lib/.libs
 LFLAGS+=-L../../dependencies/libb64-1.2/src
-LFLAGS+=-lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lpthread -lssl -lcrypto -lz -ldl -lcurl -lb64
+LFLAGS+=-lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lpthread -lcurl -lssl -lcrypto -lz -ldl -lb64
 
 FLAGS=$(CFLAGS)
 FLAGS+=$(LFLAGS)
@@ -32,7 +31,7 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
-	$(CC) -g -c -D_DEBUG -o $@ $< $(FLAGS)
+	$(CC) -g3 -c -D_DEBUG -o $@ $< $(FLAGS)
 
 kubeget: $(OBJ)
 	$(CC) -o $@ $^ $(FLAGS) $(LIBS)

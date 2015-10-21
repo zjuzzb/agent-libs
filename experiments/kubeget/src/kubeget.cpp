@@ -31,24 +31,39 @@ int main(int argc, char** argv)
 	try
 	{
 		std::string host("http://localhost:80");
-
+		bool run_watch_thread = true;
+		
 		if(argc >= 2) host = argv[1];
+		if(argc >= 3)
+		{
+			if (std::string(argv[2]) == "false")
+			{
+				run_watch_thread = false;
+			}
+		}
 
 		Stopwatch sw;
 		sw.start();
-		k8s kube(host, true);
+		k8s kube(host, true, run_watch_thread);
 		draiosproto::metrics met;
 		k8s_proto kube_proto(met);
 		const draiosproto::k8s_state& proto = kube_proto.get_proto(kube.get_state());
 		sw.stop();
-		kube.start_watching();
+		while (true)
+		{
+			if (!run_watch_thread)
+			{
+				kube.watch();
+			}
+			//sleep(1);
+		}
 		g_logger.log(proto.DebugString());
 		sleep(10);
 		//kube.stop_watching();
 		//g_logger.log("Stopped.");
 		/*
 		sleep(5);
-		kube.start_watching();
+		kube.watch();
 		g_logger.log("Started.");
 		g_logger.log(Poco::format("JSON fetched, parsed and protobuf populated in %d%s", (int)(sw.elapsed() / 1000), std::string(" [ms]")));
 		g_logger.log(Poco::format("Nodes:\t\t%d", (int)kube.count(k8s_component::K8S_NODES)));

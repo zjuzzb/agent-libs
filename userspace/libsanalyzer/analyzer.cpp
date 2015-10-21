@@ -811,7 +811,7 @@ k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo)
 				if(CURLE_OK == curl_easy_perform(curl))
 				{
 					curl_easy_cleanup(curl);
-					return new k8s(k8s_api, false);// true to enable watch
+					return new k8s(k8s_api, true, false);// true to enable watch
 				}
 				curl_easy_cleanup(curl);
 			}

@@ -83,8 +83,8 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
 	rt
 	dl
-	ssl
-	crypto)
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

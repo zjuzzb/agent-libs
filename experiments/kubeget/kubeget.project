@@ -420,7 +420,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/kubeget/kubeget" CommandArguments="https://vagrant:vagrant@10.245.1.2" UseSeparateDebugArgs="no" DebugArguments="https://vagrant:vagrant@10.245.1.2" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/kubeget/kubeget" CommandArguments="https://vagrant:vagrant@10.245.1.2 false" UseSeparateDebugArgs="no" DebugArguments="https://vagrant:vagrant@10.245.1.2" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)
