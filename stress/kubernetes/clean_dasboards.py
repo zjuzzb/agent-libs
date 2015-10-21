@@ -4,10 +4,9 @@ import sys
 
 SYSDIG_URL = "https://app-staging2.sysdigcloud.com"
 TOKEN = "b6643f9e-950a-42cf-975f-0dd97d0f0510"
-#2ece4c07-bab4-41c7-9e9c-a716129aa950
 
 #
-# Dashboard Creation
+# Dashboard Removal
 #
 def delete_dash(id):
 	#
@@ -21,6 +20,7 @@ def delete_dash(id):
 	r = requests.delete(SYSDIG_URL + "/ui/dashboards/" + str (id), headers=hdrs)
 
 	print id
+	print r
 
 def delete_dash_by_name(name):
 	#
