@@ -969,6 +969,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
+
+		if(!tinfo->is_main_thread() &&
+				tinfo->m_lastevent_ts < m_prev_flush_time_ns-ONE_SECOND_IN_NS)
+		{
+			continue;
+		}
+
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 
