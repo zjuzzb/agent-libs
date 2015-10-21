@@ -1179,6 +1179,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
 		}
 
+		if(!emplaced.second)
+		{
+			ainfo->clear_all_metrics();
+		}
 #ifndef _WIN32
 		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
 		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
@@ -1670,12 +1674,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 #endif // ANALYZER_EMITS_PROCESSES
 			}
+			//
+			// Clear the thread metrics, so we're ready for the next sample
+			//
+			tinfo->m_ainfo->clear_all_metrics();
 		}
-
-		//
-		// Clear the thread metrics, so we're ready for the next sample
-		//
-		tinfo->m_ainfo->clear_all_metrics();
 	}
 
 	if(app_checks_limit == 0)
