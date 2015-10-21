@@ -1168,22 +1168,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		mtinfo->m_ainfo->add_all_metrics(ainfo);
 
-		//
-		// ... And to the host ones
-		//
-		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
-
-		if(container)
-		{
-			container->m_transaction_counters.add(&ainfo->m_transaction_metrics);
-		}
-
-		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-		{
-			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
-		}
-
 		if(!emplaced.second)
 		{
 			ainfo->clear_all_metrics();
@@ -1232,6 +1216,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
+		//
+		// ... And to the host ones
+		//
+		m_host_transaction_counters.add(&procinfo->m_external_transaction_metrics);
+
+		if(container)
+		{
+			container->m_transaction_counters.add(&procinfo->m_proc_transaction_metrics);
+		}
+
+		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+		{
+			m_server_programs.insert(tinfo->m_tid);
+			m_client_tr_time_by_servers += procinfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
+		}
 
 		sinsp_counter_time tot;
 
