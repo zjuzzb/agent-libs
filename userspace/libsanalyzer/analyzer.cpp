@@ -100,7 +100,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-
+	inspector->m_max_thread_table_size = 180000;
+	
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
