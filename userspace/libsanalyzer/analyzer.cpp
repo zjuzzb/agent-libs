@@ -3595,9 +3595,8 @@ void sinsp_analyzer::emit_k8s()
 	try
 	{
 		ASSERT(m_k8s);
-#ifdef _DEBUG
-		const draiosproto::k8s_state& proto =
-#endif
+
+		//const draiosproto::k8s_state& proto =
 		k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 		//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
 	}
