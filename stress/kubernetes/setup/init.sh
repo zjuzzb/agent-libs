@@ -141,10 +141,11 @@ metadata:
   name: wordpress
   annotations:
     monitoring-dashboards: '[{"name": "D3", "template": "template-dash"}, {"name": "D4", "template": "template-dash"}]'
-    monitoring-user: "ld@sysdig.com"
     monitoring-granularity: "1s"
-    alerts: "cpu.used.percent by container.id > 80, memory.used.percent by pod.name > 50"
-    alert-targets: "ld@sysdig.com, devs@sysdig.com"
+    alerts: '[
+      {"name": "No Requests to Pod", "condition": "avg(net.request.count) < 3", "for_each": "kubernetes.pod.name", "for_atelast_us": 60000000, "severity": 3 }
+    ]'
+    alert-recipients: '["ld@sysdig.com", "devs@sysdig.com"]'
 spec: 
   ports:
     - port: 80

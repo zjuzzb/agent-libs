@@ -132,7 +132,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 ###############################################################################
 # Create an alert for a service
 ###############################################################################
-def create_service_alert(name, condition, namespace, servicename):
+def create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, servicename):
 	#
 	# setup the headers
 	#
@@ -172,17 +172,20 @@ def create_service_alert(name, condition, namespace, servicename):
 	#
 	alert_json = {
 		'alert' : {
-			"type" : "MANUAL",
-			"name" : name,
-			"description" : alert_desc,
-			"enabled" : False,
-			"filter" : 'kubernetes.namespace.name = "loris" and kubernetes.service.name = "mysql"',
-			"severity" : 7,
-			"notify" : [ "EMAIL" ],
-			"timespan" : 600000000,
-			"condition" : condition
+			'type' : 'MANUAL',
+			'name' : name,
+			'description' : alert_desc,
+			'enabled' : False,
+			'filter' : 'kubernetes.namespace.name = "loris" and kubernetes.service.name = "mysql"',
+			'severity' : severity,
+			'notify' : [ 'EMAIL' ],
+			'timespan' : for_atelast_us,
+			'condition' : condition
 		}
 	}
+
+    # "segmentBy" : [ "host.mac" ],
+    # "segmentCondition" : { "type" : "ANY" }
 
   	#
 	# Create the new alert
@@ -209,8 +212,6 @@ for item in j['items']:
 		if 'annotations' in metadata:
 			annotations = metadata['annotations']
 
-			user = annotations['monitoring-user']
-
 			if 'monitoring-dashboards' in annotations:
 				md = annotations['monitoring-dashboards']
 	
@@ -226,89 +227,41 @@ for item in j['items']:
 						print 'monitoring-dashboards entry missing the template property'
 						sys.exit(0)
 
-					#print '  Creating Dashboard %s for user %s based on template %s' %(name, user, template)
+					#print '  Creating Dashboard %s based on template %s' %(name, template)
 					#create_service_dash_from_template(name, namespace, template, service)
 
-					create_service_alert(name, "avg(cpu.used.percent) >= 80", namespace, service)
-
+			if 'alerts' in annotations:
+				al = annotations['alerts']
 	
+				alerts = json.loads(al)
 
-#
-# Fetch the sysdig users list
-#
-'''
-print "\n"
-r = requests.get(SYSDIG_URL + "/api/users", headers=hdrs)
+				for alert in alerts:
+					if 'name' in alert:
+						name = alert['name']
+					else:
+						print 'alert entry missing the "name" property'
+						sys.exit(0)
 
-j =r.json()
+					if 'condition' in alert:
+						condition = alert['condition']
+					else:
+						print 'alert entry missing the "condition" property'
+						sys.exit(0)
 
-for user in j["users"]:
-	print user["username"]
-'''
+					if 'for_each' in alert:
+						for_each = alert['for_each']
+					else:
+						for_each = None
 
-'''
-	# Create the dashboard
-	dboard = {
-	    "dashboard": {
-	        "name": "Lorizzzz",
-	        "time": {
-	            "last": 1000000
-	        },
-	        "timeMode": {
-	            "mode": 1
-	        },
-	        "items": [
-	            {
-	                "name": "Anvedi la CPU",
-	                "showAs": "timeSeries",
-	                "sourceDescriptor": {
-	                    "name": "data"
-	                },
-	                "filter": {
-	                    "metric": "kubernetes.namespace.name",
-	                    "op": "=",
-	                    "value": "loris"
-	                },
-	                "groupId": "group-configuration-id",
-	                "metrics": [
-	#                    {
-	#                        "metricId": "host.hostName",
-	#                        "propertyName": "k0"
-	#                    },
-	                    {
-	                        "metricId": "container.count",
-	                        "propertyName": "v0",
-	                        "aggregation": "timeAvg",
-	                        "groupAggregation": "avg"
-	                    }
-	                ],
-	                "sorting": [
-	                    {
-	                        "id": "v0",
-	                        "mode": "desc"
-	                    }
-	                ],
-	                "paging": {
-	                    "from": 0,
-	                    "to": 5
-	                },
-	                "gridConfiguration": {
-	                    "col": 100,
-	                    "row": 100,
-	                    "size_x": 6,
-	                    "size_y": 2
-	                }
-	            }
-	        ]
-	    }
-	}
-'''
+					if 'for_atelast_us' in alert:
+						for_atelast_us = alert['for_atelast_us']
+					else:
+						for_atelast_us = 60000000
 
-'''	
-	filter = {
-		'metric' : 'kubernetes.service.name',
-		'op' : '=',
-		'value' : servicename,
-		'filters' : None
-	}
-'''
+					if 'severity' in alert:
+						severity = alert['severity']
+					else:
+						severity = 6 # Information
+
+					create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, service)
+
