@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "sinsp.h"
+#include "k8s_common.h"
 #include "k8s_component.h"
 #include "k8s_event_data.h"
 #include "json/json.h"

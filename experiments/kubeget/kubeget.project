@@ -399,6 +399,7 @@
     <File Name="src/k8s_proto.h"/>
     <File Name="src/uri.h"/>
     <File Name="src/uri.cpp"/>
+    <File Name="src/k8s_common.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "sinsp.h"
+#include "k8s_common.h"
 #include <map>
 
 class k8s_http;
