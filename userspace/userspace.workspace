@@ -3,16 +3,16 @@
   <Environment>
     <![CDATA[]]>
   </Environment>
-  <Project Name="dragent" Path="dragent.project" Active="No"/>
-  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="Yes"/>
+  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="No"/>
+  <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="yes">
-      <Project Name="dragent" ConfigName="Debug"/>
       <Project Name="kubeget" ConfigName="Debug"/>
+      <Project Name="dragent" ConfigName="Debug"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release" Selected="yes">
-      <Project Name="dragent" ConfigName="Release"/>
       <Project Name="kubeget" ConfigName="Release"/>
+      <Project Name="dragent" ConfigName="Release"/>
     </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

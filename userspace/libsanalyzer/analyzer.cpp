@@ -46,6 +46,10 @@ using namespace google::protobuf::io;
 #include "k8s.h"
 #include "k8s_proto.h"
 #include "curl/easy.h"
+#define BUFFERSIZE 512 // b64 needs this macro
+#include "b64/encode.h"
+#include "uri.h"
+#include "third-party/jsoncpp/json/json.h"
 #define DUMP_TO_DISK
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -129,7 +133,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	// Kubernetes
 	//
 	m_k8s = 0;
-	
+
 	//
 	// Chisels init
 	//
@@ -775,51 +779,175 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+int wait_for_sock(curl_socket_t sockfd, int for_recv, long timeout_ms)
+{
+	struct timeval tv;
+	fd_set infd, outfd, errfd;
+	int res;
+
+	tv.tv_sec = timeout_ms / 1000;
+	tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+	FD_ZERO(&infd);
+	FD_ZERO(&outfd);
+	FD_ZERO(&errfd);
+
+	FD_SET(sockfd, &errfd);
+	if(for_recv)
+	{
+		FD_SET(sockfd, &infd);
+	}
+	else
+	{
+		FD_SET(sockfd, &outfd);
+	}
+
+	res = select(sockfd + 1, &infd, &outfd, &errfd, &tv);
+	return res;
+}
+
 k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo)
 {
-	bool is_k8s_master = false;
-	if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
-	{
-		is_k8s_master = true;
-	}
-	else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-	{
-		for(const auto& arg : main_tinfo->m_args)
-		{
-			if(arg == "apiserver")
-			{
-				is_k8s_master = true;
-				break;
-			}
-		}
-	}
-	bool auto_detect = m_configuration->get_k8s_autodetect_enabled();
+	bool k8s_auto_detect = m_configuration->get_k8s_autodetect_enabled();
 	string k8s_api = m_configuration->get_k8s_api_server();
-	if((is_k8s_master && auto_detect) || !k8s_api.empty())
+
+	g_logger.log("Looking for k8s ...", sinsp_logger::SEV_INFO);
+	CURL* curl = 0;
+	try
 	{
-		if(k8s_api.empty() && auto_detect && is_k8s_master)
+		bool is_k8s_master = false;
+		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 		{
-			k8s_api = "http://localhost:8080";
+			g_logger.log("Detected 'kube-apiserver' process", sinsp_logger::SEV_DEBUG);
+			is_k8s_master = true;
 		}
-		if(!k8s_api.empty())
+		else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
 		{
-			CURL* curl = curl_easy_init();
-			if(curl)
+			for(const auto& arg : main_tinfo->m_args)
 			{
-				curl_easy_setopt(curl, CURLOPT_URL, k8s_api.c_str());
-				curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
-				if(CURLE_OK == curl_easy_perform(curl))
+				if(arg == "apiserver")
 				{
-					curl_easy_cleanup(curl);
-					return new k8s(k8s_api, true, false);// true to enable watch
+					g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_DEBUG);
+					is_k8s_master = true;
+					break;
 				}
-				curl_easy_cleanup(curl);
 			}
 		}
+		g_logger.log("Detecting K8S API setting ...", sinsp_logger::SEV_DEBUG);
+		if (k8s_auto_detect)
+		{
+			g_logger.log("auto detect enabled", sinsp_logger::SEV_DEBUG);
+		}
+		g_logger.log("K8S API server :" + k8s_api, sinsp_logger::SEV_DEBUG);
+		if((is_k8s_master && k8s_auto_detect) || !k8s_api.empty())
+		{
+			if(k8s_api.empty() && k8s_auto_detect && is_k8s_master)
+			{
+				k8s_api = "http://localhost:8080/api";
+			}
+			if(!k8s_api.empty())
+			{
+				g_logger.log("K8S API setting: " + k8s_api, sinsp_logger::SEV_DEBUG);
+				curl = curl_easy_init();
+				if(curl)
+				{
+					g_logger.log("Connecting to K8S API at : " + k8s_api, sinsp_logger::SEV_DEBUG);
+					curl_easy_setopt(curl, CURLOPT_URL, k8s_api.c_str());
+					curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
+					CURLcode curl_ret = curl_easy_perform(curl);
+					if(CURLE_OK == curl_ret)
+					{
+						long sockextr;
+						curl_ret = curl_easy_getinfo(curl, CURLINFO_LASTSOCKET, &sockextr);
+						curl_socket_t sock = sockextr;
+						if(CURLE_OK == curl_ret)
+						{
+							ostringstream request;
+							string creds, host;
+							uri u(k8s_api);
+							host = u.get_host();
+							int port = u.get_port();
+							if(port)
+							{
+								host.append(1, ':').append(std::to_string(port));
+							}
+							request << "GET /api HTTP/1.0\r\nHost: " << host << "\r\n";
+							if(!creds.empty())
+							{
+								std::istringstream is(creds);
+								std::ostringstream os;
+								base64::encoder().encode(is, os);
+								request << "Authorization: Basic " << os.str() << "\r\n";
+							}
+							request << "\r\n";
+							size_t iolen;
+							g_logger.log("Sending /api request to K8S API at : " + k8s_api, sinsp_logger::SEV_DEBUG);
+							if(wait_for_sock(sock, 0, 5000L))
+							{
+								curl_ret = curl_easy_send(curl, request.str().c_str(), request.str().size(), &iolen);
+								if(CURLE_OK == curl_ret)
+								{
+									g_logger.log("Request sent, waiting for socket ...", sinsp_logger::SEV_DEBUG);
+									if(wait_for_sock(sock, 1, 5000L))
+									{
+										g_logger.log("Socket ready.", sinsp_logger::SEV_DEBUG);
+										char buf[512] = { 0 };
+										curl_ret = curl_easy_recv(curl, buf, sizeof(buf), &iolen);
+										if(CURLE_OK == curl_ret)
+										{
+											curl_easy_cleanup(curl);
+											curl = 0;
+											string json(buf, buf + iolen);
+											json = json.substr(json.find('{'));
+											g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
+											ASSERT (iolen);
+											Json::Value root;
+											Json::Reader reader;
+											if(reader.parse(json, root, false))
+											{
+												Json::Value vers = root["versions"];
+												if(vers.isArray())
+												{
+													for (const auto& ver : vers)
+													{
+														if(ver.asString() == "v1")
+														{
+															g_logger.log("Kubernetes v1 API server found at " + k8s_api,
+																sinsp_logger::SEV_INFO);
+															return new k8s(k8s_api, true, true, "/api/v1/");
+														}
+													}
+												}
+											}
+										}
+									}
+									else
+									{
+										g_logger.log("Timed out waiting for K8S API server at [" + k8s_api + "]:" + std::to_string(errno), sinsp_logger::SEV_ERROR);
+									}
+								}
+							}
+						}
+					}
+					g_logger.log("Connection to K8S API server at [" + k8s_api + "] failed, CURL error: " + curl_easy_strerror(curl_ret), sinsp_logger::SEV_ERROR);
+					goto error;
+				}
+			}
+		}
+		g_logger.log("Kubernetes not enabled.", sinsp_logger::SEV_INFO);
+		return 0;
 	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+	}
+	
+error:
+	g_logger.log("Kubernetes v1 API server not detected.", sinsp_logger::SEV_ERROR);
+	if (curl) { curl_easy_cleanup(curl); }
 	return 0;
 }
-				
+
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	int64_t delta;
@@ -1007,7 +1135,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 				
-				m_k8s = get_k8s(main_tinfo);
+				if (!m_k8s)
+				{
+					m_k8s = get_k8s(main_tinfo);
+				}
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->set_cmdline_update(true);
@@ -3464,11 +3595,15 @@ void sinsp_analyzer::emit_k8s()
 	try
 	{
 		ASSERT(m_k8s);
+#ifdef _DEBUG
+		const draiosproto::k8s_state& proto =
+#endif
 		k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+		//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
 	}
 	catch (std::exception& e)
 	{
-		g_logger.log(std::string("error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_WARNING);
+		g_logger.log(std::string("Error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_ERROR);
 	}
 }
 

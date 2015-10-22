@@ -133,7 +133,11 @@ void dragent_configuration::init(Application* app)
 
 	if(m_min_file_priority == 0)
 	{
+#ifdef _DEBUG
+		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "debug"));
+#else
 		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "info"));
+#endif
 	}
 
 	if(m_min_console_priority == 0)
@@ -248,7 +252,7 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	m_k8s_api_server = m_config->get_scalar<string>("k8s_api", "");
+	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", false);
 	
 	// Check existence of namespace to see if kernel supports containers
@@ -317,6 +321,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
+	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
+	g_log->information("K8S API server: " + m_k8s_api_server);
 
 	if(!m_blacklisted_ports.empty())
 	{

@@ -129,7 +129,7 @@ int k8s_http::get_watch_socket(long timeout_ms)
 
 		check_error(curl_easy_perform(m_curl));
 		check_error(curl_easy_getinfo(m_curl, CURLINFO_LASTSOCKET, &sockextr));
-		m_watch_socket = sockextr;
+		curl_socket_t m_watch_socket = sockextr;
 
 		if(!wait(m_watch_socket, 0, timeout_ms))
 		{
