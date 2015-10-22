@@ -132,7 +132,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 ###############################################################################
 # Create an alert for a service
 ###############################################################################
-def create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, servicename):
+def create_service_alert(name, description, condition, for_each, for_atelast_us, severity, namespace, servicename):
 	#
 	# setup the headers
 	#
@@ -141,7 +141,10 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 	#
 	# Create the unique description for this alert
 	#
-	alert_desc = name + ' for service ' + servicename + ' in namespace ' + namespace
+	if description:
+		alert_desc = description + '(service: ' + servicename + ', namespace: ' + namespace + ')'
+	else:
+		alert_desc = name + '(service: ' + servicename + ', namespace: ' + namespace + ')'
 
 	#
 	# Get the list of alerts from the server
@@ -244,6 +247,11 @@ for item in j['items']:
 						print 'alert entry missing the "name" property'
 						sys.exit(0)
 
+					if 'description' in alert:
+						description = alert['description']
+					else:
+						description = None
+
 					if 'condition' in alert:
 						condition = alert['condition']
 					else:
@@ -265,5 +273,5 @@ for item in j['items']:
 					else:
 						severity = 6 # Information
 
-					create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, service)
+					create_service_alert(name, description, condition, for_each, for_atelast_us, severity, namespace, service)
 
