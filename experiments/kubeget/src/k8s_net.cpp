@@ -77,7 +77,7 @@ void k8s_net::watch()
 #endif // K8S_DISABLE_THREAD
 	if(!in_thread)
 	{
-		if (!m_poller.subscription_count())
+		if(!m_poller.subscription_count())
 		{
 			subscribe();
 		}
@@ -129,7 +129,7 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 		m_api_interfaces[component.first] = new k8s_http(m_k8s, component.second, os.str(), protocol, m_creds);
 	}
 	
-	if (!m_api_interfaces[component.first]->get_all_data(out))
+	if(!m_api_interfaces[component.first]->get_all_data(out))
 	{
 		throw sinsp_exception(std::string("An error occured while trying to retrieve data for k8s ") + component.second);
 	}

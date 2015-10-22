@@ -941,7 +941,7 @@ k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo)
 	{
 		g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
 	}
-	
+
 error:
 	g_logger.log("Kubernetes v1 API server not detected.", sinsp_logger::SEV_ERROR);
 	if (curl) { curl_easy_cleanup(curl); }
@@ -1135,7 +1135,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 				
-				if (!m_k8s)
+				if(!m_k8s)
 				{
 					m_k8s = get_k8s(main_tinfo);
 				}

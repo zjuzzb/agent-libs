@@ -194,7 +194,7 @@ void app_metric::to_protobuf(draiosproto::app_metric *proto) const
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if (!tag.second.empty())
+		if(!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}
@@ -234,7 +234,7 @@ void app_service_check::to_protobuf(draiosproto::app_check *proto) const
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if (!tag.second.empty())
+		if(!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}
@@ -256,7 +256,7 @@ void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) co
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if (!tag.second.empty())
+		if(!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}

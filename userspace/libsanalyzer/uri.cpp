@@ -67,7 +67,7 @@ std::string uri::to_string() const
 {
 	std::ostringstream ostr;
 	ostr << m_scheme << "://";
-	if (!m_user.empty())
+	if(!m_user.empty())
 	{
 		ostr << m_user << ':' << m_password << '@';
 	}
@@ -77,7 +77,7 @@ std::string uri::to_string() const
 		ostr << ':' << m_port;
 	}
 	ostr << m_path;
-	if (!m_query.empty())
+	if(!m_query.empty())
 	{
 		ostr << '?' << m_query;
 	}

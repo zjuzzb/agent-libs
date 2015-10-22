@@ -192,11 +192,11 @@ char* sinsp_slq_query_parser::copy_and_cleanup_table_name(const char *data, uint
 		{
 			return NULL;
 		}
-		if ( *data == '(')
+		if(*data == '(')
 		{
 			++inside_bracket;
 		}
-		if ( *data == ')')
+		if(*data == ')')
 		{
 			--inside_bracket;
 		}
@@ -217,11 +217,11 @@ char* sinsp_slq_query_parser::copy_and_cleanup_table_name(const char *data, uint
 		{
 			return NULL;
 		}
-		if ( *end == ')')
+		if(*end == ')')
 		{
 			++inside_bracket;
 		}
-		if ( *end == '(')
+		if(*end == '(')
 		{
 			--inside_bracket;
 		}

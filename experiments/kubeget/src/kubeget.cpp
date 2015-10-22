@@ -59,7 +59,7 @@ int main(int argc, char** argv)
 		sw.stop();
 		while (true)
 		{
-			if (!run_watch_thread)
+			if(!run_watch_thread)
 			{
 				kube.watch();
 			}

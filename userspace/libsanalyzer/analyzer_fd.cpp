@@ -191,7 +191,7 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 
 			if(tbuflen > 5)	// min length
 			{
-				if ( tbuf[0] == 'Q' ) // Prepare statement commmand
+				if( tbuf[0] == 'Q' ) // Prepare statement commmand
 				{
 					uint32_t downcase_buf;
 					memcpy(&downcase_buf, tbuf+5, sizeof(uint32_t));
@@ -208,7 +208,7 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 						}
 					}
 				}
-				else if ( tbuf[0] == 'P' ) // Prepare statement commmand
+				else if( tbuf[0] == 'P' ) // Prepare statement commmand
 				{
 					uint32_t downcase_buf;
 					memcpy(&downcase_buf, tbuf+6, sizeof(uint32_t));
@@ -225,12 +225,12 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 						}
 					}
 				}
-				else if ( *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00000300 ) // startup command
+				else if( *(uint32_t*)(tbuf+sizeof(uint32_t)) == 0x00000300 ) // startup command
 				{
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
 					return sinsp_partial_transaction::TYPE_POSTGRES;
-				} else if ( tbuf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
+				} else if( tbuf[0] == 'E' && htonl(*(uint32_t*)(tbuf+1)) < 2000 ) // error or execute command
 				{
 					sinsp_postgres_parser* st = new sinsp_postgres_parser;
 					trinfo->m_protoparser = (sinsp_protocol_parser*)st;
@@ -1310,7 +1310,7 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		//
 		// This should be checked by parse_accept_exit()
 		//
-		//ASSERT(false);
+		ASSERT(false);
 		return;
 	}
 

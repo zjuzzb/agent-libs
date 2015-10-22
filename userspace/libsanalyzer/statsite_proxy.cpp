@@ -223,7 +223,7 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if (!tag.second.empty())
+		if(!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}

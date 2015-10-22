@@ -127,7 +127,7 @@ void k8s_poller::poll()
 				g_logger.log("Poller is empty.", sinsp_logger::SEV_ERROR);
 			}
 		}
-		if (!m_loop)
+		if(!m_loop)
 		{
 			break;
 		}
