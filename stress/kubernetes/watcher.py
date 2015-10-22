@@ -36,7 +36,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 			break
 
 	if dboard == None:
-		print 'can\'t find dashboard ' + templatename + ' to use asa template'
+		print 'can\'t find dashboard ' + templatename + ' to use as a template'
 		sys.exit(0)
 
 	#
@@ -163,9 +163,10 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 	# If this alert already exists, don't create it again
 	#
 	for db in j['alerts']:
-		if db['description'] == alert_desc:
-			print 'alert ' + db['name'] + ' for service ' + servicename + ' already exists'
-			return
+		if 'description' in db:
+			if db['description'] == alert_desc:
+				print 'alert ' + db['name'] + ' for service ' + servicename + ' already exists'
+				return
 
 	#
 	# Populate the alert information
@@ -184,8 +185,9 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 		}
 	}
 
-    # "segmentBy" : [ "host.mac" ],
-    # "segmentCondition" : { "type" : "ANY" }
+	if for_each != None and for_each != []: 
+		alert_json['alert']['segmentBy'] = [ for_each ]
+    	alert_json['alert']['segmentCondition'] = { 'type' : 'ANY' }
 
   	#
 	# Create the new alert
