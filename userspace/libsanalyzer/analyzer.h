@@ -300,7 +300,7 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	k8s* get_k8s(sinsp_threadinfo* main_tinfo);
+	k8s* get_k8s(sinsp_threadinfo* main_tinfo, const string& k8s_api);
 	void emit_k8s();
 	void emit_top_files();
 	vector<string> emit_containers();
