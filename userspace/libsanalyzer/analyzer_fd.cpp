@@ -1305,11 +1305,8 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		return;
 #endif
 	}
-	else
+	else if(new_fdinfo->m_type == SCAP_FD_UNINITIALIZED)
 	{
-		//
-		// This should be checked by parse_accept_exit()
-		//
 		ASSERT(false);
 		return;
 	}
