@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="dragent" InternalType="Console">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
+    <Plugin Name="CMakePlugin">
+      <![CDATA[[{
+  "name": "Debug",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }, {
+  "name": "Release",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }]]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="sdjagent">
     <VirtualDirectory Name="native">
       <File Name="sdjagent/native/com_sysdigcloud_sdjagent_CLibrary.h"/>
@@ -87,6 +113,10 @@
     <File Name="libsanalyzer/k8s_poller.h"/>
     <File Name="libsanalyzer/k8s_poller.cpp"/>
     <File Name="libsanalyzer/k8s_http.h"/>
+    <File Name="libsanalyzer/uri.cpp"/>
+    <File Name="libsanalyzer/uri.h"/>
+    <File Name="libsanalyzer/k8s_proto.cpp"/>
+    <File Name="libsanalyzer/k8s_proto.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
@@ -137,7 +167,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="../build/debug/userspace/dragent/dragent" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="&quot;sudo /opt/draios/bin/dragent&quot;" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="/opt/draios/bin" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
       </Environment>
@@ -151,7 +181,7 @@
       <CustomBuild Enabled="yes">
         <RebuildCommand>make -C ../build/debug all</RebuildCommand>
         <CleanCommand>make -C ../build/debug clean</CleanCommand>
-        <BuildCommand>make -C ../build/debug dragent</BuildCommand>
+        <BuildCommand>make -C ../build/debug install</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
@@ -162,7 +192,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -190,7 +220,7 @@
       <CustomBuild Enabled="yes">
         <RebuildCommand>make -C ../build/release all</RebuildCommand>
         <CleanCommand>make -C ../build/release clean</CleanCommand>
-        <BuildCommand>make -C ../build/release dragent</BuildCommand>
+        <BuildCommand>make -C ../build/release install</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
@@ -201,7 +231,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>

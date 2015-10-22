@@ -44,10 +44,7 @@ dragent_app::dragent_app():
 	
 dragent_app::~dragent_app()
 {
-	if(g_log != NULL)
-	{
-		delete g_log;
-	}
+	delete g_log;
 }
 
 void dragent_app::initialize(Application& self)

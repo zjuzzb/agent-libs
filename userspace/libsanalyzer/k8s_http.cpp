@@ -5,6 +5,8 @@
 #include "k8s_http.h"
 #include "curl/easy.h"
 #include "curl/curlbuild.h"
+#define BUFFERSIZE 512 // b64 needs this macro
+#include "b64/encode.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "k8s.h"
@@ -30,9 +32,13 @@ k8s_http::k8s_http(k8s& k8s,
 		m_watch_socket(0),
 		m_data_ready(false)
 {
+	if(!m_curl)
+	{
+		throw sinsp_exception("CURL initialization failed.");
+	}
 	std::ostringstream url;
 	url << m_protocol << "://";
-	if (!m_credentials.empty())
+	if(!m_credentials.empty())
 	{
 		url << m_credentials << '@';	
 	}
@@ -43,7 +49,10 @@ k8s_http::k8s_http(k8s& k8s,
 
 k8s_http::~k8s_http()
 {
-	curl_easy_cleanup(m_curl);
+	if(m_curl)
+	{
+		curl_easy_cleanup(m_curl);
+	}
 }
 
 size_t k8s_http::write_data(void *ptr, size_t size, size_t nmemb, void *cb)
@@ -59,11 +68,9 @@ bool k8s_http::get_all_data(std::ostream& os)
 	curl_easy_setopt(m_curl, CURLOPT_URL, m_url.c_str());
 	curl_easy_setopt(m_curl, CURLOPT_FOLLOWLOCATION, 1L);
 	
-	if (m_protocol == "https") // TODO: k8s certificates
+	if(m_protocol == "https")
 	{
 		curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYPEER , 0);
-		//curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYHOST , 1);
-		//curl_easy_setopt(m_curl, CURLOPT_CAINFO, "/home/alex/sysdig/agent/experiments/kubeget/ca-bundle.crt");//"ca-bundle.crt");
 	}
 
 	curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1); //Prevent "longjmp causes uninitialized stack frame" bug
@@ -73,7 +80,7 @@ bool k8s_http::get_all_data(std::ostream& os)
 
 	CURLcode res = curl_easy_perform(m_curl);
 
-	if (res != CURLE_OK)
+	if(res != CURLE_OK)
 	{
 		os << curl_easy_strerror(res) << std::flush;
 	}
@@ -109,9 +116,9 @@ int k8s_http::wait(curl_socket_t sockfd, int for_recv, long timeout_ms)
 	return res;
 }
 
-int k8s_http::get_watch_socket()
+int k8s_http::get_watch_socket(long timeout_ms)
 {
-	if (!m_watch_socket)
+	if(!m_watch_socket)
 	{
 		long sockextr;
 		size_t iolen;
@@ -119,28 +126,36 @@ int k8s_http::get_watch_socket()
 
 		curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
 		curl_easy_setopt(m_curl, CURLOPT_CONNECT_ONLY, 1L);
-		
-		if (m_protocol == "https") // TODO: k8s certificates
-		{
-			curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYPEER , 0);
-			curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYHOST , 0);
-			//curl_easy_setopt(m_curl, CURLOPT_CAINFO, "/home/alex/sysdig/agent/experiments/kubeget/cacert.pem");
-		}
 
 		check_error(curl_easy_perform(m_curl));
 		check_error(curl_easy_getinfo(m_curl, CURLINFO_LASTSOCKET, &sockextr));
 		m_watch_socket = sockextr;
 
-		if(!wait(m_watch_socket, 0, 60000L))
+		if(!wait(m_watch_socket, 0, timeout_ms))
 		{
 			curl_easy_cleanup(m_curl);
-			throw std::runtime_error("Error: timeout.");
+			throw sinsp_exception("Error: timeout.");
 		}
 
 		std::ostringstream request;
-		request << "GET /api/v1/watch/" << m_component << " HTTP/1.0\r\nHost: " << m_host_and_port << "\r\n\r\n";
+		request << "GET /api/v1/watch/" << m_component << " HTTP/1.0\r\nHost: " << m_host_and_port << "\r\n";
+		if(!m_credentials.empty())
+		{
+			std::istringstream is(m_credentials);
+			std::ostringstream os;
+			base64::encoder().encode(is, os);
+			request << "Authorization: Basic " << os.str() << "\r\n";
+		}
+		request << "\r\n";
 		check_error(curl_easy_send(m_curl, request.str().c_str(), request.str().size(), &iolen));
 		ASSERT (request.str().size() == iolen);
+		if(!wait(m_watch_socket, 1, timeout_ms))
+		{
+			curl_easy_cleanup(m_curl);
+			m_curl = 0;
+			throw sinsp_exception("Error: timeout.");
+		}
+
 		g_logger.log(std::string("Polling ") + url, sinsp_logger::SEV_DEBUG);
 	}
 
@@ -152,21 +167,21 @@ void k8s_http::on_data()
 	size_t iolen = 0;
 	char buf[1024] = { 0 };
 	check_error(curl_easy_recv(m_curl, buf, 1024, &iolen));
-	if (iolen > 0)
+	if(iolen > 0)
 	{
-		if (m_data_ready)
+		if(m_data_ready)
 		{
 			m_k8s.on_watch_data(k8s_event_data(k8s_component::get_type(m_component), buf, iolen));
 		}
-		else // wait for a single line with "\r\n" only
+		else // wait for a line with "\r\n" only
 		{
 			std::string data(buf, iolen);
 			std::string end = "\r\n\r\n";
 			std::string::size_type pos = data.find(end);
-			if (pos != std::string::npos)
+			if(pos != std::string::npos)
 			{
 				pos += end.size();
-				if (iolen == pos) // right on the edge of data
+				if(iolen == pos) // right on the edge of data
 				{
 					m_data_ready = true;
 				}
@@ -199,7 +214,7 @@ void k8s_http::check_error(CURLcode res)
 	{
 		std::ostringstream os;
 		os << "Error: " << curl_easy_strerror(res);
-		throw std::runtime_error(os.str());
+		throw sinsp_exception(os.str());
 	}
 }
 

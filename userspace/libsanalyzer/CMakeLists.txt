@@ -2,6 +2,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-7.45.0/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-1.2/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
@@ -38,9 +39,11 @@ add_library(sanalyzer STATIC
 	k8s_component.cpp
 	k8s_dispatcher.cpp
 	k8s_event_data.cpp
+	k8s_proto.cpp
 	k8s_net.cpp
 	k8s_http.cpp
 	k8s_poller.cpp
+	uri.cpp
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp
@@ -71,6 +74,7 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a
 	${DRAIOS_DEPENDENCIES_DIR}/curl-7.45.0/lib/.libs/libcurl.a
+	${DRAIOS_DEPENDENCIES_DIR}/libb64-1.2/src/libb64.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoUtil.a
@@ -79,8 +83,8 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
 	rt
 	dl
-	ssl
-	crypto)
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

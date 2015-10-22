@@ -28,6 +28,7 @@ dragent_configuration::dragent_configuration()
 	m_server_port = 0;
 	m_transmitbuffer_size = 0;
 	m_ssl_enabled = false;
+	m_ssl_verify_certificate = true;
 	m_compression_enabled = false;
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) 0;
@@ -132,7 +133,11 @@ void dragent_configuration::init(Application* app)
 
 	if(m_min_file_priority == 0)
 	{
+#ifdef _DEBUG
+		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "debug"));
+#else
 		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "info"));
+#endif
 	}
 
 	if(m_min_console_priority == 0)
@@ -146,6 +151,7 @@ void dragent_configuration::init(Application* app)
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
+	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
 	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
@@ -246,9 +252,12 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
+	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
+	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", false);
+	
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
-	m_system_supports_containers = nsfile.exists();;
+	m_system_supports_containers = nsfile.exists();
 
 	if(m_statsd_enabled)
 	{
@@ -275,6 +284,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
 	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
+	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
 	g_log->information("ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
 	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
@@ -311,6 +321,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
+	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
+	g_log->information("K8S API server: " + m_k8s_api_server);
 
 	if(!m_blacklisted_ports.empty())
 	{

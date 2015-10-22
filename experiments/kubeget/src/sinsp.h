@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <cassert>
+#include <exception>
 #include "Poco/Format.h"
 
 struct sinsp_logger
@@ -35,3 +36,27 @@ extern sinsp_logger g_logger;
 #else // _DEBUG
 #define ASSERT(X)
 #endif // _DEBUG
+
+struct sinsp_exception : std::exception
+{
+	sinsp_exception()
+	{
+	}
+
+	~sinsp_exception() throw()
+	{
+	}
+
+	sinsp_exception(std::string error_str)
+	{
+		m_error_str = error_str;
+	}
+
+	char const* what() const throw()
+	{
+		return m_error_str.c_str();
+	}
+
+	std::string m_error_str;
+};
+

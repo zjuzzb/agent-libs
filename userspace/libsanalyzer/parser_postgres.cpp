@@ -106,8 +106,8 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 		//
 		// Do the parsing
 		//
-		if ( rbuf[0] == 'Q' ||
-			 ( rbuf[0] == 'P' && rbuf[5] == 0 ))
+		if(rbuf[0] == 'Q' ||
+			( rbuf[0] == 'P' && rbuf[5] == 0))
 		{
 			//
 			// Query packet
@@ -122,7 +122,7 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			querylen = MIN(ntohl(querylen),rbufsize) - sizeof(uint32_t);
 
 			uint32_t copied_size;
-			if ( rbuf[0] == 'Q')
+			if(rbuf[0] == 'Q')
 			{
 				querypos = rbuf + 1 + sizeof(uint32_t);
 			}

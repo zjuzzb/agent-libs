@@ -37,6 +37,7 @@ class sinsp_counters;
 class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
+class k8s;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -299,7 +300,8 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	void emit_kubernetes();
+	k8s* get_k8s(sinsp_threadinfo* main_tinfo);
+	void emit_k8s();
 	void emit_top_files();
 	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
@@ -470,10 +472,7 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
 
-	// kubernetes
-	bool m_is_k8s_master;
-	//k8s m_k8s;
-	// end kubernetes
+	k8s* m_k8s;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

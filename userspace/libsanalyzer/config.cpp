@@ -332,4 +332,24 @@ const ports_set & sinsp_configuration::get_blacklisted_ports() const
 {
 	return m_blacklisted_ports;
 }
+
+void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
+{
+	m_k8s_api = k8s_api;
+}
+
+const string & sinsp_configuration::get_k8s_api_server() const
+{
+	return m_k8s_api;
+}
+
+bool sinsp_configuration::get_k8s_autodetect_enabled() const
+{
+	return m_k8s_autodetect;
+}
+
+void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
+{
+	m_k8s_autodetect = enabled;
+}
 #endif // HAS_ANALYZER

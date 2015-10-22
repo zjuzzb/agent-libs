@@ -5,17 +5,13 @@
 #include "k8s.h"
 #include "k8s_component.h"
 #include "k8s_dispatcher.h"
-#include "draios.pb.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "google/protobuf/text_format.h"
 #include <sstream>
 #include <utility>
 #include <memory>
 #include <algorithm>
 #include <iostream>
-
-using namespace draiosproto;
 
 const k8s_component::component_map k8s::m_components =
 {
@@ -26,28 +22,59 @@ const k8s_component::component_map k8s::m_components =
 	{ k8s_component::K8S_SERVICES,               "services"               }
 };
 
-k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state)
-{
-	return dispatch_map
+#ifdef K8S_DISABLE_THREAD
+	k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state)
 	{
-		{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state) },
-		{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state) },
-		{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state) },
-		{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state) },
-		{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state) }
-	};
-}
+		return dispatch_map
+		{
+			{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state)},
+			{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state)},
+			{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state)},
+			{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state)},
+			{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state)}
+		};
+	}
+#else
+	k8s::dispatch_map k8s::make_dispatch_map(k8s_state_s& state, std::mutex& mut)
+	{
+		return dispatch_map
+		{
+			{ k8s_component::K8S_NODES,                  new k8s_dispatcher(k8s_component::K8S_NODES,                  state, mut)},
+			{ k8s_component::K8S_NAMESPACES,             new k8s_dispatcher(k8s_component::K8S_NAMESPACES,             state, mut)},
+			{ k8s_component::K8S_PODS,                   new k8s_dispatcher(k8s_component::K8S_PODS,                   state, mut)},
+			{ k8s_component::K8S_REPLICATIONCONTROLLERS, new k8s_dispatcher(k8s_component::K8S_REPLICATIONCONTROLLERS, state, mut)},
+			{ k8s_component::K8S_SERVICES,               new k8s_dispatcher(k8s_component::K8S_SERVICES,               state, mut)}
+		};
+	}
+#endif // K8S_DISABLE_THREAD
 
-k8s::k8s(const std::string& uri, bool watch, const std::string& api) : m_net(*this, uri, api),
-		m_watch(watch),
+k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const std::string& api) :
+		m_watch(start_watch),
+		m_watch_in_thread(start_watch && watch_in_thread),
+		m_net(*this, uri, api),
 		m_own_proto(true),
-		m_dispatch(make_dispatch_map(m_state))
+	#ifndef K8S_DISABLE_THREAD
+		m_dispatch(std::move(make_dispatch_map(m_state, m_mutex)))
+	#else
+		m_dispatch(std::move(make_dispatch_map(m_state)))
+	#endif
 {
+#ifdef K8S_DISABLE_THREAD
+	if (watch_in_thread)
+	{
+		g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
+	}
+#endif // K8S_DISABLE_THREAD
+	get_state(true);
+	if (m_watch)
+	{
+		watch();
+	}
 }
 
 k8s::~k8s()
 {
-	if (m_watch)
+	if(m_watch)
 	{
 		m_net.stop_watching();
 	}
@@ -57,7 +84,7 @@ k8s::~k8s()
 		delete update.second;
 	}
 
-	if (m_own_proto)
+	if(m_own_proto)
 	{
 	}
 }
@@ -67,7 +94,10 @@ void k8s::build_state()
 	std::ostringstream os;
 	for (auto& component : m_components)
 	{
-		m_state.clear(component.first);
+		{
+			K8S_LOCK_GUARD_MUTEX;
+			m_state.clear(component.first);
+		}
 		m_net.get_all_data(component, os);
 		parse_json(os.str(), component);
 		os.str("");
@@ -76,24 +106,32 @@ void k8s::build_state()
 
 const k8s_state_s& k8s::get_state(bool rebuild)
 {
-	if (rebuild)
+	try
 	{
-		build_state();
+		if(rebuild)
+		{
+			build_state();
+		}
+	}
+	catch (std::exception& ex)
+	{
+		g_logger.log(ex.what());
+		throw;
 	}
 	return m_state;
 }
 
-void k8s::start_watching()
+void k8s::watch()
 {
-	if (m_watch && !m_net.is_watching())
+	if((m_watch && !m_net.is_watching()) || !m_watch_in_thread)
 	{
-		m_net.start_watching();
+		m_net.watch();
 	}
 }
 
 void k8s::stop_watching()
 {
-	if (m_net.is_watching())
+	if(m_net.is_watching())
 	{
 		m_net.stop_watching();
 	}
@@ -101,12 +139,13 @@ void k8s::stop_watching()
 
 void k8s::on_watch_data(k8s_event_data&& msg)
 {
-	std::lock_guard<std::mutex> lock(m_mutex);
 	m_dispatch[msg.component()]->enqueue(std::move(msg));
 }
 
 std::size_t k8s::count(k8s_component::type component) const
 {
+	K8S_LOCK_GUARD_MUTEX;
+
 	switch (component)
 	{
 	case k8s_component::K8S_NODES:
@@ -131,49 +170,48 @@ std::size_t k8s::count(k8s_component::type component) const
 
 	std::ostringstream os;
 	os << "Unknown component " << static_cast<int>(component);
-	throw std::invalid_argument(os.str());
+	throw sinsp_exception(os.str());
 }
 
 void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 {
-	if (items.isArray())
+	if(items.isArray())
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
-
 		for (auto& item : items)
 		{
 			Json::Value obj = item["metadata"];
-			if (obj.isObject())
+			if(obj.isObject())
 			{
+				K8S_LOCK_GUARD_MUTEX;
 				Json::Value ns = obj["namespace"];
 				std::string nspace;
-				if (!ns.isNull())
+				if(!ns.isNull())
 				{
 					nspace = ns.asString();
 				}
 				m_state.add_common_single_value(component, obj["name"].asString(), obj["uid"].asString(), nspace);
 
 				Json::Value metadata = item["metadata"];
-				if (!metadata.isNull())
+				if(!metadata.isNull())
 				{
 					std::vector<k8s_pair_s> entries = k8s_component::extract_object(metadata, "labels");
-					if (entries.size() > 0)
+					if(entries.size() > 0)
 					{
 						m_state.replace_items(component, "labels", std::move(entries));
 					}
 				}
 
 				Json::Value spec = item["spec"];
-				if (!spec.isNull())
+				if(!spec.isNull())
 				{
 					std::vector<k8s_pair_s> entries = k8s_component::extract_object(spec, "selector");
-					if (entries.size() > 0)
+					if(entries.size() > 0)
 					{
 						m_state.replace_items(component, "selector", std::move(entries));
 					}
 				}
 
-				if (component == k8s_component::K8S_NODES)
+				if(component == k8s_component::K8S_NODES)
 				{
 					std::vector<std::string> addresses = k8s_component::extract_nodes_addresses(item["status"]);
 					for (auto&& address : addresses)
@@ -181,13 +219,13 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 						m_state.add_last_node_ip(std::move(address));
 					}
 				}
-				else if (component == k8s_component::K8S_PODS)
+				else if(component == k8s_component::K8S_PODS)
 				{
-					std::vector<std::string> containers = k8s_component::extract_pod_containers(item);
-					m_state.get_pods().back().get_container_ids() = std::move(containers);
+					k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(item);
+					m_state.get_pods().back().set_container_ids(std::move(containers));
 					k8s_component::extract_pod_data(item, m_state.get_pods().back());
 				}
-				else if (component == k8s_component::K8S_SERVICES)
+				else if(component == k8s_component::K8S_SERVICES)
 				{
 					k8s_component::extract_services_data(item["spec"], m_state.get_services().back());
 				}
@@ -200,21 +238,21 @@ void k8s::parse_json(const std::string& json, const k8s_component::component_map
 {
 	Json::Value root;
 	Json::Reader reader;
-	if (reader.parse(json, root, false))
+	if(reader.parse(json, root, false))
 	{
 		Json::Value items = root["items"];
-		if (!root.isNull())
+		if(!root.isNull())
 		{
 			extract_data(items, component.first);
 			//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
 		}
 		else
 		{
-			throw std::invalid_argument("Invalid JSON");
+			throw sinsp_exception("Invalid JSON");
 		}
 	}
 	else
 	{
-		throw std::runtime_error("JSON parsing failed");
+		throw sinsp_exception("JSON parsing failed");
 	}
 }

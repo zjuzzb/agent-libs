@@ -64,6 +64,11 @@ public:
 	void set_blacklisted_ports(const vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
+	void set_k8s_api_server(const string& k8s_api);
+	const string & get_k8s_api_server() const;
+	bool get_k8s_autodetect_enabled() const;
+	void set_k8s_autodetect_enabled(bool enabled);
+
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -90,6 +95,8 @@ private:
 	string m_instance_id;
 	ports_set m_known_ports;
 	ports_set m_blacklisted_ports;
+	string m_k8s_api;
+	bool   m_k8s_autodetect;
 };
 
 #endif // HAS_ANALYZER

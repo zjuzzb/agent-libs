@@ -25,26 +25,16 @@ public:
 
 	bool get_all_data(std::ostream& os);
 
-	int get_watch_socket();
+	int get_watch_socket(long timeout_ms);
 
 	void on_data();
 
 	void on_error();
 
 private:
-	struct my_equal
-	{
-		bool operator()(char ch1, char ch2)
-		{
-			return std::toupper(ch1) == std::toupper(ch2);
-		}
-	};
-
 	int wait(curl_socket_t sockfd, int for_recv, long timeout_ms);
 	static size_t write_data(void *ptr, size_t size, size_t nmemb, void *cb);
 	static void check_error(CURLcode res);
-	// find substring (case insensitive)
-	static int ci_find_substr(const std::string& str1, const std::string& str2);
 
 	CURL*         m_curl;
 	k8s&          m_k8s;
