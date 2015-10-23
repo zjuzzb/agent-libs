@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="kubeget" InternalType="Console">
+  <Plugins>
+    <Plugin Name="CMakePlugin">
+      <![CDATA[[{
+  "name": "Debug",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }]]]>
+    </Plugin>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="src">
     <VirtualDirectory Name="protobuf-2.5.0">
       <VirtualDirectory Name="src">
@@ -393,16 +410,18 @@
     <File Name="src/sinsp.h"/>
     <File Name="src/k8s_http.cpp"/>
     <File Name="src/k8s_http.h"/>
-    <File Name="src/k8s_poller.cpp"/>
-    <File Name="src/k8s_poller.h"/>
     <File Name="src/k8s_proto.cpp"/>
     <File Name="src/k8s_proto.h"/>
     <File Name="src/uri.h"/>
     <File Name="src/uri.cpp"/>
     <File Name="src/k8s_common.h"/>
+    <File Name="src/k8s_collector.cpp"/>
+    <File Name="src/k8s_collector.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
   <Settings Type="Executable">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -419,7 +438,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/kubeget/kubeget" CommandArguments="https://vagrant:vagrant@10.245.1.2 false" UseSeparateDebugArgs="no" DebugArguments="https://vagrant:vagrant@10.245.1.2" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/kubeget/kubeget" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="https://vagrant:vagrant@10.245.1.2" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)
@@ -446,7 +465,7 @@ LD_LIBRARY_PATH=/home/alex/sysdig/agent/dependencies/protobuf-2.5.0/src/.libs]]>
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -486,7 +505,7 @@ PROJECT_BASE=$(shell pwd)]]>
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -494,6 +513,4 @@ PROJECT_BASE=$(shell pwd)]]>
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="Debug"/>
-  <Dependencies Name="Release"/>
 </CodeLite_Project>

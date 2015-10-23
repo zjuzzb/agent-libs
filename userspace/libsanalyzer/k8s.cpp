@@ -51,13 +51,13 @@ const k8s_component::component_map k8s::m_components =
 k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const std::string& api) :
 		m_watch(start_watch),
 		m_watch_in_thread(start_watch && watch_in_thread),
-		m_net(*this, uri, api),
 		m_own_proto(true),
 	#ifndef K8S_DISABLE_THREAD
-		m_dispatch(std::move(make_dispatch_map(m_state, m_mutex)))
+		m_dispatch(std::move(make_dispatch_map(m_state, m_mutex))),
 	#else
-		m_dispatch(std::move(make_dispatch_map(m_state)))
+		m_dispatch(std::move(make_dispatch_map(m_state))),
 	#endif
+		m_net(*this, uri, api)
 {
 #ifdef K8S_DISABLE_THREAD
 	if (watch_in_thread)
@@ -65,7 +65,16 @@ k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const s
 		g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
 	}
 #endif // K8S_DISABLE_THREAD
-	get_state(true);
+	try
+	{
+		get_state(true);
+	}
+	catch (...)
+	{
+		clean_dispatch();
+		throw;
+	}
+
 	if (m_watch)
 	{
 		watch();
@@ -74,18 +83,23 @@ k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const s
 
 k8s::~k8s()
 {
+	stop_watch();
+	clean_dispatch();
+}
+
+void k8s::stop_watch()
+{
 	if(m_watch)
 	{
 		m_net.stop_watching();
 	}
+}
 
+void k8s::clean_dispatch()
+{
 	for (auto& update : m_dispatch)
 	{
 		delete update.second;
-	}
-
-	if(m_own_proto)
-	{
 	}
 }
 
@@ -115,7 +129,7 @@ const k8s_state_s& k8s::get_state(bool rebuild)
 	}
 	catch (std::exception& ex)
 	{
-		g_logger.log(ex.what());
+		g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
 		throw;
 	}
 	return m_state;

@@ -1,7 +1,8 @@
 SDIR =./src
 IDIR =./src
 CC=g++
-CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER -DK8S_DISABLE_THREAD -fno-omit-frame-pointer
+CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER 
+#-DK8S_DISABLE_THREAD -fno-omit-frame-pointer
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Crypto/include
@@ -23,10 +24,10 @@ FLAGS+=$(LFLAGS)
 
 ODIR=obj
 
-_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_poller.h uri.h
+_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_collector.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_poller.o uri.o
+_OBJ = kubeget.o k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_collector.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 

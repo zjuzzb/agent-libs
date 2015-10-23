@@ -1122,6 +1122,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					if(!k8s_api_server.empty())
 					{
 						m_k8s = get_k8s(main_tinfo, k8s_api_server);
+						if (m_k8s && k8s_api_server != m_configuration->get_k8s_api_server())
+						{
+							m_configuration->set_k8s_api_server(k8s_api_server);
+							g_logger.log(std::string("Configuration modified for k8s_api_server:").append(m_configuration->get_k8s_api_server()),
+								sinsp_logger::SEV_INFO);
+						}
 					}
 				}
 			}
@@ -3581,13 +3587,26 @@ void sinsp_analyzer::emit_k8s()
 	{
 		ASSERT(m_k8s);
 
-		//const draiosproto::k8s_state& proto =
-		k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-		//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+		// if something went bad (typically kube-apiserver down),
+		// we destroy everything here and it will
+		// be recreated when/if api server is up
+		if (m_k8s && !m_k8s->is_alive())
+		{
+			delete m_k8s;
+			m_k8s = 0;
+		}
+		else
+		{
+			//const draiosproto::k8s_state& proto =
+			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+			//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+		}
 	}
 	catch (std::exception& e)
 	{
 		g_logger.log(std::string("Error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+		delete m_k8s;
+		m_k8s = 0;
 	}
 }
 

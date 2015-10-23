@@ -1,5 +1,5 @@
 //
-// k8s_poller.h
+// k8s_collector.h
 //
 
 #pragma once
@@ -9,30 +9,31 @@
 
 class k8s_http;
 
-class k8s_poller
+class k8s_collector
 {
 public:
 	typedef std::map<int, k8s_http*> socket_map_t;
 
-	k8s_poller(bool do_loop = true, long timeout_ms = 0L);
+	k8s_collector(bool do_loop = true, long timeout_ms = 1000L);
 
-	~k8s_poller();
+	~k8s_collector();
 
 	void add(k8s_http* handler);
-
-	void remove(int sockfd);
 
 	void remove_all();
 
 	int subscription_count() const;
 
-	void poll();
+	void get_data();
 
 	void stop();
 
 	bool is_active() const;
 
 private:
+	void clear();
+	void remove(socket_map_t::iterator it);
+
 	socket_map_t m_sockets;
 	fd_set       m_infd;
 	fd_set       m_errfd;
@@ -43,7 +44,7 @@ private:
 	K8S_DECLARE_MUTEX;
 };
 
-inline void k8s_poller::stop()
+inline void k8s_collector::stop()
 {
 	m_stopped = true;
 }

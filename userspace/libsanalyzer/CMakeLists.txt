@@ -42,7 +42,7 @@ add_library(sanalyzer STATIC
 	k8s_proto.cpp
 	k8s_net.cpp
 	k8s_http.cpp
-	k8s_poller.cpp
+	k8s_collector.cpp
 	uri.cpp
 	metrics.cpp
 	parser_http.cpp

@@ -10,7 +10,7 @@
 #include "sinsp.h"
 #include "k8s_common.h"
 #include "k8s.h"
-#include "k8s_poller.h"
+#include "k8s_collector.h"
 #include "k8s_proto.h"
 #include "Poco/Stopwatch.h"
 #include "Poco/Exception.h"
@@ -50,24 +50,83 @@ int main(int argc, char** argv)
 		}
 #endif
 
-		Stopwatch sw;
-		sw.start();
-		k8s kube(host, true, run_watch_thread);
-		draiosproto::metrics met;
-		k8s_proto kube_proto(met);
-		const draiosproto::k8s_state& proto = kube_proto.get_proto(kube.get_state());
-		sw.stop();
-		while (true)
+		//Stopwatch sw;
+		//sw.start();
+		k8s* kube = new k8s(host, true, run_watch_thread);
+		//draiosproto::metrics met;
+		//k8s_proto kube_proto(met);
+		//const draiosproto::k8s_state& proto = kube_proto.get_proto(kube->get_state());
+		//sw.stop();
+		int i = 0;
+		if(run_watch_thread)
 		{
-			if(!run_watch_thread)
+			kube->watch();
+			while (++i < 10) sleep(1);
+			kube->stop_watching();
+			std::cout << "stopped -------------------------------" << std::endl;
+			sleep(3);
+			std::cout << "starting -------------------------------" << std::endl;
+			kube->watch();
+			std::cout << "started -------------------------------" << std::endl;
+			while (true)
 			{
-				kube.watch();
+				sleep(1);
+				if(kube)
+				{
+					if(!kube->is_alive())
+					{
+						delete kube;
+						try
+						{
+							kube = new k8s(host, true, run_watch_thread);
+							kube->watch();
+						}
+						catch(std::exception& ex)
+						{
+							g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+							kube = 0;
+						}
+					}
+				}
+				else
+				{
+					try
+					{
+						kube = new k8s(host, true, run_watch_thread);
+						kube->watch();
+					}
+					catch(std::exception& ex)
+					{
+						g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+						kube = 0;
+					}
+				}
+				
 			}
-			//sleep(1);
 		}
-		g_logger.log(proto.DebugString());
-		sleep(10);
-		//kube.stop_watching();
+		else
+		{
+			while (++i < 10)
+			{
+				if(!run_watch_thread)
+				{
+					kube->watch();
+				}
+				//sleep(1);
+			}
+			//g_logger.log(proto.DebugString());
+			sleep(10);
+			kube->stop_watching();
+			while (true)
+			{
+				if(!run_watch_thread)
+				{
+					kube->watch();
+				}
+				//sleep(1);
+			}
+		}
+		
 		//g_logger.log("Stopped.");
 		/*
 		sleep(5);
