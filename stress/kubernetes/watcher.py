@@ -36,7 +36,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 			break
 
 	if dboard == None:
-		print 'can\'t find dashboard ' + templatename + ' to use asa template'
+		print 'can\'t find dashboard ' + templatename + ' to use as a template'
 		sys.exit(0)
 
 	#
@@ -132,7 +132,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 ###############################################################################
 # Create an alert for a service
 ###############################################################################
-def create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, servicename):
+def create_service_alert(name, description, condition, for_each, for_atelast_us, severity, namespace, servicename):
 	#
 	# setup the headers
 	#
@@ -141,7 +141,10 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 	#
 	# Create the unique description for this alert
 	#
-	alert_desc = name + ' for service ' + servicename + ' in namespace ' + namespace
+	if description:
+		alert_desc = description + '(service: ' + servicename + ', namespace: ' + namespace + ')'
+	else:
+		alert_desc = name + '(service: ' + servicename + ', namespace: ' + namespace + ')'
 
 	#
 	# Get the list of alerts from the server
@@ -163,9 +166,10 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 	# If this alert already exists, don't create it again
 	#
 	for db in j['alerts']:
-		if db['description'] == alert_desc:
-			print 'alert ' + db['name'] + ' for service ' + servicename + ' already exists'
-			return
+		if 'description' in db:
+			if db['description'] == alert_desc:
+				print 'alert ' + db['name'] + ' for service ' + servicename + ' already exists'
+				return
 
 	#
 	# Populate the alert information
@@ -184,8 +188,9 @@ def create_service_alert(name, condition, for_each, for_atelast_us, severity, na
 		}
 	}
 
-    # "segmentBy" : [ "host.mac" ],
-    # "segmentCondition" : { "type" : "ANY" }
+	if for_each != None and for_each != []: 
+		alert_json['alert']['segmentBy'] = [ for_each ]
+    	alert_json['alert']['segmentCondition'] = { 'type' : 'ANY' }
 
   	#
 	# Create the new alert
@@ -242,6 +247,11 @@ for item in j['items']:
 						print 'alert entry missing the "name" property'
 						sys.exit(0)
 
+					if 'description' in alert:
+						description = alert['description']
+					else:
+						description = None
+
 					if 'condition' in alert:
 						condition = alert['condition']
 					else:
@@ -263,5 +273,5 @@ for item in j['items']:
 					else:
 						severity = 6 # Information
 
-					create_service_alert(name, condition, for_each, for_atelast_us, severity, namespace, service)
+					create_service_alert(name, description, condition, for_each, for_atelast_us, severity, namespace, service)
 
