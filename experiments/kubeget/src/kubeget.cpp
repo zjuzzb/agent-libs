@@ -7,8 +7,8 @@
 // usage: kubeget [http://localhost:80] [v1]
 //
 
-
 #include "sinsp.h"
+#include "k8s_common.h"
 #include "k8s.h"
 #include "k8s_poller.h"
 #include "k8s_proto.h"
@@ -30,12 +30,12 @@ int main(int argc, char** argv)
 {
 	try
 	{
-		std::string host("http://localhost:80");
+		std::string host("http://localhost:8080");
 		if(argc >= 2) host = argv[1];
 
 #ifndef K8S_DISABLE_THREAD
 		bool run_watch_thread = true;
-        if(argc >= 3)
+		if(argc >= 3)
 		{
 			if (std::string(argv[2]) == "false")
 			{
