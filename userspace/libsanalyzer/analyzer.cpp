@@ -825,6 +825,10 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
+	g_logger.format(sinsp_logger::SEV_INFO, "threadtable loadfactor=%f max_loadfactor=%f bucket-count=%d",
+					m_inspector->m_thread_manager->m_threadtable.load_factor(),
+					m_inspector->m_thread_manager->m_threadtable.max_load_factor(),
+					m_inspector->m_thread_manager->m_threadtable.bucket_count());
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
@@ -1287,7 +1291,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Health-related metrics
 			//
-			if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD &&
+					procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 			{
 				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
 																						 prog_delays,
@@ -2452,7 +2457,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Flush the scheduler analyzer
 			//
-			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+			{
+				m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			}
 
 			//
 			// Reset the protobuffer
