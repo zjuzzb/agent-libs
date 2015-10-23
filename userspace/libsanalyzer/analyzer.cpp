@@ -926,44 +926,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// 3. (only on programs) aggregate programs metrics to host and container ones
 	// 4. Write programs on protobuf
 
-
-	///////////////////////////////////////////////////////////////////////////
-	// Propagate the memory information from child thread to main thread:
-	// since memory is updated at context-switch intervals, it can happen
-	// that the "main" thread stays mostly idle, without getting memory events then
-	///////////////////////////////////////////////////////////////////////////
-
-	bool forced_cmd_update = (m_next_flush_time_ns / ONE_SECOND_IN_NS) % CMDLINE_UPDATE_INTERVAL_S == 0;
-
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
-		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-		sinsp_threadinfo* tinfo = &it->second;
-
-		if(tinfo->m_vmsize_kb > mtinfo->m_vmsize_kb)
-		{
-			mtinfo->m_vmsize_kb = tinfo->m_vmsize_kb;
-		}
-
-		if(tinfo->m_vmrss_kb > mtinfo->m_vmrss_kb)
-		{
-			mtinfo->m_vmrss_kb = tinfo->m_vmrss_kb;
-		}
-
-		if(tinfo->m_vmswap_kb > mtinfo->m_vmswap_kb)
-		{
-			mtinfo->m_vmswap_kb = tinfo->m_vmswap_kb;
-		}
-
-		// Relookup process names every interval
-		if(forced_cmd_update && tinfo->is_main_thread())
-		{
-			tinfo->m_ainfo->set_cmdline_update(false);
-		}
-
-	}
-
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes
