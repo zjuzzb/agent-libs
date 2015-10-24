@@ -3590,12 +3590,7 @@ void sinsp_analyzer::emit_k8s()
 		// if something went bad (typically kube-apiserver down),
 		// we destroy everything here and it will
 		// be recreated when/if api server is up
-		if (m_k8s && !m_k8s->is_alive())
-		{
-			delete m_k8s;
-			m_k8s = 0;
-		}
-		else
+		if (m_k8s)
 		{
 			//const draiosproto::k8s_state& proto =
 			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
