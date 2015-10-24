@@ -35,6 +35,7 @@ private:
 	void remove(socket_map_t::iterator it);
 
 	socket_map_t m_sockets;
+	int          m_subscription_count;
 	fd_set       m_infd;
 	fd_set       m_errfd;
 	int          m_nfds;

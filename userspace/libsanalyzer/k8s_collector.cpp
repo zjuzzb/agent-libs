@@ -11,7 +11,8 @@
 #include <string.h>
 #include <sstream>
 
-k8s_collector::k8s_collector(bool do_loop, long timeout_ms): m_nfds(0),
+k8s_collector::k8s_collector(bool do_loop, long timeout_ms): m_subscription_count(0),
+	m_nfds(0),
 	m_loop(do_loop),
 	m_timeout_ms(timeout_ms),
 	m_stopped(false)
@@ -42,6 +43,7 @@ void k8s_collector::add(k8s_http* handler)
 		m_nfds = sockfd;
 	}
 	m_sockets[sockfd] = handler;
+	m_subscription_count = m_sockets.size();
 }
 
 void k8s_collector::remove(socket_map_t::iterator it)
@@ -58,6 +60,8 @@ void k8s_collector::remove(socket_map_t::iterator it)
 			m_nfds = sock.first;
 		}
 	}
+
+	m_subscription_count = m_sockets.size();
 }
 
 void k8s_collector::remove_all()
@@ -79,8 +83,7 @@ bool k8s_collector::is_active() const
 
 int k8s_collector::subscription_count() const
 {
-	K8S_LOCK_GUARD_MUTEX;
-	return static_cast<int>(m_sockets.size());
+	return m_subscription_count;
 }
 
 void k8s_collector::get_data()
@@ -112,7 +115,7 @@ void k8s_collector::get_data()
 						{
 							if(FD_ISSET(sock.first, &m_infd))
 							{
-								if (!sock.second->on_data())
+								if(!sock.second->on_data())
 								{
 									remove(m_sockets.find(sock.first));
 								}
@@ -138,7 +141,7 @@ void k8s_collector::get_data()
 				}
 				else
 				{
-					g_logger.log("Poller is empty. Stopping.", sinsp_logger::SEV_ERROR);
+					g_logger.log("Collector is empty. Stopping.", sinsp_logger::SEV_ERROR);
 					m_stopped = true;
 					return;
 				}
@@ -151,7 +154,7 @@ void k8s_collector::get_data()
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log(std::string("Poller error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		g_logger.log(std::string("Collector error: ") + ex.what(), sinsp_logger::SEV_ERROR);
 		remove_all();
 		m_stopped = true;
 	}

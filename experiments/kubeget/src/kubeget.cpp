@@ -19,12 +19,25 @@
 #include <iostream>
 #include <thread>
 #include <unistd.h>
+#include <signal.h>
 
 using Poco::Stopwatch;
 using Poco::format;
 using Poco::Exception;
 
 sinsp_logger g_logger;
+
+void wait_for_termination_request()
+{
+	sigset_t sset;
+	sigemptyset(&sset);
+	sigaddset(&sset, SIGINT);
+	sigaddset(&sset, SIGQUIT);
+	sigaddset(&sset, SIGTERM);
+	sigprocmask(SIG_BLOCK, &sset, NULL);
+	int sig;
+	sigwait(&sset, &sig);
+}
 
 int main(int argc, char** argv)
 {
@@ -37,7 +50,7 @@ int main(int argc, char** argv)
 		bool run_watch_thread = true;
 		if(argc >= 3)
 		{
-			if (std::string(argv[2]) == "false")
+			if(std::string(argv[2]) == "false")
 			{
 				run_watch_thread = false;
 			}
@@ -52,10 +65,22 @@ int main(int argc, char** argv)
 
 		//Stopwatch sw;
 		//sw.start();
-		k8s* kube = new k8s(host, true, run_watch_thread);
-		//draiosproto::metrics met;
-		//k8s_proto kube_proto(met);
-		//const draiosproto::k8s_state& proto = kube_proto.get_proto(kube->get_state());
+		k8s* kube = 0;
+		do
+		{
+			try
+			{
+				kube = new k8s(host, true, run_watch_thread);
+			}
+			catch (std::exception& ex)
+			{
+				g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+				sleep(1);
+			}
+		}
+		while (!kube);
+		draiosproto::metrics met;
+		k8s_proto(met).get_proto(kube->get_state());
 		//sw.stop();
 		int i = 0;
 		if(run_watch_thread)
@@ -73,13 +98,17 @@ int main(int argc, char** argv)
 				sleep(1);
 				if(kube)
 				{
-					if(!kube->is_alive())
+					if(kube->is_alive())
+					{
+						draiosproto::metrics met;
+						k8s_proto(met).get_proto(kube->get_state());
+					}
+					else
 					{
 						delete kube;
 						try
 						{
 							kube = new k8s(host, true, run_watch_thread);
-							kube->watch();
 						}
 						catch(std::exception& ex)
 						{
@@ -93,7 +122,7 @@ int main(int argc, char** argv)
 					try
 					{
 						kube = new k8s(host, true, run_watch_thread);
-						kube->watch();
+						//kube->watch();
 					}
 					catch(std::exception& ex)
 					{
@@ -144,9 +173,12 @@ int main(int argc, char** argv)
 	catch (std::exception& exc)
 	{
 		g_logger.log(exc.what());
+		google::protobuf::ShutdownProtobufLibrary();
 		return 1;
 	}
 
+	google::protobuf::ShutdownProtobufLibrary();
+	//wait_for_termination_request();
 	return 0;
 }
 

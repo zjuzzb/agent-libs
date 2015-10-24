@@ -60,7 +60,7 @@ k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const s
 		m_net(*this, uri, api)
 {
 #ifdef K8S_DISABLE_THREAD
-	if (watch_in_thread)
+	if(watch_in_thread)
 	{
 		g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
 	}
@@ -75,7 +75,7 @@ k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const s
 		throw;
 	}
 
-	if (m_watch)
+	if(m_watch)
 	{
 		watch();
 	}
@@ -201,7 +201,7 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				std::string nspace;
 				if(!ns.isNull())
 				{
-					nspace = ns.asString();
+					nspace = std::move(ns.asString());
 				}
 				m_state.add_common_single_value(component, obj["name"].asString(), obj["uid"].asString(), nspace);
 

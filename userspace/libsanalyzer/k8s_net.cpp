@@ -20,16 +20,30 @@ k8s_net::k8s_net(k8s& kube, const std::string& uri, const std::string& api) : m_
 		,m_thread(0)
 #endif
 {
-	init();
+	try
+	{
+		init();
+	}
+	catch(...)
+	{
+		cleanup();
+		throw;
+	}
 }
 
 k8s_net::~k8s_net()
 {
 	end_thread();
+	cleanup();
+}
+
+void k8s_net::cleanup()
+{
 	for (auto& component : k8s_component::list)
 	{
 		delete m_api_interfaces[component.first];
 	}
+	m_api_interfaces.clear();
 }
 
 void k8s_net::init()
@@ -126,7 +140,7 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 		std::ostringstream os;
 		os << m_uri.get_host();
 		int port = m_uri.get_port();
-		if (port)
+		if(port)
 		{
 			os << ':' << port;
 		}
@@ -135,7 +149,11 @@ void k8s_net::get_all_data(const k8s_component::component_map::value_type& compo
 	
 	if(!m_api_interfaces[component.first]->get_all_data(out))
 	{
-		throw sinsp_exception(std::string("An error occured while trying to retrieve data for k8s ") + component.second);
+		std::string err;
+		std::ostringstream* ostr = dynamic_cast<std::ostringstream*>(&out);
+		if(ostr) { err = ostr->str(); }
+		throw sinsp_exception(std::string("An error occured while trying to retrieve data for k8s ")
+			.append(component.second).append(": ").append(err));
 	}
 }
 

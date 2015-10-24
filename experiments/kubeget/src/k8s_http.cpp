@@ -54,7 +54,7 @@ k8s_http::~k8s_http()
 
 bool k8s_http::init()
 {
-	if (!m_curl)
+	if(!m_curl)
 	{
 		cleanup();
 		m_curl = curl_easy_init();
@@ -211,7 +211,7 @@ bool k8s_http::on_data()
 			}
 		}
 	}
-	else if (ret != CURLE_AGAIN)
+	else if(ret != CURLE_AGAIN)
 	{
 		g_logger.log("Connection closed", sinsp_logger::SEV_ERROR);
 		m_data_ready = false;
@@ -223,7 +223,7 @@ bool k8s_http::on_data()
 void k8s_http::on_error(const std::string& err, bool disconnect)
 {
 	g_logger.log("Socket error:" + err, sinsp_logger::SEV_ERROR);
-	if (disconnect)
+	if(disconnect)
 	{
 		cleanup();
 	}

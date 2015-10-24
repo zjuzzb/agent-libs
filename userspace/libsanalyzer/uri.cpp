@@ -25,7 +25,7 @@ std::string uri::tail_chunk(std::string &subject, std::string delimiter, bool ke
 	auto delimiter_length = delimiter.length();
 	std::string output;
 
-	if (delimiter_location < std::string::npos)
+	if(delimiter_location < std::string::npos)
 	{
 		auto start = keep_delim ? delimiter_location : delimiter_location + delimiter_length;
 		auto end = subject.length() - start;
@@ -40,7 +40,7 @@ std::string uri::head_chunk(std::string &subject, std::string delimiter)
 	auto delimiter_location = subject.find(delimiter);
 	auto delimiter_length = delimiter.length();
 	std::string output;
-	if (delimiter_location < std::string::npos)
+	if(delimiter_location < std::string::npos)
 	{
 		output = subject.substr(0, delimiter_location);
 		subject = subject.substr(delimiter_location + delimiter_length, subject.length() - (delimiter_location + delimiter_length));
@@ -72,7 +72,7 @@ std::string uri::to_string() const
 		ostr << m_user << ':' << m_password << '@';
 	}
 	ostr << m_host;
-	if (m_port)
+	if(m_port)
 	{
 		ostr << ':' << m_port;
 	}

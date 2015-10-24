@@ -49,6 +49,8 @@ private:
 
 	bool is_secure();
 
+	void cleanup();
+
 	typedef std::map<k8s_component::type, k8s_http*> api_map_t;
 
 	k8s&          m_k8s;
@@ -74,7 +76,8 @@ inline bool k8s_net::is_watching() const
 
 inline bool k8s_net::is_healthy() const
 {
-	return m_collector.subscription_count() == m_api_interfaces.size();
+	return m_collector.subscription_count() ==
+		static_cast<int>(m_api_interfaces.size());
 }
 
 

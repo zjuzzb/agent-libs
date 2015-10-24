@@ -117,6 +117,9 @@
     <File Name="libsanalyzer/uri.h"/>
     <File Name="libsanalyzer/k8s_proto.cpp"/>
     <File Name="libsanalyzer/k8s_proto.h"/>
+    <File Name="libsanalyzer/k8s_common.h"/>
+    <File Name="libsanalyzer/k8s_collector.h"/>
+    <File Name="libsanalyzer/k8s_collector.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

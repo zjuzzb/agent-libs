@@ -905,7 +905,7 @@ k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo, const string& k8s_api
 
 error:
 	g_logger.log("Kubernetes v1 API server not detected.", sinsp_logger::SEV_ERROR);
-	if (curl) { curl_easy_cleanup(curl); }
+	if(curl) { curl_easy_cleanup(curl); }
 	return 0;
 }
 
@@ -1095,7 +1095,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
-				
+
 				if(!m_k8s)
 				{
 					string k8s_api_server = m_configuration->get_k8s_api_server();
@@ -1104,7 +1104,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 						{
 							g_logger.log("Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
-							k8s_api_server = "http://localhost:8080/api";
+							k8s_api_server = "http://localhost:8080";
 						}
 						else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
 						{
@@ -1122,12 +1122,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					if(!k8s_api_server.empty())
 					{
 						m_k8s = get_k8s(main_tinfo, k8s_api_server);
-						if (m_k8s && k8s_api_server != m_configuration->get_k8s_api_server())
-						{
-							m_configuration->set_k8s_api_server(k8s_api_server);
-							g_logger.log(std::string("Configuration modified for k8s_api_server:").append(m_configuration->get_k8s_api_server()),
-								sinsp_logger::SEV_INFO);
-						}
 					}
 				}
 			}
@@ -3590,18 +3584,29 @@ void sinsp_analyzer::emit_k8s()
 		// if something went bad (typically kube-apiserver down),
 		// we destroy everything here and it will
 		// be recreated when/if api server is up
-		if (m_k8s)
+		if(m_k8s)
 		{
-			//const draiosproto::k8s_state& proto =
-			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-			//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+			if (m_k8s->is_alive())
+			{
+				//const draiosproto::k8s_state& proto =
+				k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+				//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+			}
+			else
+			{
+				delete m_k8s;
+				m_k8s = 0;
+			}
 		}
 	}
-	catch (std::exception& e)
+	catch(std::exception& e)
 	{
 		g_logger.log(std::string("Error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-		delete m_k8s;
-		m_k8s = 0;
+		if(m_k8s)
+		{
+			delete m_k8s;
+			m_k8s = 0;
+		}
 	}
 }
 

@@ -115,17 +115,17 @@ k8s_dispatcher::msg_data k8s_dispatcher::get_msg_data(const Json::Value& root)
 			Json::Value name = meta["name"];
 			if(!name.isNull())
 			{
-				data.m_name = name.asString();
+				data.m_name = std::move(name.asString());
 			}
 			Json::Value uid = meta["uid"];
 			if(!uid.isNull())
 			{
-				data.m_uid = uid.asString();
+				data.m_uid = std::move(uid.asString());
 			}
 			Json::Value nspace = meta["namespace"];
 			if(!nspace.isNull())
 			{
-				data.m_namespace = nspace.asString();
+				data.m_namespace = std::move(nspace.asString());
 			}
 		}
 	}
