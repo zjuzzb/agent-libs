@@ -2,6 +2,7 @@ import requests
 import json
 import sys
 
+K8S_MASTER_URL = 'http://localhost:8080/api/v1/services'
 SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
 ADMIN_TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
 TMP_USER_TOKEN = '5457b3d5-6fae-404e-8406-6faaab28d1a7'
@@ -250,10 +251,50 @@ def get_user_token(email):
 	# XXX: this will return the real token as soon as the API makes it available
 	return TMP_USER_TOKEN
 
+###############################################################################
+# Add notifications email
+###############################################################################
+def add_notifications_email(email):
+	#
+	# setup the headers
+	#
+	hdrs = {'Authorization': 'Bearer ' + user_token, 'Content-Type': 'application/json'}
+
+	#
+	# Retirieve the user's notification settings
+	#
+	r = requests.get(SYSDIG_URL + '/api/settings/notifications', headers=hdrs)
+	check_response(r)
+	j = r.json()
+
+	#
+	# Enable email notifications
+	#
+	j['userNotification']['email']['enabled'] = True
+
+
+	#
+	# Add the given recipient
+	#
+	if not email in j['userNotification']['email']['recipients']:
+		j['userNotification']['email']['recipients'].append(email)
+		print 'added notification target ' + email
+	else:
+		print 'notification target ' + email + ' already present'
+
+
+	r = requests.put(SYSDIG_URL + '/api/settings/notifications', headers=hdrs, data = json.dumps(j))
+	check_response(r)
+
 #
 # Get the list of k8s services
 #
-r = requests.get('http://localhost:8080/api/v1/services')
+try:
+	r = requests.get(K8S_MASTER_URL)
+except:
+	print 'Connection refused from ' + K8S_MASTER_URL
+	sys.exit(0)
+
 j =r.json()
 
 
@@ -267,13 +308,21 @@ for item in j['items']:
 		metadata = item['metadata']
 		if 'annotations' in metadata:
 			annotations = metadata['annotations']
-
+					
 			if 'monitoring-user' in annotations:
 				user_email = annotations['monitoring-user']
 				user_token = get_user_token(user_email)
 			else:
 				user_email = None
 				user_token = ADMIN_TOKEN
+
+			if 'alert-recipients' in annotations:
+				ar = annotations['alert-recipients']
+	
+				recipients = json.loads(ar)
+
+				for recipient in recipients:
+					add_notifications_email(recipient)
 
 			if 'monitoring-dashboards' in annotations:
 				md = annotations['monitoring-dashboards']
@@ -331,4 +380,3 @@ for item in j['items']:
 						severity = 6 # Information
 
 					create_service_alert(name, description, condition, for_each, for_atelast_us, severity, namespace, service)
-
