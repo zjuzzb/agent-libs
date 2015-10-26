@@ -140,9 +140,10 @@ metadata:
     name: wordpress
   name: wordpress
   annotations:
+    monitoring-user: "loris.degioanni@gmail.com"
     monitoring-dashboards: '[{"name": "D3", "template": "template-dash"}, {"name": "D4", "template": "template-dash"}]'
     monitoring-granularity: "1s"
-    alerts: '[
+    monitoring-alerts: '[
       {"name": "No Requests to Pod", "description": "one of the pods in the service is not serving reuqests", "condition": "avg(net.request.count) < 3", "for_each": "kubernetes.pod.name", "for_atelast_us": 60000000, "severity": 3 },
       {"name": "High CPU for container", "condition": "avg(cpu.used.percent) > 75", "for_each": "container.id", "for_atelast_us": 60000000, "severity": 5 }
     ]'
