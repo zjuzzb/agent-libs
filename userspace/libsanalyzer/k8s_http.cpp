@@ -172,7 +172,7 @@ int k8s_http::get_watch_socket(long timeout_ms)
 			throw sinsp_exception("Error: timeout.");
 		}
 
-		g_logger.log(std::string("Polling ") + url, sinsp_logger::SEV_DEBUG);
+		g_logger.log(std::string("Collecting data from ") + url, sinsp_logger::SEV_DEBUG);
 	}
 
 	return m_watch_socket;

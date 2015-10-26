@@ -58,6 +58,7 @@ using namespace google::protobuf::io;
 #include "Poco/FileStream.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/Exception.h"
+#include "Poco/Net/HTTPStreamFactory.h"
 #include "Poco/Net/HTTPSStreamFactory.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/PrivateKeyPassphraseHandler.h"
@@ -864,26 +865,28 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 				Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 				SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
 			}
-			catch(std::exception& ex)
+			catch(...)
 			{
 				g_logger.log("K8S SSL configuration error. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
 				m_k8s_bad_config = true;
 				return 0;
 			}
 		}
+		else
+		{
+			HTTPStreamFactory::registerFactory();
+		}
 
-		std::auto_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
+		std::unique_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
 		std::ostringstream os;
 		StreamCopier::copyStream(*pStr.get(), os);
 		std::string json = std::move(os.str());
 		g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
-		HTTPSStreamFactory::unregisterFactory();
 		return make_k8s(json, k8s_api);
 	}
 	catch (std::exception& exc)
 	{
 		g_logger.log(exc.what(), sinsp_logger::SEV_ERROR);
-		HTTPSStreamFactory::unregisterFactory();
 		return 0;
 	}
 }
