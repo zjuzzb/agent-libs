@@ -969,7 +969,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
+		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
@@ -984,7 +985,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 			}
 			main_tinfo->compute_program_hash();
-			main_ainfo->set_cmdline_update(true);
+			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
 		//
