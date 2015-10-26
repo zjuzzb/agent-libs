@@ -850,7 +850,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		{
 			try
 			{
-				HTTPSStreamFactory::registerFactory();
+				try { HTTPSStreamFactory::registerFactory(); } catch(ExistsException&) { }
 				string cert = m_configuration->get_k8s_ssl_ca_certificate();
 				Poco::Net::Context::VerificationMode verification_mode;
 				if(m_configuration->get_k8s_ssl_verify_certificate())
@@ -874,7 +874,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		}
 		else
 		{
-			HTTPStreamFactory::registerFactory();
+			try { HTTPStreamFactory::registerFactory(); } catch(ExistsException&) { }
 		}
 
 		std::unique_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
