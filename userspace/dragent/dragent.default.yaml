@@ -606,9 +606,9 @@ app_checks:
 # For HTTPS, client certificate authentication can be controlled with following entries:
 #
 # k8s_ca_certificate: [filename]
-# k8s_ssl_verify_certificate: [True|false]
+# k8s_ssl_verify_certificate: [true|False]
 #
-# Certificate file must be located in the root directory.
+# Certificate file must be located in the /opt/draios directory.
 #
 # Example (overrides default setting):
 #
