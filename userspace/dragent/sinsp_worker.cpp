@@ -98,6 +98,13 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
 
+	if(!m_configuration->m_k8s_ssl_ca_certificate.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_ca_certificate(m_configuration->m_k8s_ssl_ca_certificate);
+	}
+
+	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
+
 	//
 	// Configure compression in the protocol
 	//

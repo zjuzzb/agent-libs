@@ -300,7 +300,8 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	k8s* get_k8s(sinsp_threadinfo* main_tinfo, const string& k8s_api);
+	k8s* make_k8s(const string& json, const string& k8s_api);
+	k8s* get_k8s(const string& k8s_api);
 	void emit_k8s();
 	void emit_top_files();
 	vector<string> emit_containers();
@@ -473,6 +474,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	k8s* m_k8s;
+	static bool m_k8s_bad_config;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
@@ -498,6 +500,7 @@ VISIBILITY_PRIVATE
 	friend class analyzer_threadtable_listener;
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
+	friend class k8s_ca_handler;
 };
 
 #endif // HAS_ANALYZER

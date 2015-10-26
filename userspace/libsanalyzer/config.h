@@ -68,6 +68,10 @@ public:
 	const string & get_k8s_api_server() const;
 	bool get_k8s_autodetect_enabled() const;
 	void set_k8s_autodetect_enabled(bool enabled);
+	void set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert);
+	const string & get_k8s_ssl_ca_certificate() const;
+	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
+	bool get_k8s_ssl_verify_certificate() const;
 
 private:
 	uint64_t m_connection_pruning_interval_ns;
@@ -97,6 +101,8 @@ private:
 	ports_set m_blacklisted_ports;
 	string m_k8s_api;
 	bool   m_k8s_autodetect;
+	string m_k8s_ssl_ca_certificate;
+	bool m_k8s_ssl_verify_certificate;
 };
 
 #endif // HAS_ANALYZER

@@ -51,6 +51,24 @@ using namespace google::protobuf::io;
 #include "uri.h"
 #include "third-party/jsoncpp/json/json.h"
 #define DUMP_TO_DISK
+#include "Poco/URIStreamOpener.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/Path.h"
+#include "Poco/URI.h"
+#include "Poco/FileStream.h"
+#include "Poco/SharedPtr.h"
+#include "Poco/Exception.h"
+#include "Poco/Net/HTTPSStreamFactory.h"
+#include "Poco/Net/SSLManager.h"
+#include "Poco/Net/PrivateKeyPassphraseHandler.h"
+#include "Poco/Net/InvalidCertificateHandler.h"
+#include <memory>
+#include <iostream>
+
+using namespace Poco;
+using namespace Poco::Net;
+
+bool sinsp_analyzer::m_k8s_bad_config = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -779,134 +797,95 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
-int wait_for_sock(curl_socket_t sockfd, int for_recv, long timeout_ms)
+k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 {
-	struct timeval tv;
-	fd_set infd, outfd, errfd;
-	int res;
-
-	tv.tv_sec = timeout_ms / 1000;
-	tv.tv_usec = (timeout_ms % 1000) * 1000;
-
-	FD_ZERO(&infd);
-	FD_ZERO(&outfd);
-	FD_ZERO(&errfd);
-
-	FD_SET(sockfd, &errfd);
-	if(for_recv)
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
 	{
-		FD_SET(sockfd, &infd);
-	}
-	else
-	{
-		FD_SET(sockfd, &outfd);
-	}
-
-	res = select(sockfd + 1, &infd, &outfd, &errfd, &tv);
-	return res;
-}
-
-k8s* sinsp_analyzer::get_k8s(sinsp_threadinfo* main_tinfo, const string& k8s_api)
-{
-	g_logger.log("Looking for k8s ...", sinsp_logger::SEV_INFO);
-	CURL* curl = 0;
-	try
-	{
-		g_logger.log("K8S API setting: " + k8s_api, sinsp_logger::SEV_DEBUG);
-		curl = curl_easy_init();
-		if(curl)
+		Json::Value vers = root["versions"];
+		if(vers.isArray())
 		{
-			g_logger.log("Connecting to K8S API at : " + k8s_api, sinsp_logger::SEV_DEBUG);
-			curl_easy_setopt(curl, CURLOPT_URL, k8s_api.c_str());
-			curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
-			CURLcode curl_ret = curl_easy_perform(curl);
-			if(CURLE_OK == curl_ret)
+			for (const auto& ver : vers)
 			{
-				long sockextr;
-				curl_ret = curl_easy_getinfo(curl, CURLINFO_LASTSOCKET, &sockextr);
-				curl_socket_t sock = sockextr;
-				if(CURLE_OK == curl_ret)
+				if(ver.asString() == "v1")
 				{
-					ostringstream request;
-					string creds, host;
-					uri u(k8s_api);
-					host = u.get_host();
-					int port = u.get_port();
-					if(port)
-					{
-						host.append(1, ':').append(std::to_string(port));
-					}
-					request << "GET /api HTTP/1.0\r\nHost: " << host << "\r\n";
-					if(!creds.empty())
-					{
-						std::istringstream is(creds);
-						std::ostringstream os;
-						base64::encoder().encode(is, os);
-						request << "Authorization: Basic " << os.str() << "\r\n";
-					}
-					request << "\r\n";
-					size_t iolen;
-					g_logger.log("Sending /api request to K8S API at : " + k8s_api, sinsp_logger::SEV_DEBUG);
-					if(wait_for_sock(sock, 0, 5000L))
-					{
-						curl_ret = curl_easy_send(curl, request.str().c_str(), request.str().size(), &iolen);
-						if(CURLE_OK == curl_ret)
-						{
-							g_logger.log("Request sent, waiting for socket ...", sinsp_logger::SEV_DEBUG);
-							if(wait_for_sock(sock, 1, 5000L))
-							{
-								g_logger.log("Socket ready.", sinsp_logger::SEV_DEBUG);
-								char buf[512] = { 0 };
-								curl_ret = curl_easy_recv(curl, buf, sizeof(buf), &iolen);
-								if(CURLE_OK == curl_ret)
-								{
-									curl_easy_cleanup(curl);
-									curl = 0;
-									string json(buf, buf + iolen);
-									json = json.substr(json.find('{'));
-									g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
-									ASSERT (iolen);
-									Json::Value root;
-									Json::Reader reader;
-									if(reader.parse(json, root, false))
-									{
-										Json::Value vers = root["versions"];
-										if(vers.isArray())
-										{
-											for (const auto& ver : vers)
-											{
-												if(ver.asString() == "v1")
-												{
-													g_logger.log("Kubernetes v1 API server found at " + k8s_api,
-														sinsp_logger::SEV_INFO);
-													return new k8s(k8s_api, true, true, "/api/v1/");
-												}
-											}
-										}
-									}
-								}
-							}
-							else
-							{
-								g_logger.log("Timed out waiting for K8S API server at [" + k8s_api + "]:" + std::to_string(errno), sinsp_logger::SEV_ERROR);
-							}
-						}
-					}
+					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
+						sinsp_logger::SEV_INFO);
+					return new k8s(k8s_api, true, true, "/api/v1/");
 				}
 			}
-			g_logger.log("Connection to K8S API server at [" + k8s_api + "] failed, CURL error: " + curl_easy_strerror(curl_ret), sinsp_logger::SEV_ERROR);
-			goto error;
 		}
 	}
-	catch(std::exception& ex)
+	return 0;
+}
+
+class k8s_ca_handler: public InvalidCertificateHandler
+{
+public:
+	k8s_ca_handler(bool handle_on_server_side):
+		InvalidCertificateHandler(handle_on_server_side)
 	{
-		g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
 	}
 
-error:
-	g_logger.log("Kubernetes v1 API server not detected.", sinsp_logger::SEV_ERROR);
-	if(curl) { curl_easy_cleanup(curl); }
-	return 0;
+	virtual ~k8s_ca_handler()
+	{
+	}
+
+	void onInvalidCertificate(const void*, VerificationErrorArgs& errorCert)
+	{
+		g_logger.log("K8S client certificate authentication failed", sinsp_logger::SEV_ERROR);
+		sinsp_analyzer::m_k8s_bad_config = true;
+		errorCert.setIgnoreError(false);
+	}
+};
+
+k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
+{
+	try
+	{
+		URI uri(k8s_api + "/api");
+		if (uri.getScheme() == "https")
+		{
+			try
+			{
+				HTTPSStreamFactory::registerFactory();
+				string cert = m_configuration->get_k8s_ssl_ca_certificate();
+				Poco::Net::Context::VerificationMode verification_mode;
+				if(m_configuration->get_k8s_ssl_verify_certificate())
+				{
+					verification_mode = Poco::Net::Context::VERIFY_STRICT;
+				}
+				else
+				{
+					verification_mode = Poco::Net::Context::VERIFY_NONE;
+				}
+				SharedPtr<InvalidCertificateHandler> ptrCert = new k8s_ca_handler(false);
+				Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+				SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
+			}
+			catch(std::exception& ex)
+			{
+				g_logger.log("K8S SSL configuration error. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+				m_k8s_bad_config = true;
+				return 0;
+			}
+		}
+
+		std::auto_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
+		std::ostringstream os;
+		StreamCopier::copyStream(*pStr.get(), os);
+		std::string json = std::move(os.str());
+		g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
+		HTTPSStreamFactory::unregisterFactory();
+		return make_k8s(json, k8s_api);
+	}
+	catch (std::exception& exc)
+	{
+		g_logger.log(exc.what(), sinsp_logger::SEV_ERROR);
+		HTTPSStreamFactory::unregisterFactory();
+		return 0;
+	}
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
@@ -1096,7 +1075,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
-				if(!m_k8s)
+				if(!m_k8s && !m_k8s_bad_config)
 				{
 					string k8s_api_server = m_configuration->get_k8s_api_server();
 					if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
@@ -1121,7 +1100,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					}
 					if(!k8s_api_server.empty())
 					{
-						m_k8s = get_k8s(main_tinfo, k8s_api_server);
+						m_k8s = get_k8s(k8s_api_server);
 					}
 				}
 			}

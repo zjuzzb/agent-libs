@@ -595,17 +595,27 @@ app_checks:
 # in the agent. The syntax for the entry is:
 #
 #   k8s_uri: http[s]://[username:password@]host[:port]
-#   k8s_autodetect: (true|false)
+#   k8s_autodetect: [True|false]
 #
 # If username:password is specified, it will be used to authenticate using HTTP Basic Authentication.
 # Unless port is explicitly specified, default will be used (80 for http, 443 for https).
 #
-# The k8s_autodetect setting being true only makes sense when there is no k8s_uri specified, in which
-# case agent will attempt to connect to the API server running on http://localhost:8080.
+# The k8s_autodetect setting being true (default) is effective only when there is no k8s_uri specified,
+# in which case agent will attempt to connect to the API server running on http://localhost:8080.
 #
-# Example:
+# For HTTPS, client certificate authentication can be controlled with following entries:
+#
+# k8s_ca_certificate: [filename]
+# k8s_ssl_verify_certificate: [true|False]
+#
+# Certificate file must be located in the root directory.
+#
+# Example (overrides default setting):
+#
 # k8s_uri: https://vagrant:vagrant@localhost:4430
-# k8s_autodetect: true
+# k8s_autodetect: false
+# k8s_ca_certificate: k8s-ca.crt
+# k8s_ssl_verify_certificate: true
 #
 
 known_ports:

@@ -254,7 +254,9 @@ void dragent_configuration::init(Application* app)
 
 	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
-	
+	m_k8s_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("k8s_ca_certificate", "k8s-ca.crt")).toString();
+	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
+
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = nsfile.exists();
@@ -326,7 +328,11 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
 	}
-
+	if (!m_k8s_ssl_ca_certificate.empty())
+	{
+		g_log->information("m_k8s_ssl_certificate: " + m_k8s_ssl_ca_certificate);
+	}
+	g_log->information("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));

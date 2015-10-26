@@ -345,6 +345,8 @@ public:
 	bool m_system_supports_containers;
 	std::string m_k8s_api_server;
 	bool m_k8s_autodetect;
+	string m_k8s_ssl_ca_certificate;
+	bool m_k8s_ssl_verify_certificate;
 
 	bool java_present()
 	{

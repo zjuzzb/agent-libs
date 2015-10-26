@@ -352,4 +352,25 @@ void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
 {
 	m_k8s_autodetect = enabled;
 }
+
+void sinsp_configuration::set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert)
+{
+	m_k8s_ssl_ca_certificate = k8s_ssl_ca_cert;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_ca_certificate() const
+{
+	return m_k8s_ssl_ca_certificate;
+}
+
+void sinsp_configuration::set_k8s_ssl_verify_certificate(bool k8s_ssl_verify_cert)
+{
+	m_k8s_ssl_verify_certificate = k8s_ssl_verify_cert;
+}
+
+bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
+{
+	return m_k8s_ssl_verify_certificate;
+}
+
 #endif // HAS_ANALYZER
