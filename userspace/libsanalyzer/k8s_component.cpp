@@ -170,19 +170,16 @@ void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s
 				}
 
 				Json::Value json_target_port = port["targetPort"];
-				if(json_target_port.isIntegral())
+				if(!json_target_port.isNull())
 				{
-					p.m_target_port = json_target_port.asUInt();
-				}
-				else if(json_target_port.isString())
-				{
-					g_logger.log(std::string("string port encountered (WIP):") + json_target_port.asString(), sinsp_logger::SEV_ERROR);
-					p.m_target_port = 0;
-				}
-				else
-				{
-					g_logger.log(std::string("Unknown port type encountered."), sinsp_logger::SEV_ERROR);
-					p.m_target_port = 0;
+					if(json_target_port.isIntegral())
+					{
+						p.m_target_port = json_target_port.asUInt();
+					}
+					else
+					{
+						p.m_target_port = 0;
+					}
 				}
 
 				Json::Value json_node_port = port["nodePort"];
