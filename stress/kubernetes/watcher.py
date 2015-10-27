@@ -5,7 +5,7 @@ import sys
 K8S_MASTER_URL = 'http://localhost:8080/api/v1/services'
 SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
 ADMIN_TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
-TMP_USER_TOKEN = '5457b3d5-6fae-404e-8406-6faaab28d1a7'
+TMP_USER_TOKEN = 'ebac76a1-cf7b-452c-bcad-8961517da5c5'
 
 user_token = None
 
@@ -68,7 +68,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 		if db['name'] == dname:
 			for view in db['items']:
 				if view['groupId'][0:len(baseconfid)] == baseconfid:
-					print 'dashboard ' + dname + ' for service ' + servicename + ' already exists'
+					print 'dashboard ' + dname + ' for service ' + servicename + ' already exists - ' + baseconfid
 					return
 
 	#
