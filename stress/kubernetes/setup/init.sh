@@ -140,8 +140,8 @@ metadata:
     name: wordpress
   name: wordpress
   annotations:
-    monitoring-user: "loris.degioanni@gmail.com"
-    monitoring-dashboards: '[{"name": "D3", "template": "template-dash"}, {"name": "D4", "template": "template-dash"}]'
+    monitoring-user: "loris@degio.org"
+    monitoring-dashboards: '[{"name": "Wordpress - Overview by Pod", "template": "Template - Overview by Pod"}, {"name": "Wordpress Service Performance", "template": "Template - Service Performance"}]'
     monitoring-granularity: "1s"
     monitoring-alerts: '[
       {"name": "No Requests to Pod", "description": "one of the pods in the service is not serving reuqests", "condition": "avg(net.request.count) < 3", "for_each": "kubernetes.pod.name", "for_atelast_us": 60000000, "severity": 3 },
