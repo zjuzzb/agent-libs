@@ -9,21 +9,21 @@
 
 #include "sinsp.h"
 #include "k8s_common.h"
+//#include "k8s_component.h"
 #include "k8s.h"
-#include "k8s_collector.h"
 #include "k8s_proto.h"
 #include "Poco/Stopwatch.h"
 #include "Poco/Exception.h"
 #include "Poco/Format.h"
 #include "k8s_http.h"
+#include "Poco/FileStream.h"
+#include "Poco/StreamCopier.h"
 #include <iostream>
 #include <thread>
 #include <unistd.h>
 #include <signal.h>
 
-using Poco::Stopwatch;
-using Poco::format;
-using Poco::Exception;
+using namespace Poco;
 
 sinsp_logger g_logger;
 
@@ -39,8 +39,48 @@ void wait_for_termination_request()
 	sigwait(&sset, &sig);
 }
 
+class k8s_test
+{
+public:
+	k8s_test(): m_k8s("")
+	{
+	}
+
+	void get_data(const std::string& component)
+	{
+		std::ostringstream json;
+		get_json(component, json);
+		//std::cout << json.str() << std::endl;
+		m_k8s.parse_json(json.str(), k8s_component::component_map::value_type(k8s_component::get_type(component), component));
+	}
+
+	k8s& get_k8s()
+	{
+		return m_k8s;
+	}
+
+private:
+	static void get_json(const std::string& component, std::ostringstream& json)
+	{
+		FileInputStream fis(std::string("test/").append(component).append((".json")));
+		StreamCopier::copyStream(fis, json);
+	}
+
+	k8s m_k8s;
+};
+
 int main(int argc, char** argv)
 {
+	k8s_test k8stest;
+	k8stest.get_data("namespaces");
+	k8stest.get_data("nodes");
+	k8stest.get_data("pods");
+	k8stest.get_data("replicationcontrollers");
+	k8stest.get_data("services");
+	draiosproto::metrics met;
+	k8s_proto(met).get_proto(k8stest.get_k8s().get_state());
+	std::cout << met.DebugString() << std::endl;
+#if 0
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -179,6 +219,7 @@ int main(int argc, char** argv)
 
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
+#endif
 	return 0;
 }
 

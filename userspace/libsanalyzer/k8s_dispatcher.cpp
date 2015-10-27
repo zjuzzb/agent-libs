@@ -295,7 +295,7 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 					pod.set_labels(std::move(entries));
 				}
 			}
-			k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(object);
+			k8s_pod_s::container_id_list containers = k8s_component::extract_pod_container_ids(object);
 			pod.set_container_ids(std::move(containers));
 			k8s_component::extract_pod_data(object, pod);
 		}
@@ -322,7 +322,7 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 					pod.add_labels(std::move(entries));
 				}
 			}
-			k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(object);
+			k8s_pod_s::container_id_list containers = k8s_component::extract_pod_container_ids(object);
 			pod.add_container_ids(std::move(containers));
 			k8s_component::extract_pod_data(object, pod);
 		}
@@ -449,7 +449,7 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 					service.set_labels(std::move(entries));
 				}
 			}
-			k8s_component::extract_services_data(object, service);
+			k8s_component::extract_services_data(object, service, m_state.get_pods());
 		}
 	}
 	else if(data.m_reason == COMPONENT_MODIFIED)
@@ -474,7 +474,7 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 					service.add_labels(std::move(entries));
 				}
 			}
-			k8s_component::extract_services_data(object, service);
+			k8s_component::extract_services_data(object, service, m_state.get_pods());
 		}
 	}
 	else if(data.m_reason == COMPONENT_DELETED)

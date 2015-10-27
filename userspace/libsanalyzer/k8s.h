@@ -70,6 +70,7 @@ private:
 	k8s_net      m_net;
 	
 	static const k8s_component::component_map m_components;
+	friend class k8s_test;
 };
 
 inline bool k8s::watch_in_thread() const

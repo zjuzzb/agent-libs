@@ -9,6 +9,60 @@
 #include <iostream>
 
 //
+// container
+//
+
+k8s_container::k8s_container()
+{
+}
+
+k8s_container::k8s_container(const std::string& name, const port_list& ports): m_name(name),
+		m_ports(ports)
+{
+}
+
+k8s_container::k8s_container(const k8s_container& other): m_name(other.m_name),
+	m_ports(other.m_ports)
+{
+}
+
+k8s_container::k8s_container(k8s_container&& other): m_name(std::move(other.m_name)),
+	m_ports(std::move(other.m_ports))
+{
+}
+
+k8s_container& k8s_container::operator=(const k8s_container& other)
+{
+	m_name = other.m_name;
+	m_ports = other.m_ports;
+	return *this;
+}
+
+bool k8s_container::has_port(const std::string& port_name) const
+{
+	for(const auto& port : m_ports)
+	{
+		if (port.get_name() == port_name)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+const k8s_container::port* k8s_container::get_port(const std::string& port_name) const
+{
+	for(const auto& port : m_ports)
+	{
+		if (port.get_name() == port_name)
+		{
+			return &port;
+		}
+	}
+	return 0;
+}
+
+//
 // component
 //
 
@@ -48,7 +102,7 @@ k8s_pair_list k8s_component::extract_object(const Json::Value& object, const std
 	return entry_list;
 }
 
-std::vector<std::string> k8s_component::extract_pod_containers(const Json::Value& item)
+std::vector<std::string> k8s_component::extract_pod_container_ids(const Json::Value& item)
 {
 	std::vector<std::string> container_list;
 	Json::Value status = item["status"];
@@ -68,6 +122,61 @@ std::vector<std::string> k8s_component::extract_pod_containers(const Json::Value
 		}
 	}
 	return container_list;
+}
+
+k8s_container::list k8s_component::extract_pod_containers(const Json::Value& item)
+{
+	k8s_container::list ext_containers;
+	Json::Value spec = item["spec"];
+	if(!spec.isNull())
+	{
+		Json::Value containers = spec["containers"];
+		if(!containers.isNull())
+		{
+			for (auto& container : containers)
+			{
+				std::string cont_name;
+				Json::Value name = container["name"];
+				if(!name.isNull()) { cont_name = name.asString(); }
+				else { return ext_containers; }
+
+				k8s_container::port_list cont_ports;
+				Json::Value ports = container["ports"];
+				for(const auto& port : ports)
+				{
+					k8s_container::port cont_port;
+					Json::Value name = port["name"];
+					if(!name.isNull())
+					{
+						cont_port.set_name(name.asString());
+					}
+					Json::Value cport = port["containerPort"];
+					if(!cport.isNull())
+					{
+						cont_port.set_port(cport.asUInt());
+					}
+					else
+					{
+						g_logger.log("Port not found, setting value to 0", sinsp_logger::SEV_WARNING);
+						cont_port.set_port(0);
+					}
+					Json::Value protocol = port["protocol"];
+					if(!protocol.isNull())
+					{
+						cont_port.set_protocol(protocol.asString());
+					}
+					else
+					{
+						std::string port_name = name.isNull() ? "[NO NAME]" : name.asString();
+						g_logger.log("Protocol not found for port: " + port_name, sinsp_logger::SEV_WARNING);
+					}
+					cont_ports.push_back(cont_port);
+				}
+				ext_containers.emplace_back(k8s_container(cont_name, cont_ports));
+			}
+		}
+	}
+	return ext_containers;
 }
 
 void k8s_component::extract_pod_data(const Json::Value& item, k8s_pod_s& pod)
@@ -140,7 +249,7 @@ std::vector<std::string> k8s_component::extract_nodes_addresses(const Json::Valu
 	return address_list;
 }
 
-void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s& service)
+void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s& service, const k8s_state_s::pods& pods)
 {
 	if(!spec.isNull())
 	{
@@ -172,7 +281,43 @@ void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_s
 				Json::Value json_target_port = port["targetPort"];
 				if(!json_target_port.isNull())
 				{
-					p.m_target_port = json_target_port.asUInt();
+					if(json_target_port.isIntegral())
+					{
+						p.m_target_port = json_target_port.asUInt();
+					}
+					else if(json_target_port.isString())
+					{
+						std::string port_name = std::move(json_target_port.asString());
+						const k8s_pod_s* pod = service.get_selected_pod(pods);
+						if(pod)
+						{
+							const k8s_container::list& containers = pod->get_containers();
+							for(const auto& container : containers)
+							{
+								const k8s_container::port* container_port = container.get_port(port_name);
+								if(container_port)
+								{
+									p.m_target_port = container_port->get_port();
+								}
+								else
+								{
+									g_logger.log("Error while trying to determine port for service [" + service.get_name() + "]: "
+												"no ports found for container [" + container.get_name() + "]", sinsp_logger::SEV_ERROR);
+									p.m_target_port = 0;
+								}
+							}
+						}
+						else
+						{
+							g_logger.log("Error while trying to determine service port: no pods available.", sinsp_logger::SEV_ERROR);
+							p.m_target_port = 0;
+						}
+					}
+					else
+					{
+						g_logger.log("Port of unknown or unsupported type.", sinsp_logger::SEV_ERROR);
+						p.m_target_port = 0;
+					}
 				}
 
 				Json::Value json_node_port = port["nodePort"];
@@ -344,6 +489,34 @@ k8s_service_s::k8s_service_s(const std::string& name, const std::string& uid, co
 {
 }
 
+// TODO: proper selection process is more complicated, see “Labels and Selectors” at
+// http://kubernetes.io/v1.0/docs/user-guide/labels.html
+bool k8s_service_s::selector_in_labels(const k8s_pair_list& labels, const k8s_pair_s& selector)
+{
+	for(const auto& label : labels)
+	{
+		if(label.first == selector.first && label.second == selector.second)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+const k8s_pod_s* k8s_service_s::get_selected_pod(const std::vector<k8s_pod_s>& pods)
+{
+	for(const auto& pod : pods)
+	{
+		for (const auto& selector : get_selectors())
+		{
+			if (selector_in_labels(pod.get_labels(), selector))
+			{
+				return &pod;
+			}
+		}
+	}
+	return 0;
+}
 
 //
 // state

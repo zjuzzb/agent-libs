@@ -4,8 +4,8 @@
     <![CDATA[]]>
   </Environment>
   <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
-  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="No"/>
-  <Project Name="dragent" Path="dragent.project" Active="Yes"/>
+  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="Yes"/>
+  <Project Name="dragent" Path="dragent.project" Active="No"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="yes">
       <Project Name="sysdig" ConfigName="Debug"/>
