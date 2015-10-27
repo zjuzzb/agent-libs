@@ -152,7 +152,7 @@ public:
 		sigprocmask(SIG_SETMASK, &m_orig_set, NULL);
 	}
 
-	int wait(pid_t pid, unsigned timeout_s=3)
+	int wait(pid_t pid, unsigned timeout_s=20)
 	{
 		sigset_t mask;
 		sigemptyset(&mask);
