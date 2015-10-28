@@ -573,50 +573,63 @@ void k8s_state_s::update_pod(k8s_pod_s& pod, const Json::Value& item, bool reset
 		cache_component(m_container_pods, container_id, &pod);
 	}
 
-	if(reset) // initially, we just set everything
+	try
 	{
-		pod.set_container_ids(std::move(container_ids));
-		pod.set_containers(std::move(containers));
+		if(reset) // initially, we just set everything
+		{
+			pod.set_container_ids(std::move(container_ids));
+			pod.set_containers(std::move(containers));
+		}
+		else // update call
+		{
+			for(k8s_pod_s::container_id_list::iterator it = container_ids.begin(); it != container_ids.end();)
+			{
+				std::string* cid = pod.get_container_id(*it);
+				if(cid && (*cid != *it))
+				{
+					*cid = *it;
+					it = container_ids.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+
+			if(container_ids.size()) // what's left are new container IDs
+			{
+				pod.add_container_ids(std::move(container_ids));
+			}
+
+			for(k8s_pod_s::container_list::iterator it = containers.begin(); it != containers.end();)
+			{
+				k8s_container* c = pod.get_container(it->get_name());
+				if(c && (*c != *it))
+				{
+					*c = *it;
+					it = containers.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+
+			if(containers.size()) // what's left are new containers
+			{
+				pod.add_containers(std::move(containers));
+			}
+		}
 	}
-	else // update call
+	catch(...)
 	{
-		for(k8s_pod_s::container_id_list::iterator it = container_ids.begin(); it != container_ids.end();)
+		g_logger.log("POD update failed, uncaching.", sinsp_logger::SEV_ERROR);
+		k8s_pod_s::container_id_list container_ids = k8s_component::extract_pod_container_ids(item);
+		for(const auto& container_id : container_ids)
 		{
-			std::string* cid = pod.get_container_id(*it);
-			if(cid && (*cid != *it))
-			{
-				*cid = *it;
-				it = container_ids.erase(it);
-			}
-			else
-			{
-				++it;
-			}
+			uncache_component(m_container_pods, container_id);
 		}
-
-		if(container_ids.size()) // what's left are new container IDs
-		{
-			pod.add_container_ids(std::move(container_ids));
-		}
-
-		for(k8s_pod_s::container_list::iterator it = containers.begin(); it != containers.end();)
-		{
-			k8s_container* c = pod.get_container(it->get_name());
-			if(c && (*c != *it))
-			{
-				*c = *it;
-				it = containers.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
-
-		if(containers.size()) // what's left are new containers
-		{
-			pod.add_containers(std::move(containers));
-		}
+		throw;
 	}
 }
 

@@ -503,7 +503,7 @@ public:
 
 	// pod by container;
 
-	const k8s_pod_s* get_pod(const std::string& container)
+	const k8s_pod_s* get_pod(const std::string& container) const
 	{
 		container_pod_map::const_iterator it = m_container_pods.find(container);
 		if(it != m_container_pods.end())
@@ -557,7 +557,6 @@ private:
 		{
 			map.erase(it);
 		}
-		throw sinsp_exception("Container not found: " + key);
 	}
 
 	container_pod_map& get_container_pod_map() { return m_container_pods; }

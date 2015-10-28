@@ -137,6 +137,8 @@ int main(int argc, char** argv)
 		}
 		draiosproto::metrics met;
 		k8s_proto(met).get_proto(kube->get_state());
+		std::cout << met.DebugString() << std::endl;
+		return 0;
 		//sw.stop();
 		int i = 0;
 		if(run_watch_thread)
