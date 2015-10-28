@@ -471,6 +471,32 @@ k8s_pod_s::k8s_pod_s(const std::string& name, const std::string& uid, const std:
 {
 }
 
+bool k8s_pod_s::has_container_id(const std::string& container_id)
+{
+	for(const auto& c : m_container_ids)
+	{
+		if(c == container_id) { return true; }
+	}
+	return false;
+}
+
+std::string* k8s_pod_s::get_container_id(const std::string& container_id)
+{
+	for(auto& c : m_container_ids)
+	{
+		if(c == container_id) { return &c; }
+	}
+	return 0;
+}
+
+k8s_container* k8s_pod_s::get_container(const std::string& container_name)
+{
+	for(auto& c : m_containers)
+	{
+		if(c.get_name() == container_name) { return &c; }
+	}
+	return 0;
+}
 
 //
 // replication controller
@@ -522,9 +548,83 @@ const k8s_pod_s* k8s_service_s::get_selected_pod(const std::vector<k8s_pod_s>& p
 // state
 //
 
+const std::string k8s_state_s::m_prefix = "docker://";
+
 k8s_state_s::k8s_state_s()
 {
 }
+
+// state/pods
+
+void k8s_state_s::update_pod(k8s_pod_s& pod, const Json::Value& item, bool reset)
+{
+	k8s_pod_s::container_id_list container_ids = k8s_component::extract_pod_container_ids(item);
+	k8s_container::list containers = k8s_component::extract_pod_containers(item);
+	//TODO: consolidate (integrate IDs into containers)
+	//ASSERT(container_ids.size() == containers.size());
+	k8s_component::extract_pod_data(item, pod);
+	if(reset) // initially, we just set everything
+	{
+		pod.set_container_ids(std::move(container_ids));
+		pod.set_containers(std::move(containers));
+	}
+	else // update call
+	{
+		for(k8s_pod_s::container_id_list::iterator it = container_ids.begin(); it != container_ids.end();)
+		{
+			std::string* cid = pod.get_container_id(*it);
+			if(cid && (*cid != *it))
+			{
+				*cid = *it;
+				it = container_ids.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+
+		if(container_ids.size()) // what's left are new container IDs
+		{
+			pod.add_container_ids(std::move(container_ids));
+		}
+
+		for(k8s_pod_s::container_list::iterator it = containers.begin(); it != containers.end();)
+		{
+			k8s_container* c = pod.get_container(it->get_name());
+			if(c && (*c != *it))
+			{
+				*c = *it;
+				it = containers.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+
+		if(containers.size()) // what's left are new containers
+		{
+			pod.add_containers(std::move(containers));
+		}
+	}
+	// cache pods by container ID
+	for(const auto& container_id : container_ids)
+	{
+		cache_pod(container_id, pod);
+	}
+}
+
+bool k8s_state_s::has_pod(k8s_pod_s& pod)
+{
+	for(const auto& p : m_pods)
+	{
+		if(p == pod) { return true; }
+	}
+	return false;
+}
+
+// state/general
 
 void k8s_state_s::replace_items(k8s_component::type t, const std::string& name, const std::vector<k8s_pair_s>&& items)
 {

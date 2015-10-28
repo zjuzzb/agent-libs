@@ -71,6 +71,7 @@ private:
 
 int main(int argc, char** argv)
 {
+#if 0
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
@@ -80,7 +81,7 @@ int main(int argc, char** argv)
 	draiosproto::metrics met;
 	k8s_proto(met).get_proto(k8stest.get_k8s().get_state());
 	std::cout << met.DebugString() << std::endl;
-#if 0
+#endif
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -96,7 +97,7 @@ int main(int argc, char** argv)
 			}
 		}
 #else
-		bool run_watch_thread = false;
+		bool run_watch_thread = true;
 		if(argc >= 3 && std::string(argv[2]) == "true")
 		{
 			g_logger.log(Poco::format("Argument ignored: run_watch_thread=%s", std::string(argv[2])));
@@ -219,7 +220,7 @@ int main(int argc, char** argv)
 
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
-#endif
+
 	return 0;
 }
 

@@ -8,8 +8,10 @@
 #pragma once
 
 #include "json/json.h"
+#include "sinsp.h"
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 typedef std::pair<std::string, std::string> k8s_pair_s;
 typedef std::vector<k8s_pair_s>             k8s_pair_list;
@@ -37,6 +39,10 @@ public:
 
 		const std::string& get_protocol() const;
 
+		bool operator==(const port& other) const;
+
+		bool operator!=(const port& other) const;
+
 	private:
 		std::string m_name;
 		uint32_t    m_port = 0;
@@ -62,6 +68,10 @@ public:
 	void set_name(const std::string& name);
 
 	const std::string& get_name() const;
+
+	bool operator==(const k8s_container& other) const;
+
+	bool operator!=(const k8s_container& other) const;
 
 private:
 	std::string m_name;
@@ -236,6 +246,10 @@ public:
 
 	void emplace_container(k8s_container&& container);
 
+	std::string* get_container_id(const std::string& container_id);
+
+	k8s_container* get_container(const std::string& container_name);
+
 	// node name, host IP and internal IP
 	const std::string& get_node_name() const;
 
@@ -248,6 +262,13 @@ public:
 	const std::string& get_internal_ip() const;
 
 	void set_internal_ip(const std::string& internal_ip);
+
+	// comparison
+	bool operator==(const k8s_pod_s& other) const;
+
+	bool operator!=(const k8s_pod_s& other) const;
+
+	bool has_container_id(const std::string& container_id);
 
 private:
 	container_id_list m_container_ids;
@@ -320,6 +341,10 @@ public:
 	typedef std::vector<k8s_rc_s>      controllers;
 	typedef std::vector<k8s_service_s> services;
 
+	typedef std::unordered_map<std::string, k8s_pod_s*>     container_pod_map;
+	typedef std::unordered_map<std::string, k8s_service_s*> pod_service_map;
+	typedef std::unordered_map<std::string, k8s_rc_s*>      pod_rc_map;
+
 	k8s_state_s();
 
 	//
@@ -359,6 +384,12 @@ public:
 	void push_pod(const k8s_pod_s& pod);
 
 	void emplace_pod(k8s_pod_s&& pod);
+
+	void update_pod(k8s_pod_s& pod, const Json::Value& item, bool reset);
+
+	bool has_pod(k8s_pod_s& pod);
+
+	const k8s_pod_s::container_id_list& get_pod_container_ids(k8s_pod_s& pod);
 
 	//
 	// replication controllers
@@ -416,6 +447,21 @@ public:
 		return false;
 	}
 
+	// Returns a pointer to existing component, if it exists.
+	// If component does not exist, it returns null pointer.
+	template <typename C, typename T>
+	T* get_component(C& container, const std::string& uid)
+	{
+		for (auto& comp : container)
+		{
+			if(comp.get_uid() == uid)
+			{
+				return &comp;
+			}
+		}
+		return 0;
+	}
+
 	// Returns the reference to existing component, if it exists.
 	// If component does not exist, it emplaces it to the back of the
 	// container and returns the reference of the added component.
@@ -451,6 +497,72 @@ public:
 		return false;
 	}
 
+	//
+	// cached lookup support
+	//
+
+	// pod by container;
+
+	const k8s_pod_s* get_pod(const std::string& container)
+	{
+		container_pod_map::const_iterator it = m_container_pods.find(container);
+		if(it != m_container_pods.end())
+		{
+			return it->second;
+		}
+		return 0;
+	}
+
+	bool is_pod_cached(const std::string& container_id)
+	{
+		return (m_container_pods.find(container_id) != m_container_pods.end());
+	}
+
+	void cache_pod(const std::string& container_id, k8s_pod_s& pod)
+	{
+		std::string::size_type pos = container_id.find(m_prefix);
+		if (pos == 0)
+		{
+			m_container_pods[container_id.substr(m_prefix.size())] = &pod;
+			return;
+		}
+		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + container_id);
+	}
+
+	void uncache_pod(const std::string& container_id)
+	{
+		container_pod_map::iterator it = m_container_pods.find(container_id);
+		if(it != m_container_pods.end())
+		{
+			m_container_pods.erase(it);
+		}
+		throw sinsp_exception("Container not found: " + container_id);
+	}
+
+	// service by pod
+
+	const k8s_service_s* get_service(const std::string& pod)
+	{
+		pod_service_map::const_iterator it = m_pod_services.find(pod);
+		if(it != m_pod_services.end())
+		{
+			return it->second;
+		}
+		return 0;
+	}
+
+	// replication controller by pod
+
+	const k8s_rc_s* get_rc(const std::string& pod)
+	{
+		pod_rc_map::const_iterator it = m_pod_rcs.find(pod);
+		if(it != m_pod_rcs.end())
+		{
+			return it->second;
+		}
+		return 0;
+	}
+
 	void clear(k8s_component::type type = k8s_component::K8S_COMPONENT_COUNT);
 
 private:
@@ -459,6 +571,11 @@ private:
 	pods        m_pods;
 	controllers m_controllers;
 	services    m_services;
+
+	static const std::string m_prefix; // "docker://"
+	container_pod_map        m_container_pods;
+	pod_service_map          m_pod_services;
+	pod_rc_map               m_pod_rcs;
 };
 
 //
@@ -473,6 +590,18 @@ inline const std::string& k8s_container::get_name() const
 inline void k8s_container::set_name(const std::string& name)
 {
 	m_name = name;
+}
+
+inline bool k8s_container::operator==(const k8s_container& other) const
+{
+	if(&other == this) { return true; }
+	return (other.m_name == m_name) && (other.m_ports == m_ports);
+}
+
+inline bool k8s_container::operator!=(const k8s_container& other) const
+{
+	if(&other == this) { return false; }
+	return !(other == *this);
 }
 
 //
@@ -508,6 +637,21 @@ inline const std::string& k8s_container::port::get_protocol() const
 {
 	return m_protocol;
 }
+
+inline bool k8s_container::port::operator==(const port& other) const
+{
+	if(&other == this) { return true; }
+	return other.m_name == m_name &&
+			other.m_port == m_port &&
+			other.m_protocol == m_protocol;
+}
+
+inline bool k8s_container::port::operator!=(const port& other) const
+{
+	if(&other == this) { return false; }
+	return !(other == *this);
+}
+
 
 //
 // component
@@ -664,6 +808,23 @@ inline void k8s_pod_s::emplace_container_id(std::string&& container_id)
 	m_container_ids.emplace_back(std::move(container_id));
 }
 
+// comparison
+
+inline bool k8s_pod_s::operator==(const k8s_pod_s& other) const
+{
+	if(&other == this) { return true; }
+	return other.m_container_ids == m_container_ids &&
+			other.m_containers == m_containers &&
+			other.m_host_ip == m_host_ip &&
+			other.m_internal_ip == m_internal_ip;
+}
+
+inline bool k8s_pod_s::operator!=(const k8s_pod_s& other) const
+{
+	if(&other == this) { return false; }
+	return !(other == *this);
+}
+
 // containers
 
 inline const k8s_pod_s::container_list& k8s_pod_s::get_containers() const
@@ -812,6 +973,11 @@ inline void k8s_state_s::push_pod(const k8s_pod_s& pod)
 inline void k8s_state_s::emplace_pod(k8s_pod_s&& pod)
 {
 	m_pods.emplace_back(std::move(pod));
+}
+
+inline const k8s_pod_s::container_id_list& k8s_state_s::get_pod_container_ids(k8s_pod_s& pod)
+{
+	return pod.get_container_ids();
 }
 
 // replication controllers

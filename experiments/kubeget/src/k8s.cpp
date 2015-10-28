@@ -242,16 +242,8 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				}
 				else if(component == k8s_component::K8S_PODS)
 				{
-					std::ostringstream os;
 					k8s_pod_s& pod = m_state.get_pods().back();
-					k8s_pod_s::container_id_list container_ids = k8s_component::extract_pod_container_ids(item);
-					k8s_container::list containers = k8s_component::extract_pod_containers(item);
-					//TODO: consolidate (integrate IDs into containers)
-					ASSERT(container_ids.size() == containers.size());
-					pod.set_container_ids(std::move(container_ids));
-					m_state.get_pods().back().set_containers(std::move(containers));
-
-					k8s_component::extract_pod_data(item, m_state.get_pods().back());
+					m_state.update_pod(pod, item, true);
 				}
 				else if(component == k8s_component::K8S_SERVICES)
 				{
