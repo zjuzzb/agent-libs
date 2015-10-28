@@ -513,59 +513,57 @@ public:
 		return 0;
 	}
 
-	bool is_pod_cached(const std::string& container_id)
-	{
-		return (m_container_pods.find(container_id) != m_container_pods.end());
-	}
-
-	void cache_pod(const std::string& container_id, k8s_pod_s& pod)
-	{
-		std::string::size_type pos = container_id.find(m_prefix);
-		if (pos == 0)
-		{
-			m_container_pods[container_id.substr(m_prefix.size())] = &pod;
-			return;
-		}
-		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + container_id);
-	}
-
-	void uncache_pod(const std::string& container_id)
-	{
-		container_pod_map::iterator it = m_container_pods.find(container_id);
-		if(it != m_container_pods.end())
-		{
-			m_container_pods.erase(it);
-		}
-		throw sinsp_exception("Container not found: " + container_id);
-	}
-
-	// service by pod
-
-	const k8s_service_s* get_service(const std::string& pod)
-	{
-		pod_service_map::const_iterator it = m_pod_services.find(pod);
-		if(it != m_pod_services.end())
-		{
-			return it->second;
-		}
-		return 0;
-	}
-
-	// replication controller by pod
-
-	const k8s_rc_s* get_rc(const std::string& pod)
-	{
-		pod_rc_map::const_iterator it = m_pod_rcs.find(pod);
-		if(it != m_pod_rcs.end())
-		{
-			return it->second;
-		}
-		return 0;
-	}
-
 	void clear(k8s_component::type type = k8s_component::K8S_COMPONENT_COUNT);
 
+	const container_pod_map& get_container_pod_map() const { return m_container_pods; }
+	const pod_service_map& get_pod_service_map() const { return m_pod_services; }
+	const pod_rc_map& get_pod_rc_map() const { return m_pod_rcs; }
+
 private:
+	template<typename C>
+	const typename C::mapped_type* get_component(const C& map, const std::string& key)
+	{
+		typename C::const_iterator it = map.find(key);
+		if(it != map.end())
+		{
+			return it->second;
+		}
+		return 0;
+	}
+
+	template<typename C>
+	bool is_component_cached(const C& map, const std::string& key)
+	{
+		return (map.find(key) != map.end());
+	}
+
+	template<typename C>
+	void cache_component(C& map, const std::string& key, typename C::mapped_type component)
+	{
+		std::string::size_type pos = key.find(m_prefix);
+		if (pos == 0)
+		{
+			map[key.substr(m_prefix.size(), m_id_length)] = component;
+			return;
+		}
+		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + key);
+	}
+
+	template<typename C>
+	void uncache_component(C& map, const std::string& key)
+	{
+		typename C::iterator it = map.find(key);
+		if(it != map.end())
+		{
+			map.erase(it);
+		}
+		throw sinsp_exception("Container not found: " + key);
+	}
+
+	container_pod_map& get_container_pod_map() { return m_container_pods; }
+	pod_service_map& get_pod_service_map() { return m_pod_services; }
+	pod_rc_map& get_pod_rc_map() { return m_pod_rcs; }
+
 	namespaces  m_namespaces;
 	nodes       m_nodes;
 	pods        m_pods;
@@ -573,9 +571,12 @@ private:
 	services    m_services;
 
 	static const std::string m_prefix; // "docker://"
+	static const unsigned    m_id_length; // 12
 	container_pod_map        m_container_pods;
 	pod_service_map          m_pod_services;
 	pod_rc_map               m_pod_rcs;
+
+	friend class k8s_dispatcher;
 };
 
 //

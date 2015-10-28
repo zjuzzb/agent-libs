@@ -549,6 +549,7 @@ const k8s_pod_s* k8s_service_s::get_selected_pod(const std::vector<k8s_pod_s>& p
 //
 
 const std::string k8s_state_s::m_prefix = "docker://";
+const unsigned    k8s_state_s::m_id_length = 12u;
 
 k8s_state_s::k8s_state_s()
 {
@@ -563,6 +564,15 @@ void k8s_state_s::update_pod(k8s_pod_s& pod, const Json::Value& item, bool reset
 	//TODO: consolidate (integrate IDs into containers)
 	//ASSERT(container_ids.size() == containers.size());
 	k8s_component::extract_pod_data(item, pod);
+
+	// cache pods by container ID
+	// must be done here because we're moving the container below
+	// TODO: uncache if we fail below
+	for(const auto& container_id : container_ids)
+	{
+		cache_component(m_container_pods, container_id, &pod);
+	}
+
 	if(reset) // initially, we just set everything
 	{
 		pod.set_container_ids(std::move(container_ids));
@@ -607,11 +617,6 @@ void k8s_state_s::update_pod(k8s_pod_s& pod, const Json::Value& item, bool reset
 		{
 			pod.add_containers(std::move(containers));
 		}
-	}
-	// cache pods by container ID
-	for(const auto& container_id : container_ids)
-	{
-		cache_pod(container_id, pod);
 	}
 }
 
