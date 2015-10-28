@@ -587,6 +587,37 @@ app_checks:
     conf:
       apache_status_url: "http://localhost:{port}/server-status?auto"
 
+#
+# Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
+# use "dragent.yaml" instead.
+#
+# The presence of this entry in the configuration file shall enable kubernetes monitoring functionality
+# in the agent. The syntax for the entry is:
+#
+#   k8s_uri: http[s]://[username:password@]host[:port]
+#   k8s_autodetect: [True|false]
+#
+# If username:password is specified, it will be used to authenticate using HTTP Basic Authentication.
+# Unless port is explicitly specified, default will be used (80 for http, 443 for https).
+#
+# The k8s_autodetect setting being true (default) is effective only when there is no k8s_uri specified,
+# in which case agent will attempt to connect to the API server running on http://localhost:8080.
+#
+# For HTTPS, client certificate authentication can be controlled with following entries:
+#
+# k8s_ca_certificate: [filename]
+# k8s_ssl_verify_certificate: [true|False]
+#
+# Certificate file must be located in the /opt/draios directory.
+#
+# Example (overrides default setting):
+#
+# k8s_uri: https://vagrant:vagrant@localhost:4430
+# k8s_autodetect: false
+# k8s_ca_certificate: k8s-ca.crt
+# k8s_ssl_verify_certificate: true
+#
+
 known_ports:
   - 902 # VMware 
   - 903 # VMware

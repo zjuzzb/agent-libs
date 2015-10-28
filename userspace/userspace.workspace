@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Workspace Name="userspace" Database="">
+  <Environment>
+    <![CDATA[]]>
+  </Environment>
+  <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
+  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="No"/>
   <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="no">
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
+      <Project Name="sysdig" ConfigName="Debug"/>
+      <Project Name="kubeget" ConfigName="Debug"/>
       <Project Name="dragent" ConfigName="Debug"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release" Selected="yes">
+      <Project Name="sysdig" ConfigName="Release"/>
+      <Project Name="kubeget" ConfigName="Release"/>
       <Project Name="dragent" ConfigName="Release"/>
     </WorkspaceConfiguration>
   </BuildMatrix>

@@ -76,7 +76,7 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] [-s | --secure <value>] [-h | --help]"
+	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] [-cp | collector_port <value>] [-s | --secure <value>] [-cc | check_certificate] [-h | --help]"
 	echo "  access_key: Secret access key, as shown in Sysdig Cloud"
 	echo "  tags: List of tags for this host."
 	echo "        The syntax can be a comma-separated list of"
@@ -85,7 +85,10 @@ function help {
 	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
 	echo "        and \"webserver\" are all valid alternatives."
 	echo "  collector: collector IP for Sysdig Cloud on-premises installation"
+	echo "  collector_port: collector port [default 6666]"
 	echo "  secure: use a secure SSL/TLS connection to send metrics to the collector"
+	echo "          accepted values: true or false [default true]"
+	echo "  check_certificate: disable strong SSL certificate check for Sysdig Cloud on-premises installation"
 	echo "          accepted values: true or false [default true]"
 	echo "  help: print this usage and exit"
 	echo
@@ -156,11 +159,29 @@ if [[ ${BACKWARD} != true ]]; then
 			fi
 			shift
 			;;
+		-cp|--collector_port)
+			if is_valid_value "${2}"; then
+				COLLECTOR_PORT="${2}"
+			else
+				echo "ERROR: no value provided for collector port option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
 		-s|--secure)
 			if is_valid_value "${2}"; then
 				SECURE="${2}"
 			else
-				echo "ERROR: no value provided connection security option, use -h | --help for $(basename ${0}) Usage"
+				echo "ERROR: no value provided for connection security option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-cc|--check_certificate)
+			if is_valid_value "${2}"; then
+				CHECK_CERT="${2}"
+			else
+				echo "ERROR: no value provided for SSL check certificate option, use -h | --help for $(basename ${0}) Usage"
 				exit 1
 			fi
 			shift
@@ -293,20 +314,40 @@ fi
 if [ ! -z "$COLLECTOR" ]; then
 	echo "* Setting collector endpoint"
 
-	if ! grep ^collector $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^collector: $CONFIG_FILE > /dev/null 2>&1; then
 		echo "collector: $COLLECTOR" >> $CONFIG_FILE
 	else
-		sed -i "s/^collector.*/collector: $COLLECTOR/g" $CONFIG_FILE
+		sed -i "s/^collector:.*/collector: $COLLECTOR/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$COLLECTOR_PORT" ]; then
+	echo "* Setting collector port"
+
+	if ! grep ^collector_port $CONFIG_FILE > /dev/null 2>&1; then
+		echo "collector_port: $COLLECTOR_PORT" >> $CONFIG_FILE
+	else
+		sed -i "s/^collector_port.*/collector_port: $COLLECTOR_PORT/g" $CONFIG_FILE
 	fi
 fi
 
 if [ ! -z "$SECURE" ]; then
 	echo "* Setting connection security"
 
-	if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+	if ! grep ^ssl: $CONFIG_FILE > /dev/null 2>&1; then
 		echo "ssl: $SECURE" >> $CONFIG_FILE
 	else
-		sed -i "s/^ssl.*/ssl: $SECURE/g" $CONFIG_FILE
+		sed -i "s/^ssl:.*/ssl: $SECURE/g" $CONFIG_FILE
+	fi
+fi
+
+if [ ! -z "$CHECK_CERT" ]; then
+	echo "* Setting SSL certificate check level"
+
+	if ! grep ^ssl_verify_certificate $CONFIG_FILE > /dev/null 2>&1; then
+		echo "ssl_verify_certificate: $CHECK_CERT" >> $CONFIG_FILE
+	else
+		sed -i "s/^ssl_verify_certificate.*/ssl_verify_certificate: $CHECK_CERT/g" $CONFIG_FILE
 	fi
 fi
 

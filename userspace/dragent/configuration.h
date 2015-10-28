@@ -295,6 +295,7 @@ public:
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
 	bool m_ssl_enabled;
+	bool m_ssl_verify_certificate;
 	string m_ssl_ca_certificate;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
@@ -342,6 +343,10 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+	std::string m_k8s_api_server;
+	bool m_k8s_autodetect;
+	string m_k8s_ssl_ca_certificate;
+	bool m_k8s_ssl_verify_certificate;
 
 	bool java_present()
 	{

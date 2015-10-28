@@ -89,6 +89,23 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
 	//
+	// kubernetes
+	//
+	if(!m_configuration->m_k8s_api_server.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
+	}
+
+	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
+
+	if(!m_configuration->m_k8s_ssl_ca_certificate.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_ca_certificate(m_configuration->m_k8s_ssl_ca_certificate);
+	}
+
+	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
+
+	//
 	// Configure compression in the protocol
 	//
 	m_analyzer->get_configuration()->set_compress_metrics(m_configuration->m_compression_enabled);
@@ -151,6 +168,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
+
 	//
 	// Load the chisels
 	//
@@ -187,7 +205,7 @@ void sinsp_worker::init()
 			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
-
+	
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);

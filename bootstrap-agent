@@ -113,6 +113,61 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make
 fi
 
+CURL_NAME=curl-7.45.0
+CURL_EXT=tar.bz2
+CURL_DIR=$DEPENDENCIES/$CURL_NAME
+if [ ! -d "$CURL_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/$CURL_NAME.$CURL_EXT
+	tar -xjf $CURL_NAME.$CURL_EXT
+	cd $CURL_DIR
+	./configure --disable-shared  \
+		--enable-optimize     \
+		--disable-curldebug   \
+		--disable-rt          \
+		--enable-http         \
+		--disable-ftp         \
+		--disable-file        \
+		--disable-ldap        \
+		--disable-ldaps       \
+		--disable-rtsp        \
+		--disable-telnet      \
+		--disable-tftp        \
+		--disable-pop3        \
+		--disable-imap        \
+		--disable-smb         \
+		--disable-smtp        \
+		--disable-gopher      \
+		--disable-sspi        \
+		--disable-ntlm-wb     \
+		--disable-tls-srp     \
+		--without-winssl      \
+		--without-darwinssl   \
+		--with-ssl=$DEPENDENCIES/openssl-1.0.1h \
+		--without-polarssl    \
+		--without-cyassl      \
+		--without-nss         \
+		--without-axtls       \
+		--without-ca-path     \
+		--without-libmetalink \
+		--without-librtmp     \
+		--without-winidn      \
+		--without-libidn      \
+		--without-nghttp2
+	make
+fi
+
+B64_NAME=libb64-1.2
+B64_EXT=src.zip
+B64_DIR=$DEPENDENCIES/$B64_NAME
+if [ ! -d "$B64_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/$B64_NAME.$B64_EXT
+	unzip $B64_NAME.$B64_EXT
+	cd $B64_DIR
+	make
+fi
+
 JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
 ARCH=$(uname -m)
 if [ ! -d "$JAVA_DIR" ]; then

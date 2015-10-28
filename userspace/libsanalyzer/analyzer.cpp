@@ -43,8 +43,33 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
-
+#include "k8s.h"
+#include "k8s_proto.h"
+#include "curl/easy.h"
+#define BUFFERSIZE 512 // b64 needs this macro
+#include "b64/encode.h"
+#include "uri.h"
+#include "third-party/jsoncpp/json/json.h"
 #define DUMP_TO_DISK
+#include "Poco/URIStreamOpener.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/Path.h"
+#include "Poco/URI.h"
+#include "Poco/FileStream.h"
+#include "Poco/SharedPtr.h"
+#include "Poco/Exception.h"
+#include "Poco/Net/HTTPStreamFactory.h"
+#include "Poco/Net/HTTPSStreamFactory.h"
+#include "Poco/Net/SSLManager.h"
+#include "Poco/Net/PrivateKeyPassphraseHandler.h"
+#include "Poco/Net/InvalidCertificateHandler.h"
+#include <memory>
+#include <iostream>
+
+using namespace Poco;
+using namespace Poco::Net;
+
+bool sinsp_analyzer::m_k8s_bad_config = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -125,6 +150,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
 	
 	//
+	// Kubernetes
+	//
+	m_k8s = 0;
+
+	//
 	// Chisels init
 	//
 	add_chisel_dirs();
@@ -134,84 +164,28 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if(m_metrics)
-	{
-		delete m_metrics;
-	}
-
-	if(m_serialization_buffer)
-	{
-		free(m_serialization_buffer);
-	}
-
-	if(m_score_calculator)
-	{
-		delete m_score_calculator;
-	}
-
-	if(m_procfs_parser)
-	{
-		delete m_procfs_parser;
-	}
-
-	if(m_sched_analyzer2)
-	{
-		delete m_sched_analyzer2;
-	}
-
-	if(m_delay_calculator)
-	{
-		delete m_delay_calculator;
-	}
-
-	if(m_threadtable_listener)
-	{
-		delete(m_threadtable_listener);
-	}
-
-	if(m_fd_listener)
-	{
-		delete m_fd_listener;
-	}
-
-	if(m_reduced_ipv4_connections)
-	{
-		delete m_reduced_ipv4_connections;
-	}
-
-	if(m_ipv4_connections)
-	{
-		delete m_ipv4_connections;
-	}
+	delete m_metrics;
+	free(m_serialization_buffer);
+	delete m_score_calculator;
+	delete m_procfs_parser;
+	delete m_sched_analyzer2;
+	delete m_delay_calculator;
+	delete(m_threadtable_listener);
+	delete m_fd_listener;
+	delete m_reduced_ipv4_connections;
+	delete m_ipv4_connections;
 
 #ifdef HAS_UNIX_CONNECTIONS
-	if(m_unix_connections)
-	{
-		delete m_unix_connections;
-	}
+	delete m_unix_connections;
 #endif
 
 #ifdef HAS_PIPE_CONNECTIONS
-	if(m_pipe_connections)
-	{
-		delete m_pipe_connections;
-	}
+	delete m_pipe_connections;
 #endif
 
-	if(m_trans_table)
-	{
-		delete m_trans_table;
-	}
-
-	if(m_configuration)
-	{
-		delete m_configuration;
-	}
-
-	if(m_parser)
-	{
-		delete m_parser;
-	}
+	delete m_trans_table;
+	delete m_configuration;
+	delete m_parser;
 
 	if(m_protobuf_fp != NULL)
 	{
@@ -224,6 +198,8 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
+
+	delete m_k8s;
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -823,6 +799,99 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		Json::Value vers = root["versions"];
+		if(vers.isArray())
+		{
+			for (const auto& ver : vers)
+			{
+				if(ver.asString() == "v1")
+				{
+					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
+						sinsp_logger::SEV_INFO);
+					return new k8s(k8s_api, true, true, "/api/v1/");
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+class k8s_ca_handler: public InvalidCertificateHandler
+{
+public:
+	k8s_ca_handler(bool handle_on_server_side):
+		InvalidCertificateHandler(handle_on_server_side)
+	{
+	}
+
+	virtual ~k8s_ca_handler()
+	{
+	}
+
+	void onInvalidCertificate(const void*, VerificationErrorArgs& errorCert)
+	{
+		g_logger.log("K8S client certificate authentication failed", sinsp_logger::SEV_ERROR);
+		sinsp_analyzer::m_k8s_bad_config = true;
+		errorCert.setIgnoreError(false);
+	}
+};
+
+k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
+{
+	try
+	{
+		URI uri(k8s_api + "/api");
+		if (uri.getScheme() == "https")
+		{
+			try
+			{
+				try { HTTPSStreamFactory::registerFactory(); } catch(ExistsException&) { }
+				string cert = m_configuration->get_k8s_ssl_ca_certificate();
+				Poco::Net::Context::VerificationMode verification_mode;
+				if(m_configuration->get_k8s_ssl_verify_certificate())
+				{
+					verification_mode = Poco::Net::Context::VERIFY_STRICT;
+				}
+				else
+				{
+					verification_mode = Poco::Net::Context::VERIFY_NONE;
+				}
+				SharedPtr<InvalidCertificateHandler> ptrCert = new k8s_ca_handler(false);
+				Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+				SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
+			}
+			catch(...)
+			{
+				g_logger.log("K8S SSL configuration error. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+				m_k8s_bad_config = true;
+				return 0;
+			}
+		}
+		else
+		{
+			try { HTTPStreamFactory::registerFactory(); } catch(ExistsException&) { }
+		}
+
+		std::unique_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
+		std::ostringstream os;
+		StreamCopier::copyStream(*pStr.get(), os);
+		std::string json = std::move(os.str());
+		g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
+		return make_k8s(json, k8s_api);
+	}
+	catch (std::exception& exc)
+	{
+		g_logger.log(exc.what(), sinsp_logger::SEV_ERROR);
+		return 0;
+	}
+}
+
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	g_logger.format(sinsp_logger::SEV_INFO, "threadtable loadfactor=%f max_loadfactor=%f bucket-count=%d",
@@ -983,6 +1052,35 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
+
+				if(!m_k8s && !m_k8s_bad_config)
+				{
+					string k8s_api_server = m_configuration->get_k8s_api_server();
+					if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+					{
+						if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+						{
+							g_logger.log("Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
+							k8s_api_server = "http://localhost:8080";
+						}
+						else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+						{
+							for(const auto& arg : main_tinfo->m_args)
+							{
+								if(arg == "apiserver")
+								{
+									g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_INFO);
+									k8s_api_server = "http://localhost:8080";
+									break;
+								}
+							}
+						}
+					}
+					if(!k8s_api_server.empty())
+					{
+						m_k8s = get_k8s(k8s_api_server);
+					}
+				}
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
@@ -1409,14 +1507,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
-				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+				if(it->first.find("k8s_POD") != std::string::npos)
 				{
-					return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
-				});
-				if(long_running_proc != it->second.end())
-				{
-					containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
-														   (*long_running_proc)->m_vpid);
+					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+					{
+						return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+					});
+					if(long_running_proc != it->second.end())
+					{
+						containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
+															   (*long_running_proc)->m_vpid);
+					}
 				}
 			}
 			// Add host
@@ -2680,6 +2781,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
+			if (m_k8s)
+			{
+				emit_k8s();
+			}
+
 			emit_top_files();
 
 			//
@@ -3411,6 +3517,41 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 	}
 }
 
+void sinsp_analyzer::emit_k8s()
+{
+	try
+	{
+		ASSERT(m_k8s);
+
+		// if something went bad (typically kube-apiserver down),
+		// we destroy everything here and it will
+		// be recreated when/if api server is up
+		if(m_k8s)
+		{
+			if (m_k8s->is_alive())
+			{
+				//const draiosproto::k8s_state& proto =
+				k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+				//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+			}
+			else
+			{
+				delete m_k8s;
+				m_k8s = 0;
+			}
+		}
+	}
+	catch(std::exception& e)
+	{
+		g_logger.log(std::string("Error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+		if(m_k8s)
+		{
+			delete m_k8s;
+			m_k8s = 0;
+		}
+	}
+}
+
 void sinsp_analyzer::emit_top_files()
 {
 	vector<analyzer_file_stat*> files_sortable_list;
@@ -3554,7 +3695,7 @@ vector<string> sinsp_analyzer::emit_containers()
 		const auto& id = container_id_and_info.first;
 		const auto& container_info = container_id_and_info.second;
 		auto analyzer_it = m_containers.find(id);
-		if(analyzer_it != m_containers.end() &&
+		if(analyzer_it != m_containers.end() && container_info.m_name.find("k8s_POD") == std::string::npos &&
 		   (m_container_patterns.empty() ||
 			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
 						 [&container_info](const string& pattern)

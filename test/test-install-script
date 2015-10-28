@@ -1,0 +1,197 @@
+#!/bin/bash
+## test sysdig-agent install script
+
+
+TEST_ACCESS_KEY='e64a1780-5bbd-4083-8ce1-418c2bb0a354'
+TEST_ACCESS_KEY_2='e64a1780-5bbd-4083-8ce1-418c2bb0a360'
+TEST_TAGS='role:server,infrastructure:demo'
+TEST_TAGS_2='role:admin,infrastructure:demo'
+COLLECTOR='10.10.10.0'
+COLLECTOR_2='10.10.20.1'
+COLLECTOR_PORT='6443'
+COLLECTOR_PORT_2='6666'
+CONFIG_FILE=dragent.yaml
+INSTALL_SCRIPT_PATH="../scripts/install-agent"
+
+function check_config_file(){
+	for elem in ${1}
+	do
+		if ! grep $elem $CONFIG_FILE > /dev/null 2>&1; then
+			echo "no $elem in $CONFIG_FILE"
+			exit 1
+		else
+			echo "$elem in $CONFIG_FILE founded - OK"
+		fi
+		elem_count=$(grep $elem $CONFIG_FILE  | wc -l)
+		if [[ elem_count -ne 1 ]]; then
+			echo "PROBLEM - the element $elem is duplicated in the $CONFIG_FILE"
+			exit 1
+		fi
+	done
+}
+
+bash ${INSTALL_SCRIPT_PATH}
+if [[ $? -eq 1 ]]; then
+	echo "Test no params - OK"
+else
+	echo "Test no params - FAIL"
+	exit 1
+fi
+
+bash ${INSTALL_SCRIPT_PATH} ${TEST_ACCESS_KEY}
+if [[ $? -ne 0 ]]; then
+	echo "Test retro only key - FAIL"
+	exit 1
+else
+	echo "Test retro only key - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} ${TEST_ACCESS_KEY} ${TEST_TAGS}
+if [[ $? -ne 0 ]]; then
+	echo "Test retro key and tags - FAIL"
+	exit 1
+else	
+	echo "Test retro key and tags - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} ${TEST_TAGS}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY}
+if [[ $? -ne 0 ]]; then
+	echo "Test only accessy key - FAIL"
+	exit 1
+else	
+	echo "Test only accessy key - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY}"
+
+#check if sed on access_key works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2}
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --invalid_param
+if [[ $? -eq 1 ]]; then
+	echo "Test invalid param - OK"
+else
+	echo "Test invalid param - FAIL"
+	exit 1
+fi
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --tags ${TEST_TAGS}
+if [[ $? -ne 0 ]]; then
+	echo "Test access key and server tags - FAIL"
+	exit 1
+else	
+	echo "Test access key and server tags - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} ${TEST_TAGS}"
+
+#check if sed on access_key and tags works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2} --tags ${TEST_TAGS_2}
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key and tags - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key and tags - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2} ${TEST_ACCESS_KEY_2}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --tags ${TEST_TAGS} --invalid_param
+if [[ $? -eq 1 ]]; then
+	echo "Test invalid param - OK"
+else
+	echo "Test invalid param - FAIL"
+	exit 1
+fi
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --secure false
+if [[ $? -ne 0 ]]; then
+	echo "Test access key and no secure - FAIL"
+	exit 1
+else	
+	echo "Test access key and no secure - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} false"
+
+#check if sed on access_key and tags works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2} --secure true
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key and connection security - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key and connection security - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2} true"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --collector_port ${COLLECTOR_PORT}
+if [[ $? -ne 0 ]]; then
+	echo "Test access key no secure and collector_port - FAIL"
+	exit 1
+else	
+	echo "Test access key no secure and collector_port - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} ${COLLECTOR_PORT}"
+
+#check if sed on access_key and collector_port works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2} --collector_port ${COLLECTOR_PORT_2}
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key and collector_port - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key and collector_port - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2} ${COLLECTOR_PORT_2}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --collector ${COLLECTOR}
+if [[ $? -ne 0 ]]; then
+	echo "Test access key no secure and collector_port - FAIL"
+	exit 1
+else	
+	echo "Test access key no secure and collector_port - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} ${COLLECTOR}"
+
+#check if sed on access_key and collector works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2} --collector ${COLLECTOR_2}
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key and collector - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key and collector - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2} ${COLLECTOR_2}"
+rm $CONFIG_FILE
+
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY} --check_certificate true
+if [[ $? -ne 0 ]]; then
+	echo "Test access key and check_certificate - FAIL"
+	exit 1
+else	
+	echo "Test access key and check_certificate - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY} true"
+
+#check if sed on access_key and check_ssl_cert works
+bash ${INSTALL_SCRIPT_PATH} --access_key ${TEST_ACCESS_KEY_2} --check_certificate false
+if [[ $? -ne 0 ]]; then
+	echo "Test sed on access key and check_certificate - FAIL"
+	exit 1
+else	
+	echo "Test sed on access key and check_certificate - OK"
+fi
+check_config_file "${TEST_ACCESS_KEY_2} false"
+rm $CONFIG_FILE
+
+exit 0

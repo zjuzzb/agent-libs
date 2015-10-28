@@ -37,6 +37,7 @@ class sinsp_counters;
 class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
+class k8s;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -299,6 +300,9 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	k8s* make_k8s(const string& json, const string& k8s_api);
+	k8s* get_k8s(const string& k8s_api);
+	void emit_k8s();
 	void emit_top_files();
 	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
@@ -469,6 +473,9 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
 
+	k8s* m_k8s;
+	static bool m_k8s_bad_config;
+
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 
@@ -493,6 +500,7 @@ VISIBILITY_PRIVATE
 	friend class analyzer_threadtable_listener;
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
+	friend class k8s_ca_handler;
 };
 
 #endif // HAS_ANALYZER
