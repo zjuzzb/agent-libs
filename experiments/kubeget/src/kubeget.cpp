@@ -137,7 +137,7 @@ k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
 
 int main(int argc, char** argv)
 {
-#if 0
+
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 	//FileOutputStream fos("proto.out");
 	//fos << met.DebugString() << std::endl;
 	
-#endif
+#if 0
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -268,7 +268,7 @@ int main(int argc, char** argv)
 		google::protobuf::ShutdownProtobufLibrary();
 		return 1;
 	}
-
+#endif
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
 

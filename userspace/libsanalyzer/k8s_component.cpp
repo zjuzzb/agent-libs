@@ -807,7 +807,14 @@ void k8s_state_s::update_cache(const k8s_component::component_map::key_type& com
 				const k8s_pod_s::container_id_list& c_ids = pod.get_container_ids();
 				for(const auto& c_id : c_ids)
 				{
-					cache_pod(container_pod_map, c_id, &pod);
+					if(!is_component_cached(container_pod_map, c_id, &pod))
+					{
+						cache_pod(container_pod_map, c_id, &pod);
+					}
+					else
+					{
+						g_logger.log("Attempt to cache already cached POD: " + c_id, sinsp_logger::SEV_ERROR);
+					}
 				}
 			}
 		}
@@ -823,10 +830,14 @@ void k8s_state_s::update_cache(const k8s_component::component_map::key_type& com
 				std::vector<const k8s_pod_s*> pod_subset = rc.get_selected_pods(pods);
 				for(auto& pod : pod_subset)
 				{
-					const std::string& pod_name = pod->get_name();
-					if(!is_component_cached(pod_ctrl_map, pod_name, &rc))
+					const std::string& pod_uid = pod->get_uid();
+					if(!is_component_cached(pod_ctrl_map, pod_uid, &rc))
 					{
-						cache_component(pod_ctrl_map, pod_name, &rc);
+						cache_component(pod_ctrl_map, pod_uid, &rc);
+					}
+					else
+					{
+						g_logger.log("Attempt to cache already cached REPLICATION CONTROLLER: " + pod_uid, sinsp_logger::SEV_ERROR);
 					}
 				}
 			}
@@ -843,10 +854,14 @@ void k8s_state_s::update_cache(const k8s_component::component_map::key_type& com
 				std::vector<const k8s_pod_s*> pod_subset = service.get_selected_pods(pods);
 				for(auto& pod : pod_subset)
 				{
-					const std::string& pod_name = pod->get_name();
-					if(!is_component_cached(pod_svc_map, pod_name, &service))
+					const std::string& pod_uid = pod->get_uid();
+					if(!is_component_cached(pod_svc_map, pod_uid, &service))
 					{
-						cache_component(pod_svc_map, pod_name, &service);
+						cache_component(pod_svc_map, pod_uid, &service);
+					}
+					else
+					{
+						g_logger.log("Attempt to cache already cached SERVICE: " + pod_uid, sinsp_logger::SEV_ERROR);
 					}
 				}
 			}

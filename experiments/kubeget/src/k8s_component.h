@@ -346,9 +346,9 @@ public:
 	typedef std::vector<k8s_rc_s>      controllers;
 	typedef std::vector<k8s_service_s> services;
 
-	typedef std::unordered_map<std::string, const k8s_pod_s*>     container_pod_map;
+	typedef std::unordered_map<std::string, const k8s_pod_s*>          container_pod_map;
 	typedef std::unordered_multimap<std::string, const k8s_service_s*> pod_service_map;
-	typedef std::unordered_multimap<std::string, const k8s_rc_s*>      pod_rc_map;
+	typedef std::unordered_map<std::string, const k8s_rc_s*>           pod_rc_map;
 
 	k8s_state_s();
 
