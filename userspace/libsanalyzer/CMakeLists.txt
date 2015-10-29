@@ -11,6 +11,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 add_definitions( -DHAS_ANALYZER )
+add_definitions(-DK8S_DISABLE_THREAD)
 
 add_library(sanalyzer STATIC
 	analyzer.cpp
@@ -35,7 +36,15 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_component.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_dispatcher.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_data.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_net.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_http.cpp		
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp		
 	k8s_proto.cpp
 	metrics.cpp
 	parser_http.cpp

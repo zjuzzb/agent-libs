@@ -97,29 +97,12 @@
     <File Name="libsanalyzer/analyzer_thread.cpp"/>
     <File Name="libsanalyzer/app_checks.cpp"/>
     <File Name="libsanalyzer/draios.proto"/>
-    <File Name="libsanalyzer/k8s_net.cpp"/>
-    <File Name="libsanalyzer/k8s.cpp"/>
-    <File Name="libsanalyzer/k8s_net.h"/>
     <File Name="libsanalyzer/parser_tls.cpp"/>
-    <File Name="libsanalyzer/k8s_event_data.cpp"/>
-    <File Name="libsanalyzer/k8s.h"/>
-    <File Name="libsanalyzer/k8s_event_data.h"/>
-    <File Name="libsanalyzer/k8s_component.cpp"/>
-    <File Name="libsanalyzer/k8s_dispatcher.cpp"/>
-    <File Name="libsanalyzer/k8s_dispatcher.h"/>
     <File Name="libsanalyzer/parser_tls.h"/>
-    <File Name="libsanalyzer/k8s_component.h"/>
-    <File Name="libsanalyzer/k8s_http.cpp"/>
-    <File Name="libsanalyzer/k8s_poller.h"/>
-    <File Name="libsanalyzer/k8s_poller.cpp"/>
-    <File Name="libsanalyzer/k8s_http.h"/>
     <File Name="libsanalyzer/uri.cpp"/>
     <File Name="libsanalyzer/uri.h"/>
     <File Name="libsanalyzer/k8s_proto.cpp"/>
     <File Name="libsanalyzer/k8s_proto.h"/>
-    <File Name="libsanalyzer/k8s_common.h"/>
-    <File Name="libsanalyzer/k8s_collector.h"/>
-    <File Name="libsanalyzer/k8s_collector.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

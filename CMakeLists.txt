@@ -14,7 +14,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 
 add_definitions(-DPLATFORM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DHAS_CAPTURE)
-add_definitions(-DK8S_DISABLE_THREAD)
 
 set(DRAIOS_BIN_PREFIX "/opt/draios")
 

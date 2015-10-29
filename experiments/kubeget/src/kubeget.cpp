@@ -128,9 +128,9 @@ k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
 		try
 		{
 			kube = new k8s(host, true, run_watch_thread);
-			while(!kube->is_alive())
+			if(!kube)
 			{
-				g_logger.log("waiting for kube to come online....", sinsp_logger::SEV_ERROR);
+				g_logger.log("Error getting kube...", sinsp_logger::SEV_ERROR);
 				sleep(1);
 			}
 		}
@@ -146,7 +146,7 @@ k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
 
 int main(int argc, char** argv)
 {
-
+#if 0
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
@@ -160,8 +160,8 @@ int main(int argc, char** argv)
 	//k8s_proto(met).get_proto(state);
 	//FileOutputStream fos("proto.out");
 	//fos << met.DebugString() << std::endl;
-	
-#if 0
+#endif
+
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -277,7 +277,7 @@ int main(int argc, char** argv)
 		google::protobuf::ShutdownProtobufLibrary();
 		return 1;
 	}
-#endif
+
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
 
