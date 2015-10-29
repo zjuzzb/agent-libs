@@ -75,9 +75,18 @@ void print_maps(k8s& kube)
 #ifdef K8S_DISABLE_THREAD
 	const k8s_state_s& state = kube.get_state();
 
+	const k8s_state_s::namespace_map& ns_map = state.get_namespace_map();
+	std::cout << "---------" << " found " << ns_map.size() << " namespaces --------" << std::endl;
+	int counter = 0;
+	for(const auto& entry : ns_map)
+	{
+		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
+	}
+	std::cout << "-----------------------------------" << std::endl << std::endl;
+
 	const k8s_state_s::container_pod_map& cp_map = state.get_container_pod_map();
 	std::cout << "---------" << " found " << cp_map.size() << " pods by container --------" << std::endl;
-	int counter = 0;
+	counter = 0;
 	for(const auto& entry : cp_map)
 	{
 		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;

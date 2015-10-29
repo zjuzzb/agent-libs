@@ -797,6 +797,25 @@ void k8s_state_s::update_cache(const k8s_component::component_map::key_type& com
 
 	switch (component)
 	{
+		case k8s_component::K8S_NAMESPACES:
+		{
+			const k8s_state_s::namespaces& nspaces = get_namespaces();
+			k8s_state_s::namespace_map& ns_map = get_namespace_map();
+			ns_map.clear();
+			for(const auto& ns : nspaces)
+			{
+				std::string ns_uid = ns.get_uid();
+				if(!is_component_cached(ns_map, ns_uid, &ns))
+				{
+					cache_component(ns_map, ns_uid, &ns);
+				}
+				else
+				{
+					g_logger.log("Attempt to cache already cached NAMESPACE: " + ns_uid, sinsp_logger::SEV_ERROR);
+				}
+			}
+		}
+
 		case k8s_component::K8S_PODS:
 		{
 			const k8s_state_s::pods& pods = get_pods();

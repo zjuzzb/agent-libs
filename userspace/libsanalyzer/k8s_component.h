@@ -346,6 +346,7 @@ public:
 	typedef std::vector<k8s_rc_s>      controllers;
 	typedef std::vector<k8s_service_s> services;
 
+	typedef std::unordered_map<std::string, const k8s_ns_s*>           namespace_map;
 	typedef std::unordered_map<std::string, const k8s_pod_s*>          container_pod_map;
 	typedef std::unordered_multimap<std::string, const k8s_service_s*> pod_service_map;
 	typedef std::unordered_map<std::string, const k8s_rc_s*>           pod_rc_map;
@@ -522,6 +523,7 @@ public:
 		return 0;
 	}
 
+	const namespace_map& get_namespace_map() const { return m_namespace_map; }
 	const container_pod_map& get_container_pod_map() const { return m_container_pods; }
 	const pod_service_map& get_pod_service_map() const { return m_pod_services; }
 	const pod_rc_map& get_pod_rc_map() const { return m_pod_rcs; }
@@ -597,12 +599,14 @@ private:
 		}
 	}
 
+	namespace_map& get_namespace_map() { return m_namespace_map; }
 	container_pod_map& get_container_pod_map() { return m_container_pods; }
 	pod_service_map& get_pod_service_map() { return m_pod_services; }
 	pod_rc_map& get_pod_rc_map() { return m_pod_rcs; }
 
 	static const std::string m_prefix; // "docker://"
 	static const unsigned    m_id_length; // portion of the ID to be cached (=12)
+	namespace_map            m_namespace_map;
 	container_pod_map        m_container_pods;
 	pod_service_map          m_pod_services;
 	pod_rc_map               m_pod_rcs;
