@@ -804,14 +804,14 @@ void k8s_state_s::update_cache(const k8s_component::component_map::key_type& com
 			ns_map.clear();
 			for(const auto& ns : nspaces)
 			{
-				std::string ns_uid = ns.get_uid();
-				if(!is_component_cached(ns_map, ns_uid, &ns))
+				std::string ns_name = ns.get_name();
+				if(!is_component_cached(ns_map, ns_name, &ns))
 				{
-					cache_component(ns_map, ns_uid, &ns);
+					cache_component(ns_map, ns_name, &ns);
 				}
 				else
 				{
-					g_logger.log("Attempt to cache already cached NAMESPACE: " + ns_uid, sinsp_logger::SEV_ERROR);
+					g_logger.log("Attempt to cache already cached NAMESPACE: " + ns_name, sinsp_logger::SEV_ERROR);
 				}
 			}
 		}

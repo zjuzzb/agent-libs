@@ -80,7 +80,7 @@ void print_maps(k8s& kube)
 	int counter = 0;
 	for(const auto& entry : ns_map)
 	{
-		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
+		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_uid() << std::endl;
 	}
 	std::cout << "-----------------------------------" << std::endl << std::endl;
 
