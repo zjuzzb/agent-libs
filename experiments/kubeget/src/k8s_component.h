@@ -9,6 +9,7 @@
 
 #include "json/json.h"
 #include "sinsp.h"
+#include "sinsp_int.h"
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -164,6 +165,10 @@ public:
 
 	static type get_type(const std::string& name);
 
+	bool selector_in_labels(const k8s_pair_s& selector, const k8s_pair_list& labels) const;
+
+	bool selectors_in_labels(const k8s_pair_list& labels) const;
+
 private:
 	std::string   m_name;
 	std::string   m_uid;
@@ -287,6 +292,8 @@ class k8s_rc_s : public k8s_component
 {
 public:
 	k8s_rc_s(const std::string& name, const std::string& uid, const std::string& ns = "");
+
+	std::vector<const k8s_pod_s*> get_selected_pods(const std::vector<k8s_pod_s>& pods) const;
 };
 
 
@@ -317,9 +324,7 @@ public:
 
 	void set_port_list(port_list&& ports);
 
-	bool selector_in_labels(const k8s_pair_list& labels, const k8s_pair_s& selector);
-
-	const k8s_pod_s* get_selected_pod(const std::vector<k8s_pod_s>& pods);
+	std::vector<const k8s_pod_s*> get_selected_pods(const std::vector<k8s_pod_s>& pods) const;
 
 private:
 	std::string m_cluster_ip;
@@ -341,9 +346,9 @@ public:
 	typedef std::vector<k8s_rc_s>      controllers;
 	typedef std::vector<k8s_service_s> services;
 
-	typedef std::unordered_map<std::string, k8s_pod_s*>     container_pod_map;
-	typedef std::unordered_map<std::string, k8s_service_s*> pod_service_map;
-	typedef std::unordered_map<std::string, k8s_rc_s*>      pod_rc_map;
+	typedef std::unordered_map<std::string, const k8s_pod_s*>     container_pod_map;
+	typedef std::unordered_multimap<std::string, const k8s_service_s*> pod_service_map;
+	typedef std::unordered_multimap<std::string, const k8s_rc_s*>      pod_rc_map;
 
 	k8s_state_s();
 
@@ -475,7 +480,7 @@ public:
 				return comp;
 			}
 		}
-		container.emplace_back(T(name, uid, ns));
+		container.emplace_back(std::move(T(name, uid, ns)));
 		return container.back();
 	}
 
@@ -532,21 +537,45 @@ private:
 	}
 
 	template<typename C>
-	bool is_component_cached(const C& map, const std::string& key)
+	bool is_component_cached(const C& map, const std::string& key) const
 	{
 		return (map.find(key) != map.end());
 	}
 
 	template<typename C>
-	void cache_component(C& map, const std::string& key, typename C::mapped_type component)
+	bool is_component_cached(const C& map, const std::string& key, const typename C::mapped_type value) const
 	{
-		std::string::size_type pos = key.find(m_prefix);
+		auto range = map.equal_range(key);
+		for (auto& it = range.first; it != range.second; ++it)
+		{
+			if(it->first == key && it->second == value)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void cache_pod(container_pod_map& map, const std::string& id, const k8s_pod_s* pod)
+	{
+		ASSERT(pod);
+		ASSERT(!pod->get_name().empty());
+		std::string::size_type pos = id.find(m_prefix);
 		if (pos == 0)
 		{
-			map[key.substr(m_prefix.size(), m_id_length)] = component;
+			map[id.substr(m_prefix.size(), m_id_length)] = pod;
 			return;
 		}
-		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + key);
+		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + id);
+	}
+
+	template<typename C>
+	void cache_component(C& map, const std::string& key, typename C::mapped_type component)
+	{
+		ASSERT(component);
+		ASSERT(!component->get_name().empty());
+		map.insert(typename C::value_type(key, component));
+		return;
 	}
 
 	template<typename C>
@@ -576,6 +605,7 @@ private:
 	pod_rc_map               m_pod_rcs;
 
 	friend class k8s_dispatcher;
+	friend class k8s;
 };
 
 //

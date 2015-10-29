@@ -69,27 +69,63 @@ private:
 	k8s m_k8s;
 };
 
+
+void print_maps(k8s& kube)
+{
+	const k8s_state_s& state = kube.get_state();
+
+	const k8s_state_s::container_pod_map& cp_map = state.get_container_pod_map();
+	std::cout << "---------" << " found " << cp_map.size() << " pods by container --------" << std::endl;
+	int counter = 0;
+	for(const auto& entry : cp_map)
+	{
+		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
+	}
+	std::cout << "-----------------------------------" << std::endl << std::endl;
+
+	const k8s_state_s::pod_rc_map& pr_map = state.get_pod_rc_map();
+	std::cout << "---------" << " found " << pr_map.size() << " controllers by pod --------" << std::endl;
+	counter = 0;
+	for(const auto& entry : pr_map)
+	{
+		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
+	}
+	std::cout << "-----------------------------------" << std::endl << std::endl;
+
+	const k8s_state_s::pod_service_map& ps_map = state.get_pod_service_map();
+	std::cout << "---------" << " found " << ps_map.size() << " services by pod --------" << std::endl;
+	counter = 0;
+	for(const auto& entry : ps_map)
+	{
+		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
+	}
+	std::cout << "-----------------------------------" << std::endl << std::endl;
+}
+
+void print_proto(k8s& kube)
+{
+	draiosproto::metrics met;
+	k8s_proto(met).get_proto(kube.get_state());
+	std::cout << met.DebugString() << std::endl;
+}
+
 int main(int argc, char** argv)
 {
-#if 0
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
 	k8stest.get_data("pods");
 	k8stest.get_data("replicationcontrollers");
 	k8stest.get_data("services");
-	k8s& state = k8stest.get_k8s().get_state();
-	k8s::container_pod_map& container_pod_map = state.get_container_pod_map();
-	for(const auto& entry : container_pod_map)
-	{
-		std::cout << entry.first << ':' << entry.second << std::endl;
-	}
+	print_proto(k8stest.get_k8s());
+	print_maps(k8stest.get_k8s());
+
 	//draiosproto::metrics met;
 	//k8s_proto(met).get_proto(state);
 	//FileOutputStream fos("proto.out");
 	//fos << met.DebugString() << std::endl;
 	
-#endif
+#if 0
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -128,17 +164,8 @@ int main(int argc, char** argv)
 			}
 		}
 		while (!kube);
-		const k8s_state_s& state = kube->get_state();
-		const k8s_state_s::container_pod_map& container_pod_map = state.get_container_pod_map();
-		std::cout << "found " << container_pod_map.size() << " entries" << std::endl;
-		for(const auto& entry : container_pod_map)
-		{
-			std::cout << entry.first << ':' << entry.second << std::endl;
-		}
-		draiosproto::metrics met;
-		k8s_proto(met).get_proto(kube->get_state());
-		std::cout << met.DebugString() << std::endl;
-		return 0;
+		//print_proto();
+
 		//sw.stop();
 		int i = 0;
 		if(run_watch_thread)
@@ -158,9 +185,7 @@ int main(int argc, char** argv)
 				{
 					if(kube->is_alive())
 					{
-						draiosproto::metrics met;
-						k8s_proto(met).get_proto(kube->get_state());
-						//std::cout << met.DebugString() << std::endl;
+						//print_proto(*kube);
 					}
 					else
 					{
@@ -238,7 +263,7 @@ int main(int argc, char** argv)
 
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
-
+#endif
 	return 0;
 }
 

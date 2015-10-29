@@ -3565,7 +3565,7 @@ void sinsp_analyzer::emit_k8s()
 	try
 	{
 		ASSERT(m_k8s);
-
+		ASSERT(m_metrics);
 		// if something went bad (typically kube-apiserver down),
 		// we destroy everything here and it will
 		// be recreated when/if api server is up
@@ -3573,9 +3573,11 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if (m_k8s->is_alive())
 			{
-				//const draiosproto::k8s_state& proto =
 				k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-				//g_logger.log(proto.DebugString(), sinsp_logger::SEV_DEBUG);
+				//if(m_metrics->has_kubernetes())
+				//{
+				//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+				//}
 			}
 			else
 			{

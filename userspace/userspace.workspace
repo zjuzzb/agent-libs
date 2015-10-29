@@ -7,12 +7,12 @@
   <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="Yes"/>
   <Project Name="dragent" Path="dragent.project" Active="No"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="no">
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
       <Project Name="sysdig" ConfigName="Debug"/>
       <Project Name="kubeget" ConfigName="Debug"/>
       <Project Name="dragent" ConfigName="Debug"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Release" Selected="yes">
+    <WorkspaceConfiguration Name="Release" Selected="no">
       <Project Name="sysdig" ConfigName="Release"/>
       <Project Name="kubeget" ConfigName="Release"/>
       <Project Name="dragent" ConfigName="Release"/>
