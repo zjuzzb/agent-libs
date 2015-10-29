@@ -535,7 +535,7 @@ std::vector<const k8s_pod_s*> k8s_rc_s::get_selected_pods(const std::vector<k8s_
 	std::vector<const k8s_pod_s*> pod_vec;
 	for(const auto& pod : pods)
 	{
-		if (selectors_in_labels(pod.get_labels()))
+		if (selectors_in_labels(pod.get_labels()) && get_namespace() == pod.get_namespace())
 		{
 			pod_vec.push_back(&pod);
 		}
@@ -557,7 +557,7 @@ std::vector<const k8s_pod_s*> k8s_service_s::get_selected_pods(const std::vector
 	std::vector<const k8s_pod_s*> pod_vec;
 	for(const auto& pod : pods)
 	{
-		if (selectors_in_labels(pod.get_labels()))
+		if (selectors_in_labels(pod.get_labels()) && get_namespace() == pod.get_namespace())
 		{
 			pod_vec.push_back(&pod);
 		}
@@ -569,8 +569,12 @@ std::vector<const k8s_pod_s*> k8s_service_s::get_selected_pods(const std::vector
 // state
 //
 
+#ifdef K8S_DISABLE_THREAD
+
 const std::string k8s_state_s::m_prefix = "docker://";
 const unsigned    k8s_state_s::m_id_length = 12u;
+
+#endif // K8S_DISABLE_THREAD
 
 k8s_state_s::k8s_state_s()
 {
@@ -784,3 +788,73 @@ void k8s_state_s::clear(k8s_component::type type)
 		}
 	}
 }
+
+// state/caching
+
+void k8s_state_s::update_cache(const k8s_component::component_map::key_type& component)
+{
+#ifdef K8S_DISABLE_THREAD
+
+	switch (component)
+	{
+		case k8s_component::K8S_PODS:
+		{
+			const k8s_state_s::pods& pods = get_pods();
+			k8s_state_s::container_pod_map& container_pod_map = get_container_pod_map();
+			container_pod_map.clear();
+			for(const auto& pod : pods)
+			{
+				const k8s_pod_s::container_id_list& c_ids = pod.get_container_ids();
+				for(const auto& c_id : c_ids)
+				{
+					cache_pod(container_pod_map, c_id, &pod);
+				}
+			}
+		}
+
+		case k8s_component::K8S_REPLICATIONCONTROLLERS:
+		{
+			const k8s_state_s::controllers& rcs = get_rcs();
+			const k8s_state_s::pods& pods = get_pods();
+			k8s_state_s::pod_rc_map& pod_ctrl_map = get_pod_rc_map();
+			pod_ctrl_map.clear();
+			for(const auto& rc : rcs)
+			{
+				std::vector<const k8s_pod_s*> pod_subset = rc.get_selected_pods(pods);
+				for(auto& pod : pod_subset)
+				{
+					const std::string& pod_name = pod->get_name();
+					if(!is_component_cached(pod_ctrl_map, pod_name, &rc))
+					{
+						cache_component(pod_ctrl_map, pod_name, &rc);
+					}
+				}
+			}
+		}
+
+		case k8s_component::K8S_SERVICES:
+		{
+			const k8s_state_s::services& services = get_services();
+			const k8s_state_s::pods& pods = get_pods();
+			k8s_state_s::pod_service_map& pod_svc_map = get_pod_service_map();
+			pod_svc_map.clear();
+			for(const auto& service : services)
+			{
+				std::vector<const k8s_pod_s*> pod_subset = service.get_selected_pods(pods);
+				for(auto& pod : pod_subset)
+				{
+					const std::string& pod_name = pod->get_name();
+					if(!is_component_cached(pod_svc_map, pod_name, &service))
+					{
+						cache_component(pod_svc_map, pod_name, &service);
+					}
+				}
+			}
+		}
+
+		default: return;
+	}
+
+#endif // K8S_DISABLE_THREAD
+}
+

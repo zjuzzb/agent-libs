@@ -72,6 +72,7 @@ private:
 
 void print_maps(k8s& kube)
 {
+#ifdef K8S_DISABLE_THREAD
 	const k8s_state_s& state = kube.get_state();
 
 	const k8s_state_s::container_pod_map& cp_map = state.get_container_pod_map();
@@ -100,6 +101,7 @@ void print_maps(k8s& kube)
 		std::cout << ++counter << "=>" << entry.first << ':' << entry.second->get_name() << std::endl;
 	}
 	std::cout << "-----------------------------------" << std::endl << std::endl;
+#endif
 }
 
 void print_proto(k8s& kube)
@@ -109,8 +111,33 @@ void print_proto(k8s& kube)
 	std::cout << met.DebugString() << std::endl;
 }
 
+k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
+{
+	k8s* kube = 0;
+	while(!kube)
+	{
+		try
+		{
+			kube = new k8s(host, true, run_watch_thread);
+			while(!kube->is_alive())
+			{
+				g_logger.log("waiting for kube to come online....", sinsp_logger::SEV_ERROR);
+				sleep(1);
+			}
+		}
+		catch (std::exception& ex)
+		{
+			g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+			sleep(1);
+		}
+	}
+	return kube;
+}
+
+
 int main(int argc, char** argv)
 {
+#if 0
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
@@ -125,7 +152,7 @@ int main(int argc, char** argv)
 	//FileOutputStream fos("proto.out");
 	//fos << met.DebugString() << std::endl;
 	
-#if 0
+#endif
 	try
 	{
 		std::string host("http://localhost:8080");
@@ -141,34 +168,37 @@ int main(int argc, char** argv)
 			}
 		}
 #else
-		bool run_watch_thread = true;
+		bool run_watch_thread = false;
 		if(argc >= 3 && std::string(argv[2]) == "true")
 		{
 			g_logger.log(Poco::format("Argument ignored: run_watch_thread=%s", std::string(argv[2])));
 		}
 #endif
 
-		//Stopwatch sw;
-		//sw.start();
-		k8s* kube = 0;
-		do
+		k8s* kube = get_k8s(host, run_watch_thread);
+		//print_proto();
+		print_maps(*kube);
+
+		int i = 0;
+		if(!run_watch_thread)
 		{
-			try
+			while (kube)
 			{
-				kube = new k8s(host, true, run_watch_thread);
-			}
-			catch (std::exception& ex)
-			{
-				g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
-				sleep(1);
+				if(kube->is_alive())
+				{
+					kube->watch();
+					//print_proto();
+					print_maps(*kube);
+					sleep(1);
+				}
+				else
+				{
+					delete kube;
+					kube = get_k8s(host, run_watch_thread);
+				}
 			}
 		}
-		while (!kube);
-		//print_proto();
-
-		//sw.stop();
-		int i = 0;
-		if(run_watch_thread)
+		else
 		{
 			kube->watch();
 			while (++i < 10) sleep(1);
@@ -217,28 +247,6 @@ int main(int argc, char** argv)
 				
 			}
 		}
-		else
-		{
-			while (++i < 10)
-			{
-				if(!run_watch_thread)
-				{
-					kube->watch();
-				}
-				//sleep(1);
-			}
-			//g_logger.log(proto.DebugString());
-			sleep(10);
-			kube->stop_watching();
-			while (true)
-			{
-				if(!run_watch_thread)
-				{
-					kube->watch();
-				}
-				//sleep(1);
-			}
-		}
 		
 		//g_logger.log("Stopped.");
 		/*
@@ -263,7 +271,7 @@ int main(int argc, char** argv)
 
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
-#endif
+
 	return 0;
 }
 
