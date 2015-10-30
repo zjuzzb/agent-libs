@@ -813,7 +813,11 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 				{
 					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
 						sinsp_logger::SEV_INFO);
+#ifdef K8S_DISABLE_THREAD
+					return new k8s(k8s_api, true, false, "/api/v1/");
+#else
 					return new k8s(k8s_api, true, true, "/api/v1/");
+#endif
 				}
 			}
 		}
@@ -876,7 +880,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		{
 			try { HTTPStreamFactory::registerFactory(); } catch(ExistsException&) { }
 		}
-
+		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
 		std::unique_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
 		std::ostringstream os;
 		StreamCopier::copyStream(*pStr.get(), os);
@@ -3573,6 +3577,10 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if (m_k8s->is_alive())
 			{
+				if(!m_k8s->watch_in_thread())
+				{
+					m_k8s->watch();
+				}
 				k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 				//if(m_metrics->has_kubernetes())
 				//{

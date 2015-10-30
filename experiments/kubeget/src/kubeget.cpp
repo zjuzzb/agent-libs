@@ -70,7 +70,7 @@ private:
 };
 
 
-void print_maps(k8s& kube)
+void print_cache(k8s& kube)
 {
 #ifdef K8S_DISABLE_THREAD
 	const k8s_state_s& state = kube.get_state();
@@ -185,8 +185,8 @@ int main(int argc, char** argv)
 #endif
 
 		k8s* kube = get_k8s(host, run_watch_thread);
-		//print_proto();
-		print_maps(*kube);
+		//print_proto(*kube);
+		print_cache(*kube);
 
 		int i = 0;
 		if(!run_watch_thread)
@@ -196,8 +196,8 @@ int main(int argc, char** argv)
 				if(kube->is_alive())
 				{
 					kube->watch();
-					//print_proto();
-					print_maps(*kube);
+					//print_proto(*kube);
+					//print_cache(*kube);
 					sleep(1);
 				}
 				else
