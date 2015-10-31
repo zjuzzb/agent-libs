@@ -885,14 +885,14 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		std::ostringstream os;
 		StreamCopier::copyStream(*pStr.get(), os);
 		std::string json = std::move(os.str());
-		g_logger.log("JSON:" + json, sinsp_logger::SEV_DEBUG);
+		g_logger.log("K8S API:" + json, sinsp_logger::SEV_DEBUG);
 		return make_k8s(json, k8s_api);
 	}
 	catch (std::exception& exc)
 	{
-		g_logger.log(exc.what(), sinsp_logger::SEV_ERROR);
-		return 0;
+		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
 	}
+	return 0;
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
@@ -1082,32 +1082,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
-				if(!m_k8s && !m_k8s_bad_config)
+				string k8s_api_server = m_configuration->get_k8s_api_server();
+				if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled() && !m_k8s_bad_config)
 				{
-					string k8s_api_server = m_configuration->get_k8s_api_server();
-					if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+					k8s_api_server = "http://localhost:8080";
+					if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 					{
-						if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+						g_logger.log("K8S: Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
+						m_configuration->set_k8s_api_server(k8s_api_server);
+						g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+					}
+					else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+					{
+						for(const auto& arg : main_tinfo->m_args)
 						{
-							g_logger.log("Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
-							k8s_api_server = "http://localhost:8080";
-						}
-						else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-						{
-							for(const auto& arg : main_tinfo->m_args)
+							if(arg == "apiserver")
 							{
-								if(arg == "apiserver")
-								{
-									g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_INFO);
-									k8s_api_server = "http://localhost:8080";
-									break;
-								}
+								g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_INFO);
+								m_configuration->set_k8s_api_server("http://localhost:8080");
+								g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+								break;
 							}
 						}
-					}
-					if(!k8s_api_server.empty())
-					{
-						m_k8s = get_k8s(k8s_api_server);
 					}
 				}
 			}
@@ -2828,10 +2824,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			//emit_executed_commands();
 
-			if (m_k8s)
-			{
-				emit_k8s();
-			}
+			//
+			// Kubernetes
+			//
+			emit_k8s();
 
 			emit_top_files();
 
@@ -3566,41 +3562,65 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 
 void sinsp_analyzer::emit_k8s()
 {
-	try
+	// k8s_uri string config setting can be set:
+	//
+	//    - explicitly in configuration file; when present, this setting has priority
+	//      over anything else in regards to presence/location of the api server
+	//
+	//    - implicitly, by k8s autodetect flag (which defaults to true);
+	//      when k8s_uri is empty, autodetect is true and api server is detected on the
+	//      local machine, uri will be automatically set to "http://localhost:8080"
+	//
+	// so, at runtime, k8s_uri being empty or not determines whether k8s data
+	// will be collected and emitted; the connection to k8s api server is entirely managed
+	// in this function - if it is dropped, the attempts to re-establish it will keep on going
+	// forever, once per cycle, until either connection is re-established or agent shut down
+
+	const string& k8s_uri = m_configuration->get_k8s_api_server();
+	if(!k8s_uri.empty())
 	{
-		ASSERT(m_k8s);
-		ASSERT(m_metrics);
-		// if something went bad (typically kube-apiserver down),
-		// we destroy everything here and it will
-		// be recreated when/if api server is up
-		if(m_k8s)
+		try
 		{
-			if (m_k8s->is_alive())
+			if(!m_k8s)
 			{
-				if(!m_k8s->watch_in_thread())
+				m_k8s = get_k8s(k8s_uri);
+			}
+
+			if(m_k8s)
+			{
+				if(m_k8s->is_alive())
 				{
-					m_k8s->watch();
+					if(!m_k8s->watch_in_thread())
+					{
+						m_k8s->watch();
+					}
+					ASSERT(m_metrics);
+					k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+					//if(m_metrics->has_kubernetes())
+					//{
+					//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+					//}
 				}
-				k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-				//if(m_metrics->has_kubernetes())
-				//{
-				//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
-				//}
+				else
+				{
+					g_logger.log("K8S connection error detected (not alive).", sinsp_logger::SEV_ERROR);
+					delete m_k8s;
+					m_k8s = 0;
+				}
 			}
 			else
+			{
+				g_logger.log("K8S connection not established.", sinsp_logger::SEV_ERROR);
+			}
+		}
+		catch(std::exception& e)
+		{
+			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+			if(m_k8s)
 			{
 				delete m_k8s;
 				m_k8s = 0;
 			}
-		}
-	}
-	catch(std::exception& e)
-	{
-		g_logger.log(std::string("Error fetching kubernetes state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-		if(m_k8s)
-		{
-			delete m_k8s;
-			m_k8s = 0;
 		}
 	}
 }
