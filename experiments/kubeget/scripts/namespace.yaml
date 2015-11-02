@@ -1,0 +1,8 @@
+#kubectl create -f namespace.yaml
+#kubectl delete namespace test-ns
+kind: "Namespace"
+apiVersion: "v1"
+metadata:
+  name: test-ns
+  labels:
+    name: test-ns

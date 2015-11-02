@@ -59,25 +59,32 @@ k8s::k8s(const std::string& uri, bool start_watch, bool watch_in_thread, const s
 	#endif
 		m_net(*this, uri, api)
 {
+	if (uri.empty())
+	{
+		g_logger.log("Empty URI received (unexpected condition in production environment).", sinsp_logger::SEV_CRITICAL);
+	}
+	else
+	{
 #ifdef K8S_DISABLE_THREAD
-	if(watch_in_thread)
-	{
-		g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
-	}
+		if(watch_in_thread)
+		{
+			g_logger.log("Watching in thread requested but not available (only available in multi-thread build).", sinsp_logger::SEV_WARNING);
+		}
 #endif // K8S_DISABLE_THREAD
-	try
-	{
-		get_state(true);
-	}
-	catch (...)
-	{
-		clean_dispatch();
-		throw;
-	}
+		try
+		{
+			get_state(true);
+		}
+		catch (...)
+		{
+			clean_dispatch();
+			throw;
+		}
 
-	if(m_watch)
-	{
-		watch();
+		if(m_watch)
+		{
+			watch();
+		}
 	}
 }
 
@@ -235,13 +242,12 @@ void k8s::extract_data(const Json::Value& items, k8s_component::type component)
 				}
 				else if(component == k8s_component::K8S_PODS)
 				{
-					k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(item);
-					m_state.get_pods().back().set_container_ids(std::move(containers));
-					k8s_component::extract_pod_data(item, m_state.get_pods().back());
+					k8s_pod_s& pod = m_state.get_pods().back();
+					m_state.update_pod(pod, item, true);
 				}
 				else if(component == k8s_component::K8S_SERVICES)
 				{
-					k8s_component::extract_services_data(item["spec"], m_state.get_services().back());
+					k8s_component::extract_services_data(item["spec"], m_state.get_services().back(), m_state.get_pods());
 				}
 			}
 		}
@@ -259,6 +265,10 @@ void k8s::parse_json(const std::string& json, const k8s_component::component_map
 		{
 			extract_data(items, component.first);
 			//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
+			{
+				K8S_LOCK_GUARD_MUTEX;
+				m_state.update_cache(component.first);
+			}
 		}
 		else
 		{

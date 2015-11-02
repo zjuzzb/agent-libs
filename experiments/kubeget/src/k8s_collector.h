@@ -6,6 +6,7 @@
 
 #include "k8s_common.h"
 #include <map>
+#include <atomic>
 
 class k8s_http;
 
@@ -34,14 +35,14 @@ private:
 	void clear();
 	void remove(socket_map_t::iterator it);
 
-	socket_map_t m_sockets;
-	int          m_subscription_count;
-	fd_set       m_infd;
-	fd_set       m_errfd;
-	int          m_nfds;
-	bool         m_loop;
-	long         m_timeout_ms;
-	bool         m_stopped;
+	socket_map_t     m_sockets;
+	std::atomic<int> m_subscription_count;
+	fd_set           m_infd;
+	fd_set           m_errfd;
+	int              m_nfds;
+	bool             m_loop;
+	long             m_timeout_ms;
+	bool             m_stopped;
 	K8S_DECLARE_MUTEX;
 };
 

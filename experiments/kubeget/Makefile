@@ -1,8 +1,7 @@
 SDIR =./src
 IDIR =./src
 CC=g++
-CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER -DGLIBCXX_FORCE_NEW
-#-DK8S_DISABLE_THREAD -fno-omit-frame-pointer
+CFLAGS=-std=c++11 -Wall -Wextra -I$(IDIR) -DHAS_ANALYZER -DGLIBCXX_FORCE_NEW -DK8S_DISABLE_THREAD -fno-omit-frame-pointer
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Foundation/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Net/include
 CFLAGS+=-I../../dependencies/poco-1.4.6p4-all/Crypto/include

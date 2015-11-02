@@ -295,9 +295,7 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 					pod.set_labels(std::move(entries));
 				}
 			}
-			k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(object);
-			pod.set_container_ids(std::move(containers));
-			k8s_component::extract_pod_data(object, pod);
+			m_state.update_pod(pod, object, false);
 		}
 	}
 	else if(data.m_reason == COMPONENT_MODIFIED)
@@ -322,16 +320,22 @@ void k8s_dispatcher::handle_pod(const Json::Value& root, const msg_data& data)
 					pod.add_labels(std::move(entries));
 				}
 			}
-			k8s_pod_s::container_list containers = k8s_component::extract_pod_containers(object);
-			pod.add_container_ids(std::move(containers));
-			k8s_component::extract_pod_data(object, pod);
+			m_state.update_pod(pod, object, false);
 		}
 	}
 	else if(data.m_reason == COMPONENT_DELETED)
 	{
-		if(!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
+		k8s_pod_s* pod = m_state.get_component<k8s_state_s::pods, k8s_pod_s>(m_state.get_pods(), data.m_uid);
+		if(pod)
 		{
-			g_logger.log(std::string("POD not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			if(!m_state.delete_component(m_state.get_pods(), data.m_uid))
+			{
+				g_logger.log(std::string("Error deleting POD: ") + data.m_name, sinsp_logger::SEV_ERROR);
+			}
+		}
+		else
+		{
+			g_logger.log(std::string("POD not found: ") + data.m_name, sinsp_logger::SEV_WARNING);
 		}
 	}
 	else // COMPONENT_ERROR
@@ -413,7 +417,7 @@ void k8s_dispatcher::handle_rc(const Json::Value& root, const msg_data& data)
 	}
 	else if(data.m_reason == COMPONENT_DELETED)
 	{
-		if(!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
+		if(!m_state.delete_component(m_state.get_rcs(), data.m_uid))
 		{
 			g_logger.log(std::string("CONTROLLER not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
@@ -449,7 +453,7 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 					service.set_labels(std::move(entries));
 				}
 			}
-			k8s_component::extract_services_data(object, service);
+			k8s_component::extract_services_data(object, service, m_state.get_pods());
 		}
 	}
 	else if(data.m_reason == COMPONENT_MODIFIED)
@@ -474,12 +478,12 @@ void k8s_dispatcher::handle_service(const Json::Value& root, const msg_data& dat
 					service.add_labels(std::move(entries));
 				}
 			}
-			k8s_component::extract_services_data(object, service);
+			k8s_component::extract_services_data(object, service, m_state.get_pods());
 		}
 	}
 	else if(data.m_reason == COMPONENT_DELETED)
 	{
-		if(!m_state.delete_component(m_state.get_namespaces(), data.m_uid))
+		if(!m_state.delete_component(m_state.get_services(), data.m_uid))
 		{
 			g_logger.log(std::string("SERVICE not found: ") + data.m_name, sinsp_logger::SEV_ERROR);
 		}
@@ -538,6 +542,10 @@ void k8s_dispatcher::dispatch()
 					os << data.m_name << ',' << data.m_uid << ',' << data.m_namespace << ']';
 					g_logger.log(os.str(), sinsp_logger::SEV_INFO);
 					//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
+					{
+						K8S_LOCK_GUARD_MUTEX;
+						m_state.update_cache(m_type);
+					}
 				}
 			}
 			else
