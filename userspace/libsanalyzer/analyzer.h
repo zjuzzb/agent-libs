@@ -302,6 +302,7 @@ VISIBILITY_PRIVATE
 	void emit_full_connections();
 	k8s* make_k8s(const string& json, const string& k8s_api);
 	k8s* get_k8s(const string& k8s_api);
+	void get_k8s_data();
 	void emit_k8s();
 	void emit_top_files();
 	vector<string> emit_containers();

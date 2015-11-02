@@ -3560,6 +3560,22 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 	}
 }
 
+void sinsp_analyzer::get_k8s_data()
+{
+	ASSERT(m_k8s);
+	ASSERT(m_k8s->is_alive());
+	if(!m_k8s->watch_in_thread())
+	{
+		m_k8s->watch();
+	}
+	ASSERT(m_metrics);
+	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+	//if(m_metrics->has_kubernetes())
+	//{
+	//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+	//}
+}
+
 void sinsp_analyzer::emit_k8s()
 {
 	// k8s_uri string config setting can be set:
@@ -3583,6 +3599,14 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if(!m_k8s)
 			{
+				g_logger.log("Conecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				m_k8s = get_k8s(k8s_uri);
+			}
+			else if(m_k8s && !m_k8s->is_alive())
+			{
+				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+				delete m_k8s;
+				m_k8s = 0;
 				m_k8s = get_k8s(k8s_uri);
 			}
 
@@ -3590,22 +3614,23 @@ void sinsp_analyzer::emit_k8s()
 			{
 				if(m_k8s->is_alive())
 				{
-					if(!m_k8s->watch_in_thread())
-					{
-						m_k8s->watch();
-					}
-					ASSERT(m_metrics);
-					k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-					//if(m_metrics->has_kubernetes())
-					//{
-					//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
-					//}
+					get_k8s_data();
 				}
-				else
+				if(!m_k8s->is_alive())
 				{
-					g_logger.log("K8S connection error detected (not alive).", sinsp_logger::SEV_ERROR);
+					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					delete m_k8s;
 					m_k8s = 0;
+					m_k8s = get_k8s(k8s_uri);
+					if(m_k8s && m_k8s->is_alive())
+					{
+						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
+						get_k8s_data();
+					}
+					else
+					{
+						g_logger.log("K8S connection attempt failed. Will retry in next cycle.", sinsp_logger::SEV_ERROR);
+					}
 				}
 			}
 			else
