@@ -898,10 +898,6 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
-	g_logger.format(sinsp_logger::SEV_INFO, "threadtable loadfactor=%f max_loadfactor=%f bucket-count=%d",
-					m_inspector->m_thread_manager->m_threadtable.load_factor(),
-					m_inspector->m_thread_manager->m_threadtable.max_load_factor(),
-					m_inspector->m_thread_manager->m_threadtable.bucket_count());
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
