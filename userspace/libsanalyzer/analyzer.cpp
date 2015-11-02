@@ -1513,7 +1513,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
-				if(it->first.find("k8s_POD") != std::string::npos)
+				if(it->first.find("k8s_POD") == std::string::npos)
 				{
 					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
 					{
