@@ -991,8 +991,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
-	// 3. (only on programs) aggregate programs metrics to host and container ones
-	// 4. (only on programs) Write programs on protobuf
+	// 2. (only on programs) aggregate programs metrics to host and container ones
+	// 3. (only on programs) Write programs on protobuf
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
