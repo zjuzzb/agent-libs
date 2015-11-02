@@ -1254,12 +1254,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				java_process_requests.emplace_back(tinfo);
 			}
 			// May happen that for processes like apache with mpm_prefork there are hundred of
-			// apache processes with some comm, cmdline and ports, some of them are always alive,
+			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
 			// We send to app_checks only processes up at least for 10 seconds. But the programs aggregation
-			// may choose the one young one.
+			// may choose the young one.
 			// So now we are trying to match a check for every process in the program grouping and
-			// when we found a matching check, we mark it on the main_thread of the group as
+			// when we find a matching check, we mark it on the main_thread of the group as
 			// we don't need more checks instances for each process.
 			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
 			{
