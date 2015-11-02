@@ -18,7 +18,11 @@
 #include "k8s_http.h"
 #include "Poco/FileStream.h"
 #include "Poco/StreamCopier.h"
+#include "Poco/DateTime.h"
+#include "Poco/DateTimeFormatter.h"
+#include "Poco/DateTimeFormat.h"
 #include <iostream>
+#include <exception>
 #include <thread>
 #include <unistd.h>
 #include <signal.h>
@@ -143,9 +147,174 @@ k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
 	return kube;
 }
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h> 
+
+int wait(curl_socket_t sockfd, int for_recv, long timeout_ms)
+{
+	struct timeval tv;
+	fd_set infd, outfd, errfd;
+	int res;
+
+	tv.tv_sec = timeout_ms / 1000;
+	tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+	FD_ZERO(&infd);
+	FD_ZERO(&outfd);
+	FD_ZERO(&errfd);
+
+	FD_SET(sockfd, &errfd);
+
+	if(for_recv)
+	{
+		FD_SET(sockfd, &infd);
+	}
+	else
+	{
+		FD_SET(sockfd, &outfd);
+	}
+
+	res = select(sockfd + 1, &infd, &outfd, &errfd, &tv);
+	return res;
+}
+
+void check_error(CURLcode res)
+{
+	if(CURLE_OK != res && CURLE_AGAIN != res)
+	{
+		std::ostringstream os;
+		os << "Error: " << curl_easy_strerror(res);
+		throw std::runtime_error(os.str());
+	}
+}
+
+void run_watch()
+{
+	size_t iolen;
+	std::string url = "http://127.0.0.1:8080/api/v1/watch/namespaces";
+	int portno = 8080;
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
+
+	long sockextr = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockextr < 0)
+	{
+		std::cerr << "ERROR opening socket" << std::endl;
+		return;
+	}
+	server = gethostbyname("127.0.0.1");
+	if (server == NULL)
+	{
+		std::cerr << "ERROR, no such host" << std::endl;
+		exit(0);
+	}
+	bzero((char *) &serv_addr, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+	serv_addr.sin_port = htons(portno);
+	if (connect(sockextr,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
+	{
+		std::cerr << "ERROR connecting" << std::endl;
+		return;
+	}
+
+	if(!wait(sockextr, 0, 5000))
+	{
+		g_logger.log("Timed out waiting to connect", sinsp_logger::SEV_ERROR);
+		return;
+	}
+
+	std::ostringstream request;
+	request << "GET /api/v1/watch/nodes HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\nConnection: Keep-Alive";
+	request << "\r\n";
+	iolen = write(sockextr, request.str().c_str(), request.str().size());
+	ASSERT (request.str().size() == iolen);
+	if(!wait(sockextr, 1, 5000L))
+	{
+		g_logger.log("Timed out waiting for response", sinsp_logger::SEV_ERROR);
+		return;
+	}
+
+	g_logger.log(std::string("Collecting data from ") + url, sinsp_logger::SEV_DEBUG);
+	
+	fd_set infd;
+	fd_set errfd;
+	FD_ZERO(&errfd);
+	FD_ZERO(&infd);
+	FD_SET(sockextr, &errfd);
+	FD_SET(sockextr, &infd);
+
+	while (true)
+	{
+		std::cout << '.' << std::flush;
+		struct timeval tv;
+		tv.tv_sec  = 0;
+		tv.tv_usec = 0;
+		int res = select(sockextr + 1, &infd, NULL, &errfd, &tv);
+		if(res < 0) // error
+		{
+			std::string err = strerror(errno);
+			g_logger.log(err, sinsp_logger::SEV_CRITICAL);
+			return;
+		}
+		else // data or idle
+		{
+			if(FD_ISSET(sockextr, &infd))
+			{
+				char buf[1024] = { 0 };
+				iolen = 0;
+				iolen = read(sockextr, buf, 1024);
+				if(iolen > 0)
+				{
+					std::cout << buf << std::endl;
+				}
+				else
+				{
+					std::string err = strerror(errno);
+					std::cout << err << std::endl;
+					return;
+				}
+			}
+			else
+			{
+				FD_SET(sockextr, &infd);
+			}
+
+			if(FD_ISSET(sockextr, &errfd))
+			{
+				std::string err = strerror(errno);
+				std::cout << err << std::endl;
+				return;
+			}
+			else
+			{
+				FD_SET(sockextr, &errfd);
+			}
+			
+			sleep(1);
+		}
+	}
+}
+
 
 int main(int argc, char** argv)
 {
+//#if 0
+	try
+	{
+		run_watch();
+	}
+	catch(std::exception& ex)
+	{
+		std::cout << ex.what() << std::endl;
+	}
+	DateTime dt;
+	std::cout << DateTimeFormatter::format(dt, DateTimeFormat::RFC822_FORMAT) << std::endl;
+	return 0;
+//#endif
 #if 0
 	k8s_test k8stest;
 	k8stest.get_data("namespaces");
@@ -186,7 +355,7 @@ int main(int argc, char** argv)
 
 		k8s* kube = get_k8s(host, run_watch_thread);
 		//print_proto(*kube);
-		print_cache(*kube);
+		//print_cache(*kube);
 
 		int i = 0;
 		if(!run_watch_thread)
@@ -196,6 +365,7 @@ int main(int argc, char** argv)
 				if(kube->is_alive())
 				{
 					kube->watch();
+					std::cout << '.' << std::flush;
 					//print_proto(*kube);
 					//print_cache(*kube);
 					sleep(1);
