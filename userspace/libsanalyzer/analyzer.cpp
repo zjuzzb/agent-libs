@@ -1562,7 +1562,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//{
 			//	prog->add_pids(pid);
 			//}
-			prog->add_pids(tinfo->m_tid);
+			prog->add_pids(tinfo->m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
