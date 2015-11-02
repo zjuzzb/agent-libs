@@ -993,11 +993,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	// Emit process has 4 cycles on thread_table:
-	// 1. Emit memory metrics from threads to main_threads
-	// 2. Aggregate process into programs
+	// Emit process has 3 cycles on thread_table:
+	// 1. Aggregate process into programs
 	// 3. (only on programs) aggregate programs metrics to host and container ones
-	// 4. Write programs on protobuf
+	// 4. (only on programs) Write programs on protobuf
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
