@@ -641,7 +641,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			if(m_configuration.m_watchdog_subprocesses_timeout_s.find(proc.first) != m_configuration.m_watchdog_subprocesses_timeout_s.end() &&
 			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
-				g_log->critical("watchdog: " + proc.first + " last activity " + NumberFormatter::format(diff) + " ns ago");
+				g_log->critical("watchdog: " + proc.first + " last activity " + NumberFormatter::format(diff) + " s ago");
 				to_kill = true;
 			}
 			if(to_kill)
