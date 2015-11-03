@@ -47,7 +47,10 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	{
 	case PPME_SCHEDSWITCH_1_E:
 	case PPME_SCHEDSWITCH_6_E:
-		m_sched_analyzer2->process_event(evt);
+		if(m_analyzer->m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+		{
+			m_sched_analyzer2->process_event(evt);
+		}
 		return false;
 	case PPME_SOCKET_ACCEPT_X:
 	case PPME_SOCKET_ACCEPT4_X:

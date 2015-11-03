@@ -125,7 +125,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-
+	inspector->m_max_thread_table_size = 180000;
+	
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
@@ -988,49 +989,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	// Emit process has 4 cycles on thread_table:
-	// 1. Emit memory metrics from threads to main_threads
-	// 2. Aggregate process into programs
-	// 3. (only on programs) aggregate programs metrics to host and container ones
-	// 4. Write programs on protobuf
-
-
-	///////////////////////////////////////////////////////////////////////////
-	// Propagate the memory information from child thread to main thread:
-	// since memory is updated at context-switch intervals, it can happen
-	// that the "main" thread stays mostly idle, without getting memory events then
-	///////////////////////////////////////////////////////////////////////////
-
-	bool forced_cmd_update = (m_next_flush_time_ns / ONE_SECOND_IN_NS) % CMDLINE_UPDATE_INTERVAL_S == 0;
-
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
-		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-		sinsp_threadinfo* tinfo = &it->second;
-
-		if(tinfo->m_vmsize_kb > mtinfo->m_vmsize_kb)
-		{
-			mtinfo->m_vmsize_kb = tinfo->m_vmsize_kb;
-		}
-
-		if(tinfo->m_vmrss_kb > mtinfo->m_vmrss_kb)
-		{
-			mtinfo->m_vmrss_kb = tinfo->m_vmrss_kb;
-		}
-
-		if(tinfo->m_vmswap_kb > mtinfo->m_vmswap_kb)
-		{
-			mtinfo->m_vmswap_kb = tinfo->m_vmswap_kb;
-		}
-
-		// Relookup process names every interval
-		if(forced_cmd_update && tinfo->is_main_thread())
-		{
-			tinfo->m_ainfo->set_cmdline_update(false);
-		}
-
-	}
+	// Emit process has 3 cycles on thread_table:
+	// 1. Aggregate process into programs
+	// 2. (only on programs) aggregate programs metrics to host and container ones
+	// 3. (only on programs) Write programs on protobuf
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
@@ -1041,6 +1003,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
+		
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 
@@ -1068,7 +1031,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
+		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
@@ -1108,7 +1072,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 			}
 			main_tinfo->compute_program_hash();
-			main_ainfo->set_cmdline_update(true);
+			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
 		//
@@ -1207,11 +1171,37 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						{
 							m_total_process_cpu += ainfo->m_cpuload;
 						}
+#if defined(HAS_CAPTURE)
+						if(it->first == m_inspector->m_sysdig_pid)
+						{
+							m_my_cpuload = ainfo->m_cpuload;
+						}
+#else
+						m_my_cpuload = 0;
+#endif
 					}
 				}
 			}
 		}
-		
+
+		if(tinfo->m_flags & PPM_CL_CLOSED &&
+				!(evt != NULL &&
+				  (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
+				  && evt->m_tinfo == tinfo))
+		{
+			//
+			// Yes, remove the thread from the table, but NOT if the event currently under processing is
+			// an exit for this process. In that case we wait until next sample.
+			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
+			//       not actually remove the thread if it has childs.
+			//
+			m_threads_to_remove.push_back(tinfo);
+		}
+
+		if(proctids.size() != 0 && proctids.find(tinfo->m_pid) == proctids.end())
+		{
+			tinfo->m_flags |= PPM_CL_CLOSED;
+		}
 		//
 		// Add this thread's counters to the process ones...
 		//
@@ -1239,34 +1229,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		mtinfo->m_ainfo->add_all_metrics(ainfo);
 
-		//
-		// ... And to the host ones
-		//
-		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
-
-		if(container)
+		if(!emplaced.second)
 		{
-			container->m_transaction_counters.add(&ainfo->m_transaction_metrics);
+			ainfo->clear_all_metrics();
 		}
-
-		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-		{
-			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
-		}
-
-		if(m_inspector->m_islive)
-		{
-#if defined(HAS_CAPTURE)
-			if(it->first == m_inspector->m_sysdig_pid)
-			{
-				m_my_cpuload = ainfo->m_cpuload;
-			}
-#else
-			m_my_cpuload = 0;
-#endif
-		}
-
 #ifndef _WIN32
 		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
 		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
@@ -1277,12 +1243,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				java_process_requests.emplace_back(tinfo);
 			}
 			// May happen that for processes like apache with mpm_prefork there are hundred of
-			// apache processes with some comm, cmdline and ports, some of them are always alive,
+			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
 			// We send to app_checks only processes up at least for 10 seconds. But the programs aggregation
-			// may choose the one young one.
+			// may choose the young one.
 			// So now we are trying to match a check for every process in the program grouping and
-			// when we found a matching check, we mark it on the main_thread of the group as
+			// when we find a matching check, we mark it on the main_thread of the group as
 			// we don't need more checks instances for each process.
 			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
 			{
@@ -1311,6 +1277,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
+		//
+		// ... And to the host ones
+		//
+		m_host_transaction_counters.add(&procinfo->m_external_transaction_metrics);
+
+		if(container)
+		{
+			container->m_transaction_counters.add(&procinfo->m_proc_transaction_metrics);
+		}
+
+		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+		{
+			m_server_programs.insert(tinfo->m_tid);
+			m_client_tr_time_by_servers += procinfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
+		}
 
 		sinsp_counter_time tot;
 
@@ -1359,7 +1341,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			//
 			// Health-related metrics
 			//
-			if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD &&
+					procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 			{
 				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
 																						 prog_delays,
@@ -1536,259 +1519,219 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end(); 
-		++it)
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = &it->second;
+		sinsp_threadinfo* tinfo = *it;
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
-#ifdef ANALYZER_EMITS_PROGRAMS
-		if(tinfo->m_ainfo->is_main_program_thread())
-#else
-		if(tinfo->is_main_thread())
-#endif
-		{
-			sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
-
-			if(proctids.size() != 0)
-			{
-				if(proctids.find(it->first) == proctids.end())
-				{
-					tinfo->m_flags |= PPM_CL_CLOSED;
-				}
-			}
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 #ifdef ANALYZER_EMITS_PROCESSES
-			sinsp_counter_time tot;
-	
-			ASSERT(procinfo != NULL);
+		sinsp_counter_time tot;
 
-			procinfo->m_proc_metrics.get_total(&tot);
-			if(!m_inspector->m_islive)
-			{
-				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-			}
-			//
-			// Inclusion logic
-			//
-			// Keep:
-			//  - top 30 clients/servers
-			//  - top 30 programs that were active
+		ASSERT(procinfo != NULL);
 
-			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
-			{
+		procinfo->m_proc_metrics.get_total(&tot);
+		if(!m_inspector->m_islive)
+		{
+			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+		}
+		//
+		// Inclusion logic
+		//
+		// Keep:
+		//  - top 30 clients/servers
+		//  - top 30 programs that were active
+
+		if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
+		{
 #ifdef ANALYZER_EMITS_PROGRAMS
-				draiosproto::program* prog = m_metrics->add_programs();
-				draiosproto::process* proc = prog->mutable_procinfo();
+			draiosproto::program* prog = m_metrics->add_programs();
+			draiosproto::process* proc = prog->mutable_procinfo();
 
-				//for(int64_t pid : procinfo->m_program_pids)
-				//{
-				//	prog->add_pids(pid);
-				//}
-				prog->add_pids(it->second.m_pid);
+			//for(int64_t pid : procinfo->m_program_pids)
+			//{
+			//	prog->add_pids(pid);
+			//}
+			prog->add_pids(tinfo->m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
-				draiosproto::process* proc = m_metrics->add_processes();
+			draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
 
-				//
-				// Basic values
-				//
-				if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
-					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+			//
+			// Basic values
+			//
+			if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
+				(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+			{
+				proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
+				proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
+				for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
+					arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
 				{
-					proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
-					proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
-					for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
-						arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
+					if(*arg_it != "")
 					{
-						if(*arg_it != "")
+						if (arg_it->size() <= ARG_SIZE_LIMIT)
 						{
-							if (arg_it->size() <= ARG_SIZE_LIMIT)
-							{
-								proc->mutable_details()->add_args(*arg_it);
-							}
-							else
-							{
-								auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
-								proc->mutable_details()->add_args(arg_capped);
-							}
+							proc->mutable_details()->add_args(*arg_it);
+						}
+						else
+						{
+							auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+							proc->mutable_details()->add_args(arg_capped);
 						}
 					}
-
-					if(!tinfo->get_main_thread()->m_container_id.empty())
-					{
-						proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
-					}
-
-					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
-				//
-				// client-server role
-				//
-				uint32_t netrole = 0;
-
-				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+				if(!tinfo->get_main_thread()->m_container_id.empty())
 				{
-					netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
-				{
-					netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
-				{
-					netrole |= draiosproto::IS_UNIX_SERVER;
+					proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
 				}
 
-				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
-				{
-					netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
-				{
-					netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
-				{
-					netrole |= draiosproto::IS_UNIX_CLIENT;
-				}
+				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
+			}
 
-				proc->set_netrole(netrole);
+			//
+			// client-server role
+			//
+			uint32_t netrole = 0;
+
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+			{
+				netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+			{
+				netrole |= draiosproto::IS_UNIX_SERVER;
+			}
+
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+			{
+				netrole |= draiosproto::IS_UNIX_CLIENT;
+			}
+
+			proc->set_netrole(netrole);
 
 #ifndef _WIN32
-				// Add JMX metrics
-				if (m_jmx_proxy)
-				{
-					auto jmx_metrics_it = m_jmx_metrics.end();
-					for(auto pid_it = procinfo->m_program_pids.begin();
-							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
-							++pid_it)
-					{
-						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
-					}
-					if(jmx_metrics_it != m_jmx_metrics.end())
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-						auto java_proto = proc->mutable_protos()->mutable_java();
-						jmx_metrics_it->second.to_protobuf(java_proto);
-					}
-				}
-				if(m_app_proxy)
-				{
-					auto app_data_it = app_metrics.end();
-					for(auto pid_it = procinfo->m_program_pids.begin();
-						pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+			// Add JMX metrics
+			if (m_jmx_proxy)
+			{
+				auto jmx_metrics_it = m_jmx_metrics.end();
+				for(auto pid_it = procinfo->m_program_pids.begin();
+						pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
 						++pid_it)
-					{
-						app_data_it = app_metrics.find(*pid_it);
-					}
-					if(app_data_it != app_metrics.end())
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
-						app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
-					}
+				{
+					jmx_metrics_it = m_jmx_metrics.find(*pid_it);
 				}
+				if(jmx_metrics_it != m_jmx_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+					auto java_proto = proc->mutable_protos()->mutable_java();
+					jmx_metrics_it->second.to_protobuf(java_proto);
+				}
+			}
+			if(m_app_proxy)
+			{
+				auto app_data_it = app_metrics.end();
+				for(auto pid_it = procinfo->m_program_pids.begin();
+					pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+					++pid_it)
+				{
+					app_data_it = app_metrics.find(*pid_it);
+				}
+				if(app_data_it != app_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+					app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+				}
+			}
 #endif
 
-				//
-				// CPU utilization
-				//
-				if(procinfo->m_cpuload >= 0)
+			//
+			// CPU utilization
+			//
+			if(procinfo->m_cpuload >= 0)
+			{
+				if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
 				{
-					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
-					{
-						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
-					}
-
-					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-				}
-				else
-				{
-					proc->mutable_resource_counters()->set_cpu_pct(0);
+					procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
 				}
 
-				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
-				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
-				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
-				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
-				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+				proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
+			}
+			else
+			{
+				proc->mutable_resource_counters()->set_cpu_pct(0);
+			}
 
-				if(tot.m_count != 0)
+			proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+			proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
+			proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+			proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+			proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+
+			if(tot.m_count != 0)
+			{
+				sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+
+				//
+				// Main metrics
+
+				procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+				//
+				// Transaction-related metrics
+				//
+				if(prog_delays->m_local_processing_delay_ns != -1)
 				{
-					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+					proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
+					proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
+				}
 
-					//
-					// Main metrics
+				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
+					proc->mutable_min_transaction_counters(),
+					proc->mutable_max_transaction_counters(),
+					m_sampling_ratio);
 
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
+				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
+				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
+				proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
+				proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
 
-					//
-					// Transaction-related metrics
-					//
-					if(prog_delays->m_local_processing_delay_ns != -1)
-					{
-						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
-						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
-					}
+				//
+				// Error-related metrics
+				//
+				procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
 
-					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), 
-						proc->mutable_min_transaction_counters(),
-						proc->mutable_max_transaction_counters(),
-						m_sampling_ratio);
-
-					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
-					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
-					proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
-					proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
-
-					//
-					// Error-related metrics
-					//
-					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-					//
-					// Protocol tables
-					//
+				//
+				// Protocol tables
+				//
 //					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 //						m_sampling_ratio);
-					proc->set_start_count(procinfo->m_start_count);
-				}
-#endif // ANALYZER_EMITS_PROCESSES
+				proc->set_start_count(procinfo->m_start_count);
 			}
+#endif // ANALYZER_EMITS_PROCESSES
 		}
-
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
 		tinfo->m_ainfo->clear_all_metrics();
-
-		if(tinfo->m_flags & PPM_CL_CLOSED)
-		{
-			//
-			// Yes, remove the thread from the table, but NOT if the event currently under processing is
-			// an exit for this process. In that case we wait until next sample.
-			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
-			//       not actually remove the thread if it has childs.
-			//
-
-			if(evt != NULL && 
-				(evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
-				&& evt->m_tinfo == tinfo)
-			{
-				++it;
-			}
-			else
-			{
-				m_threads_to_remove.push_back(tinfo);
-			}
-		}
-
 	}
 
 	if(app_checks_limit == 0)
@@ -2567,7 +2510,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Flush the scheduler analyzer
 			//
-			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+			{
+				m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			}
 
 			//
 			// Reset the protobuffer
