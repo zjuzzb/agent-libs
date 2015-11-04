@@ -467,7 +467,6 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
-
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;

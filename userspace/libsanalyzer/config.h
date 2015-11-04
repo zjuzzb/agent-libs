@@ -72,7 +72,8 @@ public:
 	const string & get_k8s_ssl_ca_certificate() const;
 	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
 	bool get_k8s_ssl_verify_certificate() const;
-
+	unsigned get_statsd_limit() const;
+	void set_statsd_limit(unsigned value);
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -103,6 +104,7 @@ private:
 	bool   m_k8s_autodetect;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
+	unsigned m_statsd_limit;
 };
 
 #endif // HAS_ANALYZER

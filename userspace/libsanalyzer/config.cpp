@@ -373,4 +373,13 @@ bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
 	return m_k8s_ssl_verify_certificate;
 }
 
+unsigned sinsp_configuration::get_statsd_limit() const
+{
+	return m_statsd_limit;
+}
+
+void sinsp_configuration::set_statsd_limit(unsigned value)
+{
+	m_statsd_limit = value;
+}
 #endif // HAS_ANALYZER

@@ -2783,7 +2783,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), HOST_STATSD_METRIC_LIMIT);
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), m_configuration->get_statsd_limit());
 			}
 #endif
 
@@ -3763,7 +3763,7 @@ vector<string> sinsp_analyzer::emit_containers()
 
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
-	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
+	unsigned statsd_limit = m_configuration->get_statsd_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers](const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)

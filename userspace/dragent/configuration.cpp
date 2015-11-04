@@ -54,6 +54,7 @@ dragent_configuration::dragent_configuration()
 	m_agent_installed = true;
 	m_ssh_enabled = true;
 	m_statsd_enabled = true;
+	m_statsd_limit = 100;
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 }
@@ -200,6 +201,7 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
