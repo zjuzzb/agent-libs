@@ -2,6 +2,7 @@
 
 #include "posix_queue.h"
 #include "third-party/jsoncpp/json/json.h"
+#include "sdc_internal.pb.h"
 
 class mounted_fs
 {

@@ -2413,7 +2413,6 @@ void sinsp_analyzer::emit_executed_commands()
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
-	stopwatch watch("flush");
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
@@ -2531,7 +2530,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					auto new_fs_map = m_mounted_fs_proxy->receive_mounted_fs_list();
 					if(!new_fs_map.empty())
 					{
-						stopwatch watch("move_map");
 						m_mounted_fs_map = move(new_fs_map);
 					}
 				}

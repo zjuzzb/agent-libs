@@ -1,0 +1,29 @@
+import weak "draios.proto"; 
+package sdc_internal;
+
+// Internal protobuf used by sysdig cloud agent components
+// to talk each other. It uses some pieces in common with
+// draios.proto so it can be more efficient
+
+option optimize_for = SPEED;
+//option java_package = "com.draios.model.protobuf";
+//option java_outer_classname = "Agent";
+
+message container_mounts {
+    required string container_id = 1;
+    repeated draiosproto.mounted_fs mounts = 2; 
+}
+
+message mounted_fs_response {
+    repeated container_mounts containers = 1;
+}
+
+message container_info {
+    required string id = 1;
+    required uint64 pid = 2;
+    required uint64 vpid = 3;
+}
+
+message mounted_fs_request {
+    repeated container_info containers = 1;
+}

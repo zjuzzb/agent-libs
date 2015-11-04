@@ -705,7 +705,7 @@ mounted_fs_proxy::mounted_fs_proxy():
 unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
 	unordered_map<string, vector<mounted_fs>> fs_map;
-	stopwatch watch;
+	stopwatch watch("receive_mounted_fs_list");
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
 	while(!last_msg.empty())
@@ -717,28 +717,7 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	{
 		fs_map.clear();
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
-		// g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
-		/*Json::Value response_j;
-		watch.start("json parse");
-		bool parsed = m_json_reader.parse(msg, response_j);
-		watch.stop();
-		watch.start("create_result");
-		if(parsed)
-		{
-			for(const auto& container_j : response_j)
-			{
-				auto id = container_j["id"].asString();
-				const auto& fslist_j = container_j["fslist"];
-				vector<mounted_fs> fslist;
-				for(const auto& fs_j : fslist_j)
-				{
-					fslist.emplace_back(fs_j);
-				}
-				fs_map.emplace(move(id), move(fslist));
-			}
-		}
-		watch.stop();*/
-		draiosproto::mounted_fs_response response_proto;
+		sdc_internal::mounted_fs_response response_proto;
 		response_proto.ParseFromString(msg);
 		for(const auto& c : response_proto.containers())
 		{
@@ -755,27 +734,16 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 
 bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
 {
-	auto containers_j = Json::Value(Json::arrayValue);
-	for(const auto& item : containers)
-	{
-		auto container_j = Json::Value(Json::objectValue);
-		container_j["id"] = get<0>(item);
-		container_j["pid"] = get<1>(item);
-		container_j["vpid"] = get<2>(item);
-		containers_j.append(container_j);
-	}
-	auto containers_s = m_json_writer.write(containers_j);
-	return m_output.send(containers_s);
-	/*draiosproto::mounted_fs_request req;
+	sdc_internal::mounted_fs_request req;
 	for(const auto& item : containers)
 	{
 		auto container = req.add_containers();
 		container->set_id(get<0>(item));
 		container->set_pid(get<1>(item));
-		container->set_pid(get<2>(item));
+		container->set_vpid(get<2>(item));
 	}
 	auto req_s = req.SerializeAsString();
-	return m_output.send(req_s);*/
+	return m_output.send(req_s);
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
@@ -846,22 +814,15 @@ int mounted_fs_reader::run()
 		auto request_s = m_input.receive(1);
 		if(!request_s.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent: %s", request_s.c_str());
-			Json::Value request_j;
-			auto parsed_ok = m_json_reader.parse(request_s, request_j);
-			if(parsed_ok)
+			sdc_internal::mounted_fs_request request_proto;
+			if(request_proto.ParseFromString(request_s))
 			{
-				draiosproto::mounted_fs_response response_proto;
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_j.size());
-				for(const auto& container_j : request_j)
+				sdc_internal::mounted_fs_response response_proto;
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
+				for(const auto& container_proto : request_proto.containers())
 				{
-					// Extract container info
-					auto container_pid = container_j["pid"].asUInt();
-					auto container_vpid = container_j["vpid"].asUInt();
-					auto container_id = container_j["id"].asString();
-
 					// Go to container mnt ns
-					auto changed = change_ns(container_pid);
+					auto changed = change_ns(container_proto.pid());
 					if(changed)
 					{
 						try
@@ -877,11 +838,11 @@ int mounted_fs_reader::run()
 							}
 							else
 							{
-								snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
+								snprintf(filename, sizeof(filename), "/proc/%lu/mounts", container_proto.vpid());
 							}
 							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
 							auto container_mounts_proto = response_proto.add_containers();
-							container_mounts_proto->set_container_id(container_id);
+							container_mounts_proto->set_container_id(container_proto.id());
 							for(const auto& fs : fs_list)
 							{
 								auto fsinfo = container_mounts_proto->add_mounts();
@@ -890,7 +851,7 @@ int mounted_fs_reader::run()
 						}
 						catch (const sinsp_exception& ex)
 						{
-							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_id.c_str(), container_pid, ex.what());
+							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
 						}
 					}
 					// Back home
@@ -900,7 +861,6 @@ int mounted_fs_reader::run()
 						return ERROR_EXIT;
 					};
 				}
-				//auto response_s = m_json_writer.write(response_j);
 				auto response_s = response_proto.SerializeAsString();
 				m_output.send(response_s);
 			}
