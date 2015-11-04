@@ -78,7 +78,7 @@ void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) con
 java_bean::java_bean(const Json::Value& json):
 	m_name(json["name"].asString())
 {
-	for(auto attribute : json["attributes"])
+	for(const auto& attribute : json["attributes"])
 	{
 		m_attributes.emplace_back(attribute);
 	}
@@ -170,14 +170,15 @@ pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
 		}
 		Json::Value json_obj;
+
 		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
 		if(parse_ok && json_obj.isObject() && json_obj.isMember("id") && json_obj.isMember("body"))
 		{
 			response_id = json_obj["id"].asUInt64();
-			for(auto process_data : json_obj["body"])
+			for(const auto& process_data : json_obj["body"])
 			{
 				java_process process(process_data);
-				processes.insert(std::make_pair(process.pid(), process));
+				processes.emplace(process.pid(), move(process));
 			}
 		}
 		else

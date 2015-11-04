@@ -91,10 +91,10 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
 		if(response_obj["id"].asUInt64() == id)
 		{
 			// Parse data
-			for(auto process : response_obj["body"])
+			for(const auto& process : response_obj["body"])
 			{
 				app_check_data data(process);
-				ret.emplace(make_pair(data.pid(), move(data)));
+				ret.emplace(data.pid(), move(data));
 			}
 			break;
 		}
@@ -176,7 +176,7 @@ app_metric::app_metric(const Json::Value &obj):
 	}
 	if(metadata.isMember("tags"))
 	{
-		for(auto tag_obj : metadata["tags"])
+		for(const auto& tag_obj : metadata["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
 			auto tag_parsed = sinsp_split(tag_as_str, ':');
@@ -213,7 +213,7 @@ app_service_check::app_service_check(const Json::Value &obj):
 {
 	if(obj.isMember("tags"))
 	{
-		for(auto tag_obj : obj["tags"])
+		for(const auto& tag_obj : obj["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
 			auto tag_parsed = sinsp_split(tag_as_str, ':');
