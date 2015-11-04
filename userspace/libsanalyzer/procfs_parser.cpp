@@ -707,9 +707,9 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 			for(const auto& container_j : response_j)
 			{
 				auto id = container_j["id"].asString();
-				auto fslist_j = container_j["fslist"];
+				const auto& fslist_j = container_j["fslist"];
 				vector<mounted_fs> fslist;
-				for(auto fs_j : fslist_j)
+				for(const auto& fs_j : fslist_j)
 				{
 					fslist.emplace_back(fs_j);
 				}
