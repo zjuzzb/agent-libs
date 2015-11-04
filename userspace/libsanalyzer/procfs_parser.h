@@ -13,9 +13,10 @@ public:
 	{
 	}
 	explicit mounted_fs(const Json::Value& json);
-	
+	explicit mounted_fs(const draiosproto::mounted_fs& proto);
+
 	Json::Value to_json() const;
-	void to_protobuf(draiosproto::mounted_fs* proto);
+	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
 private:
 	string device;

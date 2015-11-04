@@ -727,3 +727,21 @@ message dirty_shutdown_report {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required string log = 4; // The log portion
 }
+
+message container_mounts {
+    required string container_id = 1;
+    repeated mounted_fs mounts = 2; 
+}
+message mounted_fs_response {
+    repeated container_mounts containers = 1;
+}
+
+message container_info {
+    required string id = 1;
+    required uint64 pid = 2;
+    required uint64 vpid = 3;
+}
+
+message mounted_fs_request {
+    repeated container_info containers = 1;
+}

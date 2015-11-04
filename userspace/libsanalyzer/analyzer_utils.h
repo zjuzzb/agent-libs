@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <chrono>
+#include <iostream>
 
 class sinsp_evttables;
 
@@ -172,3 +174,46 @@ inline int setns(int fd, int nstype)
 }
 #endif
 #endif
+
+class stopwatch
+{
+public:
+	stopwatch() {}
+
+	stopwatch(string&& name):
+			m_name(name),
+			m_starttime(chrono::system_clock::now()),
+			m_started(true)
+	{
+	}
+
+	~stopwatch()
+	{
+		if(m_started)
+		{
+			stop();
+		}
+	}
+
+	void start(string&& name)
+	{
+		m_name = name;
+		m_starttime = chrono::system_clock::now();
+		m_started = true;
+	}
+
+	void stop()
+	{
+		m_endtime = chrono::system_clock::now();
+		auto d = chrono::duration_cast<chrono::microseconds>(m_endtime - m_starttime);
+		std::cerr << m_name << " took " << d.count() << " us" << std::endl;
+		m_started = false;
+	}
+
+
+private:
+	string m_name;
+	chrono::system_clock::time_point m_starttime;
+	chrono::system_clock::time_point m_endtime;
+	bool m_started;
+};

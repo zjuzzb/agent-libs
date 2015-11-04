@@ -662,7 +662,18 @@ mounted_fs::mounted_fs(const Json::Value &json):
 
 }
 
-void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs)
+mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
+	device(proto.device()),
+	mount_dir(proto.mount_dir()),
+	type(proto.type()),
+	size_bytes(proto.size_bytes()),
+	used_bytes(proto.used_bytes()),
+	available_bytes(proto.available_bytes())
+{
+
+}
+
+void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 {
 	fs->set_device(device);
 	fs->set_mount_dir(mount_dir);
@@ -694,6 +705,7 @@ mounted_fs_proxy::mounted_fs_proxy():
 unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
 	unordered_map<string, vector<mounted_fs>> fs_map;
+	stopwatch watch;
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
 	while(!last_msg.empty())
@@ -706,8 +718,11 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 		fs_map.clear();
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
 		// g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %s", msg.c_str());
-		Json::Value response_j;
+		/*Json::Value response_j;
+		watch.start("json parse");
 		bool parsed = m_json_reader.parse(msg, response_j);
+		watch.stop();
+		watch.start("create_result");
 		if(parsed)
 		{
 			for(const auto& container_j : response_j)
@@ -722,7 +737,18 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 				fs_map.emplace(move(id), move(fslist));
 			}
 		}
-		msg = m_input.receive();
+		watch.stop();*/
+		draiosproto::mounted_fs_response response_proto;
+		response_proto.ParseFromString(msg);
+		for(const auto& c : response_proto.containers())
+		{
+			vector<mounted_fs> fslist;
+			for( const auto& m : c.mounts())
+			{
+				fslist.emplace_back(m);
+			}
+			fs_map.emplace(c.container_id(), move(fslist));
+		}
 	}
 	return fs_map;
 }
@@ -740,6 +766,16 @@ bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid
 	}
 	auto containers_s = m_json_writer.write(containers_j);
 	return m_output.send(containers_s);
+	/*draiosproto::mounted_fs_request req;
+	for(const auto& item : containers)
+	{
+		auto container = req.add_containers();
+		container->set_id(get<0>(item));
+		container->set_pid(get<1>(item));
+		container->set_pid(get<2>(item));
+	}
+	auto req_s = req.SerializeAsString();
+	return m_output.send(req_s);*/
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
@@ -815,7 +851,7 @@ int mounted_fs_reader::run()
 			auto parsed_ok = m_json_reader.parse(request_s, request_j);
 			if(parsed_ok)
 			{
-				auto response_j = Json::Value(Json::arrayValue);
+				draiosproto::mounted_fs_response response_proto;
 				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_j.size());
 				for(const auto& container_j : request_j)
 				{
@@ -844,15 +880,13 @@ int mounted_fs_reader::run()
 								snprintf(filename, sizeof(filename), "/proc/%u/mounts", container_vpid);
 							}
 							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
-							auto fs_list_json = Json::Value(Json::arrayValue);
+							auto container_mounts_proto = response_proto.add_containers();
+							container_mounts_proto->set_container_id(container_id);
 							for(const auto& fs : fs_list)
 							{
-								fs_list_json.append(fs.to_json());
+								auto fsinfo = container_mounts_proto->add_mounts();
+								fs.to_protobuf(fsinfo);
 							}
-							auto container_response_j = Json::Value(Json::objectValue);
-							container_response_j["id"] = container_id;
-							container_response_j["fslist"] = fs_list_json;
-							response_j.append(container_response_j);
 						}
 						catch (const sinsp_exception& ex)
 						{
@@ -866,7 +900,8 @@ int mounted_fs_reader::run()
 						return ERROR_EXIT;
 					};
 				}
-				auto response_s = m_json_writer.write(response_j);
+				//auto response_s = m_json_writer.write(response_j);
+				auto response_s = response_proto.SerializeAsString();
 				m_output.send(response_s);
 			}
 		}

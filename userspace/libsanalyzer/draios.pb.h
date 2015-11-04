@@ -95,6 +95,10 @@ class ssh_data;
 class ssh_close_channel;
 class auto_update_request;
 class dirty_shutdown_report;
+class container_mounts;
+class mounted_fs_response;
+class container_info;
+class mounted_fs_request;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -8734,6 +8738,383 @@ class dirty_shutdown_report : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static dirty_shutdown_report* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class container_mounts : public ::google::protobuf::Message {
+ public:
+  container_mounts();
+  virtual ~container_mounts();
+
+  container_mounts(const container_mounts& from);
+
+  inline container_mounts& operator=(const container_mounts& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const container_mounts& default_instance();
+
+  void Swap(container_mounts* other);
+
+  // implements Message ----------------------------------------------
+
+  container_mounts* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const container_mounts& from);
+  void MergeFrom(const container_mounts& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string container_id = 1;
+  inline bool has_container_id() const;
+  inline void clear_container_id();
+  static const int kContainerIdFieldNumber = 1;
+  inline const ::std::string& container_id() const;
+  inline void set_container_id(const ::std::string& value);
+  inline void set_container_id(const char* value);
+  inline void set_container_id(const char* value, size_t size);
+  inline ::std::string* mutable_container_id();
+  inline ::std::string* release_container_id();
+  inline void set_allocated_container_id(::std::string* container_id);
+
+  // repeated .draiosproto.mounted_fs mounts = 2;
+  inline int mounts_size() const;
+  inline void clear_mounts();
+  static const int kMountsFieldNumber = 2;
+  inline const ::draiosproto::mounted_fs& mounts(int index) const;
+  inline ::draiosproto::mounted_fs* mutable_mounts(int index);
+  inline ::draiosproto::mounted_fs* add_mounts();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+      mounts() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+      mutable_mounts();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.container_mounts)
+ private:
+  inline void set_has_container_id();
+  inline void clear_has_container_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* container_id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static container_mounts* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mounted_fs_response : public ::google::protobuf::Message {
+ public:
+  mounted_fs_response();
+  virtual ~mounted_fs_response();
+
+  mounted_fs_response(const mounted_fs_response& from);
+
+  inline mounted_fs_response& operator=(const mounted_fs_response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mounted_fs_response& default_instance();
+
+  void Swap(mounted_fs_response* other);
+
+  // implements Message ----------------------------------------------
+
+  mounted_fs_response* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mounted_fs_response& from);
+  void MergeFrom(const mounted_fs_response& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.container_mounts containers = 1;
+  inline int containers_size() const;
+  inline void clear_containers();
+  static const int kContainersFieldNumber = 1;
+  inline const ::draiosproto::container_mounts& containers(int index) const;
+  inline ::draiosproto::container_mounts* mutable_containers(int index);
+  inline ::draiosproto::container_mounts* add_containers();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_mounts >&
+      containers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_mounts >*
+      mutable_containers();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs_response)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::container_mounts > containers_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mounted_fs_response* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class container_info : public ::google::protobuf::Message {
+ public:
+  container_info();
+  virtual ~container_info();
+
+  container_info(const container_info& from);
+
+  inline container_info& operator=(const container_info& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const container_info& default_instance();
+
+  void Swap(container_info* other);
+
+  // implements Message ----------------------------------------------
+
+  container_info* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const container_info& from);
+  void MergeFrom(const container_info& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // required uint64 pid = 2;
+  inline bool has_pid() const;
+  inline void clear_pid();
+  static const int kPidFieldNumber = 2;
+  inline ::google::protobuf::uint64 pid() const;
+  inline void set_pid(::google::protobuf::uint64 value);
+
+  // required uint64 vpid = 3;
+  inline bool has_vpid() const;
+  inline void clear_vpid();
+  static const int kVpidFieldNumber = 3;
+  inline ::google::protobuf::uint64 vpid() const;
+  inline void set_vpid(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.container_info)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+  inline void set_has_pid();
+  inline void clear_has_pid();
+  inline void set_has_vpid();
+  inline void clear_has_vpid();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::google::protobuf::uint64 pid_;
+  ::google::protobuf::uint64 vpid_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static container_info* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mounted_fs_request : public ::google::protobuf::Message {
+ public:
+  mounted_fs_request();
+  virtual ~mounted_fs_request();
+
+  mounted_fs_request(const mounted_fs_request& from);
+
+  inline mounted_fs_request& operator=(const mounted_fs_request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mounted_fs_request& default_instance();
+
+  void Swap(mounted_fs_request* other);
+
+  // implements Message ----------------------------------------------
+
+  mounted_fs_request* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mounted_fs_request& from);
+  void MergeFrom(const mounted_fs_request& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.container_info containers = 1;
+  inline int containers_size() const;
+  inline void clear_containers();
+  static const int kContainersFieldNumber = 1;
+  inline const ::draiosproto::container_info& containers(int index) const;
+  inline ::draiosproto::container_info* mutable_containers(int index);
+  inline ::draiosproto::container_info* add_containers();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_info >&
+      containers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_info >*
+      mutable_containers();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs_request)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::container_info > containers_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mounted_fs_request* default_instance_;
 };
 // ===================================================================
 
@@ -21440,6 +21821,281 @@ inline void dirty_shutdown_report::set_allocated_log(::std::string* log) {
     clear_has_log();
     log_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// -------------------------------------------------------------------
+
+// container_mounts
+
+// required string container_id = 1;
+inline bool container_mounts::has_container_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void container_mounts::set_has_container_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void container_mounts::clear_has_container_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void container_mounts::clear_container_id() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    container_id_->clear();
+  }
+  clear_has_container_id();
+}
+inline const ::std::string& container_mounts::container_id() const {
+  return *container_id_;
+}
+inline void container_mounts::set_container_id(const ::std::string& value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void container_mounts::set_container_id(const char* value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void container_mounts::set_container_id(const char* value, size_t size) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container_mounts::mutable_container_id() {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  return container_id_;
+}
+inline ::std::string* container_mounts::release_container_id() {
+  clear_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = container_id_;
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container_mounts::set_allocated_container_id(::std::string* container_id) {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (container_id) {
+    set_has_container_id();
+    container_id_ = container_id;
+  } else {
+    clear_has_container_id();
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.mounted_fs mounts = 2;
+inline int container_mounts::mounts_size() const {
+  return mounts_.size();
+}
+inline void container_mounts::clear_mounts() {
+  mounts_.Clear();
+}
+inline const ::draiosproto::mounted_fs& container_mounts::mounts(int index) const {
+  return mounts_.Get(index);
+}
+inline ::draiosproto::mounted_fs* container_mounts::mutable_mounts(int index) {
+  return mounts_.Mutable(index);
+}
+inline ::draiosproto::mounted_fs* container_mounts::add_mounts() {
+  return mounts_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+container_mounts::mounts() const {
+  return mounts_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+container_mounts::mutable_mounts() {
+  return &mounts_;
+}
+
+// -------------------------------------------------------------------
+
+// mounted_fs_response
+
+// repeated .draiosproto.container_mounts containers = 1;
+inline int mounted_fs_response::containers_size() const {
+  return containers_.size();
+}
+inline void mounted_fs_response::clear_containers() {
+  containers_.Clear();
+}
+inline const ::draiosproto::container_mounts& mounted_fs_response::containers(int index) const {
+  return containers_.Get(index);
+}
+inline ::draiosproto::container_mounts* mounted_fs_response::mutable_containers(int index) {
+  return containers_.Mutable(index);
+}
+inline ::draiosproto::container_mounts* mounted_fs_response::add_containers() {
+  return containers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_mounts >&
+mounted_fs_response::containers() const {
+  return containers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_mounts >*
+mounted_fs_response::mutable_containers() {
+  return &containers_;
+}
+
+// -------------------------------------------------------------------
+
+// container_info
+
+// required string id = 1;
+inline bool container_info::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void container_info::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void container_info::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void container_info::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& container_info::id() const {
+  return *id_;
+}
+inline void container_info::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void container_info::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void container_info::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container_info::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* container_info::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container_info::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint64 pid = 2;
+inline bool container_info::has_pid() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void container_info::set_has_pid() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void container_info::clear_has_pid() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void container_info::clear_pid() {
+  pid_ = GOOGLE_ULONGLONG(0);
+  clear_has_pid();
+}
+inline ::google::protobuf::uint64 container_info::pid() const {
+  return pid_;
+}
+inline void container_info::set_pid(::google::protobuf::uint64 value) {
+  set_has_pid();
+  pid_ = value;
+}
+
+// required uint64 vpid = 3;
+inline bool container_info::has_vpid() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void container_info::set_has_vpid() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void container_info::clear_has_vpid() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void container_info::clear_vpid() {
+  vpid_ = GOOGLE_ULONGLONG(0);
+  clear_has_vpid();
+}
+inline ::google::protobuf::uint64 container_info::vpid() const {
+  return vpid_;
+}
+inline void container_info::set_vpid(::google::protobuf::uint64 value) {
+  set_has_vpid();
+  vpid_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// mounted_fs_request
+
+// repeated .draiosproto.container_info containers = 1;
+inline int mounted_fs_request::containers_size() const {
+  return containers_.size();
+}
+inline void mounted_fs_request::clear_containers() {
+  containers_.Clear();
+}
+inline const ::draiosproto::container_info& mounted_fs_request::containers(int index) const {
+  return containers_.Get(index);
+}
+inline ::draiosproto::container_info* mounted_fs_request::mutable_containers(int index) {
+  return containers_.Mutable(index);
+}
+inline ::draiosproto::container_info* mounted_fs_request::add_containers() {
+  return containers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::container_info >&
+mounted_fs_request::containers() const {
+  return containers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_info >*
+mounted_fs_request::mutable_containers() {
+  return &containers_;
 }
 
 
