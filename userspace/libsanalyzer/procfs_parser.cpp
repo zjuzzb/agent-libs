@@ -651,17 +651,6 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
-mounted_fs::mounted_fs(const Json::Value &json):
-	device(json["device"].asString()),
-	mount_dir(json["mount_dir"].asString()),
-	type(json["type"].asString()),
-	size_bytes(json["size_bytes"].asUInt64()),
-	used_bytes(json["used_bytes"].asUInt64()),
-	available_bytes(json["available_bytes"].asUInt64())
-{
-
-}
-
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	device(proto.device()),
 	mount_dir(proto.mount_dir()),
@@ -681,18 +670,6 @@ void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 	fs->set_size_bytes(size_bytes);
 	fs->set_used_bytes(used_bytes);
 	fs->set_available_bytes(available_bytes);
-}
-
-Json::Value mounted_fs::to_json() const
-{
-	Json::Value ret;
-	ret["device"] = device;
-	ret["mount_dir"] = mount_dir;
-	ret["type"] = type;
-	ret["size_bytes"] = static_cast<Json::UInt64>(size_bytes);
-	ret["used_bytes"] = static_cast<Json::UInt64>(used_bytes);
-	ret["available_bytes"] = static_cast<Json::UInt64>(available_bytes);
-	return ret;
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
