@@ -705,7 +705,6 @@ mounted_fs_proxy::mounted_fs_proxy():
 unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
 	unordered_map<string, vector<mounted_fs>> fs_map;
-	stopwatch watch("receive_mounted_fs_list");
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
 	while(!last_msg.empty())
@@ -715,18 +714,20 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	}
 	if(!msg.empty())
 	{
-		fs_map.clear();
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
 		sdc_internal::mounted_fs_response response_proto;
-		response_proto.ParseFromString(msg);
-		for(const auto& c : response_proto.containers())
+		if(response_proto.ParseFromString(msg))
 		{
-			vector<mounted_fs> fslist;
-			for( const auto& m : c.mounts())
+			fs_map.clear();
+			for(const auto& c : response_proto.containers())
 			{
-				fslist.emplace_back(m);
+				vector<mounted_fs> fslist;
+				for( const auto& m : c.mounts())
+				{
+					fslist.emplace_back(m);
+				}
+				fs_map.emplace(c.container_id(), move(fslist));
 			}
-			fs_map.emplace(c.container_id(), move(fslist));
 		}
 	}
 	return fs_map;
