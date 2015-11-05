@@ -68,7 +68,8 @@ add_library(sanalyzer STATIC
 	jmx_proxy.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
-	posix_queue.cpp)
+	posix_queue.cpp
+	sdc_internal.pb.cc)
 
 target_link_libraries(sanalyzer
 	scap 

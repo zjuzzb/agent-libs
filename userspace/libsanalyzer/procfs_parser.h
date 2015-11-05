@@ -1,7 +1,7 @@
 #pragma once
 
 #include "posix_queue.h"
-#include "third-party/jsoncpp/json/json.h"
+#include "sdc_internal.pb.h"
 
 class mounted_fs
 {
@@ -12,10 +12,9 @@ public:
 			available_bytes(0)
 	{
 	}
-	explicit mounted_fs(const Json::Value& json);
-	
-	Json::Value to_json() const;
-	void to_protobuf(draiosproto::mounted_fs* proto);
+	explicit mounted_fs(const draiosproto::mounted_fs& proto);
+
+	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
 private:
 	string device;
@@ -78,8 +77,6 @@ public:
 	unordered_map<string, vector<mounted_fs>> receive_mounted_fs_list();
 	bool send_container_list(const vector<tuple<string, pid_t, pid_t>>& containers);
 private:
-	Json::Reader m_json_reader;
-	Json::FastWriter m_json_writer;
 	posix_queue m_input;
 	posix_queue m_output;
 };
@@ -98,6 +95,4 @@ private:
 	posix_queue m_output;
 	sinsp_procfs_parser m_procfs_parser;
 	bool m_remotefs;
-	Json::Reader m_json_reader;
-	Json::FastWriter m_json_writer;
 };
