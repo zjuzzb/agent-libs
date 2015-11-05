@@ -175,6 +175,29 @@ inline int setns(int fd, int nstype)
 #endif
 #endif
 
+/**
+ * This class allows you to count time used by some function in an easy way
+ * you can use it in two ways:
+ *
+ * 1. scoped
+ *
+ * {
+ *   stopwatch watch("My block of code");
+ *   ...
+ * }
+ *
+ * 2. or by manually calling start() and stop()
+ *
+ * {
+ *   stopwatch watch;
+ *   watch.start("1st part");
+ *   ...
+ *   watch.stop();
+ *   watch.start("2nd part"):
+ *   ...
+ *   watch.stop();
+ * }
+ */
 class stopwatch
 {
 public:
