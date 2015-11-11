@@ -121,6 +121,27 @@ public:
 	uint32_t m_count; // how many times this command has been repeated
 };
 
+class self_cputime_analyzer
+{
+public:
+	void begin_flush();
+	void end_flush();
+	double calc_flush_percent();
+
+private:
+	static const auto LAST_SAMPLES = 10U;
+
+	uint64_t read_cputime();
+	void incr_index()
+	{
+		m_index = (m_index + 1) % LAST_SAMPLES;
+	}
+
+	array<uint64_t, LAST_SAMPLES> m_flushtime;
+	array<uint64_t, LAST_SAMPLES> m_othertime;
+	unsigned m_index{0};
+	uint64_t m_previouscputime{0};
+};
 //
 // The main analyzer class
 //
@@ -478,6 +499,7 @@ VISIBILITY_PRIVATE
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+	self_cputime_analyzer m_cputime_analyzer;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
