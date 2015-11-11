@@ -78,6 +78,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
+	m_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -581,7 +582,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload, m_prev_flushes_duration_ns);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload,
+													 m_flush_cpu_pct, m_prev_flushes_duration_ns);
 		m_prev_flushes_duration_ns = 0;
 	}
 
@@ -2991,9 +2993,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	m_cputime_analyzer.end_flush();
 	if(m_configuration->get_autodrop_enabled())
 	{
-		auto flush_percent = m_cputime_analyzer.calc_flush_percent();
-		g_logger.format(sinsp_logger::SEV_INFO, "Flush/total fraction: %.2f corrected cpuload %.2f", flush_percent, m_my_cpuload*(1-flush_percent));
-		tune_drop_mode(flshflags, m_my_cpuload*(1-flush_percent));
+		auto flush_pct = m_cputime_analyzer.calc_flush_percent();
+		m_flush_cpu_pct = m_my_cpuload * flush_pct;
+		tune_drop_mode(flshflags, m_my_cpuload - m_flush_cpu_pct);
 	}
 }
 

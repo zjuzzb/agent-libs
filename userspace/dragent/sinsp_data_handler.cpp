@@ -13,7 +13,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns)
+void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
 {
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
@@ -38,6 +38,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		+ ", len=" + NumberFormatter::format(buffer->size())
 		+ ", ne=" + NumberFormatter::format(nevts)
  		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
+		+ ", cf=" + NumberFormatter::format(flush_cpu_pct, 2)
  		+ ", sr=" + NumberFormatter::format(sampling_ratio)
  		+ ", fl=" + NumberFormatter::format(analyzer_flush_duration_ns / 1000000));
 
