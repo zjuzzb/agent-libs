@@ -342,7 +342,7 @@ VISIBILITY_PRIVATE
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
-	double m_flush_cpu_pct;
+	double m_prev_flush_cpu_pct;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 

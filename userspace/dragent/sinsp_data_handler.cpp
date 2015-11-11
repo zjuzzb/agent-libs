@@ -38,7 +38,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		+ ", len=" + NumberFormatter::format(buffer->size())
 		+ ", ne=" + NumberFormatter::format(nevts)
  		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
-		+ ", cf=" + NumberFormatter::format(flush_cpu_pct, 2)
+		+ ", fp=" + NumberFormatter::format(flush_cpu_pct, 2)
  		+ ", sr=" + NumberFormatter::format(sampling_ratio)
  		+ ", fl=" + NumberFormatter::format(analyzer_flush_duration_ns / 1000000));
 
