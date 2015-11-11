@@ -124,6 +124,11 @@ public:
 class self_cputime_analyzer
 {
 public:
+	self_cputime_analyzer():
+		m_index(0),
+		m_previouscputime(0)
+	{}
+	
 	void begin_flush();
 	void end_flush();
 	double calc_flush_percent();
@@ -139,8 +144,8 @@ private:
 
 	array<uint64_t, LAST_SAMPLES> m_flushtime;
 	array<uint64_t, LAST_SAMPLES> m_othertime;
-	unsigned m_index{0};
-	uint64_t m_previouscputime{0};
+	unsigned m_index;
+	uint64_t m_previouscputime;
 };
 //
 // The main analyzer class
