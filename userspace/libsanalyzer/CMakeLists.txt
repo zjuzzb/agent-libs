@@ -1,10 +1,21 @@
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-7.45.0/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-1.2/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
+set(DRAIOS_OPENSSL_VERSION "1.0.2d")
+set(DRAIOS_PROTOBUF_VERSION "2.5.0")
+set(DRAIOS_ZLIB_VERSION "1.2.8")
+set(DRAIOS_LUAJIT_VERSION "2.0.3")
+set(DRAIOS_CURL_VERSION "7.45.0")
+set(DRAIOS_POCO_VERSION "1.4.6p4-all")
+set(DRAIOS_B64_VERSION "1.2")
+set(DRAIOS_SSH_VERSION "0.6.3")
+set(DRAIOS_YAML_VERSION "cpp-0.5.1")
+set(DRAIOS_BOOST_VERSION "1_57_0")
+
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
@@ -73,21 +84,21 @@ add_library(sanalyzer STATIC
 
 target_link_libraries(sanalyzer
 	scap 
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/libprotobuf.a
-	${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a
-	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src/libluajit.a
-	${DRAIOS_DEPENDENCIES_DIR}/curl-7.45.0/lib/.libs/libcurl.a
-	${DRAIOS_DEPENDENCIES_DIR}/libb64-1.2/src/libb64.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoXML.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src/.libs/libprotobuf.a
+	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
+	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
+	${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
+	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	rt
 	dl
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a)
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

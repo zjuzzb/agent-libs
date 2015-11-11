@@ -40,13 +40,15 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1h
+OPENSSL_VER=1.0.2d
+OPENSSL_EXT=tar.gz
+OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/openssl-1.0.1h.tar.gz
-	tar -xzf openssl-1.0.1h.tar.gz
+	wget $DEPENDENCIES_URL/openssl-$OPENSSL_VER.$OPENSSL_EXT
+	tar -xzf openssl-$OPENSSL_VER.$OPENSSL_EXT
 	cd $OPENSSL_DIR
-	./config --prefix=$OPENSSL_DIR/target
+	./config shared --prefix=$OPENSSL_DIR/target
 	make install
 	cd ..
 fi
@@ -143,7 +145,7 @@ if [ ! -d "$CURL_DIR" ]; then
 		--disable-tls-srp     \
 		--without-winssl      \
 		--without-darwinssl   \
-		--with-ssl=$DEPENDENCIES/openssl-1.0.1h \
+		--with-ssl=$OPENSSL_DIR/target \
 		--without-polarssl    \
 		--without-cyassl      \
 		--without-nss         \

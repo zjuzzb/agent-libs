@@ -61,6 +61,7 @@ using namespace google::protobuf::io;
 #include "Poco/Net/HTTPStreamFactory.h"
 #include "Poco/Net/HTTPSStreamFactory.h"
 #include "Poco/Net/SSLManager.h"
+#include "Poco/Net/SSLException.h"
 #include "Poco/Net/PrivateKeyPassphraseHandler.h"
 #include "Poco/Net/InvalidCertificateHandler.h"
 #include <memory>
@@ -840,7 +841,7 @@ public:
 
 	void onInvalidCertificate(const void*, VerificationErrorArgs& errorCert)
 	{
-		g_logger.log("K8S client certificate authentication failed", sinsp_logger::SEV_ERROR);
+		g_logger.log("K8S client certificate verification failed", sinsp_logger::SEV_ERROR);
 		sinsp_analyzer::m_k8s_bad_config = true;
 		errorCert.setIgnoreError(false);
 	}
@@ -857,23 +858,32 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 			{
 				try { HTTPSStreamFactory::registerFactory(); } catch(ExistsException&) { }
 				string cert = m_configuration->get_k8s_ssl_ca_certificate();
-				Poco::Net::Context::VerificationMode verification_mode;
+				SharedPtr<InvalidCertificateHandler> ptrCert;
+				Poco::Net::Context::VerificationMode verification_mode = Poco::Net::Context::VERIFY_NONE;
 				if(m_configuration->get_k8s_ssl_verify_certificate())
 				{
+					g_logger.log("K8S client certificate verification set to STRICT", sinsp_logger::SEV_INFO);
 					verification_mode = Poco::Net::Context::VERIFY_STRICT;
+					ptrCert = new k8s_ca_handler(false);
 				}
 				else
 				{
-					verification_mode = Poco::Net::Context::VERIFY_NONE;
+					g_logger.log("K8S client certificate verification set to NONE", sinsp_logger::SEV_INFO);
 				}
-				SharedPtr<InvalidCertificateHandler> ptrCert = new k8s_ca_handler(false);
+
 				Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 				SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
 			}
+			catch (SSLException& exc)
+			{
+				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
+					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
+				m_k8s_bad_config = true;
+				return 0;
+			}
 			catch(...)
 			{
-				g_logger.log("K8S SSL configuration error. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
-				m_k8s_bad_config = true;
+				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
 				return 0;
 			}
 		}
@@ -892,6 +902,10 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 	catch (std::exception& exc)
 	{
 		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
+		if(m_k8s_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}
 	}
 	return 0;
 }
@@ -3545,12 +3559,12 @@ void sinsp_analyzer::emit_k8s()
 	{
 		try
 		{
-			if(!m_k8s)
+			if(!m_k8s && !m_k8s_bad_config)
 			{
 				g_logger.log("Conecting to K8S API server ...", sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
-			else if(m_k8s && !m_k8s->is_alive())
+			else if(m_k8s && !m_k8s->is_alive() && !m_k8s_bad_config)
 			{
 				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 				delete m_k8s;
@@ -3564,7 +3578,7 @@ void sinsp_analyzer::emit_k8s()
 				{
 					get_k8s_data();
 				}
-				if(!m_k8s->is_alive())
+				if(!m_k8s->is_alive() && !m_k8s_bad_config)
 				{
 					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					delete m_k8s;
