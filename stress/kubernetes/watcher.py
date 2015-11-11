@@ -7,12 +7,13 @@ SYSDIG_URL = 'https://app-staging2.sysdigcloud.com'
 ADMIN_TOKEN = 'b6643f9e-950a-42cf-975f-0dd97d0f0510'
 TMP_USER_TOKEN = 'ebac76a1-cf7b-452c-bcad-8961517da5c5'
 
-user_token = None
+#user_token = None
+user_token = '2ece4c07-bab4-41c7-9e9c-a716129aa950'
 
 def check_response(r):
 	if r.status_code >= 300:
 		j = r.json()
-		print 'code: ' + r.status_code
+		print 'code: ' + str(r.status_code)
 		print j
 		print 'error: ' + j['errors'][0]['message']
 		sys.exit(0)
@@ -86,7 +87,7 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 		'filters' : 
 		{
 			'logic' : 'and',
-			'filters' : [ 
+			'filters' : [
 				{
 					'metric' : 'kubernetes.namespace.name',
 					'op' : '=',
@@ -117,12 +118,12 @@ def create_service_dash_from_template(newdashname, namespace, templatename, serv
 		    'groups': [
 		        {
 		            'groupBy': [
-		                {
-		                    'metric': 'kubernetes.namespace.name'
-		                },
-		                {
-		                    'metric': 'kubernetes.service.name'
-		                }
+						{
+							'metric': 'kubernetes.namespace.name'
+						},
+						{
+							'metric': 'kubernetes.service.name'
+						}
 		            ]
 		        }
 		    ]
