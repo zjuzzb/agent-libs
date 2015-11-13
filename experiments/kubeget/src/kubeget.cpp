@@ -9,7 +9,6 @@
 
 #include "sinsp.h"
 #include "k8s_common.h"
-//#include "k8s_component.h"
 #include "k8s.h"
 #include "k8s_proto.h"
 #include "Poco/Stopwatch.h"
@@ -66,8 +65,16 @@ public:
 private:
 	static void get_json(const std::string& component, std::ostringstream& json)
 	{
-		FileInputStream fis(std::string("test/").append(component).append((".json")));
-		StreamCopier::copyStream(fis, json);
+		std::string fname = "test/airware/";
+		try
+		{
+			FileInputStream fis(fname.append(component).append("-prod").append((".json")));
+			StreamCopier::copyStream(fis, json);
+		}
+		catch(FileNotFoundException& ex)
+		{
+			std::cout << "File not found: " << fname << std::endl;
+		}
 	}
 
 	k8s m_k8s;
@@ -302,7 +309,7 @@ void run_watch()
 
 int main(int argc, char** argv)
 {
-//#if 0
+#if 0
 	try
 	{
 		run_watch();
@@ -314,22 +321,23 @@ int main(int argc, char** argv)
 	DateTime dt;
 	std::cout << DateTimeFormatter::format(dt, DateTimeFormat::RFC822_FORMAT) << std::endl;
 	return 0;
-//#endif
-#if 0
+#endif
+//#if 0
 	k8s_test k8stest;
-	k8stest.get_data("namespaces");
+	//k8stest.get_data("namespaces");
 	k8stest.get_data("nodes");
 	k8stest.get_data("pods");
-	k8stest.get_data("replicationcontrollers");
-	k8stest.get_data("services");
+	//k8stest.get_data("replicationcontrollers");
+	//k8stest.get_data("services");
 	print_proto(k8stest.get_k8s());
-	print_maps(k8stest.get_k8s());
+	print_cache(k8stest.get_k8s());
+	return 0;
 
 	//draiosproto::metrics met;
 	//k8s_proto(met).get_proto(state);
 	//FileOutputStream fos("proto.out");
 	//fos << met.DebugString() << std::endl;
-#endif
+//#endif
 
 	try
 	{

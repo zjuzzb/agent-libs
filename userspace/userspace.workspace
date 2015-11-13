@@ -4,7 +4,6 @@
     <![CDATA[]]>
   </Environment>
   <Project Name="dragent" Path="dragent.project" Active="No"/>
-  <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
   <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="yes">
