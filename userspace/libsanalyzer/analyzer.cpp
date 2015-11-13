@@ -14,6 +14,7 @@
 #include <endian.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #endif // _WIN32
 #include <google/protobuf/io/coded_stream.h>
 #ifndef _WIN32
@@ -66,6 +67,7 @@ using namespace google::protobuf::io;
 #include "Poco/Net/InvalidCertificateHandler.h"
 #include <memory>
 #include <iostream>
+#include <numeric>
 
 using namespace Poco;
 using namespace Poco::Net;
@@ -77,6 +79,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
+	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -126,7 +129,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-	inspector->m_max_thread_table_size = 180000;
 	
 	m_configuration = new sinsp_configuration();
 
@@ -580,7 +582,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload, m_prev_flushes_duration_ns);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload,
+													 m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
 		m_prev_flushes_duration_ns = 0;
 	}
 
@@ -2428,6 +2431,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
+	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
@@ -2902,11 +2906,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// CLEANUPS
 	///////////////////////////////////////////////////////////////////////////
 
-	if(m_configuration->get_autodrop_enabled())
-	{
-		tune_drop_mode(flshflags, m_my_cpuload);
-	}
-
 	//
 	// Clear the transaction state
 	//
@@ -3004,6 +3003,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	}
 
 	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
+	m_cputime_analyzer.end_flush();
+	if(m_configuration->get_autodrop_enabled())
+	{
+		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
+		tune_drop_mode(flshflags, m_my_cpuload*(1-m_prev_flush_cpu_pct));
+	}
 }
 
 //
@@ -4307,4 +4312,36 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 		m_mounted_fs_proxy.reset();
 	}
 }
+
+uint64_t self_cputime_analyzer::read_cputime()
+{
+	struct rusage ru;
+	getrusage(RUSAGE_SELF, &ru);
+	uint64_t total_cputime_us = ru.ru_utime.tv_sec*1000000 + ru.ru_utime.tv_usec +
+								ru.ru_stime.tv_sec*1000000 + ru.ru_stime.tv_usec;
+	auto ret = total_cputime_us - m_previouscputime;
+	m_previouscputime = total_cputime_us;
+	return ret;
+}
+
+void self_cputime_analyzer::begin_flush()
+{
+	auto cputime = read_cputime();
+	m_othertime[m_index] = cputime;
+}
+
+void self_cputime_analyzer::end_flush()
+{
+	auto cputime = read_cputime();
+	m_flushtime[m_index] = cputime;
+	incr_index();
+}
+
+double self_cputime_analyzer::calc_flush_percent()
+{
+	double tot_flushtime = accumulate(m_flushtime.begin(), m_flushtime.end(), 0);
+	double tot_othertime = accumulate(m_othertime.begin(), m_othertime.end(), 0);
+	return tot_flushtime/(tot_flushtime+tot_othertime);
+}
+
 #endif // HAS_ANALYZER

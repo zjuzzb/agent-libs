@@ -181,7 +181,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 			return;
 		}
 
-		if(tinfo->is_lastevent_data_valid())
+		if(tinfo->is_lastevent_data_valid() && evt->m_tinfo->m_lastevent_data)
 		{
 			//
 			// We categorize this based on the next I/O operation only if the number of 

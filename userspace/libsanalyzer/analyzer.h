@@ -17,7 +17,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -121,6 +121,32 @@ public:
 	uint32_t m_count; // how many times this command has been repeated
 };
 
+class self_cputime_analyzer
+{
+public:
+	self_cputime_analyzer():
+		m_index(0),
+		m_previouscputime(0)
+	{}
+	
+	void begin_flush();
+	void end_flush();
+	double calc_flush_percent();
+
+private:
+	static const auto LAST_SAMPLES = 10U;
+
+	uint64_t read_cputime();
+	void incr_index()
+	{
+		m_index = (m_index + 1) % LAST_SAMPLES;
+	}
+
+	array<uint64_t, LAST_SAMPLES> m_flushtime;
+	array<uint64_t, LAST_SAMPLES> m_othertime;
+	unsigned m_index;
+	uint64_t m_previouscputime;
+};
 //
 // The main analyzer class
 //
@@ -321,6 +347,7 @@ VISIBILITY_PRIVATE
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
+	double m_prev_flush_cpu_pct;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 
@@ -478,6 +505,7 @@ VISIBILITY_PRIVATE
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+	self_cputime_analyzer m_cputime_analyzer;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

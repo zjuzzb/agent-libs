@@ -282,7 +282,7 @@ class PosixQueue:
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
-    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
+    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=5)
     def __init__(self):
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
