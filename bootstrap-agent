@@ -13,7 +13,7 @@ if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
 fi
 
-DEPENDENCIES=$WORKDIR/agent/dependencies
+DEPENDENCIES=$AGENT_SOURCEDIR/dependencies
 DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
 
 if [ ! -d "$DEPENDENCIES" ]; then
@@ -216,18 +216,22 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-PYTHON_DIR=$DEPENDENCIES/Python-2.7.10
+ORIGINAL_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$OPENSSL_DIR/target/lib
+PYTHON_VER=2.7.10
+PYTHON_EXT=tgz
+PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
 if [ ! -d "${PYTHON_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/Python-2.7.10.tgz
-	tar xfz Python-2.7.10.tgz
+	wget $DEPENDENCIES_URL/Python-$PYTHON_VER.$PYTHON_EXT
+	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
 	cd $PYTHON_DIR
-	sed -i -e "s,^#SSL=.*,SSL=${OPENSSL_DIR}/target," -e 's/^#\(.*ssl.*\)/\1/' Modules/Setup.dist
 	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-	./configure --prefix=$PYTHON_DIR/target --with-ensurepip=install
+       ./configure CPPFLAGS="-I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install
 	make
 	make install
 fi
+export LD_LIBRARY_PATH=$ORIGINAL_LD_LIBRARY_PATH
 
 if [ -z $STATSITE_VERSION ]; then
   STATSITE_VERSION=0.7.0-sysdig3
