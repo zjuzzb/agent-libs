@@ -13,7 +13,7 @@ if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
 fi
 
-DEPENDENCIES=$AGENT_SOURCEDIR/dependencies
+DEPENDENCIES=$WORKDIR/agent/dependencies
 DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
 
 if [ ! -d "$DEPENDENCIES" ]; then
