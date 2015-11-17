@@ -11,7 +11,7 @@ from pg8000 import InterfaceError, ProgrammingError
 
 # project
 from checks import AgentCheck, CheckException
-
+from config import _is_affirmative
 
 MAX_CUSTOM_RESULTS = 100
 
@@ -115,7 +115,8 @@ SELECT mode,
 
     REL_METRICS = {
         'descriptors': [
-            ('relname', 'table')
+            ('relname', 'table'),
+            ('schemaname', 'schema'),
         ],
         'metrics': {
             'seq_scan'          : ('postgresql.seq_scans', RATE),
@@ -130,8 +131,7 @@ SELECT mode,
             'n_dead_tup'        : ('postgresql.dead_rows', GAUGE),
         },
         'query': """
-SELECT relname,
-       %s
+SELECT relname,schemaname,%s
   FROM pg_stat_user_tables
  WHERE relname = ANY(%s)""",
         'relation': True,
@@ -140,6 +140,7 @@ SELECT relname,
     IDX_METRICS = {
         'descriptors': [
             ('relname', 'table'),
+            ('schemaname', 'schema'),
             ('indexrelname', 'index')
         ],
         'metrics': {
@@ -149,6 +150,7 @@ SELECT relname,
         },
         'query': """
 SELECT relname,
+       schemaname,
        indexrelname,
        %s
   FROM pg_stat_user_indexes
@@ -227,6 +229,7 @@ SELECT %s
     STATIO_METRICS = {
         'descriptors': [
             ('relname', 'table'),
+            ('schemaname', 'schema')
         ],
         'metrics': {
             'heap_blks_read'  : ('postgresql.heap_blocks_read', RATE),
@@ -240,6 +243,7 @@ SELECT %s
         },
         'query': """
 SELECT relname,
+       schemaname,
        %s
   FROM pg_statio_user_tables
  WHERE relname = ANY(%s)""",
@@ -352,6 +356,25 @@ SELECT relname,
             metrics = self.replication_metrics.get(key)
         return metrics
 
+    def _build_relations_config(self, yamlconfig):
+        """Builds a dictionary from relations configuration while maintaining compatibility
+        """
+        config = {}
+        for element in yamlconfig:
+            try:
+                if isinstance(element, str):
+                    config[element] = {'relation_name': element, 'schemas': []}
+                elif isinstance(element, dict):
+                    name = element['relation_name']
+                    config[name] = {}
+                    config[name]['schemas'] = element['schemas']
+                    config[name]['relation_name'] = name
+                else:
+                    self.log.warn('Unhandled relations config type: %s' % str(element))
+            except KeyError:
+                self.log.warn('Failed to parse config element=%s, check syntax' % str(element))
+        return config
+
     def _collect_stats(self, key, db, instance_tags, relations, custom_metrics):
         """Query pg_stat_* for various metrics
         If relations is not an empty list, gather per-relation metrics
@@ -387,6 +410,7 @@ SELECT relname,
                 self.SIZE_METRICS,
                 self.STATIO_METRICS
             ]
+            relations_config = self._build_relations_config(relations)
 
         replication_metrics = self._get_replication_metrics(key, db)
         if replication_metrics is not None:
@@ -411,9 +435,10 @@ SELECT relname,
                 try:
                     # if this is a relation-specific query, we need to list all relations last
                     if scope['relation'] and len(relations) > 0:
+                        relnames = relations_config.keys()
                         query = scope['query'] % (", ".join(cols), "%s")  # Keep the last %s intact
-                        self.log.debug("Running query: %s with relations: %s" % (query, relations))
-                        cursor.execute(query, (relations, ))
+                        self.log.debug("Running query: %s with relations: %s" % (query, relnames))
+                        cursor.execute(query, (relnames, ))
                     else:
                         query = scope['query'] % (", ".join(cols))
                         self.log.debug("Running query: %s" % query)
@@ -439,15 +464,26 @@ SELECT relname,
                     self.gauge("postgresql.db.count", len(results),
                         tags=[t for t in instance_tags if not t.startswith("db:")])
 
+                desc = scope['descriptors']
+
                 # parse & submit results
                 # A row should look like this
                 # (descriptor, descriptor, ..., value, value, value, value, ...)
                 # with descriptor a PG relation or index name, which we use to create the tags
                 for row in results:
-                    # turn descriptors into tags
-                    desc = scope['descriptors']
                     # Check that all columns will be processed
                     assert len(row) == len(cols) + len(desc)
+
+                    # build a map of descriptors and their values
+                    desc_map = dict(zip([x[1] for x in desc], row[0:len(desc)]))
+                    if 'schema' in desc_map:
+                        try:
+                            relname = desc_map['table']
+                            config_schemas = relations_config[relname]['schemas']
+                            if config_schemas and desc_map['schema'] not in config_schemas:
+                                continue
+                        except KeyError:
+                            pass
 
                     # Build tags
                     # descriptors are: (pg_name, dd_tag_name): value
@@ -459,7 +495,7 @@ SELECT relname,
                     else:
                         tags = [t for t in instance_tags]
 
-                    tags += ["%s:%s" % (d[0][1], d[1]) for d in zip(desc, row[:len(desc)])]
+                    tags += [("%s:%s" % (k,v)) for (k,v) in desc_map.iteritems()]
 
                     # [(metric-map, value), (metric-map, value), ...]
                     # metric-map is: (dd_name, "rate"|"gauge")
@@ -470,7 +506,8 @@ SELECT relname,
                     # v[0] == (metric_name, submit_function)
                     # v[1] == the actual value
                     # tags are
-                    [v[0][1](self, v[0][0], v[1], tags=tags) for v in values]
+                    for v in values:
+                        v[0][1](self, v[0][0], v[1], tags=tags)
 
             cursor.close()
         except InterfaceError, e:
@@ -488,7 +525,7 @@ SELECT relname,
         ]
         return service_check_tags
 
-    def get_connection(self, key, host, port, user, password, dbname, use_cached=True):
+    def get_connection(self, key, host, port, user, password, dbname, ssl, use_cached=True):
         "Get and memoize connections to instances"
         if key in self.dbs and use_cached:
             return self.dbs[key]
@@ -500,10 +537,10 @@ SELECT relname,
                     connection = pg.connect("user=%s dbname=%s" % (user, dbname))
                 elif port != '':
                     connection = pg.connect(host=host, port=port, user=user,
-                        password=password, database=dbname)
+                        password=password, database=dbname, ssl=ssl)
                 else:
                     connection = pg.connect(host=host, user=user, password=password,
-                        database=dbname)
+                        database=dbname, ssl=ssl)
             except Exception as e:
                 message = u'Error establishing postgres connection: %s' % (str(e))
                 service_check_tags = self._get_service_check_tags(host, port, dbname)
@@ -554,6 +591,7 @@ SELECT relname,
         tags = instance.get('tags', [])
         dbname = instance.get('dbname', None)
         relations = instance.get('relations', [])
+        ssl = _is_affirmative(instance.get('ssl', False))
 
         if relations and not dbname:
             self.warning('"dbname" parameter must be set when using the "relations" parameter.')
@@ -583,13 +621,13 @@ SELECT relname,
         # Collect metrics
         try:
             # Check version
-            db = self.get_connection(key, host, port, user, password, dbname)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl)
             version = self._get_version(key, db)
             self.log.debug("Running check against version %s" % version)
             self._collect_stats(key, db, tags, relations, custom_metrics)
         except ShouldRestartException:
             self.log.info("Resetting the connection")
-            db = self.get_connection(key, host, port, user, password, dbname, use_cached=False)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl, use_cached=False)
             self._collect_stats(key, db, tags, relations, custom_metrics)
 
         if db is not None:
