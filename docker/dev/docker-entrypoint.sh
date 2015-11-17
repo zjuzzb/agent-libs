@@ -70,6 +70,18 @@ if [ ! -z "$CHECK_CERTIFICATE" ]; then
 	fi
 fi
 
+if [ ! -z "$ADDITIONAL_CONF" ]; then
+	echo "* Setting additional customer configuration"
+
+	echo -e $ADDITIONAL_CONF | while read line; do
+		if ! grep ^$line $CONFIG_FILE > /dev/null 2>&1; then
+			echo "$line" >> $CONFIG_FILE
+		else
+			sed -i "s/^$line.*/$line/g" $CONFIG_FILE
+		fi 
+	done
+fi
+
 echo "* Mounting memory cgroup fs"
 mkdir -p $SYSDIG_HOST_ROOT/cgroup/memory
 mount -t cgroup -o memory,ro none $SYSDIG_HOST_ROOT/cgroup/memory
