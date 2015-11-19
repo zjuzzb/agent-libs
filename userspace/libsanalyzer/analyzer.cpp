@@ -45,6 +45,7 @@ using namespace google::protobuf::io;
 #include "analyzer_parsers.h"
 #include "chisel.h"
 #include "k8s.h"
+#include "k8s_state.h"
 #include "k8s_proto.h"
 #include "curl/easy.h"
 #define BUFFERSIZE 512 // b64 needs this macro
@@ -819,9 +820,9 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
 						sinsp_logger::SEV_INFO);
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, "/api/v1/");
+					return new k8s(k8s_api, true, false);
 #else
-					return new k8s(k8s_api, true, true, "/api/v1/");
+					return new k8s(k8s_api, true, true);
 #endif
 				}
 			}

@@ -4,6 +4,7 @@
 
 #include "k8s_proto.h"
 #include "k8s_component.h"
+#include "k8s_state.h"
 #include "draios.pb.h"
 
 using namespace draiosproto;
@@ -16,13 +17,13 @@ k8s_proto::~k8s_proto()
 {
 }
 
-const draiosproto::k8s_state& k8s_proto::get_proto(const k8s_state_s& state)
+const draiosproto::k8s_state& k8s_proto::get_proto(const k8s_state_t& state)
 {
 	make_protobuf(state);
 	return m_proto;
 }
 
-void k8s_proto::make_protobuf(const k8s_state_s& state)
+void k8s_proto::make_protobuf(const k8s_state_t& state)
 {
 	for (auto& ns : state.get_namespaces())
 	{
