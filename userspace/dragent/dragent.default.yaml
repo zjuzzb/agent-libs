@@ -586,6 +586,12 @@ app_checks:
       comm: apache2
     conf:
       apache_status_url: "http://localhost:{port}/server-status?auto"
+  - name: consul
+    pattern:
+      comm: consul
+    conf:
+      url: "http://localhost:8500"
+      catalog_checks: yes
 
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
