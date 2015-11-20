@@ -1,12 +1,38 @@
 #!/bin/bash
 #set -e
 
-#need to test this function on all the supported OS
 function am_i_a_k8s_delegated_node(){
-	my_ip=$(hostname -i)
+	_distro_like=$(cat /etc/*release | grep "ID_LIKE" | cut -d"=" -f2 | tr -d '\"' | cut -d " " -f1)
+	if [ -z _distro_like ]; then
+		_distro_like=$(cat /etc/*release | grep "DISTRIB_ID" | cut -d "=" -f2 | tr '[:upper:]' '[:lower:]')
+	fi
+	case ${_distro_like} in
+			rhel | fedora | ubuntu | debian)
+				my_ip=$(hostname -I | cut -d " " -f1)
+				;;
+			coreos)
+				my_ip=$(networkctl status eth0 | tr -d " " | grep '^Address' | cut -d ":" -f2)
+				;;
+			*)
+				echo "* WARN: guessing delegate node IP"
+				my_ip=$(hostname -I | cut -d " " -f1)
+				;;
+	esac
 	if [ "${K8S_DELEGATED_NODE}" == "${my_ip}" ]; then
 		return 0
 	else
+		return 1
+	fi
+}
+
+function is_a_valid_yaml_parameter(){
+	if [ -z "$1" ]; then 				#skip empty lines
+		echo "* WARN: skipping empty line in ADDITIONAL_CONF"
+		return 1
+	elif [[ ${1} =~ ^.*:\ .*$ ]]; then	# a valid yaml parameter contains a space between the key and the value
+		return 0
+	else
+		echo "* WARN: skipping invalid yaml parameter: $1"
 		return 1
 	fi
 }
@@ -80,38 +106,27 @@ if [ ! -z "$CHECK_CERTIFICATE" ]; then
 	fi
 fi
 
-if [ ! -z "$K8S_DELEGATED_NODE" ]; then
-	if ! am_i_a_k8s_delegated_node; then
-		echo "* Disabling k8s_autodetect"
-		if ! grep ^k8s_autodetect $CONFIG_FILE > /dev/null 2>&1; then
-			echo "k8s_autodetect: false" >> $CONFIG_FILE
+if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
+	if am_i_a_k8s_delegated_node; then
+		echo "* Setting k8s api URI"
+		if ! grep ^k8s_uri $CONFIG_FILE > /dev/null 2>&1; then
+			echo "k8s_uri: $K8S_API_URI" >> $CONFIG_FILE
 		else
-			sed -i "s/^k8s_autodetect.*/k8s_autodetect: false/g" $CONFIG_FILE
+			sed -i "s/^k8s_uri.*/k8s_uri: $K8S_API_URI/g" $CONFIG_FILE
 		fi
 	fi
 fi
 
 if [ ! -z "$ADDITIONAL_CONF" ]; then
-	echo "* Setting additional customer configuration"
+	echo "* Parsing additional customer configuration"
 	echo -e $ADDITIONAL_CONF | while read line; do
-		if [[ $line == *"k8s_"* ]] && [[ ! -z "$K8S_DELEGATED_NODE" ]]; then
-			if am_i_a_k8s_delegated_node; then
-				echo "* Configuring $line"
-				if ! grep ^$line $CONFIG_FILE > /dev/null 2>&1; then
-					echo "$line" >> $CONFIG_FILE
-				else
-					sed -i "s/^$line.*/$line/g" $CONFIG_FILE
-				fi
-			else
-				echo "* Not delegate node skypping k8s configuration"
-				continue
-			fi
-		else
-			echo "* Configuring $line"
-			if ! grep ^$line $CONFIG_FILE > /dev/null 2>&1; then
+		if is_a_valid_yaml_parameter "$line"; then
+			echo "* Setting $line"
+			key=$(echo $line | cut -d ":" -f1)
+			if ! grep ^$key $CONFIG_FILE > /dev/null 2>&1; then
 				echo "$line" >> $CONFIG_FILE
 			else
-				sed -i "s/^$line.*/$line/g" $CONFIG_FILE
+				sed -i "s|^$key.*|$line|g" $CONFIG_FILE
 			fi
 		fi
 	done
