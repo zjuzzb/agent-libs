@@ -2,22 +2,7 @@
 #set -e
 
 function am_i_a_k8s_delegated_node(){
-	_distro_like=$(cat /etc/*release | grep "ID_LIKE" | cut -d"=" -f2 | tr -d '\"' | cut -d " " -f1)
-	if [ -z _distro_like ]; then
-		_distro_like=$(cat /etc/*release | grep "DISTRIB_ID" | cut -d "=" -f2 | tr '[:upper:]' '[:lower:]')
-	fi
-	case ${_distro_like} in
-			rhel | fedora | ubuntu | debian)
-				my_ip=$(hostname -I | cut -d " " -f1)
-				;;
-			coreos)
-				my_ip=$(networkctl status eth0 | tr -d " " | grep '^Address' | cut -d ":" -f2)
-				;;
-			*)
-				echo "* WARN: guessing delegate node IP"
-				my_ip=$(hostname -I | cut -d " " -f1)
-				;;
-	esac
+	my_ip=$(hostname --all-ip-addresses)
 	if [ "${K8S_DELEGATED_NODE}" == "${my_ip}" ]; then
 		return 0
 	else
