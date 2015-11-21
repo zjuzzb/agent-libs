@@ -94,12 +94,7 @@ if [ ! -z "$ADDITIONAL_CONF" ]; then
 	echo "* Parsing additional customer configuration"
 	echo -e $ADDITIONAL_CONF | while read line; do
 		echo "* Setting $line"
-		key=$(echo $line | cut -d ":" -f1)
-		if ! grep ^$key $CONFIG_FILE > /dev/null 2>&1; then
-			echo "$line" >> $CONFIG_FILE
-		else
-			sed -i "s|^$key.*|$line|g" $CONFIG_FILE
-		fi
+		echo "$line" >> $CONFIG_FILE
 	done
 fi
 
