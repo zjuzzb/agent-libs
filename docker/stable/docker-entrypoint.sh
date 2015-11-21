@@ -10,18 +10,6 @@ function am_i_a_k8s_delegated_node(){
 	fi
 }
 
-function is_a_valid_yaml_parameter(){
-	if [ -z "$1" ]; then 				#skip empty lines
-		echo "* WARN: skipping empty line in ADDITIONAL_CONF"
-		return 1
-	elif [[ ${1} =~ ^.*:\ .*$ ]]; then	# a valid yaml parameter contains a space between the key and the value
-		return 0
-	else
-		echo "* WARN: skipping invalid yaml parameter: $1"
-		return 1
-	fi
-}
-
 echo "* Setting up /usr/src links from host"
 
 for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
@@ -105,14 +93,12 @@ fi
 if [ ! -z "$ADDITIONAL_CONF" ]; then
 	echo "* Parsing additional customer configuration"
 	echo -e $ADDITIONAL_CONF | while read line; do
-		if is_a_valid_yaml_parameter "$line"; then
-			echo "* Setting $line"
-			key=$(echo $line | cut -d ":" -f1)
-			if ! grep ^$key $CONFIG_FILE > /dev/null 2>&1; then
-				echo "$line" >> $CONFIG_FILE
-			else
-				sed -i "s|^$key.*|$line|g" $CONFIG_FILE
-			fi
+		echo "* Setting $line"
+		key=$(echo $line | cut -d ":" -f1)
+		if ! grep ^$key $CONFIG_FILE > /dev/null 2>&1; then
+			echo "$line" >> $CONFIG_FILE
+		else
+			sed -i "s|^$key.*|$line|g" $CONFIG_FILE
 		fi
 	done
 fi
