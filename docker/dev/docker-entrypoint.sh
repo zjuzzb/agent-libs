@@ -91,11 +91,9 @@ if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
 fi
 
 if [ ! -z "$ADDITIONAL_CONF" ]; then
-	echo "* Parsing additional customer configuration"
-	echo -e $ADDITIONAL_CONF | while read line; do
-		echo "* Setting $line"
-		echo "$line" >> $CONFIG_FILE
-	done
+	echo "* Setting additional customer configuration:"
+	echo -e "$ADDITIONAL_CONF"
+	echo -e $ADDITIONAL_CONF >> $CONFIG_FILE
 fi
 
 echo "* Mounting memory cgroup fs"
