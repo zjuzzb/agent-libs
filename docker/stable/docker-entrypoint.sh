@@ -2,7 +2,7 @@
 #set -e
 
 function am_i_a_k8s_delegated_node(){
-	my_ip=$(hostname --all-ip-addresses)
+	my_ip=$(hostname --all-ip-addresses | cut -d" " -f1)
 	if [ "${K8S_DELEGATED_NODE}" == "${my_ip}" ]; then
 		return 0
 	else
