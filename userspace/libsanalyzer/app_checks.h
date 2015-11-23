@@ -113,9 +113,11 @@ class app_checks_proxy
 public:
 	app_checks_proxy();
 
-	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
+	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	unordered_map<int, app_check_data> read_metrics(uint64_t id);
+	// nullptr means no msg received
+	// empty map means message received but there are not metrics inside
+	unique_ptr<unordered_map<int, app_check_data>> read_metrics();
 
 private:
 	posix_queue m_outqueue;

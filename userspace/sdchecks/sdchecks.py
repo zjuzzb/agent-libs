@@ -293,8 +293,8 @@ class Application:
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
 
-        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE)
-        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND)
+        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
 
         # Blacklist works in two ways
         # 1. for pids where we cannot create an AppCheckInstance, skip them
@@ -318,8 +318,7 @@ class Application:
     def handle_command(self, command_s):
         response_body = []
         #print "Received command: %s" % command_s
-        command = json.loads(command_s)
-        processes = command["body"]
+        processes = json.loads(command_s)
         self.last_request_pids.clear()
 
         for p in processes:
@@ -354,11 +353,7 @@ class Application:
                                     "display_name": check_instance.name,
                                     "metrics": metrics,
                                     "service_checks": service_checks})
-        response = {
-            "id": command["id"],
-            "body": response_body
-        }
-        response_s = json.dumps(response)
+        response_s = json.dumps(response_body)
         logging.debug("Response size is %d" % len(response_s))
         self.outqueue.send(response_s)
 

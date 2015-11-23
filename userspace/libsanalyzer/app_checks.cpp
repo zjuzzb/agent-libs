@@ -59,46 +59,40 @@ Json::Value app_process::to_json() const
 }
 
 app_checks_proxy::app_checks_proxy():
-	m_outqueue("/sdc_app_checks_in", posix_queue::SEND),
-	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE)
+	m_outqueue("/sdc_app_checks_in", posix_queue::SEND, 1),
+	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1)
 {
 }
 
-void app_checks_proxy::send_get_metrics_cmd(uint64_t id, const vector<app_process> &processes)
+void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes)
 {
-	Json::Value command;
-	command["id"] = Json::UInt64(id);
-	command["body"] = Json::Value(Json::arrayValue);
+	Json::Value command = Json::Value(Json::arrayValue);
 	for(const auto& p : processes)
 	{
-		command["body"].append(p.to_json());
+		command.append(p.to_json());
 	}
 	string data = m_json_writer.write(command);
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);
 }
 
-unordered_map<int, app_check_data> app_checks_proxy::read_metrics(uint64_t id)
+unique_ptr<unordered_map<int, app_check_data>> app_checks_proxy::read_metrics()
 {
-	unordered_map<int, app_check_data> ret;
+	unique_ptr<unordered_map<int, app_check_data>> ret;
 	auto msg = m_inqueue.receive();
-	while(!msg.empty())
+	if(!msg.empty())
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
 		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
+		ret = make_unique<unordered_map<int, app_check_data>>();
 		Json::Value response_obj;
 		m_json_reader.parse(msg, response_obj, false);
-		if(response_obj["id"].asUInt64() == id)
+		// Parse data
+		for(const auto& process : response_obj)
 		{
-			// Parse data
-			for(const auto& process : response_obj["body"])
-			{
-				app_check_data data(process);
-				ret.emplace(data.pid(), move(data));
-			}
-			break;
+			app_check_data data(process);
+			ret->emplace(data.pid(), move(data));
 		}
-		msg = m_inqueue.receive();
 	}
 	return ret;
 }
