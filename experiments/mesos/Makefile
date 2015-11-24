@@ -28,31 +28,31 @@ LFLAGS+=-L$(DEPDIR)/$(DRAIOS_CURL)/lib/.libs
 LFLAGS+=-L$(DEPDIR)/$(DRAIOS_B64)/src
 LFLAGS+=-L$(DEPDIR)/$(DRAIOS_OPENNSL)/target/lib
 
-LIBS=-Wl,-Bstatic -lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPocoNet -lPocoFoundation -lcurl -lssl -lcrypto -Wl,-Bdynamic -lpthread -lz -ldl -lb64
+LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -Wl,-Bdynamic -lpthread -lz -ldl -lb64
 
 ODIR=$(MAKEDIR)/obj
 
-_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_state.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_collector.h uri.h
+_DEPS = mesos.h mesos_state.h mesos_component.h draios.pb.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_state.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_collector.o uri.o
+_OBJ = mesos.o mesos_state.o mesos_component.o jsoncpp.o draios.pb.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
-all: directory kubeget
+all: directory mesos
 
-kubeget: $(ODIR)/kubeget.o $(OBJ)
+mesos: $(ODIR)/mesos.o $(OBJ)
 	$(CC) -o $@ $^ $(LFLAGS) $(LIBS)
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
 	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
 
-$(ODIR)/kubeget.o: $(SDIR)/kubeget.cpp
+$(ODIR)/mesos.o: $(SDIR)/mesos.cpp
 	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
 
 .PHONY: clean directory
 
 clean:
-	rm -f *~ core $(INCDIR)/*~ ./kubeget ./kubegetd && rm -rf $(ODIR) 
+	rm -f *~ core $(INCDIR)/*~ ./mesos ./mesosd && rm -rf $(ODIR) 
 
 directory: $(ODIR)
 

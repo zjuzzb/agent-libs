@@ -105,6 +105,8 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
 
+	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
+
 	//
 	// Configure compression in the protocol
 	//

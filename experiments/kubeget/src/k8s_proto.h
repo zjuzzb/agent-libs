@@ -9,7 +9,7 @@
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
 
-class k8s_state_s;
+class k8s_state_t;
 
 class k8s_proto
 {
@@ -18,10 +18,10 @@ public:
 
 	~k8s_proto();
 
-	const draiosproto::k8s_state& get_proto(const k8s_state_s& state);
+	const draiosproto::k8s_state& get_proto(const k8s_state_t& state);
 
 private:
-	void make_protobuf(const k8s_state_s& state);
+	void make_protobuf(const k8s_state_t& state);
 
 	template <typename V, typename C>
 	void populate_component(V& component, C* k8s_component)

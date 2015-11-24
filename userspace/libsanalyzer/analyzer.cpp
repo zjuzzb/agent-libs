@@ -45,6 +45,7 @@ using namespace google::protobuf::io;
 #include "analyzer_parsers.h"
 #include "chisel.h"
 #include "k8s.h"
+#include "k8s_state.h"
 #include "k8s_proto.h"
 #include "curl/easy.h"
 #define BUFFERSIZE 512 // b64 needs this macro
@@ -59,8 +60,12 @@ using namespace google::protobuf::io;
 #include "Poco/FileStream.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/Exception.h"
-#include "Poco/Net/HTTPStreamFactory.h"
-#include "Poco/Net/HTTPSStreamFactory.h"
+#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPSClientSession.h"
+#include "Poco/Net/HTTPCredentials.h"
+#include "Poco/Net/HTTPBasicCredentials.h"
+#include "Poco/Net/HTTPRequest.h"
+#include "Poco/Net/HTTPResponse.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/SSLException.h"
 #include "Poco/Net/PrivateKeyPassphraseHandler.h"
@@ -73,6 +78,7 @@ using namespace Poco;
 using namespace Poco::Net;
 
 bool sinsp_analyzer::m_k8s_bad_config = false;
+bool sinsp_analyzer::m_k8s_ssl_initialized = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -819,9 +825,9 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
 						sinsp_logger::SEV_INFO);
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, "/api/v1/");
+					return new k8s(k8s_api, true, false);
 #else
-					return new k8s(k8s_api, true, true, "/api/v1/");
+					return new k8s(k8s_api, true, true);
 #endif
 				}
 			}
@@ -850,32 +856,51 @@ public:
 	}
 };
 
+void sinsp_analyzer::init_k8s_ssl()
+{
+	if(!m_k8s_ssl_initialized)
+	{
+		string cert = m_configuration->get_k8s_ssl_ca_certificate();
+		SharedPtr<InvalidCertificateHandler> ptrCert;
+		Poco::Net::Context::VerificationMode verification_mode = Poco::Net::Context::VERIFY_NONE;
+		if(m_configuration->get_k8s_ssl_verify_certificate())
+		{
+			g_logger.log("K8S client certificate verification set to STRICT", sinsp_logger::SEV_INFO);
+			verification_mode = Poco::Net::Context::VERIFY_STRICT;
+			ptrCert = new k8s_ca_handler(false);
+		}
+		else
+		{
+			g_logger.log("K8S client certificate verification set to NONE", sinsp_logger::SEV_INFO);
+		}
+
+		Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+		SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
+		m_k8s_ssl_initialized = true;
+	}
+}
+
 k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 {
 	try
 	{
 		URI uri(k8s_api + "/api");
-		if (uri.getScheme() == "https")
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		std::unique_ptr<HTTPClientSession> session = 0;
+		std::string json;
+		if(uri.getScheme() == "https")
 		{
 			try
 			{
-				try { HTTPSStreamFactory::registerFactory(); } catch(ExistsException&) { }
-				string cert = m_configuration->get_k8s_ssl_ca_certificate();
-				SharedPtr<InvalidCertificateHandler> ptrCert;
-				Poco::Net::Context::VerificationMode verification_mode = Poco::Net::Context::VERIFY_NONE;
-				if(m_configuration->get_k8s_ssl_verify_certificate())
+				init_k8s_ssl();
+				try
 				{
-					g_logger.log("K8S client certificate verification set to STRICT", sinsp_logger::SEV_INFO);
-					verification_mode = Poco::Net::Context::VERIFY_STRICT;
-					ptrCert = new k8s_ca_handler(false);
+					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
 				}
-				else
-				{
-					g_logger.log("K8S client certificate verification set to NONE", sinsp_logger::SEV_INFO);
-				}
-
-				Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-				SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
+				catch (TimeoutException&)
+				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+				catch (ConnectionRefusedException&)
+				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
 			}
 			catch (SSLException& exc)
 			{
@@ -892,13 +917,31 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		}
 		else
 		{
-			try { HTTPStreamFactory::registerFactory(); } catch(ExistsException&) { }
+			try
+			{
+				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
+			}
+			catch (TimeoutException&)
+			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+			catch (ConnectionRefusedException&)
+			{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
+		}
+		session->setTimeout(ts);
+		HTTPRequest request(HTTPRequest::HTTP_GET, "/api");
+		std::string user, pwd;
+		HTTPCredentials::extractCredentials(uri, user, pwd);
+		if(!user.empty())
+		{
+			HTTPBasicCredentials cred(user, pwd);
+			cred.authenticate(request);
 		}
 		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
-		std::unique_ptr<std::istream> pStr(URIStreamOpener::defaultOpener().open(uri));
+		session->sendRequest(request);
+		HTTPResponse response;
+		std::istream& rs = session->receiveResponse(response);
 		std::ostringstream os;
-		StreamCopier::copyStream(*pStr.get(), os);
-		std::string json = std::move(os.str());
+		StreamCopier::copyStream(rs, os);
+		json = std::move(os.str());
 		g_logger.log("K8S API:" + json, sinsp_logger::SEV_DEBUG);
 		return make_k8s(json, k8s_api);
 	}
@@ -934,7 +977,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
-	unordered_map<int, app_check_data> app_metrics;
 	uint16_t app_checks_limit = APP_METRICS_LIMIT;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
@@ -954,7 +996,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy)
 		{
-			app_metrics = m_app_proxy->read_metrics(m_external_command_id);
+			auto app_metrics = m_app_proxy->read_metrics();
+			if(app_metrics)
+			{
+				m_app_metrics = move(app_metrics);
+			}
 		}
 	}
 #endif
@@ -1664,16 +1710,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					jmx_metrics_it->second.to_protobuf(java_proto);
 				}
 			}
-			if(m_app_proxy)
+			if(m_app_proxy && m_app_metrics)
 			{
-				auto app_data_it = app_metrics.end();
+				auto app_data_it = m_app_metrics->end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
-					pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+					pid_it != procinfo->m_program_pids.end() && app_data_it == m_app_metrics->end();
 					++pid_it)
 				{
-					app_data_it = app_metrics.find(*pid_it);
+					app_data_it = m_app_metrics->find(*pid_it);
 				}
-				if(app_data_it != app_metrics.end())
+				if(app_data_it != m_app_metrics->end())
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
 					app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
@@ -1774,7 +1820,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
 		{
-			m_app_proxy->send_get_metrics_cmd(m_external_command_id, app_checks_processes);
+			m_app_proxy->send_get_metrics_cmd(app_checks_processes);
 		}
 	}
 #endif
@@ -3566,7 +3612,7 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if(!m_k8s && !m_k8s_bad_config)
 			{
-				g_logger.log("Conecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
 			else if(m_k8s && !m_k8s->is_alive() && !m_k8s_bad_config)

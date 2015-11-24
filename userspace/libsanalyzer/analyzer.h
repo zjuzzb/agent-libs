@@ -326,6 +326,7 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	void init_k8s_ssl();
 	k8s* make_k8s(const string& json, const string& k8s_api);
 	k8s* get_k8s(const string& k8s_api);
 	void get_k8s_data();
@@ -496,12 +497,14 @@ VISIBILITY_PRIVATE
 	atomic<bool> m_statsd_capture_localhost;
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
+	decltype(m_app_proxy->read_metrics()) m_app_metrics;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
 
 	k8s* m_k8s;
 	static bool m_k8s_bad_config;
+	static bool m_k8s_ssl_initialized;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

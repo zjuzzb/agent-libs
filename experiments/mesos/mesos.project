@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<CodeLite_Project Name="kubeget" InternalType="Console">
+<CodeLite_Project Name="mesos" InternalType="Console">
   <Plugins>
     <Plugin Name="qmake">
       <![CDATA[00010001N0005Debug000000000000]]>
@@ -391,32 +391,21 @@
     </VirtualDirectory>
     <File Name="src/draios.pb.h"/>
     <File Name="src/jsoncpp.cpp"/>
-    <File Name="src/kubeget.cpp"/>
-    <File Name="src/k8s_component.h"/>
-    <File Name="src/k8s_component.cpp"/>
-    <File Name="src/k8s_net.cpp"/>
-    <File Name="src/k8s_net.h"/>
-    <File Name="src/k8s.cpp"/>
-    <File Name="src/k8s.h"/>
-    <File Name="src/k8s_dispatcher.cpp"/>
-    <File Name="src/k8s_dispatcher.h"/>
-    <File Name="src/k8s_event_data.cpp"/>
-    <File Name="src/k8s_event_data.h"/>
+    <File Name="src/mesos.cpp"/>
     <File Name="Makefile"/>
     <File Name="src/jsoncpp.h"/>
     <File Name="src/draios.pb.cc"/>
     <File Name="src/draios.pb.cpp"/>
     <File Name="src/sinsp_int.h"/>
     <File Name="src/sinsp.h"/>
-    <File Name="src/k8s_http.cpp"/>
-    <File Name="src/k8s_http.h"/>
-    <File Name="src/k8s_proto.cpp"/>
-    <File Name="src/k8s_proto.h"/>
     <File Name="src/uri.h"/>
     <File Name="src/uri.cpp"/>
-    <File Name="src/k8s_common.h"/>
-    <File Name="src/k8s_collector.cpp"/>
-    <File Name="src/k8s_collector.h"/>
+    <File Name="src/mesos_common.h"/>
+    <File Name="src/mesos_component.h"/>
+    <File Name="src/mesos_component.cpp"/>
+    <File Name="src/mesos.h"/>
+    <File Name="src/mesos_state.h"/>
+    <File Name="src/mesos_state.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
@@ -436,7 +425,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig-openssl/agent/experiments/kubeget" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig-openssl/agent/experiments/mesos" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)
