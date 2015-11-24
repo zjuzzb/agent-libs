@@ -977,7 +977,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
-	unordered_map<int, app_check_data> app_metrics;
 	uint16_t app_checks_limit = APP_METRICS_LIMIT;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
@@ -997,7 +996,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy)
 		{
-			app_metrics = m_app_proxy->read_metrics(m_external_command_id);
+			auto app_metrics = m_app_proxy->read_metrics();
+			if(app_metrics)
+			{
+				m_app_metrics = move(app_metrics);
+			}
 		}
 	}
 #endif
@@ -1707,16 +1710,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					jmx_metrics_it->second.to_protobuf(java_proto);
 				}
 			}
-			if(m_app_proxy)
+			if(m_app_proxy && m_app_metrics)
 			{
-				auto app_data_it = app_metrics.end();
+				auto app_data_it = m_app_metrics->end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
-					pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
+					pid_it != procinfo->m_program_pids.end() && app_data_it == m_app_metrics->end();
 					++pid_it)
 				{
-					app_data_it = app_metrics.find(*pid_it);
+					app_data_it = m_app_metrics->find(*pid_it);
 				}
-				if(app_data_it != app_metrics.end())
+				if(app_data_it != m_app_metrics->end())
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
 					app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
@@ -1817,7 +1820,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
 		{
-			m_app_proxy->send_get_metrics_cmd(m_external_command_id, app_checks_processes);
+			m_app_proxy->send_get_metrics_cmd(app_checks_processes);
 		}
 	}
 #endif
