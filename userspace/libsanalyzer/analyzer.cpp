@@ -3609,7 +3609,7 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if(!m_k8s && !m_k8s_bad_config)
 			{
-				g_logger.log("Conecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
 			else if(m_k8s && !m_k8s->is_alive() && !m_k8s_bad_config)
