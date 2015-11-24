@@ -373,6 +373,16 @@ bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
 	return m_k8s_ssl_verify_certificate;
 }
 
+void sinsp_configuration::set_k8s_timeout_ms(int k8s_timeout_ms)
+{
+	m_k8s_timeout_ms = k8s_timeout_ms;
+}
+
+int sinsp_configuration::get_k8s_timeout_ms() const
+{
+	return m_k8s_timeout_ms;
+}
+
 unsigned sinsp_configuration::get_statsd_limit() const
 {
 	return m_statsd_limit;

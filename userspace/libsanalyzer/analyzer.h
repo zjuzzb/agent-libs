@@ -326,6 +326,7 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	void init_k8s_ssl();
 	k8s* make_k8s(const string& json, const string& k8s_api);
 	k8s* get_k8s(const string& k8s_api);
 	void get_k8s_data();
@@ -502,6 +503,7 @@ VISIBILITY_PRIVATE
 
 	k8s* m_k8s;
 	static bool m_k8s_bad_config;
+	static bool m_k8s_ssl_initialized;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

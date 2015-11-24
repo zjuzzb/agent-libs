@@ -72,6 +72,8 @@ public:
 	const string & get_k8s_ssl_ca_certificate() const;
 	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
 	bool get_k8s_ssl_verify_certificate() const;
+	void set_k8s_timeout_ms(int k8s_timeout_ms);
+	int get_k8s_timeout_ms() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
 private:
@@ -104,6 +106,8 @@ private:
 	bool   m_k8s_autodetect;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
+	int m_k8s_timeout_ms;
+
 	unsigned m_statsd_limit;
 };
 

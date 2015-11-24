@@ -258,6 +258,7 @@ void dragent_configuration::init(Application* app)
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
 	m_k8s_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("k8s_ca_certificate", "")).toString();
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
+	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");

@@ -348,6 +348,7 @@ public:
 	bool m_k8s_autodetect;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
+	int m_k8s_timeout_ms;
 
 	bool java_present()
 	{
