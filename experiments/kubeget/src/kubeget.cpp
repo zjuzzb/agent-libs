@@ -20,6 +20,7 @@
 #include "Poco/DateTime.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/DateTimeFormat.h"
+#include "curl/curl.h"
 #include <iostream>
 #include <exception>
 #include <thread>
@@ -84,9 +85,9 @@ private:
 void print_cache(k8s& kube)
 {
 #ifdef K8S_DISABLE_THREAD
-	const k8s_state_s& state = kube.get_state();
+	const k8s_state_t& state = kube.get_state();
 
-	const k8s_state_s::namespace_map& ns_map = state.get_namespace_map();
+	const k8s_state_t::namespace_map& ns_map = state.get_namespace_map();
 	std::cout << "---------" << " found " << ns_map.size() << " namespaces --------" << std::endl;
 	int counter = 0;
 	for(const auto& entry : ns_map)
@@ -95,7 +96,7 @@ void print_cache(k8s& kube)
 	}
 	std::cout << "-----------------------------------" << std::endl << std::endl;
 
-	const k8s_state_s::container_pod_map& cp_map = state.get_container_pod_map();
+	const k8s_state_t::container_pod_map& cp_map = state.get_container_pod_map();
 	std::cout << "---------" << " found " << cp_map.size() << " pods by container --------" << std::endl;
 	counter = 0;
 	for(const auto& entry : cp_map)
@@ -104,7 +105,7 @@ void print_cache(k8s& kube)
 	}
 	std::cout << "-----------------------------------" << std::endl << std::endl;
 
-	const k8s_state_s::pod_rc_map& pr_map = state.get_pod_rc_map();
+	const k8s_state_t::pod_rc_map& pr_map = state.get_pod_rc_map();
 	std::cout << "---------" << " found " << pr_map.size() << " controllers by pod --------" << std::endl;
 	counter = 0;
 	for(const auto& entry : pr_map)
@@ -113,7 +114,7 @@ void print_cache(k8s& kube)
 	}
 	std::cout << "-----------------------------------" << std::endl << std::endl;
 
-	const k8s_state_s::pod_service_map& ps_map = state.get_pod_service_map();
+	const k8s_state_t::pod_service_map& ps_map = state.get_pod_service_map();
 	std::cout << "---------" << " found " << ps_map.size() << " services by pod --------" << std::endl;
 	counter = 0;
 	for(const auto& entry : ps_map)
