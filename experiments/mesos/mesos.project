@@ -406,6 +406,9 @@
     <File Name="src/mesos.h"/>
     <File Name="src/mesos_state.h"/>
     <File Name="src/mesos_state.cpp"/>
+    <File Name="src/mesosget.cpp"/>
+    <File Name="src/mesos_http.cpp"/>
+    <File Name="src/mesos_http.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

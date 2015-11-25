@@ -39,9 +39,9 @@ public:
 	// tasks
 	//
 
-	const k8s_tasks& get_tasks() const;
+	const mesos_tasks& get_tasks() const;
 
-	k8s_tasks& get_tasks();
+	mesos_tasks& get_tasks();
 
 	mesos_task* get_task(const std::string& uid);
 
@@ -57,13 +57,13 @@ public:
 
 	mesos_slaves& get_slaves();
 
-	void push_pod(const mesos_slave& pod);
+	void push_slave(const mesos_slave& slave);
 
-	void emplace_pod(mesos_slave&& pod);
+	void emplace_slave(mesos_slave&& slave);
 
-	void update_pod(mesos_slave& pod, const Json::Value& item, bool reset);
+	void update_slave(mesos_slave& slave, const Json::Value& item, bool reset);
 
-	bool has_pod(mesos_slave& pod);
+	bool has_slave(mesos_slave& slave);
 
 private:
 
@@ -95,12 +95,12 @@ inline void mesos_state::emplace_framework(mesos_framework&& ns)
 }
 
 // tasks
-inline const k8s_tasks& mesos_state::get_tasks() const
+inline const mesos_tasks& mesos_state::get_tasks() const
 {
 	return m_tasks;
 }
 
-inline k8s_tasks& mesos_state::get_tasks()
+inline mesos_tasks& mesos_state::get_tasks()
 {
 	return m_tasks;
 }
@@ -126,17 +126,12 @@ inline mesos_slaves& mesos_state::get_slaves()
 	return m_slaves;
 }
 
-inline void mesos_state::push_pod(const mesos_slave& pod)
+inline void mesos_state::push_slave(const mesos_slave& pod)
 {
 	m_slaves.push_back(pod);
 }
 
-inline void mesos_state::emplace_pod(mesos_slave&& pod)
+inline void mesos_state::emplace_slave(mesos_slave&& pod)
 {
 	m_slaves.emplace_back(std::move(pod));
-}
-
-inline const mesos_slave::container_id_list& mesos_state::get_pod_container_ids(mesos_slave& pod)
-{
-	return pod.get_container_ids();
 }
