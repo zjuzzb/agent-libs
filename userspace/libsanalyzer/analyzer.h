@@ -497,6 +497,7 @@ VISIBILITY_PRIVATE
 	atomic<bool> m_statsd_capture_localhost;
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
+	decltype(m_app_proxy->read_metrics()) m_app_metrics;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
