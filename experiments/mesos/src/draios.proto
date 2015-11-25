@@ -562,6 +562,7 @@ message container {
     repeated container_port_mapping port_mappings = 18;
     optional proto_info protos = 19;
     repeated container_label labels = 20;
+    repeated mounted_fs mounts = 21;
 }
 
 //
@@ -626,6 +627,33 @@ message k8s_state {
 }
 
 //
+// MESOS
+//
+
+message mesos_pair {
+    required string key = 1;
+    required string value = 2;
+}
+
+message mesos_common {
+    required string name = 1;
+    required string uid = 2;
+    repeated mesos_pair labels = 3;
+}
+
+message mesos_task {
+    required mesos_common common = 1;
+}
+
+message mesos_framework {
+    required mesos_common common = 1;
+    repeated mesos_task tasks = 2;
+}
+
+message mesos_state {
+    repeated mesos_framework frameworks = 1;
+}
+
 // ENTRY POINT MESSAGE
 //
 message metrics {
