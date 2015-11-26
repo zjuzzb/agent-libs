@@ -643,7 +643,7 @@ message mesos_common {
 
 message mesos_task {
     required mesos_common common = 1;
-    required container_id = 2;
+    optional container_id = 2;
 }
 
 message mesos_framework {
@@ -682,7 +682,7 @@ message metrics {
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
     optional k8s_state kubernetes = 24; // kubernetes cluster state
-    optional mesos_state mesos = 25; // kubernetes cluster state
+    optional mesos_state mesos = 25; // mesos cluster state
 }
 
 message dump_request_start {
