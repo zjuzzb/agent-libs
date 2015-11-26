@@ -628,6 +628,29 @@ app_checks:
       comm: ktserver
     conf:
       report_url: "http://localhost:{port}/rpc/report"
+  - name: mesos-master
+    check_module: mesos_master
+    pattern: 
+      comm: mesos-master
+    conf:
+      url: "http://localhost:{port}"
+  - name: mesos-slave
+    check_module: mesos_slave
+    pattern: 
+      comm: mesos-slave
+    conf:
+      url: "http://localhost:{port}"
+      # Name of individual tasks to monitor, if needed
+      # tasks:
+        # - mongo
+        # - cassandra
+  - name: marathon
+    check_module: marathon
+    pattern: 
+      arg: mesosphere.marathon.Main
+    conf:
+      url: "http://localhost:{port}"
+
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
