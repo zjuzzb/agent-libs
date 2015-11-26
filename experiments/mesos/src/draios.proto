@@ -643,7 +643,7 @@ message mesos_common {
 
 message mesos_task {
     required mesos_common common = 1;
-    optional container_id = 2;
+    optional string container_id = 2;
 }
 
 message mesos_framework {
