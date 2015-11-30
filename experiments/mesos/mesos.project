@@ -409,6 +409,8 @@
     <File Name="src/mesosget.cpp"/>
     <File Name="src/mesos_http.cpp"/>
     <File Name="src/mesos_http.h"/>
+    <File Name="src/mesos_proto.h"/>
+    <File Name="src/mesos_proto.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

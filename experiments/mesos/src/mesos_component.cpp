@@ -34,54 +34,37 @@ mesos_component::mesos_component(type t, const std::string& name, const std::str
 	}
 }
 
-mesos_component::mesos_component(const mesos_component& other): m_name(other.m_name),
-	m_uid(other.m_uid)
+mesos_component::mesos_component(const mesos_component& other): m_type(other.m_type),
+	m_name(other.m_name),
+	m_uid(other.m_uid),
+	m_labels(other.m_labels)
 {
 }
 
-mesos_component::mesos_component(mesos_component&& other): m_name(std::move(other.m_name)),
-	m_uid(std::move(other.m_uid))
+mesos_component::mesos_component(mesos_component&& other):  m_type(other.m_type),
+	m_name(std::move(other.m_name)),
+	m_uid(std::move(other.m_uid)),
+	m_labels(std::move(other.m_labels))
 {
 }
 
 mesos_component& mesos_component::operator=(const mesos_component& other)
 {
+	m_type = other.m_type;
 	m_name = other.m_name;
 	m_uid = other.m_uid;
+	m_labels = other.m_labels;
 	return *this;
 }
 
 mesos_component& mesos_component::operator=(const mesos_component&& other)
 {
+	m_type = other.m_type;
 	m_name = std::move(other.m_name);
 	m_uid = std::move(other.m_uid);
+	m_labels = other.m_labels;
 	return *this;
 }
-
-/*
-mesos_pair_list mesos_component::extract_object(const Json::Value& object, const std::string& name)
-{
-	mesos_pair_list entry_list;
-
-	if(!object.isNull())
-	{
-		Json::Value entries = object[name];
-		if(!entries.isNull())
-		{
-			Json::Value::Members members = entries.getMemberNames();
-			for (auto& member : members)
-			{
-				Json::Value val = entries[member];
-				if(!val.isNull())
-				{
-					entry_list.emplace_back(mesos_pair_t(member, val.asString()));
-				}
-			}
-		}
-	}
-	return entry_list;
-}
-*/
 
 std::string mesos_component::get_name(type t)
 {
@@ -154,7 +137,7 @@ mesos_framework::~mesos_framework()
 
 void mesos_framework::add_or_replace_task(const mesos_task& task)
 {
-	m_tasks.insert(task_map::value_type(task.get_uid(), task));
+	m_tasks.emplace(task.get_uid(), task);
 }
 
 void mesos_framework::remove_task(const std::string& uid)
@@ -165,10 +148,15 @@ void mesos_framework::remove_task(const std::string& uid)
 		m_tasks.erase(it);
 		return;
 	}
-	throw sinsp_exception("Removal attempted for non-existing task: " + uid);
+	throw sinsp_exception("Removal of non-existing task attempted: " + uid);
 }
 
 const mesos_framework::task_map& mesos_framework::get_tasks() const
+{
+	return m_tasks;
+}
+
+mesos_framework::task_map& mesos_framework::get_tasks()
 {
 	return m_tasks;
 }
@@ -177,31 +165,28 @@ const mesos_framework::task_map& mesos_framework::get_tasks() const
 // task
 //
 
-mesos_task::mesos_task(mesos_framework& framework, const std::string& name, const std::string& uid) :
-	mesos_component(mesos_component::MESOS_TASK, name, uid),
-	m_framework(&framework)
+mesos_task::mesos_task(const std::string& name, const std::string& uid) :
+	mesos_component(mesos_component::MESOS_TASK, name, uid)
 {
 }
 
-mesos_task::mesos_task(const mesos_task& other): mesos_component(other), m_framework(other.m_framework)
+mesos_task::mesos_task(const mesos_task& other): mesos_component(other)
 {
 }
 
-mesos_task::mesos_task(mesos_task&& other): mesos_component(std::move(other)), m_framework(other.m_framework)
+mesos_task::mesos_task(mesos_task&& other): mesos_component(std::move(other))
 {
 }
 
 mesos_task& mesos_task::operator=(const mesos_task& other)
 {
 	mesos_component::operator =(other);
-	m_framework = other.m_framework;
 	return *this;
 }
 
 mesos_task& mesos_task::operator=(const mesos_task&& other)
 {
 	mesos_component::operator =(std::move(other));
-	m_framework = other.m_framework;
 	return *this;
 }
 

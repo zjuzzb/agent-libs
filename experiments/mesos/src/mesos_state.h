@@ -1,5 +1,5 @@
 //
-// mesos_state.h
+// mesos_state_t.h
 //
 // mesos state abstraction
 //
@@ -18,10 +18,10 @@
 // state
 //
 
-class mesos_state
+class mesos_state_t
 {
 public:
-	mesos_state(bool is_captured = false);
+	mesos_state_t(bool is_captured = false);
 
 	//
 	// frameworks
@@ -31,107 +31,93 @@ public:
 
 	mesos_frameworks& get_frameworks();
 
-	void push_framework(const mesos_framework& ns);
+	const mesos_framework& get_framework(const std::string& framework_uid) const;
 
-	void emplace_framework(mesos_framework&& ns);
+	mesos_framework& get_framework(const std::string& framework_uid);
+
+	void push_framework(const mesos_framework& framework);
+
+	void emplace_framework(mesos_framework&& framework);
 
 	//
 	// tasks
 	//
 
-	const mesos_tasks& get_tasks() const;
+	const mesos_framework::task_map& get_tasks(const std::string& framework_uid) const;
 
-	mesos_tasks& get_tasks();
+	mesos_framework::task_map& get_tasks(const std::string& framework_uid);
 
-	mesos_task* get_task(const std::string& uid);
+	const mesos_task& get_task(const std::string& uid) const;
 
-	void push_task(const mesos_task& task);
+	mesos_task& get_task(const std::string& uid);
 
-	void emplace_task(mesos_task&& task);
+	void add_or_replace_task(mesos_framework& framework, const mesos_task& task);
+
+	void add_or_replace_task(mesos_framework& framework, mesos_task&& task);
 
 	//
 	// slaves
 	//
 
-	const mesos_slaves& get_slaves() const;
-
-	mesos_slaves& get_slaves();
-
-	void push_slave(const mesos_slave& slave);
-
-	void emplace_slave(mesos_slave&& slave);
-
-	void update_slave(mesos_slave& slave, const Json::Value& item, bool reset);
-
-	bool has_slave(mesos_slave& slave);
-
 private:
 
 	mesos_frameworks m_frameworks;
-	mesos_tasks      m_tasks;
-	mesos_slaves     m_slaves;
 	bool             m_is_captured;
 };
 
 // frameworks
-inline const mesos_frameworks& mesos_state::get_frameworks() const
+inline const mesos_frameworks& mesos_state_t::get_frameworks() const
 {
 	return m_frameworks;
 }
 
-inline mesos_frameworks& mesos_state::get_frameworks()
+inline mesos_frameworks& mesos_state_t::get_frameworks()
 {
 	return m_frameworks;
 }
 
-inline void mesos_state::push_framework(const mesos_framework& ns)
+inline const mesos_framework& mesos_state_t::get_framework(const std::string& framework_uid) const
 {
-	m_frameworks.push_back(ns);
+	for(const auto& framework : m_frameworks)
+	{
+		if(framework.get_uid() == framework_uid)
+		{
+			return framework;
+		}
+	}
+	throw sinsp_exception("Framework not found: " + framework_uid);
 }
 
-inline void mesos_state::emplace_framework(mesos_framework&& ns)
+inline mesos_framework& mesos_state_t::get_framework(const std::string& framework_uid)
 {
-	m_frameworks.emplace_back(std::move(ns));
+	for(auto& framework : m_frameworks)
+	{
+		if(framework.get_uid() == framework_uid)
+		{
+			return framework;
+		}
+	}
+	throw sinsp_exception("Framework not found: " + framework_uid);
 }
 
-// tasks
-inline const mesos_tasks& mesos_state::get_tasks() const
+inline void mesos_state_t::push_framework(const mesos_framework& framework)
 {
-	return m_tasks;
+	m_frameworks.push_back(framework);
 }
 
-inline mesos_tasks& mesos_state::get_tasks()
+inline void mesos_state_t::emplace_framework(mesos_framework&& framework)
 {
-	return m_tasks;
+	m_frameworks.emplace_back(std::move(framework));
 }
 
-inline void mesos_state::push_task(const mesos_task& task)
+inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, const mesos_task& task)
 {
-	m_tasks.push_back(task);
+	framework.add_or_replace_task(task);
 }
 
-inline void mesos_state::emplace_task(mesos_task&& task)
+inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, mesos_task&& task)
 {
-	m_tasks.emplace_back(std::move(task));
+	framework.add_or_replace_task(std::move(task));
 }
 
 // slaves
-inline const mesos_slaves& mesos_state::get_slaves() const
-{
-	return m_slaves;
-}
-
-inline mesos_slaves& mesos_state::get_slaves()
-{
-	return m_slaves;
-}
-
-inline void mesos_state::push_slave(const mesos_slave& pod)
-{
-	m_slaves.push_back(pod);
-}
-
-inline void mesos_state::emplace_slave(mesos_slave&& pod)
-{
-	m_slaves.emplace_back(std::move(pod));
-}

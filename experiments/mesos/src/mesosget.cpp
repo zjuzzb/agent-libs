@@ -8,16 +8,30 @@
 //
 
 #include "sinsp.h"
+#include "mesos_proto.h"
 #include "mesos_common.h"
 #include "mesos_http.h"
 #include "mesos.h"
 
 sinsp_logger g_logger;
 
+void print_proto(mesos& m)
+{
+	draiosproto::metrics met;
+	mesos_proto(met).get_proto(m.get_state());
+	std::cout << met.DebugString() << std::endl;
+}
+
 int main(int argc, char** argv)
 {
 	mesos m("http://54.152.106.80:5050");
+	print_proto(m);
+	mesos s1("http://54.152.151.54:5051");
+	print_proto(s1);
+	mesos s2("http://54.86.157.224:5051");
+	print_proto(s2);
+	mesos s3("http://54.85.0.8:5051");
+	print_proto(s3);
 
 	return 0;
 }
-

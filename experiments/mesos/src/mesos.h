@@ -21,15 +21,21 @@ public:
 
 	~mesos();
 
+	const mesos_state_t get_state() const;
+
 private:
 	void parse_json(const std::string& json);
 	void add_framework(const Json::Value& framework);
 	void add_tasks(mesos_framework& framework, const Json::Value& task);
 	void add_labels(mesos_task& task, const Json::Value& t_val);
 
-	mesos_http  m_http;
-	mesos_state m_state;
+	mesos_http    m_http;
+	mesos_state_t m_state;
 
 	static const mesos_component::component_map m_components;
 };
 
+inline const mesos_state_t mesos::get_state() const
+{
+	return m_state;
+}

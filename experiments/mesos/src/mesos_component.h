@@ -68,7 +68,7 @@ public:
 
 	void push_label(const mesos_pair_t& label);
 
-	void emplace_label(const mesos_pair_t& label);
+	void emplace_label(mesos_pair_t&& label);
 
 	static const std::string& get_name(const component_pair& p);
 
@@ -95,9 +95,7 @@ class mesos_framework;
 class mesos_task : public mesos_component
 {
 public:
-	typedef std::vector<std::string> host_ip_list;
-
-	mesos_task(mesos_framework& framework, const std::string& name, const std::string& uid);
+	mesos_task(const std::string& name, const std::string& uid);
 
 	mesos_task(const mesos_task& other);
 
@@ -107,11 +105,7 @@ public:
 
 	mesos_task& operator=(const mesos_task&& other);
 
-	const mesos_framework& get_framework() const;
-
 private:
-	mesos_framework* m_framework;
-};
 
 //
 // framework
@@ -133,6 +127,8 @@ public:
 	void remove_task(const std::string& uid);
 
 	const task_map& get_tasks() const;
+
+	task_map& get_tasks();
 
 private:
 	task_map m_tasks;
@@ -199,7 +195,7 @@ inline void mesos_component::push_label(const mesos_pair_t& label)
 	m_labels.push_back(label);
 }
 
-inline void mesos_component::emplace_label(const mesos_pair_t& label)
+inline void mesos_component::emplace_label(mesos_pair_t&& label)
 {
 	m_labels.emplace_back(label);
 }
@@ -215,15 +211,6 @@ inline mesos_component::type mesos_component::get_type(const component_pair& p)
 }
 
 //
-// task
-//
-
-inline const mesos_framework& mesos_task::get_framework() const
-{
-	return *m_framework;
-}
-
-//
 // framework
 //
 
@@ -231,3 +218,8 @@ inline bool mesos_framework::has_task(const std::string& uid) const
 {
 	return m_tasks.find(uid) != m_tasks.end();
 }
+
+//
+// task
+//
+

@@ -176,6 +176,21 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* k8s_state_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   k8s_state_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mesos_pair_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mesos_pair_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mesos_common_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mesos_common_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mesos_task_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mesos_task_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mesos_framework_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mesos_framework_reflection_ = NULL;
+const ::google::protobuf::Descriptor* mesos_state_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  mesos_state_reflection_ = NULL;
 const ::google::protobuf::Descriptor* metrics_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   metrics_reflection_ = NULL;
@@ -1027,7 +1042,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(container_label));
   container_descriptor_ = file->message_type(42);
-  static const int container_offsets_[16] = {
+  static const int container_offsets_[17] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, type_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, name_),
@@ -1044,6 +1059,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, port_mappings_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, protos_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, labels_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container, mounts_),
   };
   container_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1210,8 +1226,87 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(k8s_state));
-  metrics_descriptor_ = file->message_type(51);
-  static const int metrics_offsets_[20] = {
+  mesos_pair_descriptor_ = file->message_type(51);
+  static const int mesos_pair_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_pair, key_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_pair, value_),
+  };
+  mesos_pair_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mesos_pair_descriptor_,
+      mesos_pair::default_instance_,
+      mesos_pair_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_pair, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_pair, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mesos_pair));
+  mesos_common_descriptor_ = file->message_type(52);
+  static const int mesos_common_offsets_[3] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, name_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, uid_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, labels_),
+  };
+  mesos_common_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mesos_common_descriptor_,
+      mesos_common::default_instance_,
+      mesos_common_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mesos_common));
+  mesos_task_descriptor_ = file->message_type(53);
+  static const int mesos_task_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_task, common_),
+  };
+  mesos_task_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mesos_task_descriptor_,
+      mesos_task::default_instance_,
+      mesos_task_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_task, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_task, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mesos_task));
+  mesos_framework_descriptor_ = file->message_type(54);
+  static const int mesos_framework_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_framework, common_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_framework, tasks_),
+  };
+  mesos_framework_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mesos_framework_descriptor_,
+      mesos_framework::default_instance_,
+      mesos_framework_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_framework, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_framework, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mesos_framework));
+  mesos_state_descriptor_ = file->message_type(55);
+  static const int mesos_state_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_state, frameworks_),
+  };
+  mesos_state_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      mesos_state_descriptor_,
+      mesos_state::default_instance_,
+      mesos_state_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_state, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_state, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(mesos_state));
+  metrics_descriptor_ = file->message_type(56);
+  static const int metrics_offsets_[21] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, customer_id_),
@@ -1232,6 +1327,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, protos_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, containers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, kubernetes_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, mesos_),
   };
   metrics_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1244,7 +1340,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(metrics));
-  dump_request_start_descriptor_ = file->message_type(52);
+  dump_request_start_descriptor_ = file->message_type(57);
   static const int dump_request_start_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_start, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_start, machine_id_),
@@ -1265,7 +1361,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_start));
-  dump_request_stop_descriptor_ = file->message_type(53);
+  dump_request_stop_descriptor_ = file->message_type(58);
   static const int dump_request_stop_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_stop, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_request_stop, machine_id_),
@@ -1283,7 +1379,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_request_stop));
-  dump_response_descriptor_ = file->message_type(54);
+  dump_response_descriptor_ = file->message_type(59);
   static const int dump_response_offsets_[10] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dump_response, machine_id_),
@@ -1307,7 +1403,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dump_response));
-  ssh_open_channel_descriptor_ = file->message_type(55);
+  ssh_open_channel_descriptor_ = file->message_type(60);
   static const int ssh_open_channel_offsets_[9] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_open_channel, machine_id_),
@@ -1330,7 +1426,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_open_channel));
-  ssh_data_descriptor_ = file->message_type(56);
+  ssh_data_descriptor_ = file->message_type(61);
   static const int ssh_data_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_data, machine_id_),
@@ -1351,7 +1447,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_data));
-  ssh_close_channel_descriptor_ = file->message_type(57);
+  ssh_close_channel_descriptor_ = file->message_type(62);
   static const int ssh_close_channel_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_close_channel, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ssh_close_channel, machine_id_),
@@ -1369,7 +1465,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ssh_close_channel));
-  auto_update_request_descriptor_ = file->message_type(58);
+  auto_update_request_descriptor_ = file->message_type(63);
   static const int auto_update_request_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(auto_update_request, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(auto_update_request, machine_id_),
@@ -1386,7 +1482,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(auto_update_request));
-  dirty_shutdown_report_descriptor_ = file->message_type(59);
+  dirty_shutdown_report_descriptor_ = file->message_type(64);
   static const int dirty_shutdown_report_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(dirty_shutdown_report, machine_id_),
@@ -1532,6 +1628,16 @@ void protobuf_RegisterTypes(const ::std::string&) {
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     k8s_state_descriptor_, &k8s_state::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mesos_pair_descriptor_, &mesos_pair::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mesos_common_descriptor_, &mesos_common::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mesos_task_descriptor_, &mesos_task::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mesos_framework_descriptor_, &mesos_framework::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    mesos_state_descriptor_, &mesos_state::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     metrics_descriptor_, &metrics::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     dump_request_start_descriptor_, &dump_request_start::default_instance());
@@ -1658,6 +1764,16 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete k8s_service_net_port_reflection_;
   delete k8s_state::default_instance_;
   delete k8s_state_reflection_;
+  delete mesos_pair::default_instance_;
+  delete mesos_pair_reflection_;
+  delete mesos_common::default_instance_;
+  delete mesos_common_reflection_;
+  delete mesos_task::default_instance_;
+  delete mesos_task_reflection_;
+  delete mesos_framework::default_instance_;
+  delete mesos_framework_reflection_;
+  delete mesos_state::default_instance_;
+  delete mesos_state_reflection_;
   delete metrics::default_instance_;
   delete metrics_reflection_;
   delete dump_request_start::default_instance_;
@@ -1878,7 +1994,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "\"j\n\026container_port_mapping\022\017\n\007host_ip\030\001 "
     "\001(\r\022\021\n\thost_port\030\002 \001(\r\022\024\n\014container_ip\030\003"
     " \001(\r\022\026\n\016container_port\030\004 \001(\r\"-\n\017containe"
-    "r_label\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \001(\t\"\376\005\n\t"
+    "r_label\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \001(\t\"\247\006\n\t"
     "container\022\n\n\002id\030\001 \002(\t\022)\n\004type\030\002 \001(\0162\033.dr"
     "aiosproto.container_type\022\014\n\004name\030\003 \001(\t\022\r"
     "\n\005image\030\004 \001(\t\022/\n\ttcounters\030\005 \001(\0132\034.draio"
@@ -1898,121 +2014,132 @@ void protobuf_AddDesc_draios_2eproto() {
     "2#.draiosproto.container_port_mapping\022\'\n"
     "\006protos\030\023 \001(\0132\027.draiosproto.proto_info\022,"
     "\n\006labels\030\024 \003(\0132\034.draiosproto.container_l"
-    "abel\"&\n\010k8s_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002"
-    " \002(\t\"\213\001\n\nk8s_common\022\014\n\004name\030\001 \002(\t\022\013\n\003uid"
-    "\030\002 \002(\t\022\021\n\tnamespace\030\003 \001(\t\022%\n\006labels\030\004 \003("
-    "\0132\025.draiosproto.k8s_pair\022(\n\tselectors\030\005 "
-    "\003(\0132\025.draiosproto.k8s_pair\"8\n\rk8s_namesp"
-    "ace\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_co"
-    "mmon\"E\n\010k8s_node\022\'\n\006common\030\001 \002(\0132\027.draio"
-    "sproto.k8s_common\022\020\n\010host_ips\030\002 \003(\t\"\202\001\n\007"
-    "k8s_pod\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8"
-    "s_common\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\tnode_"
-    "name\030\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013internal_"
-    "ip\030\005 \001(\t\"E\n\032k8s_replication_controller\022\'"
-    "\n\006common\030\001 \002(\0132\027.draiosproto.k8s_common\""
-    "\320\001\n\013k8s_service\022\'\n\006common\030\001 \002(\0132\027.draios"
-    "proto.k8s_common\022\022\n\ncluster_ip\030\002 \001(\t\0220\n\005"
-    "ports\030\003 \003(\0132!.draiosproto.k8s_service.ne"
-    "t_port\032R\n\010net_port\022\014\n\004port\030\001 \002(\r\022\023\n\013targ"
-    "et_port\030\002 \002(\r\022\020\n\010protocol\030\003 \001(\t\022\021\n\tnode_"
-    "port\030\004 \001(\r\"\357\001\n\tk8s_state\022.\n\nnamespaces\030\001"
-    " \003(\0132\032.draiosproto.k8s_namespace\022$\n\005node"
-    "s\030\002 \003(\0132\025.draiosproto.k8s_node\022\"\n\004pods\030\003"
-    " \003(\0132\024.draiosproto.k8s_pod\022<\n\013controller"
-    "s\030\004 \003(\0132\'.draiosproto.k8s_replication_co"
-    "ntroller\022*\n\010services\030\005 \003(\0132\030.draiosproto"
-    ".k8s_service\"\265\005\n\007metrics\022\024\n\014timestamp_ns"
-    "\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_i"
-    "d\030\003 \001(\t\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_"
-    "custom_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\026\n\016"
-    "is_host_hidden\030\016 \001(\010\022\030\n\020hidden_processes"
-    "\030\017 \001(\t\022\017\n\007version\030\020 \001(\t\022\023\n\013instance_id\030\025"
-    " \001(\t\022#\n\010hostinfo\030\004 \001(\0132\021.draiosproto.hos"
-    "t\022&\n\010programs\030\t \003(\0132\024.draiosproto.progra"
-    "m\0226\n\020ipv4_connections\030\007 \003(\0132\034.draiosprot"
-    "o.ipv4_connection\022D\n\027ipv4_network_interf"
-    "aces\030\010 \003(\0132#.draiosproto.ipv4_network_in"
-    "terface\022.\n\010commands\030\021 \003(\0132\034.draiosproto."
-    "command_details\022\'\n\006mounts\030\022 \003(\0132\027.draios"
-    "proto.mounted_fs\022)\n\ttop_files\030\023 \003(\0132\026.dr"
-    "aiosproto.file_stat\022\'\n\006protos\030\024 \001(\0132\027.dr"
-    "aiosproto.proto_info\022*\n\ncontainers\030\026 \003(\013"
-    "2\026.draiosproto.container\022*\n\nkubernetes\030\030"
-    " \001(\0132\026.draiosproto.k8s_state\"\232\001\n\022dump_re"
-    "quest_start\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmac"
-    "hine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013du"
-    "ration_ns\030\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_"
-    "size\030\007 \001(\004\022\r\n\005token\030\006 \002(\t\"a\n\021dump_reques"
-    "t_stop\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_"
-    "id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004"
-    " \002(\t\"\322\001\n\rdump_response\022\024\n\014timestamp_ns\030\001"
-    " \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030"
-    "\003 \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010"
-    " \001(\010\022\022\n\nkeep_alive\030\t \001(\010\022\017\n\007content\030\004 \001("
-    "\014\022\030\n\020final_size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001"
-    "(\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024"
+    "abel\022\'\n\006mounts\030\025 \003(\0132\027.draiosproto.mount"
+    "ed_fs\"&\n\010k8s_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030"
+    "\002 \002(\t\"\213\001\n\nk8s_common\022\014\n\004name\030\001 \002(\t\022\013\n\003ui"
+    "d\030\002 \002(\t\022\021\n\tnamespace\030\003 \001(\t\022%\n\006labels\030\004 \003"
+    "(\0132\025.draiosproto.k8s_pair\022(\n\tselectors\030\005"
+    " \003(\0132\025.draiosproto.k8s_pair\"8\n\rk8s_names"
+    "pace\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_c"
+    "ommon\"E\n\010k8s_node\022\'\n\006common\030\001 \002(\0132\027.drai"
+    "osproto.k8s_common\022\020\n\010host_ips\030\002 \003(\t\"\202\001\n"
+    "\007k8s_pod\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k"
+    "8s_common\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\tnode"
+    "_name\030\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013internal"
+    "_ip\030\005 \001(\t\"E\n\032k8s_replication_controller\022"
+    "\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_common"
+    "\"\320\001\n\013k8s_service\022\'\n\006common\030\001 \002(\0132\027.draio"
+    "sproto.k8s_common\022\022\n\ncluster_ip\030\002 \001(\t\0220\n"
+    "\005ports\030\003 \003(\0132!.draiosproto.k8s_service.n"
+    "et_port\032R\n\010net_port\022\014\n\004port\030\001 \002(\r\022\023\n\013tar"
+    "get_port\030\002 \002(\r\022\020\n\010protocol\030\003 \001(\t\022\021\n\tnode"
+    "_port\030\004 \001(\r\"\357\001\n\tk8s_state\022.\n\nnamespaces\030"
+    "\001 \003(\0132\032.draiosproto.k8s_namespace\022$\n\005nod"
+    "es\030\002 \003(\0132\025.draiosproto.k8s_node\022\"\n\004pods\030"
+    "\003 \003(\0132\024.draiosproto.k8s_pod\022<\n\013controlle"
+    "rs\030\004 \003(\0132\'.draiosproto.k8s_replication_c"
+    "ontroller\022*\n\010services\030\005 \003(\0132\030.draiosprot"
+    "o.k8s_service\"(\n\nmesos_pair\022\013\n\003key\030\001 \002(\t"
+    "\022\r\n\005value\030\002 \002(\t\"R\n\014mesos_common\022\014\n\004name\030"
+    "\001 \002(\t\022\013\n\003uid\030\002 \002(\t\022\'\n\006labels\030\003 \003(\0132\027.dra"
+    "iosproto.mesos_pair\"7\n\nmesos_task\022)\n\006com"
+    "mon\030\001 \002(\0132\031.draiosproto.mesos_common\"d\n\017"
+    "mesos_framework\022)\n\006common\030\001 \002(\0132\031.draios"
+    "proto.mesos_common\022&\n\005tasks\030\002 \003(\0132\027.drai"
+    "osproto.mesos_task\"\?\n\013mesos_state\0220\n\nfra"
+    "meworks\030\001 \003(\0132\034.draiosproto.mesos_framew"
+    "ork\"\336\005\n\007metrics\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n"
+    "\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\026"
+    "\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_custom_na"
+    "me\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\026\n\016is_host_h"
+    "idden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n"
+    "\007version\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t\022#\n\010h"
+    "ostinfo\030\004 \001(\0132\021.draiosproto.host\022&\n\010prog"
+    "rams\030\t \003(\0132\024.draiosproto.program\0226\n\020ipv4"
+    "_connections\030\007 \003(\0132\034.draiosproto.ipv4_co"
+    "nnection\022D\n\027ipv4_network_interfaces\030\010 \003("
+    "\0132#.draiosproto.ipv4_network_interface\022."
+    "\n\010commands\030\021 \003(\0132\034.draiosproto.command_d"
+    "etails\022\'\n\006mounts\030\022 \003(\0132\027.draiosproto.mou"
+    "nted_fs\022)\n\ttop_files\030\023 \003(\0132\026.draiosproto"
+    ".file_stat\022\'\n\006protos\030\024 \001(\0132\027.draiosproto"
+    ".proto_info\022*\n\ncontainers\030\026 \003(\0132\026.draios"
+    "proto.container\022*\n\nkubernetes\030\030 \001(\0132\026.dr"
+    "aiosproto.k8s_state\022\'\n\005mesos\030\031 \001(\0132\030.dra"
+    "iosproto.mesos_state\"\232\001\n\022dump_request_st"
+    "art\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030"
+    "\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_n"
+    "s\030\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001"
+    "(\004\022\r\n\005token\030\006 \002(\t\"a\n\021dump_request_stop\022\024"
     "\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t"
-    "\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004"
-    "user\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001("
-    "\t\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010"
-    "ssh_data\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachin"
-    "e_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token"
-    "\030\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013e"
-    "xit_status\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n"
-    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
-    "\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023a"
-    "uto_update_request\022\024\n\014timestamp_ns\030\001 \002(\004"
+    "\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n"
+    "\rdump_response\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\n"
+    "machine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n"
+    "\010chunk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\n"
+    "keep_alive\030\t \001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020fin"
+    "al_size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005to"
+    "ken\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n\014timest"
+    "amp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cust"
+    "omer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002"
+    "(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npas"
+    "sphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data"
+    "\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002"
+    "(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014"
+    "\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_stat"
+    "us\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014timesta"
+    "mp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custo"
+    "mer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_upda"
+    "te_request\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmach"
+    "ine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025dir"
+    "ty_shutdown_report\022\024\n\014timestamp_ns\030\001 \002(\004"
     "\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001("
-    "\t\"c\n\025dirty_shutdown_report\022\024\n\014timestamp_"
-    "ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer"
-    "_id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t*\346\001\n\022sql_statement"
-    "_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nS"
-    "OP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004"
-    "\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_RE"
-    "PLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010"
-    "SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014"
-    "\022\r\n\tSOP_ALTER\020\r*\206\003\n\017mongodb_op_type\022\023\n\017M"
-    "ONGODB_OP_NONE\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022"
-    "\025\n\021MONGODB_OP_UPDATE\020\002\022\025\n\021MONGODB_OP_DEL"
-    "ETE\020\003\022\027\n\023MONGODB_OP_GET_MORE\020\004\022\033\n\027MONGOD"
-    "B_OP_KILL_CURSORS\020\005\022\023\n\017MONGODB_OP_FIND\020\006"
-    "\022\030\n\024MONGODB_OP_AGGREGATE\020\007\022\026\n\022MONGODB_OP"
-    "_COMMAND\020\010\022\024\n\020MONGODB_OP_COUNT\020\t\022\027\n\023MONG"
-    "ODB_OP_DISTINCT\020\n\022\031\n\025MONGODB_OP_MAP_REDU"
-    "CE\020\013\022\027\n\023MONGODB_OP_GEO_NEAR\020\014\022\031\n\025MONGODB"
-    "_OP_GEO_SEARCH\020\r\022\036\n\032MONGODB_OP_FIND_AND_"
-    "MODIFY\020\016*G\n\004unit\022\r\n\tUNIT_NONE\020\000\022\017\n\013UNIT_"
-    "SECOND\020\001\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT_PERCENT\020"
-    "\003*\221\002\n\005scale\022\016\n\nSCALE_NONE\020\000\022\017\n\013SCALE_MIL"
-    "LI\020\001\022\017\n\013SCALE_MICRO\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n"
-    "\014SCALE_MINUTE\020\004\022\016\n\nSCALE_HOUR\020\005\022\r\n\tSCALE"
-    "_DAY\020\006\022\016\n\nSCALE_KILO\020\007\022\016\n\nSCALE_MEGA\020\010\022\016"
-    "\n\nSCALE_GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022\016\n\nSCALE_"
-    "KIBI\020\013\022\016\n\nSCALE_MEBI\020\014\022\016\n\nSCALE_GIBI\020\r\022\016"
-    "\n\nSCALE_TEBI\020\016\022\025\n\021SCALE_PERCENT_0_1\020\017*I\n"
-    "\017jmx_metric_type\022\033\n\027JMX_METRIC_TYPE_COUN"
-    "TER\020\001\022\031\n\025JMX_METRIC_TYPE_GAUGE\020\002*^\n\022stat"
-    "sd_metric_type\022\020\n\014STATSD_COUNT\020\001\022\024\n\020STAT"
-    "SD_HISTOGRAM\020\002\022\020\n\014STATSD_GAUGE\020\003\022\016\n\nSTAT"
-    "SD_SET\020\004*F\n\017app_metric_type\022\031\n\025APP_METRI"
-    "C_TYPE_GAUGE\020\001\022\030\n\024APP_METRIC_TYPE_RATE\020\002"
-    "*\201\001\n\017app_check_value\022\026\n\022APP_CHECK_VALUE_"
-    "OK\020\000\022\033\n\027APP_CHECK_VALUE_WARNING\020\001\022\034\n\030APP"
-    "_CHECK_VALUE_CRITICAL\020\002\022\033\n\027APP_CHECK_VAL"
-    "UE_UNKNOWN\020\003*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030"
-    "\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IP"
-    "V4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LO"
-    "CAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIE"
-    "NT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014message_typ"
-    "e\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025"
-    "\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003"
-    "\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHAN"
-    "NEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUE"
-    "ST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\n*A\n\016conta"
-    "iner_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIR"
-    "T_LXC\020\003\022\t\n\005MESOS\020\004B$\n\031com.draios.model.p"
-    "rotobufB\005AgentH\001", 13096);
+    "\t\022\013\n\003log\030\004 \002(\t*\346\001\n\022sql_statement_type\022\014\n"
+    "\010SOP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSER"
+    "T\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_"
+    "DELETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022"
+    "\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW"
+    "\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_"
+    "ALTER\020\r*\206\003\n\017mongodb_op_type\022\023\n\017MONGODB_O"
+    "P_NONE\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022\025\n\021MONGO"
+    "DB_OP_UPDATE\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022\027\n"
+    "\023MONGODB_OP_GET_MORE\020\004\022\033\n\027MONGODB_OP_KIL"
+    "L_CURSORS\020\005\022\023\n\017MONGODB_OP_FIND\020\006\022\030\n\024MONG"
+    "ODB_OP_AGGREGATE\020\007\022\026\n\022MONGODB_OP_COMMAND"
+    "\020\010\022\024\n\020MONGODB_OP_COUNT\020\t\022\027\n\023MONGODB_OP_D"
+    "ISTINCT\020\n\022\031\n\025MONGODB_OP_MAP_REDUCE\020\013\022\027\n\023"
+    "MONGODB_OP_GEO_NEAR\020\014\022\031\n\025MONGODB_OP_GEO_"
+    "SEARCH\020\r\022\036\n\032MONGODB_OP_FIND_AND_MODIFY\020\016"
+    "*G\n\004unit\022\r\n\tUNIT_NONE\020\000\022\017\n\013UNIT_SECOND\020\001"
+    "\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT_PERCENT\020\003*\221\002\n\005sc"
+    "ale\022\016\n\nSCALE_NONE\020\000\022\017\n\013SCALE_MILLI\020\001\022\017\n\013"
+    "SCALE_MICRO\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n\014SCALE_M"
+    "INUTE\020\004\022\016\n\nSCALE_HOUR\020\005\022\r\n\tSCALE_DAY\020\006\022\016"
+    "\n\nSCALE_KILO\020\007\022\016\n\nSCALE_MEGA\020\010\022\016\n\nSCALE_"
+    "GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022\016\n\nSCALE_KIBI\020\013\022\016"
+    "\n\nSCALE_MEBI\020\014\022\016\n\nSCALE_GIBI\020\r\022\016\n\nSCALE_"
+    "TEBI\020\016\022\025\n\021SCALE_PERCENT_0_1\020\017*I\n\017jmx_met"
+    "ric_type\022\033\n\027JMX_METRIC_TYPE_COUNTER\020\001\022\031\n"
+    "\025JMX_METRIC_TYPE_GAUGE\020\002*^\n\022statsd_metri"
+    "c_type\022\020\n\014STATSD_COUNT\020\001\022\024\n\020STATSD_HISTO"
+    "GRAM\020\002\022\020\n\014STATSD_GAUGE\020\003\022\016\n\nSTATSD_SET\020\004"
+    "*F\n\017app_metric_type\022\031\n\025APP_METRIC_TYPE_G"
+    "AUGE\020\001\022\030\n\024APP_METRIC_TYPE_RATE\020\002*\201\001\n\017app"
+    "_check_value\022\026\n\022APP_CHECK_VALUE_OK\020\000\022\033\n\027"
+    "APP_CHECK_VALUE_WARNING\020\001\022\034\n\030APP_CHECK_V"
+    "ALUE_CRITICAL\020\002\022\033\n\027APP_CHECK_VALUE_UNKNO"
+    "WN\020\003*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOC"
+    "AL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVE"
+    "R\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4"
+    "_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016"
+    "IS_UNIX_CLIENT\020 *\314\001\n\014message_type\022\013\n\007MET"
+    "RICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_R"
+    "EQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_"
+    "OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n"
+    "\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025"
+    "DIRTY_SHUTDOWN_REPORT\020\n*A\n\016container_typ"
+    "e\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022"
+    "\t\n\005MESOS\020\004B$\n\031com.draios.model.protobufB"
+    "\005AgentH\001", 13528);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -2067,6 +2194,11 @@ void protobuf_AddDesc_draios_2eproto() {
   k8s_service::default_instance_ = new k8s_service();
   k8s_service_net_port::default_instance_ = new k8s_service_net_port();
   k8s_state::default_instance_ = new k8s_state();
+  mesos_pair::default_instance_ = new mesos_pair();
+  mesos_common::default_instance_ = new mesos_common();
+  mesos_task::default_instance_ = new mesos_task();
+  mesos_framework::default_instance_ = new mesos_framework();
+  mesos_state::default_instance_ = new mesos_state();
   metrics::default_instance_ = new metrics();
   dump_request_start::default_instance_ = new dump_request_start();
   dump_request_stop::default_instance_ = new dump_request_stop();
@@ -2128,6 +2260,11 @@ void protobuf_AddDesc_draios_2eproto() {
   k8s_service::default_instance_->InitAsDefaultInstance();
   k8s_service_net_port::default_instance_->InitAsDefaultInstance();
   k8s_state::default_instance_->InitAsDefaultInstance();
+  mesos_pair::default_instance_->InitAsDefaultInstance();
+  mesos_common::default_instance_->InitAsDefaultInstance();
+  mesos_task::default_instance_->InitAsDefaultInstance();
+  mesos_framework::default_instance_->InitAsDefaultInstance();
+  mesos_state::default_instance_->InitAsDefaultInstance();
   metrics::default_instance_->InitAsDefaultInstance();
   dump_request_start::default_instance_->InitAsDefaultInstance();
   dump_request_stop::default_instance_->InitAsDefaultInstance();
@@ -19101,6 +19238,7 @@ const int container::kSyscallErrorsFieldNumber;
 const int container::kPortMappingsFieldNumber;
 const int container::kProtosFieldNumber;
 const int container::kLabelsFieldNumber;
+const int container::kMountsFieldNumber;
 #endif  // !_MSC_VER
 
 container::container()
@@ -19240,6 +19378,7 @@ void container::Clear() {
   }
   port_mappings_.Clear();
   labels_.Clear();
+  mounts_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -19491,6 +19630,21 @@ bool container::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(162)) goto parse_labels;
+        if (input->ExpectTag(170)) goto parse_mounts;
+        break;
+      }
+
+      // repeated .draiosproto.mounted_fs mounts = 21;
+      case 21: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_mounts:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_mounts()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(170)) goto parse_mounts;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -19616,6 +19770,12 @@ void container::SerializeWithCachedSizes(
       20, this->labels(i), output);
   }
 
+  // repeated .draiosproto.mounted_fs mounts = 21;
+  for (int i = 0; i < this->mounts_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      21, this->mounts(i), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -19738,6 +19898,13 @@ void container::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         20, this->labels(i), target);
+  }
+
+  // repeated .draiosproto.mounted_fs mounts = 21;
+  for (int i = 0; i < this->mounts_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        21, this->mounts(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -19867,6 +20034,14 @@ int container::ByteSize() const {
         this->labels(i));
   }
 
+  // repeated .draiosproto.mounted_fs mounts = 21;
+  total_size += 2 * this->mounts_size();
+  for (int i = 0; i < this->mounts_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->mounts(i));
+  }
+
   if (!unknown_fields().empty()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
@@ -19894,6 +20069,7 @@ void container::MergeFrom(const container& from) {
   GOOGLE_CHECK_NE(&from, this);
   port_mappings_.MergeFrom(from.port_mappings_);
   labels_.MergeFrom(from.labels_);
+  mounts_.MergeFrom(from.mounts_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_id()) {
       set_id(from.id());
@@ -19982,6 +20158,9 @@ bool container::IsInitialized() const {
   for (int i = 0; i < labels_size(); i++) {
     if (!this->labels(i).IsInitialized()) return false;
   }
+  for (int i = 0; i < mounts_size(); i++) {
+    if (!this->mounts(i).IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -20003,6 +20182,7 @@ void container::Swap(container* other) {
     port_mappings_.Swap(&other->port_mappings_);
     std::swap(protos_, other->protos_);
     labels_.Swap(&other->labels_);
+    mounts_.Swap(&other->mounts_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -22906,6 +23086,1298 @@ void k8s_state::Swap(k8s_state* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int mesos_pair::kKeyFieldNumber;
+const int mesos_pair::kValueFieldNumber;
+#endif  // !_MSC_VER
+
+mesos_pair::mesos_pair()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mesos_pair::InitAsDefaultInstance() {
+}
+
+mesos_pair::mesos_pair(const mesos_pair& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mesos_pair::SharedCtor() {
+  _cached_size_ = 0;
+  key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mesos_pair::~mesos_pair() {
+  SharedDtor();
+}
+
+void mesos_pair::SharedDtor() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void mesos_pair::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mesos_pair::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mesos_pair_descriptor_;
+}
+
+const mesos_pair& mesos_pair::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mesos_pair* mesos_pair::default_instance_ = NULL;
+
+mesos_pair* mesos_pair::New() const {
+  return new mesos_pair;
+}
+
+void mesos_pair::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_key()) {
+      if (key_ != &::google::protobuf::internal::kEmptyString) {
+        key_->clear();
+      }
+    }
+    if (has_value()) {
+      if (value_ != &::google::protobuf::internal::kEmptyString) {
+        value_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mesos_pair::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required string key = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_key()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->key().data(), this->key().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_value;
+        break;
+      }
+
+      // required string value = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_value:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_value()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->value().data(), this->value().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mesos_pair::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required string key = 1;
+  if (has_key()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->key().data(), this->key().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      1, this->key(), output);
+  }
+
+  // required string value = 2;
+  if (has_value()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->value().data(), this->value().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->value(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mesos_pair::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required string key = 1;
+  if (has_key()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->key().data(), this->key().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        1, this->key(), target);
+  }
+
+  // required string value = 2;
+  if (has_value()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->value().data(), this->value().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->value(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mesos_pair::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required string key = 1;
+    if (has_key()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->key());
+    }
+
+    // required string value = 2;
+    if (has_value()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->value());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mesos_pair::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mesos_pair* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mesos_pair*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mesos_pair::MergeFrom(const mesos_pair& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_key()) {
+      set_key(from.key());
+    }
+    if (from.has_value()) {
+      set_value(from.value());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mesos_pair::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mesos_pair::CopyFrom(const mesos_pair& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mesos_pair::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  return true;
+}
+
+void mesos_pair::Swap(mesos_pair* other) {
+  if (other != this) {
+    std::swap(key_, other->key_);
+    std::swap(value_, other->value_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mesos_pair::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mesos_pair_descriptor_;
+  metadata.reflection = mesos_pair_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mesos_common::kNameFieldNumber;
+const int mesos_common::kUidFieldNumber;
+const int mesos_common::kLabelsFieldNumber;
+#endif  // !_MSC_VER
+
+mesos_common::mesos_common()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mesos_common::InitAsDefaultInstance() {
+}
+
+mesos_common::mesos_common(const mesos_common& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mesos_common::SharedCtor() {
+  _cached_size_ = 0;
+  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mesos_common::~mesos_common() {
+  SharedDtor();
+}
+
+void mesos_common::SharedDtor() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (uid_ != &::google::protobuf::internal::kEmptyString) {
+    delete uid_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void mesos_common::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mesos_common::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mesos_common_descriptor_;
+}
+
+const mesos_common& mesos_common::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mesos_common* mesos_common::default_instance_ = NULL;
+
+mesos_common* mesos_common::New() const {
+  return new mesos_common;
+}
+
+void mesos_common::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_name()) {
+      if (name_ != &::google::protobuf::internal::kEmptyString) {
+        name_->clear();
+      }
+    }
+    if (has_uid()) {
+      if (uid_ != &::google::protobuf::internal::kEmptyString) {
+        uid_->clear();
+      }
+    }
+  }
+  labels_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mesos_common::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required string name = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_name()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->name().data(), this->name().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_uid;
+        break;
+      }
+
+      // required string uid = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_uid:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_uid()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->uid().data(), this->uid().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_labels;
+        break;
+      }
+
+      // repeated .draiosproto.mesos_pair labels = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_labels:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_labels()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_labels;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mesos_common::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required string name = 1;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      1, this->name(), output);
+  }
+
+  // required string uid = 2;
+  if (has_uid()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->uid().data(), this->uid().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->uid(), output);
+  }
+
+  // repeated .draiosproto.mesos_pair labels = 3;
+  for (int i = 0; i < this->labels_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      3, this->labels(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mesos_common::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required string name = 1;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        1, this->name(), target);
+  }
+
+  // required string uid = 2;
+  if (has_uid()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->uid().data(), this->uid().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->uid(), target);
+  }
+
+  // repeated .draiosproto.mesos_pair labels = 3;
+  for (int i = 0; i < this->labels_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        3, this->labels(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mesos_common::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required string name = 1;
+    if (has_name()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->name());
+    }
+
+    // required string uid = 2;
+    if (has_uid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->uid());
+    }
+
+  }
+  // repeated .draiosproto.mesos_pair labels = 3;
+  total_size += 1 * this->labels_size();
+  for (int i = 0; i < this->labels_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->labels(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mesos_common::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mesos_common* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mesos_common*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mesos_common::MergeFrom(const mesos_common& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  labels_.MergeFrom(from.labels_);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_name()) {
+      set_name(from.name());
+    }
+    if (from.has_uid()) {
+      set_uid(from.uid());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mesos_common::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mesos_common::CopyFrom(const mesos_common& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mesos_common::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  for (int i = 0; i < labels_size(); i++) {
+    if (!this->labels(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mesos_common::Swap(mesos_common* other) {
+  if (other != this) {
+    std::swap(name_, other->name_);
+    std::swap(uid_, other->uid_);
+    labels_.Swap(&other->labels_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mesos_common::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mesos_common_descriptor_;
+  metadata.reflection = mesos_common_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mesos_task::kCommonFieldNumber;
+#endif  // !_MSC_VER
+
+mesos_task::mesos_task()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mesos_task::InitAsDefaultInstance() {
+  common_ = const_cast< ::draiosproto::mesos_common*>(&::draiosproto::mesos_common::default_instance());
+}
+
+mesos_task::mesos_task(const mesos_task& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mesos_task::SharedCtor() {
+  _cached_size_ = 0;
+  common_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mesos_task::~mesos_task() {
+  SharedDtor();
+}
+
+void mesos_task::SharedDtor() {
+  if (this != default_instance_) {
+    delete common_;
+  }
+}
+
+void mesos_task::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mesos_task::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mesos_task_descriptor_;
+}
+
+const mesos_task& mesos_task::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mesos_task* mesos_task::default_instance_ = NULL;
+
+mesos_task* mesos_task::New() const {
+  return new mesos_task;
+}
+
+void mesos_task::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_common()) {
+      if (common_ != NULL) common_->::draiosproto::mesos_common::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mesos_task::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required .draiosproto.mesos_common common = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_common()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mesos_task::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required .draiosproto.mesos_common common = 1;
+  if (has_common()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      1, this->common(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mesos_task::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required .draiosproto.mesos_common common = 1;
+  if (has_common()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        1, this->common(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mesos_task::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required .draiosproto.mesos_common common = 1;
+    if (has_common()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->common());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mesos_task::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mesos_task* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mesos_task*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mesos_task::MergeFrom(const mesos_task& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_common()) {
+      mutable_common()->::draiosproto::mesos_common::MergeFrom(from.common());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mesos_task::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mesos_task::CopyFrom(const mesos_task& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mesos_task::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  if (has_common()) {
+    if (!this->common().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mesos_task::Swap(mesos_task* other) {
+  if (other != this) {
+    std::swap(common_, other->common_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mesos_task::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mesos_task_descriptor_;
+  metadata.reflection = mesos_task_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mesos_framework::kCommonFieldNumber;
+const int mesos_framework::kTasksFieldNumber;
+#endif  // !_MSC_VER
+
+mesos_framework::mesos_framework()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mesos_framework::InitAsDefaultInstance() {
+  common_ = const_cast< ::draiosproto::mesos_common*>(&::draiosproto::mesos_common::default_instance());
+}
+
+mesos_framework::mesos_framework(const mesos_framework& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mesos_framework::SharedCtor() {
+  _cached_size_ = 0;
+  common_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mesos_framework::~mesos_framework() {
+  SharedDtor();
+}
+
+void mesos_framework::SharedDtor() {
+  if (this != default_instance_) {
+    delete common_;
+  }
+}
+
+void mesos_framework::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mesos_framework::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mesos_framework_descriptor_;
+}
+
+const mesos_framework& mesos_framework::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mesos_framework* mesos_framework::default_instance_ = NULL;
+
+mesos_framework* mesos_framework::New() const {
+  return new mesos_framework;
+}
+
+void mesos_framework::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_common()) {
+      if (common_ != NULL) common_->::draiosproto::mesos_common::Clear();
+    }
+  }
+  tasks_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mesos_framework::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required .draiosproto.mesos_common common = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_common()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_tasks;
+        break;
+      }
+
+      // repeated .draiosproto.mesos_task tasks = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_tasks:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_tasks()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_tasks;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mesos_framework::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required .draiosproto.mesos_common common = 1;
+  if (has_common()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      1, this->common(), output);
+  }
+
+  // repeated .draiosproto.mesos_task tasks = 2;
+  for (int i = 0; i < this->tasks_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      2, this->tasks(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mesos_framework::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required .draiosproto.mesos_common common = 1;
+  if (has_common()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        1, this->common(), target);
+  }
+
+  // repeated .draiosproto.mesos_task tasks = 2;
+  for (int i = 0; i < this->tasks_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        2, this->tasks(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mesos_framework::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required .draiosproto.mesos_common common = 1;
+    if (has_common()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->common());
+    }
+
+  }
+  // repeated .draiosproto.mesos_task tasks = 2;
+  total_size += 1 * this->tasks_size();
+  for (int i = 0; i < this->tasks_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->tasks(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mesos_framework::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mesos_framework* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mesos_framework*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mesos_framework::MergeFrom(const mesos_framework& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  tasks_.MergeFrom(from.tasks_);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_common()) {
+      mutable_common()->::draiosproto::mesos_common::MergeFrom(from.common());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mesos_framework::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mesos_framework::CopyFrom(const mesos_framework& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mesos_framework::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  if (has_common()) {
+    if (!this->common().IsInitialized()) return false;
+  }
+  for (int i = 0; i < tasks_size(); i++) {
+    if (!this->tasks(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mesos_framework::Swap(mesos_framework* other) {
+  if (other != this) {
+    std::swap(common_, other->common_);
+    tasks_.Swap(&other->tasks_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mesos_framework::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mesos_framework_descriptor_;
+  metadata.reflection = mesos_framework_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int mesos_state::kFrameworksFieldNumber;
+#endif  // !_MSC_VER
+
+mesos_state::mesos_state()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void mesos_state::InitAsDefaultInstance() {
+}
+
+mesos_state::mesos_state(const mesos_state& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void mesos_state::SharedCtor() {
+  _cached_size_ = 0;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+mesos_state::~mesos_state() {
+  SharedDtor();
+}
+
+void mesos_state::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void mesos_state::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* mesos_state::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return mesos_state_descriptor_;
+}
+
+const mesos_state& mesos_state::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+mesos_state* mesos_state::default_instance_ = NULL;
+
+mesos_state* mesos_state::New() const {
+  return new mesos_state;
+}
+
+void mesos_state::Clear() {
+  frameworks_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool mesos_state::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // repeated .draiosproto.mesos_framework frameworks = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_frameworks:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_frameworks()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(10)) goto parse_frameworks;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void mesos_state::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // repeated .draiosproto.mesos_framework frameworks = 1;
+  for (int i = 0; i < this->frameworks_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      1, this->frameworks(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* mesos_state::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // repeated .draiosproto.mesos_framework frameworks = 1;
+  for (int i = 0; i < this->frameworks_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        1, this->frameworks(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int mesos_state::ByteSize() const {
+  int total_size = 0;
+
+  // repeated .draiosproto.mesos_framework frameworks = 1;
+  total_size += 1 * this->frameworks_size();
+  for (int i = 0; i < this->frameworks_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->frameworks(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void mesos_state::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const mesos_state* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const mesos_state*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void mesos_state::MergeFrom(const mesos_state& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  frameworks_.MergeFrom(from.frameworks_);
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void mesos_state::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void mesos_state::CopyFrom(const mesos_state& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool mesos_state::IsInitialized() const {
+
+  for (int i = 0; i < frameworks_size(); i++) {
+    if (!this->frameworks(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void mesos_state::Swap(mesos_state* other) {
+  if (other != this) {
+    frameworks_.Swap(&other->frameworks_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata mesos_state::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = mesos_state_descriptor_;
+  metadata.reflection = mesos_state_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int metrics::kTimestampNsFieldNumber;
 const int metrics::kMachineIdFieldNumber;
 const int metrics::kCustomerIdFieldNumber;
@@ -22926,6 +24398,7 @@ const int metrics::kTopFilesFieldNumber;
 const int metrics::kProtosFieldNumber;
 const int metrics::kContainersFieldNumber;
 const int metrics::kKubernetesFieldNumber;
+const int metrics::kMesosFieldNumber;
 #endif  // !_MSC_VER
 
 metrics::metrics()
@@ -22937,6 +24410,7 @@ void metrics::InitAsDefaultInstance() {
   hostinfo_ = const_cast< ::draiosproto::host*>(&::draiosproto::host::default_instance());
   protos_ = const_cast< ::draiosproto::proto_info*>(&::draiosproto::proto_info::default_instance());
   kubernetes_ = const_cast< ::draiosproto::k8s_state*>(&::draiosproto::k8s_state::default_instance());
+  mesos_ = const_cast< ::draiosproto::mesos_state*>(&::draiosproto::mesos_state::default_instance());
 }
 
 metrics::metrics(const metrics& from)
@@ -22960,6 +24434,7 @@ void metrics::SharedCtor() {
   hostinfo_ = NULL;
   protos_ = NULL;
   kubernetes_ = NULL;
+  mesos_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -22993,6 +24468,7 @@ void metrics::SharedDtor() {
     delete hostinfo_;
     delete protos_;
     delete kubernetes_;
+    delete mesos_;
   }
 }
 
@@ -23069,6 +24545,9 @@ void metrics::Clear() {
     }
     if (has_kubernetes()) {
       if (kubernetes_ != NULL) kubernetes_->::draiosproto::k8s_state::Clear();
+    }
+    if (has_mesos()) {
+      if (mesos_ != NULL) mesos_->::draiosproto::mesos_state::Clear();
     }
   }
   programs_.Clear();
@@ -23397,6 +24876,20 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(202)) goto parse_mesos;
+        break;
+      }
+
+      // optional .draiosproto.mesos_state mesos = 25;
+      case 25: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_mesos:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_mesos()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -23555,6 +25048,12 @@ void metrics::SerializeWithCachedSizes(
   if (has_kubernetes()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       24, this->kubernetes(), output);
+  }
+
+  // optional .draiosproto.mesos_state mesos = 25;
+  if (has_mesos()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      25, this->mesos(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -23720,6 +25219,13 @@ void metrics::SerializeWithCachedSizes(
         24, this->kubernetes(), target);
   }
 
+  // optional .draiosproto.mesos_state mesos = 25;
+  if (has_mesos()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        25, this->mesos(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -23822,6 +25328,13 @@ int metrics::ByteSize() const {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->kubernetes());
+    }
+
+    // optional .draiosproto.mesos_state mesos = 25;
+    if (has_mesos()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->mesos());
     }
 
   }
@@ -23957,6 +25470,9 @@ void metrics::MergeFrom(const metrics& from) {
     if (from.has_kubernetes()) {
       mutable_kubernetes()->::draiosproto::k8s_state::MergeFrom(from.kubernetes());
     }
+    if (from.has_mesos()) {
+      mutable_mesos()->::draiosproto::mesos_state::MergeFrom(from.mesos());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -24006,6 +25522,9 @@ bool metrics::IsInitialized() const {
   if (has_kubernetes()) {
     if (!this->kubernetes().IsInitialized()) return false;
   }
+  if (has_mesos()) {
+    if (!this->mesos().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -24031,6 +25550,7 @@ void metrics::Swap(metrics* other) {
     std::swap(protos_, other->protos_);
     containers_.Swap(&other->containers_);
     std::swap(kubernetes_, other->kubernetes_);
+    std::swap(mesos_, other->mesos_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

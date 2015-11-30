@@ -74,27 +74,35 @@ void mesos::add_framework(const Json::Value& framework)
 
 void mesos::add_tasks(mesos_framework& framework, const Json::Value& f_val)
 {
-	Json::Value tasks = f_val["tasks"];
-	if(!tasks.isNull())
+	Json::Value executors = f_val["executors"];
+	if(!executors.isNull())
 	{
-		for(const auto& task : tasks)
+		for(const auto& executor : executors)
 		{
-			std::string name, uid;
-			Json::Value fname = task["name"];
-			Json::Value fid = task["id"];
-			if(!fname.isNull())
+			Json::Value tasks = executor["tasks"];
+			if(!tasks.isNull())
 			{
-				name = fname.asString();
+				for(const auto& task : tasks)
+				{
+					std::string name, uid;
+					Json::Value fname = task["name"];
+					Json::Value fid = task["id"];
+					if(!fname.isNull())
+					{
+						name = fname.asString();
+					}
+					if(!fid.isNull())
+					{
+						uid = fid.asString();
+					}
+					std::ostringstream os;
+					os << "Adding Mesos task: [" << framework.get_name() << ':' << name << ',' << uid << ']';
+					g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
+					mesos_task t = mesos_task(name, uid);
+					add_labels(t, task);
+					m_state.add_or_replace_task(framework, std::move(t));
+				}
 			}
-			if(!fid.isNull())
-			{
-				uid = fid.asString();
-			}
-			std::ostringstream os;
-			os << "Adding Mesos task: [" << framework.get_name() << ':' << name << ',' << uid << ']';
-			g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
-			m_state.emplace_task(mesos_task(framework, name, uid));
-			add_labels(m_state.get_tasks().back(), task);
 		}
 	}
 }
