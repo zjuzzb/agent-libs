@@ -646,15 +646,15 @@ message mesos_task {
     optional string container_id = 2;
 }
 
-message m6n_app {
+message marathon_app {
     required string id = 1;
     repeated mesos_task tasks = 2;
 }
 
-message m6n_group {
+message marathon_group {
     required string id = 1;
-    repeated m6n_app apps = 2;
-    repeated m6n_group groups = 3;
+    repeated marathon_app apps = 2;
+    repeated marathon_group groups = 3;
 }
 
 message mesos_framework {
@@ -664,8 +664,8 @@ message mesos_framework {
 
 message mesos_state {
     repeated mesos_framework frameworks = 1;
-    repeated m6n_app apps = 2;
-    repeated m6n_group groups = 3;
+    repeated marathon_app apps = 2;
+    repeated marathon_group groups = 3;
 }
 
 // ENTRY POINT MESSAGE
