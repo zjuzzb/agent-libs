@@ -33,9 +33,9 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 		{
 			auto task = frameworks->add_tasks();
 			task->mutable_common()->set_uid(task_pair.first);
-			task->mutable_common()->set_name(task_pair.second.get_name());
+			task->mutable_common()->set_name(task_pair.second->get_name());
 
-			for(auto& lbl_pair : task_pair.second.get_labels())
+			for(auto& lbl_pair : task_pair.second->get_labels())
 			{
 				auto label = task->mutable_common()->add_labels();
 				label->set_key(lbl_pair.first);

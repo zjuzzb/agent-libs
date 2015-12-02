@@ -47,13 +47,9 @@ public:
 
 	mesos_framework::task_map& get_tasks(const std::string& framework_uid);
 
-	const mesos_task& get_task(const std::string& uid) const;
+	std::shared_ptr<mesos_task> get_task(const std::string& uid);
 
-	mesos_task& get_task(const std::string& uid);
-
-	void add_or_replace_task(mesos_framework& framework, const mesos_task& task);
-
-	void add_or_replace_task(mesos_framework& framework, mesos_task&& task);
+	void add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task);
 
 	//
 	// slaves
@@ -110,14 +106,9 @@ inline void mesos_state_t::emplace_framework(mesos_framework&& framework)
 	m_frameworks.emplace_back(std::move(framework));
 }
 
-inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, const mesos_task& task)
+inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task)
 {
 	framework.add_or_replace_task(task);
-}
-
-inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, mesos_task&& task)
-{
-	framework.add_or_replace_task(std::move(task));
 }
 
 // slaves

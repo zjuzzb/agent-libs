@@ -411,9 +411,13 @@
     <File Name="src/mesos_http.h"/>
     <File Name="src/mesos_proto.h"/>
     <File Name="src/mesos_proto.cpp"/>
+    <File Name="src/m6n_component.h"/>
+    <File Name="src/m6n_component.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
   <Settings Type="Executable">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -430,7 +434,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig-openssl/agent/experiments/mesos" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/mesos/mesosget" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)
@@ -505,6 +509,4 @@ PROJECT_BASE=$(shell pwd)]]>
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="Debug"/>
-  <Dependencies Name="Release"/>
 </CodeLite_Project>

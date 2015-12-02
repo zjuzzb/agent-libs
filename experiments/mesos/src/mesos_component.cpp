@@ -71,6 +71,7 @@ std::string mesos_component::get_name(type t)
 	component_map::const_iterator it = list.find(t);
 	if(it != list.end())
 	{
+		return it->second;
 	}
 
 	std::ostringstream os;
@@ -135,9 +136,9 @@ mesos_framework::~mesos_framework()
 {
 }
 
-void mesos_framework::add_or_replace_task(const mesos_task& task)
+void mesos_framework::add_or_replace_task(std::shared_ptr<mesos_task> task)
 {
-	m_tasks.emplace(task.get_uid(), task);
+	m_tasks.insert({task->get_uid(), task});
 }
 
 void mesos_framework::remove_task(const std::string& uid)

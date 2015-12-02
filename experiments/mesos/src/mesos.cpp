@@ -26,6 +26,30 @@ mesos::~mesos()
 {
 }
 
+void mesos::determine_node_type(const Json::Value& root)
+{
+	Json::Value flags = root["flags"];
+	if(!flags.isNull())
+	{
+		Json::Value port = flags["port"];
+		if(!port.isNull())
+		{
+			if(port.asString() == "5050")
+			{
+				m_node_type = NODE_MASTER;
+			}
+			else if(port.asString() == "5051")
+			{
+				m_node_type = NODE_SLAVE;
+			}
+			else
+			{
+				throw sinsp_exception("Can not determine node type");
+			}
+		}
+	}
+}
+
 void mesos::parse_json(const std::string& json)
 {
 	Json::Value root;
@@ -33,6 +57,7 @@ void mesos::parse_json(const std::string& json)
 	if(reader.parse(json, root, false))
 	{
 		//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
+		determine_node_type(root);
 		Json::Value frameworks = root["frameworks"];
 		if(!frameworks.isNull())
 		{
@@ -72,42 +97,57 @@ void mesos::add_framework(const Json::Value& framework)
 	add_tasks(m_state.get_frameworks().back(), framework);
 }
 
+void mesos::add_tasks_impl(mesos_framework& framework, const Json::Value& tasks)
+{
+	if(!tasks.isNull())
+	{
+		for(const auto& task : tasks)
+		{
+			std::string name, uid;
+			Json::Value fname = task["name"];
+			Json::Value fid = task["id"];
+			if(!fname.isNull())
+			{
+				name = fname.asString();
+			}
+			if(!fid.isNull())
+			{
+				uid = fid.asString();
+			}
+			std::ostringstream os;
+			os << "Adding Mesos task: [" << framework.get_name() << ':' << name << ',' << uid << ']';
+			g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
+			std::shared_ptr<mesos_task> t(new mesos_task(name, uid));
+			add_labels(t, task);
+			m_state.add_or_replace_task(framework, t);
+		}
+	}
+	else
+		g_logger.log("tasks is null", sinsp_logger::SEV_DEBUG);
+}
+
 void mesos::add_tasks(mesos_framework& framework, const Json::Value& f_val)
 {
-	Json::Value executors = f_val["executors"];
-	if(!executors.isNull())
+	if(is_master())
 	{
-		for(const auto& executor : executors)
+		Json::Value tasks = f_val["tasks"];
+		add_tasks_impl(framework, tasks);
+	}
+	else
+	{
+		Json::Value executors = f_val["executors"];
+		if(!executors.isNull())
 		{
-			Json::Value tasks = executor["tasks"];
-			if(!tasks.isNull())
+			for(const auto& executor : executors)
 			{
-				for(const auto& task : tasks)
-				{
-					std::string name, uid;
-					Json::Value fname = task["name"];
-					Json::Value fid = task["id"];
-					if(!fname.isNull())
-					{
-						name = fname.asString();
-					}
-					if(!fid.isNull())
-					{
-						uid = fid.asString();
-					}
-					std::ostringstream os;
-					os << "Adding Mesos task: [" << framework.get_name() << ':' << name << ',' << uid << ']';
-					g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
-					mesos_task t = mesos_task(name, uid);
-					add_labels(t, task);
-					m_state.add_or_replace_task(framework, std::move(t));
-				}
+				Json::Value tasks = executor["tasks"];
+				add_tasks_impl(framework, tasks);
 			}
 		}
 	}
 }
 
-void mesos::add_labels(mesos_task& task, const Json::Value& t_val)
+void mesos::add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_val)
 {
 	Json::Value labels = t_val["labels"];
 	if(!labels.isNull())
@@ -128,7 +168,7 @@ void mesos::add_labels(mesos_task& task, const Json::Value& t_val)
 			std::ostringstream os;
 			os << "Adding Mesos task label: [" << key << ':' << val << ']';
 			g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
-			task.emplace_label(mesos_pair_t(key, val));
+			task->emplace_label(mesos_pair_t(key, val));
 		}
 	}
 }

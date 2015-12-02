@@ -1,7 +1,7 @@
 //
 // mesos_component.h
 //
-// kubernetes components (nodes, namespaces, pods, replication controllers, services)
+// mesos components (frameworks, tasks, slaves)
 // abstraction
 //
 
@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <memory>
 
 typedef std::pair<std::string, std::string> mesos_pair_t;
 typedef std::vector<mesos_pair_t>           mesos_pair_list;
@@ -28,8 +29,7 @@ public:
 	{
 		MESOS_FRAMEWORK,
 		MESOS_TASK,
-		MESOS_SLAVE,
-		//MESOS_MARATHON
+		MESOS_SLAVE
 	};
 
 	typedef std::pair<type, std::string> component_pair;
@@ -106,6 +106,7 @@ public:
 	mesos_task& operator=(const mesos_task&& other);
 
 private:
+};
 
 //
 // framework
@@ -114,7 +115,7 @@ private:
 class mesos_framework : public mesos_component
 {
 public:
-	typedef std::unordered_map<std::string, mesos_task> task_map;
+	typedef std::unordered_map<std::string, std::shared_ptr<mesos_task>> task_map;
 
 	mesos_framework(const std::string& name, const std::string& uid);
 
@@ -122,7 +123,7 @@ public:
 
 	bool has_task(const std::string& uid) const;
 
-	void add_or_replace_task(const mesos_task& task);
+	void add_or_replace_task(std::shared_ptr<mesos_task> task);
 
 	void remove_task(const std::string& uid);
 
@@ -148,8 +149,6 @@ private:
 };
 
 typedef std::vector<mesos_framework> mesos_frameworks;
-typedef std::vector<mesos_task>      mesos_tasks;
-typedef std::vector<mesos_slave>     mesos_slaves;
 
 //
 // component
