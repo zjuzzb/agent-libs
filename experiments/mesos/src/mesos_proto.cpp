@@ -58,7 +58,7 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 	extract_groups(state.get_groups());
 }
 
-void mesos_proto::extract_groups(const m6n_group::group_map_t& groups)
+void mesos_proto::extract_groups(const marathon_group::group_map_t& groups)
 {
 	for(const auto& group : groups)
 	{

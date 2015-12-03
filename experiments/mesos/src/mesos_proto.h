@@ -8,7 +8,7 @@
 
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
-#include "m6n_component.h"
+#include "marathon_component.h"
 
 class mesos_state_t;
 
@@ -23,7 +23,7 @@ public:
 
 private:
 	void make_protobuf(const mesos_state_t& state);
-	void extract_groups(const m6n_group::group_map_t& groups);
+	void extract_groups(const marathon_group::group_map_t& groups);
 
 	template <typename V, typename C>
 	void populate_component(V& component, C* mesos_component)

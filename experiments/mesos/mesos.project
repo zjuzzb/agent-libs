@@ -411,8 +411,8 @@
     <File Name="src/mesos_http.h"/>
     <File Name="src/mesos_proto.h"/>
     <File Name="src/mesos_proto.cpp"/>
-    <File Name="src/m6n_component.h"/>
-    <File Name="src/m6n_component.cpp"/>
+    <File Name="src/marathon_component.h"/>
+    <File Name="src/marathon_component.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

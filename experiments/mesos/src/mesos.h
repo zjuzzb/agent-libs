@@ -51,8 +51,8 @@ private:
 	void add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_val);
 
 	void parse_groups(const std::string& json);
-	void handle_groups(const Json::Value& groups, m6n_group::ptr_t p_groups);
-	m6n_group::ptr_t add_group(const Json::Value& group, m6n_group::ptr_t to_group);
+	void handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups);
+	marathon_group::ptr_t add_group(const Json::Value& group, marathon_group::ptr_t to_group);
 
 	void parse_apps(const std::string& json);
 	void add_app(const Json::Value& app);
