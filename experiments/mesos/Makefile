@@ -34,18 +34,21 @@ LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -lPocoFoundation -Wl,-Bdynami
 
 ODIR=$(MAKEDIR)/obj
 
-_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_proto.h marathon_component.h draios.pb.h uri.h
+_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_proto.h marathon_component.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_proto.o marathon_component.o jsoncpp.o draios.pb.o uri.o
+_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_proto.o marathon_component.o jsoncpp.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 all: directory mesosget
 
-mesosget: $(ODIR)/mesosget.o $(OBJ)
+mesosget: $(ODIR)/mesosget.o $(OBJ) $(ODIR)/draios.pb.o
 	$(CC) -o $@ $^ $(LFLAGS) $(LIBS)
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
+	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
+
+$(ODIR)/draios.pb.o: $(SDIR)/draios.pb.cc
 	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
 
 $(ODIR)/mesosget.o: $(SDIR)/mesosget.cpp

@@ -664,8 +664,7 @@ message mesos_framework {
 
 message mesos_state {
     repeated mesos_framework frameworks = 1;
-    repeated marathon_app apps = 2;
-    repeated marathon_group groups = 3;
+    repeated marathon_group groups = 2;
 }
 
 // ENTRY POINT MESSAGE

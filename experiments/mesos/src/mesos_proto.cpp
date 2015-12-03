@@ -41,7 +41,7 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 			}
 		}
 	}
-
+/*
 	for(const auto& app : state.get_apps())
 	{
 		draiosproto::marathon_app* m_app = m_proto.add_apps();
@@ -54,29 +54,32 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 			t->mutable_common()->set_name(task->get_uid());
 		}
 	}
-
-	extract_groups(state.get_groups());
+*/
+	draiosproto::marathon_group* group = m_proto.add_groups();
+	extract_groups(state.get_groups(), group);
 }
 
-void mesos_proto::extract_groups(const marathon_group::group_map_t& groups)
+void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, draiosproto::marathon_group* to_group)
 {
 	for(const auto& group : groups)
 	{
-		draiosproto::marathon_group* m_group = m_proto.add_groups();
-		m_group->set_id(group.first);
+		to_group->set_id(group.first);
 
 		for(const auto& app : group.second->get_apps())
 		{
-			draiosproto::marathon_app* a = m_group->add_apps();
+			draiosproto::marathon_app* a = to_group->add_apps();
 			a->set_id(app.first);
 			for(const auto& task : app.second->get_tasks())
 			{
 				draiosproto::mesos_task* t = a->add_tasks();
 				t->mutable_common()->set_uid(task->get_name());
 				t->mutable_common()->set_name(task->get_uid());
-				//TODO container ID
 			}
 		}
-		extract_groups(group.second->get_groups());
+		const marathon_group::group_map_t& g_groups = group.second->get_groups();
+		if(g_groups.size())
+		{
+			extract_groups(g_groups, to_group->add_groups());
+		}
 	}
 }

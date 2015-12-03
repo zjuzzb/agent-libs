@@ -7886,22 +7886,10 @@ class mesos_state : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >*
       mutable_frameworks();
 
-  // repeated .draiosproto.marathon_app apps = 2;
-  inline int apps_size() const;
-  inline void clear_apps();
-  static const int kAppsFieldNumber = 2;
-  inline const ::draiosproto::marathon_app& apps(int index) const;
-  inline ::draiosproto::marathon_app* mutable_apps(int index);
-  inline ::draiosproto::marathon_app* add_apps();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
-      apps() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
-      mutable_apps();
-
-  // repeated .draiosproto.marathon_group groups = 3;
+  // repeated .draiosproto.marathon_group groups = 2;
   inline int groups_size() const;
   inline void clear_groups();
-  static const int kGroupsFieldNumber = 3;
+  static const int kGroupsFieldNumber = 2;
   inline const ::draiosproto::marathon_group& groups(int index) const;
   inline ::draiosproto::marathon_group* mutable_groups(int index);
   inline ::draiosproto::marathon_group* add_groups();
@@ -7916,11 +7904,10 @@ class mesos_state : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework > frameworks_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app > apps_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group > groups_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -19469,32 +19456,7 @@ mesos_state::mutable_frameworks() {
   return &frameworks_;
 }
 
-// repeated .draiosproto.marathon_app apps = 2;
-inline int mesos_state::apps_size() const {
-  return apps_.size();
-}
-inline void mesos_state::clear_apps() {
-  apps_.Clear();
-}
-inline const ::draiosproto::marathon_app& mesos_state::apps(int index) const {
-  return apps_.Get(index);
-}
-inline ::draiosproto::marathon_app* mesos_state::mutable_apps(int index) {
-  return apps_.Mutable(index);
-}
-inline ::draiosproto::marathon_app* mesos_state::add_apps() {
-  return apps_.Add();
-}
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
-mesos_state::apps() const {
-  return apps_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
-mesos_state::mutable_apps() {
-  return &apps_;
-}
-
-// repeated .draiosproto.marathon_group groups = 3;
+// repeated .draiosproto.marathon_group groups = 2;
 inline int mesos_state::groups_size() const {
   return groups_.size();
 }

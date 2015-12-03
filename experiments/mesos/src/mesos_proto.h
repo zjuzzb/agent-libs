@@ -23,7 +23,8 @@ public:
 
 private:
 	void make_protobuf(const mesos_state_t& state);
-	void extract_groups(const marathon_group::group_map_t& groups);
+	void extract_groups(const marathon_group::group_map_t& groups,
+		draiosproto::marathon_group* to_group);
 
 	template <typename V, typename C>
 	void populate_component(V& component, C* mesos_component)

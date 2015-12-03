@@ -98,9 +98,10 @@ marathon_group::ptr_t mesos_state_t::add_or_replace_group(marathon_group::ptr_t 
 			m_groups.erase(it);
 		}
 		m_groups.insert({id, group});
-		return group;
 	}
-
-	to_group->add_or_replace_group(group);
-	return to_group;
+	else
+	{
+		to_group->add_or_replace_group(group);
+	}
+	return group;
 }
