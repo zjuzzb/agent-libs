@@ -22,8 +22,17 @@ public:
 		NODE_SLAVE
 	};
 
-	mesos(const std::string& uri = "http://localhost:5050",
-		const std::string& api = "/state.json");
+	static const std::string default_groups_uri;
+	static const std::string default_groups_api;
+	static const std::string default_apps_uri;
+	static const std::string default_apps_api;
+	
+	mesos(const std::string& state_uri = "http://localhost:5051",
+		const std::string& state_api = "/state.json",
+		const std::string& groups_uri = "",
+		const std::string& groups_api = "",
+		const std::string& apps_uri = "",
+		const std::string& apps_api = "");
 
 	~mesos();
 
@@ -31,7 +40,9 @@ public:
 	const mesos_state_t get_state() const;
 
 private:
-	void parse_json(const std::string& json);
+	void init();
+
+	void parse_state(const std::string& json);
 	void determine_node_type(const Json::Value& root);
 	bool is_master() const;
 	void add_framework(const Json::Value& framework);
@@ -39,9 +50,18 @@ private:
 	void add_tasks_impl(mesos_framework& framework, const Json::Value& tasks);
 	void add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_val);
 
+	void parse_groups(const std::string& json);
+	void handle_groups(const Json::Value& groups, m6n_group::ptr_t p_groups);
+	m6n_group::ptr_t add_group(const Json::Value& group, m6n_group::ptr_t to_group);
+
+	void parse_apps(const std::string& json);
+	void add_app(const Json::Value& app);
+
 	std::string   m_container_id;
 	node_t        m_node_type;
-	mesos_http    m_http;
+	mesos_http    m_state_http;
+	mesos_http*   m_groups_http;
+	mesos_http*   m_apps_http;
 	mesos_state_t m_state;
 
 	static const mesos_component::component_map m_components;

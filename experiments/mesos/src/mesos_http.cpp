@@ -18,9 +18,8 @@
 #include <stdexcept>
 #include <unistd.h>
 
-mesos_http::mesos_http(mesos& mesos, const std::string& url):
+mesos_http::mesos_http(const std::string& url):
 	m_curl(curl_easy_init()),
-	m_mesos(mesos),
 	m_url(url)
 {
 	if(!m_curl)

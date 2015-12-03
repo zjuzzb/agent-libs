@@ -89,6 +89,8 @@ class k8s_state;
 class mesos_pair;
 class mesos_common;
 class mesos_task;
+class marathon_app;
+class marathon_group;
 class mesos_framework;
 class mesos_state;
 class metrics;
@@ -7472,17 +7474,32 @@ class mesos_task : public ::google::protobuf::Message {
   inline ::draiosproto::mesos_common* release_common();
   inline void set_allocated_common(::draiosproto::mesos_common* common);
 
+  // optional string container_id = 2;
+  inline bool has_container_id() const;
+  inline void clear_container_id();
+  static const int kContainerIdFieldNumber = 2;
+  inline const ::std::string& container_id() const;
+  inline void set_container_id(const ::std::string& value);
+  inline void set_container_id(const char* value);
+  inline void set_container_id(const char* value, size_t size);
+  inline ::std::string* mutable_container_id();
+  inline ::std::string* release_container_id();
+  inline void set_allocated_container_id(::std::string* container_id);
+
   // @@protoc_insertion_point(class_scope:draiosproto.mesos_task)
  private:
   inline void set_has_common();
   inline void clear_has_common();
+  inline void set_has_container_id();
+  inline void clear_has_container_id();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::mesos_common* common_;
+  ::std::string* container_id_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7490,6 +7507,219 @@ class mesos_task : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static mesos_task* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class marathon_app : public ::google::protobuf::Message {
+ public:
+  marathon_app();
+  virtual ~marathon_app();
+
+  marathon_app(const marathon_app& from);
+
+  inline marathon_app& operator=(const marathon_app& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const marathon_app& default_instance();
+
+  void Swap(marathon_app* other);
+
+  // implements Message ----------------------------------------------
+
+  marathon_app* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const marathon_app& from);
+  void MergeFrom(const marathon_app& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // repeated .draiosproto.mesos_task tasks = 2;
+  inline int tasks_size() const;
+  inline void clear_tasks();
+  static const int kTasksFieldNumber = 2;
+  inline const ::draiosproto::mesos_task& tasks(int index) const;
+  inline ::draiosproto::mesos_task* mutable_tasks(int index);
+  inline ::draiosproto::mesos_task* add_tasks();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
+      tasks() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
+      mutable_tasks();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.marathon_app)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task > tasks_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static marathon_app* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class marathon_group : public ::google::protobuf::Message {
+ public:
+  marathon_group();
+  virtual ~marathon_group();
+
+  marathon_group(const marathon_group& from);
+
+  inline marathon_group& operator=(const marathon_group& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const marathon_group& default_instance();
+
+  void Swap(marathon_group* other);
+
+  // implements Message ----------------------------------------------
+
+  marathon_group* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const marathon_group& from);
+  void MergeFrom(const marathon_group& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // repeated .draiosproto.marathon_app apps = 2;
+  inline int apps_size() const;
+  inline void clear_apps();
+  static const int kAppsFieldNumber = 2;
+  inline const ::draiosproto::marathon_app& apps(int index) const;
+  inline ::draiosproto::marathon_app* mutable_apps(int index);
+  inline ::draiosproto::marathon_app* add_apps();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+      apps() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+      mutable_apps();
+
+  // repeated .draiosproto.marathon_group groups = 3;
+  inline int groups_size() const;
+  inline void clear_groups();
+  static const int kGroupsFieldNumber = 3;
+  inline const ::draiosproto::marathon_group& groups(int index) const;
+  inline ::draiosproto::marathon_group* mutable_groups(int index);
+  inline ::draiosproto::marathon_group* add_groups();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+      groups() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+      mutable_groups();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.marathon_group)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app > apps_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group > groups_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static marathon_group* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -7656,15 +7886,41 @@ class mesos_state : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >*
       mutable_frameworks();
 
+  // repeated .draiosproto.marathon_app apps = 2;
+  inline int apps_size() const;
+  inline void clear_apps();
+  static const int kAppsFieldNumber = 2;
+  inline const ::draiosproto::marathon_app& apps(int index) const;
+  inline ::draiosproto::marathon_app* mutable_apps(int index);
+  inline ::draiosproto::marathon_app* add_apps();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+      apps() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+      mutable_apps();
+
+  // repeated .draiosproto.marathon_group groups = 3;
+  inline int groups_size() const;
+  inline void clear_groups();
+  static const int kGroupsFieldNumber = 3;
+  inline const ::draiosproto::marathon_group& groups(int index) const;
+  inline ::draiosproto::marathon_group* mutable_groups(int index);
+  inline ::draiosproto::marathon_group* add_groups();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+      groups() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+      mutable_groups();
+
   // @@protoc_insertion_point(class_scope:draiosproto.mesos_state)
  private:
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework > frameworks_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app > apps_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group > groups_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -18824,6 +19080,299 @@ inline void mesos_task::set_allocated_common(::draiosproto::mesos_common* common
   }
 }
 
+// optional string container_id = 2;
+inline bool mesos_task::has_container_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mesos_task::set_has_container_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mesos_task::clear_has_container_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mesos_task::clear_container_id() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    container_id_->clear();
+  }
+  clear_has_container_id();
+}
+inline const ::std::string& mesos_task::container_id() const {
+  return *container_id_;
+}
+inline void mesos_task::set_container_id(const ::std::string& value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void mesos_task::set_container_id(const char* value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void mesos_task::set_container_id(const char* value, size_t size) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_task::mutable_container_id() {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  return container_id_;
+}
+inline ::std::string* mesos_task::release_container_id() {
+  clear_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = container_id_;
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_task::set_allocated_container_id(::std::string* container_id) {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (container_id) {
+    set_has_container_id();
+    container_id_ = container_id;
+  } else {
+    clear_has_container_id();
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// marathon_app
+
+// required string id = 1;
+inline bool marathon_app::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void marathon_app::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void marathon_app::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void marathon_app::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& marathon_app::id() const {
+  return *id_;
+}
+inline void marathon_app::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_app::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_app::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_app::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* marathon_app::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void marathon_app::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.mesos_task tasks = 2;
+inline int marathon_app::tasks_size() const {
+  return tasks_.size();
+}
+inline void marathon_app::clear_tasks() {
+  tasks_.Clear();
+}
+inline const ::draiosproto::mesos_task& marathon_app::tasks(int index) const {
+  return tasks_.Get(index);
+}
+inline ::draiosproto::mesos_task* marathon_app::mutable_tasks(int index) {
+  return tasks_.Mutable(index);
+}
+inline ::draiosproto::mesos_task* marathon_app::add_tasks() {
+  return tasks_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
+marathon_app::tasks() const {
+  return tasks_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
+marathon_app::mutable_tasks() {
+  return &tasks_;
+}
+
+// -------------------------------------------------------------------
+
+// marathon_group
+
+// required string id = 1;
+inline bool marathon_group::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void marathon_group::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void marathon_group::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void marathon_group::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& marathon_group::id() const {
+  return *id_;
+}
+inline void marathon_group::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_group::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_group::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_group::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* marathon_group::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void marathon_group::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.marathon_app apps = 2;
+inline int marathon_group::apps_size() const {
+  return apps_.size();
+}
+inline void marathon_group::clear_apps() {
+  apps_.Clear();
+}
+inline const ::draiosproto::marathon_app& marathon_group::apps(int index) const {
+  return apps_.Get(index);
+}
+inline ::draiosproto::marathon_app* marathon_group::mutable_apps(int index) {
+  return apps_.Mutable(index);
+}
+inline ::draiosproto::marathon_app* marathon_group::add_apps() {
+  return apps_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+marathon_group::apps() const {
+  return apps_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+marathon_group::mutable_apps() {
+  return &apps_;
+}
+
+// repeated .draiosproto.marathon_group groups = 3;
+inline int marathon_group::groups_size() const {
+  return groups_.size();
+}
+inline void marathon_group::clear_groups() {
+  groups_.Clear();
+}
+inline const ::draiosproto::marathon_group& marathon_group::groups(int index) const {
+  return groups_.Get(index);
+}
+inline ::draiosproto::marathon_group* marathon_group::mutable_groups(int index) {
+  return groups_.Mutable(index);
+}
+inline ::draiosproto::marathon_group* marathon_group::add_groups() {
+  return groups_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+marathon_group::groups() const {
+  return groups_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+marathon_group::mutable_groups() {
+  return &groups_;
+}
+
 // -------------------------------------------------------------------
 
 // mesos_framework
@@ -18918,6 +19467,56 @@ mesos_state::frameworks() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >*
 mesos_state::mutable_frameworks() {
   return &frameworks_;
+}
+
+// repeated .draiosproto.marathon_app apps = 2;
+inline int mesos_state::apps_size() const {
+  return apps_.size();
+}
+inline void mesos_state::clear_apps() {
+  apps_.Clear();
+}
+inline const ::draiosproto::marathon_app& mesos_state::apps(int index) const {
+  return apps_.Get(index);
+}
+inline ::draiosproto::marathon_app* mesos_state::mutable_apps(int index) {
+  return apps_.Mutable(index);
+}
+inline ::draiosproto::marathon_app* mesos_state::add_apps() {
+  return apps_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+mesos_state::apps() const {
+  return apps_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+mesos_state::mutable_apps() {
+  return &apps_;
+}
+
+// repeated .draiosproto.marathon_group groups = 3;
+inline int mesos_state::groups_size() const {
+  return groups_.size();
+}
+inline void mesos_state::clear_groups() {
+  groups_.Clear();
+}
+inline const ::draiosproto::marathon_group& mesos_state::groups(int index) const {
+  return groups_.Get(index);
+}
+inline ::draiosproto::marathon_group* mesos_state::mutable_groups(int index) {
+  return groups_.Mutable(index);
+}
+inline ::draiosproto::marathon_group* mesos_state::add_groups() {
+  return groups_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+mesos_state::groups() const {
+  return groups_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+mesos_state::mutable_groups() {
+  return &groups_;
 }
 
 // -------------------------------------------------------------------

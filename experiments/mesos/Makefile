@@ -30,7 +30,7 @@ LFLAGS+=-L$(DEPDIR)/$(DRAIOS_CURL)/lib/.libs
 LFLAGS+=-L$(DEPDIR)/$(DRAIOS_B64)/src
 LFLAGS+=-L$(DEPDIR)/$(DRAIOS_OPENNSL)/target/lib
 
-LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -Wl,-Bdynamic -lpthread -lz -ldl -lb64
+LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -lPocoFoundation -Wl,-Bdynamic -lpthread -lz -ldl -lb64
 
 ODIR=$(MAKEDIR)/obj
 

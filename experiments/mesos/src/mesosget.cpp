@@ -24,7 +24,11 @@ void print_proto(mesos& m)
 
 int main(int argc, char** argv)
 {
-	mesos m("http://54.152.106.80:5050");
+	std::string server = "54.152.106.80";
+	mesos m("http://" + server + ":5050", "/state.json", 
+		"http://" + server + ":8080", mesos::default_groups_api,
+		"http://" + server + ":8080", mesos::default_apps_api);
+
 	print_proto(m);
 	mesos s1("http://54.152.151.54:5051");
 	print_proto(s1);

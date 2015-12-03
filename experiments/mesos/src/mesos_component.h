@@ -95,6 +95,7 @@ class mesos_framework;
 class mesos_task : public mesos_component
 {
 public:
+	typedef std::shared_ptr<mesos_task> ptr_t;
 	mesos_task(const std::string& name, const std::string& uid);
 
 	mesos_task(const mesos_task& other);
@@ -105,7 +106,18 @@ public:
 
 	mesos_task& operator=(const mesos_task&& other);
 
+	void set_app_id(const std::string& app_id)
+	{
+		m_app_id = app_id;
+	}
+
+	const std::string& get_app_id() const
+	{
+		return m_app_id;
+	}
+
 private:
+	std::string m_app_id;
 };
 
 //
@@ -115,13 +127,17 @@ private:
 class mesos_framework : public mesos_component
 {
 public:
-	typedef std::unordered_map<std::string, std::shared_ptr<mesos_task>> task_map;
+	typedef std::shared_ptr<mesos_framework> ptr_t;
+	typedef mesos_task::ptr_t task_ptr_t;
+	typedef std::unordered_map<std::string, task_ptr_t> task_map;
 
 	mesos_framework(const std::string& name, const std::string& uid);
 
 	~mesos_framework();
 
 	bool has_task(const std::string& uid) const;
+
+	task_ptr_t get_task(const std::string& id);
 
 	void add_or_replace_task(std::shared_ptr<mesos_task> task);
 
@@ -216,6 +232,16 @@ inline mesos_component::type mesos_component::get_type(const component_pair& p)
 inline bool mesos_framework::has_task(const std::string& uid) const
 {
 	return m_tasks.find(uid) != m_tasks.end();
+}
+
+inline mesos_framework::task_ptr_t mesos_framework::get_task(const std::string& id)
+{
+	task_map::iterator it = m_tasks.find(id);
+	if(it != m_tasks.end())
+	{
+		return it->second;
+	}
+	return 0;
 }
 
 //

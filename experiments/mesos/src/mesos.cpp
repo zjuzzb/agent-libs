@@ -14,16 +14,48 @@ const mesos_component::component_map mesos::m_components =
 	{ mesos_component::MESOS_SLAVE,     "slave"     }
 };
 
+const std::string mesos::default_groups_uri = "http://localhost:8080";
+const std::string mesos::default_groups_api = "/v2/groups";
+const std::string mesos::default_apps_uri = "http://localhost:8080";
+const std::string mesos::default_apps_api = "/v2/apps?embed=apps.tasks";
 
-mesos::mesos(const std::string& uri, const std::string& api): m_http(*this, uri + api)
+mesos::mesos(const std::string& state_uri,
+	const std::string& state_api,
+	const std::string& groups_uri,
+	const std::string& groups_api,
+	const std::string& apps_uri,
+	const std::string& apps_api): m_state_http(state_uri + state_api),
+		m_groups_http(groups_uri.empty() ? 0 : new mesos_http(groups_uri + groups_api)),
+		m_apps_http(apps_uri.empty() ? 0 : new mesos_http(apps_uri + apps_api))
 {
-	std::ostringstream os;
-	m_http.get_all_data(os);
-	parse_json(os.str());
+	init();
 }
 
 mesos::~mesos()
 {
+	delete m_groups_http;
+	delete m_apps_http;
+}
+
+void mesos::init()
+{
+	std::ostringstream os;
+	m_state_http.get_all_data(os);
+	parse_state(os.str());
+
+	if(m_apps_http)
+	{
+		os.str("");
+		m_apps_http->get_all_data(os);
+		parse_apps(os.str());
+	}
+
+	if(m_groups_http)
+	{
+		os.str("");
+		m_groups_http->get_all_data(os);
+		parse_groups(os.str());
+	}
 }
 
 void mesos::determine_node_type(const Json::Value& root)
@@ -50,7 +82,7 @@ void mesos::determine_node_type(const Json::Value& root)
 	}
 }
 
-void mesos::parse_json(const std::string& json)
+void mesos::parse_state(const std::string& json)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -73,7 +105,7 @@ void mesos::parse_json(const std::string& json)
 	}
 	else
 	{
-		throw sinsp_exception("Invalid JSON (parsing failed).");
+		throw sinsp_exception("Invalid JSON (parsing Mesos state failed).");
 	}
 }
 
@@ -172,3 +204,121 @@ void mesos::add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_va
 		}
 	}
 }
+
+void mesos::handle_groups(const Json::Value& root, m6n_group::ptr_t to_group)
+{
+	Json::Value groups = root["groups"];
+	if(!groups.isNull())
+	{
+		if(groups.size())
+		{
+			for(const auto& group : groups)
+			{
+				to_group = add_group(group, to_group);
+				ASSERT(to_group);
+				/*Json::Value apps = group["apps"];
+				if(!apps.isNull())
+				{
+					for(const auto& app : apps)
+					{
+						Json::Value app_id = app["id"];
+						if(!app_id.isNull())
+						{
+						}
+					}
+				}*/
+				handle_groups(group, to_group);
+			}
+		}
+	}
+	else
+	{
+		g_logger.log("No groups found.", sinsp_logger::SEV_WARNING);
+	}
+}
+
+void mesos::parse_groups(const std::string& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		handle_groups(root, 0);
+	}
+	else
+	{
+		throw sinsp_exception("Invalid JSON (Marathon groups parsing failed).");
+	}
+}
+
+m6n_group::ptr_t mesos::add_group(const Json::Value& group, m6n_group::ptr_t to_group)
+{
+	Json::Value group_id = group["id"];
+	if(!group_id.isNull())
+	{
+		std::string id = group_id.asString();
+		g_logger.log("Adding Marathon group: " + id, sinsp_logger::SEV_DEBUG);
+		m6n_group::ptr_t pg(new m6n_group(id));
+		return m_state.add_or_replace_group(pg, to_group);
+	}
+	return 0;
+}
+
+void mesos::parse_apps(const std::string& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
+		Json::Value apps = root["apps"];
+		if(!apps.isNull())
+		{
+			for(const auto& app : apps)
+			{
+				add_app(app);
+			}
+		}
+		else
+		{
+			g_logger.log("No groups found.", sinsp_logger::SEV_WARNING);
+		}
+	}
+	else
+	{
+		throw sinsp_exception("Invalid JSON (Marathon apps parsing failed).");
+	}
+}
+
+void mesos::add_app(const Json::Value& app)
+{
+	Json::Value app_id = app["id"];
+	if(!app_id.isNull())
+	{
+		std::string id = app_id.asString();
+		g_logger.log("Adding Marathon app: " + id, sinsp_logger::SEV_DEBUG);
+		m6n_app::ptr_t p_app(new m6n_app(id));
+		m_state.add_or_replace_app(p_app);
+		Json::Value tasks = app["tasks"];
+		for(const auto& task : tasks)
+		{
+			Json::Value task_id = task["id"];
+			if(!task_id.isNull())
+			{
+				g_logger.log("Adding Marathon task: " + task_id.asString(), sinsp_logger::SEV_DEBUG);
+				mesos_framework::task_ptr_t pt = m_state.get_task(task_id.asString());
+				if(pt)
+				{
+					pt->set_app_id(id);
+					p_app->add_or_replace_task(pt);
+				}
+				else
+				{
+					throw sinsp_exception("Marathon task not found in mesos state");
+				}
+			}
+		}
+	}
+}
+
+

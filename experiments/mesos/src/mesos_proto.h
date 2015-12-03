@@ -8,6 +8,7 @@
 
 #include "draios.pb.h"
 #include "google/protobuf/text_format.h"
+#include "m6n_component.h"
 
 class mesos_state_t;
 
@@ -22,6 +23,7 @@ public:
 
 private:
 	void make_protobuf(const mesos_state_t& state);
+	void extract_groups(const m6n_group::group_map_t& groups);
 
 	template <typename V, typename C>
 	void populate_component(V& component, C* mesos_component)
@@ -29,13 +31,7 @@ private:
 		draiosproto::mesos_common* common = mesos_component->mutable_common();
 		common->set_name(component.get_name());
 		common->set_uid(component.get_uid());
-		/*
-		const std::string ns = component.get_namespace();
-		if(!ns.empty())
-		{
-			common->set_namespace_(ns);
-		}
-*/
+
 		for (auto label : component.get_labels())
 		{
 			draiosproto::mesos_pair* lbl = common->add_labels();
