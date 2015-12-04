@@ -116,8 +116,19 @@ public:
 		return m_app_id;
 	}
 
+	void set_slave_id(const std::string& slave_id)
+	{
+		m_slave_id = slave_id;
+	}
+
+	const std::string& get_slave_id() const
+	{
+		return m_slave_id;
+	}
+
 private:
 	std::string m_app_id;
+	std::string m_slave_id;
 };
 
 //
@@ -165,6 +176,7 @@ private:
 };
 
 typedef std::vector<mesos_framework> mesos_frameworks;
+typedef std::vector<mesos_slave> mesos_slaves;
 
 //
 // component

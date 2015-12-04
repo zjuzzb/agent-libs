@@ -32,6 +32,7 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 			auto task = frameworks->add_tasks();
 			task->mutable_common()->set_uid(task_pair.first);
 			task->mutable_common()->set_name(task_pair.second->get_name());
+			task->set_slave_id(task_pair.second->get_slave_id());
 
 			for(auto& lbl_pair : task_pair.second->get_labels())
 			{
@@ -41,20 +42,13 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 			}
 		}
 	}
-/*
-	for(const auto& app : state.get_apps())
-	{
-		draiosproto::marathon_app* m_app = m_proto.add_apps();
-		m_app->set_id(app.first);
 
-		for(const auto& task : app.second->get_tasks())
-		{
-			draiosproto::mesos_task* t = m_app->add_tasks();
-			t->mutable_common()->set_uid(task->get_name());
-			t->mutable_common()->set_name(task->get_uid());
-		}
+	for(const auto& slave : state.get_slaves())
+	{
+		draiosproto::mesos_slave* slaves = m_proto.add_slaves();
+		populate_component(slave, slaves);
 	}
-*/
+
 	draiosproto::marathon_group* group = m_proto.add_groups();
 	extract_groups(state.get_groups(), group);
 }

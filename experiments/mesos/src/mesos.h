@@ -45,10 +45,13 @@ private:
 	void parse_state(const std::string& json);
 	void determine_node_type(const Json::Value& root);
 	bool is_master() const;
+	void handle_frameworks(const Json::Value& root);
 	void add_framework(const Json::Value& framework);
 	void add_tasks(mesos_framework& framework, const Json::Value& f_val);
 	void add_tasks_impl(mesos_framework& framework, const Json::Value& tasks);
 	void add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_val);
+	void handle_slaves(const Json::Value& root);
+	void add_slave(const Json::Value& framework);
 
 	void parse_groups(const std::string& json);
 	void handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups);

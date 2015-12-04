@@ -90,22 +90,44 @@ void mesos::parse_state(const std::string& json)
 	{
 		//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
 		determine_node_type(root);
-		Json::Value frameworks = root["frameworks"];
-		if(!frameworks.isNull())
-		{
-			for(const auto& framework : frameworks)
-			{
-				add_framework(framework);
-			}
-		}
-		else
-		{
-			g_logger.log("No frameworks found.", sinsp_logger::SEV_WARNING);
-		}
+		handle_frameworks(root);
+		handle_slaves(root);
 	}
 	else
 	{
 		throw sinsp_exception("Invalid JSON (parsing Mesos state failed).");
+	}
+}
+
+void mesos::handle_frameworks(const Json::Value& root)
+{
+	Json::Value frameworks = root["frameworks"];
+	if(!frameworks.isNull())
+	{
+		for(const auto& framework : frameworks)
+		{
+			add_framework(framework);
+		}
+	}
+	else
+	{
+		g_logger.log("No frameworks found.", sinsp_logger::SEV_WARNING);
+	}
+}
+
+void mesos::handle_slaves(const Json::Value& root)
+{
+	Json::Value slaves = root["slaves"];
+	if(!slaves.isNull())
+	{
+		for(const auto& slave : slaves)
+		{
+			add_slave(slave);
+		}
+	}
+	else
+	{
+		g_logger.log("No frameworks found.", sinsp_logger::SEV_WARNING);
 	}
 }
 
@@ -129,33 +151,52 @@ void mesos::add_framework(const Json::Value& framework)
 	add_tasks(m_state.get_frameworks().back(), framework);
 }
 
+void mesos::add_slave(const Json::Value& slave)
+{
+	std::string name, uid;
+	Json::Value sname = slave["hostname"];
+	Json::Value sid = slave["id"];
+	if(!sname.isNull())
+	{
+		name = sname.asString();
+	}
+	if(!sid.isNull())
+	{
+		uid = sid.asString();
+	}
+	std::ostringstream os;
+	os << "Adding Mesos slave: [" << name << ',' << uid << ']';
+	g_logger.log(os.str(), sinsp_logger::SEV_INFO);
+	m_state.emplace_slave(mesos_slave(name, uid));
+}
+
 void mesos::add_tasks_impl(mesos_framework& framework, const Json::Value& tasks)
 {
 	if(!tasks.isNull())
 	{
 		for(const auto& task : tasks)
 		{
-			std::string name, uid;
+			std::string name, uid, sid;
 			Json::Value fname = task["name"];
+			if(!fname.isNull()) { name = fname.asString(); }
 			Json::Value fid = task["id"];
-			if(!fname.isNull())
-			{
-				name = fname.asString();
-			}
-			if(!fid.isNull())
-			{
-				uid = fid.asString();
-			}
+			if(!fid.isNull()) { uid = fid.asString(); }
+			Json::Value fsid = task["slave_id"];
+			if(!fsid.isNull()) { sid = fsid.asString(); }
+
 			std::ostringstream os;
 			os << "Adding Mesos task: [" << framework.get_name() << ':' << name << ',' << uid << ']';
 			g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
 			std::shared_ptr<mesos_task> t(new mesos_task(name, uid));
+			t->set_slave_id(sid);
 			add_labels(t, task);
 			m_state.add_or_replace_task(framework, t);
 		}
 	}
 	else
+	{
 		g_logger.log("tasks is null", sinsp_logger::SEV_DEBUG);
+	}
 }
 
 void mesos::add_tasks(mesos_framework& framework, const Json::Value& f_val)

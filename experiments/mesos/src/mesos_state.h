@@ -56,6 +56,18 @@ public:
 	// slaves
 	//
 
+	const mesos_slaves& get_slaves() const;
+
+	mesos_slaves& get_slaves();
+
+	const mesos_slave& get_slave(const std::string& slave_uid) const;
+
+	mesos_slave& get_slave(const std::string& slave_uid);
+
+	void push_slave(const mesos_slave& slave);
+
+	void emplace_slave(mesos_slave&& slave);
+
 	//
 	// apps
 	//
@@ -83,6 +95,7 @@ public:
 private:
 
 	mesos_frameworks m_frameworks;
+	mesos_slaves     m_slaves;
 	marathon_apps    m_apps;
 	marathon_groups  m_groups;
 	bool             m_is_captured;
@@ -144,6 +157,50 @@ inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, std::
 //
 // slaves
 //
+
+inline const mesos_slaves& mesos_state_t::get_slaves() const
+{
+	return m_slaves;
+}
+
+inline mesos_slaves& mesos_state_t::get_slaves()
+{
+	return m_slaves;
+}
+
+inline const mesos_slave& mesos_state_t::get_slave(const std::string& slave_uid) const
+{
+	for(const auto& slave : m_slaves)
+	{
+		if(slave.get_uid() == slave_uid)
+		{
+			return slave;
+		}
+	}
+	throw sinsp_exception("Slave not found: " + slave_uid);
+}
+
+inline mesos_slave& mesos_state_t::get_slave(const std::string& slave_uid)
+{
+	for(auto& slave : m_slaves)
+	{
+		if(slave.get_uid() == slave_uid)
+		{
+			return slave;
+		}
+	}
+	throw sinsp_exception("Slave not found: " + slave_uid);
+}
+
+inline void mesos_state_t::push_slave(const mesos_slave& slave)
+{
+	m_slaves.push_back(slave);
+}
+
+inline void mesos_state_t::emplace_slave(mesos_slave&& slave)
+{
+	m_slaves.emplace_back(std::move(slave));
+}
 
 //
 // apps
