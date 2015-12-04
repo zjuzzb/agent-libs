@@ -563,6 +563,7 @@ message container {
     optional proto_info protos = 19;
     repeated container_label labels = 20;
     repeated mounted_fs mounts = 21;
+	optional string mesos_task_id = 22;
 }
 
 //
@@ -643,7 +644,7 @@ message mesos_common {
 
 message mesos_task {
     required mesos_common common = 1;
-    optional string container_id = 2;
+    required string slave_id = 2;
 }
 
 message marathon_app {
@@ -662,9 +663,14 @@ message mesos_framework {
     repeated mesos_task tasks = 2;
 }
 
+message mesos_slave {
+    required mesos_common common = 1;
+}
+
 message mesos_state {
     repeated mesos_framework frameworks = 1;
     repeated marathon_group groups = 2;
+    repeated mesos_slave slaves = 3;
 }
 
 // ENTRY POINT MESSAGE
