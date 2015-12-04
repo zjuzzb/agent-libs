@@ -563,7 +563,7 @@ message container {
     optional proto_info protos = 19;
     repeated container_label labels = 20;
     repeated mounted_fs mounts = 21;
-	optional string mesos_task_id = 22;
+    optional string mesos_task_id = 22;
 }
 
 //
