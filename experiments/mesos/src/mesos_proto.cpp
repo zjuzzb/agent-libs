@@ -67,7 +67,6 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 			{
 				draiosproto::mesos_task* t = a->add_tasks();
 				t->mutable_common()->set_uid(task->get_uid());
-				t->mutable_common()->set_name(task->get_name());
 			}
 		}
 		const marathon_group::group_map_t& g_groups = group.second->get_groups();

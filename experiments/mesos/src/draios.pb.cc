@@ -1254,8 +1254,8 @@ void protobuf_AssignDesc_draios_2eproto() {
       sizeof(mesos_pair));
   mesos_common_descriptor_ = file->message_type(52);
   static const int mesos_common_offsets_[3] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, uid_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mesos_common, labels_),
   };
   mesos_common_reflection_ =
@@ -2114,7 +2114,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "proto.k8s_replication_controller\022*\n\010serv"
     "ices\030\005 \003(\0132\030.draiosproto.k8s_service\"(\n\n"
     "mesos_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \002(\t\"R"
-    "\n\014mesos_common\022\014\n\004name\030\001 \002(\t\022\013\n\003uid\030\002 \002("
+    "\n\014mesos_common\022\013\n\003uid\030\001 \002(\t\022\014\n\004name\030\002 \001("
     "\t\022\'\n\006labels\030\003 \003(\0132\027.draiosproto.mesos_pa"
     "ir\"I\n\nmesos_task\022)\n\006common\030\001 \002(\0132\031.draio"
     "sproto.mesos_common\022\020\n\010slave_id\030\002 \002(\t\"B\n"
@@ -23520,8 +23520,8 @@ void mesos_pair::Swap(mesos_pair* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int mesos_common::kNameFieldNumber;
 const int mesos_common::kUidFieldNumber;
+const int mesos_common::kNameFieldNumber;
 const int mesos_common::kLabelsFieldNumber;
 #endif  // !_MSC_VER
 
@@ -23541,8 +23541,8 @@ mesos_common::mesos_common(const mesos_common& from)
 
 void mesos_common::SharedCtor() {
   _cached_size_ = 0;
-  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -23551,11 +23551,11 @@ mesos_common::~mesos_common() {
 }
 
 void mesos_common::SharedDtor() {
-  if (name_ != &::google::protobuf::internal::kEmptyString) {
-    delete name_;
-  }
   if (uid_ != &::google::protobuf::internal::kEmptyString) {
     delete uid_;
+  }
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
   }
   if (this != default_instance_) {
   }
@@ -23584,14 +23584,14 @@ mesos_common* mesos_common::New() const {
 
 void mesos_common::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (has_name()) {
-      if (name_ != &::google::protobuf::internal::kEmptyString) {
-        name_->clear();
-      }
-    }
     if (has_uid()) {
       if (uid_ != &::google::protobuf::internal::kEmptyString) {
         uid_->clear();
+      }
+    }
+    if (has_name()) {
+      if (name_ != &::google::protobuf::internal::kEmptyString) {
+        name_->clear();
       }
     }
   }
@@ -23606,31 +23606,31 @@ bool mesos_common::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required string name = 1;
+      // required string uid = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_name()));
+                input, this->mutable_uid()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->name().data(), this->name().length(),
+            this->uid().data(), this->uid().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_uid;
+        if (input->ExpectTag(18)) goto parse_name;
         break;
       }
 
-      // required string uid = 2;
+      // optional string name = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_uid:
+         parse_name:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_uid()));
+                input, this->mutable_name()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->uid().data(), this->uid().length(),
+            this->name().data(), this->name().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
@@ -23672,22 +23672,22 @@ bool mesos_common::MergePartialFromCodedStream(
 
 void mesos_common::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required string name = 1;
-  if (has_name()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->name().data(), this->name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    ::google::protobuf::internal::WireFormatLite::WriteString(
-      1, this->name(), output);
-  }
-
-  // required string uid = 2;
+  // required string uid = 1;
   if (has_uid()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->uid().data(), this->uid().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->uid(), output);
+      1, this->uid(), output);
+  }
+
+  // optional string name = 2;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->name(), output);
   }
 
   // repeated .draiosproto.mesos_pair labels = 3;
@@ -23704,24 +23704,24 @@ void mesos_common::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* mesos_common::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // required string name = 1;
-  if (has_name()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->name().data(), this->name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->name(), target);
-  }
-
-  // required string uid = 2;
+  // required string uid = 1;
   if (has_uid()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->uid().data(), this->uid().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->uid(), target);
+        1, this->uid(), target);
+  }
+
+  // optional string name = 2;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->name(), target);
   }
 
   // repeated .draiosproto.mesos_pair labels = 3;
@@ -23742,18 +23742,18 @@ int mesos_common::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required string name = 1;
-    if (has_name()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->name());
-    }
-
-    // required string uid = 2;
+    // required string uid = 1;
     if (has_uid()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->uid());
+    }
+
+    // optional string name = 2;
+    if (has_name()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->name());
     }
 
   }
@@ -23792,11 +23792,11 @@ void mesos_common::MergeFrom(const mesos_common& from) {
   GOOGLE_CHECK_NE(&from, this);
   labels_.MergeFrom(from.labels_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_name()) {
-      set_name(from.name());
-    }
     if (from.has_uid()) {
       set_uid(from.uid());
+    }
+    if (from.has_name()) {
+      set_name(from.name());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -23815,7 +23815,7 @@ void mesos_common::CopyFrom(const mesos_common& from) {
 }
 
 bool mesos_common::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
   for (int i = 0; i < labels_size(); i++) {
     if (!this->labels(i).IsInitialized()) return false;
@@ -23825,8 +23825,8 @@ bool mesos_common::IsInitialized() const {
 
 void mesos_common::Swap(mesos_common* other) {
   if (other != this) {
-    std::swap(name_, other->name_);
     std::swap(uid_, other->uid_);
+    std::swap(name_, other->name_);
     labels_.Swap(&other->labels_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);

@@ -22,9 +22,9 @@ void print_proto(mesos& m, const std::string& fname)
 {
 	draiosproto::metrics met;
 	mesos_proto(met).get_proto(m.get_state());
-	//FileOutputStream fos("/home/alex/sysdig/agent/experiments/mesos/" + fname + ".protodump");
-	//fos << met.DebugString();
-	std::cout << met.DebugString() << std::endl;
+	FileOutputStream fos("/home/alex/sysdig/agent/experiments/mesos/" + fname + ".protodump");
+	fos << met.DebugString();
+	//std::cout << met.DebugString() << std::endl;
 }
 
 int main(int argc, char** argv)

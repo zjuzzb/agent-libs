@@ -7366,22 +7366,10 @@ class mesos_common : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required string name = 1;
-  inline bool has_name() const;
-  inline void clear_name();
-  static const int kNameFieldNumber = 1;
-  inline const ::std::string& name() const;
-  inline void set_name(const ::std::string& value);
-  inline void set_name(const char* value);
-  inline void set_name(const char* value, size_t size);
-  inline ::std::string* mutable_name();
-  inline ::std::string* release_name();
-  inline void set_allocated_name(::std::string* name);
-
-  // required string uid = 2;
+  // required string uid = 1;
   inline bool has_uid() const;
   inline void clear_uid();
-  static const int kUidFieldNumber = 2;
+  static const int kUidFieldNumber = 1;
   inline const ::std::string& uid() const;
   inline void set_uid(const ::std::string& value);
   inline void set_uid(const char* value);
@@ -7389,6 +7377,18 @@ class mesos_common : public ::google::protobuf::Message {
   inline ::std::string* mutable_uid();
   inline ::std::string* release_uid();
   inline void set_allocated_uid(::std::string* uid);
+
+  // optional string name = 2;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 2;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
 
   // repeated .draiosproto.mesos_pair labels = 3;
   inline int labels_size() const;
@@ -7404,15 +7404,15 @@ class mesos_common : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:draiosproto.mesos_common)
  private:
-  inline void set_has_name();
-  inline void clear_has_name();
   inline void set_has_uid();
   inline void clear_has_uid();
+  inline void set_has_name();
+  inline void clear_has_name();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::std::string* name_;
   ::std::string* uid_;
+  ::std::string* name_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair > labels_;
 
   mutable int _cached_size_;
@@ -19043,85 +19043,15 @@ inline void mesos_pair::set_allocated_value(::std::string* value) {
 
 // mesos_common
 
-// required string name = 1;
-inline bool mesos_common::has_name() const {
+// required string uid = 1;
+inline bool mesos_common::has_uid() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void mesos_common::set_has_name() {
+inline void mesos_common::set_has_uid() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void mesos_common::clear_has_name() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void mesos_common::clear_name() {
-  if (name_ != &::google::protobuf::internal::kEmptyString) {
-    name_->clear();
-  }
-  clear_has_name();
-}
-inline const ::std::string& mesos_common::name() const {
-  return *name_;
-}
-inline void mesos_common::set_name(const ::std::string& value) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
-  }
-  name_->assign(value);
-}
-inline void mesos_common::set_name(const char* value) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
-  }
-  name_->assign(value);
-}
-inline void mesos_common::set_name(const char* value, size_t size) {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
-  }
-  name_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* mesos_common::mutable_name() {
-  set_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    name_ = new ::std::string;
-  }
-  return name_;
-}
-inline ::std::string* mesos_common::release_name() {
-  clear_has_name();
-  if (name_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = name_;
-    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void mesos_common::set_allocated_name(::std::string* name) {
-  if (name_ != &::google::protobuf::internal::kEmptyString) {
-    delete name_;
-  }
-  if (name) {
-    set_has_name();
-    name_ = name;
-  } else {
-    clear_has_name();
-    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
-// required string uid = 2;
-inline bool mesos_common::has_uid() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void mesos_common::set_has_uid() {
-  _has_bits_[0] |= 0x00000002u;
-}
 inline void mesos_common::clear_has_uid() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000001u;
 }
 inline void mesos_common::clear_uid() {
   if (uid_ != &::google::protobuf::internal::kEmptyString) {
@@ -19180,6 +19110,76 @@ inline void mesos_common::set_allocated_uid(::std::string* uid) {
   } else {
     clear_has_uid();
     uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string name = 2;
+inline bool mesos_common::has_name() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mesos_common::set_has_name() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mesos_common::clear_has_name() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mesos_common::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& mesos_common::name() const {
+  return *name_;
+}
+inline void mesos_common::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mesos_common::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mesos_common::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_common::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* mesos_common::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_common::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
