@@ -592,7 +592,12 @@ app_checks:
     conf:
       url: "http://localhost:8500"
       catalog_checks: yes
-
+  - name: etcd
+    pattern:
+      comm: etcd
+    conf:
+      url: "http://localhost:4001"
+      
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
