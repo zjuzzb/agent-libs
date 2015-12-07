@@ -24,10 +24,6 @@ class CouchDb(AgentCheck):
         "couchdb.couchdb.request_time",
         "couchdb.httpd.requests",
     ])
-    RATE_KEY_METRICS = set([
-        "httpd_request_methods",
-        "httpd_status_codes"
-    ])
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.db_blacklist = {}
@@ -38,8 +34,16 @@ class CouchDb(AgentCheck):
             for metric, val in stats.items():
                 if val['current'] is not None:
                     metric_name = '.'.join(['couchdb', key, metric])
-                    if metric_name in self.RATE_METRICS or key in self.RATE_KEY_METRICS:
+                    if metric_name in self.RATE_METRICS:
                         self.rate(metric_name, val['current'], tags=tags)
+                    elif key == "httpd_request_methods":
+                        tags_copy = list(tags)
+                        tags_copy.append("method:" + metric)
+                        self.rate("couchdb.httpd_request_methods.count", val['current'], tags=tags_copy)
+                    elif key == "httpd_status_codes":
+                        tags_copy = list(tags)
+                        tags_copy.append("code:" + metric)
+                        self.rate("couchdb.httpd_status_codes.count", val['current'], tags=tags_copy)
                     else:
                         self.gauge(metric_name, val['current'], tags=tags)
 
