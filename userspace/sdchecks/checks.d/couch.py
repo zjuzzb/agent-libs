@@ -18,7 +18,16 @@ class CouchDb(AgentCheck):
     SERVICE_CHECK_NAME = 'couchdb.can_connect'
     SOURCE_TYPE_NAME = 'couchdb'
     TIMEOUT = 5
-
+    RATE_METRICS = set([
+        "couchdb.couchdb.database_reads",
+        "couchdb.couchdb.database_writes",
+        "couchdb.couchdb.request_time",
+        "couchdb.httpd.requests",
+    ])
+    RATE_KEY_METRICS = set([
+        "httpd_request_methods",
+        "httpd_status_codes"
+    ])
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.db_blacklist = {}
@@ -29,7 +38,10 @@ class CouchDb(AgentCheck):
             for metric, val in stats.items():
                 if val['current'] is not None:
                     metric_name = '.'.join(['couchdb', key, metric])
-                    self.gauge(metric_name, val['current'], tags=tags)
+                    if metric_name in self.RATE_METRICS or key in self.RATE_KEY_METRICS:
+                        self.rate(metric_name, val['current'], tags=tags)
+                    else:
+                        self.gauge(metric_name, val['current'], tags=tags)
 
         for db_name, db_stats in data.get('databases', {}).items():
             for name, val in db_stats.items():
