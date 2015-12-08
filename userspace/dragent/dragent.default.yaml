@@ -605,7 +605,13 @@ app_checks:
       port: 5984
     conf:
       server: http://localhost:5984
-
+  - name: couchbase
+    pattern:
+      comm: beam.smp
+      arg: couchbase
+      port: 8091
+    conf:
+      server: http://localhost:8091
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
