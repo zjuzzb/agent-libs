@@ -613,24 +613,7 @@ app_checks:
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
 #
-# The presence of this entry in the configuration file shall enable kubernetes monitoring functionality
-# in the agent. The syntax for the entry is:
-#
-#   k8s_uri: http[s]://[username:password@]host[:port]
-#   k8s_autodetect: [True|false]
-#
-# If username:password is specified, it will be used to authenticate using HTTP Basic Authentication.
-# Unless port is explicitly specified, default will be used (80 for http, 443 for https).
-#
-# The k8s_autodetect setting being true (default) is effective only when there is no k8s_uri specified,
-# in which case agent will attempt to connect to the API server running on http://localhost:8080.
-#
-# For HTTPS, client certificate authentication can be controlled with following entries:
-#
-# k8s_ca_certificate: [filename]
-# k8s_ssl_verify_certificate: [true|False]
-#
-# Certificate file must be located in the /opt/draios directory.
+# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/206606883
 #
 # Example (overrides default setting):
 #
@@ -640,6 +623,14 @@ app_checks:
 # k8s_ssl_verify_certificate: true
 #
 
+#
+# Warning: This is an example of mesos configuration. Please do not uncomment and edit here,
+# use "dragent.yaml" instead.
+#
+# For documentation, see http://support.sysdigcloud.com/...
+#
+# Example (overrides default setting):
+#
 #mesos_state_uri: http://54.152.106.80:5050
 #marathon_apps_uri: http://54.152.106.80:8080
 #marathon_groups_uri: http://54.152.106.80:8080
