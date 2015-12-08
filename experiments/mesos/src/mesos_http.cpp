@@ -20,7 +20,8 @@
 
 mesos_http::mesos_http(const std::string& url):
 	m_curl(curl_easy_init()),
-	m_url(url)
+	m_url(url),
+	m_connected(true)
 {
 	if(!m_curl)
 	{
@@ -42,7 +43,7 @@ mesos_http::~mesos_http()
 
 bool mesos_http::init()
 {
-	if(!m_curl)
+	//if(!m_curl)
 	{
 		cleanup();
 		m_curl = curl_easy_init();
@@ -87,6 +88,11 @@ bool mesos_http::get_all_data(std::ostream& os)
 	if(res != CURLE_OK)
 	{
 		os << curl_easy_strerror(res) << std::flush;
+		m_connected = false;
+	}
+	else
+	{
+		m_connected = true;
 	}
 
 	return res == CURLE_OK;

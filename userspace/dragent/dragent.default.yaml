@@ -640,6 +640,11 @@ app_checks:
 # k8s_ssl_verify_certificate: true
 #
 
+#mesos_state_uri: http://54.152.106.80:5050
+#marathon_apps_uri: http://54.152.106.80:8080
+#marathon_groups_uri: http://54.152.106.80:8080
+#mesos_autodetect: true
+
 known_ports:
   - 902 # VMware 
   - 903 # VMware

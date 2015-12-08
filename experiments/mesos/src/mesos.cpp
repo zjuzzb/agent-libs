@@ -14,6 +14,8 @@ const mesos_component::component_map mesos::m_components =
 	{ mesos_component::MESOS_SLAVE,     "slave"     }
 };
 
+const std::string mesos::default_state_uri = "http://localhost:5050";
+const std::string mesos::default_state_api = "/master/state";
 const std::string mesos::default_groups_uri = "http://localhost:8080";
 const std::string mesos::default_groups_api = "/v2/groups";
 const std::string mesos::default_apps_uri = "http://localhost:8080";

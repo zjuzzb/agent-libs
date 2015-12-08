@@ -349,6 +349,10 @@ public:
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
 	int m_k8s_timeout_ms;
+	string m_mesos_state_uri;
+	string m_marathon_groups_uri;
+	string m_marathon_apps_uri;
+	bool m_mesos_autodetect;
 
 	bool java_present()
 	{

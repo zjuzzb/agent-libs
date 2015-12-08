@@ -23,6 +23,8 @@ public:
 
 	bool get_all_data(std::ostream& os);
 
+	bool is_connected() const;
+
 private:
 	bool init();
 	void cleanup();
@@ -33,6 +35,12 @@ private:
 
 	CURL*       m_curl;
 	uri         m_url;
+	bool        m_connected;
 };
+
+inline bool mesos_http::is_connected() const
+{
+	return m_connected;
+}
 
 #endif // HAS_CAPTURE

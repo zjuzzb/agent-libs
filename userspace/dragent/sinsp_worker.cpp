@@ -108,6 +108,27 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
 
 	//
+	// mesos
+	//
+
+	if(!m_configuration->m_mesos_state_uri.empty())
+	{
+		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
+	}
+	// marathon
+	if(!m_configuration->m_marathon_groups_uri.empty())
+	{
+		m_analyzer->get_configuration()->set_marathon_groups_uri(m_configuration->m_marathon_groups_uri);
+	}
+
+	if(!m_configuration->m_marathon_apps_uri.empty())
+	{
+		m_analyzer->get_configuration()->set_marathon_apps_uri(m_configuration->m_marathon_apps_uri);
+	}
+
+	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
+
+	//
 	// Configure compression in the protocol
 	//
 	m_analyzer->get_configuration()->set_compress_metrics(m_configuration->m_compression_enabled);

@@ -22,13 +22,15 @@ public:
 		NODE_SLAVE
 	};
 
+	static const std::string default_state_uri;
+	static const std::string default_state_api;
 	static const std::string default_groups_uri;
 	static const std::string default_groups_api;
 	static const std::string default_apps_uri;
 	static const std::string default_apps_api;
-	
-	mesos(const std::string& state_uri = "http://localhost:5051",
-		const std::string& state_api = "/state.json",
+
+	mesos(const std::string& state_uri = default_state_uri,
+		const std::string& state_api = default_state_api,
 		const std::string& groups_uri = "",
 		const std::string& groups_api = "",
 		const std::string& apps_uri = "",
@@ -38,6 +40,7 @@ public:
 
 	node_t get_node_type() const;
 	const mesos_state_t get_state() const;
+	bool is_alive() const;
 
 private:
 	void init();
@@ -83,4 +86,11 @@ inline const mesos_state_t mesos::get_state() const
 inline bool mesos::is_master() const
 {
 	return m_node_type == NODE_MASTER;
+}
+
+inline bool mesos::is_alive() const
+{
+	return m_state_http.is_connected() &&
+		(!m_groups_http || m_groups_http->is_connected()) &&
+		(!m_apps_http || m_apps_http->is_connected());
 }

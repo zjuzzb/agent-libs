@@ -103,6 +103,10 @@
     <File Name="libsanalyzer/uri.h"/>
     <File Name="libsanalyzer/k8s_proto.cpp"/>
     <File Name="libsanalyzer/k8s_proto.h"/>
+    <File Name="libsanalyzer/sdc_internal.pb.cc"/>
+    <File Name="libsanalyzer/sdc_internal.pb.h"/>
+    <File Name="libsanalyzer/mesos_proto.h"/>
+    <File Name="libsanalyzer/mesos_proto.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

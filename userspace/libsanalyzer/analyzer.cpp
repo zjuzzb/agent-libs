@@ -47,6 +47,9 @@ using namespace google::protobuf::io;
 #include "k8s.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
+#include "mesos.h"
+#include "mesos_state.h"
+#include "mesos_proto.h"
 #include "curl/easy.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
@@ -809,6 +812,111 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+mesos* sinsp_analyzer::make_mesos(string&& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		Json::Value ver = root["version"];
+		if(!ver.isNull())
+		{
+			const std::string& version = ver.asString();
+			if(!version.empty())
+			{
+				std::string mesos_state = m_configuration->get_mesos_state_uri();
+				std::string marathon_groups = m_configuration->get_marathon_groups_uri();
+				std::string marathon_apps = m_configuration->get_marathon_apps_uri();
+
+				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
+					sinsp_logger::SEV_INFO);
+
+				return new mesos(mesos_state, mesos::default_state_api,
+					marathon_groups, mesos::default_groups_api,
+					marathon_apps, mesos::default_apps_api);
+			}
+		}
+	}
+	return 0;
+}
+
+mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
+{
+	try
+	{
+		URI uri(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		std::unique_ptr<HTTPClientSession> session = 0;
+		std::string json;
+		if(uri.getScheme() == "https")
+		{
+			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
+		/*TODO
+			try
+			{
+				init_k8s_ssl();
+				try
+				{
+					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
+				}
+				catch (TimeoutException&)
+				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+				catch (ConnectionRefusedException&)
+				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
+			}
+			catch (SSLException& exc)
+			{
+				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
+					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
+				m_k8s_bad_config = true;
+				return 0;
+			}
+			catch(...)
+			{
+				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
+				return 0;
+			}
+		*/}
+		else
+		{
+			try
+			{
+				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
+			}
+			catch (TimeoutException&)
+			{ g_logger.log("Mesos connection timed out.", sinsp_logger::SEV_ERROR); }
+			catch (ConnectionRefusedException&)
+			{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+		}
+		session->setTimeout(ts);
+		HTTPRequest request(HTTPRequest::HTTP_GET, mesos::default_state_api);
+		std::string user, pwd;
+		HTTPCredentials::extractCredentials(uri, user, pwd);
+		if(!user.empty())
+		{
+			HTTPBasicCredentials cred(user, pwd);
+			cred.authenticate(request);
+		}
+		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
+		session->sendRequest(request);
+		HTTPResponse response;
+		std::istream& rs = session->receiveResponse(response);
+		std::ostringstream os;
+		StreamCopier::copyStream(rs, os);
+		json = std::move(os.str());
+		return make_mesos(std::move(json));
+	}
+	catch (std::exception& exc)
+	{
+		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
+		if(m_k8s_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}
+	}
+	return 0;
+}
+
 k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 {
 	Json::Value root;
@@ -1132,6 +1240,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							}
 						}
 					}
+				}
+				if(k8s_api_server.empty())
+				{
+					g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
+				}
+
+				string mesos_api_server = m_configuration->get_mesos_state_uri();
+				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() /*&& !m_k8s_bad_config*/)
+				{
+					mesos_api_server = mesos::default_state_api;
+					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+					{
+						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
+						m_configuration->set_mesos_state_uri(mesos_api_server);
+						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
+						break;
+					}
+				}
+				if(mesos_api_server.empty())
+				{
+					g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
 				}
 			}
 			main_tinfo->compute_program_hash();
@@ -2841,6 +2970,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			emit_k8s();
 
+			//
+			// Mesos
+			//
+			emit_mesos();
+
 			emit_top_files();
 
 			//
@@ -3658,6 +3792,101 @@ void sinsp_analyzer::emit_k8s()
 			{
 				delete m_k8s;
 				m_k8s = 0;
+			}
+		}
+	}
+}
+
+void sinsp_analyzer::get_mesos_data()
+{
+	ASSERT(m_mesos);
+	ASSERT(m_mesos->is_alive());
+	/*
+	if(!m_mesos->watch_in_thread())
+	{
+		m_mesos->watch();
+	}*/
+	ASSERT(m_metrics);
+	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+	/*if(m_metrics->has_mesos())
+	{
+		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+	}*/
+}
+
+void sinsp_analyzer::emit_mesos()
+{
+	// mesos uri config settings can be set:
+	//
+	//    - explicitly in configuration file; when present, this setting has priority
+	//      over anything else in regards to presence/location of the api server
+	//
+	//    - implicitly, by mesos autodetect flag (which defaults to true);
+	//      when mesos_state_uri is empty, autodetect is true and api server is detected on the
+	//      local machine, uris will be automatically set to:
+	//
+	//      mesos_state_uri:     "http://localhost:5050/state.json"
+	//      marathon_groups_uri: "http://localhost:8080/v2/groups";
+	//      marathon_apps_uri:   "http://localhost:8080/v2/apps?embed=apps.tasks";
+	//
+	// so, at runtime, mesos_state_uri being empty or not determines whether mesos data
+	// will be collected and emitted; the connection to mesos api server is entirely managed
+	// in this function - if it is dropped, the attempts to re-establish it will keep on going
+	// forever, once per cycle, until either connection is re-established or agent shut down
+
+	const string& mesos_uri = m_configuration->get_mesos_state_uri();
+	if(!mesos_uri.empty())
+	{
+		try
+		{
+			if(!m_mesos/* && !m_mesos_bad_config*/)
+			{
+				g_logger.log("Connecting to Mesos API server ...", sinsp_logger::SEV_INFO);
+				m_mesos = get_mesos(mesos_uri);
+			}
+			else if(m_mesos && !m_mesos->is_alive()/* && !m_mesos_bad_config*/)
+			{
+				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+				delete m_mesos;
+				m_mesos = 0;
+				m_mesos = get_mesos(mesos_uri);
+			}
+
+			if(m_mesos)
+			{
+				if(m_mesos->is_alive())
+				{
+					get_mesos_data();
+				}
+				if(!m_mesos->is_alive()/* && !m_mesos_bad_config*/)
+				{
+					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+					delete m_mesos;
+					m_mesos = 0;
+					m_mesos = get_mesos(mesos_uri);
+					if(m_mesos && m_mesos->is_alive())
+					{
+						g_logger.log("Mesos connection re-established.", sinsp_logger::SEV_INFO);
+						get_mesos_data();
+					}
+					else
+					{
+						g_logger.log("Mesos connection attempt failed. Will retry in next cycle.", sinsp_logger::SEV_ERROR);
+					}
+				}
+			}
+			else
+			{
+				g_logger.log("Mesos connection not established.", sinsp_logger::SEV_ERROR);
+			}
+		}
+		catch(std::exception& e)
+		{
+			g_logger.log(std::string("Error fetching Mesos state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+			if(m_mesos)
+			{
+				delete m_mesos;
+				m_mesos = 0;
 			}
 		}
 	}
