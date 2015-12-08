@@ -612,6 +612,11 @@ app_checks:
       port: 8091
     conf:
       server: http://localhost:8091
+  - name: fluentd
+    pattern:
+      comm: fluentd
+    conf:
+      monitor_agent_url: http://localhost:24220/api/plugins.json
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
