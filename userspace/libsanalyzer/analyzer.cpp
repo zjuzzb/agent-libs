@@ -908,7 +908,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 	catch (std::exception& exc)
 	{
-		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
+		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
 		if(m_k8s_bad_config)
 		{
 			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
@@ -3841,7 +3841,7 @@ void sinsp_analyzer::emit_mesos()
 		{
 			if(!m_mesos/* && !m_mesos_bad_config*/)
 			{
-				g_logger.log("Connecting to Mesos API server ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
 				m_mesos = get_mesos(mesos_uri);
 			}
 			else if(m_mesos && !m_mesos->is_alive()/* && !m_mesos_bad_config*/)
