@@ -617,6 +617,12 @@ app_checks:
       comm: fluentd
     conf:
       monitor_agent_url: http://localhost:24220/api/plugins.json
+  - name: hdfs
+    pattern:
+      comm: java
+      arg: org.apache.hadoop.hdfs.server.namenode.NameNode
+    conf:
+      namenode: localhost
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.

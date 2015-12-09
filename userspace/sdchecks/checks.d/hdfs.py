@@ -82,8 +82,11 @@ class HDFSCheck(AgentCheck):
         self.gauge('hdfs.used', stats['used'], tags=tags)
         self.gauge('hdfs.free', stats['remaining'], tags=tags)
         self.gauge('hdfs.capacity', stats['capacity'], tags=tags)
-        self.gauge('hdfs.in_use', float(stats['used']) /
+        if float(stats['capacity']) > 0:
+            self.gauge('hdfs.used.percent', float(stats['used']) /
                 float(stats['capacity']), tags=tags)
+        else:
+            self.gauge('hdfs.used.percent', 0, tags=tags)
         self.gauge('hdfs.under_replicated', stats['under_replicated'],
                 tags=tags)
         self.gauge('hdfs.missing_blocks', stats['missing_blocks'], tags=tags)
