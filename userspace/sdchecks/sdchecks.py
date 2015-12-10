@@ -166,14 +166,16 @@ class AppCheckInstance:
 
     def run(self):
         saved_ex = None
+        ns_fds = []
         try:
             if self.is_on_another_container:
                 # We need to open and close ns on every iteration
                 # because otherwise we lock container deletion
                 for ns in self.check_instance.NEEDED_NS:
                     nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                    ns_fds.append(nsfd)
+                for nsfd in ns_fds:
                     ret = setns(nsfd)
-                    os.close(nsfd)
                     if ret != 0:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
@@ -183,6 +185,8 @@ class AppCheckInstance:
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
+            for nsfd in ns_fds:
+                os.close(nsfd)
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
