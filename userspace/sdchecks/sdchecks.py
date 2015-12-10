@@ -347,7 +347,7 @@ class Application:
             metrics, service_checks, ex = check_instance.run()
 
             if ex and pid not in self.blacklisted_pids:
-                logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                logging.error("Exception on running check %s: %s" % (check_instance.name, ex.message))
                 self.blacklisted_pids.add(pid)
             response_body.append({  "pid": pid,
                                     "display_name": check_instance.name,
@@ -357,9 +357,7 @@ class Application:
         logging.debug("Response size is %d" % len(response_s))
         self.outqueue.send(response_s)
 
-    def main(self):
-        logging.info("Starting")
-        logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+    def main_loop(self):
         pid = os.getpid()
         while True:
             # Handle received message
@@ -380,3 +378,23 @@ class Application:
             ru = resource.getrusage(resource.RUSAGE_SELF)
             sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
             sys.stderr.flush()
+
+    def main(self):
+        logging.info("Starting")
+        logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "runCheck":
+                proc_data = {
+                    "check": sys.argv[2],
+                    "pid": int(sys.argv[3]),
+                    "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
+                    "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                }
+                check_conf = self.config.checks[proc_data["check"]]
+                check_instance = AppCheckInstance(check_conf, proc_data)
+                metrics, service_checks, ex = check_instance.run()
+                print "Metrics: %s" % repr(metrics)
+                print "Checks: %s" % repr(service_checks)
+                print "Exception: %s" % repr(ex)
+        else:
+            self.main_loop()
