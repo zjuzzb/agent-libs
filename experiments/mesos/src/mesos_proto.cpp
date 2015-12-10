@@ -52,21 +52,20 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 	draiosproto::marathon_group* group = m_proto.add_groups();
 	extract_groups(state.get_groups(), group);
 }
-
+				
 void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, draiosproto::marathon_group* to_group)
 {
 	for(const auto& group : groups)
 	{
 		to_group->set_id(group.first);
-
 		for(const auto& app : group.second->get_apps())
 		{
 			draiosproto::marathon_app* a = to_group->add_apps();
 			a->set_id(app.first);
 			for(const auto& task : app.second->get_tasks())
 			{
-				draiosproto::mesos_task* t = a->add_tasks();
-				t->mutable_common()->set_uid(task->get_uid());
+				std::string* t = a->add_task_ids();
+				*t = task;
 			}
 		}
 		const marathon_group::group_map_t& g_groups = group.second->get_groups();

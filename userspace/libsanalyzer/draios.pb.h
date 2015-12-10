@@ -7592,17 +7592,21 @@ class marathon_app : public ::google::protobuf::Message {
   inline ::std::string* release_id();
   inline void set_allocated_id(::std::string* id);
 
-  // repeated .draiosproto.mesos_task tasks = 2;
-  inline int tasks_size() const;
-  inline void clear_tasks();
-  static const int kTasksFieldNumber = 2;
-  inline const ::draiosproto::mesos_task& tasks(int index) const;
-  inline ::draiosproto::mesos_task* mutable_tasks(int index);
-  inline ::draiosproto::mesos_task* add_tasks();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
-      tasks() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
-      mutable_tasks();
+  // repeated string task_ids = 2;
+  inline int task_ids_size() const;
+  inline void clear_task_ids();
+  static const int kTaskIdsFieldNumber = 2;
+  inline const ::std::string& task_ids(int index) const;
+  inline ::std::string* mutable_task_ids(int index);
+  inline void set_task_ids(int index, const ::std::string& value);
+  inline void set_task_ids(int index, const char* value);
+  inline void set_task_ids(int index, const char* value, size_t size);
+  inline ::std::string* add_task_ids();
+  inline void add_task_ids(const ::std::string& value);
+  inline void add_task_ids(const char* value);
+  inline void add_task_ids(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& task_ids() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_task_ids();
 
   // @@protoc_insertion_point(class_scope:draiosproto.marathon_app)
  private:
@@ -7612,7 +7616,7 @@ class marathon_app : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* id_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task > tasks_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> task_ids_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
@@ -19394,29 +19398,48 @@ inline void marathon_app::set_allocated_id(::std::string* id) {
   }
 }
 
-// repeated .draiosproto.mesos_task tasks = 2;
-inline int marathon_app::tasks_size() const {
-  return tasks_.size();
+// repeated string task_ids = 2;
+inline int marathon_app::task_ids_size() const {
+  return task_ids_.size();
 }
-inline void marathon_app::clear_tasks() {
-  tasks_.Clear();
+inline void marathon_app::clear_task_ids() {
+  task_ids_.Clear();
 }
-inline const ::draiosproto::mesos_task& marathon_app::tasks(int index) const {
-  return tasks_.Get(index);
+inline const ::std::string& marathon_app::task_ids(int index) const {
+  return task_ids_.Get(index);
 }
-inline ::draiosproto::mesos_task* marathon_app::mutable_tasks(int index) {
-  return tasks_.Mutable(index);
+inline ::std::string* marathon_app::mutable_task_ids(int index) {
+  return task_ids_.Mutable(index);
 }
-inline ::draiosproto::mesos_task* marathon_app::add_tasks() {
-  return tasks_.Add();
+inline void marathon_app::set_task_ids(int index, const ::std::string& value) {
+  task_ids_.Mutable(index)->assign(value);
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
-marathon_app::tasks() const {
-  return tasks_;
+inline void marathon_app::set_task_ids(int index, const char* value) {
+  task_ids_.Mutable(index)->assign(value);
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
-marathon_app::mutable_tasks() {
-  return &tasks_;
+inline void marathon_app::set_task_ids(int index, const char* value, size_t size) {
+  task_ids_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_app::add_task_ids() {
+  return task_ids_.Add();
+}
+inline void marathon_app::add_task_ids(const ::std::string& value) {
+  task_ids_.Add()->assign(value);
+}
+inline void marathon_app::add_task_ids(const char* value) {
+  task_ids_.Add()->assign(value);
+}
+inline void marathon_app::add_task_ids(const char* value, size_t size) {
+  task_ids_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+marathon_app::task_ids() const {
+  return task_ids_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+marathon_app::mutable_task_ids() {
+  return &task_ids_;
 }
 
 // -------------------------------------------------------------------

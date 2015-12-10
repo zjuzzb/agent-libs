@@ -828,7 +828,23 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 				std::string marathon_groups = m_configuration->get_marathon_groups_uri();
 				std::string marathon_apps = m_configuration->get_marathon_apps_uri();
 
+				if(marathon_groups.empty())
+				{
+					marathon_groups = mesos::default_groups_uri;
+					m_configuration->set_marathon_groups_uri(marathon_groups);
+				}
+				if(marathon_apps.empty())
+				{
+					marathon_apps = mesos::default_apps_uri;
+					m_configuration->set_marathon_apps_uri(marathon_apps);
+				}
 				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
+					sinsp_logger::SEV_INFO);
+				g_logger.log("Mesos state: [" + mesos_state + mesos::default_state_api + ']',
+					sinsp_logger::SEV_INFO);
+				g_logger.log("Mesos (Marathon) groups: [" + marathon_groups + mesos::default_groups_api + ']',
+					sinsp_logger::SEV_INFO);
+				g_logger.log("Mesos (Marathon) state: [" + marathon_apps + mesos::default_apps_api + ']',
 					sinsp_logger::SEV_INFO);
 
 				return new mesos(mesos_state, mesos::default_state_api,
@@ -3812,10 +3828,10 @@ void sinsp_analyzer::get_mesos_data()
 	}*/
 	ASSERT(m_metrics);
 	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-	/*if(m_metrics->has_mesos())
+	if(m_metrics->has_mesos())
 	{
 		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
-	}*/
+	}
 }
 
 void sinsp_analyzer::emit_mesos()
