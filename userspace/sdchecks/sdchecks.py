@@ -143,7 +143,7 @@ class AppCheckInstance:
                 mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
                 self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
             except OSError as ex:
-                raise AppCheckException(ex.message)
+                raise AppCheckException(repr(ex))
         else:
             self.is_on_another_container = False
 
@@ -165,7 +165,7 @@ class AppCheckInstance:
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
-        ex = None
+        saved_ex = None
         try:
             if self.is_on_another_container:
                 # We need to open and close ns on every iteration
@@ -178,10 +178,10 @@ class AppCheckInstance:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
         except OSError as ex: # Raised from os.open() or setns()
-            ex = AppCheckException(ex.message)
+            saved_ex = AppCheckException(repr(ex))
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
-            ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
+            saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
             if self.is_on_another_container:
                 setns(self.MYNET)
@@ -191,7 +191,7 @@ class AppCheckInstance:
             self.check_instance.get_service_metadata()
 
             # Return metrics and checks instead
-            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), ex
+            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), saved_ex
 
     def _expand_template(self, value, proc_data):
         try:
@@ -347,7 +347,7 @@ class Application:
             metrics, service_checks, ex = check_instance.run()
 
             if ex and pid not in self.blacklisted_pids:
-                logging.error("Exception on running check %s: %s" % (check_instance.name, ex.message))
+                logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 self.blacklisted_pids.add(pid)
             response_body.append({  "pid": pid,
                                     "display_name": check_instance.name,
