@@ -623,6 +623,11 @@ app_checks:
       arg: org.apache.hadoop.hdfs.server.namenode.NameNode
     conf:
       namenode: localhost
+  - name: kyototycoon
+    pattern:
+      comm: ktserver
+    conf:
+      report_url: "http://localhost:{port}/rpc/report"
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
