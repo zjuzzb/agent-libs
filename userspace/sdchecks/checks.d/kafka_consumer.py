@@ -15,7 +15,7 @@ DEFAULT_ZK_TIMEOUT = 5
 
 
 class KafkaCheck(AgentCheck):
-
+    NEEDED_NS = ("net", "mnt")
     SOURCE_TYPE_NAME = 'kafka'
 
     def __init__(self, name, init_config, agentConfig, instances=None):
