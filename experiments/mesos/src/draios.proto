@@ -649,7 +649,7 @@ message mesos_task {
 
 message marathon_app {
     required string id = 1;
-    repeated mesos_task tasks = 2;
+    repeated string task_ids = 2;
 }
 
 message marathon_group {
