@@ -1202,11 +1202,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
-		}
-
-		if(!tinfo->m_container_id.empty())
-		{
-			container = &m_containers[tinfo->m_container_id];
 			if(container->m_memory_cgroup.empty())
 			{
 				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
@@ -4174,6 +4169,11 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	if(!it->second.m_image.empty())
 	{
 		container->set_image(it->second.m_image);
+	}
+
+	if(!it->second.m_mesos_task_id.empty())
+	{
+		container->set_mesos_task_id(it->second.m_mesos_task_id);
 	}
 
 	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
