@@ -271,27 +271,29 @@ jmx:
         - query: "org.apache.ZooKeeperService:name0=StandaloneServer*,*"
           attributes:
             - name: AvgRequestLatency
-              alias: zookeeper.standalone.avg.request.latency
+              alias: zookeeper.avg.request.latency
             - name: MaxRequestLatency
-              alias: zookeeper.standalone.max.request.latency
-            - name: NumAliveConnections
-              alias: zookeeper.standalone.current.alive.connections
+              alias: zookeeper.max.request.latency
+            - name: MinRequestLatency
+              alias: zookeeper.min.request.latency
             - name: NodeCount
-              alias: zookeeper.standalone.node.count
+              alias: zookeeper.node.count
+            - name: NumAliveConnections
+              alias: zookeeper.current.alive.connections
         - query: "org.apache.ZooKeeperService:name0=ReplicatedServer*,*"
           attributes:
             - name: QuorumSize
-              alias: zookeeper.cluster.quorum.size
+              alias: zookeeper.quorum.size
             - name: AvgRequestLatency
-              alias: zookeeper.cluster.avg.request.latency
+              alias: zookeeper.avg.request.latency
             - name: MaxRequestLatency
-              alias: zookeeper.cluster.max.request.latency
+              alias: zookeeper.max.request.latency
             - name: MinRequestLatency
-              alias: zookeeper.cluster.min.request.latency
+              alias: zookeeper.min.request.latency
             - name: NodeCount
-              alias: zookeeper.cluster.node.count
+              alias: zookeeper.node.count
             - name: NumAliveConnections
-              alias: zookeper.cluster.current.alive.connections
+              alias: zookeeper.current.alive.connections
     kafka:
       pattern: "kafka"
       beans:
