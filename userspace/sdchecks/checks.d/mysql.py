@@ -79,8 +79,8 @@ class MySql(AgentCheck):
 
         # Metric collection
         self._collect_metrics(host, db, tags, options, queries)
-        if Platform.is_linux():
-            self._collect_system_metrics(host, db, tags)
+        #if Platform.is_linux():
+        #    self._collect_system_metrics(host, db, tags)
 
         # Close connection
         db.close()
