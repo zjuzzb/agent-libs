@@ -23,6 +23,7 @@ class ShouldRestartException(Exception):
 class PostgreSql(AgentCheck):
     """Collects per-database, and optionally per-relation metrics, custom metrics
     """
+    NEEDED_NS = ( 'mnt', 'net')
     SOURCE_TYPE_NAME = 'postgresql'
     RATE = AgentCheck.rate
     GAUGE = AgentCheck.gauge
@@ -525,11 +526,12 @@ SELECT relname,
         ]
         return service_check_tags
 
-    def get_connection(self, key, host, port, user, password, dbname, ssl, use_cached=True):
+    def get_connection(self, key, host, port, user, password, dbname, ssl, use_cached=True, unix_sock=None):
         "Get and memoize connections to instances"
         if key in self.dbs and use_cached:
             return self.dbs[key]
-
+        elif unix_sock:
+            connection = pg.connect(unix_sock=unix_sock, user=user)
         elif host != "" and user != "":
             try:
                 if host == 'localhost' and password == '':
@@ -592,6 +594,7 @@ SELECT relname,
         dbname = instance.get('dbname', None)
         relations = instance.get('relations', [])
         ssl = _is_affirmative(instance.get('ssl', False))
+        unix_sock = instance.get("unix_sock", None)
 
         if relations and not dbname:
             self.warning('"dbname" parameter must be set when using the "relations" parameter.')
@@ -621,13 +624,13 @@ SELECT relname,
         # Collect metrics
         try:
             # Check version
-            db = self.get_connection(key, host, port, user, password, dbname, ssl)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl, unix_sock=unix_sock)
             version = self._get_version(key, db)
             self.log.debug("Running check against version %s" % version)
             self._collect_stats(key, db, tags, relations, custom_metrics)
         except ShouldRestartException:
             self.log.info("Resetting the connection")
-            db = self.get_connection(key, host, port, user, password, dbname, ssl, use_cached=False)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl, use_cached=False, unix_sock=unix_sock)
             self._collect_stats(key, db, tags, relations, custom_metrics)
 
         if db is not None:
