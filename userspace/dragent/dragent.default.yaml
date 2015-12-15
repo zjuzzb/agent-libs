@@ -650,6 +650,13 @@ app_checks:
       arg: mesosphere.marathon.Main
     conf:
       url: "http://localhost:{port}"
+  - name: postgres
+    pattern:
+      comm: postgres
+      port: 5432
+    conf:
+      unix_sock: "/var/run/postgresql/.s.PGSQL.{port}"
+      username: postgres
 
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
