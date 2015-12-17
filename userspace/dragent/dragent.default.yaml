@@ -657,7 +657,15 @@ app_checks:
     conf:
       unix_sock: "/var/run/postgresql/.s.PGSQL.{port}"
       username: postgres
-
+  - name: postfix
+    pattern:
+      comm: postfix
+    conf:
+      directory: /var/spool/postfix
+      queues:
+        - incoming
+        - active
+        - deferred
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.

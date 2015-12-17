@@ -6,6 +6,7 @@ from checks import AgentCheck
 from utils.subprocess_output import get_subprocess_output
 
 class PostfixCheck(AgentCheck):
+    NEEDED_NS = ( 'mnt', )
     """This check provides metrics on the number of messages in a given postfix queue
 
     WARNING: the user that dd-agent runs as must have sudo access for the 'find' command
