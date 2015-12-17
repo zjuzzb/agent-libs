@@ -666,6 +666,12 @@ app_checks:
         - incoming
         - active
         - deferred
+  - name: riak
+    pattern:
+      comm: beam.smp
+      port: 8098
+    conf:
+      url: http://127.0.0.1:8098/stats
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
