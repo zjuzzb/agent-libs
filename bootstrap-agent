@@ -225,7 +225,7 @@ if [ ! -d "${PYTHON_DIR}" ]; then
 	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
 	cd $PYTHON_DIR
 	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-       ./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install
+       ./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
 	make
 	make install
 fi
@@ -240,6 +240,19 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	unzip statsite-private-$STATSITE_VERSION.zip
 	cd $STATSITE_DIR
 	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
+fi
+
+POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.5
+if [ ! -d "${POSTGRES_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/postgresql-9.4.5.tar.bz2
+	tar xfj postgresql-9.4.5.tar.bz2
+	cd $POSTGRES_DIR
+	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
+	make
+	make -C src/bin install
+	make -C src/include install
+	make -C src/interfaces install
 fi
 
 if [ -z "$AGENT_VERSION" ]; then

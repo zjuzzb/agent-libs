@@ -399,6 +399,7 @@ class Application:
                 check_conf = self.config.checks[proc_data["check"]]
                 check_instance = AppCheckInstance(check_conf, proc_data)
                 metrics, service_checks, ex = check_instance.run()
+                print "Conf: %s" % repr(check_instance.instance_conf)
                 print "Metrics: %s" % repr(metrics)
                 print "Checks: %s" % repr(service_checks)
                 print "Exception: %s" % repr(ex)

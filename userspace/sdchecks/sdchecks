@@ -1,15 +1,18 @@
 #!/usr/bin/env python2
+# Include our custom path for python libraries
 import site
 site.addsitedir('/opt/draios/lib/python-deps')
 import sys
 sys.path.append('/opt/draios/lib/python')
+
+# Run our app
 from sdchecks import Application
 
 if __name__ == "__main__":
     app = Application()
     try:
-    	app.main()
+        app.main()
     except KeyboardInterrupt:
-    	pass
+        pass
     finally:
-    	app.cleanup()
+        app.cleanup()

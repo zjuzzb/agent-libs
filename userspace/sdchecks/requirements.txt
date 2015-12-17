@@ -23,7 +23,7 @@ httplib2==0.9
 kafka-python==0.9.3
 
 # checks.d/postgres.py
-pg8000==1.10.1
+pg8000==1.10.2
 
 # checks.d/mysql.py
 pymysql==0.6.6
@@ -57,8 +57,8 @@ pymongo==2.8
 # checks.d/kafka_consumer.py
 # Requires a compiler because zope.interface is a dep
 kazoo==1.3.1
+protobuf==2.5.0
 
 # checks.d/pgbouncer.py
 # Require libpq
-#psycopg2==2.6
-protobuf==2.5.0
+psycopg2==2.6
