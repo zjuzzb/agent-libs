@@ -32,14 +32,7 @@ class PHPFPMCheck(AgentCheck):
         ping_url = instance.get('ping_url', '/ping')
         ping_reply = instance.get('ping_reply')
 
-        auth = None
-        user = instance.get('user')
-        password = instance.get('password')
-
         tags = instance.get('tags', [])
-
-        if user and password:
-            auth = (user, password)
 
         if status_url is None and ping_url is None:
             raise Exception("No status_url or ping_url specified for this instance")
