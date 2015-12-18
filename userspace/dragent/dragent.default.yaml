@@ -672,6 +672,10 @@ app_checks:
       port: 8098
     conf:
       url: http://127.0.0.1:8098/stats
+  - name: php-fpm
+    check_module: php_fpm
+    pattern:
+      exe: "php-fpm: master process"
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
