@@ -62,3 +62,6 @@ protobuf==2.5.0
 # checks.d/pgbouncer.py
 # Require libpq
 psycopg2==2.6
+
+# checks.d/riakcs.py
+boto==2.36.0
