@@ -44,6 +44,7 @@ PROCESS_SERVICE_CHECK = 'supervisord.process.status'
 
 
 class SupervisordCheck(AgentCheck):
+    NEEDED_NS = ( 'net', 'mnt' )
 
     def check(self, instance):
         server_name = instance.get('name')
@@ -148,9 +149,8 @@ class SupervisordCheck(AgentCheck):
     def _connect(instance):
         sock = instance.get('socket')
         if sock is not None:
-            host = instance.get('host', DEFAULT_SOCKET_IP)
             transport = supervisor.xmlrpc.SupervisorTransport(None, None, sock)
-            server = xmlrpclib.ServerProxy(host, transport=transport)
+            server = xmlrpclib.ServerProxy(DEFAULT_SOCKET_IP, transport=transport)
         else:
             host = instance.get('host', DEFAULT_HOST)
             port = instance.get('port', DEFAULT_PORT)

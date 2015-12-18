@@ -676,6 +676,11 @@ app_checks:
     check_module: php_fpm
     pattern:
       exe: "php-fpm: master process"
+  - name: supervisord
+    pattern:
+      comm: supervisord
+    conf:
+      socket: "unix:///var/run/supervisor.sock"
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
