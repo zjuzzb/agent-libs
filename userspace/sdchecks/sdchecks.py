@@ -125,7 +125,8 @@ class AppCheckInstance:
     AGENT_CONFIG = {
         "is_developer_mode": False,
         "version": 1.0,
-        "hostname": get_hostname()
+        "hostname": get_hostname(),
+        "api_key": ""
     }
     INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
