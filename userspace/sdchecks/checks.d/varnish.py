@@ -22,6 +22,7 @@ class BackendStatus(object):
         return AgentCheck.UNKNOWN
 
 class Varnish(AgentCheck):
+    NEEDED_NS = ( 'mnt', 'uts', )
     SERVICE_CHECK_NAME = 'varnish.backend_healthy'
 
     # XML parsing bits, a.k.a. Kafka in Code
@@ -82,11 +83,11 @@ class Varnish(AgentCheck):
         arg = '-x' if use_xml else '-1'
         cmd = [varnishstat_path, arg]
 
-        if name is not None:
-            cmd.extend(['-n', name])
-            tags += [u'varnish_name:%s' % name]
-        else:
-            tags += [u'varnish_name:default']
+        #if name is not None:
+        #    cmd.extend(['-n', name])
+        #    tags += [u'varnish_name:%s' % name]
+        #else:
+        #    tags += [u'varnish_name:default']
 
         output, _, _ = get_subprocess_output(cmd, self.log)
 
