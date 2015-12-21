@@ -34,6 +34,8 @@ int main(int argc, char** argv)
 		"http://" + ip_addr + ":8080", mesos::default_groups_api,
 		"http://" + ip_addr + ":8080", mesos::default_apps_api);
 
+	m.refresh();
+
 	print_proto(m, ip_addr);
 /*
 	ip_addr = "54.152.151.54";

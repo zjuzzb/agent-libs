@@ -3814,18 +3814,26 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
-	ASSERT(m_mesos);
-	ASSERT(m_mesos->is_alive());
-	/*
-	if(!m_mesos->watch_in_thread())
+	static time_t last_mesos_refresh;
+	time_t now;
+	time(&now);
+	if(!last_mesos_refresh || difftime(now, last_mesos_refresh) > 30)
 	{
-		m_mesos->watch();
-	}*/
-	ASSERT(m_metrics);
-	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-	if(m_metrics->has_mesos())
-	{
-		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+		ASSERT(m_mesos);
+		ASSERT(m_mesos->is_alive());
+		/*
+		if(!m_mesos->watch_in_thread())
+		{
+			m_mesos->watch();
+		}*/
+		m_mesos->refresh();
+		ASSERT(m_metrics);
+		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+		if(m_metrics->has_mesos())
+		{
+			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+		}
+		last_mesos_refresh = now;
 	}
 }
 
