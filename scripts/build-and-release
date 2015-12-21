@@ -80,7 +80,7 @@ function configure_debian_repo {
 
 	gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
 	cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	echo "Date:" $(date) > Release
+	echo "Date:" $(date -R) > Release
 	echo "Suite: stable-$DEB_BASEARCH" >> Release
 	echo "MD5Sum:" >> Release
 	echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release

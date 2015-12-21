@@ -630,7 +630,7 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	// Look for mount point of cgroup memory filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent("/proc/mounts", "r");
 	struct mntent* entry = getmntent(fp);
 	while(entry != NULL)
 	{
