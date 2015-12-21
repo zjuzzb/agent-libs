@@ -25,6 +25,7 @@ class Varnish(AgentCheck):
     NEEDED_NS = ( 'mnt', 'uts', )
     SERVICE_CHECK_NAME = 'varnish.backend_healthy'
 
+    GAUGE_TO_RATE_METRICS = ( 'varnish.n_expired', 'varnish.n_lru_nuked' )
     # XML parsing bits, a.k.a. Kafka in Code
     def _reset(self):
         self._current_element = ""
@@ -42,7 +43,10 @@ class Varnish(AgentCheck):
             if self._current_type in ("a", "c"):
                 self.rate(m_name, long(self._current_value), tags=tags)
             elif self._current_type in ("i", "g"):
-                self.gauge(m_name, long(self._current_value), tags=tags)
+                if m_name in self.GAUGE_TO_RATE_METRICS:
+                    self.rate(m_name, long(self._current_value), tags=tags)
+                else:
+                    self.gauge(m_name, long(self._current_value), tags=tags)
             else:
                 # Unsupported data type, ignore
                 self._reset()
@@ -190,7 +194,10 @@ class Varnish(AgentCheck):
                 if rate_val.lower() in ("nan", "."):
                     # col 2 matters
                     self.log.debug("Varnish (gauge) %s %d" % (metric_name, int(gauge_val)))
-                    self.gauge(metric_name, int(gauge_val), tags=tags)
+                    if metric_name in self.GAUGE_TO_RATE_METRICS:
+                        self.rate(metric_name, int(gauge_val), tags=tags)
+                    else:
+                        self.gauge(metric_name, int(gauge_val), tags=tags)
                 else:
                     # col 3 has a rate (since restart)
                     self.log.debug("Varnish (rate) %s %d" % (metric_name, int(gauge_val)))
