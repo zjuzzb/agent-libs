@@ -678,11 +678,6 @@ app_checks:
     check_module: php_fpm
     pattern:
       exe: "php-fpm: master process"
-  - name: supervisord
-    pattern:
-      comm: supervisord
-    conf:
-      socket: "unix:///var/run/supervisor.sock"
   - name: varnish
     pattern:
       comm: varnishd
