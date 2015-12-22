@@ -3,6 +3,7 @@
 import site
 site.addsitedir('/opt/draios/lib/python-deps')
 import sys
+site.addsitedir('/opt/draios/lib/python-deps%d.%d' % sys.version_info[:2])
 sys.path.append('/opt/draios/lib/python')
 
 # Run our app
