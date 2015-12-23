@@ -173,8 +173,15 @@ app_metric::app_metric(const Json::Value &obj):
 		for(const auto& tag_obj : metadata["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
-			auto tag_parsed = sinsp_split(tag_as_str, ':');
-			m_tags[tag_parsed.at(0)] = tag_parsed.size() > 1 ? tag_parsed.at(1) : "";
+			auto colon = tag_as_str.find(':');
+			if(colon != string::npos)
+			{
+				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+			}
+			else
+			{
+				m_tags[tag_as_str] = "";
+			}
 		}
 	}
 }
@@ -210,8 +217,15 @@ app_service_check::app_service_check(const Json::Value &obj):
 		for(const auto& tag_obj : obj["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
-			auto tag_parsed = sinsp_split(tag_as_str, ':');
-			m_tags[tag_parsed.at(0)] = tag_parsed.size() > 1 ? tag_parsed.at(1) : "";
+			auto colon = tag_as_str.find(':');
+			if(colon != string::npos)
+			{
+				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+			}
+			else
+			{
+				m_tags[tag_as_str] = "";
+			}
 		}
 	}
 	if(obj.isMember("message") && obj["message"].isString())

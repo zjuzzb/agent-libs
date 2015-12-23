@@ -18,7 +18,8 @@ class app_check
 {
 public:
 	explicit app_check():
-		m_port_pattern(0)
+		m_port_pattern(0),
+		m_enabled(true)
 	{}
 
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -26,6 +27,10 @@ public:
 	const string& name() const
 	{
 		return m_name;
+	}
+
+	bool enabled() const {
+		return m_enabled;
 	}
 
 private:
@@ -36,6 +41,7 @@ private:
 	uint16_t m_port_pattern;
 	string m_arg_pattern;
 	string m_name;
+	bool m_enabled;
 };
 
 class app_process

@@ -24,13 +24,14 @@ except ImportError:
     from yaml import Loader as yLoader  # noqa, imported from here elsewhere
     from yaml import Dumper as yDumper  # noqa, imported from here elsewhere
 
+# project
 # These classes are now in utils/, they are just here for compatibility reasons,
 # if a user actually uses them in a custom check
 # If you're this user, please use utils.pidfile or utils.platform instead
 # FIXME: remove them at a point (6.x)
 from utils.pidfile import PidFile  # noqa, see ^^^
 from utils.platform import Platform
-from utils.subprocess_output import subprocess
+from utils.subprocess_output import get_subprocess_output
 
 
 VALID_HOSTNAME_RFC_1123_PATTERN = re.compile(r"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$")
@@ -139,14 +140,6 @@ def get_next_id(name):
     return current_id
 
 def is_valid_hostname(hostname):
-    #if hostname.lower() in set([
-    #    'localhost',
-    #    'localhost.localdomain',
-    #    'localhost6.localdomain6',
-    #    'ip6-localhost',
-    #]):
-    #    log.warning("Hostname: %s is local" % hostname)
-    #    return False
     if len(hostname) > MAX_HOSTNAME_LEN:
         log.warning("Hostname: %s is too long (max length is  %s characters)" % (hostname, MAX_HOSTNAME_LEN))
         return False
@@ -187,9 +180,8 @@ def get_hostname(config=None):
         def _get_hostname_unix():
             try:
                 # try fqdn
-                p = subprocess.Popen(['/bin/hostname'], stdout=subprocess.PIPE)
-                out, err = p.communicate()
-                if p.returncode == 0:
+                out, _, rtcode = get_subprocess_output(['/bin/hostname', '-f'], log)
+                if rtcode == 0:
                     return out.strip()
             except Exception:
                 return None
@@ -201,7 +193,7 @@ def get_hostname(config=None):
                 hostname = unix_hostname
 
     # if we have an ec2 default hostname, see if there's an instance-id available
-    if hostname is not None and True in [hostname.lower().startswith(p) for p in [u'ip-', u'domu']]:
+    if (Platform.is_ecs_instance()) or (hostname is not None and True in [hostname.lower().startswith(p) for p in [u'ip-', u'domu']]):
         instanceid = EC2.get_instance_id(config)
         if instanceid:
             hostname = instanceid
@@ -225,7 +217,8 @@ class GCE(object):
     TIMEOUT = 0.1 # second
     SOURCE_TYPE_NAME = 'google cloud platform'
     metadata = None
-    EXCLUDED_ATTRIBUTES = ["sshKeys"]
+    EXCLUDED_ATTRIBUTES = ["kube-env", "startup-script", "sshKeys", "user-data",
+    "cli-cert", "ipsec-cert", "ssl-cert"]
 
 
     @staticmethod
@@ -295,7 +288,21 @@ class GCE(object):
     def get_hostname(agentConfig):
         try:
             host_metadata = GCE._get_metadata(agentConfig)
-            return host_metadata['instance']['hostname'].split('.')[0]
+            hostname = host_metadata['instance']['hostname']
+            if agentConfig.get('gce_updated_hostname'):
+                return hostname
+            else:
+                return hostname.split('.')[0]
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_host_aliases(agentConfig):
+        try:
+            host_metadata = GCE._get_metadata(agentConfig)
+            project_id = host_metadata['project']['projectId']
+            instance_name = host_metadata['instance']['hostname'].split('.')[0]
+            return ['%s.%s' % (instance_name, project_id)]
         except Exception:
             return None
 
@@ -324,8 +331,8 @@ class EC2(object):
             pass
 
         try:
-            iam_role = urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials").read().strip()
-            iam_params = json.loads(urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials" + "/" + unicode(iam_role)).read().strip())
+            iam_role = urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/").read().strip()
+            iam_params = json.loads(urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/" + unicode(iam_role)).read().strip())
             instance_identity = json.loads(urllib2.urlopen(EC2.INSTANCE_IDENTITY_URL).read().strip())
             region = instance_identity['region']
 
@@ -376,11 +383,11 @@ class EC2(object):
         except Exception:
             pass
 
-        for k in ('instance-id', 'hostname', 'local-hostname', 'public-hostname', 'ami-id', 'local-ipv4', 'public-keys', 'public-ipv4', 'reservation-id', 'security-groups'):
+        for k in ('instance-id', 'hostname', 'local-hostname', 'public-hostname', 'ami-id', 'local-ipv4', 'public-keys/', 'public-ipv4', 'reservation-id', 'security-groups'):
             try:
                 v = urllib2.urlopen(EC2.METADATA_URL_BASE + "/" + unicode(k)).read().strip()
                 assert type(v) in (types.StringType, types.UnicodeType) and len(v) > 0, "%s is not a string" % v
-                EC2.metadata[k] = v
+                EC2.metadata[k.rstrip('/')] = v
             except Exception:
                 pass
 

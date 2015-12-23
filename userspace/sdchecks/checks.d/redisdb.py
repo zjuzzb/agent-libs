@@ -48,8 +48,6 @@ class Redis(AgentCheck):
         'expired_keys':                 'redis.keys.expired',
 
         # stats
-        'keyspace_hits':                'redis.stats.keyspace_hits',
-        'keyspace_misses':              'redis.stats.keyspace_misses',
         'latest_fork_usec':             'redis.perf.latest_fork_usec',
 
         # pubsub
@@ -83,6 +81,10 @@ class Redis(AgentCheck):
         'used_cpu_sys_children':        'redis.cpu.sys_children',
         'used_cpu_user':                'redis.cpu.user',
         'used_cpu_user_children':       'redis.cpu.user_children',
+
+        # stats
+        'keyspace_hits':                'redis.stats.keyspace_hits',
+        'keyspace_misses':              'redis.stats.keyspace_misses',
     }
 
     def __init__(self, name, init_config, agentConfig, instances=None):
@@ -205,10 +207,11 @@ class Redis(AgentCheck):
                     self.gauge(metric, val, tags=db_tags)
 
         # Save a subset of db-wide statistics
-        for k in set(info).intersection(self.GAUGE_KEYS):
-            self.gauge(self.GAUGE_KEYS[k], info[k], tags=tags)
-        for k in set(info).intersection(self.RATE_KEYS):
-            self.rate(self.RATE_KEYS[k], info[k], tags=tags)
+        for info_name, value in info.iteritems():
+            if info_name in self.GAUGE_KEYS:
+                self.gauge(self.GAUGE_KEYS[info_name], info[info_name], tags=tags)
+            elif info_name in self.RATE_KEYS:
+                self.rate(self.RATE_KEYS[info_name], info[info_name], tags=tags)
 
         # Save the number of commands.
         self.rate('redis.net.commands', info['total_commands_processed'],
@@ -282,11 +285,15 @@ class Redis(AgentCheck):
         tags, _ = self._get_tags(custom_tags, instance)
 
         if not instance.get(MAX_SLOW_ENTRIES_KEY):
-            max_slow_entries = int(conn.config_get(MAX_SLOW_ENTRIES_KEY)[MAX_SLOW_ENTRIES_KEY])
-            if max_slow_entries > DEFAULT_MAX_SLOW_ENTRIES:
-                self.warning("Redis {0} is higher than {1}. Defaulting to {1}."
-                    "If you need a higher value, please set {0} in your check config"
-                    .format(MAX_SLOW_ENTRIES_KEY, DEFAULT_MAX_SLOW_ENTRIES))
+            try:
+                max_slow_entries = int(conn.config_get(MAX_SLOW_ENTRIES_KEY)[MAX_SLOW_ENTRIES_KEY])
+                if max_slow_entries > DEFAULT_MAX_SLOW_ENTRIES:
+                    self.warning("Redis {0} is higher than {1}. Defaulting to {1}."
+                                 "If you need a higher value, please set {0} in your check config"
+                                 .format(MAX_SLOW_ENTRIES_KEY, DEFAULT_MAX_SLOW_ENTRIES))
+                    max_slow_entries = DEFAULT_MAX_SLOW_ENTRIES
+            # No config on AWS Elasticache
+            except redis.ResponseError:
                 max_slow_entries = DEFAULT_MAX_SLOW_ENTRIES
         else:
             max_slow_entries = int(instance.get(MAX_SLOW_ENTRIES_KEY))

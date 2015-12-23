@@ -1,11 +1,11 @@
 # stdlib
 from collections import defaultdict
 import re
-import subprocess
 import xml.parsers.expat # python 2.4 compatible
 
 # project
 from checks import AgentCheck
+from utils.subprocess_output import get_subprocess_output
 
 
 class BackendStatus(object):
@@ -22,8 +22,10 @@ class BackendStatus(object):
         return AgentCheck.UNKNOWN
 
 class Varnish(AgentCheck):
+    NEEDED_NS = ( 'mnt', 'uts', )
     SERVICE_CHECK_NAME = 'varnish.backend_healthy'
 
+    GAUGE_TO_RATE_METRICS = ( 'varnish.n_expired', 'varnish.n_lru_nuked' )
     # XML parsing bits, a.k.a. Kafka in Code
     def _reset(self):
         self._current_element = ""
@@ -41,7 +43,10 @@ class Varnish(AgentCheck):
             if self._current_type in ("a", "c"):
                 self.rate(m_name, long(self._current_value), tags=tags)
             elif self._current_type in ("i", "g"):
-                self.gauge(m_name, long(self._current_value), tags=tags)
+                if m_name in self.GAUGE_TO_RATE_METRICS:
+                    self.rate(m_name, long(self._current_value), tags=tags)
+                else:
+                    self.gauge(m_name, long(self._current_value), tags=tags)
             else:
                 # Unsupported data type, ignore
                 self._reset()
@@ -82,13 +87,13 @@ class Varnish(AgentCheck):
         arg = '-x' if use_xml else '-1'
         cmd = [varnishstat_path, arg]
 
-        if name is not None:
-            cmd.extend(['-n', name])
-            tags += [u'varnish_name:%s' % name]
-        else:
-            tags += [u'varnish_name:default']
+        #if name is not None:
+        #    cmd.extend(['-n', name])
+        #    tags += [u'varnish_name:%s' % name]
+        #else:
+        #    tags += [u'varnish_name:default']
 
-        output = self._get_varnishstat_output(cmd)
+        output, _, _ = get_subprocess_output(cmd, self.log)
 
         self._parse_varnishstat(output, use_xml, tags)
 
@@ -97,24 +102,13 @@ class Varnish(AgentCheck):
         if varnishadm_path:
             secretfile_path = instance.get('secretfile', '/etc/varnish/secret')
             cmd = ['sudo', varnishadm_path, '-S', secretfile_path, 'debug.health']
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            output, _ = proc.communicate()
+            output, _, _ = get_subprocess_output(cmd, self.log)
             if output:
                 self._parse_varnishadm(output)
 
-    def _get_varnishstat_output(self, cmd):
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        output, error = proc.communicate()
-        if error and len(error) > 0:
-            self.log.error(error)
-        return output
-
     def _get_version_info(self, varnishstat_path):
         # Get the varnish version from varnishstat
-        output, error = subprocess.Popen([varnishstat_path, "-V"],
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE).communicate()
+        output, error, _ = get_subprocess_output([varnishstat_path, "-V"], self.log)
 
         # Assumptions regarding varnish's version
         use_xml = True
@@ -200,7 +194,10 @@ class Varnish(AgentCheck):
                 if rate_val.lower() in ("nan", "."):
                     # col 2 matters
                     self.log.debug("Varnish (gauge) %s %d" % (metric_name, int(gauge_val)))
-                    self.gauge(metric_name, int(gauge_val), tags=tags)
+                    if metric_name in self.GAUGE_TO_RATE_METRICS:
+                        self.rate(metric_name, int(gauge_val), tags=tags)
+                    else:
+                        self.gauge(metric_name, int(gauge_val), tags=tags)
                 else:
                     # col 3 has a rate (since restart)
                     self.log.debug("Varnish (rate) %s %d" % (metric_name, int(gauge_val)))
