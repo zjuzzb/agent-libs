@@ -18,8 +18,9 @@
 #include <stdexcept>
 #include <unistd.h>
 
-mesos_http::mesos_http(const std::string& url):
+mesos_http::mesos_http(mesos& m, const uri& url):
 	m_curl(curl_easy_init()),
+	m_mesos(m),
 	m_url(url),
 	m_connected(true)
 {
@@ -67,7 +68,7 @@ size_t mesos_http::write_data(void *ptr, size_t size, size_t nmemb, void *cb)
 	return size * nmemb;
 }
 
-bool mesos_http::get_all_data(std::ostream& os)
+bool mesos_http::get_all_data(/*std::ostream& os*/parse_func_t parse)
 {
 	g_logger.log(std::string("Retrieving all data from ") + m_url.to_string(), sinsp_logger::SEV_DEBUG);
 	curl_easy_setopt(m_curl, CURLOPT_URL, m_url.to_string().c_str());
@@ -81,8 +82,8 @@ bool mesos_http::get_all_data(std::ostream& os)
 	curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1); //Prevent "longjmp causes uninitialized stack frame" bug
 	curl_easy_setopt(m_curl, CURLOPT_ACCEPT_ENCODING, "deflate");
 	curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &mesos_http::write_data);
+	std::ostringstream os;
 	curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &os);
-
 	CURLcode res = curl_easy_perform(m_curl);
 
 	if(res != CURLE_OK)
@@ -92,12 +93,13 @@ bool mesos_http::get_all_data(std::ostream& os)
 	}
 	else
 	{
+		(m_mesos.*parse)(os.str());
 		m_connected = true;
 	}
 
 	return res == CURLE_OK;
 }
-/*
+
 int mesos_http::wait(curl_socket_t sockfd, int for_recv, long timeout_ms)
 {
 	struct timeval tv;
@@ -132,8 +134,8 @@ int mesos_http::get_watch_socket(long timeout_ms)
 	{
 		long sockextr;
 		size_t iolen;
-		std::string url = m_url;
-		url.insert(m_url.find(m_api) + m_api.size(), "/watch");
+		std::string url;// = m_url;
+		//url.insert(m_url.find(m_api) + m_api.size(), "/watch");
 
 		check_error(curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str()));
 		check_error(curl_easy_setopt(m_curl, CURLOPT_CONNECT_ONLY, 1L));
@@ -195,7 +197,7 @@ bool mesos_http::on_data()
 		{
 			if(m_data_ready)
 			{
-				m_mesos.on_watch_data(k8s_event_data(k8s_component::get_type(m_component), buf, iolen));
+				m_mesos.on_watch_data(mesos_event_data(mesos_component::get_type(m_component), buf, iolen));
 			}
 			else // wait for a line with "\r\n" only
 			{
@@ -213,7 +215,7 @@ bool mesos_http::on_data()
 					{
 						char* pbuf = &buf[pos];
 						m_data_ready = true;
-						m_mesos.on_watch_data(k8s_event_data(k8s_component::get_type(m_component), pbuf, iolen - pos));
+						m_mesos.on_watch_data(mesos_event_data(mesos_component::get_type(m_component), pbuf, iolen - pos));
 					}
 				}
 			}
@@ -238,7 +240,7 @@ void mesos_http::on_error(const std::string& err, bool disconnect)
 		cleanup();
 	}
 }
-*/
+
 void mesos_http::check_error(CURLcode res)
 {
 	if(CURLE_OK != res && CURLE_AGAIN != res)

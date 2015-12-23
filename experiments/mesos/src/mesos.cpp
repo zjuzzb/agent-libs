@@ -26,9 +26,9 @@ mesos::mesos(const std::string& state_uri,
 	const std::string& groups_uri,
 	const std::string& groups_api,
 	const std::string& apps_uri,
-	const std::string& apps_api): m_state_http(state_uri + state_api),
-		m_groups_http(groups_uri.empty() ? 0 : new mesos_http(groups_uri + groups_api)),
-		m_apps_http(apps_uri.empty() ? 0 : new mesos_http(apps_uri + apps_api))
+	const std::string& apps_api): m_state_http(*this, state_uri + state_api),
+		m_groups_http(groups_uri.empty() ? 0 : new mesos_http(*this, groups_uri + groups_api)),
+		m_apps_http(apps_uri.empty() ? 0 : new mesos_http(*this, apps_uri + apps_api))
 {
 	refresh();
 }
@@ -43,22 +43,22 @@ void mesos::refresh()
 {
 	clear();
 
-	std::ostringstream os;
-	m_state_http.get_all_data(os);
-	parse_state(os.str());
+	//std::ostringstream os;
+	m_state_http.get_all_data(/*os*/&mesos::parse_state);
+	//parse_state(os.str());
 
 	if(m_apps_http)
 	{
-		os.str("");
-		m_apps_http->get_all_data(os);
-		parse_apps(os.str());
+		//os.str("");
+		m_apps_http->get_all_data(/*os*/&mesos::parse_apps);
+		//parse_apps(os.str());
 	}
 
 	if(m_groups_http)
 	{
-		os.str("");
-		m_groups_http->get_all_data(os);
-		parse_groups(os.str());
+		//os.str("");
+		m_groups_http->get_all_data(/*os*/&mesos::parse_groups);
+		//parse_groups(os.str());
 	}
 }
 
@@ -84,6 +84,11 @@ void mesos::determine_node_type(const Json::Value& root)
 			}
 		}
 	}
+}
+
+void mesos::on_watch_data(mesos_event_data&& msg)
+{
+	//m_dispatch[msg.component()]->enqueue(std::move(msg));
 }
 
 void mesos::parse_state(const std::string& json)

@@ -9,6 +9,7 @@
 #include "mesos_component.h"
 #include "mesos_http.h"
 #include "mesos_state.h"
+#include "mesos_event_data.h"
 #include "uri.h"
 #include <sstream>
 #include <utility>
@@ -44,6 +45,8 @@ public:
 	void refresh();
 	void clear();
 
+	void on_watch_data(mesos_event_data&& msg);
+
 private:
 
 	void parse_state(const std::string& json);
@@ -71,6 +74,8 @@ private:
 	mesos_state_t m_state;
 
 	static const mesos_component::component_map m_components;
+
+	friend class mesos_http;
 };
 
 inline mesos::node_t mesos::get_node_type() const

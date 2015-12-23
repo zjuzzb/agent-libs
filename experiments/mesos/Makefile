@@ -34,10 +34,10 @@ LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -lPocoFoundation -Wl,-Bdynami
 
 ODIR=$(MAKEDIR)/obj
 
-_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_proto.h marathon_component.h uri.h
+_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_collector.h mesos_proto.h mesos_event_data.h marathon_component.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_proto.o marathon_component.o jsoncpp.o uri.o
+_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_collector.o mesos_proto.o mesos_event_data.o marathon_component.o jsoncpp.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 all: directory mesosget
