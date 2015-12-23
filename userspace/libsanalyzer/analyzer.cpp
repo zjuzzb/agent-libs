@@ -3814,26 +3814,31 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
-	static time_t last_mesos_refresh;
+	static time_t last_mesos_refresh = 0;
+	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
 	time_t now;
 	time(&now);
-	if(!last_mesos_refresh || difftime(now, last_mesos_refresh) > 30)
+	ASSERT(m_mesos);
+	ASSERT(m_mesos->is_alive());
+	/*
+	if(!m_mesos->watch_in_thread())
 	{
-		ASSERT(m_mesos);
-		ASSERT(m_mesos->is_alive());
-		/*
-		if(!m_mesos->watch_in_thread())
-		{
-			m_mesos->watch();
-		}*/
-		m_mesos->refresh();
-		ASSERT(m_metrics);
-		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-		if(m_metrics->has_mesos())
-		{
-			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
-		}
+		m_mesos->watch();
+	}*/
+	if(!last_mesos_refresh)
+	{
 		last_mesos_refresh = now;
+	}
+	if(difftime(now, last_mesos_refresh) > 30)
+	{
+		m_mesos->refresh();
+		last_mesos_refresh = now;
+	}
+	ASSERT(m_metrics);
+	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+	if(m_metrics->has_mesos())
+	{
+		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
 	}
 }
 
@@ -3860,6 +3865,7 @@ void sinsp_analyzer::emit_mesos()
 	const string& mesos_uri = m_configuration->get_mesos_state_uri();
 	if(!mesos_uri.empty())
 	{
+		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
 		try
 		{
 			if(!m_mesos/* && !m_mesos_bad_config*/)
@@ -4128,7 +4134,13 @@ vector<string> sinsp_analyzer::emit_containers()
 					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type);
-
+/*
+	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " Mesos containers.", sinsp_logger::SEV_DEBUG);
+	for(const auto& c : m_metrics->containers())
+	{
+		g_logger.log(c.DebugString(), sinsp_logger::SEV_DEBUG);
+	}
+*/
 	m_containers.clear();
 	return emitted_containers;
 }
