@@ -23,7 +23,8 @@
 #include "analyzer_int.h"
 #include "procfs_parser.h"
 
-sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture)
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture):
+	m_bad_interfaces_regex("^lo|^stf|^gif|^dummy|^vmnet|^docker|^veth")
 {
 	m_ncpus = ncpus;
 	m_physical_memory_kb = physical_memory_kb;
@@ -31,6 +32,8 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
+	m_last_in_bytes = 0;
+	m_last_out_bytes = 0;
 }
 
 double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
@@ -649,6 +652,49 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
 		m_memory_cgroup_dir = make_unique<string>();
 	}
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
+{
+	pair<uint32_t, uint32_t> ret;
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	auto net_dev = fopen(net_dev_path, "r");
+	char skip_buffer[1024];
+
+	// Skip first two lines as they are column headers
+	fgets(skip_buffer, sizeof(skip_buffer), net_dev);
+	fgets(skip_buffer, sizeof(skip_buffer), net_dev);
+
+	char interface_name[30];
+	unsigned ign;
+	uint64_t in_bytes, out_bytes;
+	uint64_t tot_in_bytes = 0;
+	uint64_t tot_out_bytes = 0;
+	while(fscanf(net_dev, "%s %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
+				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	{
+		cerr << interface_name << " " << in_bytes << ", " << out_bytes << endl;
+		if(!regex_search(interface_name, m_bad_interfaces_regex))
+		{
+			cerr << "selected" << endl;
+			tot_in_bytes += in_bytes;
+			tot_out_bytes += out_bytes;
+		}
+	}
+	cerr << "Total: " << tot_in_bytes << ", " << tot_out_bytes << endl;
+	// Calculate delta
+	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	{
+		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+		cerr << "Delta: " << ret.first << ", " << ret.second << endl;
+	}
+	m_last_in_bytes = tot_in_bytes;
+	m_last_out_bytes = tot_out_bytes;
+
+	return ret;
 }
 
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):

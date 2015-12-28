@@ -1,5 +1,6 @@
 #pragma once
 
+#include <regex>
 #include "posix_queue.h"
 #include "sdc_internal.pb.h"
 
@@ -50,6 +51,7 @@ public:
 	vector<string> read_process_cmdline(uint64_t pid);
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
+	pair<uint32_t, uint32_t> read_network_interfaces_stats();
 private:
 	void lookup_memory_cgroup_dir();
 
@@ -57,6 +59,9 @@ private:
 	int64_t m_physical_memory_kb;
 	bool m_is_live_capture;
 
+	regex m_bad_interfaces_regex;
+	uint64_t m_last_in_bytes;
+	uint64_t m_last_out_bytes;
 	// nullptr means that lookup have not yet take place
 	// "" means that it cannot find memory cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
