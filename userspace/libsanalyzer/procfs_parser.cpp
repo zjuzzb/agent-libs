@@ -684,7 +684,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 		}
 	}
 	cerr << "Total: " << tot_in_bytes << ", " << tot_out_bytes << endl;
-	// Calculate delta
+	// Calculate delta, no delta if is the first time we read
 	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
 	{
 		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
