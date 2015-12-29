@@ -35,6 +35,7 @@
 #include "connectinfo.h"
 #include "analyzer_thread.h"
 #include "protostate.h"
+#include "procfs_parser.h"
 #include <array>
 
 using Poco::NumberFormatter;
@@ -776,4 +777,17 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	EXPECT_TRUE(found_slow);
 	EXPECT_TRUE(found_top_call);
 	EXPECT_EQ(500, top_ncalls);
+}
+
+TEST(sinsp_procfs_parser, test_read_network_interfaces_stats)
+{
+	sinsp_procfs_parser parser(1, 1024, true);
+
+	auto stats = parser.read_network_interfaces_stats();
+	EXPECT_EQ(stats.first, 0);
+	EXPECT_EQ(stats.second, 0);
+	system("curl https://google.com > /dev/null 2> /dev/null");
+	stats = parser.read_network_interfaces_stats();
+	EXPECT_GT(stats.first, 0);
+	EXPECT_GT(stats.second, 0);
 }
