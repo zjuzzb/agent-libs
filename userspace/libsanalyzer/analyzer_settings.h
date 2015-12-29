@@ -201,3 +201,4 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 30;

@@ -99,6 +99,12 @@ private:
 class app_check_data
 {
 public:
+	// Added for unordered_map::operator[]
+	explicit app_check_data():
+			m_pid(0),
+			m_expiration_ts(0)
+	{};
+
 	explicit app_check_data(const Json::Value& obj);
 
 	int pid() const
@@ -106,12 +112,19 @@ public:
 		return m_pid;
 	}
 
+	uint64_t expiration_ts() const
+	{
+		return m_expiration_ts;
+	}
+
 	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
+
 private:
 	int m_pid;
 	string m_process_name;
 	vector<app_metric> m_metrics;
 	vector<app_service_check> m_service_checks;
+	uint64_t m_expiration_ts;
 };
 
 class app_checks_proxy
@@ -121,9 +134,7 @@ public:
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	// nullptr means no msg received
-	// empty map means message received but there are not metrics inside
-	unique_ptr<unordered_map<int, app_check_data>> read_metrics();
+	unordered_map<int, app_check_data> read_metrics();
 
 private:
 	posix_queue m_outqueue;
