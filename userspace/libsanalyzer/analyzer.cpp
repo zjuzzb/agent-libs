@@ -2881,7 +2881,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 
-			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
+			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Patching host external networking, from (%u, %u) to (%u, %u)",
+								m_io_net.m_bytes_in, m_io_net.m_bytes_out,
+								interfaces_stats.first, interfaces_stats.second);
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio,
+								interfaces_stats.first, interfaces_stats.second);
+			}
+			else
+			{
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
