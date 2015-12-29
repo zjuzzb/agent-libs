@@ -632,6 +632,7 @@ app_checks:
       report_url: "http://localhost:{port}/rpc/report"
   - name: mesos-master
     check_module: mesos_master
+    interval: 30
     pattern: 
       comm: mesos-master
     conf:
@@ -640,6 +641,7 @@ app_checks:
     check_module: mesos_slave
     pattern: 
       comm: mesos-slave
+    interval: 30
     conf:
       url: "http://localhost:{port}"
       # Name of individual tasks to monitor, if needed
@@ -648,6 +650,7 @@ app_checks:
         # - cassandra
   - name: marathon
     check_module: marathon
+    interval: 30
     pattern: 
       arg: mesosphere.marathon.Main
     conf:
