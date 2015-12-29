@@ -1,6 +1,5 @@
 #pragma once
 
-#include <regex>
 #include "posix_queue.h"
 #include "sdc_internal.pb.h"
 
@@ -59,7 +58,6 @@ private:
 	int64_t m_physical_memory_kb;
 	bool m_is_live_capture;
 
-	regex m_bad_interfaces_regex;
 	uint64_t m_last_in_bytes;
 	uint64_t m_last_out_bytes;
 	// nullptr means that lookup have not yet take place

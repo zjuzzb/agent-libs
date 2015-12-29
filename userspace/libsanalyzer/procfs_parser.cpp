@@ -23,8 +23,7 @@
 #include "analyzer_int.h"
 #include "procfs_parser.h"
 
-sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture):
-	m_bad_interfaces_regex("^lo|^stf|^gif|^dummy|^vmnet|^docker|^veth")
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture)
 {
 	m_ncpus = ncpus;
 	m_physical_memory_kb = physical_memory_kb;
@@ -691,11 +690,14 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	uint64_t tot_in_bytes = 0;
 	uint64_t tot_out_bytes = 0;
 
-	while(fscanf(net_dev, "%s %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
 				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
 				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
 	{
-		if(!regex_search(interface_name, m_bad_interfaces_regex))
+		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
+				return strcasestr(interface_name, bad_interface) == interface_name;
+			}) == BAD_INTERFACE_NAMES.end())
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
