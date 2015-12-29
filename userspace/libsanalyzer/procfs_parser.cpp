@@ -657,39 +657,60 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 {
 	pair<uint32_t, uint32_t> ret;
+
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
+
 	char net_dev_path[100];
 	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
 	auto net_dev = fopen(net_dev_path, "r");
-	char skip_buffer[1024];
+	if(net_dev == NULL)
+	{
+		return ret;
+	}
 
 	// Skip first two lines as they are column headers
-	fgets(skip_buffer, sizeof(skip_buffer), net_dev);
-	fgets(skip_buffer, sizeof(skip_buffer), net_dev);
+	char skip_buffer[1024];
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
 
 	char interface_name[30];
 	unsigned ign;
 	uint64_t in_bytes, out_bytes;
 	uint64_t tot_in_bytes = 0;
 	uint64_t tot_out_bytes = 0;
+
 	while(fscanf(net_dev, "%s %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
 				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
 	{
-		cerr << interface_name << " " << in_bytes << ", " << out_bytes << endl;
 		if(!regex_search(interface_name, m_bad_interfaces_regex))
 		{
-			cerr << "selected" << endl;
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
 			tot_out_bytes += out_bytes;
 		}
 	}
-	cerr << "Total: " << tot_in_bytes << ", " << tot_out_bytes << endl;
-	// Calculate delta, no delta if is the first time we read
+	fclose(net_dev);
+
+	// Calculate delta, no delta if it is the first time we read
 	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
 	{
+		// Network metrics use uint32_t on protobuf, so we use the same
+		// for deltas
 		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
 		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
-		cerr << "Delta: " << ret.first << ", " << ret.second << endl;
 	}
 	m_last_in_bytes = tot_in_bytes;
 	m_last_out_bytes = tot_out_bytes;
