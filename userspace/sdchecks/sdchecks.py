@@ -81,6 +81,7 @@ class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
         self.conf = node.get("conf", {})
+        self.interval = timedelta(seconds=node.get("interval", 1))
 
         try:
             check_module_name = node["check_module"]
@@ -137,6 +138,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
+        self.interval = check.interval
         self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
@@ -356,10 +358,13 @@ class Application:
             if ex and pid not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 self.blacklisted_pids.add(pid)
+
+            expiration_ts = datetime.now() + check_instance.interval
             response_body.append({  "pid": pid,
                                     "display_name": check_instance.name,
                                     "metrics": metrics,
-                                    "service_checks": service_checks})
+                                    "service_checks": service_checks,
+                                    "expiration_ts": int(expiration_ts.strftime("%s"))})
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d" % len(response_s))
         self.outqueue.send(response_s)
