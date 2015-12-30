@@ -1120,10 +1120,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy)
 		{
-			auto app_metrics = m_app_proxy->read_metrics();
-			if(app_metrics)
+			for(auto it = m_app_metrics.begin(); it != m_app_metrics.end();)
 			{
-				m_app_metrics = move(app_metrics);
+				auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
+				if(flush_time_s > it->second.expiration_ts() &&
+				   flush_time_s - it->second.expiration_ts() > APP_METRICS_EXPIRATION_TIMEOUT_S)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for pid %d expired %u s ago, forcing wipe", it->first, flush_time_s - it->second.expiration_ts());
+					it = m_app_metrics.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+			auto app_metrics = m_app_proxy->read_metrics();
+			for(auto& item : app_metrics)
+			{
+
+				m_app_metrics[item.first] = move(item.second);
 			}
 		}
 	}
@@ -1459,14 +1474,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// we don't need more checks instances for each process.
 			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
 			{
-				for(const auto& check : m_app_checks)
+				auto app_metrics_it = m_app_metrics.find(tinfo->m_pid);
+				if(app_metrics_it != m_app_metrics.end() &&
+				   app_metrics_it->second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS))
 				{
-					if(check.match(tinfo))
+					// Found app metrics for this pid that are not expired
+					// so we can use them instead of running the check again
+					g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for %d are still good", tinfo->m_pid);
+					mtinfo->m_ainfo->set_app_check_found();
+				}
+				else
+				{
+					for(const auto& check : m_app_checks)
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-						app_checks_processes.emplace_back(check.name(), tinfo);
-						mtinfo->m_ainfo->set_app_check_found();
-						break;
+						if(check.match(tinfo))
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+							app_checks_processes.emplace_back(check.name(), tinfo);
+							mtinfo->m_ainfo->set_app_check_found();
+							break;
+						}
 					}
 				}
 			}
@@ -1854,16 +1881,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					jmx_metrics_it->second.to_protobuf(java_proto);
 				}
 			}
-			if(m_app_proxy && m_app_metrics)
+			if(m_app_proxy)
 			{
-				auto app_data_it = m_app_metrics->end();
+				auto app_data_it = m_app_metrics.end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
-					pid_it != procinfo->m_program_pids.end() && app_data_it == m_app_metrics->end();
+					pid_it != procinfo->m_program_pids.end() && app_data_it == m_app_metrics.end();
 					++pid_it)
 				{
-					app_data_it = m_app_metrics->find(*pid_it);
+					app_data_it = m_app_metrics.find(*pid_it);
 				}
-				if(app_data_it != m_app_metrics->end())
+				if(app_data_it != m_app_metrics.end())
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
 					app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
@@ -3030,7 +3057,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 
-			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
+			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Patching host external networking, from (%u, %u) to (%u, %u)",
+								m_io_net.m_bytes_in, m_io_net.m_bytes_out,
+								interfaces_stats.first, interfaces_stats.second);
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio,
+								interfaces_stats.first, interfaces_stats.second);
+			}
+			else
+			{
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)

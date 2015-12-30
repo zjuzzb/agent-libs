@@ -76,29 +76,29 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-unique_ptr<unordered_map<int, app_check_data>> app_checks_proxy::read_metrics()
+unordered_map<int, app_check_data> app_checks_proxy::read_metrics()
 {
-	unique_ptr<unordered_map<int, app_check_data>> ret;
+	unordered_map<int, app_check_data> ret;
 	auto msg = m_inqueue.receive();
 	if(!msg.empty())
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
 		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
-		ret = make_unique<unordered_map<int, app_check_data>>();
 		Json::Value response_obj;
 		m_json_reader.parse(msg, response_obj, false);
 		// Parse data
 		for(const auto& process : response_obj)
 		{
 			app_check_data data(process);
-			ret->emplace(data.pid(), move(data));
+			ret.emplace(data.pid(), move(data));
 		}
 	}
 	return ret;
 }
 
 app_check_data::app_check_data(const Json::Value &obj):
-	m_pid(obj["pid"].asInt())
+	m_pid(obj["pid"].asInt()),
+	m_expiration_ts(obj["expiration_ts"].asUInt64())
 {
 	if(obj.isMember("display_name"))
 	{
