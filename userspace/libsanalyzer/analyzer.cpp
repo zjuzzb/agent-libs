@@ -1011,7 +1011,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 			}
 			auto app_metrics = m_app_proxy->read_metrics();
-			for(const auto& item : app_metrics)
+			for(auto& item : app_metrics)
 			{
 
 				m_app_metrics[item.first] = move(item.second);
