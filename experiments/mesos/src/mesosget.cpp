@@ -31,12 +31,20 @@ int main(int argc, char** argv)
 {
 	std::string ip_addr = "54.152.106.80";
 	mesos m("http://" + ip_addr + ":5050", "/master/state", 
-		"http://" + ip_addr + ":8080", mesos::default_groups_api,
-		"http://" + ip_addr + ":8080", mesos::default_apps_api);
+		"http://" + ip_addr + ":8080",
+		mesos::default_groups_api,
+		mesos::default_apps_api,
+		mesos::default_watch_api);
 
-	m.refresh();
+	//print_proto(m, ip_addr);
 
-	print_proto(m, ip_addr);
+	//m.refresh(true);
+	while(true)
+	{
+		m.watch();
+	}
+
+	
 /*
 	ip_addr = "54.152.151.54";
 	mesos s1("http://" + ip_addr + ":5051");

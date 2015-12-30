@@ -14,51 +14,69 @@ const mesos_component::component_map mesos::m_components =
 	{ mesos_component::MESOS_SLAVE,     "slave"     }
 };
 
-const std::string mesos::default_state_uri = "http://localhost:5050";
-const std::string mesos::default_state_api = "/master/state";
-const std::string mesos::default_groups_uri = "http://localhost:8080";
-const std::string mesos::default_groups_api = "/v2/groups";
-const std::string mesos::default_apps_uri = "http://localhost:8080";
-const std::string mesos::default_apps_api = "/v2/apps?embed=apps.tasks";
+const std::string mesos::default_state_uri    = "http://localhost:5050";
+const std::string mesos::default_state_api    = "/master/state";
+const std::string mesos::default_marathon_uri = "http://localhost:8080";
+const std::string mesos::default_groups_api   = "/v2/groups";
+const std::string mesos::default_apps_api     = "/v2/apps?embed=apps.tasks";
+const std::string mesos::default_watch_api    = "/v2/events";
 
 mesos::mesos(const std::string& state_uri,
 	const std::string& state_api,
-	const std::string& groups_uri,
+	const std::string& marathon_uri,
 	const std::string& groups_api,
-	const std::string& apps_uri,
-	const std::string& apps_api): m_state_http(*this, state_uri + state_api),
-		m_groups_http(groups_uri.empty() ? 0 : new mesos_http(*this, groups_uri + groups_api)),
-		m_apps_http(apps_uri.empty() ? 0 : new mesos_http(*this, apps_uri + apps_api))
+	const std::string& apps_api,
+	const std::string& watch_api): m_state_http(*this, state_uri + state_api),
+		m_marathon_groups_http(marathon_uri.empty() || groups_api.empty()  ? 0 : new marathon_http(*this, marathon_uri + groups_api)),
+		m_marathon_apps_http(marathon_uri.empty() || apps_api.empty()  ? 0 : new marathon_http(*this, marathon_uri + apps_api)),
+		m_marathon_watch_http(marathon_uri.empty() || watch_api.empty() ? 0 : new marathon_http(*this, marathon_uri + watch_api, true)),
+		m_dispatch(m_marathon_watch_http ? new marathon_dispatcher(m_state, m_marathon_watch_http->get_id()) : 0)
 {
-	refresh();
+	refresh(!marathon_uri.empty());
 }
 
 mesos::~mesos()
 {
-	delete m_groups_http;
-	delete m_apps_http;
+	delete m_marathon_groups_http;
+	delete m_marathon_apps_http;
+	delete m_dispatch;
+	delete m_marathon_watch_http;
 }
 
-void mesos::refresh()
+void mesos::refresh(bool marathon)
 {
-	clear();
+	clear(marathon);
 
-	//std::ostringstream os;
-	m_state_http.get_all_data(/*os*/&mesos::parse_state);
-	//parse_state(os.str());
+	m_state_http.get_all_data(&mesos::parse_state);
 
-	if(m_apps_http)
+	if(marathon)
 	{
-		//os.str("");
-		m_apps_http->get_all_data(/*os*/&mesos::parse_apps);
-		//parse_apps(os.str());
+		if(m_marathon_apps_http)
+		{
+			m_marathon_apps_http->get_all_data(&mesos::parse_apps);
+		}
+
+		if(m_marathon_groups_http)
+		{
+			m_marathon_groups_http->get_all_data(&mesos::parse_groups);
+		}
+
+		if(m_marathon_watch_http)
+		{
+			m_collector.add(m_marathon_watch_http);
+		}
 	}
+}
 
-	if(m_groups_http)
+void mesos::watch()
+{
+	if(m_marathon_watch_http)
 	{
-		//os.str("");
-		m_groups_http->get_all_data(/*os*/&mesos::parse_groups);
-		//parse_groups(os.str());
+		if(!m_collector.subscription_count())
+		{
+			m_collector.add(m_marathon_watch_http);
+		}
+		m_collector.get_data();
 	}
 }
 
@@ -88,7 +106,7 @@ void mesos::determine_node_type(const Json::Value& root)
 
 void mesos::on_watch_data(mesos_event_data&& msg)
 {
-	//m_dispatch[msg.component()]->enqueue(std::move(msg));
+	m_dispatch->enqueue(std::move(msg));
 }
 
 void mesos::parse_state(const std::string& json)

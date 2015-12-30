@@ -52,6 +52,8 @@ public:
 
 	void add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task);
 
+	void remove_task(mesos_framework& framework, const std::string& uid);
+
 	//
 	// slaves
 	//
@@ -96,7 +98,7 @@ public:
 	// state
 	//
 
-	void clear();
+	void clear(bool marathon = false);
 
 private:
 
@@ -158,6 +160,11 @@ inline void mesos_state_t::emplace_framework(mesos_framework&& framework)
 inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task)
 {
 	framework.add_or_replace_task(task);
+}
+
+inline void mesos_state_t::remove_task(mesos_framework& framework, const std::string& uid)
+{
+	framework.remove_task(uid);
 }
 
 //
@@ -240,10 +247,13 @@ inline marathon_groups& mesos_state_t::get_groups()
 // state
 //
 
-inline void mesos_state_t::clear()
+inline void mesos_state_t::clear(bool marathon)
 {
 	m_frameworks.clear();
 	m_slaves.clear();
-	m_apps.clear();
-	m_groups.clear();
+	if(marathon)
+	{
+		m_apps.clear();
+		m_groups.clear();
+	}
 }

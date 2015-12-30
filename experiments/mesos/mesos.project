@@ -413,6 +413,14 @@
     <File Name="src/mesos_proto.cpp"/>
     <File Name="src/marathon_component.h"/>
     <File Name="src/marathon_component.cpp"/>
+    <File Name="src/mesos_event_data.h"/>
+    <File Name="src/mesos_collector.cpp"/>
+    <File Name="src/mesos_collector.h"/>
+    <File Name="src/mesos_event_data.cpp"/>
+    <File Name="src/marathon_http.cpp"/>
+    <File Name="src/marathon_http.h"/>
+    <File Name="src/marathon_dispatcher.cpp"/>
+    <File Name="src/marathon_dispatcher.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
