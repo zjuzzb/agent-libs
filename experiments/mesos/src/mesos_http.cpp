@@ -120,4 +120,98 @@ void mesos_http::check_error(CURLcode res)
 	}
 }
 
+std::string mesos_http::make_uri(const std::string& path)
+{
+	uri url = get_url();
+	std::string target_uri = url.get_scheme();
+	target_uri.append("://");
+	std::string user = url.get_user();
+	if(!user.empty())
+	{
+		target_uri.append(user).append(1, ':').append(url.get_password()).append(1, '@');
+	}
+	target_uri.append(url.get_host());
+	int port = url.get_port();
+	if(port)
+	{
+		target_uri.append(1, ':').append(std::to_string(port));
+	}
+	target_uri.append(path);
+	return target_uri;
+}
+
+Json::Value mesos_http::get_task_labels(const std::string& task_id)
+{
+	std::ostringstream os;
+	CURLcode res = get_data(make_uri("/master/tasks"), os);
+
+	if(res != CURLE_OK)
+	{
+		g_logger.log(curl_easy_strerror(res), sinsp_logger::SEV_ERROR);
+		return false;
+	}
+
+	Json::Value labels;
+	try
+	{
+		Json::Value root;
+		Json::Reader reader;
+		if(reader.parse(os.str(), root, false))
+		{
+			Json::Value tasks = root["tasks"];
+			if(!tasks.isNull())
+			{
+				for(const auto& task : tasks)
+				{
+					Json::Value id = task["id"];
+					if(!id.isNull() && id.isString() && id.asString() == task_id)
+					{
+						Json::Value statuses = task["statuses"];
+						if(!statuses.isNull())
+						{
+							double tstamp = 0.0;
+							for(const auto& status : statuses)
+							{
+								// only task with most recent status
+								// "TASK_RUNNING" considered
+								Json::Value ts = status["timestamp"];
+								if(!ts.isNull() && ts.isNumeric() && ts.asDouble() > tstamp)
+								{
+									Json::Value st = status["state"];
+									if(!st.isNull() && st.isString())
+									{
+										if(st.asString() == "TASK_RUNNING")
+										{
+											labels = task["labels"];
+											tstamp = ts.asDouble();
+										}
+										else
+										{
+											labels.clear();
+										}
+									}
+								}
+							}
+							if(!labels.empty()) // currently running task found
+							{
+								return labels;
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			g_logger.log("Error parsing tasks.\nJSON:\n---\n" + os.str() + "\n---", sinsp_logger::SEV_ERROR);
+		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(std::string("Error parsing tasks:") + ex.what(), sinsp_logger::SEV_ERROR);
+	}
+
+	return labels;
+}
+
 #endif // HAS_CAPTURE

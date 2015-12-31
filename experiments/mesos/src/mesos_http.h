@@ -8,6 +8,7 @@
 
 #include "curl/curl.h"
 #include "uri.h"
+#include "json/json.h"
 #include <ostream>
 #include <string>
 
@@ -33,6 +34,10 @@ public:
 	virtual void on_error(const std::string& err, bool disconnect);
 
 	const uri& get_url() const;
+
+	std::string make_uri(const std::string& path);
+
+	Json::Value get_task_labels(const std::string& task_id);
 
 protected:
 	CURL* get_curl();

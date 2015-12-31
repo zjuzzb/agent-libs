@@ -21,82 +21,17 @@ marathon_dispatcher::marathon_dispatcher(mesos_state_t& state, const std::string
 
 void marathon_dispatcher::enqueue(mesos_event_data&& event_data)
 {
-	m_messages.emplace_back(event_data.data());
+	m_messages.emplace_back(event_data.get_data());
 	dispatch();
 }
 
-void marathon_dispatcher::log_error(const Json::Value& root, const std::string& comp)
+void marathon_dispatcher::dispatch()
 {
-	std::string unk_err = "Unknown.";
-	std::ostringstream os;
-	//TODO
-	os << unk_err;
-	g_logger.log(os.str(), sinsp_logger::SEV_ERROR);
-}
-
-void marathon_dispatcher::handle_status_update(const Json::Value& root)
-{
-	std::string slave_id = get_json_string(root, "slaveId");
-	if(!slave_id.empty())
+	for (list::iterator it = m_messages.begin(); it != m_messages.end();)
 	{
-		std::string task_status = get_json_string(root, "taskStatus");
-		if(!task_status.empty())
-		{
-			std::string task_id = get_json_string(root, "taskId");
-			if(!task_id.empty())
-			{
-				g_logger.log("Slave [" + slave_id + "], task " + get_json_string(root, "appId") + " (" + 
-					task_id + ") changed status to " + task_status + 
-					".\nVersion: " + get_json_string(root, "version") + 
-					", Timestamp: " + get_json_string(root, "version"), sinsp_logger::SEV_INFO);
-
-				if(task_status == "TASK_RUNNING")
-				{
-					std::string task_name;
-					std::string::size_type pos = task_id.rfind('.');
-					if(pos != std::string::npos && pos > 0)
-					{
-						task_name = task_id.substr(0, pos);
-					}
-					std::shared_ptr<mesos_task> t(new mesos_task(task_name, task_id));
-					t->set_slave_id(slave_id);
-					//add_labels(t, task);
-					m_state.add_or_replace_task(m_state.get_framework(m_framework_id), t);
-				}
-				else if(task_status == "TASK_FINISHED" || // TERMINAL. The task finished successfully.
-					task_status == "TASK_FAILED"       || // TERMINAL. The task failed to finish successfully.
-					task_status == "TASK_KILLED"       || // TERMINAL. The task was killed by the executor.
-					task_status == "TASK_LOST"         || // TERMINAL. The task failed but can be rescheduled.
-					task_status == "TASK_ERROR")          // TERMINAL. The task description contains an error.
-				{
-					g_logger.log("Removing task [" + task_id + "]. Termination message: "+ get_json_string(root, "message"), sinsp_logger::SEV_INFO);
-					try
-					{
-						m_state.remove_task(m_state.get_framework(m_framework_id), task_id);
-					}
-					catch(std::exception& ex)
-					{
-						g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
-						return;
-					}
-					g_logger.log("Succesfully removed task [" + task_id + ']', sinsp_logger::SEV_INFO);
-				}
-				else
-				{
-					// Ignored:
-					// TASK_STAGING; // Initial state. Framework status updates should not use.
-					// TASK_STARTING;
-					g_logger.log("Slave [" + slave_id + "], task " + get_json_string(root, "appId") + " (" + 
-						task_id + ") ignored changed status to " + task_status, sinsp_logger::SEV_DEBUG);
-				}
-			}
-		}
+		extract_data(*it, true);
+		it = m_messages.erase(it);
 	}
-}
-
-void marathon_dispatcher::handle_deployment_success(const Json::Value& root)
-{
-	g_logger.log("MESOS_DEPLOYMENT_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
 }
 
 void marathon_dispatcher::extract_data(const std::string& json, bool enqueue)
@@ -127,12 +62,105 @@ void marathon_dispatcher::extract_data(const std::string& json, bool enqueue)
 	}
 }
 
-void marathon_dispatcher::dispatch()
+void marathon_dispatcher::handle_status_update(const Json::Value& root)
 {
-	for (list::iterator it = m_messages.begin(); it != m_messages.end();)
+	std::string slave_id = get_json_string(root, "slaveId");
+	if(!slave_id.empty())
 	{
-		extract_data(*it, true);
-		it = m_messages.erase(it);
+		std::string task_status = get_json_string(root, "taskStatus");
+		if(!task_status.empty())
+		{
+			std::string task_id = get_json_string(root, "taskId");
+			if(!task_id.empty())
+			{
+				g_logger.log("App [" + get_json_string(root, "appId") + "], task [" +
+					task_id + "] changed status to " + task_status +
+					" on slave [" + slave_id + "].\nVersion: " + get_json_string(root, "version") +
+					", Timestamp: " + get_json_string(root, "version"), sinsp_logger::SEV_INFO);
+
+				if(task_status == "TASK_RUNNING")
+				{
+					std::string task_name;
+					std::string::size_type pos = task_id.rfind('.');
+					if(pos != std::string::npos && pos > 0)
+					{
+						task_name = task_id.substr(0, pos);
+					}
+					g_logger.log("Handling running notification for task " + task_name + " [" + task_id + ']', sinsp_logger::SEV_INFO);
+					try
+					{
+						std::shared_ptr<mesos_task> t(new mesos_task(task_name, task_id));
+						t->set_slave_id(slave_id);
+						mesos_pair_list label_list;
+						Json::Value labels = root["labels"];
+						if(!labels.empty() && labels.isArray())
+						{
+							for(const auto& label : labels)
+							{
+								std::string key = label["key"].asString();
+								std::string val = label["value"].asString();
+								label_list.emplace_back(mesos_pair_list::value_type({key, val}));
+							}
+						}
+						t->add_labels(std::move(label_list));
+						m_state.add_or_replace_task(m_state.get_framework(m_framework_id), t);
+					}
+					catch(std::exception& ex)
+					{
+						g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+						return;
+					}
+					g_logger.log("Succesfully added or updated task [" + task_id + ']', sinsp_logger::SEV_INFO);
+				}
+				else if(task_status == "TASK_FINISHED" || // TERMINAL. The task finished successfully.
+					task_status == "TASK_FAILED"       || // TERMINAL. The task failed to finish successfully.
+					task_status == "TASK_KILLED"       || // TERMINAL. The task was killed by the executor.
+					task_status == "TASK_LOST"         || // TERMINAL. The task failed but can be rescheduled.
+					task_status == "TASK_ERROR")          // TERMINAL. The task description contains an error.
+				{
+					std::string msg = get_json_string(root, "message");
+					std::ostringstream os;
+					os << "Handling removal notification for task [" << task_id << ']';
+					if(!msg.empty())
+					{
+						os << ", termination message: " << msg;
+					}
+					g_logger.log(os.str(), sinsp_logger::SEV_INFO);
+					try
+					{
+						m_state.remove_task(m_state.get_framework(m_framework_id), task_id);
+					}
+					catch(std::exception& ex)
+					{
+						g_logger.log(ex.what(), sinsp_logger::SEV_ERROR);
+						return;
+					}
+					g_logger.log("Succesfully removed task [" + task_id + ']', sinsp_logger::SEV_INFO);
+				}
+				else
+				{
+					// Ignored:
+					// TASK_STAGING; // Initial state. Framework status updates should not use.
+					// TASK_STARTING;
+					g_logger.log("Slave [" + slave_id + "], task " + get_json_string(root, "appId") + " (" + 
+						task_id + ") ignored changed status to " + task_status, sinsp_logger::SEV_DEBUG);
+				}
+			}
+		}
 	}
+}
+
+void marathon_dispatcher::handle_deployment_success(const Json::Value& root)
+{
+	g_logger.log("MESOS_DEPLOYMENT_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
+}
+
+void marathon_dispatcher::log_error(const Json::Value& root, const std::string& comp)
+{
+	std::string unk_err = "Unknown.";
+	std::ostringstream os;
+	//TODO
+	os << unk_err;
+	g_logger.log(os.str(), sinsp_logger::SEV_ERROR);
 }
 

@@ -36,24 +36,8 @@ marathon_http::~marathon_http()
 
 bool marathon_http::refresh_data()
 {
-	uri url = get_url();
-	std::string framework_url = url.get_scheme();
-	framework_url.append("://");
-	std::string user = url.get_user();
-	if(!user.empty())
-	{
-		framework_url.append(user).append(1, ':').append(url.get_password()).append(1, '@');
-	}
-	framework_url.append(url.get_host());
-	int port = url.get_port();
-	if(port)
-	{
-		framework_url.append(1, ':').append(std::to_string(port));
-	}
-	framework_url.append("/v2/info");
-
 	std::ostringstream os;
-	CURLcode res = get_data(framework_url, os);
+	CURLcode res = get_data(make_uri("/v2/info"), os);
 
 	if(res != CURLE_OK)
 	{

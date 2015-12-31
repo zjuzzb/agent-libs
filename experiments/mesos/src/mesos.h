@@ -71,6 +71,8 @@ private:
 	void parse_apps(const std::string& json);
 	void add_app(const Json::Value& app);
 
+	void add_task_labels(std::string& json);
+
 	node_t               m_node_type;
 	mesos_http           m_state_http;
 	marathon_http*       m_marathon_groups_http;

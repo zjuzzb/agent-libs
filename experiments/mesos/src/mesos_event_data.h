@@ -32,9 +32,11 @@ public:
 
 	mesos_event_data& operator=(mesos_event_data&& other);
 
-	type event() const;
+	type get_event() const;
 
-	std::string data() const;
+	const std::string& get_data() const;
+	std::string& get_data();
+	void set_data(const std::string&& data);
 
 	static std::string get_event_type(const std::string& data);
 	static type get_event_type(const Json::Value& root);
@@ -46,12 +48,17 @@ private:
 	std::string m_data;
 };
 
-inline mesos_event_data::type mesos_event_data::event() const
+inline mesos_event_data::type mesos_event_data::get_event() const
 {
 	return m_event;
 }
-	
-inline std::string mesos_event_data::data() const
+
+inline const std::string& mesos_event_data::get_data() const
+{
+	return m_data;
+}
+
+inline std::string& mesos_event_data::get_data()
 {
 	return m_data;
 }

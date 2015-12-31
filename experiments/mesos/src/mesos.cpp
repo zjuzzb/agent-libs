@@ -104,8 +104,48 @@ void mesos::determine_node_type(const Json::Value& root)
 	}
 }
 
+void mesos::add_task_labels(std::string& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+	try
+	{
+		if(reader.parse(json, root, false))
+		{
+			if(mesos_event_data::get_event_type(root) == mesos_event_data::MESOS_STATUS_UPDATE_EVENT)
+			{
+				if(!root["taskId"].isNull())
+				{
+					if(!root["taskStatus"].isNull() && root["taskStatus"].isString() && root["taskStatus"].asString() == "TASK_RUNNING")
+					{
+						Json::Value labels = m_state_http.get_task_labels(root["taskId"].asString());
+						if(!labels.isNull() && labels.isArray())
+						{
+							root["labels"] = labels;
+							Json::FastWriter fastWriter;
+							json = fastWriter.write(root);
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			g_logger.log("Error parsing task update message.\nJSON:\n---\n" + json + "\n---", sinsp_logger::SEV_ERROR);
+		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(std::string("Error while looking for taks labels:") + ex.what(), sinsp_logger::SEV_ERROR);
+	}
+}
+
 void mesos::on_watch_data(mesos_event_data&& msg)
 {
+	// if this is marathon task status update, we need to get the labels
+	// from mesos because the update message does not contain them
+	add_task_labels(msg.get_data());
+
 	m_dispatch->enqueue(std::move(msg));
 }
 
