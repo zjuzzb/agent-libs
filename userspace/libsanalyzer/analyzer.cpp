@@ -73,6 +73,7 @@ using namespace google::protobuf::io;
 #include <memory>
 #include <iostream>
 #include <numeric>
+#include <tuples.h>
 
 using namespace Poco;
 using namespace Poco::Net;
@@ -2229,6 +2230,53 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
+void sinsp_analyzer::emit_connections_server_port_aggregation()
+{
+	unordered_map<uint16_t, sinsp_connection> aggregated_connections;
+
+	for(auto cit = m_ipv4_connections->m_connections.begin();
+		cit != m_ipv4_connections->m_connections.end(); ++cit)
+	{
+		auto server_port = cit->first.m_fields.m_dport;
+		auto& conn = aggregated_connections[server_port];
+
+		if(conn.m_timestamp == 0)
+		{
+			//
+			// New entry.
+			// Structure copy the connection info.
+			//
+			conn = cit->second;
+			conn.m_timestamp = 1;
+		}
+		else
+		{
+			//
+			// Existing entry.
+			// Add this connection's metrics to the aggregated connection's ones.
+			//
+			conn.m_metrics.add(&cit->second.m_metrics);
+			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			conn.m_timestamp++;
+		}
+	}
+
+	// TODO: get top N
+	auto hostinfo = m_metrics->mutable_hostinfo();
+	for(auto agcit = aggregated_connections.begin(); agcit != aggregated_connections.end(); ++agcit)
+	{
+		auto network_by_server_port = hostinfo->add_network_by_serverport();
+		network_by_server_port->set_port(agcit->first);
+		auto counters = network_by_server_port->mutable_counters();
+		agcit->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
+		agcit->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
+														counters->mutable_min_transaction_counters(),
+														counters->mutable_max_transaction_counters(),
+														m_sampling_ratio);
+		counters->set_n_aggregated_connections(agcit->second.m_timestamp);
+	}
+}
+
 void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metric)
 {
 	//
@@ -2665,7 +2713,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				//
 				emit_full_connections();
 			}
-
+			emit_connections_server_port_aggregation();
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
