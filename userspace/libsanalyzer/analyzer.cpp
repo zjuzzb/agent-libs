@@ -2257,19 +2257,48 @@ void sinsp_analyzer::emit_connections_server_port_aggregation()
 		}
 	}
 
-	// TODO: get top N
-	auto hostinfo = m_metrics->mutable_hostinfo();
+	// Filter the top N
+	vector<decltype(aggregated_connections)::iterator> to_emit_connections;
 	for(auto agcit = aggregated_connections.begin(); agcit != aggregated_connections.end(); ++agcit)
 	{
+		to_emit_connections.push_back(agcit);
+	}
+	auto to_emit_connections_end = to_emit_connections.end();
+
+	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
+	{
+		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
+		partial_sort(to_emit_connections.begin(),
+					 to_emit_connections_end,
+					 to_emit_connections.end(), [](const decltype(aggregated_connections)::iterator& src,
+												   const decltype(aggregated_connections)::iterator& dst)
+			 {
+				 uint64_t s = src->second.m_metrics.m_client.m_bytes_in +
+						 src->second.m_metrics.m_client.m_bytes_out +
+						 src->second.m_metrics.m_server.m_bytes_in +
+						 src->second.m_metrics.m_server.m_bytes_out;
+
+				 uint64_t d = dst->second.m_metrics.m_client.m_bytes_in +
+							  dst->second.m_metrics.m_client.m_bytes_out +
+							  dst->second.m_metrics.m_server.m_bytes_in +
+							  dst->second.m_metrics.m_server.m_bytes_out;
+
+				 return (s > d);
+			 });
+	}
+
+	auto hostinfo = m_metrics->mutable_hostinfo();
+	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
+	{
 		auto network_by_server_port = hostinfo->add_network_by_serverport();
-		network_by_server_port->set_port(agcit->first);
+		network_by_server_port->set_port((*agcit)->first);
 		auto counters = network_by_server_port->mutable_counters();
-		agcit->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
-		agcit->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
+		(*agcit)->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
+		(*agcit)->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
 														counters->mutable_min_transaction_counters(),
 														counters->mutable_max_transaction_counters(),
 														m_sampling_ratio);
-		counters->set_n_aggregated_connections(agcit->second.m_timestamp);
+		counters->set_n_aggregated_connections((*agcit)->second.m_timestamp);
 	}
 }
 
