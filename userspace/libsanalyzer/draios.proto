@@ -387,8 +387,8 @@ message proto_info {
 }
 
 message network_by_port {
-    optional uint32 port = 1;
-    optional connection_categories counters = 2; 
+    required uint32 port = 1;
+    required connection_categories counters = 2; 
 }
 
 //
