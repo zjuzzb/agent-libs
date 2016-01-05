@@ -2238,16 +2238,12 @@ void sinsp_analyzer::emit_connections_server_port_aggregation()
 		cit != m_ipv4_connections->m_connections.end(); ++cit)
 	{
 		auto server_port = cit->first.m_fields.m_dport;
-		auto& conn = aggregated_connections[server_port];
-
-		if(conn.m_timestamp == 0)
+		auto emplaced = aggregated_connections.emplace(server_port, cit->second);
+		auto is_new_entry = emplaced.second;
+		auto agconn = &emplaced.first->second;
+		if(is_new_entry)
 		{
-			//
-			// New entry.
-			// Structure copy the connection info.
-			//
-			conn = cit->second;
-			conn.m_timestamp = 1;
+			agconn->m_timestamp = 1;
 		}
 		else
 		{
@@ -2255,9 +2251,9 @@ void sinsp_analyzer::emit_connections_server_port_aggregation()
 			// Existing entry.
 			// Add this connection's metrics to the aggregated connection's ones.
 			//
-			conn.m_metrics.add(&cit->second.m_metrics);
-			conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			conn.m_timestamp++;
+			agconn->m_metrics.add(&cit->second.m_metrics);
+			agconn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+			agconn->m_timestamp++;
 		}
 	}
 
@@ -2699,6 +2695,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
+
+			// Doing this before `emit_aggregated_connections`
+			// because it clears the metrics after emitting
+			emit_connections_server_port_aggregation();
+
+			// WARNING: the following methods emit but also clear the metrics
+
 			if(m_configuration->get_aggregate_connections_in_proto())
 			{
 				//
@@ -2713,7 +2716,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				//
 				emit_full_connections();
 			}
-			emit_connections_server_port_aggregation();
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
