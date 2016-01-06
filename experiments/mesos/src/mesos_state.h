@@ -74,6 +74,8 @@ public:
 	// apps
 	//
 
+	void parse_apps(const std::string& json);
+
 	const marathon_apps& get_apps() const;
 
 	marathon_apps& get_apps();
@@ -82,9 +84,13 @@ public:
 
 	void add_or_replace_app(marathon_group::app_ptr_t app);
 
+	bool remove_app(const std::string& id);
+
 	//
 	// groups
 	//
+
+	bool parse_groups(const std::string& json);
 
 	const marathon_groups& get_groups() const;
 
@@ -100,13 +106,20 @@ public:
 
 	void clear(bool marathon = false);
 
+	void print_groups() const;
+
 private:
+	marathon_group::ptr_t add_group(const Json::Value& group, marathon_group::ptr_t to_group);
+	bool handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups);
+	void add_app(const Json::Value& app);
 
 	mesos_frameworks m_frameworks;
 	mesos_slaves     m_slaves;
 	marathon_apps    m_apps;
 	marathon_groups  m_groups;
 	bool             m_is_captured;
+
+	friend class marathon_dispatcher;
 };
 
 //

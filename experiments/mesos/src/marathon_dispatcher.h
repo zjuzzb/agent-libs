@@ -16,6 +16,8 @@
 class marathon_dispatcher
 {
 public:
+	typedef std::shared_ptr<marathon_dispatcher> ptr_t;
+
 	struct msg_data
 	{
 		mesos_event_data::type  m_type = mesos_event_data::MESOS_UNKNOWN_EVENT;
@@ -33,15 +35,19 @@ public:
 
 	void enqueue(mesos_event_data&& data);
 
-	void extract_data(const std::string& json, bool enqueue = false);
+	void extract_data(const std::string& json);
+
+	const std::string& get_id() const;
 
 private:
 	const std::string& next_msg();
 	void remove();
 	void dispatch();
+	void handle_api_post(const Json::Value& root);
 	void handle_status_update(const Json::Value& root);
+	void handle_app_terminate(const Json::Value& root);
+	void handle_group_change(const Json::Value& root);
 	void handle_deployment_success(const Json::Value& root);
-	void log_error(const Json::Value& root, const std::string& comp);
 
 	typedef std::deque<std::string> list;
 
@@ -60,3 +66,9 @@ inline void marathon_dispatcher::remove()
 {
 	m_messages.pop_front();
 }
+
+inline const std::string& marathon_dispatcher::get_id() const
+{
+	return m_framework_id;
+}
+

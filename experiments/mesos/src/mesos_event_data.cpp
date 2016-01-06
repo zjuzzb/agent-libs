@@ -7,10 +7,13 @@
 
 mesos_event_data::event_map_t mesos_event_data::m_events =
 {
-	{ MESOS_UNKNOWN_EVENT,            "unknown_event"       },
-	{ MESOS_STATUS_UPDATE_EVENT,      "status_update_event" },
-	{ MESOS_DEPLOYMENT_SUCCESS_EVENT, "deployment_success"  },
-	{ MESOS_IGNORED_EVENT,            "ignored_event"       }
+	{ MESOS_UNKNOWN_EVENT,              "unknown_event"        },
+	{ MESOS_API_POST_EVENT,             "api_post_event"       },
+	{ MESOS_STATUS_UPDATE_EVENT,        "status_update_event"  },
+	{ MESOS_APP_TERMINATED_EVENT,       "app_terminated_event" },
+	{ MESOS_DEPLOYMENT_SUCCESS_EVENT,   "deployment_success"   },
+	{ MESOS_GROUP_CHANGE_SUCCESS_EVENT, "group_change_success" },
+	{ MESOS_IGNORED_EVENT,              "ignored_event"        }
 };
 
 mesos_event_data::mesos_event_data(const std::string& data): m_event(MESOS_UNKNOWN_EVENT)
@@ -19,16 +22,7 @@ mesos_event_data::mesos_event_data(const std::string& data): m_event(MESOS_UNKNO
 
 	if(!event_type.empty())
 	{
-		if(event_type == m_events[MESOS_STATUS_UPDATE_EVENT])
-		{
-			//g_logger.log("Mesos status update event", sinsp_logger::SEV_INFO);
-			m_event = MESOS_STATUS_UPDATE_EVENT;
-		}
-		else if(event_type == m_events[MESOS_DEPLOYMENT_SUCCESS_EVENT])
-		{
-			//g_logger.log("Mesos deployment success event", sinsp_logger::SEV_INFO);
-			m_event = MESOS_DEPLOYMENT_SUCCESS_EVENT;
-		}
+		m_event = get_event_type_from_name(event_type);
 
 		std::string name = "data:";
 		std::string::size_type pos = data.find(name);
@@ -72,6 +66,22 @@ mesos_event_data& mesos_event_data::operator=(mesos_event_data&& other)
 	return *this;
 }
 
+mesos_event_data::type mesos_event_data::get_event_type_from_name(const std::string& name)
+{
+	if(!name.empty())
+	{
+		for(const auto& evt : m_events)
+		{
+			if(name == evt.second)
+			{
+				return evt.first;
+			}
+		}
+		return MESOS_IGNORED_EVENT;
+	}
+	return MESOS_UNKNOWN_EVENT;
+}
+
 std::string mesos_event_data::get_event_type(const std::string& data)
 {
 	std::string event_type;
@@ -85,14 +95,17 @@ std::string mesos_event_data::get_event_type(const std::string& data)
 		{
 			event_type = data.substr(pos, end - pos);
 			trim(event_type);
-			if((event_type != m_events[MESOS_STATUS_UPDATE_EVENT]) &&
-				(event_type != m_events[MESOS_DEPLOYMENT_SUCCESS_EVENT]))
+			for(const auto& evt : m_events)
 			{
-				event_type = m_events[MESOS_IGNORED_EVENT];
+				if(event_type == evt.second)
+				{
+					return event_type;
+				}
 			}
+			return m_events[MESOS_IGNORED_EVENT];
 		}
 	}
-	return event_type;
+	return m_events[MESOS_UNKNOWN_EVENT];
 }
 
 mesos_event_data::type mesos_event_data::get_event_type(const Json::Value& root)
@@ -107,6 +120,7 @@ mesos_event_data::type mesos_event_data::get_event_type(const Json::Value& root)
 				return evt.first;
 			}
 		}
+		return MESOS_IGNORED_EVENT;
 	}
 
 	return MESOS_UNKNOWN_EVENT;

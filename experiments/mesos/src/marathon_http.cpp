@@ -192,7 +192,7 @@ bool marathon_http::on_data()
 			{
 				if(!mesos_event_data::is_ignored(mesos_event_data::get_event_type(msg)))
 				{
-					get_mesos().on_watch_data(mesos_event_data(msg));
+					get_mesos().on_watch_data(m_id, mesos_event_data(msg));
 				}
 			}
 			catch(std::exception& ex)
@@ -206,6 +206,20 @@ bool marathon_http::on_data()
 	}
 
 	return true;
+}
+
+std::string marathon_http::get_groups(const std::string& group_id)
+{
+	std::ostringstream os;
+	CURLcode res = get_data(make_uri("/v2/groups" + group_id), os);
+
+	if(res != CURLE_OK)
+	{
+		g_logger.log(curl_easy_strerror(res), sinsp_logger::SEV_ERROR);
+		return "";
+	}
+
+	return os.str();
 }
 
 

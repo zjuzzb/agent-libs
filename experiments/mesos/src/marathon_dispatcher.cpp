@@ -17,6 +17,7 @@ marathon_dispatcher::marathon_dispatcher(mesos_state_t& state, const std::string
 	m_state(state),
 	m_framework_id(framework_id)
 {
+	g_logger.log("Created marathon_dispatcher for framework: " + framework_id, sinsp_logger::SEV_DEBUG);
 }
 
 void marathon_dispatcher::enqueue(mesos_event_data&& event_data)
@@ -29,12 +30,12 @@ void marathon_dispatcher::dispatch()
 {
 	for (list::iterator it = m_messages.begin(); it != m_messages.end();)
 	{
-		extract_data(*it, true);
+		extract_data(*it);
 		it = m_messages.erase(it);
 	}
 }
 
-void marathon_dispatcher::extract_data(const std::string& json, bool enqueue)
+void marathon_dispatcher::extract_data(const std::string& json)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -42,11 +43,22 @@ void marathon_dispatcher::extract_data(const std::string& json, bool enqueue)
 	{
 		switch(mesos_event_data::get_event_type(root))
 		{
+			case mesos_event_data::MESOS_API_POST_EVENT:
+				handle_api_post(root);
+				break;
 			case mesos_event_data::MESOS_STATUS_UPDATE_EVENT:
 				handle_status_update(root);
 				break;
+			case mesos_event_data::MESOS_APP_TERMINATED_EVENT:
+				handle_app_terminate(root);
+				break;
+			case mesos_event_data::MESOS_GROUP_CHANGE_SUCCESS_EVENT:
+				handle_group_change(root);
+				break;
 			case mesos_event_data::MESOS_DEPLOYMENT_SUCCESS_EVENT:
 				handle_deployment_success(root);
+				break;
+			case mesos_event_data::MESOS_IGNORED_EVENT:
 				break;
 			default:
 			{
@@ -65,7 +77,8 @@ void marathon_dispatcher::extract_data(const std::string& json, bool enqueue)
 void marathon_dispatcher::handle_status_update(const Json::Value& root)
 {
 	std::string slave_id = get_json_string(root, "slaveId");
-	if(!slave_id.empty())
+	std::string app_id = get_json_string(root, "appId");
+	if(!slave_id.empty() && !app_id.empty())
 	{
 		std::string task_status = get_json_string(root, "taskStatus");
 		if(!task_status.empty())
@@ -73,11 +86,9 @@ void marathon_dispatcher::handle_status_update(const Json::Value& root)
 			std::string task_id = get_json_string(root, "taskId");
 			if(!task_id.empty())
 			{
-				g_logger.log("App [" + get_json_string(root, "appId") + "], task [" +
-					task_id + "] changed status to " + task_status +
+				g_logger.log("App [" + app_id + "], task [" + task_id + "] changed status to " + task_status +
 					" on slave [" + slave_id + "].\nVersion: " + get_json_string(root, "version") +
 					", Timestamp: " + get_json_string(root, "version"), sinsp_logger::SEV_INFO);
-
 				if(task_status == "TASK_RUNNING")
 				{
 					std::string task_name;
@@ -91,6 +102,7 @@ void marathon_dispatcher::handle_status_update(const Json::Value& root)
 					{
 						std::shared_ptr<mesos_task> t(new mesos_task(task_name, task_id));
 						t->set_slave_id(slave_id);
+						t->set_app_id(app_id);
 						mesos_pair_list label_list;
 						Json::Value labels = root["labels"];
 						if(!labels.empty() && labels.isArray())
@@ -150,17 +162,75 @@ void marathon_dispatcher::handle_status_update(const Json::Value& root)
 	}
 }
 
-void marathon_dispatcher::handle_deployment_success(const Json::Value& root)
+void marathon_dispatcher::handle_api_post(const Json::Value& root)
 {
-	g_logger.log("MESOS_DEPLOYMENT_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
+	g_logger.log("MESOS_API_POST_EVENT", sinsp_logger::SEV_DEBUG);
+	std::string uri = get_json_string(root, "uri");
+	if(uri == "/v2/apps")
+	{
+		Json::Value app_obj = root["appDefinition"];
+		if(!app_obj.empty())
+		{
+			std::string app_id = get_json_string(app_obj, "id");
+			g_logger.log("Adding app [" + app_id + ']', sinsp_logger::SEV_INFO);
+			marathon_app::ptr_t p_app(new marathon_app(app_id));
+			m_state.add_or_replace_app(p_app);
+			g_logger.log("Succesfully added app [" + app_id + ']', sinsp_logger::SEV_INFO);
+		}
+	}
 }
 
-void marathon_dispatcher::log_error(const Json::Value& root, const std::string& comp)
+void marathon_dispatcher::handle_app_terminate(const Json::Value& root)
 {
-	std::string unk_err = "Unknown.";
-	std::ostringstream os;
-	//TODO
-	os << unk_err;
-	g_logger.log(os.str(), sinsp_logger::SEV_ERROR);
+	g_logger.log("MESOS_APP_TERMINATED_EVENT", sinsp_logger::SEV_DEBUG);
+	std::string id = get_json_string(root, "appId");
+	g_logger.log("Removing app [" + id + ']', sinsp_logger::SEV_INFO);
+	if(!m_state.remove_app(id))
+	{
+		g_logger.log("App [" + id + "] not found.", sinsp_logger::SEV_ERROR);
+		return;
+	}
+	g_logger.log("Succesfully removed app [" + id + ']', sinsp_logger::SEV_INFO);
+}
+
+void marathon_dispatcher::handle_group_change(const Json::Value& root)
+{
+	g_logger.log("MESOS_GROUP_CHANGE_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
+	//std::cout << root.toStyledString() << std::endl;
+
+	Json::Value group_id = root["id"];
+	if(!group_id.isNull() && group_id.isString())
+	{
+		std::string id = group_id.asString();
+		g_logger.log("Handling group [" + id + ']', sinsp_logger::SEV_INFO);
+		std::string::size_type pos = id.rfind('/');
+		if(pos != std::string::npos)
+		{
+			std::string parent_id;
+			marathon_group::ptr_t parent = 0;
+			if(pos == 0 && id.size() > 1)
+			{
+				parent = m_state.get_group("/");
+			}
+			else if(pos != 0)
+			{
+				parent_id = id.substr(0, pos);
+				parent = m_state.get_group(parent_id);
+			}
+			if(m_state.handle_groups(root, m_state.add_group(root, parent)))
+			{
+				g_logger.log("Sucesfully handled notification for group [" + id + ']', sinsp_logger::SEV_INFO);
+				return;
+			}
+		}
+		g_logger.log("An error occurred while handling group [" + id + ']', sinsp_logger::SEV_ERROR);
+	}
+
+	g_logger.log("An error occurred while handling group (no ID found)", sinsp_logger::SEV_ERROR);
+}
+
+void marathon_dispatcher::handle_deployment_success(const Json::Value& /*root*/)
+{
+	g_logger.log("MESOS_DEPLOYMENT_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
 }
 

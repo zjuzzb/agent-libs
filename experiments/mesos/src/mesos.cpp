@@ -23,24 +23,25 @@ const std::string mesos::default_watch_api    = "/v2/events";
 
 mesos::mesos(const std::string& state_uri,
 	const std::string& state_api,
-	const std::string& marathon_uri,
+	const uri_list_t& marathon_uris,
 	const std::string& groups_api,
 	const std::string& apps_api,
 	const std::string& watch_api): m_state_http(*this, state_uri + state_api),
-		m_marathon_groups_http(marathon_uri.empty() || groups_api.empty()  ? 0 : new marathon_http(*this, marathon_uri + groups_api)),
-		m_marathon_apps_http(marathon_uri.empty() || apps_api.empty()  ? 0 : new marathon_http(*this, marathon_uri + apps_api)),
-		m_marathon_watch_http(marathon_uri.empty() || watch_api.empty() ? 0 : new marathon_http(*this, marathon_uri + watch_api, true)),
-		m_dispatch(m_marathon_watch_http ? new marathon_dispatcher(m_state, m_marathon_watch_http->get_id()) : 0)
+		m_collector(false)
 {
-	refresh(!marathon_uri.empty());
+	for(const auto& uri : marathon_uris)
+	{
+		m_marathon_groups_http.push_back(std::make_shared<marathon_http>(*this, uri + groups_api, true));
+		m_marathon_apps_http.push_back(std::make_shared<marathon_http>(*this, uri + apps_api, true));
+		m_marathon_watch_http.push_back(std::make_shared<marathon_http>(*this, uri + watch_api, true));
+		m_dispatch.push_back(std::make_shared<marathon_dispatcher>(m_state, m_marathon_watch_http.back()->get_id()));
+	}
+
+	refresh(marathon_uris.size());
 }
 
 mesos::~mesos()
 {
-	delete m_marathon_groups_http;
-	delete m_marathon_apps_http;
-	delete m_dispatch;
-	delete m_marathon_watch_http;
 }
 
 void mesos::refresh(bool marathon)
@@ -51,30 +52,33 @@ void mesos::refresh(bool marathon)
 
 	if(marathon)
 	{
-		if(m_marathon_apps_http)
+		for(auto& app_http : m_marathon_apps_http)
 		{
-			m_marathon_apps_http->get_all_data(&mesos::parse_apps);
+			app_http->get_all_data(&mesos::parse_apps);
 		}
 
-		if(m_marathon_groups_http)
+		for(auto& group_http : m_marathon_groups_http)
 		{
-			m_marathon_groups_http->get_all_data(&mesos::parse_groups);
+			group_http->get_all_data(&mesos::parse_groups);
 		}
 
-		if(m_marathon_watch_http)
+		for(auto watch_http : m_marathon_watch_http)
 		{
-			m_collector.add(m_marathon_watch_http);
+			m_collector.add(watch_http);
 		}
 	}
 }
 
 void mesos::watch()
 {
-	if(m_marathon_watch_http)
+	if(m_marathon_watch_http.size())
 	{
 		if(!m_collector.subscription_count())
 		{
-			m_collector.add(m_marathon_watch_http);
+			for(auto watch_http : m_marathon_watch_http)
+			{
+				m_collector.add(watch_http);
+			}
 		}
 		m_collector.get_data();
 	}
@@ -122,8 +126,7 @@ void mesos::add_task_labels(std::string& json)
 						if(!labels.isNull() && labels.isArray())
 						{
 							root["labels"] = labels;
-							Json::FastWriter fastWriter;
-							json = fastWriter.write(root);
+							json = Json::FastWriter().write(root);
 						}
 					}
 				}
@@ -140,13 +143,71 @@ void mesos::add_task_labels(std::string& json)
 	}
 }
 
-void mesos::on_watch_data(mesos_event_data&& msg)
+void mesos::get_groups(marathon_http::ptr_t http, std::string& json)
+{
+	std::string group_ev_type = mesos_event_data::m_events[mesos_event_data::MESOS_GROUP_CHANGE_SUCCESS_EVENT];
+	Json::Value root;
+	Json::Reader reader;
+	try
+	{
+		if(reader.parse(json, root, false))
+		{
+			Json::Value event_type = root["eventType"];
+			if(!event_type.isNull() && event_type.isString() && event_type.asString() == group_ev_type)
+			{
+				Json::Value group_id = root["groupId"];
+				if(!group_id.isNull() && group_id.isString())
+				{
+					std::string gid = group_id.asString();
+					if(!gid.empty())
+					{
+						json = http->get_groups(gid);
+						if(reader.parse(json, root, false))
+						{
+							root["eventType"] = group_ev_type;
+							json = Json::FastWriter().write(root);
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			g_logger.log("Error parsing task update message.\nJSON:\n---\n" + json + "\n---", sinsp_logger::SEV_ERROR);
+		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(std::string("Error while looking for taks labels:") + ex.what(), sinsp_logger::SEV_ERROR);
+	}
+}
+
+void mesos::on_watch_data(const std::string& framework_id, mesos_event_data&& msg)
 {
 	// if this is marathon task status update, we need to get the labels
 	// from mesos because the update message does not contain them
+	// TODO (maybe): refactor to keep labels in apps and have tasks labels updated
+	// when tasks are asigned to apps
 	add_task_labels(msg.get_data());
 
-	m_dispatch->enqueue(std::move(msg));
+	// if this is group change, replace event data (which does not contain enough
+	// information to rebuild state) with Marathon state API JSON
+	for(auto& http : m_marathon_groups_http)
+	{
+		if(http->get_id() == framework_id)
+		{
+			get_groups(http, msg.get_data());
+		}
+	}
+
+	for(auto& dispatcher : m_dispatch)
+	{
+		if(framework_id == dispatcher->get_id())
+		{
+			dispatcher->enqueue(std::move(msg));
+			break;
+		}
+	}
 }
 
 void mesos::parse_state(const std::string& json)
@@ -313,123 +374,14 @@ void mesos::add_labels(std::shared_ptr<mesos_task> task, const Json::Value& t_va
 	}
 }
 
-void mesos::handle_groups(const Json::Value& root, marathon_group::ptr_t to_group)
-{
-	Json::Value groups = root["groups"];
-	if(!groups.isNull())
-	{
-		if(groups.size())
-		{
-			for(const auto& group : groups)
-			{
-				to_group = add_group(group, to_group);
-				ASSERT(to_group);
-				handle_groups(group, to_group);
-			}
-		}
-	}
-	else
-	{
-		g_logger.log("No groups found.", sinsp_logger::SEV_WARNING);
-	}
-}
-
 void mesos::parse_groups(const std::string& json)
 {
-	Json::Value root;
-	Json::Reader reader;
-	if(reader.parse(json, root, false))
-	{
-		handle_groups(root, add_group(root, 0));
-	}
-	else
-	{
-		throw sinsp_exception("Invalid JSON (Marathon groups parsing failed).");
-	}
-}
-
-marathon_group::ptr_t mesos::add_group(const Json::Value& group, marathon_group::ptr_t to_group)
-{
-	Json::Value group_id = group["id"];
-	if(!group_id.isNull())
-	{
-		std::string id = group_id.asString();
-		g_logger.log("Adding Marathon group [" + id + "] to group [" + (to_group ? to_group->get_id() : "/") + ']', sinsp_logger::SEV_DEBUG);
-		marathon_group::ptr_t pg(new marathon_group(id));
-		marathon_group::ptr_t p_group = m_state.add_or_replace_group(pg, to_group);
-		Json::Value apps = group["apps"];
-		if(!apps.isNull())
-		{
-			for(const auto& app : apps)
-			{
-				Json::Value app_id = app["id"];
-				if(!app_id.isNull())
-				{
-					marathon_app::ptr_t p_app = m_state.get_app(app_id.asString());
-					p_group->add_or_replace_app(p_app);
-				}
-			}
-		}
-		return p_group;
-	}
-	return 0;
+	m_state.parse_groups(json);
 }
 
 void mesos::parse_apps(const std::string& json)
 {
-	Json::Value root;
-	Json::Reader reader;
-	if(reader.parse(json, root, false))
-	{
-		//g_logger.log(root.toStyledString(), sinsp_logger::SEV_DEBUG);
-		Json::Value apps = root["apps"];
-		if(!apps.isNull())
-		{
-			for(const auto& app : apps)
-			{
-				add_app(app);
-			}
-		}
-		else
-		{
-			g_logger.log("No groups found.", sinsp_logger::SEV_WARNING);
-		}
-	}
-	else
-	{
-		throw sinsp_exception("Invalid JSON (Marathon apps parsing failed).");
-	}
-}
-
-void mesos::add_app(const Json::Value& app)
-{
-	Json::Value app_id = app["id"];
-	if(!app_id.isNull())
-	{
-		std::string id = app_id.asString();
-		g_logger.log("Adding Marathon app: " + id, sinsp_logger::SEV_DEBUG);
-		marathon_app::ptr_t p_app(new marathon_app(id));
-		m_state.add_or_replace_app(p_app);
-		Json::Value tasks = app["tasks"];
-		for(const auto& task : tasks)
-		{
-			Json::Value task_id = task["id"];
-			if(!task_id.isNull())
-			{
-				g_logger.log("Adding Marathon task: " + task_id.asString(), sinsp_logger::SEV_DEBUG);
-				mesos_framework::task_ptr_t pt = m_state.get_task(task_id.asString());
-				if(pt)
-				{
-					pt->set_app_id(id);
-					p_app->add_task(pt->get_uid());
-				}
-				else
-				{
-					throw sinsp_exception("Marathon task not found in mesos state");
-				}
-			}
-		}
-	}
+	m_state.parse_apps(json);
 }
 
 

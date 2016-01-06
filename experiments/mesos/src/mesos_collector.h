@@ -9,19 +9,20 @@
 #include "mesos_common.h"
 #include <map>
 #include <atomic>
+#include <memory>
 
 class mesos_http;
 
 class mesos_collector
 {
 public:
-	typedef std::map<int, mesos_http*> socket_map_t;
+	typedef std::map<int, std::shared_ptr<mesos_http>> socket_map_t;
 
 	mesos_collector(bool do_loop = true, long timeout_ms = 1000L);
 
 	~mesos_collector();
 
-	void add(mesos_http* handler);
+	void add(std::shared_ptr<mesos_http> handler);
 
 	void remove_all();
 

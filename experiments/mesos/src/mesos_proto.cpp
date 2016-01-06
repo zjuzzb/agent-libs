@@ -49,14 +49,14 @@ void mesos_proto::make_protobuf(const mesos_state_t& state)
 		populate_component(slave, slaves);
 	}
 
-	draiosproto::marathon_group* group = m_proto.add_groups();
-	extract_groups(state.get_groups(), group);
+	extract_groups(state.get_groups());
 }
-				
+
 void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, draiosproto::marathon_group* to_group)
 {
 	for(const auto& group : groups)
 	{
+		to_group = to_group ? to_group->add_groups() : m_proto.add_groups();
 		to_group->set_id(group.first);
 		for(const auto& app : group.second->get_apps())
 		{
@@ -71,7 +71,7 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 		const marathon_group::group_map_t& g_groups = group.second->get_groups();
 		if(g_groups.size())
 		{
-			extract_groups(g_groups, to_group->add_groups());
+			extract_groups(g_groups, to_group);
 		}
 	}
 }

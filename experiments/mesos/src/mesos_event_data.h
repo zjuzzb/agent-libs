@@ -14,7 +14,10 @@ public:
 	enum type
 	{
 		MESOS_UNKNOWN_EVENT,
+		MESOS_API_POST_EVENT,
 		MESOS_STATUS_UPDATE_EVENT,
+		MESOS_APP_TERMINATED_EVENT,
+		MESOS_GROUP_CHANGE_SUCCESS_EVENT,
 		MESOS_DEPLOYMENT_SUCCESS_EVENT,
 		MESOS_IGNORED_EVENT
 	};
@@ -39,6 +42,7 @@ public:
 	void set_data(const std::string&& data);
 
 	static std::string get_event_type(const std::string& data);
+	static type get_event_type_from_name(const std::string& name);
 	static type get_event_type(const Json::Value& root);
 
 	static bool is_ignored(const std::string& evt);

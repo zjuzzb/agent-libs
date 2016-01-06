@@ -32,7 +32,7 @@ void mesos_collector::clear()
 	FD_ZERO(&m_infd);
 }
 
-void mesos_collector::add(mesos_http* handler)
+void mesos_collector::add(std::shared_ptr<mesos_http> handler)
 {
 	int sockfd = handler->get_watch_socket(5000L);
 

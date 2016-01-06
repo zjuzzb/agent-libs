@@ -33,9 +33,11 @@ public:
 	static const std::string default_apps_api;
 	static const std::string default_watch_api;
 
+	typedef std::vector<std::string> uri_list_t;
+
 	mesos(const std::string& state_uri = default_state_uri,
 		const std::string& state_api = default_state_api,
-		const std::string& marathon_uri = "",
+		const uri_list_t& marathon_uris = uri_list_t(),
 		const std::string& groups_api = "",
 		const std::string& apps_api = "",
 		const std::string& watch_api = "");
@@ -49,10 +51,9 @@ public:
 	void clear(bool marathon = false);
 
 	void watch();
-	void on_watch_data(mesos_event_data&& msg);
-
 private:
 
+	void on_watch_data(const std::string& framework_id, mesos_event_data&& msg);
 	void parse_state(const std::string& json);
 	void determine_node_type(const Json::Value& root);
 	bool is_master() const;
@@ -65,26 +66,28 @@ private:
 	void add_slave(const Json::Value& framework);
 
 	void parse_groups(const std::string& json);
-	void handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups);
-	marathon_group::ptr_t add_group(const Json::Value& group, marathon_group::ptr_t to_group);
 
 	void parse_apps(const std::string& json);
-	void add_app(const Json::Value& app);
 
 	void add_task_labels(std::string& json);
+	void get_groups(marathon_http::ptr_t http, std::string& json);
 
-	node_t               m_node_type;
-	mesos_http           m_state_http;
-	marathon_http*       m_marathon_groups_http;
-	marathon_http*       m_marathon_apps_http;
-	marathon_http*       m_marathon_watch_http;
-	mesos_state_t        m_state;
-	marathon_dispatcher* m_dispatch;
-	mesos_collector      m_collector;
+	typedef std::vector<marathon_http::ptr_t> marathon_http_list;
+	typedef std::vector<marathon_dispatcher::ptr_t> marathon_disp_list;
+
+	node_t             m_node_type;
+	mesos_http         m_state_http;
+	marathon_http_list m_marathon_groups_http;
+	marathon_http_list m_marathon_apps_http;
+	marathon_http_list m_marathon_watch_http;
+	mesos_state_t      m_state;
+	marathon_disp_list m_dispatch;
+	mesos_collector    m_collector;
 
 	static const mesos_component::component_map m_components;
 
 	friend class mesos_http;
+	friend class marathon_http;
 };
 
 inline mesos::node_t mesos::get_node_type() const
@@ -104,9 +107,22 @@ inline bool mesos::is_master() const
 
 inline bool mesos::is_alive() const
 {
-	return m_state_http.is_connected() &&
-		(!m_marathon_groups_http || m_marathon_groups_http->is_connected()) &&
-		(!m_marathon_apps_http || m_marathon_apps_http->is_connected());
+	bool connected = true;
+
+	connected &= m_state_http.is_connected();
+	for(const auto& group : m_marathon_groups_http)
+	{
+		connected &= group->is_connected();
+	}
+
+	for(const auto& app : m_marathon_apps_http)
+	{
+		connected &= app->is_connected();
+	}
+
+	connected &= (m_collector.subscription_count() > 0);
+
+	return connected;
 }
 
 inline void mesos::clear(bool marathon)

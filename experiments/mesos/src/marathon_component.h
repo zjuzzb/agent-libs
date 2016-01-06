@@ -67,7 +67,7 @@ class marathon_app;
 // group
 //
 
-class marathon_group : public marathon_component
+class marathon_group : public marathon_component, public std::enable_shared_from_this<marathon_group>
 {
 public:
 	typedef std::shared_ptr<marathon_group> ptr_t;
@@ -94,6 +94,15 @@ public:
 
 	const app_map_t& get_apps() const;
 	const group_map_t& get_groups() const;
+	ptr_t get_group(const std::string& group_id);
+	void print() const
+	{
+		std::cout << get_id() << std::endl;
+		for(auto& group : m_groups)
+		{
+			group.second->print();
+		}
+	}
 
 private:
 	app_map_t   m_apps;
@@ -171,6 +180,31 @@ inline const marathon_group::app_map_t& marathon_group::get_apps() const
 inline const marathon_group::group_map_t& marathon_group::get_groups() const
 {
 	return m_groups;
+}
+
+inline marathon_group::ptr_t marathon_group::get_group(const std::string& group_id)
+{
+	if(group_id == get_id())
+	{
+		return shared_from_this();
+	}
+
+	marathon_groups::iterator it = m_groups.find(group_id);
+	if(it != m_groups.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		for(auto group : m_groups)
+		{
+			if(ptr_t p_group = group.second->get_group(group_id))
+			{
+				return p_group;
+			}
+		}
+	}
+	return 0;
 }
 
 //

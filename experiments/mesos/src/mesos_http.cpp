@@ -145,13 +145,13 @@ Json::Value mesos_http::get_task_labels(const std::string& task_id)
 	std::ostringstream os;
 	CURLcode res = get_data(make_uri("/master/tasks"), os);
 
+	Json::Value labels;
 	if(res != CURLE_OK)
 	{
 		g_logger.log(curl_easy_strerror(res), sinsp_logger::SEV_ERROR);
-		return false;
+		return labels;
 	}
 
-	Json::Value labels;
 	try
 	{
 		Json::Value root;

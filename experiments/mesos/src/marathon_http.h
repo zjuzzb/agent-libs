@@ -9,10 +9,13 @@
 #include "curl/curl.h"
 #include "uri.h"
 #include "mesos_http.h"
+#include <memory>
 
 class marathon_http : public mesos_http
 {
 public:
+	typedef std::shared_ptr<marathon_http> ptr_t;
+
 	marathon_http(mesos& m, const uri& url, bool framework_info = false);
 
 	~marathon_http();
@@ -24,6 +27,8 @@ public:
 	const std::string& get_id() const;
 	const std::string& get_name() const;
 	const std::string& get_version() const;
+
+	std::string get_groups(const std::string& group_id);
 
 private:
 	bool on_data();
