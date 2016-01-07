@@ -4725,17 +4725,17 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
-  // repeated .draiosproto.network_by_port network_by_serverport = 24;
-  inline int network_by_serverport_size() const;
-  inline void clear_network_by_serverport();
-  static const int kNetworkByServerportFieldNumber = 24;
-  inline const ::draiosproto::network_by_port& network_by_serverport(int index) const;
-  inline ::draiosproto::network_by_port* mutable_network_by_serverport(int index);
-  inline ::draiosproto::network_by_port* add_network_by_serverport();
+  // repeated .draiosproto.network_by_port network_by_serverports = 24;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 24;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
   inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
-      network_by_serverport() const;
+      network_by_serverports() const;
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
-      mutable_network_by_serverport();
+      mutable_network_by_serverports();
 
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
@@ -4782,7 +4782,7 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverport_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
@@ -6204,17 +6204,17 @@ class container : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
       mutable_mounts();
 
-  // repeated .draiosproto.network_by_port network_by_serverport = 22;
-  inline int network_by_serverport_size() const;
-  inline void clear_network_by_serverport();
-  static const int kNetworkByServerportFieldNumber = 22;
-  inline const ::draiosproto::network_by_port& network_by_serverport(int index) const;
-  inline ::draiosproto::network_by_port* mutable_network_by_serverport(int index);
-  inline ::draiosproto::network_by_port* add_network_by_serverport();
+  // repeated .draiosproto.network_by_port network_by_serverports = 22;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 22;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
   inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
-      network_by_serverport() const;
+      network_by_serverports() const;
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
-      mutable_network_by_serverport();
+      mutable_network_by_serverports();
 
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
@@ -6265,7 +6265,7 @@ class container : public ::google::protobuf::Message {
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label > labels_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverport_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   int type_;
 
   mutable int _cached_size_;
@@ -14607,29 +14607,29 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   }
 }
 
-// repeated .draiosproto.network_by_port network_by_serverport = 24;
-inline int host::network_by_serverport_size() const {
-  return network_by_serverport_.size();
+// repeated .draiosproto.network_by_port network_by_serverports = 24;
+inline int host::network_by_serverports_size() const {
+  return network_by_serverports_.size();
 }
-inline void host::clear_network_by_serverport() {
-  network_by_serverport_.Clear();
+inline void host::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
 }
-inline const ::draiosproto::network_by_port& host::network_by_serverport(int index) const {
-  return network_by_serverport_.Get(index);
+inline const ::draiosproto::network_by_port& host::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
 }
-inline ::draiosproto::network_by_port* host::mutable_network_by_serverport(int index) {
-  return network_by_serverport_.Mutable(index);
+inline ::draiosproto::network_by_port* host::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
 }
-inline ::draiosproto::network_by_port* host::add_network_by_serverport() {
-  return network_by_serverport_.Add();
+inline ::draiosproto::network_by_port* host::add_network_by_serverports() {
+  return network_by_serverports_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
-host::network_by_serverport() const {
-  return network_by_serverport_;
+host::network_by_serverports() const {
+  return network_by_serverports_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
-host::mutable_network_by_serverport() {
-  return &network_by_serverport_;
+host::mutable_network_by_serverports() {
+  return &network_by_serverports_;
 }
 
 // -------------------------------------------------------------------
@@ -16899,29 +16899,29 @@ container::mutable_mounts() {
   return &mounts_;
 }
 
-// repeated .draiosproto.network_by_port network_by_serverport = 22;
-inline int container::network_by_serverport_size() const {
-  return network_by_serverport_.size();
+// repeated .draiosproto.network_by_port network_by_serverports = 22;
+inline int container::network_by_serverports_size() const {
+  return network_by_serverports_.size();
 }
-inline void container::clear_network_by_serverport() {
-  network_by_serverport_.Clear();
+inline void container::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
 }
-inline const ::draiosproto::network_by_port& container::network_by_serverport(int index) const {
-  return network_by_serverport_.Get(index);
+inline const ::draiosproto::network_by_port& container::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
 }
-inline ::draiosproto::network_by_port* container::mutable_network_by_serverport(int index) {
-  return network_by_serverport_.Mutable(index);
+inline ::draiosproto::network_by_port* container::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
 }
-inline ::draiosproto::network_by_port* container::add_network_by_serverport() {
-  return network_by_serverport_.Add();
+inline ::draiosproto::network_by_port* container::add_network_by_serverports() {
+  return network_by_serverports_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
-container::network_by_serverport() const {
-  return network_by_serverport_;
+container::network_by_serverports() const {
+  return network_by_serverports_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
-container::mutable_network_by_serverport() {
-  return &network_by_serverport_;
+container::mutable_network_by_serverports() {
+  return &network_by_serverports_;
 }
 
 // -------------------------------------------------------------------

@@ -2237,23 +2237,26 @@ void sinsp_analyzer::emit_connections_server_port_aggregation()
 	for(auto cit = m_ipv4_connections->m_connections.begin();
 		cit != m_ipv4_connections->m_connections.end(); ++cit)
 	{
-		auto server_port = cit->first.m_fields.m_dport;
-		auto emplaced = aggregated_connections.emplace(server_port, cit->second);
-		auto is_new_entry = emplaced.second;
-		auto agconn = &emplaced.first->second;
-		if(is_new_entry)
+		if(cit->second.is_active())
 		{
-			agconn->m_timestamp = 1;
-		}
-		else
-		{
-			//
-			// Existing entry.
-			// Add this connection's metrics to the aggregated connection's ones.
-			//
-			agconn->m_metrics.add(&cit->second.m_metrics);
-			agconn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-			agconn->m_timestamp++;
+			auto server_port = cit->first.m_fields.m_dport;
+			auto emplaced = aggregated_connections.emplace(server_port, cit->second);
+			auto is_new_entry = emplaced.second;
+			auto agconn = &emplaced.first->second;
+			if(is_new_entry)
+			{
+				agconn->m_timestamp = 1;
+			}
+			else
+			{
+				//
+				// Existing entry.
+				// Add this connection's metrics to the aggregated connection's ones.
+				//
+				agconn->m_metrics.add(&cit->second.m_metrics);
+				agconn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+				agconn->m_timestamp++;
+			}
 		}
 	}
 
@@ -2290,7 +2293,7 @@ void sinsp_analyzer::emit_connections_server_port_aggregation()
 	auto hostinfo = m_metrics->mutable_hostinfo();
 	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
 	{
-		auto network_by_server_port = hostinfo->add_network_by_serverport();
+		auto network_by_server_port = hostinfo->add_network_by_serverports();
 		network_by_server_port->set_port((*agcit)->first);
 		auto counters = network_by_server_port->mutable_counters();
 		(*agcit)->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
