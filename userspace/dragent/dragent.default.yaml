@@ -663,6 +663,7 @@ app_checks:
       unix_sock: "/var/run/postgresql/.s.PGSQL.{port}"
       username: postgres
   - name: postfix
+    interval: 15
     pattern:
       comm: postfix
     conf:
@@ -682,6 +683,7 @@ app_checks:
     pattern:
       exe: "php-fpm: master process"
   - name: varnish
+    interval: 15
     pattern:
       comm: varnishd
     conf:

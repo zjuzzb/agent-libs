@@ -11,6 +11,7 @@ import ctypes
 import logging
 from datetime import datetime, timedelta
 import sys
+import signal
 
 # project
 from checks import AgentCheck
@@ -280,6 +281,8 @@ class PosixQueue:
         try:
             message, _ = self.queue.receive(timeout)
             return message
+        except posix_ipc.SignalError:
+            return None
         except posix_ipc.BusyError:
             return None
 
@@ -410,4 +413,6 @@ class Application:
                 print "Checks: %s" % repr(service_checks)
                 print "Exception: %s" % repr(ex)
         else:
+            # In this mode register our usr1 handler to print stack trace (useful for debugging)
+            signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
             self.main_loop()
