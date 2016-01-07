@@ -58,6 +58,22 @@ public:
 	sinsp_transaction_counters m_transaction_metrics;
 };
 
+class sinsp_connection_aggregator
+{
+public:
+	sinsp_connection_aggregator():
+		m_count(0)
+	{}
+	void clear();
+	void to_protobuf(draiosproto::connection_categories* proto, uint32_t sampling_ratio);
+	void add(sinsp_connection* conn);
+	void add_client(sinsp_connection* conn);
+	void add_server(sinsp_connection* conn);
+private:
+	sinsp_connection_counters m_metrics;
+	sinsp_transaction_counters m_transaction_metrics;
+	uint32_t m_count;
+};
 
 template<class TKey,class THash,class TCompare>
 class SINSP_PUBLIC sinsp_connection_manager

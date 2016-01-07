@@ -82,4 +82,41 @@ bool sinsp_connection::is_active()
 	return (totops != 0);
 }
 
+void sinsp_connection_aggregator::clear()
+{
+	m_metrics.clear();
+	m_transaction_metrics.clear();
+	m_count = 0;
+}
+
+void sinsp_connection_aggregator::add(sinsp_connection* conn)
+{
+	m_metrics.add(&conn->m_metrics);
+	m_transaction_metrics.add(&conn->m_transaction_metrics);
+	++m_count;
+}
+
+void sinsp_connection_aggregator::add_client(sinsp_connection* conn)
+{
+	m_metrics.m_client.add(&conn->m_metrics.m_client);
+	m_transaction_metrics.add(&conn->m_transaction_metrics);
+	++m_count;
+}
+
+void sinsp_connection_aggregator::add_server(sinsp_connection* conn)
+{
+	m_metrics.m_server.add(&conn->m_metrics.m_server);
+	m_transaction_metrics.add(&conn->m_transaction_metrics);
+	++m_count;
+}
+
+void sinsp_connection_aggregator::to_protobuf(draiosproto::connection_categories *proto, uint32_t sampling_ratio)
+{
+	m_metrics.to_protobuf(proto, sampling_ratio);
+	m_transaction_metrics.to_protobuf(proto->mutable_transaction_counters(),
+			proto->mutable_min_transaction_counters(),
+			proto->mutable_max_transaction_counters(),
+			sampling_ratio);
+	proto->set_n_aggregated_connections(m_count);
+}
 #endif // HAS_ANALYZER

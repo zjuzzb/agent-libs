@@ -2071,56 +2071,25 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			// same thing by server port per container
-			if(!prog_scontainerid.empty())
+			if(!prog_scontainerid.empty() && prog_scontainerid == prog_dcontainerid)
 			{
-				auto& conn = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
-
-				if(conn.m_timestamp == 0)
-				{
-					//
-					// New entry.
-					// Structure copy the connection info.
-					//
-					conn = cit->second;
-					conn.m_timestamp = 1;
-				}
-				else
-				{
-					//
-					// Existing entry.
-					// Add this connection's metrics to the aggregated connection's ones.
-					//
-					conn.m_metrics.add(&cit->second.m_metrics);
-					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-					conn.m_timestamp++;
-				}
+				auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
+				conn_aggr.add(&cit->second);
 			}
-			if(!prog_dcontainerid.empty())
+			else
 			{
-				auto& conn = (*m_connections_by_serverport_per_container)[prog_dcontainerid][tuple.m_fields.m_dport];
-
-				if(conn.m_timestamp == 0)
+				if(!prog_scontainerid.empty())
 				{
-					//
-					// New entry.
-					// Structure copy the connection info.
-					//
-					conn = cit->second;
-					conn.m_timestamp = 1;
+					auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
+					conn_aggr.add_client(&cit->second);
 				}
-				else
+				if(!prog_dcontainerid.empty())
 				{
-					//
-					// Existing entry.
-					// Add this connection's metrics to the aggregated connection's ones.
-					//
-					conn.m_metrics.add(&cit->second.m_metrics);
-					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-					conn.m_timestamp++;
+					auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_dcontainerid][tuple.m_fields.m_dport];
+					conn_aggr.add_server(&cit->second);
 				}
 			}
 		}
-
 		//
 		// Has this connection been closed druring this sample?
 		//
@@ -4181,12 +4150,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 			auto network_by_server_port = container->add_network_by_serverports();
 			network_by_server_port->set_port(agcit->first);
 			auto counters = network_by_server_port->mutable_counters();
-			agcit->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
-			agcit->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
-															   counters->mutable_min_transaction_counters(),
-															   counters->mutable_max_transaction_counters(),
-															   m_sampling_ratio);
-			counters->set_n_aggregated_connections(agcit->second.m_timestamp);
+			agcit->second.to_protobuf(counters, m_sampling_ratio);
 		}
 	}
 }
