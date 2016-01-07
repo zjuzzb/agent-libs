@@ -326,7 +326,6 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	void emit_connections_server_port_aggregation();
 	void init_k8s_ssl();
 	k8s* make_k8s(const string& json, const string& k8s_api);
 	k8s* get_k8s(const string& k8s_api);
@@ -410,7 +409,7 @@ VISIBILITY_PRIVATE
 	// The table of aggreagted connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
-
+	unique_ptr<unordered_map<string, unordered_map<uint16_t, sinsp_connection>>> m_connections_by_serverport_per_container;
 	//
 	// The aggreagted host metrics
 	//

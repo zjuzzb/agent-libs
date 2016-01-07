@@ -107,7 +107,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_total_process_cpu = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
-
+	m_connections_by_serverport_per_container = make_unique<decltype(m_connections_by_serverport_per_container)::element_type>();
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -1904,6 +1904,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections->clear();
+	m_connections_by_serverport_per_container->clear();
+	unordered_map<uint16_t, sinsp_connection> connections_by_serverport;
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
@@ -1940,6 +1942,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		int64_t prog_spid = 0;
 		int64_t prog_dpid = 0;
+		string prog_scontainerid;
+		string prog_dcontainerid;
 
 		if(cit->second.m_spid != 0)
 		{
@@ -1954,6 +1958,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_scontainerid = tinfo->m_container_id;
 		}
 
 		if(cit->second.m_dpid != 0)
@@ -1969,6 +1974,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_dcontainerid = tinfo->m_container_id;
 		}
 
 		tuple.m_fields.m_spid = prog_spid;
@@ -2039,6 +2045,80 @@ void sinsp_analyzer::emit_aggregated_connections()
 				conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
 				conn.m_timestamp++;
 			}
+
+			// same thing by server port per host
+			{
+				auto& conn = connections_by_serverport[tuple.m_fields.m_dport];
+				if(conn.m_timestamp == 0)
+				{
+					//
+					// New entry.
+					// Structure copy the connection info.
+					//
+					conn = cit->second;
+					conn.m_timestamp = 1;
+				}
+				else
+				{
+					//
+					// Existing entry.
+					// Add this connection's metrics to the aggregated connection's ones.
+					//
+					conn.m_metrics.add(&cit->second.m_metrics);
+					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+					conn.m_timestamp++;
+				}
+			}
+
+			// same thing by server port per container
+			if(!prog_scontainerid.empty())
+			{
+				auto& conn = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
+
+				if(conn.m_timestamp == 0)
+				{
+					//
+					// New entry.
+					// Structure copy the connection info.
+					//
+					conn = cit->second;
+					conn.m_timestamp = 1;
+				}
+				else
+				{
+					//
+					// Existing entry.
+					// Add this connection's metrics to the aggregated connection's ones.
+					//
+					conn.m_metrics.add(&cit->second.m_metrics);
+					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+					conn.m_timestamp++;
+				}
+			}
+			if(!prog_dcontainerid.empty())
+			{
+				auto& conn = (*m_connections_by_serverport_per_container)[prog_dcontainerid][tuple.m_fields.m_dport];
+
+				if(conn.m_timestamp == 0)
+				{
+					//
+					// New entry.
+					// Structure copy the connection info.
+					//
+					conn = cit->second;
+					conn.m_timestamp = 1;
+				}
+				else
+				{
+					//
+					// Existing entry.
+					// Add this connection's metrics to the aggregated connection's ones.
+					//
+					conn.m_metrics.add(&cit->second.m_metrics);
+					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
+					conn.m_timestamp++;
+				}
+			}
 		}
 
 		//
@@ -2059,6 +2139,49 @@ void sinsp_analyzer::emit_aggregated_connections()
 			cit->second.clear();
 			++cit;
 		}
+	}
+
+	// Filter the top N
+	vector<decltype(connections_by_serverport)::iterator> to_emit_connections;
+	for(auto agcit = connections_by_serverport.begin(); agcit != connections_by_serverport.end(); ++agcit)
+	{
+		to_emit_connections.push_back(agcit);
+	}
+	auto to_emit_connections_end = to_emit_connections.end();
+
+	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
+	{
+		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
+		partial_sort(to_emit_connections.begin(),
+					 to_emit_connections_end,
+					 to_emit_connections.end(), [](const decltype(connections_by_serverport)::iterator& src,
+												   const decltype(connections_by_serverport)::iterator& dst)
+					 {
+						 uint64_t s = src->second.m_metrics.m_client.m_bytes_in +
+									  src->second.m_metrics.m_client.m_bytes_out +
+									  src->second.m_metrics.m_server.m_bytes_in +
+									  src->second.m_metrics.m_server.m_bytes_out;
+
+						 uint64_t d = dst->second.m_metrics.m_client.m_bytes_in +
+									  dst->second.m_metrics.m_client.m_bytes_out +
+									  dst->second.m_metrics.m_server.m_bytes_in +
+									  dst->second.m_metrics.m_server.m_bytes_out;
+
+						 return (s > d);
+					 });
+	}
+
+	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
+	{
+		auto network_by_server_port = m_metrics->mutable_hostinfo()->add_network_by_serverports();
+		network_by_server_port->set_port((*agcit)->first);
+		auto counters = network_by_server_port->mutable_counters();
+		(*agcit)->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
+		(*agcit)->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
+														   counters->mutable_min_transaction_counters(),
+														   counters->mutable_max_transaction_counters(),
+														   m_sampling_ratio);
+		counters->set_n_aggregated_connections((*agcit)->second.m_timestamp);
 	}
 
 	//
@@ -2227,81 +2350,6 @@ void sinsp_analyzer::emit_full_connections()
 			cit->second.clear();
 			++cit;
 		}
-	}
-}
-
-void sinsp_analyzer::emit_connections_server_port_aggregation()
-{
-	unordered_map<uint16_t, sinsp_connection> aggregated_connections;
-
-	for(auto cit = m_ipv4_connections->m_connections.begin();
-		cit != m_ipv4_connections->m_connections.end(); ++cit)
-	{
-		if(cit->second.is_active())
-		{
-			auto server_port = cit->first.m_fields.m_dport;
-			auto emplaced = aggregated_connections.emplace(server_port, cit->second);
-			auto is_new_entry = emplaced.second;
-			auto agconn = &emplaced.first->second;
-			if(is_new_entry)
-			{
-				agconn->m_timestamp = 1;
-			}
-			else
-			{
-				//
-				// Existing entry.
-				// Add this connection's metrics to the aggregated connection's ones.
-				//
-				agconn->m_metrics.add(&cit->second.m_metrics);
-				agconn->m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-				agconn->m_timestamp++;
-			}
-		}
-	}
-
-	// Filter the top N
-	vector<decltype(aggregated_connections)::iterator> to_emit_connections;
-	for(auto agcit = aggregated_connections.begin(); agcit != aggregated_connections.end(); ++agcit)
-	{
-		to_emit_connections.push_back(agcit);
-	}
-	auto to_emit_connections_end = to_emit_connections.end();
-
-	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
-	{
-		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
-		partial_sort(to_emit_connections.begin(),
-					 to_emit_connections_end,
-					 to_emit_connections.end(), [](const decltype(aggregated_connections)::iterator& src,
-												   const decltype(aggregated_connections)::iterator& dst)
-			 {
-				 uint64_t s = src->second.m_metrics.m_client.m_bytes_in +
-						 src->second.m_metrics.m_client.m_bytes_out +
-						 src->second.m_metrics.m_server.m_bytes_in +
-						 src->second.m_metrics.m_server.m_bytes_out;
-
-				 uint64_t d = dst->second.m_metrics.m_client.m_bytes_in +
-							  dst->second.m_metrics.m_client.m_bytes_out +
-							  dst->second.m_metrics.m_server.m_bytes_in +
-							  dst->second.m_metrics.m_server.m_bytes_out;
-
-				 return (s > d);
-			 });
-	}
-
-	auto hostinfo = m_metrics->mutable_hostinfo();
-	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
-	{
-		auto network_by_server_port = hostinfo->add_network_by_serverports();
-		network_by_server_port->set_port((*agcit)->first);
-		auto counters = network_by_server_port->mutable_counters();
-		(*agcit)->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
-		(*agcit)->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
-														counters->mutable_min_transaction_counters(),
-														counters->mutable_max_transaction_counters(),
-														m_sampling_ratio);
-		counters->set_n_aggregated_connections((*agcit)->second.m_timestamp);
 	}
 }
 
@@ -2702,11 +2750,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
-			////////////////////////////////////////////////////////////////////////////
-			// EMIT PROCESSES
-			////////////////////////////////////////////////////////////////////////////
-
-			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT CONNECTIONS
@@ -2727,11 +2770,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-
-			// Doing this before `emit_aggregated_connections`
-			// because it clears the metrics after emitting
-			emit_connections_server_port_aggregation();
-
 			// WARNING: the following methods emit but also clear the metrics
 
 			if(m_configuration->get_aggregate_connections_in_proto())
@@ -2748,6 +2786,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				//
 				emit_full_connections();
 			}
+
+			////////////////////////////////////////////////////////////////////////////
+			// EMIT PROCESSES
+			////////////////////////////////////////////////////////////////////////////
+
+			emit_processes(evt, sample_duration, is_eof, flshflags);
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
@@ -4125,6 +4169,24 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		{
 			auto proto_fs = container->add_mounts();
 			it->to_protobuf(proto_fs);
+		}
+	}
+
+	g_logger.format(sinsp_logger::SEV_INFO, "m_connections_by_serverport_per_container size=%u", m_connections_by_serverport_per_container->size());
+	auto connections_by_serverport_it = m_connections_by_serverport_per_container->find(container_id);
+	if(connections_by_serverport_it != m_connections_by_serverport_per_container->end())
+	{
+		for(auto agcit = connections_by_serverport_it->second.begin(); agcit != connections_by_serverport_it->second.end(); ++agcit)
+		{
+			auto network_by_server_port = container->add_network_by_serverports();
+			network_by_server_port->set_port(agcit->first);
+			auto counters = network_by_server_port->mutable_counters();
+			agcit->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
+			agcit->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
+															   counters->mutable_min_transaction_counters(),
+															   counters->mutable_max_transaction_counters(),
+															   m_sampling_ratio);
+			counters->set_n_aggregated_connections(agcit->second.m_timestamp);
 		}
 	}
 }
