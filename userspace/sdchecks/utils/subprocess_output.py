@@ -23,7 +23,6 @@ def get_subprocess_output(command, log, shell=False, stdin=None):
     # use subprocess.PIPE if the data size is large or unlimited.
     with nested(tempfile.TemporaryFile(), tempfile.TemporaryFile()) as (stdout_f, stderr_f):
         proc = subprocess.Popen(command,
-                                close_fds=not Platform.is_windows(),  # only set to True when on Unix, for WIN compatibility
                                 shell=shell,
                                 stdin=stdin,
                                 stdout=stdout_f,
