@@ -414,5 +414,5 @@ class Application:
                 print "Exception: %s" % repr(ex)
         else:
             # In this mode register our usr1 handler to print stack trace (useful for debugging)
-            signal.signal(signal.SIGUSR1, lambda sig, frame: traceback.print_stack())
+            signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
             self.main_loop()
