@@ -38,9 +38,9 @@ void print_proto(mesos& m, const std::string& fname)
 	mesos_proto(met).get_proto(m.get_state());
 	//FileOutputStream fos("/home/alex/sysdig/agent/experiments/mesos/" + fname + ".protodump");
 	//fos << met.DebugString();
-	std::cout << met.DebugString() << std::endl;
+	//std::cout << met.DebugString() << std::endl;
 	//std::cout << "++++" << std::endl;
-	//print_groups(met.mesos().groups());
+	print_groups(met.mesos().groups());
 	//std::cout << "----" << std::endl;
 }
 

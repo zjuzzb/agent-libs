@@ -31,10 +31,22 @@ mesos::mesos(const std::string& state_uri,
 {
 	for(const auto& uri : marathon_uris)
 	{
-		m_marathon_groups_http.push_back(std::make_shared<marathon_http>(*this, uri + groups_api, true));
-		m_marathon_apps_http.push_back(std::make_shared<marathon_http>(*this, uri + apps_api, true));
-		m_marathon_watch_http.push_back(std::make_shared<marathon_http>(*this, uri + watch_api, true));
-		m_dispatch.push_back(std::make_shared<marathon_dispatcher>(m_state, m_marathon_watch_http.back()->get_id()));
+		int port = (uri.substr(0, 5) == "https") ? 443 : 80;
+		std::string::size_type pos = uri.rfind(':');
+		if(pos != std::string::npos)
+		{
+			std::string::size_type ppos = uri.find('/', pos);
+			if(ppos == std::string::npos)
+			{
+				ppos = pos + (uri.length() - pos);
+			}
+			ASSERT(ppos - (pos + 1) > 0);
+			port = std::stoi(uri.substr(pos + 1, ppos - (pos + 1)));
+		}
+		m_marathon_groups_http[port] = std::make_shared<marathon_http>(*this, uri + groups_api, true);
+		m_marathon_apps_http[port]   = std::make_shared<marathon_http>(*this, uri + apps_api, true);
+		m_marathon_watch_http[port]  = std::make_shared<marathon_http>(*this, uri + watch_api, true);
+		m_dispatch[port]             = std::make_shared<marathon_dispatcher>(m_state, m_marathon_watch_http[port]->get_id());
 	}
 
 	refresh(marathon_uris.size());
@@ -54,17 +66,17 @@ void mesos::refresh(bool marathon)
 	{
 		for(auto& app_http : m_marathon_apps_http)
 		{
-			app_http->get_all_data(&mesos::parse_apps);
+			app_http.second->get_all_data(&mesos::parse_apps);
 		}
 
 		for(auto& group_http : m_marathon_groups_http)
 		{
-			group_http->get_all_data(&mesos::parse_groups);
+			group_http.second->get_all_data(&mesos::parse_groups);
 		}
 
 		for(auto watch_http : m_marathon_watch_http)
 		{
-			m_collector.add(watch_http);
+			m_collector.add(watch_http.second);
 		}
 	}
 }
@@ -77,7 +89,7 @@ void mesos::watch()
 		{
 			for(auto watch_http : m_marathon_watch_http)
 			{
-				m_collector.add(watch_http);
+				m_collector.add(watch_http.second);
 			}
 		}
 		m_collector.get_data();
@@ -194,17 +206,17 @@ void mesos::on_watch_data(const std::string& framework_id, mesos_event_data&& ms
 	// information to rebuild state) with Marathon state API JSON
 	for(auto& http : m_marathon_groups_http)
 	{
-		if(http->get_id() == framework_id)
+		if(http.second->get_id() == framework_id)
 		{
-			get_groups(http, msg.get_data());
+			get_groups(http.second, msg.get_data());
 		}
 	}
 
 	for(auto& dispatcher : m_dispatch)
 	{
-		if(framework_id == dispatcher->get_id())
+		if(framework_id == dispatcher.second->get_id())
 		{
-			dispatcher->enqueue(std::move(msg));
+			dispatcher.second->enqueue(std::move(msg));
 			break;
 		}
 	}
@@ -383,5 +395,4 @@ void mesos::parse_apps(const std::string& json)
 {
 	m_state.parse_apps(json);
 }
-
 

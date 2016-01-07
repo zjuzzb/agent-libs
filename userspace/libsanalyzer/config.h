@@ -78,10 +78,8 @@ public:
 	void set_statsd_limit(unsigned value);
 	const string & get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
-	const string & get_marathon_groups_uri() const;
-	void set_marathon_groups_uri(const string & uri);
-	const string & get_marathon_apps_uri() const;
-	void set_marathon_apps_uri(const string & uri);
+	const vector<string> & get_marathon_uris() const;
+	void set_marathon_uris(const vector<string> & uris);
 	bool get_mesos_autodetect_enabled() const;
 	void set_mesos_autodetect_enabled(bool enabled);
 private:
@@ -119,8 +117,7 @@ private:
 	unsigned m_statsd_limit;
 
 	string m_mesos_state_uri;
-	string m_marathon_groups_uri;
-	string m_marathon_apps_uri;
+	vector<string> m_marathon_uris;
 	bool   m_mesos_autodetect;
 };
 

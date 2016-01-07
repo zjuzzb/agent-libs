@@ -58,8 +58,12 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp
 	k8s_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_dispatcher.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_event_data.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp

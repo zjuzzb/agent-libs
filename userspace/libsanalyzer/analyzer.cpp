@@ -824,32 +824,33 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 			const std::string& version = ver.asString();
 			if(!version.empty())
 			{
-				std::string mesos_state = m_configuration->get_mesos_state_uri();
-				std::string marathon_groups = m_configuration->get_marathon_groups_uri();
-				std::string marathon_apps = m_configuration->get_marathon_apps_uri();
+				string mesos_state = m_configuration->get_mesos_state_uri();
+				vector<string> marathon_uris = m_configuration->get_marathon_uris();
 
-				if(marathon_groups.empty())
+				if(marathon_uris.empty())
 				{
-					marathon_groups = mesos::default_groups_uri;
-					m_configuration->set_marathon_groups_uri(marathon_groups);
+					marathon_uris = { mesos::default_marathon_uri };
+					m_configuration->set_marathon_uris(marathon_uris);
 				}
-				if(marathon_apps.empty())
-				{
-					marathon_apps = mesos::default_apps_uri;
-					m_configuration->set_marathon_apps_uri(marathon_apps);
-				}
+
 				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
 					sinsp_logger::SEV_INFO);
 				g_logger.log("Mesos state: [" + mesos_state + mesos::default_state_api + ']',
 					sinsp_logger::SEV_INFO);
-				g_logger.log("Mesos (Marathon) groups: [" + marathon_groups + mesos::default_groups_api + ']',
-					sinsp_logger::SEV_INFO);
-				g_logger.log("Mesos (Marathon) state: [" + marathon_apps + mesos::default_apps_api + ']',
-					sinsp_logger::SEV_INFO);
+				for(const auto& marathon_uri : marathon_uris)
+				{
+					g_logger.log("Mesos (Marathon) groups: [" + marathon_uri + mesos::default_groups_api + ']',
+						sinsp_logger::SEV_INFO);
+
+					g_logger.log("Mesos (Marathon) apps: [" + marathon_uri + mesos::default_apps_api + ']',
+						sinsp_logger::SEV_INFO);
+				}
 
 				return new mesos(mesos_state, mesos::default_state_api,
-					marathon_groups, mesos::default_groups_api,
-					marathon_apps, mesos::default_apps_api);
+					marathon_uris,
+					mesos::default_groups_api,
+					mesos::default_apps_api,
+					mesos::default_watch_api);
 			}
 		}
 	}
@@ -3853,17 +3854,15 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
-	static time_t last_mesos_refresh = 0;
+	//static time_t last_mesos_refresh = 0;
 	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
 	time_t now;
 	time(&now);
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
-	/*
-	if(!m_mesos->watch_in_thread())
-	{
-		m_mesos->watch();
-	}*/
+
+	m_mesos->watch();
+/*
 	if(!last_mesos_refresh)
 	{
 		last_mesos_refresh = now;
@@ -3873,6 +3872,7 @@ void sinsp_analyzer::get_mesos_data()
 		m_mesos->refresh();
 		last_mesos_refresh = now;
 	}
+*/
 	ASSERT(m_metrics);
 	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
 	if(m_metrics->has_mesos())

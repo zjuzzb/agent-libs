@@ -16,6 +16,7 @@
 #include "uri.h"
 #include <sstream>
 #include <utility>
+#include <unordered_map>
 
 class mesos
 {
@@ -72,17 +73,17 @@ private:
 	void add_task_labels(std::string& json);
 	void get_groups(marathon_http::ptr_t http, std::string& json);
 
-	typedef std::vector<marathon_http::ptr_t> marathon_http_list;
-	typedef std::vector<marathon_dispatcher::ptr_t> marathon_disp_list;
+	typedef std::unordered_map<int, marathon_http::ptr_t>       marathon_http_map;
+	typedef std::unordered_map<int, marathon_dispatcher::ptr_t> marathon_disp_map;
 
-	node_t             m_node_type;
-	mesos_http         m_state_http;
-	marathon_http_list m_marathon_groups_http;
-	marathon_http_list m_marathon_apps_http;
-	marathon_http_list m_marathon_watch_http;
-	mesos_state_t      m_state;
-	marathon_disp_list m_dispatch;
-	mesos_collector    m_collector;
+	node_t            m_node_type;
+	mesos_http        m_state_http;
+	marathon_http_map m_marathon_groups_http;
+	marathon_http_map m_marathon_apps_http;
+	marathon_http_map m_marathon_watch_http;
+	mesos_state_t     m_state;
+	marathon_disp_map m_dispatch;
+	mesos_collector   m_collector;
 
 	static const mesos_component::component_map m_components;
 
@@ -112,12 +113,12 @@ inline bool mesos::is_alive() const
 	connected &= m_state_http.is_connected();
 	for(const auto& group : m_marathon_groups_http)
 	{
-		connected &= group->is_connected();
+		connected &= group.second->is_connected();
 	}
 
 	for(const auto& app : m_marathon_apps_http)
 	{
-		connected &= app->is_connected();
+		connected &= app.second->is_connected();
 	}
 
 	connected &= (m_collector.subscription_count() > 0);
