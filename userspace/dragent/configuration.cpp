@@ -7,6 +7,7 @@
 #include <netdb.h>
 
 #include "logger.h"
+#include "uri.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -275,11 +276,19 @@ void dragent_configuration::init(Application* app)
 
 	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
 	auto marathon_ports = m_config->get_merged_sequence<uint16_t>("marathon_ports");
+	std::ostringstream os;
 	for(auto p : marathon_ports)
 	{
-		string::size_type pos = m_mesos_state_uri.rfind(':');
-		string mesos_state_uri = (pos == string::npos) ? m_mesos_state_uri.substr(0, pos) : m_mesos_state_uri;
-		m_marathon_uris.push_back(m_mesos_state_uri + ':' + std::to_string(p));
+		uri u(m_mesos_state_uri);
+		os << u.get_scheme() << "://";
+		string user = u.get_user();
+		if(!user.empty())
+		{
+			os << user << ':' << u.get_password() << '@';
+		}
+		os << u.get_host() << ':' << p;
+		m_marathon_uris.push_back(os.str());
+		os.str("");
 	}
 	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
 

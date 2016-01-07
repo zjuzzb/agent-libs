@@ -3854,7 +3854,6 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
-	//static time_t last_mesos_refresh = 0;
 	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
 	time_t now;
 	time(&now);
@@ -3863,22 +3862,13 @@ void sinsp_analyzer::get_mesos_data()
 
 	m_mesos->watch();
 /*
-	if(!last_mesos_refresh)
-	{
-		last_mesos_refresh = now;
-	}
-	if(difftime(now, last_mesos_refresh) > 30)
-	{
-		m_mesos->refresh();
-		last_mesos_refresh = now;
-	}
-*/
 	ASSERT(m_metrics);
 	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
 	if(m_metrics->has_mesos())
 	{
 		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
 	}
+*/
 }
 
 void sinsp_analyzer::emit_mesos()
@@ -3892,9 +3882,9 @@ void sinsp_analyzer::emit_mesos()
 	//      when mesos_state_uri is empty, autodetect is true and api server is detected on the
 	//      local machine, uris will be automatically set to:
 	//
-	//      mesos_state_uri:     "http://localhost:5050/state.json"
-	//      marathon_groups_uri: "http://localhost:8080/v2/groups";
-	//      marathon_apps_uri:   "http://localhost:8080/v2/apps?embed=apps.tasks";
+	//      mesos state:     "http://localhost:5050/state.json"
+	//      marathon groups: "http://localhost:8080/v2/groups";
+	//      marathon uri:    "http://localhost:8080/v2/apps?embed=apps.tasks";
 	//
 	// so, at runtime, mesos_state_uri being empty or not determines whether mesos data
 	// will be collected and emitted; the connection to mesos api server is entirely managed
