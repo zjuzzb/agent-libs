@@ -107,7 +107,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_total_process_cpu = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
-	m_connections_by_serverport_per_container = make_unique<decltype(m_connections_by_serverport_per_container)::element_type>();
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -1904,7 +1903,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections->clear();
-	m_connections_by_serverport_per_container->clear();
 	unordered_map<uint16_t, sinsp_connection> connections_by_serverport;
 
 	//
@@ -2073,19 +2071,19 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// same thing by server port per container
 			if(!prog_scontainerid.empty() && prog_scontainerid == prog_dcontainerid)
 			{
-				auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
+				auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
 				conn_aggr.add(&cit->second);
 			}
 			else
 			{
 				if(!prog_scontainerid.empty())
 				{
-					auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_scontainerid][tuple.m_fields.m_dport];
+					auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
 					conn_aggr.add_client(&cit->second);
 				}
 				if(!prog_dcontainerid.empty())
 				{
-					auto &conn_aggr = (*m_connections_by_serverport_per_container)[prog_dcontainerid][tuple.m_fields.m_dport];
+					auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
 					conn_aggr.add_server(&cit->second);
 				}
 			}
@@ -4141,17 +4139,13 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		}
 	}
 
-	g_logger.format(sinsp_logger::SEV_INFO, "m_connections_by_serverport_per_container size=%u", m_connections_by_serverport_per_container->size());
-	auto connections_by_serverport_it = m_connections_by_serverport_per_container->find(container_id);
-	if(connections_by_serverport_it != m_connections_by_serverport_per_container->end())
+	for(auto agcit = it_analyzer->second.m_connections_by_serverport->begin();
+		agcit != it_analyzer->second.m_connections_by_serverport->end(); ++agcit)
 	{
-		for(auto agcit = connections_by_serverport_it->second.begin(); agcit != connections_by_serverport_it->second.end(); ++agcit)
-		{
-			auto network_by_server_port = container->add_network_by_serverports();
-			network_by_server_port->set_port(agcit->first);
-			auto counters = network_by_server_port->mutable_counters();
-			agcit->second.to_protobuf(counters, m_sampling_ratio);
-		}
+		auto network_by_server_port = container->add_network_by_serverports();
+		network_by_server_port->set_port(agcit->first);
+		auto counters = network_by_server_port->mutable_counters();
+		agcit->second.to_protobuf(counters, m_sampling_ratio);
 	}
 }
 
@@ -4535,6 +4529,11 @@ double self_cputime_analyzer::calc_flush_percent()
 	double tot_flushtime = accumulate(m_flushtime.begin(), m_flushtime.end(), 0);
 	double tot_othertime = accumulate(m_othertime.begin(), m_othertime.end(), 0);
 	return tot_flushtime/(tot_flushtime+tot_othertime);
+}
+
+analyzer_container_state::analyzer_container_state()
+{
+	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 }
 
 #endif // HAS_ANALYZER
