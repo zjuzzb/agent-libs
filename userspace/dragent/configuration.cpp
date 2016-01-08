@@ -275,20 +275,10 @@ void dragent_configuration::init(Application* app)
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 
 	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
-	auto marathon_ports = m_config->get_merged_sequence<uint16_t>("marathon_ports");
-	std::ostringstream os;
-	for(auto p : marathon_ports)
+	auto marathon_uris = m_config->get_merged_sequence<uint16_t>("marathon_uris");
+	for(auto p : marathon_uris)
 	{
-		uri u(m_mesos_state_uri);
-		os << u.get_scheme() << "://";
-		string user = u.get_user();
-		if(!user.empty())
-		{
-			os << user << ':' << u.get_password() << '@';
-		}
-		os << u.get_host() << ':' << p;
-		m_marathon_uris.push_back(os.str());
-		os.str("");
+		m_marathon_uris.push_back(u);
 	}
 	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
 
