@@ -190,6 +190,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	//
+	// Make sure the agent never creates world-writable files
+	//
+	umask(0027);
+
+	//
 	// Never move this further down!
 	// It's important that the pidfile gets created immediately!
 	//
