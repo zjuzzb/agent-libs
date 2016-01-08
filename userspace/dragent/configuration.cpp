@@ -275,8 +275,8 @@ void dragent_configuration::init(Application* app)
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 
 	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
-	auto marathon_uris = m_config->get_merged_sequence<uint16_t>("marathon_uris");
-	for(auto p : marathon_uris)
+	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
+	for(auto u : marathon_uris)
 	{
 		m_marathon_uris.push_back(u);
 	}
