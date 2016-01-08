@@ -65,15 +65,52 @@ public:
 		m_count(0)
 	{}
 	void clear();
-	void to_protobuf(draiosproto::connection_categories* proto, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::connection_categories* proto, uint32_t sampling_ratio) const;
 	void add(sinsp_connection* conn);
 	void add_client(sinsp_connection* conn);
 	void add_server(sinsp_connection* conn);
+	template<typename ProtobufType>
+	static void filter_and_emit(const unordered_map<uint16_t, sinsp_connection_aggregator>& map,
+							ProtobufType* proto, uint16_t top, uint32_t sampling_ratio);
 private:
+	bool operator<(const sinsp_connection_aggregator& other) const;
 	sinsp_connection_counters m_metrics;
 	sinsp_transaction_counters m_transaction_metrics;
 	uint32_t m_count;
 };
+
+template<typename ProtobufType>
+void sinsp_connection_aggregator::filter_and_emit(const unordered_map<uint16_t, sinsp_connection_aggregator> &map,
+												  ProtobufType *proto, uint16_t top, uint32_t sampling_ratio)
+{
+	// Filter the top N
+	using map_it_t = unordered_map<uint16_t, sinsp_connection_aggregator>::const_iterator;
+	vector<map_it_t> to_emit_connections;
+	for(auto agcit = map.begin(); agcit != map.end(); ++agcit)
+	{
+		to_emit_connections.push_back(agcit);
+	}
+	auto to_emit_connections_end = to_emit_connections.end();
+
+	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
+	{
+		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
+		partial_sort(to_emit_connections.begin(),
+					 to_emit_connections_end,
+					 to_emit_connections.end(), [](const map_it_t& src, const map_it_t& dst)
+					 {
+						 return dst->second < src->second;
+					 });
+	}
+
+	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
+	{
+		auto network_by_server_port = proto->add_network_by_serverports();
+		network_by_server_port->set_port((*agcit)->first);
+		auto counters = network_by_server_port->mutable_counters();
+		(*agcit)->second.to_protobuf(counters, sampling_ratio);
+	}
+}
 
 template<class TKey,class THash,class TCompare>
 class SINSP_PUBLIC sinsp_connection_manager

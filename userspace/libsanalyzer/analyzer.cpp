@@ -73,7 +73,6 @@ using namespace google::protobuf::io;
 #include <memory>
 #include <iostream>
 #include <numeric>
-#include <tuples.h>
 
 using namespace Poco;
 using namespace Poco::Net;
@@ -1903,7 +1902,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections->clear();
-	unordered_map<uint16_t, sinsp_connection> connections_by_serverport;
+	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
@@ -1983,7 +1982,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
+		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0 && cit->second.is_active())
 		{
 			if(!cit->second.is_client_and_server())
 			{
@@ -2045,28 +2044,13 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			// same thing by server port per host
+			if(tuple.m_fields.m_dport == 0)
 			{
-				auto& conn = connections_by_serverport[tuple.m_fields.m_dport];
-				if(conn.m_timestamp == 0)
-				{
-					//
-					// New entry.
-					// Structure copy the connection info.
-					//
-					conn = cit->second;
-					conn.m_timestamp = 1;
-				}
-				else
-				{
-					//
-					// Existing entry.
-					// Add this connection's metrics to the aggregated connection's ones.
-					//
-					conn.m_metrics.add(&cit->second.m_metrics);
-					conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
-					conn.m_timestamp++;
-				}
+				g_logger.format(sinsp_logger::SEV_INFO,
+								"Found connection %s:%u:%u->%s:%u with dport=0 and active=%d",
+								cit->second.m_scomm.c_str(), tuple.m_fields.m_sip, tuple.m_fields.m_sport, cit->second.m_dcomm.c_str(), tuple.m_fields.m_dip, cit->second.is_active());
 			}
+			connections_by_serverport[tuple.m_fields.m_dport].add(&cit->second);
 
 			// same thing by server port per container
 			if(!prog_scontainerid.empty() && prog_scontainerid == prog_dcontainerid)
@@ -2109,7 +2093,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	// Filter the top N
-	vector<decltype(connections_by_serverport)::iterator> to_emit_connections;
+	/*vector<decltype(connections_by_serverport)::iterator> to_emit_connections;
 	for(auto agcit = connections_by_serverport.begin(); agcit != connections_by_serverport.end(); ++agcit)
 	{
 		to_emit_connections.push_back(agcit);
@@ -2124,17 +2108,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 					 to_emit_connections.end(), [](const decltype(connections_by_serverport)::iterator& src,
 												   const decltype(connections_by_serverport)::iterator& dst)
 					 {
-						 uint64_t s = src->second.m_metrics.m_client.m_bytes_in +
-									  src->second.m_metrics.m_client.m_bytes_out +
-									  src->second.m_metrics.m_server.m_bytes_in +
-									  src->second.m_metrics.m_server.m_bytes_out;
-
-						 uint64_t d = dst->second.m_metrics.m_client.m_bytes_in +
-									  dst->second.m_metrics.m_client.m_bytes_out +
-									  dst->second.m_metrics.m_server.m_bytes_in +
-									  dst->second.m_metrics.m_server.m_bytes_out;
-
-						 return (s > d);
+						 return dst->second < src->second;
 					 });
 	}
 
@@ -2143,13 +2117,9 @@ void sinsp_analyzer::emit_aggregated_connections()
 		auto network_by_server_port = m_metrics->mutable_hostinfo()->add_network_by_serverports();
 		network_by_server_port->set_port((*agcit)->first);
 		auto counters = network_by_server_port->mutable_counters();
-		(*agcit)->second.m_metrics.to_protobuf(counters, m_sampling_ratio);
-		(*agcit)->second.m_transaction_metrics.to_protobuf(counters->mutable_transaction_counters(),
-														   counters->mutable_min_transaction_counters(),
-														   counters->mutable_max_transaction_counters(),
-														   m_sampling_ratio);
-		counters->set_n_aggregated_connections((*agcit)->second.m_timestamp);
-	}
+		(*agcit)->second.to_protobuf(counters, m_sampling_ratio);
+	}*/
+	sinsp_connection_aggregator::filter_and_emit(connections_by_serverport, m_metrics->mutable_hostinfo(), TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
 
 	//
 	// If the table is still too big, sort it and pick only the top connections
