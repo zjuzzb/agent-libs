@@ -2092,33 +2092,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 	}
 
-	// Filter the top N
-	/*vector<decltype(connections_by_serverport)::iterator> to_emit_connections;
-	for(auto agcit = connections_by_serverport.begin(); agcit != connections_by_serverport.end(); ++agcit)
-	{
-		to_emit_connections.push_back(agcit);
-	}
-	auto to_emit_connections_end = to_emit_connections.end();
-
-	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
-	{
-		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
-		partial_sort(to_emit_connections.begin(),
-					 to_emit_connections_end,
-					 to_emit_connections.end(), [](const decltype(connections_by_serverport)::iterator& src,
-												   const decltype(connections_by_serverport)::iterator& dst)
-					 {
-						 return dst->second < src->second;
-					 });
-	}
-
-	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
-	{
-		auto network_by_server_port = m_metrics->mutable_hostinfo()->add_network_by_serverports();
-		network_by_server_port->set_port((*agcit)->first);
-		auto counters = network_by_server_port->mutable_counters();
-		(*agcit)->second.to_protobuf(counters, m_sampling_ratio);
-	}*/
 	sinsp_connection_aggregator::filter_and_emit(connections_by_serverport, m_metrics->mutable_hostinfo(), TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
 
 	//
@@ -4109,14 +4082,8 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		}
 	}
 
-	for(auto agcit = it_analyzer->second.m_connections_by_serverport->begin();
-		agcit != it_analyzer->second.m_connections_by_serverport->end(); ++agcit)
-	{
-		auto network_by_server_port = container->add_network_by_serverports();
-		network_by_server_port->set_port(agcit->first);
-		auto counters = network_by_server_port->mutable_counters();
-		agcit->second.to_protobuf(counters, m_sampling_ratio);
-	}
+	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
+												 container, TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
 }
 
 void sinsp_analyzer::get_statsd()
