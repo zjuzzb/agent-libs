@@ -92,9 +92,9 @@ void sinsp_connection_aggregator::filter_and_emit(const unordered_map<uint16_t, 
 	}
 	auto to_emit_connections_end = to_emit_connections.end();
 
-	if(to_emit_connections.size() > TOP_SERVER_PORTS_IN_SAMPLE)
+	if(to_emit_connections.size() > top)
 	{
-		to_emit_connections_end = to_emit_connections.begin() + TOP_SERVER_PORTS_IN_SAMPLE;
+		to_emit_connections_end = to_emit_connections.begin() + top;
 		partial_sort(to_emit_connections.begin(),
 					 to_emit_connections_end,
 					 to_emit_connections.end(), [](const map_it_t& src, const map_it_t& dst)

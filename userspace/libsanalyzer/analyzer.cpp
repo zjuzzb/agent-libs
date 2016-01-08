@@ -2044,12 +2044,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			// same thing by server port per host
-			if(tuple.m_fields.m_dport == 0)
-			{
-				g_logger.format(sinsp_logger::SEV_INFO,
-								"Found connection %s:%u:%u->%s:%u with dport=0 and active=%d",
-								cit->second.m_scomm.c_str(), tuple.m_fields.m_sip, tuple.m_fields.m_sport, cit->second.m_dcomm.c_str(), tuple.m_fields.m_dip, cit->second.is_active());
-			}
 			connections_by_serverport[tuple.m_fields.m_dport].add(&cit->second);
 
 			// same thing by server port per container
@@ -2067,7 +2061,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				}
 				if(!prog_dcontainerid.empty())
 				{
-					auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+					auto &conn_aggr = (*m_containers[prog_dcontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
 					conn_aggr.add_server(&cit->second);
 				}
 			}
