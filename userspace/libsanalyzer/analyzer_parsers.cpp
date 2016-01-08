@@ -110,6 +110,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSDIGEVENT_E:
 		m_analyzer->m_driver_stopped_dropping = true;
 		return false;
+	case PPME_CONTAINER_E:
+		return false;
 	default:
 		return true;
 	}
