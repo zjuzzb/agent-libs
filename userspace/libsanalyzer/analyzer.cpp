@@ -1192,9 +1192,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	bool k8s_warn_logged = false;
-	bool mesos_warn_logged = false;
-
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
 	// 2. (only on programs) aggregate programs metrics to host and container ones
@@ -1271,27 +1268,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						}
 					}
 				}
-				if(!k8s_warn_logged && k8s_api_server.empty())
-				{
-					g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
-					k8s_warn_logged = true;
-				}
 
 				string mesos_api_server = m_configuration->get_mesos_state_uri();
 				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() /*&& !m_k8s_bad_config*/)
 				{
-					mesos_api_server = mesos::default_state_uri;
 					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
 					{
+						mesos_api_server = mesos::default_state_uri;
 						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
 						m_configuration->set_mesos_state_uri(mesos_api_server);
-						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
+						vector<string> marathon_uris = { mesos::default_marathon_uri };
+						m_configuration->set_marathon_uris(marathon_uris);
+						g_logger.log("Mesos API server set to: " + mesos_api_server + "(Marathon: " + marathon_uris[0] + ')', sinsp_logger::SEV_INFO);
 					}
-				}
-				if(!mesos_warn_logged && mesos_api_server.empty())
-				{
-					g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
-					mesos_warn_logged = true;
 				}
 			}
 			main_tinfo->compute_program_hash();
@@ -1500,6 +1489,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 #endif
+	}
+
+	if(m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
+	{
+		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
+	}
+
+	if(m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
+	{
+		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
 	}
 
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -3861,9 +3860,9 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos->is_alive());
 
 	m_mesos->watch();
-/*
 	ASSERT(m_metrics);
 	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+/*
 	if(m_metrics->has_mesos())
 	{
 		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
