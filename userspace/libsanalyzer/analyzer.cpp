@@ -3853,13 +3853,27 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
+	static time_t last_mesos_refresh = 0;
 	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
 	time_t now;
 	time(&now);
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
-	m_mesos->watch();
+	if(m_mesos->has_marathon())
+	{
+		m_mesos->watch();
+	}
+	else
+	{
+		time_t now;
+		time(&now);
+		if(difftime(now, last_mesos_refresh) > 30)
+		{
+			m_mesos->refresh();
+			last_mesos_refresh = now;
+		}
+	}
 	ASSERT(m_metrics);
 	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
 /*
