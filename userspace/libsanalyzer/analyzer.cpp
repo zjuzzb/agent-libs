@@ -2683,7 +2683,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
 			emit_processes(evt, sample_duration, is_eof, flshflags);
-			
+
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -4081,7 +4081,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	}
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
-												 container, TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
+												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
 }
 
 void sinsp_analyzer::get_statsd()
