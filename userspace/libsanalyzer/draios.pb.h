@@ -66,6 +66,7 @@ class app_metric;
 class app_check;
 class app_info;
 class proto_info;
+class network_by_port;
 class host;
 class process;
 class program;
@@ -4440,6 +4441,100 @@ class proto_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class network_by_port : public ::google::protobuf::Message {
+ public:
+  network_by_port();
+  virtual ~network_by_port();
+
+  network_by_port(const network_by_port& from);
+
+  inline network_by_port& operator=(const network_by_port& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const network_by_port& default_instance();
+
+  void Swap(network_by_port* other);
+
+  // implements Message ----------------------------------------------
+
+  network_by_port* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const network_by_port& from);
+  void MergeFrom(const network_by_port& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 port = 1;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 1;
+  inline ::google::protobuf::uint32 port() const;
+  inline void set_port(::google::protobuf::uint32 value);
+
+  // required .draiosproto.connection_categories counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::connection_categories& counters() const;
+  inline ::draiosproto::connection_categories* mutable_counters();
+  inline ::draiosproto::connection_categories* release_counters();
+  inline void set_allocated_counters(::draiosproto::connection_categories* counters);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.network_by_port)
+ private:
+  inline void set_has_port();
+  inline void clear_has_port();
+  inline void set_has_counters();
+  inline void clear_has_counters();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::connection_categories* counters_;
+  ::google::protobuf::uint32 port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static network_by_port* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class host : public ::google::protobuf::Message {
  public:
   host();
@@ -4630,6 +4725,18 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
+  // repeated .draiosproto.network_by_port network_by_serverports = 24;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 24;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+      network_by_serverports() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+      mutable_network_by_serverports();
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -4675,10 +4782,11 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6096,6 +6204,18 @@ class container : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
       mutable_mounts();
 
+  // repeated .draiosproto.network_by_port network_by_serverports = 22;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 22;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+      network_by_serverports() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+      mutable_network_by_serverports();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6145,10 +6265,11 @@ class container : public ::google::protobuf::Message {
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label > labels_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -13908,6 +14029,70 @@ inline void proto_info::set_allocated_app(::draiosproto::app_info* app) {
 
 // -------------------------------------------------------------------
 
+// network_by_port
+
+// required uint32 port = 1;
+inline bool network_by_port::has_port() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void network_by_port::set_has_port() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void network_by_port::clear_has_port() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void network_by_port::clear_port() {
+  port_ = 0u;
+  clear_has_port();
+}
+inline ::google::protobuf::uint32 network_by_port::port() const {
+  return port_;
+}
+inline void network_by_port::set_port(::google::protobuf::uint32 value) {
+  set_has_port();
+  port_ = value;
+}
+
+// required .draiosproto.connection_categories counters = 2;
+inline bool network_by_port::has_counters() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void network_by_port::set_has_counters() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void network_by_port::clear_has_counters() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void network_by_port::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::connection_categories::Clear();
+  clear_has_counters();
+}
+inline const ::draiosproto::connection_categories& network_by_port::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
+}
+inline ::draiosproto::connection_categories* network_by_port::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::connection_categories;
+  return counters_;
+}
+inline ::draiosproto::connection_categories* network_by_port::release_counters() {
+  clear_has_counters();
+  ::draiosproto::connection_categories* temp = counters_;
+  counters_ = NULL;
+  return temp;
+}
+inline void network_by_port::set_allocated_counters(::draiosproto::connection_categories* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
+}
+
+// -------------------------------------------------------------------
+
 // host
 
 // optional string hostname = 1;
@@ -14420,6 +14605,31 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   } else {
     clear_has_external_io_net();
   }
+}
+
+// repeated .draiosproto.network_by_port network_by_serverports = 24;
+inline int host::network_by_serverports_size() const {
+  return network_by_serverports_.size();
+}
+inline void host::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
+}
+inline const ::draiosproto::network_by_port& host::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
+}
+inline ::draiosproto::network_by_port* host::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
+}
+inline ::draiosproto::network_by_port* host::add_network_by_serverports() {
+  return network_by_serverports_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+host::network_by_serverports() const {
+  return network_by_serverports_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+host::mutable_network_by_serverports() {
+  return &network_by_serverports_;
 }
 
 // -------------------------------------------------------------------
@@ -16687,6 +16897,31 @@ container::mounts() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
 container::mutable_mounts() {
   return &mounts_;
+}
+
+// repeated .draiosproto.network_by_port network_by_serverports = 22;
+inline int container::network_by_serverports_size() const {
+  return network_by_serverports_.size();
+}
+inline void container::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
+}
+inline const ::draiosproto::network_by_port& container::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
+}
+inline ::draiosproto::network_by_port* container::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
+}
+inline ::draiosproto::network_by_port* container::add_network_by_serverports() {
+  return network_by_serverports_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+container::network_by_serverports() const {
+  return network_by_serverports_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+container::mutable_network_by_serverports() {
+  return &network_by_serverports_;
 }
 
 // -------------------------------------------------------------------

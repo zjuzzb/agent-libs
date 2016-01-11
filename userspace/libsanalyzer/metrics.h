@@ -71,7 +71,7 @@ public:
 	void add_other(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
-	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const;
 	uint32_t get_tot_count() const;
 
 	uint32_t m_count_in;
@@ -93,7 +93,7 @@ public:
 	void add_out(uint32_t cnt_delta, uint32_t bytes_delta);
 	void add(sinsp_counter_bytes* other);
 	void clear();
-	void to_protobuf(draiosproto::counter_bytes* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::counter_bytes* protobuf_msg, uint32_t sampling_ratio) const;
 
 	uint32_t m_count_in;
 	uint32_t m_count_out;
@@ -196,7 +196,7 @@ public:
 	sinsp_counter_bytes m_client;
 
 	void clear();
-	void to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio);
+	void to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio) const;
 	void add(sinsp_connection_counters* other);
 };
 
@@ -210,7 +210,7 @@ public:
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
 		draiosproto::counter_time_bidirectional* min_protobuf_msg,
 		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
-		uint32_t sampling_ratio);
+		uint32_t sampling_ratio) const;
 	void add(sinsp_transaction_counters* other);
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
