@@ -2679,6 +2679,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
+			////////////////////////////////////////////////////////////////////////////
+			// EMIT PROCESSES
+			////////////////////////////////////////////////////////////////////////////
+			emit_processes(evt, sample_duration, is_eof, flshflags);
+			
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -2694,11 +2699,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_ipv4_connections->clear_n_drops();
 				}
 			}
-
-			////////////////////////////////////////////////////////////////////////////
-			// EMIT PROCESSES
-			////////////////////////////////////////////////////////////////////////////
-			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			//
 			// Go though the list of unix connections and for the moment just clean it up
