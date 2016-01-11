@@ -1539,6 +1539,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 	}
 
+	////////////////////////////////////////////////////////////////////////////
+	// EMIT CONNECTIONS
+	////////////////////////////////////////////////////////////////////////////
 	// This code has been moved here because it needs the processes already
 	// grouped by programs (to use the correct pid for connections) but also needs to
 	// run before emit_containers, because it aggregates network connections by server port
@@ -2676,9 +2679,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			////////////////////////////////////////////////////////////////////////////
-			// EMIT CONNECTIONS
-			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -2698,7 +2698,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-
 			emit_processes(evt, sample_duration, is_eof, flshflags);
 
 			//
