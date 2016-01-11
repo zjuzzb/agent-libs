@@ -1538,6 +1538,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container->m_metrics.add(procinfo);
 		}
 	}
+
+	// This code has been moved here because it needs the processes already
+	// grouped by programs (to use the correct pid for connections) but also needs to
+	// run before emit_containers, because it aggregates network connections by server port
+	// per each container
+	// WARNING: the following methods emit but also clear the metrics
+	if(m_configuration->get_aggregate_connections_in_proto())
+	{
+		//
+		// Aggregate external connections and limit the number of entries in the connection table
+		//
+		emit_aggregated_connections();
+	}
+	else
+	{
+		//
+		// Emit all the connections
+		//
+		emit_full_connections();
+	}
+
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
 	auto emitted_containers = emit_containers();
@@ -2674,28 +2695,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			// WARNING: the following methods emit but also clear the metrics
-
-			if(m_configuration->get_aggregate_connections_in_proto())
-			{
-				//
-				// Aggregate external connections and limit the number of entries in the connection table
-				//
-				emit_aggregated_connections();
-			}
-			else
-			{
-				//
-				// Emit all the connections
-				//
-				emit_full_connections();
-			}
-
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
 
 			emit_processes(evt, sample_duration, is_eof, flshflags);
+
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
@@ -4462,6 +4467,8 @@ double self_cputime_analyzer::calc_flush_percent()
 	return tot_flushtime/(tot_flushtime+tot_othertime);
 }
 
+// This method is here because analyzer_container_state has not a .cpp file and
+// adding it just for this constructor seemed an overkill
 analyzer_container_state::analyzer_container_state()
 {
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
