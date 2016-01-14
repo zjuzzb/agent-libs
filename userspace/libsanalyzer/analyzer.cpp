@@ -1022,9 +1022,9 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
 				}
 				catch (TimeoutException&)
-				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
 				catch (ConnectionRefusedException&)
-				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
+				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
 			}
 			catch (SSLException& exc)
 			{
@@ -1068,6 +1068,14 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		json = std::move(os.str());
 		g_logger.log("K8S API:" + json, sinsp_logger::SEV_DEBUG);
 		return make_k8s(json, k8s_api);
+	}
+	catch (Poco::Exception& exc)
+	{
+		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR);
+		if(m_k8s_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}
 	}
 	catch (std::exception& exc)
 	{
