@@ -229,11 +229,12 @@ class Config:
 
         self.checks = {}
         for c in check_confs:
-            try:
-                app_check = AppCheck(c)
-                self.checks[app_check.name] = app_check
-            except (Exception, IOError) as ex:
-                logging.error("Configuration error for check %s: %s", repr(c), ex.message)
+            if c.get("enabled", True):
+                try:
+                    app_check = AppCheck(c)
+                    self.checks[app_check.name] = app_check
+                except (Exception, IOError) as ex:
+                    logging.error("Configuration error for check %s: %s", repr(c), ex.message)
 
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")

@@ -109,7 +109,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_total_process_cpu = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
-
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -1683,6 +1682,30 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container->m_metrics.add(procinfo);
 		}
 	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// EMIT CONNECTIONS
+	////////////////////////////////////////////////////////////////////////////
+	// This code has been moved here because it needs the processes already
+	// grouped by programs (to use the correct pid for connections) but also needs to
+	// run before emit_containers, because it aggregates network connections by server port
+	// per each container
+	// WARNING: the following methods emit but also clear the metrics
+	if(m_configuration->get_aggregate_connections_in_proto())
+	{
+		//
+		// Aggregate external connections and limit the number of entries in the connection table
+		//
+		emit_aggregated_connections();
+	}
+	else
+	{
+		//
+		// Emit all the connections
+		//
+		emit_full_connections();
+	}
+
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
 	auto emitted_containers = emit_containers();
@@ -2047,6 +2070,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections->clear();
+	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
@@ -2083,6 +2107,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		int64_t prog_spid = 0;
 		int64_t prog_dpid = 0;
+		string prog_scontainerid;
+		string prog_dcontainerid;
 
 		if(cit->second.m_spid != 0)
 		{
@@ -2097,6 +2123,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_scontainerid = tinfo->m_container_id;
 		}
 
 		if(cit->second.m_dpid != 0)
@@ -2112,6 +2139,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_dcontainerid = tinfo->m_container_id;
 		}
 
 		tuple.m_fields.m_spid = prog_spid;
@@ -2122,7 +2150,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
+		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0 && cit->second.is_active())
 		{
 			if(!cit->second.is_client_and_server())
 			{
@@ -2182,8 +2210,30 @@ void sinsp_analyzer::emit_aggregated_connections()
 				conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
 				conn.m_timestamp++;
 			}
-		}
 
+			// same thing by server port per host
+			connections_by_serverport[tuple.m_fields.m_dport].add(&cit->second);
+
+			// same thing by server port per container
+			if(!prog_scontainerid.empty() && prog_scontainerid == prog_dcontainerid)
+			{
+				auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+				conn_aggr.add(&cit->second);
+			}
+			else
+			{
+				if(!prog_scontainerid.empty())
+				{
+					auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+					conn_aggr.add_client(&cit->second);
+				}
+				if(!prog_dcontainerid.empty())
+				{
+					auto &conn_aggr = (*m_containers[prog_dcontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+					conn_aggr.add_server(&cit->second);
+				}
+			}
+		}
 		//
 		// Has this connection been closed druring this sample?
 		//
@@ -2203,6 +2253,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 			++cit;
 		}
 	}
+
+	sinsp_connection_aggregator::filter_and_emit(connections_by_serverport, m_metrics->mutable_hostinfo(), TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
 
 	//
 	// If the table is still too big, sort it and pick only the top connections
@@ -2770,15 +2822,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
+
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-
 			emit_processes(evt, sample_duration, is_eof, flshflags);
 
-			////////////////////////////////////////////////////////////////////////////
-			// EMIT CONNECTIONS
-			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -2793,21 +2842,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 					m_ipv4_connections->clear_n_drops();
 				}
-			}
-
-			if(m_configuration->get_aggregate_connections_in_proto())
-			{
-				//
-				// Aggregate external connections and limit the number of entries in the connection table
-				//
-				emit_aggregated_connections();
-			}
-			else
-			{
-				//
-				// Emit all the connections
-				//
-				emit_full_connections();
 			}
 
 			//
@@ -4317,6 +4351,9 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 			it->to_protobuf(proto_fs);
 		}
 	}
+
+	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
+												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
 }
 
 void sinsp_analyzer::get_statsd()
@@ -4699,6 +4736,13 @@ double self_cputime_analyzer::calc_flush_percent()
 	double tot_flushtime = accumulate(m_flushtime.begin(), m_flushtime.end(), 0);
 	double tot_othertime = accumulate(m_othertime.begin(), m_othertime.end(), 0);
 	return tot_flushtime/(tot_flushtime+tot_othertime);
+}
+
+// This method is here because analyzer_container_state has not a .cpp file and
+// adding it just for this constructor seemed an overkill
+analyzer_container_state::analyzer_container_state()
+{
+	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 }
 
 #endif // HAS_ANALYZER

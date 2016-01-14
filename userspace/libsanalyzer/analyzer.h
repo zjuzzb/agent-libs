@@ -44,7 +44,7 @@ typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
 typedef class sinsp_pipe_connection_manager sinsp_pipe_connection_manager;
 typedef class sinsp_connection sinsp_connection;
-
+class sinsp_connection_aggregator;
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
@@ -414,7 +414,6 @@ VISIBILITY_PRIVATE
 	// The table of aggreagted connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
-
 	//
 	// The aggreagted host metrics
 	//
