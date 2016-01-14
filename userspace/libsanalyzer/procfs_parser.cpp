@@ -779,16 +779,25 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	return fs_map;
 }
 
-bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
+bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &containers)
 {
 	sdc_internal::mounted_fs_request req;
 	for(const auto& item : containers)
 	{
 		auto container = req.add_containers();
-		container->set_id(get<0>(item));
-		container->set_pid(get<1>(item));
-		container->set_vpid(get<2>(item));
+		container->set_id(item->m_container_id);
+		container->set_pid(item->m_pid);
+		container->set_vpid(item->m_vpid);
+		container->set_root(item->m_root);
 	}
+
+	// Add host
+	auto host = req.add_containers();
+	host->set_id("host");
+	host->set_pid(1U);
+	host->set_vpid(1U);
+	host->set_root("/");
+
 	auto req_s = req.SerializeAsString();
 	return m_output.send(req_s);
 }
@@ -866,12 +875,18 @@ int mounted_fs_reader::run()
 			{
 				sdc_internal::mounted_fs_response response_proto;
 				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
+				// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
 				for(const auto& container_proto : request_proto.containers())
 				{
 					// Go to container mnt ns
 					auto changed = change_ns(container_proto.pid());
 					if(changed)
 					{
+						if(container_proto.root() != "/")
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
+							chroot(container_proto.root().c_str()); // FIXME: improve error handling here
+						}
 						try
 						{
 							char filename[SCAP_MAX_PATH_SIZE];

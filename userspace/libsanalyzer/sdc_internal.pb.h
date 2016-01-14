@@ -306,6 +306,18 @@ class container_info : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 vpid() const;
   inline void set_vpid(::google::protobuf::uint64 value);
 
+  // required string root = 4;
+  inline bool has_root() const;
+  inline void clear_root();
+  static const int kRootFieldNumber = 4;
+  inline const ::std::string& root() const;
+  inline void set_root(const ::std::string& value);
+  inline void set_root(const char* value);
+  inline void set_root(const char* value, size_t size);
+  inline ::std::string* mutable_root();
+  inline ::std::string* release_root();
+  inline void set_allocated_root(::std::string* root);
+
   // @@protoc_insertion_point(class_scope:sdc_internal.container_info)
  private:
   inline void set_has_id();
@@ -314,15 +326,18 @@ class container_info : public ::google::protobuf::Message {
   inline void clear_has_pid();
   inline void set_has_vpid();
   inline void clear_has_vpid();
+  inline void set_has_root();
+  inline void clear_has_root();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* id_;
   ::google::protobuf::uint64 pid_;
   ::google::protobuf::uint64 vpid_;
+  ::std::string* root_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_sdc_5finternal_2eproto();
   friend void protobuf_AssignDesc_sdc_5finternal_2eproto();
@@ -663,6 +678,76 @@ inline ::google::protobuf::uint64 container_info::vpid() const {
 inline void container_info::set_vpid(::google::protobuf::uint64 value) {
   set_has_vpid();
   vpid_ = value;
+}
+
+// required string root = 4;
+inline bool container_info::has_root() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void container_info::set_has_root() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void container_info::clear_has_root() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void container_info::clear_root() {
+  if (root_ != &::google::protobuf::internal::kEmptyString) {
+    root_->clear();
+  }
+  clear_has_root();
+}
+inline const ::std::string& container_info::root() const {
+  return *root_;
+}
+inline void container_info::set_root(const ::std::string& value) {
+  set_has_root();
+  if (root_ == &::google::protobuf::internal::kEmptyString) {
+    root_ = new ::std::string;
+  }
+  root_->assign(value);
+}
+inline void container_info::set_root(const char* value) {
+  set_has_root();
+  if (root_ == &::google::protobuf::internal::kEmptyString) {
+    root_ = new ::std::string;
+  }
+  root_->assign(value);
+}
+inline void container_info::set_root(const char* value, size_t size) {
+  set_has_root();
+  if (root_ == &::google::protobuf::internal::kEmptyString) {
+    root_ = new ::std::string;
+  }
+  root_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container_info::mutable_root() {
+  set_has_root();
+  if (root_ == &::google::protobuf::internal::kEmptyString) {
+    root_ = new ::std::string;
+  }
+  return root_;
+}
+inline ::std::string* container_info::release_root() {
+  clear_has_root();
+  if (root_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = root_;
+    root_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container_info::set_allocated_root(::std::string* root) {
+  if (root_ != &::google::protobuf::internal::kEmptyString) {
+    delete root_;
+  }
+  if (root) {
+    set_has_root();
+    root_ = root;
+  } else {
+    clear_has_root();
+    root_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 // -------------------------------------------------------------------

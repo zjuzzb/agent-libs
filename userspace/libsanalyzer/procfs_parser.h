@@ -78,7 +78,7 @@ class mounted_fs_proxy
 public:
 	explicit mounted_fs_proxy();
 	unordered_map<string, vector<mounted_fs>> receive_mounted_fs_list();
-	bool send_container_list(const vector<tuple<string, pid_t, pid_t>>& containers);
+	bool send_container_list(const vector<sinsp_threadinfo*>& containers);
 private:
 	posix_queue m_input;
 	posix_queue m_output;
