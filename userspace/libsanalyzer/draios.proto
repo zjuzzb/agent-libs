@@ -535,6 +535,7 @@ enum container_type {
     LXC = 2;
     LIBVIRT_LXC = 3;
     MESOS = 4;
+    RKT = 5;
 }
 
 message container_port_mapping {

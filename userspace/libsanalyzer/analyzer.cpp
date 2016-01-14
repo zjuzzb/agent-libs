@@ -3983,6 +3983,8 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
 		break;
+	case CT_RKT:
+		container->set_type(draiosproto::RKT);
 	default:
 		ASSERT(false);
 	}

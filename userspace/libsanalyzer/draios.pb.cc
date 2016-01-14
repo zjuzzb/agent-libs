@@ -2042,9 +2042,9 @@ void protobuf_AddDesc_draios_2eproto() {
     "P_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SS"
     "H_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_"
     "UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPOR"
-    "T\020\n*A\n\016container_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC"
-    "\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004B$\n\031com.dr"
-    "aios.model.protobufB\005AgentH\001", 13348);
+    "T\020\n*J\n\016container_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC"
+    "\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022\007\n\003RKT\020\005B"
+    "$\n\031com.draios.model.protobufB\005AgentH\001", 13357);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -2387,6 +2387,7 @@ bool container_type_IsValid(int value) {
     case 2:
     case 3:
     case 4:
+    case 5:
       return true;
     default:
       return false;
