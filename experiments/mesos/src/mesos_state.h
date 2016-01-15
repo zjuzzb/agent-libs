@@ -1,5 +1,5 @@
 //
-// mesos_state.h
+// mesos_state_t.h
 //
 // mesos state abstraction
 //
@@ -7,6 +7,7 @@
 #pragma once
 
 #include "mesos_component.h"
+#include "marathon_component.h"
 #include "json/json.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -18,10 +19,10 @@
 // state
 //
 
-class mesos_state
+class mesos_state_t
 {
 public:
-	mesos_state(bool is_captured = false);
+	mesos_state_t(bool is_captured = false);
 
 	//
 	// frameworks
@@ -31,23 +32,27 @@ public:
 
 	mesos_frameworks& get_frameworks();
 
-	void push_framework(const mesos_framework& ns);
+	const mesos_framework& get_framework(const std::string& framework_uid) const;
 
-	void emplace_framework(mesos_framework&& ns);
+	mesos_framework& get_framework(const std::string& framework_uid);
+
+	void push_framework(const mesos_framework& framework);
+
+	void emplace_framework(mesos_framework&& framework);
 
 	//
 	// tasks
 	//
 
-	const k8s_tasks& get_tasks() const;
+	const mesos_framework::task_map& get_tasks(const std::string& framework_uid) const;
 
-	k8s_tasks& get_tasks();
+	mesos_framework::task_map& get_tasks(const std::string& framework_uid);
 
-	mesos_task* get_task(const std::string& uid);
+	mesos_framework::task_ptr_t get_task(const std::string& uid);
 
-	void push_task(const mesos_task& task);
+	void add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task);
 
-	void emplace_task(mesos_task&& task);
+	void remove_task(mesos_framework& framework, const std::string& uid);
 
 	//
 	// slaves
@@ -57,86 +62,211 @@ public:
 
 	mesos_slaves& get_slaves();
 
-	void push_pod(const mesos_slave& pod);
+	const mesos_slave& get_slave(const std::string& slave_uid) const;
 
-	void emplace_pod(mesos_slave&& pod);
+	mesos_slave& get_slave(const std::string& slave_uid);
 
-	void update_pod(mesos_slave& pod, const Json::Value& item, bool reset);
+	void push_slave(const mesos_slave& slave);
 
-	bool has_pod(mesos_slave& pod);
+	void emplace_slave(mesos_slave&& slave);
+
+	//
+	// apps
+	//
+
+	void parse_apps(const std::string& json);
+
+	const marathon_apps& get_apps() const;
+
+	marathon_apps& get_apps();
+
+	marathon_app::ptr_t get_app(const std::string& app_id);
+
+	void add_or_replace_app(marathon_group::app_ptr_t app);
+
+	bool remove_app(const std::string& id);
+
+	//
+	// groups
+	//
+
+	bool parse_groups(const std::string& json);
+
+	const marathon_groups& get_groups() const;
+
+	marathon_groups& get_groups();
+
+	marathon_group::ptr_t get_group(const std::string& group_id);
+
+	marathon_group::ptr_t add_or_replace_group(marathon_group::ptr_t group, marathon_group::ptr_t to_group = 0);
+
+	//
+	// state
+	//
+
+	void clear(bool marathon = false);
+
+	void print_groups() const;
 
 private:
+	marathon_group::ptr_t add_group(const Json::Value& group, marathon_group::ptr_t to_group);
+	bool handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups);
+	void add_app(const Json::Value& app);
 
 	mesos_frameworks m_frameworks;
-	mesos_tasks      m_tasks;
 	mesos_slaves     m_slaves;
+	marathon_apps    m_apps;
+	marathon_groups  m_groups;
 	bool             m_is_captured;
+
+	friend class marathon_dispatcher;
 };
 
+//
 // frameworks
-inline const mesos_frameworks& mesos_state::get_frameworks() const
+//
+
+inline const mesos_frameworks& mesos_state_t::get_frameworks() const
 {
 	return m_frameworks;
 }
 
-inline mesos_frameworks& mesos_state::get_frameworks()
+inline mesos_frameworks& mesos_state_t::get_frameworks()
 {
 	return m_frameworks;
 }
 
-inline void mesos_state::push_framework(const mesos_framework& ns)
+inline const mesos_framework& mesos_state_t::get_framework(const std::string& framework_uid) const
 {
-	m_frameworks.push_back(ns);
+	for(const auto& framework : m_frameworks)
+	{
+		if(framework.get_uid() == framework_uid)
+		{
+			return framework;
+		}
+	}
+	throw sinsp_exception("Framework not found: " + framework_uid);
 }
 
-inline void mesos_state::emplace_framework(mesos_framework&& ns)
+inline mesos_framework& mesos_state_t::get_framework(const std::string& framework_uid)
 {
-	m_frameworks.emplace_back(std::move(ns));
+	for(auto& framework : m_frameworks)
+	{
+		if(framework.get_uid() == framework_uid)
+		{
+			return framework;
+		}
+	}
+	throw sinsp_exception("Framework not found: " + framework_uid);
 }
 
-// tasks
-inline const k8s_tasks& mesos_state::get_tasks() const
+inline void mesos_state_t::push_framework(const mesos_framework& framework)
 {
-	return m_tasks;
+	m_frameworks.push_back(framework);
 }
 
-inline k8s_tasks& mesos_state::get_tasks()
+inline void mesos_state_t::emplace_framework(mesos_framework&& framework)
 {
-	return m_tasks;
+	m_frameworks.emplace_back(std::move(framework));
 }
 
-inline void mesos_state::push_task(const mesos_task& task)
+inline void mesos_state_t::add_or_replace_task(mesos_framework& framework, std::shared_ptr<mesos_task> task)
 {
-	m_tasks.push_back(task);
+	framework.add_or_replace_task(task);
 }
 
-inline void mesos_state::emplace_task(mesos_task&& task)
+inline void mesos_state_t::remove_task(mesos_framework& framework, const std::string& uid)
 {
-	m_tasks.emplace_back(std::move(task));
+	framework.remove_task(uid);
 }
 
+//
 // slaves
-inline const mesos_slaves& mesos_state::get_slaves() const
+//
+
+inline const mesos_slaves& mesos_state_t::get_slaves() const
 {
 	return m_slaves;
 }
 
-inline mesos_slaves& mesos_state::get_slaves()
+inline mesos_slaves& mesos_state_t::get_slaves()
 {
 	return m_slaves;
 }
 
-inline void mesos_state::push_pod(const mesos_slave& pod)
+inline const mesos_slave& mesos_state_t::get_slave(const std::string& slave_uid) const
 {
-	m_slaves.push_back(pod);
+	for(const auto& slave : m_slaves)
+	{
+		if(slave.get_uid() == slave_uid)
+		{
+			return slave;
+		}
+	}
+	throw sinsp_exception("Slave not found: " + slave_uid);
 }
 
-inline void mesos_state::emplace_pod(mesos_slave&& pod)
+inline mesos_slave& mesos_state_t::get_slave(const std::string& slave_uid)
 {
-	m_slaves.emplace_back(std::move(pod));
+	for(auto& slave : m_slaves)
+	{
+		if(slave.get_uid() == slave_uid)
+		{
+			return slave;
+		}
+	}
+	throw sinsp_exception("Slave not found: " + slave_uid);
 }
 
-inline const mesos_slave::container_id_list& mesos_state::get_pod_container_ids(mesos_slave& pod)
+inline void mesos_state_t::push_slave(const mesos_slave& slave)
 {
-	return pod.get_container_ids();
+	m_slaves.push_back(slave);
+}
+
+inline void mesos_state_t::emplace_slave(mesos_slave&& slave)
+{
+	m_slaves.emplace_back(std::move(slave));
+}
+
+//
+// apps
+//
+
+inline const marathon_apps& mesos_state_t::get_apps() const
+{
+	return m_apps;
+}
+
+inline marathon_apps& mesos_state_t::get_apps()
+{
+	return m_apps;
+}
+
+//
+// groups
+//
+
+inline const marathon_groups& mesos_state_t::get_groups() const
+{
+	return m_groups;
+}
+
+inline marathon_groups& mesos_state_t::get_groups()
+{
+	return m_groups;
+}
+
+//
+// state
+//
+
+inline void mesos_state_t::clear(bool marathon)
+{
+	m_frameworks.clear();
+	m_slaves.clear();
+	if(marathon)
+	{
+		m_apps.clear();
+		m_groups.clear();
+	}
 }

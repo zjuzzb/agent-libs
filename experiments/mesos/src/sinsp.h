@@ -4,6 +4,7 @@
 #include <string>
 #include <cassert>
 #include <exception>
+#include "json/json.h"
 #include "Poco/Format.h"
 
 struct sinsp_logger
@@ -59,4 +60,23 @@ struct sinsp_exception : std::exception
 
 	std::string m_error_str;
 };
+
+inline std::string& trim(std::string& val)
+{
+	val.erase(val.begin(), find_if(val.begin(), val.end(), std::not1(std::ptr_fun<int, int>(isspace))));
+	val.erase(find_if(val.rbegin(), val.rend(), std::not1(std::ptr_fun<int, int>(isspace))).base(), val.end());
+	return val;
+}
+
+inline std::string get_json_string(const Json::Value& root, const std::string& name)
+{
+	std::string ret;
+	Json::Value json_val = root[name];
+	if(!json_val.isNull() && json_val.isString())
+	{
+		ret = json_val.asString();
+	}
+	return ret;
+}
+
 

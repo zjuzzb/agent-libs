@@ -76,6 +76,12 @@ public:
 	int get_k8s_timeout_ms() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
+	const string & get_mesos_state_uri() const;
+	void set_mesos_state_uri(const string & uri);
+	const vector<string> & get_marathon_uris() const;
+	void set_marathon_uris(const vector<string> & uris);
+	bool get_mesos_autodetect_enabled() const;
+	void set_mesos_autodetect_enabled(bool enabled);
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -109,6 +115,10 @@ private:
 	int m_k8s_timeout_ms;
 
 	unsigned m_statsd_limit;
+
+	string m_mesos_state_uri;
+	vector<string> m_marathon_uris;
+	bool   m_mesos_autodetect;
 };
 
 #endif // HAS_ANALYZER

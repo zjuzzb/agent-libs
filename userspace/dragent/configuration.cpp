@@ -7,6 +7,7 @@
 #include <netdb.h>
 
 #include "logger.h"
+#include "uri.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -273,6 +274,14 @@ void dragent_configuration::init(Application* app)
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 
+	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
+	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
+	for(auto u : marathon_uris)
+	{
+		m_marathon_uris.push_back(u);
+	}
+	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
+
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = nsfile.exists();
@@ -361,6 +370,16 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 	}
+	if(!m_mesos_state_uri.empty())
+	{
+		g_log->information("Mesos state API server: " + m_mesos_state_uri);
+	}
+	for(const auto& marathon_uri : m_marathon_uris)
+	{
+		g_log->information("Marathon groups API server: " + marathon_uri);
+		g_log->information("Marathon apps API server: " + marathon_uri);
+	}
+	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 }
 
 void dragent_configuration::refresh_aws_metadata()

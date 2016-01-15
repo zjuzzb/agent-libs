@@ -97,6 +97,10 @@ bool posix_queue::set_queue_limits()
 		r.rlim_max = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
 
 		int res = setrlimit(RLIMIT_MSGQUEUE, &r);
+		if(res != 0)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Cannot set queue limits, errno: %s", strerror(errno));
+		}
 		limits_set = (res == 0);
 	}
 	return limits_set;

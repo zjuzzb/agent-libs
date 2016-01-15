@@ -406,6 +406,21 @@
     <File Name="src/mesos.h"/>
     <File Name="src/mesos_state.h"/>
     <File Name="src/mesos_state.cpp"/>
+    <File Name="src/mesosget.cpp"/>
+    <File Name="src/mesos_http.cpp"/>
+    <File Name="src/mesos_http.h"/>
+    <File Name="src/mesos_proto.h"/>
+    <File Name="src/mesos_proto.cpp"/>
+    <File Name="src/marathon_component.h"/>
+    <File Name="src/marathon_component.cpp"/>
+    <File Name="src/mesos_event_data.h"/>
+    <File Name="src/mesos_collector.cpp"/>
+    <File Name="src/mesos_collector.h"/>
+    <File Name="src/mesos_event_data.cpp"/>
+    <File Name="src/marathon_http.cpp"/>
+    <File Name="src/marathon_http.h"/>
+    <File Name="src/marathon_dispatcher.cpp"/>
+    <File Name="src/marathon_dispatcher.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
@@ -425,7 +440,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig-openssl/agent/experiments/mesos" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/mesos/mesosget" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
 PROJECT_BASE=$(shell pwd)
