@@ -882,13 +882,17 @@ int mounted_fs_reader::run()
 					auto changed = change_ns(container_proto.pid());
 					if(changed)
 					{
-						if(container_proto.root() != "/")
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
-							chroot(container_proto.root().c_str()); // FIXME: improve error handling here
-						}
 						try
 						{
+							if(container_proto.root() != "/")
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
+								auto res = chroot(container_proto.root().c_str());
+								if(res != 0)
+								{
+									throw sinsp_exception(string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
+								}
+							}
 							char filename[SCAP_MAX_PATH_SIZE];
 							// Use mtab if it's not a symlink to /proc/self/mounts
 							// Because when entering a mount namespace, we don't have
@@ -913,7 +917,7 @@ int mounted_fs_reader::run()
 						}
 						catch (const sinsp_exception& ex)
 						{
-							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
+							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
 						}
 					}
 					// Back home
