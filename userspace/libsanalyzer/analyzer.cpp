@@ -81,6 +81,7 @@ using namespace Poco;
 using namespace Poco::Net;
 
 bool sinsp_analyzer::m_k8s_bad_config = false;
+bool sinsp_analyzer::m_mesos_bad_config = false;
 bool sinsp_analyzer::m_k8s_ssl_initialized = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
@@ -867,6 +868,8 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 		if(uri.getScheme() == "https")
 		{
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
+			m_mesos_bad_config = true;
+			return 0;
 		/*TODO
 			try
 			{
@@ -884,7 +887,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 			{
 				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
 					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
-				m_k8s_bad_config = true;
+				m_mesos_bad_config = true;
 				return 0;
 			}
 			catch(...)
@@ -925,10 +928,10 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 	catch (std::exception& exc)
 	{
 		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
-		if(m_k8s_bad_config)
+		/*if(m_mesos_bad_config)
 		{
 			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
-		}
+		}*/
 	}
 	return 0;
 }
@@ -1046,9 +1049,9 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
 			}
 			catch (TimeoutException&)
-			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
 			catch (ConnectionRefusedException&)
-			{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
+			{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
 		}
 		session->setTimeout(ts);
 		HTTPRequest request(HTTPRequest::HTTP_GET, "/api");
@@ -1282,7 +1285,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 
 				string mesos_api_server = m_configuration->get_mesos_state_uri();
-				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() /*&& !m_mesos_bad_config*/)
+				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
 				{
 					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
 					{
@@ -3960,12 +3963,12 @@ void sinsp_analyzer::emit_mesos()
 		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
 		try
 		{
-			if(!m_mesos/* && !m_mesos_bad_config*/)
+			if(!m_mesos && !m_mesos_bad_config)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
 				m_mesos = get_mesos(mesos_uri);
 			}
-			else if(m_mesos && !m_mesos->is_alive()/* && !m_mesos_bad_config*/)
+			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
 			{
 				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 				delete m_mesos;
@@ -3979,7 +3982,7 @@ void sinsp_analyzer::emit_mesos()
 				{
 					get_mesos_data();
 				}
-				if(!m_mesos->is_alive()/* && !m_mesos_bad_config*/)
+				if(!m_mesos->is_alive() && !m_mesos_bad_config)
 				{
 					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					delete m_mesos;

@@ -508,6 +508,7 @@ VISIBILITY_PRIVATE
 
 	k8s* m_k8s;
 	static bool m_k8s_bad_config;
+	static bool m_mesos_bad_config;
 	static bool m_k8s_ssl_initialized;
 
 	mesos* m_mesos;
