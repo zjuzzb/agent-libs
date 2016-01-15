@@ -77,7 +77,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
  * Signature: (ILjava/lang/String;[Ljava/lang/String;)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
-  (JNIEnv *, jclass, jint, jstring, jobjectArray);
+  (JNIEnv *, jclass, jint, jstring, jobjectArray, jstring);
 
 /*
  * Class:     com_sysdigcloud_sdjagent_CLibrary

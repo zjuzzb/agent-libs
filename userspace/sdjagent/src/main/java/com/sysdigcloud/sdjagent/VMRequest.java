@@ -10,17 +10,26 @@ public class VMRequest {
 
     @SuppressWarnings("unused")
     @JsonCreator
-    VMRequest(@JsonProperty("pid") int pid, @JsonProperty("vpid") int vpid) {
+    VMRequest(@JsonProperty("pid") int pid,
+              @JsonProperty("vpid") int vpid,
+              @JsonProperty("root") String root) {
         this.pid = pid;
         this.vpid = vpid;
+        this.root = root;
     }
 
     public VMRequest(String[] args) {
         this.pid = Integer.parseInt(args[1]);
         if (args.length > 2) {
             this.vpid = Integer.parseInt(args[2]);
+            if (args.length > 3) {
+                this.root = args[3];
+            } else {
+                this.root = "/";
+            }
         } else {
             this.vpid = this.pid;
+            this.root = "/";
         }
     }
 
@@ -32,6 +41,11 @@ public class VMRequest {
         return vpid;
     }
 
+    public String getRoot() {
+        return root;
+    }
+
     private final int pid;
     private final int vpid;
+    private final String root;
 }

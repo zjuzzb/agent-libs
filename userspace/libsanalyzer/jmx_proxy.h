@@ -72,7 +72,8 @@ class java_process_request
 public:
 	explicit java_process_request(sinsp_threadinfo* tinfo):
 		m_pid(tinfo->m_pid),
-		m_vpid(tinfo->m_vpid)
+		m_vpid(tinfo->m_vpid),
+		m_root(tinfo->m_root)
 	{
 
 	}
@@ -80,6 +81,7 @@ public:
 private:
 	int m_pid;
 	int m_vpid;
+	string m_root;
 };
 
 class jmx_proxy
