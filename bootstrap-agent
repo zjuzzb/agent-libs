@@ -40,13 +40,15 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_DIR=$DEPENDENCIES/openssl-1.0.1h
+OPENSSL_VER=1.0.2d
+OPENSSL_EXT=tar.gz
+OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/openssl-1.0.1h.tar.gz
-	tar -xzf openssl-1.0.1h.tar.gz
+	wget $DEPENDENCIES_URL/openssl-$OPENSSL_VER.$OPENSSL_EXT
+	tar -xzf openssl-$OPENSSL_VER.$OPENSSL_EXT
 	cd $OPENSSL_DIR
-	./config --prefix=$OPENSSL_DIR/target
+	./config shared --prefix=$OPENSSL_DIR/target
 	make install
 	cd ..
 fi
@@ -91,15 +93,15 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.3
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.2
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.6.3.tar.xz
-	tar -xf libssh-0.6.3.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.7.2.tar.xz
+	tar -xf libssh-0.7.2.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
-	$CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DOPENSSL_LIBRARIES=$OPENSSL_DIR/target/lib -DOPENSSL_INCLUDE_DIRS=$OPENSSL_DIR/target/include -DZLIB_LIBRARY=$ZLIB_DIR -DZLIB_INCLUDE_DIR=$ZLIB_DIR -DWITH_STATIC_LIB=ON -DWITH_GSSAPI=OFF ..
+	OPENSSL_ROOT_DIR=$OPENSSL_DIR/target $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DZLIB_LIBRARY=$ZLIB_DIR -DZLIB_INCLUDE_DIR=$ZLIB_DIR -DWITH_STATIC_LIB=ON -DWITH_GSSAPI=OFF ..
 	make -C src install
 	make -C include install
 fi
@@ -110,6 +112,61 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	wget $DEPENDENCIES_URL/LuaJIT-2.0.3.tar.gz
 	tar -xzf LuaJIT-2.0.3.tar.gz
 	cd $LUAJIT_DIR
+	make
+fi
+
+CURL_NAME=curl-7.45.0
+CURL_EXT=tar.bz2
+CURL_DIR=$DEPENDENCIES/$CURL_NAME
+if [ ! -d "$CURL_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/$CURL_NAME.$CURL_EXT
+	tar -xjf $CURL_NAME.$CURL_EXT
+	cd $CURL_DIR
+	./configure --disable-shared  \
+		--enable-optimize     \
+		--disable-curldebug   \
+		--disable-rt          \
+		--enable-http         \
+		--disable-ftp         \
+		--disable-file        \
+		--disable-ldap        \
+		--disable-ldaps       \
+		--disable-rtsp        \
+		--disable-telnet      \
+		--disable-tftp        \
+		--disable-pop3        \
+		--disable-imap        \
+		--disable-smb         \
+		--disable-smtp        \
+		--disable-gopher      \
+		--disable-sspi        \
+		--disable-ntlm-wb     \
+		--disable-tls-srp     \
+		--without-winssl      \
+		--without-darwinssl   \
+		--with-ssl=$OPENSSL_DIR/target \
+		--without-polarssl    \
+		--without-cyassl      \
+		--without-nss         \
+		--without-axtls       \
+		--without-ca-path     \
+		--without-libmetalink \
+		--without-librtmp     \
+		--without-winidn      \
+		--without-libidn      \
+		--without-nghttp2
+	make
+fi
+
+B64_NAME=libb64-1.2
+B64_EXT=src.zip
+B64_DIR=$DEPENDENCIES/$B64_NAME
+if [ ! -d "$B64_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/$B64_NAME.$B64_EXT
+	unzip $B64_NAME.$B64_EXT
+	cd $B64_DIR
 	make
 fi
 
@@ -159,17 +216,34 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-PYTHON_DIR=$DEPENDENCIES/Python-2.7.10
+PYTHON_VER=2.7.10
+PYTHON_EXT=tgz
+PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
 if [ ! -d "${PYTHON_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/Python-2.7.10.tgz
-	tar xfz Python-2.7.10.tgz
+	wget $DEPENDENCIES_URL/Python-$PYTHON_VER.$PYTHON_EXT
+	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
 	cd $PYTHON_DIR
-	sed -i -e "s,^#SSL=.*,SSL=${OPENSSL_DIR}/target," -e 's/^#\(.*ssl.*\)/\1/' Modules/Setup.dist
 	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-	./configure --prefix=$PYTHON_DIR/target --with-ensurepip=install
+	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
 	make
 	make install
+fi
+
+PYTHON26_VER=2.6.9
+PYTHON26_EXT=tgz
+PYTHON26_DIR=$DEPENDENCIES/Python-$PYTHON26_VER
+if [ ! -d "${PYTHON26_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
+	tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
+	cd $PYTHON26_DIR
+	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
+	make
+	make install
+	wget $DEPENDENCIES_URL/get-pip.py
+	./target/bin/python get-pip.py
 fi
 
 if [ -z $STATSITE_VERSION ]; then
@@ -184,11 +258,24 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
 fi
 
+POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.5
+if [ ! -d "${POSTGRES_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/postgresql-9.4.5.tar.bz2
+	tar xfj postgresql-9.4.5.tar.bz2
+	cd $POSTGRES_DIR
+	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
+	make
+	make -C src/bin install
+	make -C src/include install
+	make -C src/interfaces install
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1dev"
 fi
 
-if [ -z "$BUILD_DRIVER"]; then
+if [ -z "$BUILD_DRIVER" ]; then
 	BUILD_DRIVER=ON
 fi
 

@@ -332,4 +332,95 @@ const ports_set & sinsp_configuration::get_blacklisted_ports() const
 {
 	return m_blacklisted_ports;
 }
+
+void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
+{
+	m_k8s_api = k8s_api;
+}
+
+const string & sinsp_configuration::get_k8s_api_server() const
+{
+	return m_k8s_api;
+}
+
+bool sinsp_configuration::get_k8s_autodetect_enabled() const
+{
+	return m_k8s_autodetect;
+}
+
+void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
+{
+	m_k8s_autodetect = enabled;
+}
+
+void sinsp_configuration::set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert)
+{
+	m_k8s_ssl_ca_certificate = k8s_ssl_ca_cert;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_ca_certificate() const
+{
+	return m_k8s_ssl_ca_certificate;
+}
+
+void sinsp_configuration::set_k8s_ssl_verify_certificate(bool k8s_ssl_verify_cert)
+{
+	m_k8s_ssl_verify_certificate = k8s_ssl_verify_cert;
+}
+
+bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
+{
+	return m_k8s_ssl_verify_certificate;
+}
+
+void sinsp_configuration::set_k8s_timeout_ms(int k8s_timeout_ms)
+{
+	m_k8s_timeout_ms = k8s_timeout_ms;
+}
+
+int sinsp_configuration::get_k8s_timeout_ms() const
+{
+	return m_k8s_timeout_ms;
+}
+
+unsigned sinsp_configuration::get_statsd_limit() const
+{
+	return m_statsd_limit;
+}
+
+void sinsp_configuration::set_statsd_limit(unsigned value)
+{
+	m_statsd_limit = value;
+}
+
+const string & sinsp_configuration::get_mesos_state_uri() const
+{
+	return m_mesos_state_uri;
+}
+
+void sinsp_configuration::set_mesos_state_uri(const string & uri)
+{
+	m_mesos_state_uri = uri;
+}
+
+const vector<string> & sinsp_configuration::get_marathon_uris() const
+{
+	return m_marathon_uris;
+}
+
+void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
+{
+	m_marathon_uris = uris;
+}
+
+bool sinsp_configuration::get_mesos_autodetect_enabled() const
+{
+	return m_mesos_autodetect;
+}
+
+void sinsp_configuration::set_mesos_autodetect_enabled(bool enabled)
+{
+	m_mesos_autodetect = enabled;
+}
+
 #endif // HAS_ANALYZER

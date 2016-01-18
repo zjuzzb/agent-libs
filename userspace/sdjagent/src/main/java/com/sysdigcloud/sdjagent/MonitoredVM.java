@@ -322,7 +322,10 @@ public class MonitoredVM {
 
     private void disconnect() {
         lastDisconnectionTimestamp = System.currentTimeMillis();
-        connection = null;
+        if (connection != null) {
+            connection.closeConnector();
+            connection = null;
+        }
         agentActive = false;
     }
 
@@ -378,6 +381,14 @@ public class MonitoredVM {
         } catch (AgentInitializationException x) {
             throw new IOException(x);
         }
+    }
+
+    /**
+     * Cleanup resources used by MonitoredVM, to be used just before removing
+     * this object. After this call, the object will be in an unusable state
+     */
+    public void cleanUp() {
+        disconnect();
     }
 
     /*

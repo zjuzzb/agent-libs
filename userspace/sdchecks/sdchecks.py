@@ -10,6 +10,8 @@ import resource
 import ctypes
 import logging
 from datetime import datetime, timedelta
+import sys
+import signal
 
 # project
 from checks import AgentCheck
@@ -80,6 +82,7 @@ class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
         self.conf = node.get("conf", {})
+        self.interval = timedelta(seconds=node.get("interval", 1))
 
         try:
             check_module_name = node["check_module"]
@@ -124,7 +127,8 @@ class AppCheckInstance:
     AGENT_CONFIG = {
         "is_developer_mode": False,
         "version": 1.0,
-        "hostname": get_hostname()
+        "hostname": get_hostname(),
+        "api_key": ""
     }
     INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
@@ -135,6 +139,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
+        self.interval = check.interval
         self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
@@ -142,7 +147,7 @@ class AppCheckInstance:
                 mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
                 self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
             except OSError as ex:
-                raise AppCheckException(ex.message)
+                raise AppCheckException(repr(ex))
         else:
             self.is_on_another_container = False
 
@@ -164,27 +169,37 @@ class AppCheckInstance:
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
+        saved_ex = None
+        ns_fds = []
         try:
             if self.is_on_another_container:
                 # We need to open and close ns on every iteration
                 # because otherwise we lock container deletion
                 for ns in self.check_instance.NEEDED_NS:
                     nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                    ns_fds.append(nsfd)
+                for nsfd in ns_fds:
                     ret = setns(nsfd)
-                    os.close(nsfd)
                     if ret != 0:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
-            return self.check_instance.get_metrics(), self.check_instance.get_service_checks()
         except OSError as ex: # Raised from os.open() or setns()
-            raise AppCheckException(ex.message)
+            saved_ex = AppCheckException(repr(ex))
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
-            raise AppCheckException("%s\n%s" % (repr(ex), traceback_message))
+            saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
+            for nsfd in ns_fds:
+                os.close(nsfd)
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
+            # We don't need them, but this method clears them so we avoid memory growing
+            self.check_instance.get_events()
+            self.check_instance.get_service_metadata()
+
+            # Return metrics and checks instead
+            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), saved_ex
 
     def _expand_template(self, value, proc_data):
         try:
@@ -214,12 +229,13 @@ class Config:
 
         self.checks = {}
         for c in check_confs:
-            try:
-                app_check = AppCheck(c)
-                self.checks[app_check.name] = app_check
-            except (Exception, IOError) as ex:
-                logging.error("Configuration error for check %s: %s", repr(c), ex.message)
-    
+            if c.get("enabled", True):
+                try:
+                    app_check = AppCheck(c)
+                    self.checks[app_check.name] = app_check
+                except (Exception, IOError) as ex:
+                    logging.error("Configuration error for check %s: %s", repr(c), ex.message)
+
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
         if level == "error":
@@ -237,8 +253,11 @@ class PosixQueueType:
 
 class PosixQueue:
     MSGSIZE = 1 << 20
-    def __init__(self, name, direction, maxmsgs=3):
-        resource.setrlimit(RLIMIT_MSGQUEUE, (10*self.MSGSIZE, 10*self.MSGSIZE))
+    MAXMSGS = 3
+    MAXQUEUES = 10
+    def __init__(self, name, direction, maxmsgs=MAXMSGS):
+        limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
+        resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
                                             max_messages = maxmsgs, max_message_size = self.MSGSIZE,
@@ -260,8 +279,13 @@ class PosixQueue:
             return False
 
     def receive(self, timeout=1):
-        message, _ = self.queue.receive(timeout)
-        return message
+        try:
+            message, _ = self.queue.receive(timeout)
+            return message
+        except posix_ipc.SignalError:
+            return None
+        except posix_ipc.BusyError:
+            return None
 
     def __del__(self):
         if hasattr(self, "queue") and self.queue:
@@ -269,82 +293,127 @@ class PosixQueue:
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
-    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=1)
+    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
     def __init__(self):
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
-        logging.debug("Check config: %s", repr(self.config.checks))
+        # logging.debug("Check config: %s", repr(self.config.checks))
         # requests generates too noise on information level
         logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("kazoo.client").setLevel(logging.WARNING)
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
-        self.inqueue = PosixQueue("/sdchecks", PosixQueueType.RECEIVE)
-        self.outqueue = PosixQueue("/dragent_app_checks", PosixQueueType.SEND)
+
+        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
+
+        # Blacklist works in two ways
+        # 1. for pids where we cannot create an AppCheckInstance, skip them
+        # 2. for pids when AppCheckInstance.run raises exception, run them but don't print errors
+        # We need the latter because a check can create checks or metrics even if it raises
+        # exceptions
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
+        
+        self.last_request_pids = set()
 
     def cleanup(self):
         self.inqueue.close()
         self.outqueue.close()
 
-    def clean_known_instances(self, last_request_pids):
+    def clean_known_instances(self):
         for key in self.known_instances.keys():
-            if not key in last_request_pids:
+            if not key in self.last_request_pids:
                 del self.known_instances[key]
+
+    def handle_command(self, command_s):
+        response_body = []
+        #print "Received command: %s" % command_s
+        processes = json.loads(command_s)
+        self.last_request_pids.clear()
+
+        for p in processes:
+            pid = p["pid"]
+            self.last_request_pids.add(pid)
+
+            try:
+                check_instance = self.known_instances[pid]
+            except KeyError:
+                if pid in self.blacklisted_pids:
+                    logging.debug("Process with pid=%d is blacklisted", pid)
+                    continue
+                try:
+                    check_conf = self.config.checks[p["check"]]
+                except KeyError:
+                    logging.error("Cannot find check configuration for name: %s", p["check"])
+                    continue
+                try:
+                    check_instance = AppCheckInstance(check_conf, p)
+                except AppCheckException as ex:
+                    logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
+                    self.blacklisted_pids.add(pid)
+                    continue
+                self.known_instances[pid] = check_instance
+            
+            metrics, service_checks, ex = check_instance.run()
+
+            if ex and pid not in self.blacklisted_pids:
+                logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                self.blacklisted_pids.add(pid)
+
+            expiration_ts = datetime.now() + check_instance.interval
+            response_body.append({  "pid": pid,
+                                    "display_name": check_instance.name,
+                                    "metrics": metrics,
+                                    "service_checks": service_checks,
+                                    "expiration_ts": int(expiration_ts.strftime("%s"))})
+        response_s = json.dumps(response_body)
+        logging.debug("Response size is %d" % len(response_s))
+        self.outqueue.send(response_s)
+
+    def main_loop(self):
+        pid = os.getpid()
+        while True:
+            # Handle received message
+            command_s = self.inqueue.receive(1)
+            if command_s:
+                self.handle_command(command_s)
+
+            # Do some cleanup
+            now = datetime.now()
+            if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
+                self.clean_known_instances()
+                self.last_known_instances_cleanup = datetime.now()
+            if now - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
+                self.blacklisted_pids.clear()
+                self.last_blacklisted_pids_cleanup = datetime.now()
+
+            # Send heartbeat 
+            ru = resource.getrusage(resource.RUSAGE_SELF)
+            sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
+            sys.stderr.flush()
 
     def main(self):
         logging.info("Starting")
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
-        while True:
-            command_s = self.inqueue.receive(None)
-            response_body = []
-            #print "Received command: %s" % command_s
-            command = json.loads(command_s)
-            processes = command["body"]
-            for p in processes:
-                pid = int(p["pid"])
-                if pid in self.blacklisted_pids:
-                    logging.debug("Process with pid=%d is blacklisted", pid)
-                    continue
-
-                try:
-                    check_instance = self.known_instances[pid]
-                except KeyError:
-                    try:
-                        check_conf = self.config.checks[p["check"]]
-                    except KeyError:
-                        logging.error("Cannot find check configuration for name: %s", p["check"])
-                        continue
-                    try:
-                        check_instance = AppCheckInstance(check_conf, p)
-                    except AppCheckException as ex:
-                        logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
-                        self.blacklisted_pids.add(pid)
-                        continue
-                    self.known_instances[pid] = check_instance
-                
-                metrics = []
-                service_checks = []
-                try:
-                    metrics, service_checks = check_instance.run()
-                except AppCheckException as ex:
-                    logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
-                    self.blacklisted_pids.add(pid)
-                response_body.append({ "pid": pid,
-                                        "display_name": check_instance.name,
-                                                 "metrics": metrics,
-                                   "service_checks": service_checks})
-            response = {
-                "id": command["id"],
-                "body": response_body
-            }
-            response_s = json.dumps(response)
-            logging.debug("Response size is %d" % len(response_s))
-            self.outqueue.send(response_s)
-            if datetime.now() - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
-                self.clean_known_instances([p["pid"] for p in processes])
-                self.last_known_instances_cleanup = datetime.now()
-            if datetime.now() - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
-                self.blacklisted_pids.clear()
-                self.last_blacklisted_pids_cleanup = datetime.now()
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "runCheck":
+                proc_data = {
+                    "check": sys.argv[2],
+                    "pid": int(sys.argv[3]),
+                    "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
+                    "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                }
+                check_conf = self.config.checks[proc_data["check"]]
+                check_instance = AppCheckInstance(check_conf, proc_data)
+                metrics, service_checks, ex = check_instance.run()
+                print "Conf: %s" % repr(check_instance.instance_conf)
+                print "Metrics: %s" % repr(metrics)
+                print "Checks: %s" % repr(service_checks)
+                print "Exception: %s" % repr(ex)
+        else:
+            # In this mode register our usr1 handler to print stack trace (useful for debugging)
+            signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+            self.main_loop()

@@ -1,15 +1,23 @@
+set(DRAIOS_OPENSSL_VERSION "1.0.2d")
+set(DRAIOS_PROTOBUF_VERSION "2.5.0")
+set(DRAIOS_ZLIB_VERSION "1.2.8")
+set(DRAIOS_POCO_VERSION "1.4.6p4-all")
+set(DRAIOS_LIBSSH_VERSION "0.7.2")
+set(DRAIOS_YAML_VERSION "cpp-0.5.1")
+set(DRAIOS_BOOST_VERSION "1_57_0")
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_1_57_0)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -34,17 +42,17 @@ add_dependencies(dragent sdjagent sdjagentjni sdchecks)
 target_link_libraries(dragent
 	pthread
 	sanalyzer
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoXML.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-1.4.6p4-all/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/libssh-0.6.3/target/lib/libssh.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-1.0.1h/target/lib/libcrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/target/lib/libssh.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 	rt
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-cpp-0.5.1/target/lib/libyaml-cpp.a)
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)

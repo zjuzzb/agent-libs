@@ -362,9 +362,9 @@ TEST_F(sys_call_test, container_docker)
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
 		ASSERT_TRUE(found);
 
-		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_DOCKER);
-		ASSERT_TRUE(container_info.m_name == "ilovesysdig_docker");
-		ASSERT_TRUE(container_info.m_image == "busybox");
+		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info.m_type);
+		EXPECT_EQ("ilovesysdig_docker", container_info.m_name);
+		EXPECT_EQ("busybox", container_info.m_image);
 
 		done = true;
 	};

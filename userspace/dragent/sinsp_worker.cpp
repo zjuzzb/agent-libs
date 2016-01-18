@@ -89,6 +89,41 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
 	//
+	// kubernetes
+	//
+	if(!m_configuration->m_k8s_api_server.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
+	}
+
+	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
+
+	if(!m_configuration->m_k8s_ssl_ca_certificate.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_ca_certificate(m_configuration->m_k8s_ssl_ca_certificate);
+	}
+
+	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
+
+	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
+
+	//
+	// mesos
+	//
+
+	if(!m_configuration->m_mesos_state_uri.empty())
+	{
+		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
+	}
+	// marathon
+	if(!m_configuration->m_marathon_uris.empty())
+	{
+		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
+	}
+
+	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
+
+	//
 	// Configure compression in the protocol
 	//
 	m_analyzer->get_configuration()->set_compress_metrics(m_configuration->m_compression_enabled);
@@ -150,7 +185,9 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
-	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_running_in_container);
+	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
+	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
+
 	//
 	// Load the chisels
 	//
@@ -181,13 +218,13 @@ void sinsp_worker::init()
 		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
-	if(m_configuration->m_aws_metadata.m_valid)
+	if(m_configuration->m_aws_metadata.m_public_ipv4)
 	{
 		sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4, 
 			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
-
+	
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
@@ -272,7 +309,7 @@ void sinsp_worker::run()
 		{
 			g_log->information("Refresh network interfaces list");
 			m_inspector->refresh_ifaddr_list();
-			if(m_configuration->m_aws_metadata.m_valid)
+			if(m_configuration->m_aws_metadata.m_public_ipv4)
 			{
 				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
 												m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");

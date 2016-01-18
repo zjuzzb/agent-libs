@@ -47,7 +47,10 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	{
 	case PPME_SCHEDSWITCH_1_E:
 	case PPME_SCHEDSWITCH_6_E:
-		m_sched_analyzer2->process_event(evt);
+		if(m_analyzer->m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+		{
+			m_sched_analyzer2->process_event(evt);
+		}
 		return false;
 	case PPME_SOCKET_ACCEPT_X:
 	case PPME_SOCKET_ACCEPT4_X:
@@ -106,6 +109,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 
 	case PPME_SYSDIGEVENT_E:
 		m_analyzer->m_driver_stopped_dropping = true;
+		return false;
+	case PPME_CONTAINER_E:
 		return false;
 	default:
 		return true;
@@ -178,7 +183,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 			return;
 		}
 
-		if(tinfo->is_lastevent_data_valid())
+		if(tinfo->is_lastevent_data_valid() && evt->m_tinfo->m_lastevent_data)
 		{
 			//
 			// We categorize this based on the next I/O operation only if the number of 

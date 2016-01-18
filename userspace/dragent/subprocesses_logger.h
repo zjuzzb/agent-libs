@@ -4,6 +4,7 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
 
+class watchdog_state;
 class pipe_manager: noncopyable
 {
 public:
@@ -80,10 +81,7 @@ public:
 
 	// `parser` is an rvalue reference because we expect a lambda
 	// or a custom object created on the fly
-	void add_logfd(FILE* fd, function<void(const string&)>&& parser)
-	{
-		m_error_fds.emplace(fd, parser);
-	}
+	void add_logfd(FILE* fd, function<void(const string&)>&& parser, watchdog_state* state = nullptr);
 
 	void run();
 
@@ -100,7 +98,7 @@ public:
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
-	map<FILE *, function<void(const string&)>> m_error_fds;
+	map<FILE *, pair<function<void(const string&)>, watchdog_state*>> m_error_fds;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 };

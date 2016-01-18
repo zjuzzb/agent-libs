@@ -12,6 +12,7 @@
 #include <mntent.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #else
 #include <time.h>
 #endif
@@ -30,6 +31,8 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
+	m_last_in_bytes = 0;
+	m_last_out_bytes = 0;
 }
 
 double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
@@ -444,14 +447,14 @@ return;
 #endif // _WIN32
 }
 
-vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled, const string& mtab)
 {
-	vector<sinsp_procfs_parser::mounted_fs> ret;
+	vector<mounted_fs> ret;
 #ifndef _WIN32
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
 	{
-		throw sinsp_exception("error opening /etc/mtab");
+		throw sinsp_exception("error opening " + mtab);
 	}
 
 	while(true)
@@ -489,13 +492,21 @@ vector<sinsp_procfs_parser::mounted_fs> sinsp_procfs_parser::get_mounted_fs_list
 		if(!remotefs_enabled)
 		{
 			// if remotefs are disabled, recognize them and skip
-			if(strchr(entry->mnt_fsname, ':') != NULL
+			if((strchr(entry->mnt_fsname, ':') != NULL && strstr(entry->mnt_fsname, "docker") == NULL)
 				|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
 				|| strcmp(entry->mnt_type, "smbfs") == 0
 				|| strcmp(entry->mnt_type, "cifs") == 0)
 			{
 				continue;
 			}
+		}
+
+		if(strstr(entry->mnt_dir, "/etc") == entry->mnt_dir)
+		{
+			// Skipping /etc mounts, because inside docker containers
+			// there are always /etc/hosts, /etc/resolv.conf etc
+			// Usually they are just noise
+			continue;
 		}
 
 		struct statvfs statfs;
@@ -621,7 +632,7 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	// Look for mount point of cgroup memory filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent("/proc/mounts", "r");
 	struct mntent* entry = getmntent(fp);
 	while(entry != NULL)
 	{
@@ -642,94 +653,264 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
-sinsp_procfs_parser::mounted_fs::mounted_fs(const Json::Value &json):
-	device(json["device"].asString()),
-	mount_dir(json["mount_dir"].asString()),
-	type(json["type"].asString()),
-	size_bytes(json["size_bytes"].asUInt64()),
-	used_bytes(json["used_bytes"].asUInt64()),
-	available_bytes(json["available_bytes"].asUInt64())
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 {
+	pair<uint32_t, uint32_t> ret;
 
-}
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
 
-Json::Value sinsp_procfs_parser::mounted_fs::to_json() const
-{
-	Json::Value ret;
-	ret["device"] = device;
-	ret["mount_dir"] = mount_dir;
-	ret["type"] = type;
-	ret["size_bytes"] = static_cast<Json::UInt64>(size_bytes);
-	ret["used_bytes"] = static_cast<Json::UInt64>(used_bytes);
-	ret["available_bytes"] = static_cast<Json::UInt64>(available_bytes);
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	auto net_dev = fopen(net_dev_path, "r");
+	if(net_dev == NULL)
+	{
+		return ret;
+	}
+
+	// Skip first two lines as they are column headers
+	char skip_buffer[1024];
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
+
+	char interface_name[30];
+	unsigned ign;
+	uint64_t in_bytes, out_bytes;
+	uint64_t tot_in_bytes = 0;
+	uint64_t tot_out_bytes = 0;
+
+	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
+				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
+				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	{
+		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
+				return strcasestr(interface_name, bad_interface) == interface_name;
+			}) == BAD_INTERFACE_NAMES.end())
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			tot_in_bytes += in_bytes;
+			tot_out_bytes += out_bytes;
+		}
+	}
+	fclose(net_dev);
+
+	// Calculate delta, no delta if it is the first time we read
+	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	{
+		// Network metrics use uint32_t on protobuf, so we use the same
+		// for deltas
+		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+	}
+	m_last_in_bytes = tot_in_bytes;
+	m_last_out_bytes = tot_out_bytes;
+
 	return ret;
 }
 
-mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/mounted_fs_reader_out", posix_queue::direction_t::RECEIVE)
+mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
+	device(proto.device()),
+	mount_dir(proto.mount_dir()),
+	type(proto.type()),
+	size_bytes(proto.size_bytes()),
+	used_bytes(proto.used_bytes()),
+	available_bytes(proto.available_bytes())
 {
 
 }
 
-const vector<sinsp_procfs_parser::mounted_fs>& mounted_fs_proxy::get_mounted_fs_list()
+void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 {
-	auto msg = m_input.receive();
-	while(!msg.empty())
+	fs->set_device(device);
+	fs->set_mount_dir(mount_dir);
+	fs->set_type(type);
+	fs->set_size_bytes(size_bytes);
+	fs->set_used_bytes(used_bytes);
+	fs->set_available_bytes(available_bytes);
+}
+
+mounted_fs_proxy::mounted_fs_proxy():
+	m_input("/sdc_mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_in", posix_queue::direction_t::SEND)
+{
+
+}
+
+unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
+{
+	unordered_map<string, vector<mounted_fs>> fs_map;
+	auto last_msg = m_input.receive();
+	decltype(last_msg) msg;
+	while(!last_msg.empty())
 	{
-		Json::Value json;
-		bool parsed = m_json_reader.parse(msg, json);
-		if(parsed)
+		msg = move(last_msg);
+		last_msg = m_input.receive();
+	}
+	if(!msg.empty())
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
+		sdc_internal::mounted_fs_response response_proto;
+		if(response_proto.ParseFromString(msg))
 		{
-			m_fs_list.clear();
-			for(unsigned j = 0; j < json.size(); ++j)
+			fs_map.clear();
+			for(const auto& c : response_proto.containers())
 			{
-				m_fs_list.emplace_back(json[j]);
+				vector<mounted_fs> fslist;
+				for( const auto& m : c.mounts())
+				{
+					fslist.emplace_back(m);
+				}
+				fs_map.emplace(c.container_id(), move(fslist));
 			}
 		}
-		msg = m_input.receive();
 	}
-	return m_fs_list;
+	return fs_map;
+}
+
+bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
+{
+	sdc_internal::mounted_fs_request req;
+	for(const auto& item : containers)
+	{
+		auto container = req.add_containers();
+		container->set_id(get<0>(item));
+		container->set_pid(get<1>(item));
+		container->set_vpid(get<2>(item));
+	}
+	auto req_s = req.SerializeAsString();
+	return m_output.send(req_s);
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs):
-	m_output("/mounted_fs_reader_out", posix_queue::direction_t::SEND),
+	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
+	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
 {
 	g_logger.add_stderr_log();
 }
 
-int mounted_fs_reader::run()
+int mounted_fs_reader::open_ns_fd(int pid)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
-	snprintf(filename, sizeof(filename), "%s/proc/1/ns/mnt", scap_get_host_root());
-	auto fd = open(filename, O_RDONLY);
-	if(fd > 0)
+	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
+	return open(filename, O_RDONLY);
+}
+
+bool mounted_fs_reader::change_ns(int destpid)
+{
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Set to ns pid %d", destpid);
+	// Go to container mnt ns
+	auto fd = open_ns_fd(destpid);
+	if(fd <= 0)
 	{
-		auto ret = setns(fd, CLONE_NEWNS);
-		close(fd);
-		if(ret != 0)
-		{
-			g_logger.log("Cannot setns to host", sinsp_logger::SEV_ERROR);
-			return 17;
-		}
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot open namespace fd for pid=%d", destpid);
+		return false;
+	}
+	if(setns(fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot setns to pid=%d", destpid);
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
+int mounted_fs_reader::run()
+{
+	auto pid = getpid();
+	uint64_t m_last_loop_s = 0;
+	struct rusage mem_usage;
+	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
+	int home_fd = 0;
+	if(getppid() == 1)
+	{
+		// If `--pid host` is not used, we take the mnt from /proc
+		// as we don't know our hostpid
+		char filename[SCAP_MAX_PATH_SIZE];
+		snprintf(filename, sizeof(filename), "/proc/%d/ns/mnt", pid);
+		home_fd = open(filename, O_RDONLY);
 	}
 	else
 	{
-		g_logger.log("Cannot open namespace fd", sinsp_logger::SEV_ERROR);
-		return 17;
+		home_fd = open_ns_fd(pid);
 	}
-	g_logger.log("Starting mounted_fs_reader", sinsp_logger::SEV_INFO);
+	if(home_fd <= 0)
+	{
+		return DONT_RESTART_EXIT;
+	}
 	while(true)
 	{
-		auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs);
-		auto fs_list_json = Json::Value(Json::arrayValue);
-		for(const auto& fs : fs_list)
+		// Send heartbeat
+		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
+		getrusage(RUSAGE_SELF, &mem_usage);
+		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
+		fflush(stderr);
+		auto request_s = m_input.receive(1);
+		if(!request_s.empty())
 		{
-			fs_list_json.append(fs.to_json());
+			sdc_internal::mounted_fs_request request_proto;
+			if(request_proto.ParseFromString(request_s))
+			{
+				sdc_internal::mounted_fs_response response_proto;
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
+				for(const auto& container_proto : request_proto.containers())
+				{
+					// Go to container mnt ns
+					auto changed = change_ns(container_proto.pid());
+					if(changed)
+					{
+						try
+						{
+							char filename[SCAP_MAX_PATH_SIZE];
+							// Use mtab if it's not a symlink to /proc/self/mounts
+							// Because when entering a mount namespace, we don't have
+							// a self entry on /proc
+							struct stat mtab_stat;
+							if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
+							{
+								snprintf(filename, sizeof(filename), "/etc/mtab");
+							}
+							else
+							{
+								snprintf(filename, sizeof(filename), "/proc/%lu/mounts", container_proto.vpid());
+							}
+							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
+							auto container_mounts_proto = response_proto.add_containers();
+							container_mounts_proto->set_container_id(container_proto.id());
+							for(const auto& fs : fs_list)
+							{
+								auto fsinfo = container_mounts_proto->add_mounts();
+								fs.to_protobuf(fsinfo);
+							}
+						}
+						catch (const sinsp_exception& ex)
+						{
+							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
+						}
+					}
+					// Back home
+					if(setns(home_fd, CLONE_NEWNS) != 0)
+					{
+						g_logger.log("Cannot setns home, exiting", sinsp_logger::SEV_ERROR);
+						return ERROR_EXIT;
+					};
+				}
+				auto response_s = response_proto.SerializeAsString();
+				m_output.send(response_s);
+			}
 		}
-		auto msg = m_json_writer.write(fs_list_json);
-		m_output.send(msg);
-		sleep(1);
 	}
 }

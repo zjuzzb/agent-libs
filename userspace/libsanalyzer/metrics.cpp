@@ -141,7 +141,7 @@ void sinsp_counter_time_bidirectional::clear()
 	m_time_ns_other = 0;
 }
 
-void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio)
+void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const
 {
 	protobuf_msg->set_time_ns_in(m_time_ns_in * sampling_ratio);
 	protobuf_msg->set_time_ns_out(m_time_ns_out * sampling_ratio);
@@ -195,7 +195,7 @@ void sinsp_counter_bytes::clear()
 	m_bytes_out = 0;
 }
 
-void sinsp_counter_bytes::to_protobuf(draiosproto::counter_bytes* protobuf_msg, uint32_t sampling_ratio)
+void sinsp_counter_bytes::to_protobuf(draiosproto::counter_bytes* protobuf_msg, uint32_t sampling_ratio) const
 {
 	protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
 	protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
@@ -278,7 +278,9 @@ void sinsp_counter_time_bytes::clear()
 	m_bytes_other = 0;
 }
 
-void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg, uint64_t tot_relevant_time_ns, uint32_t sampling_ratio)
+void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
+										   uint64_t tot_relevant_time_ns, uint32_t sampling_ratio,
+											uint64_t patched_bytes_in, uint64_t patched_bytes_out)
 {
 	protobuf_msg->set_time_ns_in(m_time_ns_in * sampling_ratio);
 	protobuf_msg->set_time_ns_out(m_time_ns_out * sampling_ratio);
@@ -303,8 +305,27 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_count_in(m_count_in * sampling_ratio);
 	protobuf_msg->set_count_out(m_count_out * sampling_ratio);
 	protobuf_msg->set_count_other(m_count_other * sampling_ratio);
-	protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
-	protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
+
+	// Patched bytes in & out are needed because we decided to patch
+	// host network metrics using data from /proc, because using only
+	// sysdig metrics we miss kernel threads activity
+	// In this case, sampling_ratio is not evaluated
+	if(patched_bytes_in > 0)
+	{
+		protobuf_msg->set_bytes_in(patched_bytes_in);
+	}
+	else
+	{
+		protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
+	}
+	if(patched_bytes_out > 0)
+	{
+		protobuf_msg->set_bytes_out(patched_bytes_out);
+	}
+	else
+	{
+		protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
+	}
 	protobuf_msg->set_bytes_other(m_bytes_other * sampling_ratio);
 }
 
@@ -570,7 +591,7 @@ void sinsp_transaction_counters::clear()
 void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
 		draiosproto::counter_time_bidirectional* min_protobuf_msg,
 		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
-		uint32_t sampling_ratio)
+		uint32_t sampling_ratio) const
 {
 	m_counter.to_protobuf(protobuf_msg, sampling_ratio);
 	m_min_counter.to_protobuf(min_protobuf_msg, 1);
@@ -684,7 +705,7 @@ void sinsp_connection_counters::clear()
 	m_client.clear();
 }
 
-void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio)
+void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio) const
 {
 	m_server.to_protobuf(protobuf_msg->mutable_server(), sampling_ratio);
 	m_client.to_protobuf(protobuf_msg->mutable_client(), sampling_ratio);

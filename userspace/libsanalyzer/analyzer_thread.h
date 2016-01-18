@@ -103,7 +103,7 @@ public:
 		AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
 		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
-		AF_CMDLINE_UPDATED = (1 << 9)
+		AF_APP_CHECK_FOUND = (1 << 9),
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -136,21 +136,14 @@ public:
 		}
 	}
 
-	inline bool is_cmdline_updated()
+	inline bool app_check_found()
 	{
-		return (m_th_analysis_flags & AF_CMDLINE_UPDATED) != 0;
+		return (m_th_analysis_flags & AF_APP_CHECK_FOUND) != 0;
 	}
 
-	inline void set_cmdline_update(bool value)
+	inline void set_app_check_found()
 	{
-		if(value)
-		{
-			m_th_analysis_flags |= AF_CMDLINE_UPDATED;
-		}
-		else
-		{
-			m_th_analysis_flags &= ~AF_CMDLINE_UPDATED;
-		}
+		m_th_analysis_flags |= AF_APP_CHECK_FOUND;
 	}
 
 	inline set<uint16_t> listening_ports()
@@ -198,7 +191,7 @@ public:
 	// new doesn't support it
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
-
+	uint64_t m_last_cmdline_sync_ns;
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;

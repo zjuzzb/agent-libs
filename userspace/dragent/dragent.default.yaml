@@ -271,27 +271,29 @@ jmx:
         - query: "org.apache.ZooKeeperService:name0=StandaloneServer*,*"
           attributes:
             - name: AvgRequestLatency
-              alias: zookeeper.standalone.avg.request.latency
+              alias: zookeeper.avg.request.latency
             - name: MaxRequestLatency
-              alias: zookeeper.standalone.max.request.latency
-            - name: NumAliveConnections
-              alias: zookeeper.standalone.current.alive.connections
+              alias: zookeeper.max.request.latency
+            - name: MinRequestLatency
+              alias: zookeeper.min.request.latency
             - name: NodeCount
-              alias: zookeeper.standalone.node.count
+              alias: zookeeper.node.count
+            - name: NumAliveConnections
+              alias: zookeeper.current.alive.connections
         - query: "org.apache.ZooKeeperService:name0=ReplicatedServer*,*"
           attributes:
             - name: QuorumSize
-              alias: zookeeper.cluster.quorum.size
+              alias: zookeeper.quorum.size
             - name: AvgRequestLatency
-              alias: zookeeper.cluster.avg.request.latency
+              alias: zookeeper.avg.request.latency
             - name: MaxRequestLatency
-              alias: zookeeper.cluster.max.request.latency
+              alias: zookeeper.max.request.latency
             - name: MinRequestLatency
-              alias: zookeeper.cluster.min.request.latency
+              alias: zookeeper.min.request.latency
             - name: NodeCount
-              alias: zookeeper.cluster.node.count
+              alias: zookeeper.node.count
             - name: NumAliveConnections
-              alias: zookeper.cluster.current.alive.connections
+              alias: zookeeper.current.alive.connections
     kafka:
       pattern: "kafka"
       beans:
@@ -577,7 +579,7 @@ app_checks:
   - name: nginx 
     check_module: nginx
     pattern:
-      comm: nginx
+      exe: "nginx: master process" # nginx overwrites argv[0] that is parsed as exe on sysdig
     conf:
       nginx_status_url: "http://localhost:{port}/nginx_status/"
   - name: apache
@@ -586,6 +588,134 @@ app_checks:
       comm: apache2
     conf:
       apache_status_url: "http://localhost:{port}/server-status?auto"
+  - name: consul
+    pattern:
+      comm: consul
+    conf:
+      url: "http://localhost:8500"
+      catalog_checks: yes
+  - name: etcd
+    pattern:
+      comm: etcd
+    conf:
+      url: "http://localhost:4001"
+  - name: couchdb
+    check_module: couch
+    pattern:
+      comm: beam.smp
+      arg: couch
+      port: 5984
+    conf:
+      server: http://localhost:5984
+  - name: couchbase
+    pattern:
+      comm: beam.smp
+      arg: couchbase
+      port: 8091
+    conf:
+      server: http://localhost:8091
+  - name: fluentd
+    pattern:
+      comm: fluentd
+    conf:
+      monitor_agent_url: http://localhost:24220/api/plugins.json
+  - name: hdfs
+    pattern:
+      comm: java
+      arg: org.apache.hadoop.hdfs.server.namenode.NameNode
+    conf:
+      namenode: localhost
+  - name: kyototycoon
+    pattern:
+      comm: ktserver
+    conf:
+      report_url: "http://localhost:{port}/rpc/report"
+  - name: mesos-master
+    check_module: mesos_master
+    interval: 30
+    pattern: 
+      comm: mesos-master
+    conf:
+      url: "http://localhost:{port}"
+  - name: mesos-slave
+    check_module: mesos_slave
+    pattern: 
+      comm: mesos-slave
+    interval: 30
+    conf:
+      url: "http://localhost:{port}"
+      # Name of individual tasks to monitor, if needed
+      # tasks:
+        # - mongo
+        # - cassandra
+  - name: marathon
+    check_module: marathon
+    interval: 30
+    pattern: 
+      arg: mesosphere.marathon.Main
+    conf:
+      url: "http://localhost:{port}"
+  - name: postgres
+    pattern:
+      comm: postgres
+      port: 5432
+    conf:
+      unix_sock: "/var/run/postgresql/.s.PGSQL.{port}"
+      username: postgres
+  - name: postfix
+    interval: 15
+    pattern:
+      comm: postfix
+    conf:
+      directory: /var/spool/postfix
+      queues:
+        - incoming
+        - active
+        - deferred
+  - name: riak
+    pattern:
+      comm: beam.smp
+      port: 8098
+    conf:
+      url: http://127.0.0.1:8098/stats
+  - name: php-fpm
+    check_module: php_fpm
+    pattern:
+      exe: "php-fpm: master process"
+  - name: varnish
+    interval: 15
+    pattern:
+      comm: varnishd
+    conf:
+      varnishstat: /usr/bin/varnishstat
+
+#
+# Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
+# use "dragent.yaml" instead.
+#
+# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/206606883
+#
+# Example (overrides default setting):
+#
+# k8s_uri: https://vagrant:vagrant@localhost:4430
+# k8s_autodetect: false
+# k8s_ca_certificate: k8s-ca.crt
+# k8s_ssl_verify_certificate: true
+# k8s_timeout_ms: 30000
+#
+
+#
+# Warning: This is an example of mesos configuration. Please do not uncomment and edit here,
+# use "dragent.yaml" instead.
+#
+# For documentation, see http://support.sysdigcloud.com/...
+#
+# Example (overrides default setting):
+#
+# mesos_state_uri: http://localhost:5050
+# marathon_uris:
+#   - http://localhost:8080
+# mesos_autodetect: true
 
 known_ports:
   - 902 # VMware 

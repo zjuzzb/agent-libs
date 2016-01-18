@@ -1,0 +1,29 @@
+
+(process:36929): GLib-CRITICAL **: g_slice_set_config: assertion 'sys_page_size == 0' failed
+
+(firefox:36929): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::sm-connect after class was initialised
+
+(firefox:36929): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::show-crash-dialog after class was initialised
+
+(firefox:36929): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::display after class was initialised
+
+(firefox:36929): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::default-icon after class was initialised
+
+(firefox:36929): IBUS-WARNING **: The owner of /home/loris/.config/ibus/bus is not root!
+
+(process:45658): GLib-CRITICAL **: g_slice_set_config: assertion 'sys_page_size == 0' failed
+
+(firefox:45658): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::sm-connect after class was initialised
+
+(firefox:45658): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::show-crash-dialog after class was initialised
+
+(firefox:45658): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::display after class was initialised
+
+(firefox:45658): GLib-GObject-WARNING **: Attempt to add property GnomeProgram::default-icon after class was initialised
+
+(firefox:45658): IBUS-WARNING **: The owner of /home/loris/.config/ibus/bus is not root!
+Home directory not accessible: Permission denied
+Home directory not accessible: Permission denied
+Home directory not accessible: Permission denied
+Home directory not accessible: Permission denied
+Home directory not accessible: Permission denied

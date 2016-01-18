@@ -7,6 +7,7 @@
 #include <netdb.h>
 
 #include "logger.h"
+#include "uri.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -28,6 +29,7 @@ dragent_configuration::dragent_configuration()
 	m_server_port = 0;
 	m_transmitbuffer_size = 0;
 	m_ssl_enabled = false;
+	m_ssl_verify_certificate = true;
 	m_compression_enabled = false;
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) 0;
@@ -53,6 +55,7 @@ dragent_configuration::dragent_configuration()
 	m_agent_installed = true;
 	m_ssh_enabled = true;
 	m_statsd_enabled = true;
+	m_statsd_limit = 100;
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 }
@@ -132,7 +135,11 @@ void dragent_configuration::init(Application* app)
 
 	if(m_min_file_priority == 0)
 	{
+#ifdef _DEBUG
+		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "debug"));
+#else
 		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "info"));
+#endif
 	}
 
 	if(m_min_console_priority == 0)
@@ -146,6 +153,7 @@ void dragent_configuration::init(Application* app)
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
+	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
 	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
@@ -172,7 +180,11 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_subprocesses_logger_timeout_s = m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>("watchdog", "subprocesses_logger_timeout_s", 60);
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
-	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 256);
+	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 512);
+	// Right now these two entries does not support merging between defaults and specified on config file
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}});
+
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
@@ -190,8 +202,22 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
+	// Filter out disabled checks
+	unordered_set<string> disabled_checks;
+	for(const auto& item : m_app_checks)
+	{
+		if(!item.enabled())
+		{
+			disabled_checks.emplace(item.name());
+		}
+	}
+	m_app_checks.erase(remove_if(m_app_checks.begin(), m_app_checks.end(), [&disabled_checks](const app_check& item)
+	{
+		return disabled_checks.find(item.name()) != disabled_checks.end();
+	}), m_app_checks.end());
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
 	auto python_binary_path = m_config->get_scalar<string>("python_binary", "");
@@ -242,8 +268,23 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
-	// Detect if running inside container using SYSDIG_HOST_ROOT
-	m_running_in_container = (strcmp(scap_get_host_root(),"") != 0);
+	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
+	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
+	m_k8s_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("k8s_ca_certificate", "")).toString();
+	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
+	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
+
+	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
+	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
+	for(auto u : marathon_uris)
+	{
+		m_marathon_uris.push_back(u);
+	}
+	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
+
+	// Check existence of namespace to see if kernel supports containers
+	File nsfile("/proc/self/ns/mnt");
+	m_system_supports_containers = nsfile.exists();
 
 	if(m_statsd_enabled)
 	{
@@ -270,6 +311,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
 	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
+	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
 	g_log->information("ca_certificate: " + m_ssl_ca_certificate);
 	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
 	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
@@ -305,17 +347,39 @@ void dragent_configuration::print_configuration()
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
-	g_log->information("Running inside container: " + bool_as_text(m_running_in_container));
-
+	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
+	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
+	if (!m_k8s_api_server.empty())
+	{
+		g_log->information("K8S API server: " + m_k8s_api_server);
+	}
+	if (!m_k8s_ssl_ca_certificate.empty())
+	{
+		g_log->information("m_k8s_ssl_certificate: " + m_k8s_ssl_ca_certificate);
+	}
+	g_log->information("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
 	}
-	if(m_aws_metadata.m_valid)
+	if(!m_aws_metadata.m_instance_id.empty())
 	{
-		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
+	if(m_aws_metadata.m_public_ipv4)
+	{
+		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
+	}
+	if(!m_mesos_state_uri.empty())
+	{
+		g_log->information("Mesos state API server: " + m_mesos_state_uri);
+	}
+	for(const auto& marathon_uri : m_marathon_uris)
+	{
+		g_log->information("Marathon groups API server: " + marathon_uri);
+		g_log->information("Marathon apps API server: " + marathon_uri);
+	}
+	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 }
 
 void dragent_configuration::refresh_aws_metadata()
@@ -340,11 +404,12 @@ void dragent_configuration::refresh_aws_metadata()
 
 			if(inet_aton(s.c_str(), &addr) == 0)
 			{
-				m_aws_metadata.m_valid = false;
-				return;
+				m_aws_metadata.m_public_ipv4 = 0;
 			}
-
-			m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			else
+			{
+				m_aws_metadata.m_public_ipv4 = addr.s_addr;
+			}
 #endif
 		}
 
@@ -356,13 +421,16 @@ void dragent_configuration::refresh_aws_metadata()
 			std::istream& rs = client.receiveResponse(response); 
 
 			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
+			if(m_aws_metadata.m_instance_id.find("i-") != 0)
+			{
+				m_aws_metadata.m_instance_id.clear();
+			}
 		}
-
-		m_aws_metadata.m_valid = true;
 	}
 	catch(Poco::Exception& e)
 	{
-		m_aws_metadata.m_valid = false;
+		m_aws_metadata.m_public_ipv4 = 0;
+		m_aws_metadata.m_instance_id.clear();
 	}
 }
 
@@ -500,26 +568,35 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	 *	The conf part is not used by dragent
 	 */
 	rhs.m_name = node["name"].as<string>();
+	auto enabled_node = node["enabled"];
+	if(enabled_node.IsScalar())
+	{
+		rhs.m_enabled = enabled_node.as<bool>();
+	}
+
 	auto pattern_node = node["pattern"];
-	auto comm_node = pattern_node["comm"];
-	if(comm_node.IsScalar())
+	if(pattern_node.IsMap())
 	{
-		rhs.m_comm_pattern = comm_node.as<string>();
-	}
-	auto exe_node = pattern_node["exe"];
-	if(exe_node.IsScalar())
-	{
-		rhs.m_exe_pattern = exe_node.as<string>();
-	}
-	auto port_node = pattern_node["port"];
-	if(port_node.IsScalar())
-	{
-		rhs.m_port_pattern = port_node.as<uint16_t>();
-	}
-	auto arg_node = pattern_node["arg"];
-	if(arg_node.IsScalar())
-	{
-		rhs.m_arg_pattern = arg_node.as<string>();
+		auto comm_node = pattern_node["comm"];
+		if(comm_node.IsScalar())
+		{
+			rhs.m_comm_pattern = comm_node.as<string>();
+		}
+		auto exe_node = pattern_node["exe"];
+		if(exe_node.IsScalar())
+		{
+			rhs.m_exe_pattern = exe_node.as<string>();
+		}
+		auto port_node = pattern_node["port"];
+		if(port_node.IsScalar())
+		{
+			rhs.m_port_pattern = port_node.as<uint16_t>();
+		}
+		auto arg_node = pattern_node["arg"];
+		if(arg_node.IsScalar())
+		{
+			rhs.m_arg_pattern = arg_node.as<string>();
+		}
 	}
 	return true;
 }

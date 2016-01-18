@@ -18,7 +18,8 @@ class app_check
 {
 public:
 	explicit app_check():
-		m_port_pattern(0)
+		m_port_pattern(0),
+		m_enabled(true)
 	{}
 
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -26,6 +27,10 @@ public:
 	const string& name() const
 	{
 		return m_name;
+	}
+
+	bool enabled() const {
+		return m_enabled;
 	}
 
 private:
@@ -36,6 +41,7 @@ private:
 	uint16_t m_port_pattern;
 	string m_arg_pattern;
 	string m_name;
+	bool m_enabled;
 };
 
 class app_process
@@ -93,6 +99,12 @@ private:
 class app_check_data
 {
 public:
+	// Added for unordered_map::operator[]
+	explicit app_check_data():
+			m_pid(0),
+			m_expiration_ts(0)
+	{};
+
 	explicit app_check_data(const Json::Value& obj);
 
 	int pid() const
@@ -100,12 +112,19 @@ public:
 		return m_pid;
 	}
 
+	uint64_t expiration_ts() const
+	{
+		return m_expiration_ts;
+	}
+
 	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
+
 private:
 	int m_pid;
 	string m_process_name;
 	vector<app_metric> m_metrics;
 	vector<app_service_check> m_service_checks;
+	uint64_t m_expiration_ts;
 };
 
 class app_checks_proxy
@@ -113,9 +132,9 @@ class app_checks_proxy
 public:
 	app_checks_proxy();
 
-	void send_get_metrics_cmd(uint64_t id, const vector<app_process>& processes);
+	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	unordered_map<int, app_check_data> read_metrics(uint64_t id);
+	unordered_map<int, app_check_data> read_metrics();
 
 private:
 	posix_queue m_outqueue;

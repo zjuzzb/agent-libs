@@ -135,6 +135,9 @@ const unsigned TOP_PROCESSES_PER_CONTAINER = 1;
 //
 #define TOP_CONNECTIONS_IN_SAMPLE 40
 
+static const int TOP_SERVER_PORTS_IN_SAMPLE = 10;
+static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
+
 //
 // Max number of URLS that are reported on a per process and per machine basis
 //
@@ -187,14 +190,12 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 
 static const uint32_t CONTAINERS_HARD_LIMIT = 200;
 
-static const auto HOST_STATSD_METRIC_LIMIT = 100;
-static const auto CONTAINERS_STATSD_METRIC_LIMIT = 100;
-
 static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
 static const auto APP_METRICS_LIMIT = 300;
+static const uint32_t DROP_SCHED_ANALYZER_THRESHOLD = 1000;
 
 static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #ifdef _DEBUG
@@ -203,3 +204,4 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;

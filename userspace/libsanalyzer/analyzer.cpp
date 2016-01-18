@@ -14,6 +14,7 @@
 #include <endian.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #endif // _WIN32
 #include <google/protobuf/io/coded_stream.h>
 #ifndef _WIN32
@@ -43,14 +44,52 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
-
+#include "k8s.h"
+#include "k8s_state.h"
+#include "k8s_proto.h"
+#include "mesos.h"
+#include "mesos_state.h"
+#include "mesos_proto.h"
+#include "curl/easy.h"
+#define BUFFERSIZE 512 // b64 needs this macro
+#include "b64/encode.h"
+#include "uri.h"
+#include "third-party/jsoncpp/json/json.h"
 #define DUMP_TO_DISK
+#include "Poco/URIStreamOpener.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/Path.h"
+#include "Poco/URI.h"
+#include "Poco/FileStream.h"
+#include "Poco/SharedPtr.h"
+#include "Poco/Exception.h"
+#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPSClientSession.h"
+#include "Poco/Net/HTTPCredentials.h"
+#include "Poco/Net/HTTPBasicCredentials.h"
+#include "Poco/Net/HTTPRequest.h"
+#include "Poco/Net/HTTPResponse.h"
+#include "Poco/Net/SSLManager.h"
+#include "Poco/Net/SSLException.h"
+#include "Poco/Net/PrivateKeyPassphraseHandler.h"
+#include "Poco/Net/InvalidCertificateHandler.h"
+#include <memory>
+#include <iostream>
+#include <numeric>
+
+using namespace Poco;
+using namespace Poco::Net;
+
+bool sinsp_analyzer::m_k8s_bad_config = false;
+bool sinsp_analyzer::m_mesos_bad_config = false;
+bool sinsp_analyzer::m_k8s_ssl_initialized = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
+	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
 	m_metrics = new draiosproto::metrics;
@@ -71,7 +110,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_total_process_cpu = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
-
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -100,7 +138,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-
+	
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
@@ -124,6 +162,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
 	
 	//
+	// Kubernetes
+	//
+	m_k8s = 0;
+
+	//
 	// Chisels init
 	//
 	add_chisel_dirs();
@@ -133,84 +176,28 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if(m_metrics)
-	{
-		delete m_metrics;
-	}
-
-	if(m_serialization_buffer)
-	{
-		free(m_serialization_buffer);
-	}
-
-	if(m_score_calculator)
-	{
-		delete m_score_calculator;
-	}
-
-	if(m_procfs_parser)
-	{
-		delete m_procfs_parser;
-	}
-
-	if(m_sched_analyzer2)
-	{
-		delete m_sched_analyzer2;
-	}
-
-	if(m_delay_calculator)
-	{
-		delete m_delay_calculator;
-	}
-
-	if(m_threadtable_listener)
-	{
-		delete(m_threadtable_listener);
-	}
-
-	if(m_fd_listener)
-	{
-		delete m_fd_listener;
-	}
-
-	if(m_reduced_ipv4_connections)
-	{
-		delete m_reduced_ipv4_connections;
-	}
-
-	if(m_ipv4_connections)
-	{
-		delete m_ipv4_connections;
-	}
+	delete m_metrics;
+	free(m_serialization_buffer);
+	delete m_score_calculator;
+	delete m_procfs_parser;
+	delete m_sched_analyzer2;
+	delete m_delay_calculator;
+	delete(m_threadtable_listener);
+	delete m_fd_listener;
+	delete m_reduced_ipv4_connections;
+	delete m_ipv4_connections;
 
 #ifdef HAS_UNIX_CONNECTIONS
-	if(m_unix_connections)
-	{
-		delete m_unix_connections;
-	}
+	delete m_unix_connections;
 #endif
 
 #ifdef HAS_PIPE_CONNECTIONS
-	if(m_pipe_connections)
-	{
-		delete m_pipe_connections;
-	}
+	delete m_pipe_connections;
 #endif
 
-	if(m_trans_table)
-	{
-		delete m_trans_table;
-	}
-
-	if(m_configuration)
-	{
-		delete m_configuration;
-	}
-
-	if(m_parser)
-	{
-		delete m_parser;
-	}
+	delete m_trans_table;
+	delete m_configuration;
+	delete m_parser;
 
 	if(m_protobuf_fp != NULL)
 	{
@@ -223,6 +210,8 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
+
+	delete m_k8s;
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -602,7 +591,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload, m_prev_flushes_duration_ns);
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload,
+													 m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
 		m_prev_flushes_duration_ns = 0;
 	}
 
@@ -617,8 +607,8 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
 			m_configuration->get_compress_metrics());
 
-		g_logger.format(sinsp_logger::SEV_ERROR,
-			"ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+		g_logger.format(sinsp_logger::SEV_INFO,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
 			buflen, nevts,
 			m_my_cpuload,
@@ -822,6 +812,285 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+mesos* sinsp_analyzer::make_mesos(string&& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		Json::Value ver = root["version"];
+		if(!ver.isNull())
+		{
+			const std::string& version = ver.asString();
+			if(!version.empty())
+			{
+				string mesos_state = m_configuration->get_mesos_state_uri();
+				vector<string> marathon_uris = m_configuration->get_marathon_uris();
+
+				if(marathon_uris.empty())
+				{
+					marathon_uris = { mesos::default_marathon_uri };
+					m_configuration->set_marathon_uris(marathon_uris);
+				}
+
+				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
+					sinsp_logger::SEV_INFO);
+				g_logger.log("Mesos state: [" + mesos_state + mesos::default_state_api + ']',
+					sinsp_logger::SEV_INFO);
+				for(const auto& marathon_uri : marathon_uris)
+				{
+					g_logger.log("Mesos (Marathon) groups: [" + marathon_uri + mesos::default_groups_api + ']',
+						sinsp_logger::SEV_INFO);
+
+					g_logger.log("Mesos (Marathon) apps: [" + marathon_uri + mesos::default_apps_api + ']',
+						sinsp_logger::SEV_INFO);
+				}
+
+				return new mesos(mesos_state, mesos::default_state_api,
+					marathon_uris,
+					mesos::default_groups_api,
+					mesos::default_apps_api,
+					mesos::default_watch_api);
+			}
+		}
+	}
+	return 0;
+}
+
+mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
+{
+	try
+	{
+		URI uri(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		std::unique_ptr<HTTPClientSession> session = 0;
+		std::string json;
+		if(uri.getScheme() == "https")
+		{
+			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
+			m_mesos_bad_config = true;
+			return 0;
+		/*TODO
+			try
+			{
+				init_k8s_ssl();
+				try
+				{
+					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
+				}
+				catch (TimeoutException&)
+				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
+				catch (ConnectionRefusedException&)
+				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
+			}
+			catch (SSLException& exc)
+			{
+				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
+					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
+				m_mesos_bad_config = true;
+				return 0;
+			}
+			catch(...)
+			{
+				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
+				return 0;
+			}
+		*/}
+		else
+		{
+			try
+			{
+				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
+			}
+			catch (TimeoutException&)
+			{ g_logger.log("Mesos connection timed out.", sinsp_logger::SEV_ERROR); }
+			catch (ConnectionRefusedException&)
+			{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+		}
+		session->setTimeout(ts);
+		HTTPRequest request(HTTPRequest::HTTP_GET, mesos::default_state_api);
+		std::string user, pwd;
+		HTTPCredentials::extractCredentials(uri, user, pwd);
+		if(!user.empty())
+		{
+			HTTPBasicCredentials cred(user, pwd);
+			cred.authenticate(request);
+		}
+		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
+		session->sendRequest(request);
+		HTTPResponse response;
+		std::istream& rs = session->receiveResponse(response);
+		std::ostringstream os;
+		StreamCopier::copyStream(rs, os);
+		json = std::move(os.str());
+		return make_mesos(std::move(json));
+	}
+	catch (std::exception& exc)
+	{
+		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
+		/*if(m_mesos_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}*/
+	}
+	return 0;
+}
+
+k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
+{
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(json, root, false))
+	{
+		Json::Value vers = root["versions"];
+		if(vers.isArray())
+		{
+			for (const auto& ver : vers)
+			{
+				if(ver.asString() == "v1")
+				{
+					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
+						sinsp_logger::SEV_INFO);
+#ifdef K8S_DISABLE_THREAD
+					return new k8s(k8s_api, true, false);
+#else
+					return new k8s(k8s_api, true, true);
+#endif
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+class k8s_ca_handler: public InvalidCertificateHandler
+{
+public:
+	k8s_ca_handler(bool handle_on_server_side):
+		InvalidCertificateHandler(handle_on_server_side)
+	{
+	}
+
+	virtual ~k8s_ca_handler()
+	{
+	}
+
+	void onInvalidCertificate(const void*, VerificationErrorArgs& errorCert)
+	{
+		g_logger.log("K8S client certificate verification failed", sinsp_logger::SEV_ERROR);
+		sinsp_analyzer::m_k8s_bad_config = true;
+		errorCert.setIgnoreError(false);
+	}
+};
+
+void sinsp_analyzer::init_k8s_ssl()
+{
+	if(!m_k8s_ssl_initialized)
+	{
+		string cert = m_configuration->get_k8s_ssl_ca_certificate();
+		SharedPtr<InvalidCertificateHandler> ptrCert;
+		Poco::Net::Context::VerificationMode verification_mode = Poco::Net::Context::VERIFY_NONE;
+		if(m_configuration->get_k8s_ssl_verify_certificate())
+		{
+			g_logger.log("K8S client certificate verification set to STRICT", sinsp_logger::SEV_INFO);
+			verification_mode = Poco::Net::Context::VERIFY_STRICT;
+			ptrCert = new k8s_ca_handler(false);
+		}
+		else
+		{
+			g_logger.log("K8S client certificate verification set to NONE", sinsp_logger::SEV_INFO);
+		}
+
+		Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+		SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
+		m_k8s_ssl_initialized = true;
+	}
+}
+
+k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
+{
+	try
+	{
+		URI uri(k8s_api + "/api");
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		std::unique_ptr<HTTPClientSession> session = 0;
+		std::string json;
+		if(uri.getScheme() == "https")
+		{
+			try
+			{
+				init_k8s_ssl();
+				try
+				{
+					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
+				}
+				catch (TimeoutException&)
+				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
+				catch (ConnectionRefusedException&)
+				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
+			}
+			catch (SSLException& exc)
+			{
+				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
+					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
+				m_k8s_bad_config = true;
+				return 0;
+			}
+			catch(...)
+			{
+				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
+				return 0;
+			}
+		}
+		else
+		{
+			try
+			{
+				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
+			}
+			catch (TimeoutException&)
+			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
+			catch (ConnectionRefusedException&)
+			{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
+		}
+		session->setTimeout(ts);
+		HTTPRequest request(HTTPRequest::HTTP_GET, "/api");
+		std::string user, pwd;
+		HTTPCredentials::extractCredentials(uri, user, pwd);
+		if(!user.empty())
+		{
+			HTTPBasicCredentials cred(user, pwd);
+			cred.authenticate(request);
+		}
+		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
+		session->sendRequest(request);
+		HTTPResponse response;
+		std::istream& rs = session->receiveResponse(response);
+		std::ostringstream os;
+		StreamCopier::copyStream(rs, os);
+		json = std::move(os.str());
+		g_logger.log("K8S API:" + json, sinsp_logger::SEV_DEBUG);
+		return make_k8s(json, k8s_api);
+	}
+	catch (Poco::Exception& exc)
+	{
+		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR);
+		if(m_k8s_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}
+	}
+	catch (std::exception& exc)
+	{
+		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
+		if(m_k8s_bad_config)
+		{
+			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+		}
+	}
+	return 0;
+}
+
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
 {
 	int64_t delta;
@@ -843,7 +1112,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	vector<java_process_request> java_process_requests;
 	vector<app_process> app_checks_processes;
-	unordered_map<int, app_check_data> app_metrics;
 	uint16_t app_checks_limit = APP_METRICS_LIMIT;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
@@ -863,7 +1131,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy)
 		{
-			app_metrics = m_app_proxy->read_metrics(m_external_command_id);
+			for(auto it = m_app_metrics.begin(); it != m_app_metrics.end();)
+			{
+				auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
+				if(flush_time_s > it->second.expiration_ts() &&
+				   flush_time_s - it->second.expiration_ts() > APP_METRICS_EXPIRATION_TIMEOUT_S)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for pid %d expired %u s ago, forcing wipe", it->first, flush_time_s - it->second.expiration_ts());
+					it = m_app_metrics.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+			auto app_metrics = m_app_proxy->read_metrics();
+			for(auto& item : app_metrics)
+			{
+
+				m_app_metrics[item.first] = move(item.second);
+			}
 		}
 	}
 #endif
@@ -915,42 +1202,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	///////////////////////////////////////////////////////////////////////////
-	// Propagate the memory information from child thread to main thread:
-	// since memory is updated at context-switch intervals, it can happen
-	// that the "main" thread stays mostly idle, without getting memory events then
-	///////////////////////////////////////////////////////////////////////////
+	static bool k8s_not_present = false;
+	static bool mesos_not_present = false;
 
-	bool forced_cmd_update = (m_next_flush_time_ns / ONE_SECOND_IN_NS) % CMDLINE_UPDATE_INTERVAL_S == 0;
-
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
-		sinsp_threadinfo* mtinfo = it->second.get_main_thread();
-		sinsp_threadinfo* tinfo = &it->second;
-
-		if(tinfo->m_vmsize_kb > mtinfo->m_vmsize_kb)
-		{
-			mtinfo->m_vmsize_kb = tinfo->m_vmsize_kb;
-		}
-
-		if(tinfo->m_vmrss_kb > mtinfo->m_vmrss_kb)
-		{
-			mtinfo->m_vmrss_kb = tinfo->m_vmrss_kb;
-		}
-
-		if(tinfo->m_vmswap_kb > mtinfo->m_vmswap_kb)
-		{
-			mtinfo->m_vmswap_kb = tinfo->m_vmswap_kb;
-		}
-
-		// Relookup process names every interval
-		if(forced_cmd_update && tinfo->is_main_thread())
-		{
-			tinfo->m_ainfo->set_cmdline_update(false);
-		}
-
-	}
+	// Emit process has 3 cycles on thread_table:
+	// 1. Aggregate process into programs
+	// 2. (only on programs) aggregate programs metrics to host and container ones
+	// 3. (only on programs) Write programs on protobuf
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
@@ -961,6 +1219,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
+		
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 
@@ -969,9 +1228,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			if(container->m_memory_cgroup.empty())
+			{
+				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+												[](const pair<string, string>& cgroup)
+												{
+													return cgroup.first == "memory";
+												});
+				if(memory_cgroup_it != tinfo->m_cgroups.cend())
+				{
+					container->m_memory_cgroup = memory_cgroup_it->second;
+				}
+			}
 		}
 
-		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 && !main_ainfo->is_cmdline_updated())
+		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
@@ -984,9 +1256,51 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
+
+				string k8s_api_server = m_configuration->get_k8s_api_server();
+				if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled() && !m_k8s_bad_config)
+				{
+					k8s_api_server = "http://localhost:8080";
+					if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+					{
+						g_logger.log("K8S: Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
+						m_configuration->set_k8s_api_server(k8s_api_server);
+						g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+						k8s_not_present = false;
+					}
+					else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+					{
+						for(const auto& arg : main_tinfo->m_args)
+						{
+							if(arg == "apiserver")
+							{
+								g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_INFO);
+								m_configuration->set_k8s_api_server("http://localhost:8080");
+								g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+								k8s_not_present = false;
+								break;
+							}
+						}
+					}
+				}
+
+				string mesos_api_server = m_configuration->get_mesos_state_uri();
+				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+				{
+					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+					{
+						mesos_api_server = mesos::default_state_uri;
+						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
+						m_configuration->set_mesos_state_uri(mesos_api_server);
+						vector<string> marathon_uris = { mesos::default_marathon_uri };
+						m_configuration->set_marathon_uris(marathon_uris);
+						g_logger.log("Mesos API server set to: " + mesos_api_server + "(Marathon: " + marathon_uris[0] + ')', sinsp_logger::SEV_INFO);
+						mesos_not_present = false;
+					}
+				}
 			}
 			main_tinfo->compute_program_hash();
-			main_ainfo->set_cmdline_update(true);
+			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
 		//
@@ -1085,11 +1399,37 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						{
 							m_total_process_cpu += ainfo->m_cpuload;
 						}
+#if defined(HAS_CAPTURE)
+						if(it->first == m_inspector->m_sysdig_pid)
+						{
+							m_my_cpuload = ainfo->m_cpuload;
+						}
+#else
+						m_my_cpuload = 0;
+#endif
 					}
 				}
 			}
 		}
-		
+
+		if(tinfo->m_flags & PPM_CL_CLOSED &&
+				!(evt != NULL &&
+				  (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
+				  && evt->m_tinfo == tinfo))
+		{
+			//
+			// Yes, remove the thread from the table, but NOT if the event currently under processing is
+			// an exit for this process. In that case we wait until next sample.
+			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
+			//       not actually remove the thread if it has childs.
+			//
+			m_threads_to_remove.push_back(tinfo);
+		}
+
+		if(proctids.size() != 0 && proctids.find(tinfo->m_pid) == proctids.end())
+		{
+			tinfo->m_flags |= PPM_CL_CLOSED;
+		}
 		//
 		// Add this thread's counters to the process ones...
 		//
@@ -1117,33 +1457,272 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		mtinfo->m_ainfo->add_all_metrics(ainfo);
 
+		if(!emplaced.second)
+		{
+			ainfo->clear_all_metrics();
+		}
+#ifndef _WIN32
+		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
+		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+				tinfo->m_vpid > 0)
+		{
+			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
+			{
+				java_process_requests.emplace_back(tinfo);
+			}
+			// May happen that for processes like apache with mpm_prefork there are hundred of
+			// apache processes with same comm, cmdline and ports, some of them are always alive,
+			// some die and are recreated.
+			// We send to app_checks only processes up at least for 10 seconds. But the programs aggregation
+			// may choose the young one.
+			// So now we are trying to match a check for every process in the program grouping and
+			// when we find a matching check, we mark it on the main_thread of the group as
+			// we don't need more checks instances for each process.
+			if(m_app_proxy && !mtinfo->m_ainfo->app_check_found())
+			{
+				auto app_metrics_it = m_app_metrics.find(tinfo->m_pid);
+				if(app_metrics_it != m_app_metrics.end() &&
+				   app_metrics_it->second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS))
+				{
+					// Found app metrics for this pid that are not expired
+					// so we can use them instead of running the check again
+					g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for %d are still good", tinfo->m_pid);
+					mtinfo->m_ainfo->set_app_check_found();
+				}
+				else
+				{
+					for(const auto& check : m_app_checks)
+					{
+						if(check.match(tinfo))
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+							app_checks_processes.emplace_back(check.name(), tinfo);
+							mtinfo->m_ainfo->set_app_check_found();
+							break;
+						}
+					}
+				}
+			}
+		}
+#endif
+	}
+
+	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
+	{
+		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
+		k8s_not_present = true;
+	}
+
+	if(!mesos_not_present && m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
+	{
+		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
+		mesos_not_present = true;
+	}
+
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
+	{
+		sinsp_threadinfo* tinfo = *it;
+		analyzer_container_state* container = NULL;
+		if(!tinfo->m_container_id.empty())
+		{
+			container = &m_containers[tinfo->m_container_id];
+		}
+
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
 		//
 		// ... And to the host ones
 		//
-		m_host_transaction_counters.add(&ainfo->m_external_transaction_metrics);
+		m_host_transaction_counters.add(&procinfo->m_external_transaction_metrics);
 
 		if(container)
 		{
-			container->m_transaction_counters.add(&ainfo->m_transaction_metrics);
+			container->m_transaction_counters.add(&procinfo->m_proc_transaction_metrics);
 		}
 
-		if(mtinfo->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
 		{
-			m_server_programs.insert(mtinfo->m_tid);
-			m_client_tr_time_by_servers += ainfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
+			m_server_programs.insert(tinfo->m_tid);
+			m_client_tr_time_by_servers += procinfo->m_external_transaction_metrics.get_counter()->m_time_ns_out;
 		}
 
-		if(m_inspector->m_islive)
+		sinsp_counter_time tot;
+
+		ASSERT(procinfo != NULL);
+
+		procinfo->m_proc_metrics.get_total(&tot);
+		if(!m_inspector->m_islive)
 		{
-#if defined(HAS_CAPTURE)
-			if(it->first == m_inspector->m_sysdig_pid)
+			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+		}
+
+		if(tot.m_count != 0)
+		{
+			sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+			if(container)
 			{
-				m_my_cpuload = ainfo->m_cpuload;
+				m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions,
+														   &container->m_client_transactions, &container->m_server_transactions, tinfo, prog_delays);
 			}
-#else
-			m_my_cpuload = 0;
+			else
+			{
+				m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, NULL, NULL, tinfo, prog_delays);
+			}
+
+#ifdef _DEBUG
+			procinfo->m_proc_metrics.calculate_totals();
+			double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
+							procinfo->m_proc_metrics.get_file_percentage() +
+							procinfo->m_proc_metrics.get_net_percentage() +
+							procinfo->m_proc_metrics.get_other_percentage();
+			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
+#endif // _DEBUG
+
+			//
+			// Main metrics
+			//
+			// NOTE ABOUT THE FOLLOWING TWO LINES: computing processing time by looking at gaps
+			// among system calls doesn't work if we are dropping all the non essential events,
+			// which the aagent does by default, because a ton of time gets accountd as processing.
+			// To avoid the issue, we patch the processing time with the actual CPU time for the
+			// process, normalized accodring to the sampling ratio
+			//
+			procinfo->m_proc_metrics.m_processing.clear();
+			procinfo->m_proc_metrics.m_processing.add(1, (uint64_t)(procinfo->m_cpuload * (1000000000 / 100) / m_sampling_ratio));
+
+			//
+			// Health-related metrics
+			//
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD &&
+					procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			{
+				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
+																						 prog_delays,
+																						 (uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
+																						 m_prev_flush_time_ns, sample_duration);
+
+				procinfo->m_capacity_score = scores.m_current_capacity;
+				procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
+			}
+			else
+			{
+				procinfo->m_capacity_score = -1;
+				procinfo->m_stolen_capacity_score = 0;
+			}
+
+			//
+			// Update the host capcity score
+			//
+			if(procinfo->m_capacity_score != -1)
+			{
+				m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
+												  procinfo->m_stolen_capacity_score,
+												  procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+
+				if(container)
+				{
+					container->m_metrics.add_capacity_score(procinfo->m_capacity_score,
+															procinfo->m_stolen_capacity_score,
+															procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
+				}
+			}
+
+#if 1
+			if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+			{
+				uint64_t trtimein = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_in;
+				uint64_t trtimeout = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_out;
+				uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
+				uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
+
+				if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
+									tinfo->m_comm.c_str(),
+									tinfo->m_tid,
+									(uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
+									procinfo->m_capacity_score,
+									procinfo->m_stolen_capacity_score,
+									(float)procinfo->m_cpuload,
+									procinfo->m_fd_usage_pct,
+									procinfo->m_connection_queue_usage_pct);
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
+									procinfo->m_proc_transaction_metrics.get_counter()->m_count_in * m_sampling_ratio,
+									procinfo->m_proc_transaction_metrics.get_counter()->m_count_out * m_sampling_ratio,
+									trcountin? ((double)trtimein) / sample_duration : 0,
+									trcountout? ((double)trtimeout) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
+									(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+									"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
+							//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
+							//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
+									procinfo->m_proc_metrics.get_processing_percentage() * 100,
+									procinfo->m_proc_metrics.get_file_percentage() * 100,
+									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
+									procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
+									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
+									procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
+									procinfo->m_proc_metrics.get_net_percentage() * 100,
+							//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
+									procinfo->m_proc_metrics.get_other_percentage() * 100);
+				}
+			}
 #endif
 		}
+
+		//
+		// Update the host metrics with the info coming from this process
+		//
+		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
+		{
+			m_host_req_metrics.add(&procinfo->m_proc_metrics);
+
+			if(container)
+			{
+				container->m_req_metrics.add(&procinfo->m_proc_metrics);
+			}
+		}
+
+		//
+		// Note how we only include server processes.
+		// That's because these are transaction time metrics, and therefore we don't
+		// want to use processes that don't serve transactions.
+		//
+		m_host_metrics.add(procinfo);
+
+		if(container)
+		{
+			container->m_metrics.add(procinfo);
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// EMIT CONNECTIONS
+	////////////////////////////////////////////////////////////////////////////
+	// This code has been moved here because it needs the processes already
+	// grouped by programs (to use the correct pid for connections) but also needs to
+	// run before emit_containers, because it aggregates network connections by server port
+	// per each container
+	// WARNING: the following methods emit but also clear the metrics
+	if(m_configuration->get_aggregate_connections_in_proto())
+	{
+		//
+		// Aggregate external connections and limit the number of entries in the connection table
+		//
+		emit_aggregated_connections();
+	}
+	else
+	{
+		//
+		// Emit all the connections
+		//
+		emit_full_connections();
 	}
 
 	// Filter and emit containers, we do it now because when filtering processes we add
@@ -1176,7 +1755,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 								progtable.end(),
 								true,
 								TOP_PROCESSES_IN_SAMPLE);
-			// Add at list one process per emitted_container
+			// Add at least one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
 				auto progs_it = progtable_by_container.find(container_id);
@@ -1187,450 +1766,250 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 			}
 		}
+
+		if(m_mounted_fs_proxy)
+		{
+			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
+			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+			{
+				sinsp_container_info container_info;
+				m_inspector->m_container_manager.get_container(it->first, &container_info);
+				if(container_info.m_name.find("k8s_POD") == std::string::npos)
+				{
+					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+					{
+						return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+					});
+					if(long_running_proc != it->second.end())
+					{
+						containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
+															   (*long_running_proc)->m_vpid);
+					}
+				}
+			}
+			// Add host
+			containers_for_mounted_fs.emplace_back("host", 1, 1);
+			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
-		it != m_inspector->m_thread_manager->m_threadtable.end(); 
-		++it)
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = &it->second;
-		analyzer_container_state* container = NULL;
-		if(!tinfo->m_container_id.empty())
-		{
-			container = &m_containers[tinfo->m_container_id];
-			if(container->m_memory_cgroup.empty())
-			{
-				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
-												[](const pair<string, string>& cgroup)
-												{
-													return cgroup.first == "memory";
-												});
-				if(memory_cgroup_it != tinfo->m_cgroups.cend())
-				{
-					container->m_memory_cgroup = memory_cgroup_it->second;
-				}
-			}
-		}
+		sinsp_threadinfo* tinfo = *it;
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
-#ifdef ANALYZER_EMITS_PROGRAMS
-		if(tinfo->m_ainfo->is_main_program_thread())
-#else
-		if(tinfo->is_main_thread())
-#endif
-		{
-			sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
-
-			if(proctids.size() != 0)
-			{
-				if(proctids.find(it->first) == proctids.end())
-				{
-					tinfo->m_flags |= PPM_CL_CLOSED;
-				}
-			}
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 #ifdef ANALYZER_EMITS_PROCESSES
-			sinsp_counter_time tot;
-	
-			ASSERT(procinfo != NULL);
+		sinsp_counter_time tot;
 
-			procinfo->m_proc_metrics.get_total(&tot);
-			if(!m_inspector->m_islive)
-			{
-				ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-			}
+		ASSERT(procinfo != NULL);
 
-			//
-			// Inclusion logic
-			//
-			// Keep:
-			//  - top 30 clients/servers
-			//  - top 30 programs that were active
+		procinfo->m_proc_metrics.get_total(&tot);
+		if(!m_inspector->m_islive)
+		{
+			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+		}
+		//
+		// Inclusion logic
+		//
+		// Keep:
+		//  - top 30 clients/servers
+		//  - top 30 programs that were active
 
-			if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
-			{
+		if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
+		{
 #ifdef ANALYZER_EMITS_PROGRAMS
-				draiosproto::program* prog = m_metrics->add_programs();
-				draiosproto::process* proc = prog->mutable_procinfo();
+			draiosproto::program* prog = m_metrics->add_programs();
+			draiosproto::process* proc = prog->mutable_procinfo();
 
-				//for(int64_t pid : procinfo->m_program_pids)
-				//{
-				//	prog->add_pids(pid);
-				//}
-				prog->add_pids(it->second.m_pid);
+			//for(int64_t pid : procinfo->m_program_pids)
+			//{
+			//	prog->add_pids(pid);
+			//}
+			prog->add_pids(tinfo->m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
-				draiosproto::process* proc = m_metrics->add_processes();
+			draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
 
-				//
-				// Basic values
-				//
-				if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
-					(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+			//
+			// Basic values
+			//
+			if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
+				(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+			{
+				proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
+				proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
+				for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
+					arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
 				{
-					proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
-					proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
-					for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
-						arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
+					if(*arg_it != "")
 					{
-						if(*arg_it != "")
+						if (arg_it->size() <= ARG_SIZE_LIMIT)
 						{
-							if (arg_it->size() <= ARG_SIZE_LIMIT)
-							{
-								proc->mutable_details()->add_args(*arg_it);
-							}
-							else
-							{
-								auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
-								proc->mutable_details()->add_args(arg_capped);
-							}
+							proc->mutable_details()->add_args(*arg_it);
+						}
+						else
+						{
+							auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+							proc->mutable_details()->add_args(arg_capped);
 						}
 					}
-
-					if(!tinfo->get_main_thread()->m_container_id.empty())
-					{
-						proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
-					}
-
-					tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 				}
 
-				//
-				// client-server role
-				//
-				uint32_t netrole = 0;
-
-				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+				if(!tinfo->get_main_thread()->m_container_id.empty())
 				{
-					netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
-				{
-					netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
-				{
-					netrole |= draiosproto::IS_UNIX_SERVER;
+					proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
 				}
 
-				if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
-				{
-					netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
-				{
-					netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
-				}
-				else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
-				{
-					netrole |= draiosproto::IS_UNIX_CLIENT;
-				}
-
-				proc->set_netrole(netrole);
-
-#ifndef _WIN32
-				// Add JMX metrics
-				if (m_jmx_proxy)
-				{
-					auto jmx_metrics_it = m_jmx_metrics.end();
-					for(auto pid_it = procinfo->m_program_pids.begin();
-							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
-							++pid_it)
-					{
-						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
-					}
-					if(jmx_metrics_it != m_jmx_metrics.end())
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-						auto java_proto = proc->mutable_protos()->mutable_java();
-						jmx_metrics_it->second.to_protobuf(java_proto);
-					}
-				}
-				if(m_app_proxy)
-				{
-					auto app_data_it = app_metrics.end();
-					for(auto pid_it = procinfo->m_program_pids.begin();
-						pid_it != procinfo->m_program_pids.end() && app_data_it == app_metrics.end();
-						++pid_it)
-					{
-						app_data_it = app_metrics.find(*pid_it);
-					}
-					if(app_data_it != app_metrics.end())
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
-						app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
-					}
-				}
-#endif
-
-				//
-				// CPU utilization
-				//
-				if(procinfo->m_cpuload >= 0)
-				{
-					if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
-					{
-						procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
-					}
-
-					proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-				}
-				else
-				{
-					proc->mutable_resource_counters()->set_cpu_pct(0);
-				}
-
-				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
-				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
-				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
-				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
-				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
-
-				if(tot.m_count != 0)
-				{
-					sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-					if(container)
-					{
-						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, 
-							&container->m_client_transactions, &container->m_server_transactions, tinfo, prog_delays);
-					}
-					else
-					{
-						m_delay_calculator->compute_program_delays(&m_host_client_transactions, &m_host_server_transactions, NULL, NULL, tinfo, prog_delays);
-					}
-
-#ifdef _DEBUG
-					procinfo->m_proc_metrics.calculate_totals();
-					double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
-						procinfo->m_proc_metrics.get_file_percentage() + 
-						procinfo->m_proc_metrics.get_net_percentage() +
-						procinfo->m_proc_metrics.get_other_percentage();
-					ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
-#endif // _DEBUG
-
-					//
-					// Main metrics
-					//
-					// NOTE ABOUT THE FOLLOWING TWO LINES: computing processing time by looking at gaps 
-					// among system calls doesn't work if we are dropping all the non essential events, 
-					// which the aagent does by default, because a ton of time gets accountd as processing.
-					// To avoid the issue, we patch the processing time with the actual CPU time for the 
-					// process, normalized accodring to the sampling ratio
-					// 
-					procinfo->m_proc_metrics.m_processing.clear();
-					procinfo->m_proc_metrics.m_processing.add(1, (uint64_t)(procinfo->m_cpuload * (1000000000 / 100) / m_sampling_ratio));
-
-					procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
-
-					//
-					// Transaction-related metrics
-					//
-					if(prog_delays->m_local_processing_delay_ns != -1)
-					{
-						proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
-						proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
-					}
-
-					procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(), 
-						proc->mutable_min_transaction_counters(),
-						proc->mutable_max_transaction_counters(),
-						m_sampling_ratio);
-
-					//
-					// Health-related metrics
-					//
-					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-					{
-						sinsp_score_info scores = m_score_calculator->get_process_capacity_score(tinfo,
-							prog_delays,
-							(uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
-							m_prev_flush_time_ns, sample_duration);
-
-							procinfo->m_capacity_score = scores.m_current_capacity;
-							procinfo->m_stolen_capacity_score = scores.m_stolen_capacity;
-					}
-					else
-					{
-						procinfo->m_capacity_score = -1;
-						procinfo->m_stolen_capacity_score = 0;
-					}
-
-					//
-					// Update the host capcity score
-					//
-					if(procinfo->m_capacity_score != -1)
-					{
-						m_host_metrics.add_capacity_score(procinfo->m_capacity_score,
-							procinfo->m_stolen_capacity_score,
-							procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
-
-						if(container)
-						{
-							container->m_metrics.add_capacity_score(procinfo->m_capacity_score,
-								procinfo->m_stolen_capacity_score,
-								procinfo->m_external_transaction_metrics.get_counter()->m_count_in);
-						}
-					}
-
-					proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
-					proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
-					proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
-					proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
-
-					//
-					// Error-related metrics
-					//
-					procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-					//
-					// Protocol tables
-					//
-//					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
-//						m_sampling_ratio);
-
-#if 1
-					if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-					{
-						uint64_t trtimein = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_in;
-						uint64_t trtimeout = procinfo->m_proc_transaction_metrics.get_counter()->m_time_ns_out;
-						uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
-						uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
-
-						if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-								tinfo->m_comm.c_str(),
-								tinfo->m_tid,
-								(uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
-								procinfo->m_capacity_score,
-								procinfo->m_stolen_capacity_score,
-								(float)procinfo->m_cpuload,
-								procinfo->m_fd_usage_pct,
-								procinfo->m_connection_queue_usage_pct);
-
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  trans)in:%" PRIu32 " out:%" PRIu32 " tin:%lf tout:%lf gin:%lf gout:%lf gloc:%lf",
-								procinfo->m_proc_transaction_metrics.get_counter()->m_count_in * m_sampling_ratio,
-								procinfo->m_proc_transaction_metrics.get_counter()->m_count_out * m_sampling_ratio,
-								trcountin? ((double)trtimein) / sample_duration : 0,
-								trcountout? ((double)trtimeout) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_merged_server_delay) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_merged_client_delay) / sample_duration : 0,
-								(prog_delays)?((double)prog_delays->m_local_processing_delay_ns) / sample_duration : 0);
-
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
-								//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
-								//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
-								procinfo->m_proc_metrics.get_processing_percentage() * 100,
-								procinfo->m_proc_metrics.get_file_percentage() * 100,
-								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
-								procinfo->m_proc_metrics.m_tot_io_file.m_count_in,
-								procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
-								procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
-								procinfo->m_proc_metrics.get_net_percentage() * 100,
-								//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
-								procinfo->m_proc_metrics.get_other_percentage() * 100);
-						}
-					}
-#endif
-					proc->set_start_count(procinfo->m_start_count);
-				}
-#endif // ANALYZER_EMITS_PROCESSES
+				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 			}
 
 			//
-			// Update the host metrics with the info coming from this process
+			// client-server role
 			//
-			if(procinfo != NULL)
+			uint32_t netrole = 0;
+
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 			{
-				if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
-				{
-					m_host_req_metrics.add(&procinfo->m_proc_metrics);
+				netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+			{
+				netrole |= draiosproto::IS_UNIX_SERVER;
+			}
 
-					if(container)
-					{
-						container->m_req_metrics.add(&procinfo->m_proc_metrics);
-					}
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+			{
+				netrole |= draiosproto::IS_UNIX_CLIENT;
+			}
+
+			proc->set_netrole(netrole);
+
+#ifndef _WIN32
+			// Add JMX metrics
+			if (m_jmx_proxy)
+			{
+				auto jmx_metrics_it = m_jmx_metrics.end();
+				for(auto pid_it = procinfo->m_program_pids.begin();
+						pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
+						++pid_it)
+				{
+					jmx_metrics_it = m_jmx_metrics.find(*pid_it);
+				}
+				if(jmx_metrics_it != m_jmx_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+					auto java_proto = proc->mutable_protos()->mutable_java();
+					jmx_metrics_it->second.to_protobuf(java_proto);
+				}
+			}
+			if(m_app_proxy)
+			{
+				auto app_data_it = m_app_metrics.end();
+				for(auto pid_it = procinfo->m_program_pids.begin();
+					pid_it != procinfo->m_program_pids.end() && app_data_it == m_app_metrics.end();
+					++pid_it)
+				{
+					app_data_it = m_app_metrics.find(*pid_it);
+				}
+				if(app_data_it != m_app_metrics.end())
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Found app metrics for pid %d", tinfo->m_pid);
+					app_checks_limit -= app_data_it->second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+				}
+			}
+#endif
+
+			//
+			// CPU utilization
+			//
+			if(procinfo->m_cpuload >= 0)
+			{
+				if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
+				{
+					procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
 				}
 
-				//
-				// Note how we only include server processes.
-				// That's because these are transaction time metrics, and therefore we don't 
-				// want to use processes that don't serve transactions.
-				//
-				m_host_metrics.add(procinfo);
-
-				if(container)
-				{
-					container->m_metrics.add(procinfo);
-				}
+				proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
 			}
 			else
 			{
-				ASSERT(false);
+				proc->mutable_resource_counters()->set_cpu_pct(0);
 			}
-		}
 
+			proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+			proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
+			proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+			proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+			proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+
+			if(tot.m_count != 0)
+			{
+				sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+
+				//
+				// Main metrics
+
+				procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+				//
+				// Transaction-related metrics
+				//
+				if(prog_delays->m_local_processing_delay_ns != -1)
+				{
+					proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
+					proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
+				}
+
+				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
+					proc->mutable_min_transaction_counters(),
+					proc->mutable_max_transaction_counters(),
+					m_sampling_ratio);
+
+				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
+				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
+				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
+				proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
+				proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
+
+				//
+				// Error-related metrics
+				//
+				procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
+
+				//
+				// Protocol tables
+				//
+//					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
+//						m_sampling_ratio);
+				proc->set_start_count(procinfo->m_start_count);
+			}
+#endif // ANALYZER_EMITS_PROCESSES
+		}
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
 		tinfo->m_ainfo->clear_all_metrics();
-
-		if(tinfo->m_flags & PPM_CL_CLOSED)
-		{
-			//
-			// Yes, remove the thread from the table, but NOT if the event currently under processing is
-			// an exit for this process. In that case we wait until next sample.
-			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
-			//       not actually remove the thread if it has childs.
-			//
-
-			if(evt != NULL && 
-				(evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
-				&& evt->m_tinfo == tinfo)
-			{
-				++it;
-			}
-			else
-			{
-				m_threads_to_remove.push_back(tinfo);
-			}
-		}
-
-#ifndef _WIN32
-		if(tinfo->is_main_thread() &&
-		   !(tinfo->m_flags & PPM_CL_CLOSED) &&
-		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
-			tinfo->m_vpid > 0)
-		{
-			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
-			{
-				java_process_requests.emplace_back(tinfo);
-			}
-			if(m_app_proxy)
-			{
-				for(const auto& check : m_app_checks)
-				{
-					if(check.match(tinfo))
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-						app_checks_processes.emplace_back(check.name(), tinfo);
-						break;
-					}
-				}
-			}
-		}
-#endif
 	}
 
 	if(app_checks_limit == 0)
@@ -1654,7 +2033,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
 		{
-			m_app_proxy->send_get_metrics_cmd(m_external_command_id, app_checks_processes);
+			m_app_proxy->send_get_metrics_cmd(app_checks_processes);
 		}
 	}
 #endif
@@ -1710,6 +2089,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	set<uint32_t> unique_external_ips;
 
 	m_reduced_ipv4_connections->clear();
+	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
@@ -1746,6 +2126,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		int64_t prog_spid = 0;
 		int64_t prog_dpid = 0;
+		string prog_scontainerid;
+		string prog_dcontainerid;
 
 		if(cit->second.m_spid != 0)
 		{
@@ -1760,6 +2142,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_scontainerid = tinfo->m_container_id;
 		}
 
 		if(cit->second.m_dpid != 0)
@@ -1775,6 +2158,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			}
 
 			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_dcontainerid = tinfo->m_container_id;
 		}
 
 		tuple.m_fields.m_spid = prog_spid;
@@ -1785,7 +2169,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
+		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0 && cit->second.is_active())
 		{
 			if(!cit->second.is_client_and_server())
 			{
@@ -1845,8 +2229,30 @@ void sinsp_analyzer::emit_aggregated_connections()
 				conn.m_transaction_metrics.add(&cit->second.m_transaction_metrics);
 				conn.m_timestamp++;
 			}
-		}
 
+			// same thing by server port per host
+			connections_by_serverport[tuple.m_fields.m_dport].add(&cit->second);
+
+			// same thing by server port per container
+			if(!prog_scontainerid.empty() && prog_scontainerid == prog_dcontainerid)
+			{
+				auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+				conn_aggr.add(&cit->second);
+			}
+			else
+			{
+				if(!prog_scontainerid.empty())
+				{
+					auto &conn_aggr = (*m_containers[prog_scontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+					conn_aggr.add_client(&cit->second);
+				}
+				if(!prog_dcontainerid.empty())
+				{
+					auto &conn_aggr = (*m_containers[prog_dcontainerid].m_connections_by_serverport)[tuple.m_fields.m_dport];
+					conn_aggr.add_server(&cit->second);
+				}
+			}
+		}
 		//
 		// Has this connection been closed druring this sample?
 		//
@@ -1866,6 +2272,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 			++cit;
 		}
 	}
+
+	sinsp_connection_aggregator::filter_and_emit(connections_by_serverport, m_metrics->mutable_hostinfo(), TOP_SERVER_PORTS_IN_SAMPLE, m_sampling_ratio);
 
 	//
 	// If the table is still too big, sort it and pick only the top connections
@@ -2311,6 +2719,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
+	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
@@ -2409,25 +2818,35 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Flush the scheduler analyzer
 			//
-			m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+			{
+				m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
+			}
 
 			//
 			// Reset the protobuffer
 			//
 			m_metrics->Clear();
 
-			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_inspector->is_live())
 			{
 				get_statsd();
+				if(m_mounted_fs_proxy)
+				{
+					// Get last filesystem stats, list of containers is sent on emit_processes
+					auto new_fs_map = m_mounted_fs_proxy->receive_mounted_fs_list();
+					if(!new_fs_map.empty())
+					{
+						m_mounted_fs_map = move(new_fs_map);
+					}
+				}
 			}
+
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
 			emit_processes(evt, sample_duration, is_eof, flshflags);
 
-			////////////////////////////////////////////////////////////////////////////
-			// EMIT CONNECTIONS
-			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -2442,21 +2861,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 					m_ipv4_connections->clear_n_drops();
 				}
-			}
-
-			if(m_configuration->get_aggregate_connections_in_proto())
-			{
-				//
-				// Aggregate external connections and limit the number of entries in the connection table
-				//
-				emit_aggregated_connections();
-			}
-			else
-			{
-				//
-				// Emit all the connections
-				//
-				emit_full_connections();
 			}
 
 			//
@@ -2630,35 +3034,41 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 
-			if(m_inspector->is_live())
+			if(m_mounted_fs_proxy)
 			{
-				vector<sinsp_procfs_parser::mounted_fs> fs_list;
-				if(m_mounted_fs_proxy)
+				auto fs_list = m_mounted_fs_map.find("host");
+				if(fs_list != m_mounted_fs_map.end())
 				{
-					fs_list = m_mounted_fs_proxy->get_mounted_fs_list();
-				}
-				else
-				{
-					fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
-				}
-				for(vector<sinsp_procfs_parser::mounted_fs>::const_iterator it = fs_list.begin();
-					it != fs_list.end(); ++it)
-				{
-					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
-
-					fs->set_device(it->device);
-					fs->set_mount_dir(it->mount_dir);
-					fs->set_type(it->type);
-					fs->set_size_bytes(it->size_bytes);
-					fs->set_used_bytes(it->used_bytes);
-					fs->set_available_bytes(it->available_bytes);
+					for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+					{
+						draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+						it->to_protobuf(fs);
+					}
 				}
 			}
-
+			else if(m_inspector->is_live()) // When not live, fs stats break regression tests causing false positives
+			{
+				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
+				{
+					draiosproto::mounted_fs* fs = m_metrics->add_mounts();
+					it->to_protobuf(fs);
+				}
+			}
 			//
 			// Executed commands
 			//
 			//emit_executed_commands();
+
+			//
+			// Kubernetes
+			//
+			emit_k8s();
+
+			//
+			// Mesos
+			//
+			emit_mesos();
 
 			emit_top_files();
 
@@ -2668,7 +3078,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), HOST_STATSD_METRIC_LIMIT);
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), m_configuration->get_statsd_limit());
 			}
 #endif
 
@@ -2700,7 +3110,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 
-			m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
+			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Patching host external networking, from (%u, %u) to (%u, %u)",
+								m_io_net.m_bytes_in, m_io_net.m_bytes_out,
+								interfaces_stats.first, interfaces_stats.second);
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio,
+								interfaces_stats.first, interfaces_stats.second);
+			}
+			else
+			{
+				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2770,11 +3192,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	///////////////////////////////////////////////////////////////////////////
 	// CLEANUPS
 	///////////////////////////////////////////////////////////////////////////
-
-	if(m_configuration->get_autodrop_enabled())
-	{
-		tune_drop_mode(flshflags, m_my_cpuload);
-	}
 
 	//
 	// Clear the transaction state
@@ -2873,6 +3290,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	}
 
 	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
+	m_cputime_analyzer.end_flush();
+	if(m_configuration->get_autodrop_enabled())
+	{
+		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
+		tune_drop_mode(flshflags, m_my_cpuload*(1-m_prev_flush_cpu_pct));
+	}
 }
 
 //
@@ -3391,6 +3814,208 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 	}
 }
 
+void sinsp_analyzer::get_k8s_data()
+{
+	ASSERT(m_k8s);
+	ASSERT(m_k8s->is_alive());
+	if(!m_k8s->watch_in_thread())
+	{
+		m_k8s->watch();
+	}
+	ASSERT(m_metrics);
+	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+	//if(m_metrics->has_kubernetes())
+	//{
+	//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+	//}
+}
+
+void sinsp_analyzer::emit_k8s()
+{
+	// k8s_uri string config setting can be set:
+	//
+	//    - explicitly in configuration file; when present, this setting has priority
+	//      over anything else in regards to presence/location of the api server
+	//
+	//    - implicitly, by k8s autodetect flag (which defaults to true);
+	//      when k8s_uri is empty, autodetect is true and api server is detected on the
+	//      local machine, uri will be automatically set to "http://localhost:8080"
+	//
+	// so, at runtime, k8s_uri being empty or not determines whether k8s data
+	// will be collected and emitted; the connection to k8s api server is entirely managed
+	// in this function - if it is dropped, the attempts to re-establish it will keep on going
+	// forever, once per cycle, until either connection is re-established or agent shut down
+
+	const string& k8s_uri = m_configuration->get_k8s_api_server();
+	if(!k8s_uri.empty())
+	{
+		try
+		{
+			if(!m_k8s && !m_k8s_bad_config)
+			{
+				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				m_k8s = get_k8s(k8s_uri);
+			}
+			else if(m_k8s && !m_k8s->is_alive() && !m_k8s_bad_config)
+			{
+				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+				delete m_k8s;
+				m_k8s = 0;
+				m_k8s = get_k8s(k8s_uri);
+			}
+
+			if(m_k8s)
+			{
+				if(m_k8s->is_alive())
+				{
+					get_k8s_data();
+				}
+				if(!m_k8s->is_alive() && !m_k8s_bad_config)
+				{
+					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+					delete m_k8s;
+					m_k8s = 0;
+					m_k8s = get_k8s(k8s_uri);
+					if(m_k8s && m_k8s->is_alive())
+					{
+						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
+						get_k8s_data();
+					}
+					else
+					{
+						g_logger.log("K8S connection attempt failed. Will retry in next cycle.", sinsp_logger::SEV_ERROR);
+					}
+				}
+			}
+			else
+			{
+				g_logger.log("K8S connection not established.", sinsp_logger::SEV_ERROR);
+			}
+		}
+		catch(std::exception& e)
+		{
+			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+			if(m_k8s)
+			{
+				delete m_k8s;
+				m_k8s = 0;
+			}
+		}
+	}
+}
+
+void sinsp_analyzer::get_mesos_data()
+{
+	static time_t last_mesos_refresh = 0;
+	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
+	time_t now;
+	time(&now);
+	ASSERT(m_mesos);
+	ASSERT(m_mesos->is_alive());
+
+	if(m_mesos->has_marathon())
+	{
+		m_mesos->watch();
+	}
+	else
+	{
+		time_t now;
+		time(&now);
+		if(difftime(now, last_mesos_refresh) > 30)
+		{
+			m_mesos->refresh();
+			last_mesos_refresh = now;
+		}
+	}
+	ASSERT(m_metrics);
+	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+/*
+	if(m_metrics->has_mesos())
+	{
+		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+	}
+*/
+}
+
+void sinsp_analyzer::emit_mesos()
+{
+	// mesos uri config settings can be set:
+	//
+	//    - explicitly in configuration file; when present, this setting has priority
+	//      over anything else in regards to presence/location of the api server
+	//
+	//    - implicitly, by mesos autodetect flag (which defaults to true);
+	//      when mesos_state_uri is empty, autodetect is true and api server is detected on the
+	//      local machine, uris will be automatically set to:
+	//
+	//      mesos state:     "http://localhost:5050/state.json"
+	//      marathon groups: "http://localhost:8080/v2/groups";
+	//      marathon uri:    "http://localhost:8080/v2/apps?embed=apps.tasks";
+	//
+	// so, at runtime, mesos_state_uri being empty or not determines whether mesos data
+	// will be collected and emitted; the connection to mesos api server is entirely managed
+	// in this function - if it is dropped, the attempts to re-establish it will keep on going
+	// forever, once per cycle, until either connection is re-established or agent shut down
+
+	const string& mesos_uri = m_configuration->get_mesos_state_uri();
+	if(!mesos_uri.empty())
+	{
+		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
+		try
+		{
+			if(!m_mesos && !m_mesos_bad_config)
+			{
+				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
+				m_mesos = get_mesos(mesos_uri);
+			}
+			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
+			{
+				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+				delete m_mesos;
+				m_mesos = 0;
+				m_mesos = get_mesos(mesos_uri);
+			}
+
+			if(m_mesos)
+			{
+				if(m_mesos->is_alive())
+				{
+					get_mesos_data();
+				}
+				if(!m_mesos->is_alive() && !m_mesos_bad_config)
+				{
+					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
+					delete m_mesos;
+					m_mesos = 0;
+					m_mesos = get_mesos(mesos_uri);
+					if(m_mesos && m_mesos->is_alive())
+					{
+						g_logger.log("Mesos connection re-established.", sinsp_logger::SEV_INFO);
+						get_mesos_data();
+					}
+					else
+					{
+						g_logger.log("Mesos connection attempt failed. Will retry in next cycle.", sinsp_logger::SEV_ERROR);
+					}
+				}
+			}
+			else
+			{
+				g_logger.log("Mesos connection not established.", sinsp_logger::SEV_ERROR);
+			}
+		}
+		catch(std::exception& e)
+		{
+			g_logger.log(std::string("Error fetching Mesos state: ").append(e.what()), sinsp_logger::SEV_ERROR);
+			if(m_mesos)
+			{
+				delete m_mesos;
+				m_mesos = 0;
+			}
+		}
+	}
+}
+
 void sinsp_analyzer::emit_top_files()
 {
 	vector<analyzer_file_stat*> files_sortable_list;
@@ -3534,7 +4159,7 @@ vector<string> sinsp_analyzer::emit_containers()
 		const auto& id = container_id_and_info.first;
 		const auto& container_info = container_id_and_info.second;
 		auto analyzer_it = m_containers.find(id);
-		if(analyzer_it != m_containers.end() &&
+		if(analyzer_it != m_containers.end() && container_info.m_name.find("k8s_POD") == std::string::npos &&
 		   (m_container_patterns.empty() ||
 			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
 						 [&container_info](const string& pattern)
@@ -3558,7 +4183,7 @@ vector<string> sinsp_analyzer::emit_containers()
 
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
-	unsigned statsd_limit = CONTAINERS_STATSD_METRIC_LIMIT;
+	unsigned statsd_limit = m_configuration->get_statsd_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers](const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
@@ -3604,7 +4229,13 @@ vector<string> sinsp_analyzer::emit_containers()
 					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(containers_limit_by_type);
-
+/*
+	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " Mesos containers.", sinsp_logger::SEV_DEBUG);
+	for(const auto& c : m_metrics->containers())
+	{
+		g_logger.log(c.DebugString(), sinsp_logger::SEV_DEBUG);
+	}
+*/
 	m_containers.clear();
 	return emitted_containers;
 }
@@ -3653,6 +4284,11 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	if(!it->second.m_image.empty())
 	{
 		container->set_image(it->second.m_image);
+	}
+
+	if(!it->second.m_mesos_task_id.empty())
+	{
+		container->set_mesos_task_id(it->second.m_mesos_task_id);
 	}
 
 	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
@@ -3725,6 +4361,18 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
+	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
+	if(fs_list != m_mounted_fs_map.end())
+	{
+		for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
+		{
+			auto proto_fs = container->add_mounts();
+			it->to_protobuf(proto_fs);
+		}
+	}
+
+	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
+												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
 }
 
 void sinsp_analyzer::get_statsd()
@@ -4077,4 +4725,43 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 		m_mounted_fs_proxy.reset();
 	}
 }
+
+uint64_t self_cputime_analyzer::read_cputime()
+{
+	struct rusage ru;
+	getrusage(RUSAGE_SELF, &ru);
+	uint64_t total_cputime_us = ru.ru_utime.tv_sec*1000000 + ru.ru_utime.tv_usec +
+								ru.ru_stime.tv_sec*1000000 + ru.ru_stime.tv_usec;
+	auto ret = total_cputime_us - m_previouscputime;
+	m_previouscputime = total_cputime_us;
+	return ret;
+}
+
+void self_cputime_analyzer::begin_flush()
+{
+	auto cputime = read_cputime();
+	m_othertime[m_index] = cputime;
+}
+
+void self_cputime_analyzer::end_flush()
+{
+	auto cputime = read_cputime();
+	m_flushtime[m_index] = cputime;
+	incr_index();
+}
+
+double self_cputime_analyzer::calc_flush_percent()
+{
+	double tot_flushtime = accumulate(m_flushtime.begin(), m_flushtime.end(), 0);
+	double tot_othertime = accumulate(m_othertime.begin(), m_othertime.end(), 0);
+	return tot_flushtime/(tot_flushtime+tot_othertime);
+}
+
+// This method is here because analyzer_container_state has not a .cpp file and
+// adding it just for this constructor seemed an overkill
+analyzer_container_state::analyzer_container_state()
+{
+	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
+}
+
 #endif // HAS_ANALYZER

@@ -26,7 +26,10 @@ static const int PIPE_BUFFER_SIZE = 1048576;
 class aws_metadata
 {
 public:
-	bool m_valid;
+	aws_metadata():
+		m_public_ipv4(0)
+	{}
+	
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
@@ -292,6 +295,7 @@ public:
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
 	bool m_ssl_enabled;
+	bool m_ssl_verify_certificate;
 	string m_ssl_ca_certificate;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
@@ -317,6 +321,8 @@ public:
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_dirty_shutdown_report_log_size_b;
+	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
+	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
 	uint16_t m_jmx_sampling;
@@ -327,6 +333,7 @@ public:
 	bool m_agent_installed;
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;
+	unsigned m_statsd_limit;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;
@@ -336,7 +343,15 @@ public:
 	ports_set m_known_server_ports;
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
-	bool m_running_in_container;
+	bool m_system_supports_containers;
+	std::string m_k8s_api_server;
+	bool m_k8s_autodetect;
+	string m_k8s_ssl_ca_certificate;
+	bool m_k8s_ssl_verify_certificate;
+	int m_k8s_timeout_ms;
+	string m_mesos_state_uri;
+	vector<string> m_marathon_uris;
+	bool m_mesos_autodetect;
 
 	bool java_present()
 	{

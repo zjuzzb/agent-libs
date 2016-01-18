@@ -17,13 +17,14 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, uint64_t analyzer_flush_duration_ns) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
 #ifdef HAS_ANALYZER
 class sinsp_scores;
+class mounted_fs;
 class sinsp_procfs_parser;
 class mounted_fs_proxy;
 class sinsp_sched_analyzer;
@@ -36,12 +37,14 @@ class sinsp_counters;
 class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
+class k8s;
+class mesos;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
 typedef class sinsp_pipe_connection_manager sinsp_pipe_connection_manager;
 typedef class sinsp_connection sinsp_connection;
-
+class sinsp_connection_aggregator;
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
@@ -119,6 +122,32 @@ public:
 	uint32_t m_count; // how many times this command has been repeated
 };
 
+class self_cputime_analyzer
+{
+public:
+	self_cputime_analyzer():
+		m_index(0),
+		m_previouscputime(0)
+	{}
+	
+	void begin_flush();
+	void end_flush();
+	double calc_flush_percent();
+
+private:
+	static const auto LAST_SAMPLES = 10U;
+
+	uint64_t read_cputime();
+	void incr_index()
+	{
+		m_index = (m_index + 1) % LAST_SAMPLES;
+	}
+
+	array<uint64_t, LAST_SAMPLES> m_flushtime;
+	array<uint64_t, LAST_SAMPLES> m_othertime;
+	unsigned m_index;
+	uint64_t m_previouscputime;
+};
 //
 // The main analyzer class
 //
@@ -298,6 +327,15 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	void init_k8s_ssl();
+	k8s* make_k8s(const string& json, const string& k8s_api);
+	k8s* get_k8s(const string& k8s_api);
+	void get_k8s_data();
+	void emit_k8s();
+	mesos* make_mesos(string&& json);
+	mesos* get_mesos(const string& mesos_uri);
+	void get_mesos_data();
+	void emit_mesos();
 	void emit_top_files();
 	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
@@ -315,6 +353,7 @@ VISIBILITY_PRIVATE
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
+	double m_prev_flush_cpu_pct;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
 
@@ -375,7 +414,6 @@ VISIBILITY_PRIVATE
 	// The table of aggreagted connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
-
 	//
 	// The aggreagted host metrics
 	//
@@ -461,14 +499,23 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
-
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
+	decltype(m_app_proxy->read_metrics()) m_app_metrics;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
+	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
+
+	k8s* m_k8s;
+	static bool m_k8s_bad_config;
+	static bool m_mesos_bad_config;
+	static bool m_k8s_ssl_initialized;
+
+	mesos* m_mesos;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+	self_cputime_analyzer m_cputime_analyzer;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
@@ -491,6 +538,7 @@ VISIBILITY_PRIVATE
 	friend class analyzer_threadtable_listener;
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
+	friend class k8s_ca_handler;
 };
 
 #endif // HAS_ANALYZER

@@ -169,14 +169,14 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				char* start_collection = rbuf+20;
 				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
-					if (*start_collection == '.')
+					if(*start_collection == '.')
 					{
 						++start_collection;
 						break;
 					}
 					++start_collection;
 				}
-				if (*(uint32_t*)(start_collection) == *(uint32_t*)"$cmd")
+				if(*(uint32_t*)(start_collection) == *(uint32_t*)"$cmd")
 				{
 					char * doc=start_collection+5+8;
 					// In this case document is:
@@ -218,7 +218,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				char* start_collection = rbuf+20;
 				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
-					if (*start_collection == '.')
+					if(*start_collection == '.')
 					{
 						++start_collection;
 						break;
@@ -280,7 +280,7 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 
 		int32_t* opcode = (int32_t*)(rbuf+12);
 
-		if (*opcode == WIRE_OP_REPLY)
+		if(*opcode == WIRE_OP_REPLY)
 		{
 			if (rbuflen == 16)
 			{
@@ -291,7 +291,7 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 				return true;
 			}
 			int32_t* response_flags = (int32_t*)(rbuf+16);
-			if (*response_flags & 0x2)
+			if(*response_flags & 0x2)
 			{
 				m_error_code = 1;
 			}
@@ -320,7 +320,7 @@ bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
 					int32_t n = *(int32_t*)(rbuf + 16+4+8+4+4 + 4+1+2+1+4+1+nshift+1);
 //					printf("MongoDB ok: %d\n", ok);
 //					printf("MongoDB n: %d\n", n);
-					if ( ok == 0 || n == 0)
+					if( ok == 0 || n == 0)
 					{
 						m_error_code = 1; // Right now is like a boolean
 					}

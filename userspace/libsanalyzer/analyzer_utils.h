@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <chrono>
+#include <iostream>
 
 class sinsp_evttables;
 
@@ -172,3 +174,69 @@ inline int setns(int fd, int nstype)
 }
 #endif
 #endif
+
+/**
+ * This class allows you to count time used by some function in an easy way
+ * you can use it in two ways:
+ *
+ * 1. scoped
+ *
+ * {
+ *   stopwatch watch("My block of code");
+ *   ...
+ * }
+ *
+ * 2. or by manually calling start() and stop()
+ *
+ * {
+ *   stopwatch watch;
+ *   watch.start("1st part");
+ *   ...
+ *   watch.stop();
+ *   watch.start("2nd part"):
+ *   ...
+ *   watch.stop();
+ * }
+ */
+class stopwatch
+{
+public:
+	stopwatch() {}
+
+	stopwatch(string&& name):
+			m_name(name),
+			m_starttime(chrono::system_clock::now()),
+			m_started(true)
+	{
+	}
+
+	~stopwatch()
+	{
+		if(m_started)
+		{
+			stop();
+		}
+	}
+
+	void start(string&& name)
+	{
+		m_name = name;
+		m_starttime = chrono::system_clock::now();
+		m_started = true;
+	}
+
+	void stop()
+	{
+		m_endtime = chrono::system_clock::now();
+		auto d = chrono::duration_cast<chrono::microseconds>(m_endtime - m_starttime);
+		std::cerr << m_name << " took " << d.count() << " us" << std::endl;
+		m_started = false;
+	}
+
+
+private:
+	string m_name;
+	chrono::system_clock::time_point m_starttime;
+	chrono::system_clock::time_point m_endtime;
+	bool m_started;
+};

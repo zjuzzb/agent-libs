@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Project Name="mesos" InternalType="Console">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
+    <Plugin Name="CMakePlugin">
+      <![CDATA[[{
+  "name": "Debug",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }]]]>
+    </Plugin>
+  </Plugins>
+  <VirtualDirectory Name="src">
+    <VirtualDirectory Name="protobuf-2.5.0">
+      <VirtualDirectory Name="src">
+        <VirtualDirectory Name="google">
+          <VirtualDirectory Name="protobuf">
+            <VirtualDirectory Name="compiler">
+              <VirtualDirectory Name="python">
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/python/python_generator.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/python/python_generator.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/python/python_plugin_unittest.cc"/>
+              </VirtualDirectory>
+              <VirtualDirectory Name="cpp">
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_file.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_service.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_helpers.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_helpers.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_plugin_unittest.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_generator.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_message_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_generator.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_service.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_options.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_enum_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_bootstrap_unittest.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_extension.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_file.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_string_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_message.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_message_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_extension.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_enum.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_enum.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_primitive_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_message.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_string_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_primitive_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_unittest.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_enum_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/cpp/cpp_unittest.cc"/>
+              </VirtualDirectory>
+              <VirtualDirectory Name="java">
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_generator.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_enum.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_service.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_helpers.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_file.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_message_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_enum_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_enum_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_helpers.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_extension.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_doc_comment.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_string_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_enum.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_primitive_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_message.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_doc_comment_unittest.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_primitive_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_field.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_file.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_doc_comment.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_plugin_unittest.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_extension.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_message.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_string_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_generator.cc"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_message_field.h"/>
+                <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/java/java_service.h"/>
+              </VirtualDirectory>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/code_generator.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/code_generator.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/mock_code_generator.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/subprocess.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/zip_writer.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/importer.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/plugin.pb.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/zip_writer.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/mock_code_generator.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/parser_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/plugin.pb.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/subprocess.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/package_info.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/command_line_interface_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/plugin.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/command_line_interface.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/importer.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/test_plugin.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/importer_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/plugin.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/main.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/command_line_interface.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/parser.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/compiler/parser.h"/>
+            </VirtualDirectory>
+            <VirtualDirectory Name="stubs">
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/substitute.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_x86_gcc.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/strutil.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_atomicword_compat.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/hash.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/type_traits_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/platform_macros.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/stringprintf.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_mips_gcc.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_x86_msvc.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/common_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/structurally_valid_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_x86_gcc.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/stringprintf.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/common.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/type_traits.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/template_util_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/substitute.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/stringprintf_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/template_util.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/once.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/map-util.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/strutil_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/stl_util.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_arm_qnx.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_macosx.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/strutil.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_arm_gcc.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/once_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/once.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_pnacl.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/atomicops_internals_x86_msvc.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/structurally_valid.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/stubs/common.h"/>
+            </VirtualDirectory>
+            <VirtualDirectory Name="io">
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream_impl.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/tokenizer_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/printer.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/coded_stream.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/gzip_stream.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/gzip_stream.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream_impl_lite.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/tokenizer.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/coded_stream_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/package_info.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/printer_unittest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/coded_stream_inl.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream_impl_lite.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/tokenizer.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/printer.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/zero_copy_stream_impl.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/io/coded_stream.h"/>
+            </VirtualDirectory>
+            <VirtualDirectory Name="testing">
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/zcgunzip.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/file.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/googletest.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/googletest.h"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/file.cc"/>
+              <File Name="src/protobuf-2.5.0/src/google/protobuf/testing/zcgzip.cc"/>
+            </VirtualDirectory>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/text_format.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/service.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/repeated_field.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/extension_set.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/reflection_ops.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format_lite_inl.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/unknown_field_set_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/unknown_field_set.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_message_util.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/service.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/test_util.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/extension_set.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/lite_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor_database.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/extension_set_heavy.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/reflection_ops_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/test_util_lite.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/message_lite.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor.pb.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/extension_set_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format_lite.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/package_info.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/test_util.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_message_util.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format_lite.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor_database_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/dynamic_message_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_enum_reflection.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_message_reflection.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/message_lite.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/repeated_field.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/repeated_field_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/wire_format.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/text_format_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/repeated_field_reflection_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor.pb.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/message_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/unknown_field_set.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/test_util_lite.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/descriptor_database.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_message_reflection.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/generated_message_reflection_unittest.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/message.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/message.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/dynamic_message.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/reflection_ops.h"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/text_format.cc"/>
+            <File Name="src/protobuf-2.5.0/src/google/protobuf/dynamic_message.h"/>
+          </VirtualDirectory>
+        </VirtualDirectory>
+      </VirtualDirectory>
+      <VirtualDirectory Name="gtest">
+        <VirtualDirectory Name="xcode">
+          <VirtualDirectory Name="Samples">
+            <VirtualDirectory Name="FrameworkSample">
+              <File Name="src/protobuf-2.5.0/gtest/xcode/Samples/FrameworkSample/widget_test.cc"/>
+              <File Name="src/protobuf-2.5.0/gtest/xcode/Samples/FrameworkSample/widget.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/xcode/Samples/FrameworkSample/widget.cc"/>
+            </VirtualDirectory>
+          </VirtualDirectory>
+        </VirtualDirectory>
+        <VirtualDirectory Name="include">
+          <VirtualDirectory Name="gtest">
+            <VirtualDirectory Name="internal">
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-death-test-internal.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-string.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-type-util.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-param-util-generated.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-filepath.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-tuple.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-param-util.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-linked_ptr.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-internal.h"/>
+              <File Name="src/protobuf-2.5.0/gtest/include/gtest/internal/gtest-port.h"/>
+            </VirtualDirectory>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-test-part.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest_pred_impl.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-typed-test.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-death-test.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest_prod.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-spi.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-printers.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-param-test.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/include/gtest/gtest-message.h"/>
+          </VirtualDirectory>
+        </VirtualDirectory>
+        <VirtualDirectory Name="fused-src">
+          <VirtualDirectory Name="gtest">
+            <File Name="src/protobuf-2.5.0/gtest/fused-src/gtest/gtest_main.cc"/>
+            <File Name="src/protobuf-2.5.0/gtest/fused-src/gtest/gtest.h"/>
+            <File Name="src/protobuf-2.5.0/gtest/fused-src/gtest/gtest-all.cc"/>
+          </VirtualDirectory>
+        </VirtualDirectory>
+        <VirtualDirectory Name="codegear">
+          <File Name="src/protobuf-2.5.0/gtest/codegear/gtest_all.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/codegear/gtest_link.cc"/>
+        </VirtualDirectory>
+        <VirtualDirectory Name="samples">
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample9_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample1.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample2_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample1.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample2.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample3-inl.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample8_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/prime_tables.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample4.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample4_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample10_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample7_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample5_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample4.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample1_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample2.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample6_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/samples/sample3_unittest.cc"/>
+        </VirtualDirectory>
+        <VirtualDirectory Name="test">
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-unittest-api_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-message_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-param-test2_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_color_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-listener_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_xml_outfile2_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-typed-test2_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_no_test_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-typed-test_test.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/production.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_env_var_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-param-test_test.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_help_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-death-test_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_xml_output_unittest_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_break_on_failure_unittest_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_uninitialized_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_environment_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_output_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/production.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_pred_impl_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-tuple_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_throw_on_failure_ex_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_stress_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-options_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_repeat_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-typed-test_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-port_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-param-test_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_catch_exceptions_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_shuffle_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-printers_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_xml_outfile1_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_throw_on_failure_test_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_sole_header_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_prod_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_all_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-linked_ptr_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-test-part_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-death-test_ex_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_filter_unittest_.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_main_unittest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest-filepath_test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/test/gtest_list_tests_unittest_.cc"/>
+        </VirtualDirectory>
+        <VirtualDirectory Name="src">
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-test-part.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest_main.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-all.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-printers.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-internal-inl.h"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-death-test.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-port.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-filepath.cc"/>
+          <File Name="src/protobuf-2.5.0/gtest/src/gtest-typed-test.cc"/>
+        </VirtualDirectory>
+      </VirtualDirectory>
+      <VirtualDirectory Name="python">
+        <VirtualDirectory Name="google">
+          <VirtualDirectory Name="protobuf">
+            <VirtualDirectory Name="pyext">
+              <File Name="src/protobuf-2.5.0/python/google/protobuf/pyext/python-proto2.cc"/>
+              <File Name="src/protobuf-2.5.0/python/google/protobuf/pyext/python_protobuf.cc"/>
+              <File Name="src/protobuf-2.5.0/python/google/protobuf/pyext/python_protobuf.h"/>
+              <File Name="src/protobuf-2.5.0/python/google/protobuf/pyext/python_descriptor.cc"/>
+              <File Name="src/protobuf-2.5.0/python/google/protobuf/pyext/python_descriptor.h"/>
+            </VirtualDirectory>
+          </VirtualDirectory>
+        </VirtualDirectory>
+      </VirtualDirectory>
+      <VirtualDirectory Name="vsprojects">
+        <File Name="src/protobuf-2.5.0/vsprojects/config.h"/>
+      </VirtualDirectory>
+      <VirtualDirectory Name="examples">
+        <File Name="src/protobuf-2.5.0/examples/list_people.cc"/>
+        <File Name="src/protobuf-2.5.0/examples/add_person.cc"/>
+      </VirtualDirectory>
+    </VirtualDirectory>
+    <VirtualDirectory Name="json">
+      <File Name="src/json/json.h"/>
+      <File Name="src/json/json-forwards.h"/>
+    </VirtualDirectory>
+    <File Name="src/draios.pb.h"/>
+    <File Name="src/jsoncpp.cpp"/>
+    <File Name="src/mesos.cpp"/>
+    <File Name="Makefile"/>
+    <File Name="src/jsoncpp.h"/>
+    <File Name="src/draios.pb.cc"/>
+    <File Name="src/draios.pb.cpp"/>
+    <File Name="src/sinsp_int.h"/>
+    <File Name="src/sinsp.h"/>
+    <File Name="src/uri.h"/>
+    <File Name="src/uri.cpp"/>
+    <File Name="src/mesos_common.h"/>
+    <File Name="src/mesos_component.h"/>
+    <File Name="src/mesos_component.cpp"/>
+    <File Name="src/mesos.h"/>
+    <File Name="src/mesos_state.h"/>
+    <File Name="src/mesos_state.cpp"/>
+    <File Name="src/mesosget.cpp"/>
+    <File Name="src/mesos_http.cpp"/>
+    <File Name="src/mesos_http.h"/>
+    <File Name="src/mesos_proto.h"/>
+    <File Name="src/mesos_proto.cpp"/>
+    <File Name="src/marathon_component.h"/>
+    <File Name="src/marathon_component.cpp"/>
+    <File Name="src/mesos_event_data.h"/>
+    <File Name="src/mesos_collector.cpp"/>
+    <File Name="src/mesos_collector.h"/>
+    <File Name="src/mesos_event_data.cpp"/>
+    <File Name="src/marathon_http.cpp"/>
+    <File Name="src/marathon_http.h"/>
+    <File Name="src/marathon_dispatcher.cpp"/>
+    <File Name="src/marathon_dispatcher.h"/>
+  </VirtualDirectory>
+  <Description/>
+  <Dependencies/>
+  <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="" C_Options="" Assembler="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
+    <Configuration Name="Debug" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;-O0;-Wall" C_Options="-g;-O0;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./obj" Command="/home/alex/sysdig/agent/experiments/mesos/mesosget" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
+PROJECT_BASE=$(shell pwd)
+LD_LIBRARY_PATH=/home/alex/sysdig/agent/dependencies/protobuf-2.5.0/src/.libs]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="yes">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <RebuildCommand>make clean &amp;&amp; make</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Release" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall" C_Options="-O2;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <Preprocessor Value="NDEBUG"/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Release" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[POCO_BASE=../../dependencies/poco-1.4.6p4-all
+PROJECT_BASE=$(shell pwd)]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="yes">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <RebuildCommand>make clean &amp;&amp; make</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+  </Settings>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
+</CodeLite_Project>
