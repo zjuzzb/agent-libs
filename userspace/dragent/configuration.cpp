@@ -7,6 +7,7 @@
 #include <netdb.h>
 
 #include "logger.h"
+#include "uri.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -204,6 +205,19 @@ void dragent_configuration::init(Application* app)
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
+	// Filter out disabled checks
+	unordered_set<string> disabled_checks;
+	for(const auto& item : m_app_checks)
+	{
+		if(!item.enabled())
+		{
+			disabled_checks.emplace(item.name());
+		}
+	}
+	m_app_checks.erase(remove_if(m_app_checks.begin(), m_app_checks.end(), [&disabled_checks](const app_check& item)
+	{
+		return disabled_checks.find(item.name()) != disabled_checks.end();
+	}), m_app_checks.end());
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
 	auto python_binary_path = m_config->get_scalar<string>("python_binary", "");
@@ -259,6 +273,14 @@ void dragent_configuration::init(Application* app)
 	m_k8s_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("k8s_ca_certificate", "")).toString();
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
+
+	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
+	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
+	for(auto u : marathon_uris)
+	{
+		m_marathon_uris.push_back(u);
+	}
+	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -348,6 +370,16 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 	}
+	if(!m_mesos_state_uri.empty())
+	{
+		g_log->information("Mesos state API server: " + m_mesos_state_uri);
+	}
+	for(const auto& marathon_uri : m_marathon_uris)
+	{
+		g_log->information("Marathon groups API server: " + marathon_uri);
+		g_log->information("Marathon apps API server: " + marathon_uri);
+	}
+	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 }
 
 void dragent_configuration::refresh_aws_metadata()
@@ -536,26 +568,35 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	 *	The conf part is not used by dragent
 	 */
 	rhs.m_name = node["name"].as<string>();
+	auto enabled_node = node["enabled"];
+	if(enabled_node.IsScalar())
+	{
+		rhs.m_enabled = enabled_node.as<bool>();
+	}
+
 	auto pattern_node = node["pattern"];
-	auto comm_node = pattern_node["comm"];
-	if(comm_node.IsScalar())
+	if(pattern_node.IsMap())
 	{
-		rhs.m_comm_pattern = comm_node.as<string>();
-	}
-	auto exe_node = pattern_node["exe"];
-	if(exe_node.IsScalar())
-	{
-		rhs.m_exe_pattern = exe_node.as<string>();
-	}
-	auto port_node = pattern_node["port"];
-	if(port_node.IsScalar())
-	{
-		rhs.m_port_pattern = port_node.as<uint16_t>();
-	}
-	auto arg_node = pattern_node["arg"];
-	if(arg_node.IsScalar())
-	{
-		rhs.m_arg_pattern = arg_node.as<string>();
+		auto comm_node = pattern_node["comm"];
+		if(comm_node.IsScalar())
+		{
+			rhs.m_comm_pattern = comm_node.as<string>();
+		}
+		auto exe_node = pattern_node["exe"];
+		if(exe_node.IsScalar())
+		{
+			rhs.m_exe_pattern = exe_node.as<string>();
+		}
+		auto port_node = pattern_node["port"];
+		if(port_node.IsScalar())
+		{
+			rhs.m_port_pattern = port_node.as<uint16_t>();
+		}
+		auto arg_node = pattern_node["arg"];
+		if(arg_node.IsScalar())
+		{
+			rhs.m_arg_pattern = arg_node.as<string>();
+		}
 	}
 	return true;
 }

@@ -1,16 +1,16 @@
 # stdlib
 import os
-import re
-import subprocess
 import sys
+import re
 import traceback
 
-# 3rd party
+# 3p
 import pymysql
 
 # project
 from checks import AgentCheck
 from utils.platform import Platform
+from utils.subprocess_output import get_subprocess_output
 
 GAUGE = "gauge"
 RATE = "rate"
@@ -19,7 +19,7 @@ STATUS_VARS = {
     'Connections': ('mysql.net.connections', RATE),
     'Max_used_connections': ('mysql.net.max_connections', GAUGE),
     'Open_files': ('mysql.performance.open_files', GAUGE),
-    'Table_locks_waited': ('mysql.performance.table_locks_waited', GAUGE),
+    'Table_locks_waited': ('mysql.performance.table_locks_waited', RATE),
     'Threads_connected': ('mysql.performance.threads_connected', GAUGE),
     'Threads_running': ('mysql.performance.threads_running', GAUGE),
     'Innodb_data_reads': ('mysql.innodb.data_reads', RATE),
@@ -52,6 +52,8 @@ STATUS_VARS = {
 
 class MySql(AgentCheck):
     SERVICE_CHECK_NAME = 'mysql.can_connect'
+    MAX_CUSTOM_QUERIES = 20
+    DEFAULT_TIMEOUT = 5
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -62,8 +64,10 @@ class MySql(AgentCheck):
         return {"pymysql": pymysql.__version__}
 
     def check(self, instance):
-        host, port, user, password, mysql_sock, defaults_file, tags, options = \
+        host, port, user, password, mysql_sock, defaults_file, tags, options, queries = \
             self._get_config(instance)
+
+        default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
 
         if (not host or not user) and not defaults_file:
             raise Exception("Mysql host and user are needed.")
@@ -74,9 +78,12 @@ class MySql(AgentCheck):
         self._collect_metadata(db, host)
 
         # Metric collection
-        self._collect_metrics(host, db, tags, options)
-        if Platform.is_linux():
-            self._collect_system_metrics(host, db, tags)
+        self._collect_metrics(host, db, tags, options, queries)
+        #if Platform.is_linux():
+        #    self._collect_system_metrics(host, db, tags)
+
+        # Close connection
+        db.close()
 
     def _get_config(self, instance):
         host = instance.get('server', '')
@@ -87,8 +94,9 @@ class MySql(AgentCheck):
         defaults_file = instance.get('defaults_file', '')
         tags = instance.get('tags', None)
         options = instance.get('options', {})
+        queries = instance.get('queries', [])
 
-        return host, port, user, password, mysql_sock, defaults_file, tags, options
+        return host, port, user, password, mysql_sock, defaults_file, tags, options, queries
 
     def _connect(self, host, port, mysql_sock, user, password, defaults_file):
         service_check_tags = [
@@ -132,7 +140,7 @@ class MySql(AgentCheck):
 
         return db
 
-    def _collect_metrics(self, host, db, tags, options):
+    def _collect_metrics(self, host, db, tags, options, queries):
         cursor = db.cursor()
         cursor.execute("SHOW /*!50002 GLOBAL */ STATUS;")
         status_results = dict(cursor.fetchall())
@@ -190,6 +198,17 @@ class MySql(AgentCheck):
                 {"Seconds_behind_master": "mysql.replication.seconds_behind_master"},
                 "SHOW SLAVE STATUS", db, tags=tags
             )
+
+        # Collect custom query metrics
+        # Max of 20 queries allowed
+        if isinstance(queries, list):
+            for index, check in enumerate(queries[:self.MAX_CUSTOM_QUERIES]):
+                self._collect_dict(check['type'], {check['field']: check['metric']}, check['query'], db, tags=tags)
+
+            if len(queries) > self.MAX_CUSTOM_QUERIES:
+                self.warning("Maximum number (%s) of custom queries reached.  Skipping the rest."
+                             % self.MAX_CUSTOM_QUERIES)
+
 
     def _collect_metadata(self, db, host):
         self._get_version(db, host)
@@ -287,7 +306,9 @@ class MySql(AgentCheck):
                     # cursor.description is a tuple of (column_name, ..., ...)
                     try:
                         col_idx = [d[0].lower() for d in cursor.description].index(field.lower())
+                        self.log.debug("Collecting metric: %s" % metric)
                         if result[col_idx] is not None:
+                            self.log.debug("Collecting done, value %s" % result[col_idx])
                             if metric_type == GAUGE:
                                 self.gauge(metric, float(result[col_idx]), tags=tags)
                             elif metric_type == RATE:
@@ -364,11 +385,10 @@ class MySql(AgentCheck):
         if pid is None:
             try:
                 if sys.platform.startswith("linux"):
-                    ps = subprocess.Popen(['ps', '-C', 'mysqld', '-o', 'pid'],
-                                          stdout=subprocess.PIPE, close_fds=True).communicate()[0]
-                    pslines = ps.strip().split('\n')
+                    ps, _, _ = get_subprocess_output(['ps', '-C', 'mysqld', '-o', 'pid'], self.log)
+                    pslines = ps.strip().splitlines()
                     # First line is header, second line is mysql pid
-                    if len(pslines) == 2 and pslines[1] != '':
+                    if len(pslines) == 2:
                         pid = int(pslines[1])
             except Exception:
                 self.log.exception("Error while fetching mysql pid from ps")

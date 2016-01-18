@@ -1,11 +1,25 @@
 #!/usr/bin/env python2
+import site
+import sys
+
+# Add our path, before system ones to avoid collisions
+bin_deps_dir = '/opt/draios/lib/python-deps%d.%d' % sys.version_info[:2]
+sys.path.insert(0, '/opt/draios/lib/python')
+sys.path.insert(1, '/opt/draios/lib/python-deps')
+sys.path.insert(2, bin_deps_dir)
+
+# Add site dirs so .pth files are evaluated
+site.addsitedir('/opt/draios/lib/python-deps')
+site.addsitedir(bin_deps_dir)
+
+# Run our app
 from sdchecks import Application
 
 if __name__ == "__main__":
     app = Application()
     try:
-    	app.main()
+        app.main()
     except KeyboardInterrupt:
-    	pass
+        pass
     finally:
-    	app.cleanup()
+        app.cleanup()

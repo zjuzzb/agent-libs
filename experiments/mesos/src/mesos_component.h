@@ -1,7 +1,7 @@
 //
-// k8s_component.h
+// mesos_component.h
 //
-// kubernetes components (nodes, namespaces, pods, replication controllers, services)
+// mesos components (frameworks, tasks, slaves)
 // abstraction
 //
 
@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <memory>
 
 typedef std::pair<std::string, std::string> mesos_pair_t;
 typedef std::vector<mesos_pair_t>           mesos_pair_list;
@@ -28,8 +29,7 @@ public:
 	{
 		MESOS_FRAMEWORK,
 		MESOS_TASK,
-		MESOS_SLAVE,
-		//MESOS_MARATHON
+		MESOS_SLAVE
 	};
 
 	typedef std::pair<type, std::string> component_pair;
@@ -38,7 +38,15 @@ public:
 
 	mesos_component() = delete;
 
-	mesos_component(const std::string& name, const std::string& uid);
+	mesos_component(type t, const std::string& name, const std::string& uid);
+
+	mesos_component(const mesos_component& other);
+
+	mesos_component(mesos_component&& other);
+
+	mesos_component& operator=(const mesos_component& other);
+
+	mesos_component& operator=(const mesos_component&& other);
 
 	const std::string& get_name() const;
 
@@ -48,19 +56,19 @@ public:
 
 	void set_uid(const std::string& uid);
 
-	k8s_pair_s* get_label(const k8s_pair_s& label);
+	mesos_pair_t* get_label(const mesos_pair_t& label);
 
-	const k8s_pair_list& get_labels() const;
+	const mesos_pair_list& get_labels() const;
 
-	void set_labels(k8s_pair_list&& labels);
+	void set_labels(mesos_pair_list&& labels);
 
-	void add_labels(k8s_pair_list&& labels);
+	void add_labels(mesos_pair_list&& labels);
 
-	void swap_labels(k8s_pair_list& new_labels);
+	void swap_labels(mesos_pair_list& new_labels);
 
-	void push_label(const k8s_pair_s& label);
+	void push_label(const mesos_pair_t& label);
 
-	void emplace_label(const k8s_pair_s& label);
+	void emplace_label(mesos_pair_t&& label);
 
 	static const std::string& get_name(const component_pair& p);
 
@@ -71,21 +79,14 @@ public:
 	static type get_type(const std::string& name);
 
 private:
-	std::string   m_name;
-	std::string   m_uid;
+	type            m_type;
+	std::string     m_name;
+	std::string     m_uid;
+	mesos_pair_list m_labels;
 };
 
 
-//
-// framework
-//
-
-class mesos_framework : public mesos_component
-{
-public:
-	mesos_framework(const std::string& name, const std::string& uid);
-};
-
+class mesos_framework;
 
 //
 // task
@@ -94,11 +95,71 @@ public:
 class mesos_task : public mesos_component
 {
 public:
-	typedef std::vector<std::string> host_ip_list;
-
+	typedef std::shared_ptr<mesos_task> ptr_t;
 	mesos_task(const std::string& name, const std::string& uid);
-	
+
+	mesos_task(const mesos_task& other);
+
+	mesos_task(mesos_task&& other);
+
+	mesos_task& operator=(const mesos_task& other);
+
+	mesos_task& operator=(const mesos_task&& other);
+
+	void set_app_id(const std::string& app_id)
+	{
+		m_app_id = app_id;
+	}
+
+	const std::string& get_app_id() const
+	{
+		return m_app_id;
+	}
+
+	void set_slave_id(const std::string& slave_id)
+	{
+		m_slave_id = slave_id;
+	}
+
+	const std::string& get_slave_id() const
+	{
+		return m_slave_id;
+	}
+
 private:
+	std::string m_app_id;
+	std::string m_slave_id;
+};
+
+//
+// framework
+//
+
+class mesos_framework : public mesos_component
+{
+public:
+	typedef std::shared_ptr<mesos_framework> ptr_t;
+	typedef mesos_task::ptr_t task_ptr_t;
+	typedef std::unordered_map<std::string, task_ptr_t> task_map;
+
+	mesos_framework(const std::string& name, const std::string& uid);
+
+	~mesos_framework();
+
+	bool has_task(const std::string& uid) const;
+
+	task_ptr_t get_task(const std::string& id);
+
+	void add_or_replace_task(std::shared_ptr<mesos_task> task);
+
+	void remove_task(const std::string& uid);
+
+	const task_map& get_tasks() const;
+
+	task_map& get_tasks();
+
+private:
+	task_map m_tasks;
 };
 
 
@@ -115,8 +176,7 @@ private:
 };
 
 typedef std::vector<mesos_framework> mesos_frameworks;
-typedef std::vector<mesos_task>      mesos_tasks;
-typedef std::vector<mesos_slave>     mesos_slaves;
+typedef std::vector<mesos_slave> mesos_slaves;
 
 //
 // component
@@ -142,37 +202,61 @@ inline void mesos_component::set_uid(const std::string& uid)
 	m_uid = uid;
 }
 
-inline const k8s_pair_list& k8s_component::get_labels() const
+inline const mesos_pair_list& mesos_component::get_labels() const
 {
 	return m_labels;
 }
 
-inline void k8s_component::set_labels(k8s_pair_list&& labels)
+inline void mesos_component::set_labels(mesos_pair_list&& labels)
 {
 	m_labels = std::move(labels);
 }
 
-inline void k8s_component::swap_labels(k8s_pair_list& new_labels)
+inline void mesos_component::swap_labels(mesos_pair_list& new_labels)
 {
 	m_labels.swap(new_labels);
 }
 
-inline void k8s_component::push_label(const k8s_pair_s& label)
+inline void mesos_component::push_label(const mesos_pair_t& label)
 {
 	m_labels.push_back(label);
 }
 
-inline void k8s_component::emplace_label(const k8s_pair_s& label)
+inline void mesos_component::emplace_label(mesos_pair_t&& label)
 {
 	m_labels.emplace_back(label);
 }
 
-inline const std::string& k8s_component::get_name(const component_pair& p)
+inline const std::string& mesos_component::get_name(const component_pair& p)
 {
 	return p.second;
 }
 
-inline k8s_component::type k8s_component::get_type(const component_pair& p)
+inline mesos_component::type mesos_component::get_type(const component_pair& p)
 {
 	return p.first;
 }
+
+//
+// framework
+//
+
+inline bool mesos_framework::has_task(const std::string& uid) const
+{
+	return m_tasks.find(uid) != m_tasks.end();
+}
+
+inline mesos_framework::task_ptr_t mesos_framework::get_task(const std::string& id)
+{
+	task_map::iterator it = m_tasks.find(id);
+	if(it != m_tasks.end())
+	{
+		return it->second;
+	}
+	return 0;
+}
+
+//
+// task
+//
+

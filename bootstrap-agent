@@ -93,15 +93,15 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.6.3
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.2
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.6.3.tar.xz
-	tar -xf libssh-0.6.3.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.7.2.tar.xz
+	tar -xf libssh-0.7.2.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
-	$CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DOPENSSL_LIBRARIES=$OPENSSL_DIR/target/lib -DOPENSSL_INCLUDE_DIRS=$OPENSSL_DIR/target/include -DZLIB_LIBRARY=$ZLIB_DIR -DZLIB_INCLUDE_DIR=$ZLIB_DIR -DWITH_STATIC_LIB=ON -DWITH_GSSAPI=OFF ..
+	OPENSSL_ROOT_DIR=$OPENSSL_DIR/target $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DZLIB_LIBRARY=$ZLIB_DIR -DZLIB_INCLUDE_DIR=$ZLIB_DIR -DWITH_STATIC_LIB=ON -DWITH_GSSAPI=OFF ..
 	make -C src install
 	make -C include install
 fi
@@ -225,9 +225,25 @@ if [ ! -d "${PYTHON_DIR}" ]; then
 	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
 	cd $PYTHON_DIR
 	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-       ./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install
+	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
 	make
 	make install
+fi
+
+PYTHON26_VER=2.6.9
+PYTHON26_EXT=tgz
+PYTHON26_DIR=$DEPENDENCIES/Python-$PYTHON26_VER
+if [ ! -d "${PYTHON26_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
+	tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
+	cd $PYTHON26_DIR
+	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
+	make
+	make install
+	wget $DEPENDENCIES_URL/get-pip.py
+	./target/bin/python get-pip.py
 fi
 
 if [ -z $STATSITE_VERSION ]; then
@@ -240,6 +256,19 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	unzip statsite-private-$STATSITE_VERSION.zip
 	cd $STATSITE_DIR
 	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
+fi
+
+POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.5
+if [ ! -d "${POSTGRES_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/postgresql-9.4.5.tar.bz2
+	tar xfj postgresql-9.4.5.tar.bz2
+	cd $POSTGRES_DIR
+	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
+	make
+	make -C src/bin install
+	make -C src/include install
+	make -C src/interfaces install
 fi
 
 if [ -z "$AGENT_VERSION" ]; then

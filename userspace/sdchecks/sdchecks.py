@@ -11,6 +11,7 @@ import ctypes
 import logging
 from datetime import datetime, timedelta
 import sys
+import signal
 
 # project
 from checks import AgentCheck
@@ -81,6 +82,7 @@ class AppCheck:
     def __init__(self, node):
         self.name = node["name"]
         self.conf = node.get("conf", {})
+        self.interval = timedelta(seconds=node.get("interval", 1))
 
         try:
             check_module_name = node["check_module"]
@@ -125,7 +127,8 @@ class AppCheckInstance:
     AGENT_CONFIG = {
         "is_developer_mode": False,
         "version": 1.0,
-        "hostname": get_hostname()
+        "hostname": get_hostname(),
+        "api_key": ""
     }
     INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
@@ -136,6 +139,7 @@ class AppCheckInstance:
         self.name = check.name
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
+        self.interval = check.interval
         self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
@@ -143,7 +147,7 @@ class AppCheckInstance:
                 mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
                 self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
             except OSError as ex:
-                raise AppCheckException(ex.message)
+                raise AppCheckException(repr(ex))
         else:
             self.is_on_another_container = False
 
@@ -165,24 +169,28 @@ class AppCheckInstance:
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
 
     def run(self):
-        ex = None
+        saved_ex = None
+        ns_fds = []
         try:
             if self.is_on_another_container:
                 # We need to open and close ns on every iteration
                 # because otherwise we lock container deletion
                 for ns in self.check_instance.NEEDED_NS:
                     nsfd = os.open(build_ns_path(self.pid, ns), os.O_RDONLY)
+                    ns_fds.append(nsfd)
+                for nsfd in ns_fds:
                     ret = setns(nsfd)
-                    os.close(nsfd)
                     if ret != 0:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
         except OSError as ex: # Raised from os.open() or setns()
-            ex = AppCheckException(ex.message)
+            saved_ex = AppCheckException(repr(ex))
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
-            ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
+            saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
+            for nsfd in ns_fds:
+                os.close(nsfd)
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
@@ -191,7 +199,7 @@ class AppCheckInstance:
             self.check_instance.get_service_metadata()
 
             # Return metrics and checks instead
-            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), ex
+            return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), saved_ex
 
     def _expand_template(self, value, proc_data):
         try:
@@ -221,11 +229,12 @@ class Config:
 
         self.checks = {}
         for c in check_confs:
-            try:
-                app_check = AppCheck(c)
-                self.checks[app_check.name] = app_check
-            except (Exception, IOError) as ex:
-                logging.error("Configuration error for check %s: %s", repr(c), ex.message)
+            if c.get("enabled", True):
+                try:
+                    app_check = AppCheck(c)
+                    self.checks[app_check.name] = app_check
+                except (Exception, IOError) as ex:
+                    logging.error("Configuration error for check %s: %s", repr(c), ex.message)
 
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
@@ -273,6 +282,8 @@ class PosixQueue:
         try:
             message, _ = self.queue.receive(timeout)
             return message
+        except posix_ipc.SignalError:
+            return None
         except posix_ipc.BusyError:
             return None
 
@@ -282,7 +293,7 @@ class PosixQueue:
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
-    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=5)
+    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
     def __init__(self):
         # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
@@ -290,6 +301,8 @@ class Application:
         # logging.debug("Check config: %s", repr(self.config.checks))
         # requests generates too noise on information level
         logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("kazoo.client").setLevel(logging.WARNING)
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
 
@@ -349,17 +362,18 @@ class Application:
             if ex and pid not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
                 self.blacklisted_pids.add(pid)
+
+            expiration_ts = datetime.now() + check_instance.interval
             response_body.append({  "pid": pid,
                                     "display_name": check_instance.name,
                                     "metrics": metrics,
-                                    "service_checks": service_checks})
+                                    "service_checks": service_checks,
+                                    "expiration_ts": int(expiration_ts.strftime("%s"))})
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d" % len(response_s))
         self.outqueue.send(response_s)
 
-    def main(self):
-        logging.info("Starting")
-        logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+    def main_loop(self):
         pid = os.getpid()
         while True:
             # Handle received message
@@ -380,3 +394,26 @@ class Application:
             ru = resource.getrusage(resource.RUSAGE_SELF)
             sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
             sys.stderr.flush()
+
+    def main(self):
+        logging.info("Starting")
+        logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "runCheck":
+                proc_data = {
+                    "check": sys.argv[2],
+                    "pid": int(sys.argv[3]),
+                    "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
+                    "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                }
+                check_conf = self.config.checks[proc_data["check"]]
+                check_instance = AppCheckInstance(check_conf, proc_data)
+                metrics, service_checks, ex = check_instance.run()
+                print "Conf: %s" % repr(check_instance.instance_conf)
+                print "Metrics: %s" % repr(metrics)
+                print "Checks: %s" % repr(service_checks)
+                print "Exception: %s" % repr(ex)
+        else:
+            # In this mode register our usr1 handler to print stack trace (useful for debugging)
+            signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+            self.main_loop()

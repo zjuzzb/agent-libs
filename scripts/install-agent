@@ -41,7 +41,6 @@ function install_rpm {
 	fi
 	echo "* Installing Sysdig Cloud agent"
 	yum -q -y install draios-agent
-	service dragent start
 }
 
 function install_deb {

@@ -31,6 +31,8 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 
 	m_old_global_total_jiffies = 0;
 	m_old_global_work_jiffies = 0;
+	m_last_in_bytes = 0;
+	m_last_out_bytes = 0;
 }
 
 double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
@@ -630,7 +632,7 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	// Look for mount point of cgroup memory filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/etc/mtab", "r");
+	FILE* fp = setmntent("/proc/mounts", "r");
 	struct mntent* entry = getmntent(fp);
 	while(entry != NULL)
 	{
@@ -649,6 +651,73 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
 		m_memory_cgroup_dir = make_unique<string>();
 	}
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
+{
+	pair<uint32_t, uint32_t> ret;
+
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
+
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	auto net_dev = fopen(net_dev_path, "r");
+	if(net_dev == NULL)
+	{
+		return ret;
+	}
+
+	// Skip first two lines as they are column headers
+	char skip_buffer[1024];
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
+	if(fgets(skip_buffer, sizeof(skip_buffer), net_dev) == NULL)
+	{
+		fclose(net_dev);
+		return ret;
+	}
+
+	char interface_name[30];
+	unsigned ign;
+	uint64_t in_bytes, out_bytes;
+	uint64_t tot_in_bytes = 0;
+	uint64_t tot_out_bytes = 0;
+
+	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
+				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
+				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	{
+		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
+				return strcasestr(interface_name, bad_interface) == interface_name;
+			}) == BAD_INTERFACE_NAMES.end())
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			tot_in_bytes += in_bytes;
+			tot_out_bytes += out_bytes;
+		}
+	}
+	fclose(net_dev);
+
+	// Calculate delta, no delta if it is the first time we read
+	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	{
+		// Network metrics use uint32_t on protobuf, so we use the same
+		// for deltas
+		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+	}
+	m_last_in_bytes = tot_in_bytes;
+	m_last_out_bytes = tot_out_bytes;
+
+	return ret;
 }
 
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):

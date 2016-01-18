@@ -38,12 +38,13 @@ class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
 class k8s;
+class mesos;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
 typedef class sinsp_pipe_connection_manager sinsp_pipe_connection_manager;
 typedef class sinsp_connection sinsp_connection;
-
+class sinsp_connection_aggregator;
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
@@ -331,6 +332,10 @@ VISIBILITY_PRIVATE
 	k8s* get_k8s(const string& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	mesos* make_mesos(string&& json);
+	mesos* get_mesos(const string& mesos_uri);
+	void get_mesos_data();
+	void emit_mesos();
 	void emit_top_files();
 	vector<string> emit_containers();
 	void emit_container(const string &container_id, unsigned* statsd_limit);
@@ -409,7 +414,6 @@ VISIBILITY_PRIVATE
 	// The table of aggreagted connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
-
 	//
 	// The aggreagted host metrics
 	//
@@ -504,7 +508,10 @@ VISIBILITY_PRIVATE
 
 	k8s* m_k8s;
 	static bool m_k8s_bad_config;
+	static bool m_mesos_bad_config;
 	static bool m_k8s_ssl_initialized;
+
+	mesos* m_mesos;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

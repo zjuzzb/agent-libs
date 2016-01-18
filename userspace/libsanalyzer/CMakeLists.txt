@@ -5,7 +5,6 @@ set(DRAIOS_LUAJIT_VERSION "2.0.3")
 set(DRAIOS_CURL_VERSION "7.45.0")
 set(DRAIOS_POCO_VERSION "1.4.6p4-all")
 set(DRAIOS_B64_VERSION "1.2")
-set(DRAIOS_SSH_VERSION "0.6.3")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
 
@@ -58,6 +57,16 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_http.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp
 	k8s_proto.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_dispatcher.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_event_data.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
+	mesos_proto.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp

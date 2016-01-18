@@ -392,4 +392,35 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 {
 	m_statsd_limit = value;
 }
+
+const string & sinsp_configuration::get_mesos_state_uri() const
+{
+	return m_mesos_state_uri;
+}
+
+void sinsp_configuration::set_mesos_state_uri(const string & uri)
+{
+	m_mesos_state_uri = uri;
+}
+
+const vector<string> & sinsp_configuration::get_marathon_uris() const
+{
+	return m_marathon_uris;
+}
+
+void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
+{
+	m_marathon_uris = uris;
+}
+
+bool sinsp_configuration::get_mesos_autodetect_enabled() const
+{
+	return m_mesos_autodetect;
+}
+
+void sinsp_configuration::set_mesos_autodetect_enabled(bool enabled)
+{
+	m_mesos_autodetect = enabled;
+}
+
 #endif // HAS_ANALYZER

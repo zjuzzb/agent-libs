@@ -135,6 +135,9 @@ const unsigned TOP_PROCESSES_PER_CONTAINER = 1;
 //
 #define TOP_CONNECTIONS_IN_SAMPLE 40
 
+static const int TOP_SERVER_PORTS_IN_SAMPLE = 10;
+static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
+
 //
 // Max number of URLS that are reported on a per process and per machine basis
 //
@@ -201,3 +204,4 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;

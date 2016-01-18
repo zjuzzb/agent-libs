@@ -76,29 +76,29 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-unique_ptr<unordered_map<int, app_check_data>> app_checks_proxy::read_metrics()
+unordered_map<int, app_check_data> app_checks_proxy::read_metrics()
 {
-	unique_ptr<unordered_map<int, app_check_data>> ret;
+	unordered_map<int, app_check_data> ret;
 	auto msg = m_inqueue.receive();
 	if(!msg.empty())
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
 		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
-		ret = make_unique<unordered_map<int, app_check_data>>();
 		Json::Value response_obj;
 		m_json_reader.parse(msg, response_obj, false);
 		// Parse data
 		for(const auto& process : response_obj)
 		{
 			app_check_data data(process);
-			ret->emplace(data.pid(), move(data));
+			ret.emplace(data.pid(), move(data));
 		}
 	}
 	return ret;
 }
 
 app_check_data::app_check_data(const Json::Value &obj):
-	m_pid(obj["pid"].asInt())
+	m_pid(obj["pid"].asInt()),
+	m_expiration_ts(obj["expiration_ts"].asUInt64())
 {
 	if(obj.isMember("display_name"))
 	{
@@ -173,8 +173,15 @@ app_metric::app_metric(const Json::Value &obj):
 		for(const auto& tag_obj : metadata["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
-			auto tag_parsed = sinsp_split(tag_as_str, ':');
-			m_tags[tag_parsed.at(0)] = tag_parsed.size() > 1 ? tag_parsed.at(1) : "";
+			auto colon = tag_as_str.find(':');
+			if(colon != string::npos)
+			{
+				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+			}
+			else
+			{
+				m_tags[tag_as_str] = "";
+			}
 		}
 	}
 }
@@ -210,8 +217,15 @@ app_service_check::app_service_check(const Json::Value &obj):
 		for(const auto& tag_obj : obj["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
-			auto tag_parsed = sinsp_split(tag_as_str, ':');
-			m_tags[tag_parsed.at(0)] = tag_parsed.size() > 1 ? tag_parsed.at(1) : "";
+			auto colon = tag_as_str.find(':');
+			if(colon != string::npos)
+			{
+				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+			}
+			else
+			{
+				m_tags[tag_as_str] = "";
+			}
 		}
 	}
 	if(obj.isMember("message") && obj["message"].isString())
