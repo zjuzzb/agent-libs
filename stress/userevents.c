@@ -141,12 +141,20 @@ int main(void)
 
 	gettimeofday(&start_time, NULL);
 
-	for(j = 0; j < 1000000; j++)
+	for(j = 0; j < 1000; j++)
 	{
 		FILE* tf1;
 
 		generate_sysdig_event(f, "[\">\", 1, [\"lorisapp\", \"loop\"], []]");
-/*
+		usleep(1000);
+	}
+
+	for(j = 0; j < 1000; j++)
+	{
+		FILE* tf1;
+
+		generate_sysdig_event(f, "[\">\", 1, [\"lorisapp\", \"loop\"], []]");
+
 		tf1 = fopen(TMP_FILE_NAME, "w");
 		generate_sysdig_event(f, "[\">\", 2, [\"lorisapp\", \"loop\", \"write\"], [{\"argname1\":\"argval1\"}, {\"argname2\":\"argval2\"}]]");
 		fwrite("hello world", strlen("hello world"), 1, tf1);
@@ -156,8 +164,10 @@ int main(void)
 		unlink(TMP_FILE_NAME);
 		
 		usleep(1000);
-*/
-		generate_sysdig_event(f, "[\"<\", 1, [\"lorisapp\", \"loop\"], []]");		
+
+		generate_sysdig_event(f, "[\"<\", 1, [\"lorisapp\", \"loop\"], []]");
+
+		usleep(1000);
 	}
 
 	gettimeofday(&end_time, NULL);
