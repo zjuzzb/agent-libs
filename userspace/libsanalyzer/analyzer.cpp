@@ -4271,6 +4271,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		break;
 	case CT_RKT:
 		container->set_type(draiosproto::RKT);
+		break;
 	default:
 		ASSERT(false);
 	}
