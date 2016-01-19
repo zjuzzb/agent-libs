@@ -512,7 +512,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			g_logger.log("error getting details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
+			g_logger.log("unable to get details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_DEBUG);
 			continue;
 		}
 
@@ -784,6 +784,13 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 	sdc_internal::mounted_fs_request req;
 	for(const auto& item : containers)
 	{
+		// Safety check, it should never happen
+		if(item->m_root.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Process root of pid %ld is empty, skipping ", item->m_pid);
+			continue;
+		}
+
 		auto container = req.add_containers();
 		container->set_id(item->m_container_id);
 		container->set_pid(item->m_pid);
