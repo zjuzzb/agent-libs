@@ -6,6 +6,7 @@
 #include "mesos_event_data.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "utils.h"
 #include <assert.h>
 #include <stdexcept>
 #include <algorithm>
@@ -196,7 +197,6 @@ void marathon_dispatcher::handle_app_terminate(const Json::Value& root)
 void marathon_dispatcher::handle_group_change(const Json::Value& root)
 {
 	g_logger.log("MESOS_GROUP_CHANGE_SUCCESS_EVENT", sinsp_logger::SEV_DEBUG);
-	//std::cout << root.toStyledString() << std::endl;
 
 	Json::Value group_id = root["id"];
 	if(!group_id.isNull() && group_id.isString())

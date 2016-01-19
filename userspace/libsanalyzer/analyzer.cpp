@@ -3911,11 +3911,16 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
+	if(m_mesos->has_marathon())
+	{
+		m_mesos->watch();
+	}
+
 	time_t now;
 	time(&now);
 	if(difftime(now, last_mesos_refresh) > 30)
 	{
-		m_mesos->refresh();
+		m_mesos->refresh(!m_mesos->has_marathon());
 		last_mesos_refresh = now;
 	}
 
