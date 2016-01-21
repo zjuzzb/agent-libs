@@ -137,14 +137,14 @@ class ConsulCheck(AgentCheck):
     def _cull_services_list(self, services, service_whitelist):
         if service_whitelist:
             if len(service_whitelist) > self.MAX_SERVICES:
-                self.debug('More than %d services in whitelist. Service list will be truncated.' % self.MAX_SERVICES)
+                self.log.debug('More than %d services in whitelist. Service list will be truncated.' % self.MAX_SERVICES)
 
             services = [s for s in services if s in service_whitelist][:self.MAX_SERVICES]
         else:
             if len(services) <= self.MAX_SERVICES:
-                self.debug('Consul service whitelist not defined. Agent will poll for all %d services found' % len(services))
+                self.log.debug('Consul service whitelist not defined. Agent will poll for all %d services found' % len(services))
             else:
-                self.debug('Consul service whitelist not defined. Agent will poll for at most %d services' % self.MAX_SERVICES)
+                self.log.debug('Consul service whitelist not defined. Agent will poll for at most %d services' % self.MAX_SERVICES)
                 services = list(islice(services.iterkeys(), 0, self.MAX_SERVICES))
 
         return services
