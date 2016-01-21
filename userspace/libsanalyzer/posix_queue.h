@@ -32,7 +32,7 @@ private:
 	mqd_t m_queue_d;
 	direction_t m_direction;
 	string m_name;
-	static const long MAX_MSGSIZE = 1 << 20; // 1 MiB
+	static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 	static const long MAX_QUEUES = 10;
 	static const long MAX_MSGS = 3;
 };

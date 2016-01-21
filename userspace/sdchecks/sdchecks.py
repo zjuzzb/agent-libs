@@ -252,7 +252,7 @@ class PosixQueueType:
     RECEIVE = 1
 
 class PosixQueue:
-    MSGSIZE = 1 << 20
+    MSGSIZE = 3 << 20
     MAXMSGS = 3
     MAXQUEUES = 10
     def __init__(self, name, direction, maxmsgs=MAXMSGS):
