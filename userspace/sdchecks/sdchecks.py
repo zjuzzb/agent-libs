@@ -50,13 +50,13 @@ class YamlConfig:
                 self._default_root = yaml.load(default_file.read())
         except Exception as ex:
             self._default_root = {}
-            logging.error("Cannot read config file dragent.default.yaml: %s" % ex.message)
+            logging.error("Cannot read config file dragent.default.yaml: %s" % ex)
         try:
             with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
                 self._root = yaml.load(custom_file.read())
         except Exception as ex:
             self._root = {}
-            logging.error("Cannot read config file dragent.yaml: %s" % ex.message)
+            logging.error("Cannot read config file dragent.yaml: %s" % ex)
 
     def get_merged_sequence(self, key, default=[]):
         ret = default
@@ -215,7 +215,7 @@ class AppCheckInstance:
                 ret = int(ret)
             return ret
         except Exception as ex:
-            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), ex.message))
+            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), ex))
 
 class Config:
     def __init__(self):
@@ -234,7 +234,7 @@ class Config:
                     app_check = AppCheck(c)
                     self.checks[app_check.name] = app_check
                 except (Exception, IOError) as ex:
-                    logging.error("Configuration error for check %s: %s", repr(c), ex.message)
+                    logging.error("Configuration error for check %s: %s", repr(c), ex)
 
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
@@ -275,7 +275,7 @@ class PosixQueue:
         except posix_ipc.BusyError:
             return False
         except ValueError as ex:
-            logging.error("Cannot send: %s, size=%dB" % (ex.message, len(msg)))
+            logging.error("Cannot send: %s, size=%dB" % (ex, len(msg)))
             return False
 
     def receive(self, timeout=1):
@@ -352,7 +352,7 @@ class Application:
                 try:
                     check_instance = AppCheckInstance(check_conf, p)
                 except AppCheckException as ex:
-                    logging.error("Exception on creating check %s: %s", check_conf.name, ex.message)
+                    logging.error("Exception on creating check %s: %s", check_conf.name, ex)
                     self.blacklisted_pids.add(pid)
                     continue
                 self.known_instances[pid] = check_instance
@@ -360,7 +360,7 @@ class Application:
             metrics, service_checks, ex = check_instance.run()
 
             if ex and pid not in self.blacklisted_pids:
-                logging.error("Exception on running check %s: %s", check_instance.name, ex.message)
+                logging.error("Exception on running check %s: %s", check_instance.name, ex)
                 self.blacklisted_pids.add(pid)
 
             expiration_ts = datetime.now() + check_instance.interval
