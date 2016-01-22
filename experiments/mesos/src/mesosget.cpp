@@ -68,10 +68,10 @@ int main(int argc, char** argv)
 	//print_proto(m, ip_addr);
 	while(true)
 	{
-		//print_proto(m, ip_addr);
+		print_proto(m, ip_addr);
 		m.refresh(false);
 		m.watch();
-		sleep(5);
+		sleep(1);
 	}
 
 	return 0;
