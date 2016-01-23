@@ -84,22 +84,30 @@ void mesos::refresh(bool marathon)
 
 bool mesos::is_alive() const
 {
-	bool connected = true;
-
-	connected &= m_state_http.is_connected();
+	if(!m_state_http.is_connected())
+	{
+		g_logger.log("Mesos state connection loss.", sinsp_logger::SEV_WARNING);
+		return false;
+	}
 	for(const auto& group : m_marathon_groups_http)
 	{
-		connected &= group.second->is_connected();
+		if(!group.second->is_connected())
+		{
+			g_logger.log("Marathon groups connection loss.", sinsp_logger::SEV_WARNING);
+			return false;
+		}
 	}
 
 	for(const auto& app : m_marathon_apps_http)
 	{
-		connected &= app.second->is_connected();
+		if(!app.second->is_connected())
+		{
+			g_logger.log("Marathon apps connection loss.", sinsp_logger::SEV_WARNING);
+			return false;
+		}
 	}
 
-	connected &= (m_collector.subscription_count() > 0);
-
-	return connected;
+	return m_collector.subscription_count() > 0;
 }
 
 void mesos::watch()

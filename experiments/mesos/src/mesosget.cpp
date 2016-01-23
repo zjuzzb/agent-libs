@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 	std::string ip_addr = "52.90.231.127";
 	std::vector<std::string> marathon_uris;
 	marathon_uris.push_back("http://" + ip_addr + ":8080");
-	mesos m("http://" + ip_addr + ":5050", "/master/state", 
+	mesos* m = new mesos("http://" + ip_addr + ":5050", "/master/state", 
 		marathon_uris,
 		mesos::default_groups_api,
 		mesos::default_apps_api,
@@ -68,10 +68,21 @@ int main(int argc, char** argv)
 	//print_proto(m, ip_addr);
 	while(true)
 	{
-		print_proto(m, ip_addr);
-		m.refresh(false);
-		m.watch();
-		sleep(1);
+		print_proto(*m, ip_addr);
+		if(!m->is_alive())
+		{
+			delete m;
+			m = 0;
+			m = new mesos("http://" + ip_addr + ":5050", "/master/state", 
+				marathon_uris,
+				mesos::default_groups_api,
+				mesos::default_apps_api,
+				mesos::default_watch_api);
+		}
+		m->refresh(false);
+		m->watch();
+		std::cout << "----------------------" << std::endl;
+		sleep(10);
 	}
 
 	return 0;

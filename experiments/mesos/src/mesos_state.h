@@ -87,7 +87,22 @@ public:
 
 	void add_task_to_app(marathon_group::app_ptr_t app, const std::string& task_id)
 	{
-		app->add_task(get_task(task_id), get_all_task_ids());
+		if(app)
+		{
+			mesos_framework::task_ptr_t pt = get_task(task_id);
+			if(pt)
+			{
+				app->add_task(pt, get_all_task_ids());
+			}
+			else
+			{
+				g_logger.log("Task [" + task_id + "] not added to app [" + app->get_id() + ']', sinsp_logger::SEV_INFO);
+			}
+		}
+		else
+		{
+			g_logger.log("Attempt to add task [" + task_id + "] to non-existing (null) app.", sinsp_logger::SEV_WARNING);
+		}
 	}
 
 	//
