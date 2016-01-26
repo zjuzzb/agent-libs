@@ -48,12 +48,15 @@ public:
 	node_t get_node_type() const;
 	const mesos_state_t& get_state() const;
 	bool is_alive() const;
-	void refresh(bool marathon = false);
-	void clear(bool marathon = false);
+	void refresh();
+	void clear_mesos();
 
 	bool has_marathon() const;
-	void watch();
+	void watch_marathon();
+	void clear_marathon();
 private:
+	void rebuild_mesos_state();
+	void rebuild_marathon_state();
 
 	void on_watch_data(const std::string& framework_id, mesos_event_data&& msg);
 	void parse_state(const std::string& json);
@@ -108,12 +111,17 @@ inline bool mesos::is_master() const
 
 inline bool mesos::has_marathon() const
 {
-	return m_marathon_watch_http.size() > 0;
+	return m_marathon_groups_http.size() || m_marathon_apps_http.size() || m_marathon_watch_http.size();
 }
 
-inline void mesos::clear(bool marathon)
+inline void mesos::clear_mesos()
 {
-	m_state.clear(marathon);
+	m_state.clear_mesos();
+}
+
+inline void mesos::clear_marathon()
+{
+	m_state.clear_marathon();
 }
 
 #endif // _WIN32

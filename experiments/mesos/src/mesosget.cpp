@@ -65,10 +65,9 @@ int main(int argc, char** argv)
 	//print_proto(m, ip_addr);
 
 	//m.refresh(true);
-	//print_proto(m, ip_addr);
+	print_proto(*m, ip_addr);
 	while(true)
 	{
-		print_proto(*m, ip_addr);
 		if(!m->is_alive())
 		{
 			delete m;
@@ -79,10 +78,12 @@ int main(int argc, char** argv)
 				mesos::default_apps_api,
 				mesos::default_watch_api);
 		}
-		m->refresh(false);
-		m->watch();
+		m->refresh();
+		print_proto(*m, ip_addr);
+		
+		//m->watch();
 		std::cout << "----------------------" << std::endl;
-		sleep(10);
+		sleep(3);
 	}
 
 	return 0;

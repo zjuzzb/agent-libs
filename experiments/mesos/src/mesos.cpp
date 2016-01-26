@@ -47,39 +47,52 @@ mesos::mesos(const std::string& state_uri,
 		m_marathon_groups_http[port] = std::make_shared<marathon_http>(*this, uri + groups_api, true);
 		m_marathon_apps_http[port]   = std::make_shared<marathon_http>(*this, uri + apps_api, true);
 		m_marathon_watch_http[port]  = std::make_shared<marathon_http>(*this, uri + watch_api, true);
-		m_dispatch[port]             = std::make_shared<marathon_dispatcher>(m_state, m_marathon_watch_http[port]->get_id());
+		m_collector.add(m_marathon_watch_http[port]);
+		m_dispatch[port] = std::make_shared<marathon_dispatcher>(m_state, m_marathon_watch_http[port]->get_id());
 	}
 
-	refresh(marathon_uris.size());
+	refresh();
 }
 
 mesos::~mesos()
 {
 }
 
-void mesos::refresh(bool marathon)
+void mesos::refresh()
 {
-	clear(marathon);
+	rebuild_mesos_state();
 
-	m_state_http.get_all_data(&mesos::parse_state);
-
-	if(marathon)
+	if(has_marathon())
 	{
-		for(auto& group_http : m_marathon_groups_http)
+		//TODO: optimize - rebuild only if there was marathon change
+		//      it should be enough to just uncomment these two lines
+		//watch_marathon();
+		//if(m_state.get_marathon_changed())
 		{
-			group_http.second->get_all_data(&mesos::parse_groups);
-		}
-
-		for(auto& app_http : m_marathon_apps_http)
-		{
-			app_http.second->get_all_data(&mesos::parse_apps);
-		}
-
-		for(auto watch_http : m_marathon_watch_http)
-		{
-			m_collector.add(watch_http.second);
+			rebuild_marathon_state();
 		}
 	}
+}
+
+void mesos::rebuild_mesos_state()
+{
+	clear_mesos();
+	m_state_http.get_all_data(&mesos::parse_state);
+}
+
+void mesos::rebuild_marathon_state()
+{
+	clear_marathon();
+	for(auto& group_http : m_marathon_groups_http)
+	{
+		group_http.second->get_all_data(&mesos::parse_groups);
+	}
+
+	for(auto& app_http : m_marathon_apps_http)
+	{
+		app_http.second->get_all_data(&mesos::parse_apps);
+	}
+	m_state.set_marathon_changed(false);
 }
 
 bool mesos::is_alive() const
@@ -110,18 +123,25 @@ bool mesos::is_alive() const
 	return m_collector.subscription_count() > 0;
 }
 
-void mesos::watch()
+void mesos::watch_marathon()
 {
-	if(m_marathon_watch_http.size())
+	if(has_marathon())
 	{
-		if(!m_collector.subscription_count())
+		if(m_marathon_watch_http.size())
 		{
-			for(auto watch_http : m_marathon_watch_http)
+			if(!m_collector.subscription_count())
 			{
-				m_collector.add(watch_http.second);
+				for(auto watch_http : m_marathon_watch_http)
+				{
+					m_collector.add(watch_http.second);
+				}
 			}
+			m_collector.get_data();
 		}
-		m_collector.get_data();
+	}
+	else
+	{
+		throw sinsp_exception("Attempt to watch non-existing Marathon framework.");
 	}
 }
 
