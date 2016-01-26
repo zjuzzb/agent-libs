@@ -27,7 +27,7 @@ mesos::mesos(const std::string& state_uri,
 	const uri_list_t& marathon_uris,
 	const std::string& groups_api,
 	const std::string& apps_api,
-	const std::string& watch_api): m_state_http(*this, state_uri + state_api),
+	const std::string& watch_api): m_state_http(new mesos_http(*this, state_uri + state_api)),
 		m_collector(false), m_creation_logged(false)
 {
 	for(const auto& uri : marathon_uris)
@@ -61,7 +61,7 @@ void mesos::refresh(bool marathon)
 {
 	clear(marathon);
 
-	m_state_http.get_all_data(&mesos::parse_state);
+	m_state_http->get_all_data(&mesos::parse_state);
 
 	if(marathon)
 	{
@@ -86,7 +86,7 @@ bool mesos::is_alive() const
 {
 	bool connected = true;
 
-	connected &= m_state_http.is_connected();
+	connected &= m_state_http->is_connected();
 	for(const auto& group : m_marathon_groups_http)
 	{
 		connected &= group.second->is_connected();
@@ -155,7 +155,7 @@ void mesos::add_task_labels(std::string& json)
 				{
 					if(!root["taskStatus"].isNull() && root["taskStatus"].isString() && root["taskStatus"].asString() == "TASK_RUNNING")
 					{
-						Json::Value labels = m_state_http.get_task_labels(root["taskId"].asString());
+						Json::Value labels = m_state_http->get_task_labels(root["taskId"].asString());
 						if(!labels.isNull() && labels.isArray())
 						{
 							root["labels"] = labels;

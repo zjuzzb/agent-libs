@@ -18,8 +18,8 @@
 #include <stdexcept>
 #include <unistd.h>
 
-marathon_http::marathon_http(mesos& m, const uri& url, bool framework_info): mesos_http(m, url),
-	m_watch_socket(-1)
+marathon_http::marathon_http(mesos& m, const uri& url, bool framework_info): mesos_http(m, url)/*,
+	m_watch_socket(-1)*/
 {
 	if(framework_info)
 	{
@@ -75,7 +75,7 @@ bool marathon_http::refresh_data()
 	
 	return true;
 }
-
+/*
 int marathon_http::wait(curl_socket_t sockfd, int for_recv, long timeout_ms)
 {
 	struct timeval tv;
@@ -155,7 +155,7 @@ int marathon_http::get_watch_socket(long timeout_ms)
 
 	return m_watch_socket;
 }
-
+*/
 bool marathon_http::on_data()
 {
 	size_t iolen = 0;

@@ -11,12 +11,14 @@
 #include "json/json.h"
 #include <ostream>
 #include <string>
+#include <memory>
 
 class mesos;
 
 class mesos_http
 {
 public:
+	typedef std::shared_ptr<mesos_http> ptr_t;
 	typedef void (mesos::*parse_func_t)(const std::string&);
 
 	mesos_http(mesos& m, const uri& url);
@@ -47,6 +49,8 @@ protected:
 	static void check_error(CURLcode res);
 	void cleanup();
 
+	int wait(/*curl_socket_t sockfd,*/ int for_recv, long timeout_ms);
+
 private:
 	static size_t write_data(void *ptr, size_t size, size_t nmemb, void *cb);
 
@@ -56,6 +60,7 @@ private:
 	std::string   m_credentials;
 	uri           m_url;
 	bool          m_connected;
+	curl_socket_t m_watch_socket;
 };
 
 inline bool mesos_http::is_connected() const

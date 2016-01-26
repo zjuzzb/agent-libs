@@ -3920,7 +3920,7 @@ void sinsp_analyzer::get_mesos_data()
 	time(&now);
 	if(difftime(now, last_mesos_refresh) > 30)
 	{
-		m_mesos->refresh(!m_mesos->has_marathon());
+		m_mesos->refresh(false);
 		last_mesos_refresh = now;
 	}
 

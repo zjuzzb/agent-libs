@@ -21,7 +21,8 @@ mesos_http::mesos_http(mesos& m, const uri& url):
 	m_curl(curl_easy_init()),
 	m_mesos(m),
 	m_url(url),
-	m_connected(true)
+	m_connected(true),
+	m_watch_socket(-1)
 {
 	if(!m_curl)
 	{
@@ -95,9 +96,86 @@ bool mesos_http::get_all_data(parse_func_t parse)
 	return res == CURLE_OK;
 }
 
-int mesos_http::get_watch_socket(long /*timeout_ms*/)
+int mesos_http::wait(/*curl_socket_t sockfd,*/ int for_recv, long timeout_ms)
 {
-	throw sinsp_exception("Mesos HTTP does not implement watch.");
+	curl_socket_t sockfd = get_watch_socket(timeout_ms);
+
+	struct timeval tv;
+	fd_set infd, outfd, errfd;
+	int res;
+
+	tv.tv_sec = timeout_ms / 1000;
+	tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+	FD_ZERO(&infd);
+	FD_ZERO(&outfd);
+	FD_ZERO(&errfd);
+
+	FD_SET(sockfd, &errfd);
+
+	if(for_recv)
+	{
+		FD_SET(sockfd, &infd);
+	}
+	else
+	{
+		FD_SET(sockfd, &outfd);
+	}
+
+	res = select(sockfd + 1, &infd, &outfd, &errfd, &tv);
+	return res;
+}
+
+int mesos_http::get_watch_socket(long timeout_ms)
+{
+	if(m_watch_socket < 0)
+	{
+		long sockextr;
+		size_t iolen;
+		std::string url = get_url().to_string();
+
+		check_error(curl_easy_setopt(get_curl(), CURLOPT_URL, url.c_str()));
+		check_error(curl_easy_setopt(get_curl(), CURLOPT_CONNECT_ONLY, 1L));
+
+		check_error(curl_easy_perform(get_curl()));
+
+		check_error(curl_easy_getinfo(get_curl(), CURLINFO_LASTSOCKET, &sockextr));
+		m_watch_socket = sockextr;
+
+		if(!wait(/*m_watch_socket,*/ 0, timeout_ms))
+		{
+			cleanup();
+			throw sinsp_exception("Error: timeout.");
+		}
+
+		std::ostringstream request;
+		std::string host_and_port = get_url().get_host();
+		int port = get_url().get_port();
+		if(port)
+		{
+			host_and_port.append(1, ':').append(std::to_string(port));
+		}
+		request << "GET " << get_url().get_path() << " HTTP/1.1\r\nHost: " << host_and_port << "\r\nAccept: text/event-stream\r\n";
+		if(!get_credentials().empty())
+		{
+			std::istringstream is(get_credentials());
+			std::ostringstream os;
+			base64::encoder().encode(is, os);
+			request << "Authorization: Basic " << os.str() << "\r\n";
+		}
+		request << "\r\n";
+		check_error(curl_easy_send(get_curl(), request.str().c_str(), request.str().size(), &iolen));
+		ASSERT (request.str().size() == iolen);
+		if(!wait(/*m_watch_socket,*/ 1, timeout_ms))
+		{
+			cleanup();
+			throw sinsp_exception("Error: timeout.");
+		}
+
+		g_logger.log(std::string("Collecting data from ") + url, sinsp_logger::SEV_DEBUG);
+	}
+
+	return m_watch_socket;
 }
 
 bool mesos_http::on_data()

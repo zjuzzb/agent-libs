@@ -77,7 +77,7 @@ private:
 	typedef std::unordered_map<int, marathon_dispatcher::ptr_t> marathon_disp_map;
 
 	node_t            m_node_type;
-	mesos_http        m_state_http;
+	mesos_http::ptr_t m_state_http;
 	marathon_http_map m_marathon_groups_http;
 	marathon_http_map m_marathon_apps_http;
 	marathon_http_map m_marathon_watch_http;

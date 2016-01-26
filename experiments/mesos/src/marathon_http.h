@@ -20,7 +20,7 @@ public:
 
 	~marathon_http();
 
-	int get_watch_socket(long timeout_ms);
+	//int get_watch_socket(long timeout_ms);
 
 	bool refresh_data();
 
@@ -33,9 +33,9 @@ public:
 private:
 	bool on_data();
 	void on_error(const std::string& err, bool disconnect);
-	int wait(curl_socket_t sockfd, int for_recv, long timeout_ms);
+	//int wait(curl_socket_t sockfd, int for_recv, long timeout_ms);
 
-	curl_socket_t m_watch_socket;
+	//curl_socket_t m_watch_socket;
 	std::string   m_data;
 	std::string   m_id;
 	std::string   m_name;
