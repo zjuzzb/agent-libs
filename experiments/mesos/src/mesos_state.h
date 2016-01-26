@@ -44,6 +44,7 @@ public:
 	// tasks
 	//
 
+	std::unordered_set<std::string> get_all_task_ids() const;
 	const mesos_framework::task_map& get_tasks(const std::string& framework_uid) const;
 
 	mesos_framework::task_map& get_tasks(const std::string& framework_uid);
@@ -71,7 +72,21 @@ public:
 	void emplace_slave(mesos_slave&& slave);
 
 	//
-	// apps
+	// Marathon
+	//
+
+	void set_marathon_changed(bool changed = true)
+	{
+		m_marathon_changed = changed;
+	}
+
+	bool get_marathon_changed() const
+	{
+		return m_marathon_changed;
+	}
+
+	//
+	// Marathon apps
 	//
 
 	void parse_apps(const std::string& json);
@@ -84,8 +99,28 @@ public:
 
 	bool remove_app(const std::string& id);
 
+	void add_task_to_app(marathon_group::app_ptr_t app, const std::string& task_id)
+	{
+		if(app)
+		{
+			mesos_framework::task_ptr_t pt = get_task(task_id);
+			if(pt)
+			{
+				app->add_task(pt, get_all_task_ids());
+			}
+			else
+			{
+				g_logger.log("Task [" + task_id + "] can not be obtained (null). Task not added to app [" + app->get_id() + ']', sinsp_logger::SEV_ERROR);
+			}
+		}
+		else
+		{
+			g_logger.log("Attempt to add task [" + task_id + "] to non-existing (null) app.", sinsp_logger::SEV_ERROR);
+		}
+	}
+
 	//
-	// groups
+	// Marathon groups
 	//
 
 	bool parse_groups(const std::string& json);
@@ -104,20 +139,23 @@ public:
 	// state
 	//
 
-	void clear(bool marathon = false);
+	void clear_mesos();
+	void clear_marathon();
 
 	void print_groups() const;
 
 private:
 	marathon_group::ptr_t add_group(const Json::Value& group, marathon_group::ptr_t to_group, const std::string& framework_id = "");
 	bool handle_groups(const Json::Value& groups, marathon_group::ptr_t p_groups, const std::string& framework_id = "");
-	marathon_app::ptr_t add_app(const Json::Value& app);
+	marathon_app::ptr_t add_app(const Json::Value& app, const std::string& framework_id = "");
 
 	mesos_frameworks m_frameworks;
 	mesos_slaves     m_slaves;
 	marathon_groups  m_groups;
 	bool             m_is_captured;
+	bool             m_marathon_changed;
 
+	std::unordered_multimap<std::string, std::string> m_marathon_task_cache;
 	friend class marathon_dispatcher;
 };
 
@@ -280,9 +318,13 @@ inline marathon_groups& mesos_state_t::get_groups()
 // state
 //
 
-inline void mesos_state_t::clear(bool marathon)
+inline void mesos_state_t::clear_mesos()
 {
 	m_frameworks.clear();
 	m_slaves.clear();
-	if(marathon) { m_groups.clear(); }
+}
+
+inline void mesos_state_t::clear_marathon()
+{
+	m_groups.clear();
 }
