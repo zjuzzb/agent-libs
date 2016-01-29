@@ -389,7 +389,7 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	//
 	// Calculate the value
 	//
-	uint64_t proc_jiffies = val1 + val2 + val3 + val4;
+	uint64_t proc_jiffies = val1 + val2;
 
 	if(*old_proc_jiffies != (uint64_t)-1LL)
 	{
