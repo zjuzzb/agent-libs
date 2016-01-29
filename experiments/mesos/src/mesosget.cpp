@@ -61,11 +61,28 @@ int main(int argc, char** argv)
 		mesos::default_groups_api,
 		mesos::default_apps_api,
 		mesos::default_watch_api);
+	
+	time_t last_mesos_refresh = 0;
 
+	while(true)
+	{
+		std::cout << "<<<<<< receiving ..." <<  std::endl;
+		m->collect_data();
+		time_t now;
+		time(&now);
+		if(difftime(now, last_mesos_refresh) > 10)
+		{
+			m->send_data_request();
+			last_mesos_refresh = now;
+		}
+		print_proto(*m, ip_addr);
+		sleep(1);
+	}
+/*
 	//print_proto(m, ip_addr);
 
 	//m.refresh(true);
-	print_proto(*m, ip_addr);
+	//print_proto(*m, ip_addr);
 	while(true)
 	{
 		if(!m->is_alive())
@@ -85,6 +102,6 @@ int main(int argc, char** argv)
 		std::cout << "----------------------" << std::endl;
 		sleep(3);
 	}
-
+*/
 	return 0;
 }
