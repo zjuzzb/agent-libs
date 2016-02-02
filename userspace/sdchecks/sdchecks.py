@@ -24,6 +24,7 @@ import posix_ipc
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
+CUSTOM_CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.custom.d"
 
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
@@ -90,10 +91,9 @@ class AppCheck:
             check_module_name = self.name
 
         try:
-            check_module = imp.load_source('checksd_%s' % self.name, os.path.join(CHECKS_DIRECTORY, check_module_name + ".py"))
-        except Exception:
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            raise AppCheckException('Unable to import check module %s.py from checks.d: %s' % (check_module_name, traceback_message))
+            check_module = self._load_check_module(self.name, check_module_name, CUSTOM_CHECKS_DIRECTORY)
+        except IOError:
+            check_module = self._load_check_module(self.name, check_module_name, CHECKS_DIRECTORY)
 
         # We make sure that there is an AgentCheck class defined
         check_class = None
@@ -114,6 +114,15 @@ class AppCheck:
 
     def __repr__(self):
         return "AppCheck(name=%s, conf=%s, check_class=%s" % (self.name, repr(self.conf), repr(self.check_class))
+
+    def _load_check_module(self, name, module_name, directory):
+        try:
+            return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
+        except IOError:
+            raise
+        except Exception:
+            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
+            raise AppCheckException('Unable to import check module %s.py from %s: %s' % (module_name, directory, traceback_message))
 
 class AppCheckInstance:
     try:
@@ -143,11 +152,12 @@ class AppCheckInstance:
         self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
+            mnt_ns_path = build_ns_path(self.pid, "mnt")
             try:
-                mntns_inode = os.stat(build_ns_path(self.pid, "mnt")).st_ino
+                mntns_inode = os.stat(mnt_ns_path).st_ino
                 self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
             except OSError as ex:
-                raise AppCheckException(repr(ex))
+                raise AppCheckException("stat file on %s: %s" % (mnt_ns_path, repr(ex)))
         else:
             self.is_on_another_container = False
 
@@ -183,8 +193,6 @@ class AppCheckInstance:
                     if ret != 0:
                         raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
             self.check_instance.check(self.instance_conf)
-        except OSError as ex: # Raised from os.open() or setns()
-            saved_ex = AppCheckException(repr(ex))
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
@@ -406,13 +414,14 @@ class Application:
                     "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
                     "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
                 }
+                logging.info("Run AppCheck for %s", proc_data)
                 check_conf = self.config.checks[proc_data["check"]]
                 check_instance = AppCheckInstance(check_conf, proc_data)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)
                 print "Metrics: %s" % repr(metrics)
                 print "Checks: %s" % repr(service_checks)
-                print "Exception: %s" % repr(ex)
+                print "Exception: %s" % ex
         else:
             # In this mode register our usr1 handler to print stack trace (useful for debugging)
             signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
