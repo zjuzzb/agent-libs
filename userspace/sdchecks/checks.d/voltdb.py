@@ -42,7 +42,7 @@ class VoltDB(AgentCheck):
         for data in response.tables[0].tuples:
             # [ _, _, hostname, _, _, proc_name, invocations, timed_invocations, min_time, max_time, avg_time, min_result_size, max_result_size, avg_result_size, min_param_set_size, max_param_set_size, avg_param_set_size, aborts, failures]
             tags = [
-                "procname=%s" % data[5],
+                "procedure:%s" % data[5],
             ]
             i = 6
             for m in ["invocations","timed_invocations","min_time",
@@ -56,10 +56,10 @@ class VoltDB(AgentCheck):
             # Data example:
             # [1454432474641, 0, u'46321180396e', 19, u'localhost', 0, 0, 0, 0]
             # [ _, _, hostname, connection_id, client_hostname, admin, outstanding_req_bytes, outstanding_res_msg, oustanding_tx]
-            tags = {
-                "client.admin": data[5],
-                "client.host": data[4]
-            }
+            tags = [
+                "client.admin:%s" % data[5],
+                "client.host:%s" % data[4]
+            ]
             self.gauge("voltdb.clients.outstanding_req_bytes", data[6], tags=tags)
             self.gauge("voltdb.clients.outstanding_res_msg", data[7], tags=tags)
             self.gauge("voltdb.clients.oustanding_tx", data[8], tags=tags)
