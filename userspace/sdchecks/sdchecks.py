@@ -129,6 +129,7 @@ class AppCheckInstance:
         MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
         MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
         MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+        MYUTS = os.open("%s/proc/self/ns/uts" % SYSDIG_HOST_ROOT, os.O_RDONLY)
         CONTAINER_SUPPORT = True
     except OSError:
         CONTAINER_SUPPORT = False
@@ -202,6 +203,7 @@ class AppCheckInstance:
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
+                setns(self.MYUTS)
             # We don't need them, but this method clears them so we avoid memory growing
             self.check_instance.get_events()
             self.check_instance.get_service_metadata()
