@@ -1,12 +1,7 @@
-# stdlib
-from array import *
-
-# 3rd party
-from utils.voltdbclient import FastSerializer
-from utils.voltdbclient import VoltProcedure
-
 # project
 from checks import AgentCheck
+from utils.voltdbclient import FastSerializer
+from utils.voltdbclient import VoltProcedure
 
 class VoltDB(AgentCheck):
     NEEDED_NS = ( 'net', )
@@ -44,12 +39,20 @@ class VoltDB(AgentCheck):
             tags = [
                 "procedure.name:%s" % data[5],
             ]
-            i = 6
-            for m in ["invocations","timed_invocations","min_time",
-                        "max_time","avg_time","min_result_size","max_result_size","avg_result_size",
-                        "min_param_set_size","max_param_set_size","avg_param_set_size","aborts","failures"]:
-                self.gauge("voltdb.procedures.%s" % m, data[i], tags=tags)
-                i += 1
+            self.gauge("voltdb.procedures.invocations", data[6], tags=tags)
+            self.gauge("voltdb.procedures.timed_invocations", data[7], tags=tags)
+            self.gauge("voltdb.procedures.min_time", data[8] / 1000000.0, tags=tags)
+            self.gauge("voltdb.procedures.max_time", data[9] / 1000000.0, tags=tags)
+            self.gauge("voltdb.procedures.avg_time", data[10] / 1000000.0, tags=tags)
+            self.gauge("voltdb.procedures.min_result_size", data[11], tags=tags)
+            self.gauge("voltdb.procedures.max_result_size", data[12], tags=tags)
+            self.gauge("voltdb.procedures.avg_result_size", data[13], tags=tags)
+            self.gauge("voltdb.procedures.min_param_set_size", data[14], tags=tags)
+            self.gauge("voltdb.procedures.max_param_set_size", data[15], tags=tags)
+            self.gauge("voltdb.procedures.avg_param_set_size", data[16], tags=tags)
+            self.gauge("voltdb.procedures.aborts", data[17], tags=tags)
+            self.gauge("voltdb.procedures.failures", data[18], tags=tags)
+
         response = proc.call(["LIVECLIENTS", 0])
 
         for data in response.tables[0].tuples:
