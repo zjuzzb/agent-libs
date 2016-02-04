@@ -36,7 +36,11 @@ class VoltDB(AgentCheck):
             self.gauge("voltdb.memory.string_mem", data[9] * 1024)
             self.gauge("voltdb.memory.tuple_count", data[10])
             self.gauge("voltdb.memory.pooled_mem", data[11] * 1024)
-
+        else:
+            # something went wrong if we don't have memory stats, so stop the check
+            self.log.debug("No memory stats data on VoltDB")
+            return
+            
         response = proc.call(["TABLE", 0])
 
         for data in response.tables[0].tuples:
