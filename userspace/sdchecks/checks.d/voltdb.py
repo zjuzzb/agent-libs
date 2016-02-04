@@ -65,6 +65,7 @@ class VoltDB(AgentCheck):
                 ]
                 self.gauge("voltdb.procedures.invocations", data[6], tags=tags)
                 self.gauge("voltdb.procedures.timed_invocations", data[7], tags=tags)
+                # Convert time from nanoseconds to milliseconds
                 self.gauge("voltdb.procedures.min_time", data[8] / 1000000.0, tags=tags)
                 self.gauge("voltdb.procedures.max_time", data[9] / 1000000.0, tags=tags)
                 self.gauge("voltdb.procedures.avg_time", data[10] / 1000000.0, tags=tags)
