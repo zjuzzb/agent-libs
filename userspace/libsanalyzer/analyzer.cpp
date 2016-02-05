@@ -1769,7 +1769,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(m_mounted_fs_proxy)
 		{
-			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
+			vector<sinsp_threadinfo*> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
 				sinsp_container_info container_info;
@@ -1782,13 +1782,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					});
 					if(long_running_proc != it->second.end())
 					{
-						containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
-															   (*long_running_proc)->m_vpid);
+						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}
 			}
-			// Add host
-			containers_for_mounted_fs.emplace_back("host", 1, 1);
 			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
 	}
@@ -4263,6 +4260,9 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		break;
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
+		break;
+	case CT_RKT:
+		container->set_type(draiosproto::RKT);
 		break;
 	default:
 		ASSERT(false);

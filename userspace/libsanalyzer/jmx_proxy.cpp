@@ -126,6 +126,7 @@ Json::Value java_process_request::to_json() const
 	Json::Value ret;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
+	ret["root"] = m_root;
 	return ret;
 }
 

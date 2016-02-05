@@ -356,11 +356,12 @@ enum container_type {
   DOCKER = 1,
   LXC = 2,
   LIBVIRT_LXC = 3,
-  MESOS = 4
+  MESOS = 4,
+  RKT = 5
 };
 bool container_type_IsValid(int value);
 const container_type container_type_MIN = DOCKER;
-const container_type container_type_MAX = MESOS;
+const container_type container_type_MAX = RKT;
 const int container_type_ARRAYSIZE = container_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* container_type_descriptor();

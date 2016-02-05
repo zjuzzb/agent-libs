@@ -76,25 +76,28 @@ public class MonitoredVM {
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
         String data = null;
-
-        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar") &&
-           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so")) {
-            String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-            String javaExe = String.format("/proc/%d/exe", request.getVpid());
-            data = CLibrary.runOnContainer(request.getPid(), javaExe, command);
+        final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
+        final String libsdjagentjniPath = String.format("%s/tmp/libsdjagentjni.so", request.getRoot());
+        LOGGER.fine(String.format("Copying sdjagent files to %s and %s", sdjagentPath, libsdjagentjniPath));
+        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath) &&
+           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), libsdjagentjniPath)) {
+            final String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+            // Using /proc/<pid>/exe because sometimes java command is not on PATH
+            final String javaExe = String.format("/proc/%d/exe", request.getVpid());
+            data = CLibrary.runOnContainer(request.getPid(), javaExe, command, request.getRoot());
         } else {
             // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
                     request.getVpid()));
         }
 
-        CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
-        CLibrary.rmFromContainer(request.getPid(), "/tmp/libsdjagentjni.so");
+        CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
+        CLibrary.rmFromContainer(request.getPid(), libsdjagentjniPath);
 
         if (data != null && !data.isEmpty())
         {
             try {
-                Map<String, Object> vmInfo = MAPPER.readValue(data, Map.class);
+                final Map<String, Object> vmInfo = MAPPER.readValue(data, Map.class);
                 if (vmInfo.containsKey("available")) {
                     this.available = (Boolean)vmInfo.get("available");
                     if (vmInfo.containsKey("name")) {
