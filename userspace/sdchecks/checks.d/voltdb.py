@@ -4,8 +4,6 @@ from utils.voltdbclient import FastSerializer
 from utils.voltdbclient import VoltProcedure
 
 class VoltDB(AgentCheck):
-    NEEDED_NS = ( 'net', )
-
     def __init__(self, name, init_config, agentConfig):
         AgentCheck.__init__(self, name, init_config, agentConfig)
         self.client = None

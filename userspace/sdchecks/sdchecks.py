@@ -158,7 +158,7 @@ class AppCheckInstance:
                 mntns_inode = os.stat(mnt_ns_path).st_ino
                 self.is_on_another_container = (mntns_inode != self.MYMNT_INODE)
             except OSError as ex:
-                raise AppCheckException("stat file on %s: %s" % (mnt_ns_path, repr(ex)))
+                raise AppCheckException("stat failed on %s: %s" % (mnt_ns_path, repr(ex)))
         else:
             self.is_on_another_container = False
 
