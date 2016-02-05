@@ -688,7 +688,12 @@ app_checks:
       comm: varnishd
     conf:
       varnishstat: /usr/bin/varnishstat
-
+  - name: voltdb
+    pattern:
+      comm: java
+      arg: org.voltdb.VoltDB
+    conf:
+      port: 21212
 #
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
