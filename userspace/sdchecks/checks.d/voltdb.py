@@ -25,7 +25,7 @@ class VoltDB(AgentCheck):
             # [1454432474642, 0, u'46321180396e', 1787244, 203993, 877374, 328060, 393216, 462324, 0, 19194016, 82047, 4028416, 1014528]
             # [_, _, hostname, rss, java_used, java_unused, tuple_data, tuple_allocated, index_mem, string_mem, tuple_count, pooled_mem]
             
-            # Assume this is the hostname of the monitored voltdb instance and look only for its data
+            # Assume this is the hostname of the monitored voltdb instance and add only its data
             hostname = data[2]
             self.gauge("voltdb.memory.rss", data[3] * 1024)
             self.gauge("voltdb.memory.java_used", data[4] * 1024)
@@ -40,7 +40,7 @@ class VoltDB(AgentCheck):
             # something went wrong if we don't have memory stats, so stop the check
             self.log.debug("No memory stats data on VoltDB")
             return
-            
+
         response = proc.call(["TABLE", 0])
 
         for data in response.tables[0].tuples:
@@ -53,9 +53,9 @@ class VoltDB(AgentCheck):
                     "table.name:%s" % data[5]
                 ]
                 self.gauge("voltdb.table.tuple_count", data[7], tags=tags)
-                self.gauge("voltdb.table.tuple_alloc_mem", data[8] * 1024, tags=tags)
-                self.gauge("voltdb.table.tuple_data_mem", data[9] * 1024, tags=tags)
-                self.gauge("voltdb.table.string_data_mem", data[10] * 1024, tags=tags)
+                self.gauge("voltdb.table.tuple_alloc_mem", (data[8] or 0) * 1024, tags=tags)
+                self.gauge("voltdb.table.tuple_data_mem", (data[9] or 0) * 1024, tags=tags)
+                self.gauge("voltdb.table.string_data_mem", (data[10] or 0) * 1024, tags=tags)
                 self.gauge("voltdb.table.tuple_limit", data[11] or 0, tags=tags)
                 self.gauge("voltdb.table.percent_full", data[12], tags=tags)
             
@@ -70,9 +70,9 @@ class VoltDB(AgentCheck):
                 self.gauge("voltdb.procedures.invocations", data[6], tags=tags)
                 self.gauge("voltdb.procedures.timed_invocations", data[7], tags=tags)
                 # Convert time from nanoseconds to milliseconds
-                self.gauge("voltdb.procedures.min_time", data[8] / 1000000.0, tags=tags)
-                self.gauge("voltdb.procedures.max_time", data[9] / 1000000.0, tags=tags)
-                self.gauge("voltdb.procedures.avg_time", data[10] / 1000000.0, tags=tags)
+                self.gauge("voltdb.procedures.min_time", (data[8] or 0) / 1000000.0, tags=tags)
+                self.gauge("voltdb.procedures.max_time", (data[9] or 0) / 1000000.0, tags=tags)
+                self.gauge("voltdb.procedures.avg_time", (data[10] or 0) / 1000000.0, tags=tags)
                 self.gauge("voltdb.procedures.min_result_size", data[11], tags=tags)
                 self.gauge("voltdb.procedures.max_result_size", data[12], tags=tags)
                 self.gauge("voltdb.procedures.avg_result_size", data[13], tags=tags)
