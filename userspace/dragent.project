@@ -99,8 +99,6 @@
     <File Name="libsanalyzer/draios.proto"/>
     <File Name="libsanalyzer/parser_tls.cpp"/>
     <File Name="libsanalyzer/parser_tls.h"/>
-    <File Name="libsanalyzer/uri.cpp"/>
-    <File Name="libsanalyzer/uri.h"/>
     <File Name="libsanalyzer/k8s_proto.cpp"/>
     <File Name="libsanalyzer/k8s_proto.h"/>
     <File Name="libsanalyzer/sdc_internal.pb.cc"/>

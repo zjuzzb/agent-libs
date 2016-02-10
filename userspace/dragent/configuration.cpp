@@ -374,10 +374,17 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Mesos state API server: " + m_mesos_state_uri);
 	}
-	for(const auto& marathon_uri : m_marathon_uris)
+	if(!m_marathon_uris.empty())
 	{
-		g_log->information("Marathon groups API server: " + marathon_uri);
-		g_log->information("Marathon apps API server: " + marathon_uri);
+		for(const auto& marathon_uri : m_marathon_uris)
+		{
+			g_log->information("Marathon groups API server: " + marathon_uri);
+			g_log->information("Marathon apps API server: " + marathon_uri);
+		}
+	}
+	else
+	{
+		g_log->information("Marathon API server not configured.");
 	}
 	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 }
