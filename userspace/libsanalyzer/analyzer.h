@@ -315,6 +315,11 @@ public:
 
 	void set_fs_usage_from_external_proc(bool value);
 
+	void set_mesos_failover_discovery(bool discover)
+	{
+		m_mesos_failover_discovery = discover;
+	}
+
 VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -508,10 +513,11 @@ VISIBILITY_PRIVATE
 
 	k8s* m_k8s;
 	static bool m_k8s_bad_config;
-	static bool m_mesos_bad_config;
 	static bool m_k8s_ssl_initialized;
 
 	mesos* m_mesos;
+	static bool m_mesos_bad_config;
+	bool m_mesos_failover_discovery = false;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

@@ -843,7 +843,7 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 					marathon_uris,
 					mesos::default_groups_api,
 					mesos::default_apps_api,
-					mesos::default_watch_api);
+					m_mesos_failover_discovery);
 			}
 		}
 	}
@@ -1288,6 +1288,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						vector<string> marathon_uris = m_configuration->get_marathon_uris();
 						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
 						mesos_not_present = false;
+						m_mesos_failover_discovery = true;
+						g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
 					}
 				}
 			}
@@ -3908,14 +3910,21 @@ void sinsp_analyzer::get_mesos_data()
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
 	}
-	ASSERT(m_metrics);
-	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-/*
-	if(m_metrics->has_mesos())
+	if(m_mesos->get_state().has_data())
 	{
-		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
-	}
+		ASSERT(m_metrics);
+		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+/*
+		if(m_metrics->has_mesos())
+		{
+			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+		}
 */
+	}
+	else
+	{
+		throw sinsp_exception("Mesos state empty (will retry later).");
+	}
 }
 
 void sinsp_analyzer::emit_mesos()

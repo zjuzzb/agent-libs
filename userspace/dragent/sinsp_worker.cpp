@@ -114,6 +114,7 @@ void sinsp_worker::init()
 	if(!m_configuration->m_mesos_state_uri.empty())
 	{
 		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
+		m_analyzer->set_mesos_failover_discovery(false);
 	}
 	// marathon
 	if(!m_configuration->m_marathon_uris.empty())
