@@ -352,6 +352,7 @@ public:
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
 	bool m_mesos_autodetect;
+	bool m_enable_coredump;
 
 	bool java_present()
 	{
