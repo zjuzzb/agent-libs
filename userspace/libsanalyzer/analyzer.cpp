@@ -855,9 +855,8 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 	try
 	{
 		URI url(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
-		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 5000);
 		std::unique_ptr<HTTPClientSession> session = 0;
-		std::string json;
 		if(url.getScheme() == "https")
 		{
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
@@ -891,14 +890,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 		*/}
 		else
 		{
-			try
-			{
-				session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
-			}
-			catch (TimeoutException&)
-			{ g_logger.log("Mesos connection timed out.", sinsp_logger::SEV_ERROR); }
-			catch (ConnectionRefusedException&)
-			{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+			session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
 		}
 		session->setTimeout(ts);
 		HTTPRequest request(HTTPRequest::HTTP_GET, mesos::default_state_api);
@@ -915,9 +907,16 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 		std::istream& rs = session->receiveResponse(response);
 		std::ostringstream os;
 		StreamCopier::copyStream(rs, os);
-		json = std::move(os.str());
-		return make_mesos(std::move(json));
+		return make_mesos(os.str());
 	}
+	catch (TimeoutException&)
+	{ g_logger.log("Mesos connection attempt timed out.", sinsp_logger::SEV_ERROR); }
+	catch (ConnectionRefusedException&)
+	{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+	catch (NetException& exc)
+	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
+	catch (Exception& exc)
+	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
 	catch (std::exception& exc)
 	{
 		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
