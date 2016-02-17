@@ -12,9 +12,6 @@ import java.util.logging.Logger;
 public class JvmstatVM {
     private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
     private final MonitoredVm vm;
-    //private static Set<Integer> cachedActiveVMs = new HashSet<Integer>();
-    //private static final long activeVMRefreshInterval = 60 * 1000;
-    //private static long lastActiveVMRefresh = 0;
 
     public JvmstatVM(int pid) throws MonitorException {
         VmIdentifier vmId;
@@ -62,24 +59,6 @@ public class JvmstatVM {
     public String getMainClass() throws MonitorException {
         return MonitoredVmUtil.mainClass(vm, true);
     }
-
-    /*
-    public static Set<Integer> getActiveVMs() {
-        if(System.currentTimeMillis() - lastActiveVMRefresh > activeVMRefreshInterval) {
-            cachedActiveVMs.clear();
-            try {
-                String hostname = null;
-                MonitoredHost localHost = MonitoredHost.getMonitoredHost(new HostIdentifier(hostname));
-                cachedActiveVMs = localHost.activeVms();
-            } catch (URISyntaxException ex) {
-                LOGGER.warning("URISyntaxException on JvmstatVM: " + ex.getMessage());
-            } catch (MonitorException ex) {
-                LOGGER.warning("MonitorException on JvmstatVM: " + ex.getMessage());
-            }
-            lastActiveVMRefresh = System.currentTimeMillis();
-        }
-        return cachedActiveVMs;
-    }*/
 
     public String getJMXAddress() throws MonitorException {
         String address = findByName("sun.management.JMXConnectorServer.address");
