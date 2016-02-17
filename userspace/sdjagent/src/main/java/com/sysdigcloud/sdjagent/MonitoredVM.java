@@ -65,14 +65,15 @@ public class MonitoredVM {
         }
 
         isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
-        retrieveVMInfoFromArgs(request);
-        if(this.available == false) {
-            LOGGER.fine("Cannot configure JMX address from args, trying Jvmstat..");
-            if (isOnAnotherContainer) {
-                retrieveVmInfoFromContainer(request);
-            } else {
-                retrieveVMInfoFromHost(request);
-            }
+        if (isOnAnotherContainer) {
+            retrieveVmInfoFromContainer(request);
+        } else {
+            retrieveVMInfoFromHost(request);
+        }
+        if(!this.available) {
+            // This way is faster but it's more error prone
+            // so keep it as last chance
+            retrieveVMInfoFromArgs(request);
         }
 
         connect();
