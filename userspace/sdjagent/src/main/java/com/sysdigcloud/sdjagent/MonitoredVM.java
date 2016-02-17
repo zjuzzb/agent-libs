@@ -65,10 +65,14 @@ public class MonitoredVM {
         }
 
         isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
-        if (isOnAnotherContainer) {
-            retrieveVmInfoFromContainer(request);
-        } else {
-            retrieveVMInfoFromHost(request);
+        retrieveVMInfoFromArgs(request);
+        if(this.available == false) {
+            LOGGER.fine("Cannot configure JMX address from args, trying Jvmstat..");
+            if (isOnAnotherContainer) {
+                retrieveVmInfoFromContainer(request);
+            } else {
+                retrieveVMInfoFromHost(request);
+            }
         }
 
         connect();
@@ -175,6 +179,26 @@ public class MonitoredVM {
             } else {
                 LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
             }
+        }
+    }
+
+    private void retrieveVMInfoFromArgs(VMRequest request) {
+        int port = -1;
+        String hostname = "localhost";
+        boolean authenticate = false;
+        for(String arg : request.getArgs()) {
+            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
+            } else if (arg.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
+                authenticate = true;
+            } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
+                hostname = arg.substring(arg.indexOf("=") + 1);
+            }
+        }
+        if (port != -1 && authenticate == false) {
+            this.name = "java";
+            this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
+            this.available = true;
         }
     }
 

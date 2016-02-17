@@ -3,6 +3,9 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by luca on 17/06/15.
  */
@@ -12,10 +15,12 @@ public class VMRequest {
     @JsonCreator
     VMRequest(@JsonProperty("pid") int pid,
               @JsonProperty("vpid") int vpid,
-              @JsonProperty("root") String root) {
+              @JsonProperty("root") String root,
+              @JsonProperty("args") List<String> args) {
         this.pid = pid;
         this.vpid = vpid;
         this.root = root;
+        this.args = args;
     }
 
     public VMRequest(String[] args) {
@@ -31,6 +36,7 @@ public class VMRequest {
             this.vpid = this.pid;
             this.root = "/";
         }
+        this.args = new ArrayList<String>();
     }
 
     public int getPid() {
@@ -45,7 +51,12 @@ public class VMRequest {
         return root;
     }
 
+    public List<String> getArgs() {
+        return args;
+    }
+
     private final int pid;
     private final int vpid;
     private final String root;
+    private final List<String> args;
 }

@@ -78,6 +78,8 @@ public class JvmstatVM {
             }
         }
         // Try to get address from JVM args
+        // We now do this parsing args from dragent, so this code can be removed in the future
+        // by the way it does not hurt
         if (address == null)
         {
             String jvmArgs = getJvmArgs();
