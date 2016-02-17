@@ -193,10 +193,14 @@ public class MonitoredVM {
                 authenticate = true;
             } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
                 hostname = arg.substring(arg.indexOf("=") + 1);
+            } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
             }
         }
         if (port != -1 && authenticate == false) {
-            this.name = "java";
+            if(request.getArgs().length > 0) {
+                this.name = request.getArgs()[request.getArgs().length-1];
+            }
             this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
             this.available = true;
         }

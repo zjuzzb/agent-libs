@@ -127,9 +127,25 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	ret["pid"] = static_cast<Json::Value::Int64>(tinfo->m_pid);
 	ret["vpid"] = static_cast<Json::Value::Int64>(tinfo->m_vpid);
 	ret["root"] = tinfo->m_root;
+
+	// Serializing all args leds very big Json > 4kb, so try to
+	// do a gross filtering and let sdjagent parse them
+	// otherwise we can move the whole parsing here
 	Json::Value args_json(Json::arrayValue);
 	for(const auto& arg : tinfo->m_args) {
-		args_json.append(arg);
+		// Do a gross filtering of args
+		if(arg.find("jmxremote") != string::npos || arg.find("jmx") != string::npos)
+		{
+			args_json.append(arg);
+		}
+	}
+	// Last non empty arg is usually the main class
+	for(auto it = tinfo->m_args.rbegin(); it != tinfo->m_args.rend(); ++it)
+	{
+		if(!it->empty()) {
+			args_json.append(*it);
+			break;
+		}
 	}
 	ret["args"] = args_json;
 	return ret;
