@@ -218,13 +218,13 @@ public class Application {
                             vm.addQueries(config.getValue().getQueries());
                             break;
                         }
-                        /*for(String arg : request.getArgs()) {
+                        for(String arg : request.getArgs()) {
                             if (arg.contains(config.getValue().getPattern())) {
                                 vm.setName(config.getKey());
                                 vm.addQueries(config.getValue().getQueries());
                                 break;
                             }
-                        }*/
+                        }
                     }
                 }
 
