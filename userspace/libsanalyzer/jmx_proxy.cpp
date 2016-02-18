@@ -134,7 +134,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	Json::Value args_json(Json::arrayValue);
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
-		if(arg.find("jmx") != string::npos)
+		if(arg.find("jmx") != string::npos && arg.size() < 100)
 		{
 			args_json.append(arg);
 		}
