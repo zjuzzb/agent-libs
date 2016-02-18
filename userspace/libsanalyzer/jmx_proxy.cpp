@@ -121,24 +121,45 @@ jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
 {
 }
 
-Json::Value java_process_request::to_json() const
+Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 {
 	Json::Value ret;
-	ret["pid"] = m_pid;
-	ret["vpid"] = m_vpid;
-	ret["root"] = m_root;
+	ret["pid"] = static_cast<Json::Value::Int64>(tinfo->m_pid);
+	ret["vpid"] = static_cast<Json::Value::Int64>(tinfo->m_vpid);
+	ret["root"] = tinfo->m_root;
+
+	// Serializing all args leds very big Json > 4kb, so try to
+	// do a gross filtering and let sdjagent parse them
+	// otherwise we can move the whole parsing here
+	Json::Value args_json(Json::arrayValue);
+	for(const auto& arg : tinfo->m_args) {
+		// Do a gross filtering of args
+		if(arg.find("jmx") != string::npos && arg.size() < 100)
+		{
+			args_json.append(arg);
+		}
+	}
+	// Last non empty arg is usually the main class
+	for(auto it = tinfo->m_args.rbegin(); it != tinfo->m_args.rend(); ++it)
+	{
+		if(!it->empty() && it->find('.') != string::npos) {
+			args_json.append(*it);
+			break;
+		}
+	}
+	ret["args"] = args_json;
 	return ret;
 }
 
-void jmx_proxy::send_get_metrics(uint64_t id, const vector<java_process_request>& processes)
+void jmx_proxy::send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& processes)
 {
 	Json::Value command_obj;
 	command_obj["id"] = Json::UInt64(id);
 	command_obj["command"] = "getMetrics";
 	Json::Value body(Json::arrayValue);
-	for(const auto& process : processes)
+	for(auto tinfo : processes)
 	{
-		body.append(process.to_json());
+		body.append(tinfo_to_json(tinfo));
 	}
 	command_obj["body"] = body;
 	string command_data = m_json_writer.write(command_obj);

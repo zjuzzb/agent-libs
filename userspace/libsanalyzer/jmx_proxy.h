@@ -67,29 +67,12 @@ private:
 	friend class jmx_proxy;
 };
 
-class java_process_request
-{
-public:
-	explicit java_process_request(sinsp_threadinfo* tinfo):
-		m_pid(tinfo->m_pid),
-		m_vpid(tinfo->m_vpid),
-		m_root(tinfo->m_root)
-	{
-
-	}
-	inline Json::Value to_json() const;
-private:
-	int m_pid;
-	int m_vpid;
-	string m_root;
-};
-
 class jmx_proxy
 {
 public:
 	jmx_proxy(const std::pair<FILE*, FILE*>& fds);
 
-	void send_get_metrics(uint64_t id, const vector<java_process_request>& processes);
+	void send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& processes);
 
 	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
 
@@ -97,6 +80,7 @@ public:
 	// JSON on stdout, does not change object behaviour
 	bool m_print_json;
 private:
+	static Json::Value tinfo_to_json(sinsp_threadinfo* tinfo);
 	// Input and output of the subprocess
 	// so we'll write on input and read from
 	// output

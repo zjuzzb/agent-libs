@@ -89,6 +89,7 @@ public class JvmstatVM {
                 if (token.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
                     port = Integer.parseInt(token.substring(token.indexOf("=") + 1)); // NOI18N
                 } else if (token.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
+                    LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", vm.getVmIdentifier().getLocalVmId()));
                     authenticate = true;
                 }
             }

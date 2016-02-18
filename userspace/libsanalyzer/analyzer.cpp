@@ -1102,7 +1102,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(TOP_PROCESSES_IN_SAMPLE, prog_hasher, prog_cmp);
 	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
 #ifndef _WIN32
-	vector<java_process_request> java_process_requests;
+	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = APP_METRICS_LIMIT;
 

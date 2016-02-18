@@ -70,6 +70,11 @@ public class MonitoredVM {
         } else {
             retrieveVMInfoFromHost(request);
         }
+        if(!this.available) {
+            // This way is faster but it's more error prone
+            // so keep it as last chance
+            retrieveVMInfoFromArgs(request);
+        }
 
         connect();
     }
@@ -178,6 +183,33 @@ public class MonitoredVM {
         }
     }
 
+    private void retrieveVMInfoFromArgs(VMRequest request) {
+        int port = -1;
+        String hostname = "localhost";
+        boolean authenticate = false;
+        for(String arg : request.getArgs()) {
+            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
+            } else if (arg.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
+                LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", request.getPid()));
+                authenticate = true;
+            } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
+                hostname = arg.substring(arg.indexOf("=") + 1);
+            } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
+            }
+        }
+        if (port != -1 && authenticate == false) {
+            // Assume the last arg is the main class, gross assumption but
+            // we don't have better ways at this point
+            if(request.getArgs().length > 0) {
+                this.name = request.getArgs()[request.getArgs().length-1];
+            }
+            this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
+            this.available = true;
+        }
+    }
+
     public boolean isAvailable() {
         return available;
     }
@@ -262,7 +294,7 @@ public class MonitoredVM {
     }
 
     public List<BeanData> getMetrics() {
-        final List<BeanData> metrics = new LinkedList<BeanData>();
+        final List<BeanData> metrics = new ArrayList<BeanData>();
         if (agentActive) {
             try {
                 if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
