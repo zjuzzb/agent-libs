@@ -294,7 +294,7 @@ public class MonitoredVM {
     }
 
     public List<BeanData> getMetrics() {
-        final List<BeanData> metrics = new LinkedList<BeanData>();
+        final List<BeanData> metrics = new ArrayList<BeanData>();
         if (agentActive) {
             try {
                 if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
