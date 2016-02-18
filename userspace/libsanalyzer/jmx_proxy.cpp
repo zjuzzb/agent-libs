@@ -134,7 +134,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	Json::Value args_json(Json::arrayValue);
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
-		if(arg.find("jmxremote") != string::npos || arg.find("jmx") != string::npos)
+		if(arg.find("jmx") != string::npos)
 		{
 			args_json.append(arg);
 		}
@@ -142,7 +142,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// Last non empty arg is usually the main class
 	for(auto it = tinfo->m_args.rbegin(); it != tinfo->m_args.rend(); ++it)
 	{
-		if(!it->empty()) {
+		if(!it->empty() && it->find('.') != string::npos) {
 			args_json.append(*it);
 			break;
 		}
