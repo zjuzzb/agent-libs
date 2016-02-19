@@ -627,7 +627,8 @@ void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
 	{
 		try
 		{
-			job_state->m_filter = new sinsp_filter(m_inspector, request.m_filter);
+			sinsp_filter_compiler compiler(m_inspector, request.m_filter);
+			job_state->m_filter = compiler.compile();
 		}
 		catch(sinsp_exception& e)
 		{
