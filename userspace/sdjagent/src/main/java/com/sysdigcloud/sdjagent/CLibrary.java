@@ -166,9 +166,9 @@ final public class CLibrary {
         }
     }
 
-    public static String runOnContainer(int pid, String exe, String[] command) {
+    public static String runOnContainer(int pid, String exe, String[] command, String root) {
         if (libraryLoaded) {
-            return realRunOnContainer(pid, exe, command);
+            return realRunOnContainer(pid, exe, command, root);
         } else {
             return "";
         }
@@ -205,7 +205,7 @@ final public class CLibrary {
     private static native int open_fd(String path);
     private static native int close_fd(int fd);
     private static native int realCopyToContainer(String source, int pid, String destination);
-    private static native String realRunOnContainer(int pid, String exe, String[] command);
+    private static native String realRunOnContainer(int pid, String exe, String[] command, String root);
     private static native int realRmFromContainer(int pid, String filepath);
     private static native long getInodeOfFile(String path);
 

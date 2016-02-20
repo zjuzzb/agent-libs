@@ -8,7 +8,6 @@
 
 #include "mesos_common.h"
 #include <map>
-#include <atomic>
 #include <memory>
 
 class mesos_http;
@@ -33,13 +32,16 @@ public:
 	void stop();
 
 	bool is_active() const;
+	bool is_healthy(int expected_count) const;
+
+	bool has(std::shared_ptr<mesos_http> handler);
+	bool remove(std::shared_ptr<mesos_http> handler);
 
 private:
 	void clear();
-	void remove(socket_map_t::iterator it);
+	socket_map_t::iterator& remove(socket_map_t::iterator& it);
 
 	socket_map_t     m_sockets;
-	std::atomic<int> m_subscription_count;
 	fd_set           m_infd;
 	fd_set           m_errfd;
 	int              m_nfds;

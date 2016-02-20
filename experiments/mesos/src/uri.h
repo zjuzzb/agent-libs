@@ -37,8 +37,9 @@ public:
 	void set_port(int port);
 
 	bool is_secure() const;
+	std::string get_credentials() const;
 
-	std::string to_string() const;
+	std::string to_string(bool show_creds = true) const;
 
 private:
 	std::string tail_chunk(std::string& subject, std::string delimiter, bool keep_delim = false);
@@ -153,4 +154,14 @@ inline std::string uri::extract_auth(std::string& str)
 inline bool uri::is_secure() const
 {
 	return "https" == m_scheme;
+}
+
+inline std::string uri::get_credentials() const
+{
+	std::string creds;
+	if(!m_user.empty())
+	{
+		creds.append(m_user).append(1, ':').append(m_password);
+	}
+	return creds;
 }

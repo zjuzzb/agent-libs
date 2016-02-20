@@ -70,31 +70,39 @@ public class MonitoredVM {
         } else {
             retrieveVMInfoFromHost(request);
         }
+        if(!this.available) {
+            // This way is faster but it's more error prone
+            // so keep it as last chance
+            retrieveVMInfoFromArgs(request);
+        }
 
         connect();
     }
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
         String data = null;
-
-        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), "/tmp/sdjagent.jar") &&
-           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), "/tmp/libsdjagentjni.so")) {
-            String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-            String javaExe = String.format("/proc/%d/exe", request.getVpid());
-            data = CLibrary.runOnContainer(request.getPid(), javaExe, command);
+        final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
+        final String libsdjagentjniPath = String.format("%s/tmp/libsdjagentjni.so", request.getRoot());
+        LOGGER.fine(String.format("Copying sdjagent files to %s and %s", sdjagentPath, libsdjagentjniPath));
+        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath) &&
+           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), libsdjagentjniPath)) {
+            final String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+            // Using /proc/<pid>/exe because sometimes java command is not on PATH
+            final String javaExe = String.format("/proc/%d/exe", request.getVpid());
+            data = CLibrary.runOnContainer(request.getPid(), javaExe, command, request.getRoot());
         } else {
             // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
                     request.getVpid()));
         }
 
-        CLibrary.rmFromContainer(request.getPid(), "/tmp/sdjagent.jar");
-        CLibrary.rmFromContainer(request.getPid(), "/tmp/libsdjagentjni.so");
+        CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
+        CLibrary.rmFromContainer(request.getPid(), libsdjagentjniPath);
 
         if (data != null && !data.isEmpty())
         {
             try {
-                Map<String, Object> vmInfo = MAPPER.readValue(data, Map.class);
+                final Map<String, Object> vmInfo = MAPPER.readValue(data, Map.class);
                 if (vmInfo.containsKey("available")) {
                     this.available = (Boolean)vmInfo.get("available");
                     if (vmInfo.containsKey("name")) {
@@ -172,6 +180,33 @@ public class MonitoredVM {
             } else {
                 LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
             }
+        }
+    }
+
+    private void retrieveVMInfoFromArgs(VMRequest request) {
+        int port = -1;
+        String hostname = "localhost";
+        boolean authenticate = false;
+        for(String arg : request.getArgs()) {
+            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
+            } else if (arg.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
+                LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", request.getPid()));
+                authenticate = true;
+            } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
+                hostname = arg.substring(arg.indexOf("=") + 1);
+            } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
+                port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
+            }
+        }
+        if (port != -1 && authenticate == false) {
+            // Assume the last arg is the main class, gross assumption but
+            // we don't have better ways at this point
+            if(request.getArgs().length > 0) {
+                this.name = request.getArgs()[request.getArgs().length-1];
+            }
+            this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
+            this.available = true;
         }
     }
 
@@ -259,7 +294,7 @@ public class MonitoredVM {
     }
 
     public List<BeanData> getMetrics() {
-        final List<BeanData> metrics = new LinkedList<BeanData>();
+        final List<BeanData> metrics = new ArrayList<BeanData>();
         if (agentActive) {
             try {
                 if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {

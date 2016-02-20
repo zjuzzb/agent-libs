@@ -21,11 +21,12 @@ public:
 		const std::string& host_and_port = "localhost:80",
 		const std::string& protocol = "http",
 		const std::string& credentials = "",
-		const std::string& api = "/api/v1");
+		const std::string& api = "/api/v1",
+		const std::string& cert = "");
 
 	~k8s_http();
 
-	bool get_all_data(std::ostream& os);
+	bool get_all_data(std::ostream& os, long timeout_ms = 5000L);
 
 	int get_watch_socket(long timeout_ms);
 
@@ -50,6 +51,7 @@ private:
 	std::string   m_api;
 	std::string   m_component;
 	std::string   m_credentials;
+	std::string   m_cert;
 	std::string   m_url;
 	curl_socket_t m_watch_socket;
 	bool          m_data_ready;

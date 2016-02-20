@@ -210,7 +210,7 @@ public:
 	{
 		if(m_is_captured)
 		{
-			m_capture_events.emplace_back(Json::FastWriter().write(item));
+			m_capture_events.emplace_back(Json::FastWriter().write(extract_capture_data(item)));
 		}
 	}
 	std::string dequeue_capture_event()
@@ -230,6 +230,8 @@ public:
 private:
 
 	void update_cache(const k8s_component::component_map::key_type& component);
+	static k8s_component::type component_from_json(const Json::Value& item);
+	static Json::Value extract_capture_data(const Json::Value& item);
 
 #ifdef K8S_DISABLE_THREAD
 
@@ -268,13 +270,20 @@ private:
 	{
 		ASSERT(pod);
 		ASSERT(!pod->get_name().empty());
-		std::string::size_type pos = id.find(m_prefix);
+		std::string::size_type pos = id.find(m_docker_prefix);
 		if (pos == 0)
 		{
-			map[id.substr(m_prefix.size(), m_id_length)] = pod;
+			map[id.substr(m_docker_prefix.size(), m_id_length)] = pod;
 			return;
 		}
-		throw sinsp_exception("Invalid container ID (expected '" + m_prefix + "{ID}'): " + id);
+		pos = id.find(m_rkt_prefix);
+		if( pos == 0)
+		{
+			map[id.substr(m_rkt_prefix.size())] = pod;
+			return;
+		}
+		throw sinsp_exception("Invalid container ID (expected '" + m_docker_prefix +
+							  "{ID}' or '" + m_rkt_prefix + "{ID}'): " + id);
 	}
 
 	template<typename C>
@@ -301,7 +310,8 @@ private:
 	pod_service_map& get_pod_service_map() { return m_pod_services; }
 	pod_rc_map& get_pod_rc_map() { return m_pod_rcs; }
 
-	static const std::string m_prefix; // "docker://"
+	static const std::string m_docker_prefix; // "docker://"
+	static const std::string m_rkt_prefix; // "rkt://"
 	static const unsigned    m_id_length; // portion of the ID to be cached (=12)
 	namespace_map            m_namespace_map;
 	container_pod_map        m_container_pods;

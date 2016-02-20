@@ -322,7 +322,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 }
 
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
-		(JNIEnv* env, jclass, jint pid, jstring command, jobjectArray commandArgs)
+		(JNIEnv* env, jclass, jint pid, jstring command, jobjectArray commandArgs, jstring root)
 {
 	timed_waitpid wait_pid;
 
@@ -366,6 +366,8 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		command_args_c[j++] = arg.c_str();
 	}
 	command_args_c[j++] = NULL;
+
+	java_string root_s(env, root);
 
 	setns(pidnsfd.fd(), CLONE_NEWPID);
 	pid_t child = fork();
@@ -417,6 +419,16 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(mntnsfd.fd(), CLONE_NEWNS);
 		setns(usernsfd.fd(), CLONE_NEWUSER);
 
+		if(strncmp(root_s.c_str(), "/", 2) != 0)
+		{
+			auto ret = chroot(root_s.c_str());
+			if(ret != 0)
+			{
+				cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot chroot inside container, errno: " << strerror(errno) <<"\" }" << endl;
+				exit(1);
+			}
+			chdir("/");
+		}
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 		cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent inside container, errno: " << strerror(errno) <<"\" }" << endl;
 		exit(1);

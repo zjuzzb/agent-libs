@@ -58,6 +58,7 @@ dragent_configuration::dragent_configuration()
 	m_statsd_limit = 100;
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
+	m_enable_coredump = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -282,6 +283,8 @@ void dragent_configuration::init(Application* app)
 	}
 	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
 
+	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
+
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = nsfile.exists();
@@ -300,6 +303,7 @@ void dragent_configuration::print_configuration()
 		g_log->critical(item);
 	}
 	g_log->information("Distribution: " + get_distribution());
+	g_log->information("machine id: " + m_machine_id);
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("conffile: " + m_conf_file);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
@@ -374,12 +378,20 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Mesos state API server: " + m_mesos_state_uri);
 	}
-	for(const auto& marathon_uri : m_marathon_uris)
+	if(!m_marathon_uris.empty())
 	{
-		g_log->information("Marathon groups API server: " + marathon_uri);
-		g_log->information("Marathon apps API server: " + marathon_uri);
+		for(const auto& marathon_uri : m_marathon_uris)
+		{
+			g_log->information("Marathon groups API server: " + marathon_uri);
+			g_log->information("Marathon apps API server: " + marathon_uri);
+		}
+	}
+	else
+	{
+		g_log->information("Marathon API server not configured.");
 	}
 	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
+	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 }
 
 void dragent_configuration::refresh_aws_metadata()

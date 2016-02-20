@@ -22,9 +22,15 @@ marathon_component::marathon_component(type t, const std::string& id) :
 	m_type(t),
 	m_id(id)
 {
+	component_map::const_iterator it = list.find(t);
+	if(it == list.end())
+	{
+		throw sinsp_exception("Invalid Marathon component type: " + std::to_string(t));
+	}
+
 	if(m_id.empty())
 	{
-		throw sinsp_exception("component name cannot be empty");
+		throw sinsp_exception("Marathon " + it->second + " ID cannot be empty");
 	}
 }
 
@@ -94,54 +100,75 @@ marathon_app::~marathon_app()
 {
 }
 
-void marathon_app::add_task(const std::string& ptask)
+void marathon_app::add_task(mesos_framework::task_ptr_t ptask)
 {
-	for(auto& task : m_tasks)
+	if(ptask)
 	{
-		if(task == ptask) { return; }
+		const std::string& task_id = ptask->get_uid();
+		ptask->set_marathon_app_id(get_id());
+		for(auto& task : m_tasks)
+		{
+			if(task == task_id) { return; }
+		}
+		m_tasks.push_back(task_id);
 	}
-	m_tasks.push_back(ptask);
+	else
+	{
+		g_logger.log("Attempt to add null task to app [" + get_id() + ']', sinsp_logger::SEV_WARNING);
+	}
 }
 
-void marathon_app::remove_task(const std::string& ptask)
+bool marathon_app::remove_task(const std::string& task_id)
 {
-	for(auto& task : m_tasks)
+	for(auto it = m_tasks.begin(); it != m_tasks.end(); ++it)
 	{
-		if(task == ptask)
+		if(task_id == *it)
 		{
-			return;
+			m_tasks.erase(it);
+			return true;
 		}
 	}
+	g_logger.log("Task [" + task_id + "] not found in app [" + get_id() + ']', sinsp_logger::SEV_WARNING);
+	return false;
+}
+
+std::string marathon_app::get_group_id() const
+{
+	return get_group_id(get_id());
+}
+
+std::string marathon_app::get_group_id(const std::string& app_id)
+{
+	std::string group_id;
+	std::string::size_type pos = app_id.rfind('/');
+	if(pos != std::string::npos && app_id.length() > pos)
+	{
+		pos += (pos == 0) ? 1 : 0;
+		group_id = app_id.substr(0, pos);
+	}
+	return group_id;
 }
 
 //
 // group
 //
 
-marathon_group::marathon_group(const std::string& id) :
-	marathon_component(marathon_component::MARATHON_GROUP, id)
+marathon_group::marathon_group(const std::string& id, const std::string& framework_id) :
+	marathon_component(marathon_component::MARATHON_GROUP, id),
+	m_framework_id(framework_id)
 {
 }
 
-marathon_group::marathon_group(const marathon_group& other): marathon_component(other),
-	std::enable_shared_from_this<marathon_group>()
+marathon_group::app_ptr_t marathon_group::get_app(const std::string& id)
 {
-}
-
-marathon_group::marathon_group(marathon_group&& other): marathon_component(std::move(other))
-{
-}
-
-marathon_group& marathon_group::operator=(const marathon_group& other)
-{
-	marathon_component::operator =(other);
-	return *this;
-}
-
-marathon_group& marathon_group::operator=(const marathon_group&& other)
-{
-	marathon_component::operator =(std::move(other));
-	return *this;
+	for(const auto& app : m_apps)
+	{
+		if(app.second && app.second->get_id() == id)
+		{
+			return app.second;
+		}
+	}
+	return 0;
 }
 
 marathon_group::ptr_t marathon_group::get_group(const std::string& group_id)
@@ -211,6 +238,29 @@ bool marathon_group::remove_group(const std::string& id)
 	{
 		m_groups.erase(it);
 		return true;
+	}
+	return false;
+}
+
+bool marathon_group::remove_app(const std::string& id)
+{
+	auto it = m_apps.find(id);
+	if(it != m_apps.end())
+	{
+		m_apps.erase(it);
+		return true;
+	}
+	return false;
+}
+
+bool marathon_group::remove_task(const std::string& id)
+{
+	for(auto& app : m_apps)
+	{
+		if(app.second && app.second->remove_task(id))
+		{
+			return true;
+		}
 	}
 	return false;
 }

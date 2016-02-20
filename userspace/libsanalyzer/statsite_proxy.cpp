@@ -318,16 +318,13 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 
 void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
-	char sendbuf[2048];
-	memcpy(&sendbuf, buf, len);
-	if(sendbuf[len-1] != '\n')
+	//string buf_p(buf, len);
+	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", buf_p.c_str());
+	fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
+	if(buf[len-1] != '\n')
 	{
-		sendbuf[len] = '\n';
-		++len;
+		fputc_unlocked('\n', m_input_fd);
 	}
-	//sendbuf[len] = '\0';
-	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", sendbuf);
-	fwrite_unlocked(&sendbuf, sizeof(char), len, m_input_fd);
 	fflush_unlocked(m_input_fd);
 }
 

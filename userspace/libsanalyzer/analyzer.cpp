@@ -827,22 +827,15 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 				string mesos_state = m_configuration->get_mesos_state_uri();
 				vector<string> marathon_uris = m_configuration->get_marathon_uris();
 
-				if(marathon_uris.empty())
-				{
-					marathon_uris = { mesos::default_marathon_uri };
-					m_configuration->set_marathon_uris(marathon_uris);
-				}
-
 				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
 					sinsp_logger::SEV_INFO);
-				g_logger.log("Mesos state: [" + mesos_state + mesos::default_state_api + ']',
+				g_logger.log("Mesos state: [" + uri(mesos_state + mesos::default_state_api).to_string(false) + ']',
 					sinsp_logger::SEV_INFO);
 				for(const auto& marathon_uri : marathon_uris)
 				{
-					g_logger.log("Mesos (Marathon) groups: [" + marathon_uri + mesos::default_groups_api + ']',
+					g_logger.log("Mesos (Marathon) groups: [" + uri(marathon_uri + mesos::default_groups_api).to_string(false) + ']',
 						sinsp_logger::SEV_INFO);
-
-					g_logger.log("Mesos (Marathon) apps: [" + marathon_uri + mesos::default_apps_api + ']',
+					g_logger.log("Mesos (Marathon) apps: [" + uri(marathon_uri + mesos::default_apps_api).to_string(false) + ']',
 						sinsp_logger::SEV_INFO);
 				}
 
@@ -850,7 +843,7 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 					marathon_uris,
 					mesos::default_groups_api,
 					mesos::default_apps_api,
-					mesos::default_watch_api);
+					m_mesos_failover_discovery);
 			}
 		}
 	}
@@ -861,11 +854,10 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
 	try
 	{
-		URI uri(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
-		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
+		URI url(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
+		Timespan ts(m_configuration->get_k8s_timeout_ms() * 5000);
 		std::unique_ptr<HTTPClientSession> session = 0;
-		std::string json;
-		if(uri.getScheme() == "https")
+		if(url.getScheme() == "https")
 		{
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
 			m_mesos_bad_config = true;
@@ -876,7 +868,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 				init_k8s_ssl();
 				try
 				{
-					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
+					session.reset(new HTTPSClientSession(url.getHost(), url.getPort()));
 				}
 				catch (TimeoutException&)
 				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
@@ -898,33 +890,33 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 		*/}
 		else
 		{
-			try
-			{
-				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
-			}
-			catch (TimeoutException&)
-			{ g_logger.log("Mesos connection timed out.", sinsp_logger::SEV_ERROR); }
-			catch (ConnectionRefusedException&)
-			{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+			session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
 		}
 		session->setTimeout(ts);
 		HTTPRequest request(HTTPRequest::HTTP_GET, mesos::default_state_api);
 		std::string user, pwd;
-		HTTPCredentials::extractCredentials(uri, user, pwd);
+		HTTPCredentials::extractCredentials(url, user, pwd);
 		if(!user.empty())
 		{
 			HTTPBasicCredentials cred(user, pwd);
 			cred.authenticate(request);
 		}
-		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log("Connecting to " + uri(url.toString()).to_string(false), sinsp_logger::SEV_DEBUG);
 		session->sendRequest(request);
 		HTTPResponse response;
 		std::istream& rs = session->receiveResponse(response);
 		std::ostringstream os;
 		StreamCopier::copyStream(rs, os);
-		json = std::move(os.str());
-		return make_mesos(std::move(json));
+		return make_mesos(os.str());
 	}
+	catch (TimeoutException&)
+	{ g_logger.log("Mesos connection attempt timed out.", sinsp_logger::SEV_ERROR); }
+	catch (ConnectionRefusedException&)
+	{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
+	catch (NetException& exc)
+	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
+	catch (Exception& exc)
+	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
 	catch (std::exception& exc)
 	{
 		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
@@ -949,7 +941,7 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 			{
 				if(ver.asString() == "v1")
 				{
-					g_logger.log("Kubernetes v1 API server found at " + k8s_api,
+					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 #ifdef K8S_DISABLE_THREAD
 					return new k8s(k8s_api, true, false);
@@ -1011,18 +1003,18 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 {
 	try
 	{
-		URI uri(k8s_api + "/api");
+		URI url(k8s_api + "/api");
 		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
 		std::unique_ptr<HTTPClientSession> session = 0;
 		std::string json;
-		if(uri.getScheme() == "https")
+		if(url.getScheme() == "https")
 		{
 			try
 			{
 				init_k8s_ssl();
 				try
 				{
-					session.reset(new HTTPSClientSession(uri.getHost(), uri.getPort()));
+					session.reset(new HTTPSClientSession(url.getHost(), url.getPort()));
 				}
 				catch (TimeoutException&)
 				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
@@ -1046,7 +1038,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		{
 			try
 			{
-				session.reset(new HTTPClientSession(uri.getHost(), uri.getPort()));
+				session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
 			}
 			catch (TimeoutException&)
 			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
@@ -1056,13 +1048,13 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		session->setTimeout(ts);
 		HTTPRequest request(HTTPRequest::HTTP_GET, "/api");
 		std::string user, pwd;
-		HTTPCredentials::extractCredentials(uri, user, pwd);
+		HTTPCredentials::extractCredentials(url, user, pwd);
 		if(!user.empty())
 		{
 			HTTPBasicCredentials cred(user, pwd);
 			cred.authenticate(request);
 		}
-		g_logger.log("Connecting to " + uri.toString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log("Connecting to " + uri(k8s_api + "/api").to_string(false), sinsp_logger::SEV_DEBUG);
 		session->sendRequest(request);
 		HTTPResponse response;
 		std::istream& rs = session->receiveResponse(response);
@@ -1110,7 +1102,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(TOP_PROCESSES_IN_SAMPLE, prog_hasher, prog_cmp);
 	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
 #ifndef _WIN32
-	vector<java_process_request> java_process_requests;
+	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = APP_METRICS_LIMIT;
 
@@ -1292,10 +1284,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						mesos_api_server = mesos::default_state_uri;
 						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
 						m_configuration->set_mesos_state_uri(mesos_api_server);
-						vector<string> marathon_uris = { mesos::default_marathon_uri };
-						m_configuration->set_marathon_uris(marathon_uris);
-						g_logger.log("Mesos API server set to: " + mesos_api_server + "(Marathon: " + marathon_uris[0] + ')', sinsp_logger::SEV_INFO);
+						vector<string> marathon_uris = m_configuration->get_marathon_uris();
+						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
 						mesos_not_present = false;
+						m_mesos_failover_discovery = true;
+						g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
 					}
 				}
 			}
@@ -1769,7 +1762,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		if(m_mounted_fs_proxy)
 		{
-			vector<tuple<string, pid_t, pid_t>> containers_for_mounted_fs;
+			vector<sinsp_threadinfo*> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
 				sinsp_container_info container_info;
@@ -1782,13 +1775,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					});
 					if(long_running_proc != it->second.end())
 					{
-						containers_for_mounted_fs.emplace_back(it->first, (*long_running_proc)->m_pid,
-															   (*long_running_proc)->m_vpid);
+						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}
 			}
-			// Add host
-			containers_for_mounted_fs.emplace_back("host", 1, 1);
 			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 		}
 	}
@@ -3824,10 +3814,10 @@ void sinsp_analyzer::get_k8s_data()
 	}
 	ASSERT(m_metrics);
 	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-	//if(m_metrics->has_kubernetes())
-	//{
-	//	g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
-	//}
+	/*if(m_metrics->has_kubernetes())
+	{
+		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+	}*/
 }
 
 void sinsp_analyzer::emit_k8s()
@@ -3908,33 +3898,32 @@ void sinsp_analyzer::get_mesos_data()
 {
 	static time_t last_mesos_refresh = 0;
 	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
-	time_t now;
-	time(&now);
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
-	if(m_mesos->has_marathon())
+	time_t now;
+	time(&now);
+	m_mesos->collect_data();
+	if(difftime(now, last_mesos_refresh) > 10)
 	{
-		m_mesos->watch();
+		m_mesos->send_data_request();
+		last_mesos_refresh = now;
+	}
+	if(m_mesos->get_state().has_data())
+	{
+		ASSERT(m_metrics);
+		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
+/*
+		if(m_metrics->has_mesos())
+		{
+			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+		}
+*/
 	}
 	else
 	{
-		time_t now;
-		time(&now);
-		if(difftime(now, last_mesos_refresh) > 30)
-		{
-			m_mesos->refresh();
-			last_mesos_refresh = now;
-		}
+		throw sinsp_exception("Mesos state empty (will retry later).");
 	}
-	ASSERT(m_metrics);
-	mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-/*
-	if(m_metrics->has_mesos())
-	{
-		g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
-	}
-*/
 }
 
 void sinsp_analyzer::emit_mesos()
@@ -3949,8 +3938,10 @@ void sinsp_analyzer::emit_mesos()
 	//      local machine, uris will be automatically set to:
 	//
 	//      mesos state:     "http://localhost:5050/state.json"
-	//      marathon groups: "http://localhost:8080/v2/groups";
-	//      marathon uri:    "http://localhost:8080/v2/apps?embed=apps.tasks";
+	//      marathon groups: will be discovered automatically from mesos master state
+	//                       (eg. "http://localhost:8080/v2/groups")
+	//      marathon uri:    will be discovered automatically from mesos master state
+	//                       (eg. "http://localhost:8080/v2/apps?embed=apps.tasks")
 	//
 	// so, at runtime, mesos_state_uri being empty or not determines whether mesos data
 	// will be collected and emitted; the connection to mesos api server is entirely managed
@@ -4272,6 +4263,9 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
 		break;
+	case CT_RKT:
+		container->set_type(draiosproto::RKT);
+		break;
 	default:
 		ASSERT(false);
 	}
@@ -4387,7 +4381,8 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
-		while(!m_statsd_metrics.empty() && m_statsd_metrics.at("").at(0).timestamp() < look_for_ts)
+		while(m_statsd_metrics.find("") != m_statsd_metrics.end() &&
+				m_statsd_metrics.at("").at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}

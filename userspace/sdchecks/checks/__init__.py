@@ -26,7 +26,6 @@ import yaml
 from checks import check_status
 from util import get_hostname, get_next_id, LaconicFilter, yLoader
 from utils.platform import Platform
-from utils.profile import pretty_statistics
 if Platform.is_windows():
     from utils.debug import run_check  # noqa - windows debug purpose
 
@@ -769,14 +768,6 @@ class AgentCheck(object):
                 self._roll_up_instance_metadata()
 
             instance_statuses.append(instance_status)
-
-        if self.in_developer_mode and self.name != AGENT_METRICS_CHECK_NAME:
-            try:
-                after = AgentCheck._collect_internal_stats()
-                self._set_internal_profiling_stats(before, after)
-                log.info("\n \t %s %s" % (self.name, pretty_statistics(self._internal_profiling_stats)))
-            except Exception:  # It's fine if we can't collect stats for the run, just log and proceed
-                self.log.debug("Failed to collect Agent Stats after check {0}".format(self.name))
 
         return instance_statuses
 

@@ -14,6 +14,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 
 typedef std::pair<std::string, std::string> marathon_pair_t;
@@ -76,18 +77,13 @@ public:
 	typedef std::unordered_map<std::string, std::shared_ptr<marathon_app>> app_map_t;
 	typedef std::map<std::string, std::shared_ptr<marathon_group>> group_map_t;
 
-	marathon_group(const std::string& id);
+	marathon_group(const std::string& id, const std::string& framework_id);
 
-	marathon_group(const marathon_group& other);
-
-	marathon_group(marathon_group&& other);
-
-	marathon_group& operator=(const marathon_group& other);
-
-	marathon_group& operator=(const marathon_group&& other);
+	app_ptr_t get_app(const std::string& id);
 
 	void add_or_replace_app(std::shared_ptr<marathon_app>);
-	void remove_app(const std::string& id);
+	bool remove_app(const std::string& id);
+	bool remove_task(const std::string& id);
 
 	void add_or_replace_group(std::shared_ptr<marathon_group>);
 
@@ -98,6 +94,9 @@ public:
 	bool remove(const std::string& id);
 
 	void print() const;
+
+	const std::string& get_framework_id() const;
+	void set_framework_id(const std::string& id);
 
 private:
 
@@ -115,6 +114,7 @@ private:
 
 	app_map_t   m_apps;
 	group_map_t m_groups;
+	std::string m_framework_id;
 };
 
 //
@@ -130,13 +130,20 @@ public:
 	marathon_app(const std::string& uid);
 	~marathon_app();
 
-	void add_task(const std::string& ptask);
-	void remove_task(const std::string& ptask);
+	void add_task(mesos_framework::task_ptr_t ptask);
+	bool remove_task(const std::string& task);
 	const task_list_t& get_tasks() const;
+
+	std::string get_group_id() const;
+	static std::string get_group_id(const std::string& app_id);
+
+	void clear_cache();
 
 private:
 	task_list_t m_tasks;
+	friend class mesos;
 };
+
 
 typedef marathon_group::app_map_t marathon_apps;
 typedef marathon_group::group_map_t marathon_groups;
@@ -160,11 +167,6 @@ inline void marathon_component::set_id(const std::string& id)
 // group
 //
 
-inline void marathon_group::remove_app(const std::string& id)
-{
-	m_apps.erase(id);
-}
-
 inline const marathon_group::app_map_t& marathon_group::get_apps() const
 {
 	return m_apps;
@@ -185,6 +187,16 @@ inline void marathon_group::add_or_replace_app(std::shared_ptr<marathon_app> app
 	add_or_replace_component(m_apps, app);
 }
 
+inline const std::string& marathon_group::get_framework_id() const
+{
+	return m_framework_id;
+}
+
+inline void marathon_group::set_framework_id(const std::string& id)
+{
+	m_framework_id = id;
+}
+
 //
 // app
 //
@@ -193,4 +205,3 @@ inline const marathon_app::task_list_t& marathon_app::get_tasks() const
 {
 	return m_tasks;
 }
-

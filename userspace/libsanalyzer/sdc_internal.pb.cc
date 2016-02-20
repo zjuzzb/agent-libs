@@ -74,10 +74,11 @@ void protobuf_AssignDesc_sdc_5finternal_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(mounted_fs_response));
   container_info_descriptor_ = file->message_type(2);
-  static const int container_info_offsets_[3] = {
+  static const int container_info_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container_info, id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container_info, pid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container_info, vpid_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(container_info, root_),
   };
   container_info_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -153,10 +154,10 @@ void protobuf_AddDesc_sdc_5finternal_2eproto() {
     "r_id\030\001 \002(\t\022\'\n\006mounts\030\002 \003(\0132\027.draiosproto"
     ".mounted_fs\"I\n\023mounted_fs_response\0222\n\nco"
     "ntainers\030\001 \003(\0132\036.sdc_internal.container_"
-    "mounts\"7\n\016container_info\022\n\n\002id\030\001 \002(\t\022\013\n\003"
-    "pid\030\002 \002(\004\022\014\n\004vpid\030\003 \002(\004\"F\n\022mounted_fs_re"
-    "quest\0220\n\ncontainers\030\001 \003(\0132\034.sdc_internal"
-    ".container_infoB\002H\001X\000", 341);
+    "mounts\"E\n\016container_info\022\n\n\002id\030\001 \002(\t\022\013\n\003"
+    "pid\030\002 \002(\004\022\014\n\004vpid\030\003 \002(\004\022\014\n\004root\030\004 \002(\t\"F\n"
+    "\022mounted_fs_request\0220\n\ncontainers\030\001 \003(\0132"
+    "\034.sdc_internal.container_infoB\002H\001X\000", 355);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "sdc_internal.proto", &protobuf_RegisterTypes);
   container_mounts::default_instance_ = new container_mounts();
@@ -658,6 +659,7 @@ void mounted_fs_response::Swap(mounted_fs_response* other) {
 const int container_info::kIdFieldNumber;
 const int container_info::kPidFieldNumber;
 const int container_info::kVpidFieldNumber;
+const int container_info::kRootFieldNumber;
 #endif  // !_MSC_VER
 
 container_info::container_info()
@@ -679,6 +681,7 @@ void container_info::SharedCtor() {
   id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   pid_ = GOOGLE_ULONGLONG(0);
   vpid_ = GOOGLE_ULONGLONG(0);
+  root_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -689,6 +692,9 @@ container_info::~container_info() {
 void container_info::SharedDtor() {
   if (id_ != &::google::protobuf::internal::kEmptyString) {
     delete id_;
+  }
+  if (root_ != &::google::protobuf::internal::kEmptyString) {
+    delete root_;
   }
   if (this != default_instance_) {
   }
@@ -724,6 +730,11 @@ void container_info::Clear() {
     }
     pid_ = GOOGLE_ULONGLONG(0);
     vpid_ = GOOGLE_ULONGLONG(0);
+    if (has_root()) {
+      if (root_ != &::google::protobuf::internal::kEmptyString) {
+        root_->clear();
+      }
+    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -779,6 +790,23 @@ bool container_info::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(34)) goto parse_root;
+        break;
+      }
+
+      // required string root = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_root:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_root()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->root().data(), this->root().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -820,6 +848,15 @@ void container_info::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->vpid(), output);
   }
 
+  // required string root = 4;
+  if (has_root()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->root().data(), this->root().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      4, this->root(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -846,6 +883,16 @@ void container_info::SerializeWithCachedSizes(
   // required uint64 vpid = 3;
   if (has_vpid()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(3, this->vpid(), target);
+  }
+
+  // required string root = 4;
+  if (has_root()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->root().data(), this->root().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        4, this->root(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -878,6 +925,13 @@ int container_info::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->vpid());
+    }
+
+    // required string root = 4;
+    if (has_root()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->root());
     }
 
   }
@@ -916,6 +970,9 @@ void container_info::MergeFrom(const container_info& from) {
     if (from.has_vpid()) {
       set_vpid(from.vpid());
     }
+    if (from.has_root()) {
+      set_root(from.root());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -933,7 +990,7 @@ void container_info::CopyFrom(const container_info& from) {
 }
 
 bool container_info::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
 
   return true;
 }
@@ -943,6 +1000,7 @@ void container_info::Swap(container_info* other) {
     std::swap(id_, other->id_);
     std::swap(pid_, other->pid_);
     std::swap(vpid_, other->vpid_);
+    std::swap(root_, other->root_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

@@ -389,7 +389,7 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	//
 	// Calculate the value
 	//
-	uint64_t proc_jiffies = val1 + val2 + val3 + val4;
+	uint64_t proc_jiffies = val1 + val2;
 
 	if(*old_proc_jiffies != (uint64_t)-1LL)
 	{
@@ -512,7 +512,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			g_logger.log("error getting details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_ERROR);
+			g_logger.log("unable to get details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_DEBUG);
 			continue;
 		}
 
@@ -779,16 +779,32 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 	return fs_map;
 }
 
-bool mounted_fs_proxy::send_container_list(const vector<tuple<string, pid_t, pid_t>> &containers)
+bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &containers)
 {
 	sdc_internal::mounted_fs_request req;
 	for(const auto& item : containers)
 	{
+		// Safety check, it should never happen
+		if(item->m_root.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Process root of pid %ld is empty, skipping ", item->m_pid);
+			continue;
+		}
+
 		auto container = req.add_containers();
-		container->set_id(get<0>(item));
-		container->set_pid(get<1>(item));
-		container->set_vpid(get<2>(item));
+		container->set_id(item->m_container_id);
+		container->set_pid(item->m_pid);
+		container->set_vpid(item->m_vpid);
+		container->set_root(item->m_root);
 	}
+
+	// Add host
+	auto host = req.add_containers();
+	host->set_id("host");
+	host->set_pid(1U);
+	host->set_vpid(1U);
+	host->set_root("/");
+
 	auto req_s = req.SerializeAsString();
 	return m_output.send(req_s);
 }
@@ -866,6 +882,7 @@ int mounted_fs_reader::run()
 			{
 				sdc_internal::mounted_fs_response response_proto;
 				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
+				// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
 				for(const auto& container_proto : request_proto.containers())
 				{
 					// Go to container mnt ns
@@ -874,6 +891,15 @@ int mounted_fs_reader::run()
 					{
 						try
 						{
+							if(container_proto.root() != "/")
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
+								auto res = chroot(container_proto.root().c_str());
+								if(res != 0)
+								{
+									throw sinsp_exception(string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
+								}
+							}
 							char filename[SCAP_MAX_PATH_SIZE];
 							// Use mtab if it's not a symlink to /proc/self/mounts
 							// Because when entering a mount namespace, we don't have
@@ -898,7 +924,7 @@ int mounted_fs_reader::run()
 						}
 						catch (const sinsp_exception& ex)
 						{
-							g_logger.format(sinsp_logger::SEV_ERROR, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
+							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
 						}
 					}
 					// Back home
