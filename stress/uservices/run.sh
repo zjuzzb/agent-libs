@@ -8,7 +8,7 @@ function stop() {
 
 function start() {
 	docker run -d --name=srvc_node6 -e ROLE=node -e NAME=srvc_node6 -e CPU_OPS=10000 -e NC=0 us
-	docker run -d --name=srvc_node4 -e ROLE=node -e NAME=srvc_node4 -e CPU_OPS=15000 -e IO_OPS=1000 -e NC=0 us
+	docker run -d --name=srvc_node4 -e ROLE=node -e NAME=srvc_node4 -e CPU_OPS=1500000 -e IO_OPS=1000 -e NC=0 us
 	docker run -d --name=srvc_node3 -e ROLE=node -e NAME=srvc_node3 -e IO_OPS=1000 -e NC=0 us
 	docker run -d --name=srvc_node2 --link srvc_node4:srvc_next0 --link srvc_node3:srvc_next1 --link srvc_node6:srvc_next2 -e ROLE=node -e NAME=srvc_node2 -e NC=3 us
 	docker run -d --name=srvc_node5 --link srvc_node4:srvc_next0 --link srvc_node3:srvc_next1 -e ROLE=node -e NAME=srvc_node5 -e NC=2 us

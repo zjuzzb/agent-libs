@@ -110,8 +110,8 @@ try:
         #    log("error: cannot open usapp.cfg for reading")
         #    sys.exit(0)
 
-        #while True:
-        for x in range(0, 10):
+        while True:
+        #for x in range(0, 10):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
@@ -140,7 +140,6 @@ try:
                     mark(">:%d:%s:n=%d:" % (reqid, tags[j], reqid))
                     log("Sending request to " + chnames[j])
 
-                    log("warn: ciao")
                     payload = "%d:%s" % (reqid, tags[j])
                     s.send(payload)
 
@@ -264,21 +263,3 @@ try:
 
 except Exception as e:
     log("error: " + str(e))
-
-'''
-print os.environ['NEXT']
-time.sleep(30)
-sys.exit(0)
-
-BASE_ADDR = ("127.0.0.1", 45600)
-
-if len(sys.argv) != 2 and len(sys.argv) != 3:
-    print "wrong number of arguments"
-    sys.exit(0)
-
-depth = int(sys.argv[1])
-
-print "EEE %d" % depth
-#subprocess.Popen("python /home/loris/agent/stress/uservices/us.py", shell=False)
-execfile("us.py", {1: "44"})
-'''
