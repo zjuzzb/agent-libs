@@ -780,16 +780,33 @@ public:
 		m_tid = -1;
 	}
 
+	uint64_t read_utime()
+	{
+		struct rusage ru;
+		getrusage(RUSAGE_THREAD, &ru);
+		return ru.ru_utime.tv_sec*1000000 + ru.ru_utime.tv_usec;
+	}
+
 	void run()
 	{
 		uint64_t k = 0;
 		uint64_t t = 0;
 		m_tid = syscall(SYS_gettid);
 
+		m_prevutime = read_utime();
+
 		while(true)
 		{
 			t += k;
 			t = t % 35689;
+
+			if(m_read_cpu)
+			{
+				auto utime = read_utime();
+				m_utime_delta = utime - m_prevutime;
+				m_prevutime = utime;
+				m_read_cpu = false;
+			}
 
 			if(m_die)
 			{
@@ -803,7 +820,11 @@ public:
 		return m_tid;
 	}
 
+
+	uint64_t m_prevutime;
+	uint64_t m_utime_delta;
 	volatile bool m_die;
+	volatile bool m_read_cpu;
 	int64_t m_tid;
 };
 
@@ -1053,7 +1074,8 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					uint64_t delta = tcpu - lastcpu;
 
-					printf("%d:%d)%d:%d)%d >> %d\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta);
+					printf("%d:%d)%d:%d)%d >> %d %lu\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta, ct.m_utime_delta);
+					ct.m_read_cpu = true;
 
 					if(callnum != 0)
 					{
