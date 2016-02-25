@@ -2159,7 +2159,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0 && cit->second.is_active())
+		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
 		{
 			if(!cit->second.is_client_and_server())
 			{
