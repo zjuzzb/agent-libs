@@ -95,7 +95,7 @@ fi
 if [ ! -z "$ADDITIONAL_CONF" ]; then
 	echo "* Setting additional customer configuration:"
 	echo -e "$ADDITIONAL_CONF"
-	echo -e $ADDITIONAL_CONF >> $CONFIG_FILE
+	echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
 fi
 
 echo "* Mounting memory cgroup fs"
