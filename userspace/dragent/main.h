@@ -124,6 +124,9 @@ using Poco::Pipe;
 using Poco::PipeInputStream;
 using Poco::StringTokenizer;
 
+#ifdef ASSERT
+#undef ASSERT
+#endif // ASSERT
 #ifdef _DEBUG
 #define ASSERT(X) \
 	if(!(X)) \

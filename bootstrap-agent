@@ -151,6 +151,7 @@ if [ ! -d "$CURL_DIR" ]; then
 		--without-nss         \
 		--without-axtls       \
 		--without-ca-path     \
+		--without-ca-bundle   \
 		--without-libmetalink \
 		--without-librtmp     \
 		--without-winidn      \

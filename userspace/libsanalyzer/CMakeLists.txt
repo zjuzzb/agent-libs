@@ -48,6 +48,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp

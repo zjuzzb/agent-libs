@@ -50,39 +50,16 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
-#include "curl/easy.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
 #include "uri.h"
 #include "third-party/jsoncpp/json/json.h"
 #define DUMP_TO_DISK
-#include "Poco/URIStreamOpener.h"
-#include "Poco/StreamCopier.h"
-#include "Poco/Path.h"
-#include "Poco/URI.h"
-#include "Poco/FileStream.h"
-#include "Poco/SharedPtr.h"
-#include "Poco/Exception.h"
-#include "Poco/Net/HTTPClientSession.h"
-#include "Poco/Net/HTTPSClientSession.h"
-#include "Poco/Net/HTTPCredentials.h"
-#include "Poco/Net/HTTPBasicCredentials.h"
-#include "Poco/Net/HTTPRequest.h"
-#include "Poco/Net/HTTPResponse.h"
-#include "Poco/Net/SSLManager.h"
-#include "Poco/Net/SSLException.h"
-#include "Poco/Net/PrivateKeyPassphraseHandler.h"
-#include "Poco/Net/InvalidCertificateHandler.h"
 #include <memory>
 #include <iostream>
 #include <numeric>
 
-using namespace Poco;
-using namespace Poco::Net;
-
-bool sinsp_analyzer::m_k8s_bad_config = false;
 bool sinsp_analyzer::m_mesos_bad_config = false;
-bool sinsp_analyzer::m_k8s_ssl_initialized = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -812,6 +789,105 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//}
 }
 
+bool sinsp_analyzer::check_k8s_server(const string& addr)
+{
+	string path = "/api";
+	uri url(addr + path);
+	g_logger.log("Detecting K8S at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
+	std::unique_ptr<sinsp_curl> sc;
+	if(url.is_secure())
+	{
+		if(!m_k8s_ssl)
+		{
+			const std::string& cert          = m_configuration->get_k8s_ssl_cert();
+			const std::string& key           = m_configuration->get_k8s_ssl_key();
+			const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
+			const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
+			bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
+			const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
+			const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+			if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
+			{
+				m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
+			}
+		}
+	}
+	sc.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+	string json = sc->get_data();
+	if(!json.empty())
+	{
+		Json::Value root;
+		Json::Reader reader;
+		if(reader.parse(json, root))
+		{
+			Json::Value vers = root["versions"];
+			if(vers.isArray())
+			{
+				for (const auto& ver : vers)
+				{
+					if(ver.asString() == "v1")
+					{
+						return true;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
+bool sinsp_analyzer::check_mesos_server(const string& addr)
+{
+	g_logger.log("Detecting Mesos at [" + addr + "/v1/info]", sinsp_logger::SEV_DEBUG);
+	uri url(addr + mesos::default_state_api);
+	long tout = m_configuration->get_k8s_timeout_ms();
+	Json::Value root;
+	Json::Reader reader;
+	if(reader.parse(sinsp_curl(url, tout).get_data(), root))
+	{
+		Json::Value ver = root["version"];
+		if(!ver.isNull() && ver.isString())
+		{
+			if(!ver.asString().empty())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func)
+{
+	if(m_inspector && m_inspector->m_network_interfaces)
+	{
+		for (const auto& iface : *m_inspector->m_network_interfaces->get_ipv4_list())
+		{
+			std::string addr(protocol);
+			addr.append("://").append(iface.address()).append(1, ':').append(std::to_string(port));
+			if((this->*check_func)(addr))
+			{
+				return addr;
+			}
+		}
+	}
+	else
+	{
+		g_logger.log("Local server detection failed.", sinsp_logger::SEV_ERROR);
+	}
+	return "";
+}
+
+sinsp_curl* sinsp_analyzer::make_curl(const uri& url, long tout, std::shared_ptr<sinsp_curl::ssl> ssl)
+{
+	if(url.is_secure() && ssl)
+	{
+		return new sinsp_curl(url, ssl, tout);
+	}
+
+	return new sinsp_curl(url, tout);
+}
+
 mesos* sinsp_analyzer::make_mesos(string&& json)
 {
 	Json::Value root;
@@ -843,7 +919,8 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 					marathon_uris,
 					mesos::default_groups_api,
 					mesos::default_apps_api,
-					m_mesos_failover_discovery);
+					m_configuration->get_mesos_follow_leader(),
+					m_configuration->get_mesos_timeout_ms());
 			}
 		}
 	}
@@ -852,87 +929,34 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 
 mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
+	uri url(mesos_uri + mesos::default_state_api);
+	long tout = m_configuration->get_mesos_timeout_ms();
+
 	try
 	{
-		URI url(m_configuration->get_mesos_state_uri() + mesos::default_state_api);
-		Timespan ts(m_configuration->get_k8s_timeout_ms() * 5000);
-		std::unique_ptr<HTTPClientSession> session = 0;
-		if(url.getScheme() == "https")
+		if(url.is_secure())
 		{
+			// TODO
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
 			m_mesos_bad_config = true;
 			return 0;
-		/*TODO
-			try
-			{
-				init_k8s_ssl();
-				try
-				{
-					session.reset(new HTTPSClientSession(url.getHost(), url.getPort()));
-				}
-				catch (TimeoutException&)
-				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); }
-				catch (ConnectionRefusedException&)
-				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); }
-			}
-			catch (SSLException& exc)
-			{
-				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
-					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
-				m_mesos_bad_config = true;
-				return 0;
-			}
-			catch(...)
-			{
-				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
-				return 0;
-			}
-		*/}
-		else
-		{
-			session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
 		}
-		session->setTimeout(ts);
-		HTTPRequest request(HTTPRequest::HTTP_GET, mesos::default_state_api);
-		std::string user, pwd;
-		HTTPCredentials::extractCredentials(url, user, pwd);
-		if(!user.empty())
-		{
-			HTTPBasicCredentials cred(user, pwd);
-			cred.authenticate(request);
-		}
-		g_logger.log("Connecting to " + uri(url.toString()).to_string(false), sinsp_logger::SEV_DEBUG);
-		session->sendRequest(request);
-		HTTPResponse response;
-		std::istream& rs = session->receiveResponse(response);
-		std::ostringstream os;
-		StreamCopier::copyStream(rs, os);
-		return make_mesos(os.str());
+
+		return make_mesos(sinsp_curl(url, tout).get_data());
 	}
-	catch (TimeoutException&)
-	{ g_logger.log("Mesos connection attempt timed out.", sinsp_logger::SEV_ERROR); }
-	catch (ConnectionRefusedException&)
-	{ g_logger.log("Mesos connection refused.", sinsp_logger::SEV_ERROR); }
-	catch (NetException& exc)
-	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
-	catch (Exception& exc)
-	{ g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR); }
-	catch (std::exception& exc)
+	catch(std::exception& ex)
 	{
-		g_logger.log(std::string("Exception during Mesos connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
-		/*if(m_mesos_bad_config)
-		{
-			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
-		}*/
+		g_logger.log("Error connecting to Mesos at [" + mesos_uri + "]. Error: " + ex.what(),
+					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
 }
 
-k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
+k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 {
 	Json::Value root;
 	Json::Reader reader;
-	if(reader.parse(json, root, false))
+	if(reader.parse(curl.get_data(), root, false))
 	{
 		Json::Value vers = root["versions"];
 		if(vers.isArray())
@@ -944,9 +968,9 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false);
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl());
 #else
-					return new k8s(k8s_api, true, true);
+					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl());
 #endif
 				}
 			}
@@ -955,130 +979,40 @@ k8s* sinsp_analyzer::make_k8s(const string& json, const string& k8s_api)
 	return 0;
 }
 
-class k8s_ca_handler: public InvalidCertificateHandler
-{
-public:
-	k8s_ca_handler(bool handle_on_server_side):
-		InvalidCertificateHandler(handle_on_server_side)
-	{
-	}
-
-	virtual ~k8s_ca_handler()
-	{
-	}
-
-	void onInvalidCertificate(const void*, VerificationErrorArgs& errorCert)
-	{
-		g_logger.log("K8S client certificate verification failed", sinsp_logger::SEV_ERROR);
-		sinsp_analyzer::m_k8s_bad_config = true;
-		errorCert.setIgnoreError(false);
-	}
-};
-
-void sinsp_analyzer::init_k8s_ssl()
-{
-	if(!m_k8s_ssl_initialized)
-	{
-		string cert = m_configuration->get_k8s_ssl_ca_certificate();
-		SharedPtr<InvalidCertificateHandler> ptrCert;
-		Poco::Net::Context::VerificationMode verification_mode = Poco::Net::Context::VERIFY_NONE;
-		if(m_configuration->get_k8s_ssl_verify_certificate())
-		{
-			g_logger.log("K8S client certificate verification set to STRICT", sinsp_logger::SEV_INFO);
-			verification_mode = Poco::Net::Context::VERIFY_STRICT;
-			ptrCert = new k8s_ca_handler(false);
-		}
-		else
-		{
-			g_logger.log("K8S client certificate verification set to NONE", sinsp_logger::SEV_INFO);
-		}
-
-		Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", cert, verification_mode, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-		SSLManager::instance().initializeClient(0, ptrCert, ptrContext);
-		m_k8s_ssl_initialized = true;
-	}
-}
-
 k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 {
+	uri url(k8s_api + "/api");
+	std::unique_ptr<sinsp_curl> curl;
+
 	try
 	{
-		URI url(k8s_api + "/api");
-		Timespan ts(m_configuration->get_k8s_timeout_ms() * 1000);
-		std::unique_ptr<HTTPClientSession> session = 0;
-		std::string json;
-		if(url.getScheme() == "https")
+		if(url.is_secure())
 		{
-			try
+			if(!m_k8s_ssl)
 			{
-				init_k8s_ssl();
-				try
+				const std::string& cert      = m_configuration->get_k8s_ssl_cert();
+				const std::string& key       = m_configuration->get_k8s_ssl_key();
+				const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
+				const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
+				bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
+				const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
+				const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+				if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
 				{
-					session.reset(new HTTPSClientSession(url.getHost(), url.getPort()));
+					m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
 				}
-				catch (TimeoutException&)
-				{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
-				catch (ConnectionRefusedException&)
-				{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
-			}
-			catch (SSLException& exc)
-			{
-				g_logger.log(std::string("K8S SSL exception : ").append(exc.displayText() +
-					" There will be no further connection attempts."), sinsp_logger::SEV_ERROR);
-				m_k8s_bad_config = true;
-				return 0;
-			}
-			catch(...)
-			{
-				g_logger.log("K8S SSL connection error.", sinsp_logger::SEV_ERROR);
-				return 0;
 			}
 		}
-		else
+		curl.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+		if(curl)
 		{
-			try
-			{
-				session.reset(new HTTPClientSession(url.getHost(), url.getPort()));
-			}
-			catch (TimeoutException&)
-			{ g_logger.log("K8S connection timed out.", sinsp_logger::SEV_ERROR); return 0; }
-			catch (ConnectionRefusedException&)
-			{ g_logger.log("K8S connection refused.", sinsp_logger::SEV_ERROR); return 0; }
-		}
-		session->setTimeout(ts);
-		HTTPRequest request(HTTPRequest::HTTP_GET, "/api");
-		std::string user, pwd;
-		HTTPCredentials::extractCredentials(url, user, pwd);
-		if(!user.empty())
-		{
-			HTTPBasicCredentials cred(user, pwd);
-			cred.authenticate(request);
-		}
-		g_logger.log("Connecting to " + uri(k8s_api + "/api").to_string(false), sinsp_logger::SEV_DEBUG);
-		session->sendRequest(request);
-		HTTPResponse response;
-		std::istream& rs = session->receiveResponse(response);
-		std::ostringstream os;
-		StreamCopier::copyStream(rs, os);
-		json = std::move(os.str());
-		g_logger.log("K8S API:" + json, sinsp_logger::SEV_DEBUG);
-		return make_k8s(json, k8s_api);
-	}
-	catch (Poco::Exception& exc)
-	{
-		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.displayText()), sinsp_logger::SEV_ERROR);
-		if(m_k8s_bad_config)
-		{
-			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
+			return make_k8s(*curl, k8s_api);
 		}
 	}
-	catch (std::exception& exc)
+	catch(std::exception& ex)
 	{
-		g_logger.log(std::string("Exception during K8S connect attempt: ").append(exc.what()), sinsp_logger::SEV_ERROR);
-		if(m_k8s_bad_config)
-		{
-			g_logger.log("Bad SSL configuration. There will be no further connection attempts.", sinsp_logger::SEV_ERROR);
-		}
+		g_logger.log("Error connecting to K8S at [" + k8s_api + "]. Error: " + ex.what(),
+					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
 }
@@ -1250,15 +1184,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
 				string k8s_api_server = m_configuration->get_k8s_api_server();
-				if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled() && !m_k8s_bad_config)
+				if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
 				{
-					k8s_api_server = "http://localhost:8080";
+					string kube_apiserver_process;
 					if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 					{
-						g_logger.log("K8S: Detected 'kube-apiserver' process", sinsp_logger::SEV_INFO);
-						m_configuration->set_k8s_api_server(k8s_api_server);
-						g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
-						k8s_not_present = false;
+						kube_apiserver_process = "kube-apiserver";
 					}
 					else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
 					{
@@ -1266,12 +1197,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						{
 							if(arg == "apiserver")
 							{
-								g_logger.log("Detected 'hyperkube apiserver'", sinsp_logger::SEV_INFO);
-								m_configuration->set_k8s_api_server("http://localhost:8080");
-								g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
-								k8s_not_present = false;
+								kube_apiserver_process = "hyperkube apiserver";
 								break;
 							}
+						}
+					}
+					if(!kube_apiserver_process.empty())
+					{
+						g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
+						k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
+						if(k8s_api_server.empty())
+						{
+							k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
+						}
+						if(!k8s_api_server.empty())
+						{
+							m_configuration->set_k8s_api_server(k8s_api_server);
+							g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+							k8s_not_present = false;
+						}
+						else
+						{
+							g_logger.log("K8S API server process detected but server not found.", sinsp_logger::SEV_WARNING);
 						}
 					}
 				}
@@ -1281,13 +1228,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
 					{
-						mesos_api_server = mesos::default_state_uri;
+						mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
 						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
 						m_configuration->set_mesos_state_uri(mesos_api_server);
-						vector<string> marathon_uris = m_configuration->get_marathon_uris();
 						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
 						mesos_not_present = false;
-						m_mesos_failover_discovery = true;
+						m_configuration->set_mesos_follow_leader(true);
 						g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
 					}
 				}
@@ -3841,12 +3787,12 @@ void sinsp_analyzer::emit_k8s()
 	{
 		try
 		{
-			if(!m_k8s && !m_k8s_bad_config)
+			if(!m_k8s)
 			{
 				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
-			else if(m_k8s && !m_k8s->is_alive() && !m_k8s_bad_config)
+			else if(m_k8s && !m_k8s->is_alive())
 			{
 				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 				delete m_k8s;
@@ -3860,7 +3806,7 @@ void sinsp_analyzer::emit_k8s()
 				{
 					get_k8s_data();
 				}
-				if(!m_k8s->is_alive() && !m_k8s_bad_config)
+				if(!m_k8s->is_alive())
 				{
 					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					delete m_k8s;

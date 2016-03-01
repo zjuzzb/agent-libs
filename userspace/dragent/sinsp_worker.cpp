@@ -98,9 +98,34 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
 
+	if(!m_configuration->m_k8s_ssl_cert_type.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_cert_type(m_configuration->m_k8s_ssl_cert_type);
+	}
+
+	if(!m_configuration->m_k8s_ssl_cert.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_cert(m_configuration->m_k8s_ssl_cert);
+	}
+
+	if(!m_configuration->m_k8s_ssl_key.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_key(m_configuration->m_k8s_ssl_key);
+	}
+
+	if(!m_configuration->m_k8s_ssl_key_password.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_ssl_key_password(m_configuration->m_k8s_ssl_key_password);
+	}
+
 	if(!m_configuration->m_k8s_ssl_ca_certificate.empty())
 	{
 		m_analyzer->get_configuration()->set_k8s_ssl_ca_certificate(m_configuration->m_k8s_ssl_ca_certificate);
+	}
+
+	if(!m_configuration->m_k8s_bt_auth_token.empty())
+	{
+		m_analyzer->get_configuration()->set_k8s_bt_auth_token(m_configuration->m_k8s_bt_auth_token);
 	}
 
 	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
@@ -110,19 +135,19 @@ void sinsp_worker::init()
 	//
 	// mesos
 	//
-
 	if(!m_configuration->m_mesos_state_uri.empty())
 	{
 		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
-		m_analyzer->set_mesos_failover_discovery(false);
 	}
+	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
+	m_analyzer->get_configuration()->set_mesos_follow_leader(m_configuration->m_mesos_follow_leader);
+	m_analyzer->get_configuration()->set_mesos_timeout_ms(m_configuration->m_mesos_timeout_ms);
+
 	// marathon
 	if(!m_configuration->m_marathon_uris.empty())
 	{
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
-
-	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
 
 	//
 	// Configure compression in the protocol
