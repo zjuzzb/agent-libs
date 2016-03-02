@@ -4341,13 +4341,16 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 
-	uint64_t cpu_limit_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/it->second.m_cpu_shares;
-	g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f memory=%u/%u",
-					container_id.c_str(),
-					it->second.m_cpu_shares,
-					cpu_limit_pct,
-					res_memory_kb, it->second.m_memory_limit/1024);
-	container->mutable_resource_counters()->set_cpu_limit_pct(cpu_limit_pct*100); // * 100 because we convert double to .2 fixed decimal
+	if(it->second.m_cpu_shares > 0)
+	{
+		double cpu_limit_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/it->second.m_cpu_shares;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f memory=%u/%u",
+						container_id.c_str(),
+						it->second.m_cpu_shares,
+						cpu_limit_pct,
+						res_memory_kb, it->second.m_memory_limit/1024);
+		container->mutable_resource_counters()->set_cpu_limit_pct(cpu_limit_pct*100); // * 100 because we convert double to .2 fixed decimal
+	}
 
 	if(it->second.m_memory_limit > 0)
 	{
