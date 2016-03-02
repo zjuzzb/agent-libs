@@ -561,7 +561,15 @@ return res;
 	while(cmdlineFile.good())
 	{
 		string strBuf;
-		std::getline( cmdlineFile, strBuf, '\0' );
+		try
+		{
+			std::getline( cmdlineFile, strBuf, '\0' );
+		}
+		catch (const exception& ex)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Error while read process_cmdline: %s", ex.what());
+			break;
+		}
 		args.push_back(strBuf);
 	}
 	return args;
@@ -618,9 +626,14 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
 					 "%s/%s/memory.usage_in_bytes",
 					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
 			ifstream used_memory_f(filename);
-			if(used_memory_f.good())
+			try
 			{
 				used_memory_f >> ret;
+			}
+			catch (const exception& ex)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Exception of read cgroup_used_memory: %s", ex.what());
+				ret = -1;
 			}
 		}
 	}
@@ -832,12 +845,12 @@ bool mounted_fs_reader::change_ns(int destpid)
 	auto fd = open_ns_fd(destpid);
 	if(fd <= 0)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot open namespace fd for pid=%d", destpid);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot open namespace fd for pid=%d", destpid);
 		return false;
 	}
 	if(setns(fd, CLONE_NEWNS) != 0)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot setns to pid=%d", destpid);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot setns to pid=%d", destpid);
 		return false;
 	}
 	close(fd);
