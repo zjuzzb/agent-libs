@@ -21,9 +21,7 @@ done
 
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 
-if ! mount | grep $CONFIG_FILE > /dev/null 2>&1; then
-	rm -f $CONFIG_FILE
-
+if ! [[ -e $CONFIG_FILE ]]; then
 	if [ ! -z "$ACCESS_KEY" ]; then
 		echo "* Setting access key"
 		echo "customerid: $ACCESS_KEY" >> $CONFIG_FILE
@@ -67,7 +65,7 @@ if ! mount | grep $CONFIG_FILE > /dev/null 2>&1; then
 		echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
 	fi
 else
-	echo "* Using bind-mounted dragent.yaml"
+	echo "* Using existing dragent.yaml"
 fi
 
 echo "* Mounting memory cgroup fs"
