@@ -795,24 +795,22 @@ bool sinsp_analyzer::check_k8s_server(const string& addr)
 	uri url(addr + path);
 	g_logger.log("Detecting K8S at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
 	std::unique_ptr<sinsp_curl> sc;
-	if(url.is_secure())
+	if(url.is_secure() && !m_k8s_ssl)
 	{
-		if(!m_k8s_ssl)
-		{
-			const std::string& cert          = m_configuration->get_k8s_ssl_cert();
-			const std::string& key           = m_configuration->get_k8s_ssl_key();
-			const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
-			const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
-			bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
-			const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
-			const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-			if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
-			{
-				m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
-			}
-		}
+		const std::string& cert          = m_configuration->get_k8s_ssl_cert();
+		const std::string& key           = m_configuration->get_k8s_ssl_key();
+		const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
+		const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
+		bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
+		const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
+		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 	}
-	sc.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+	if(!bt_auth_token.empty())
+	{
+		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+	}
+	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms()));
 	string json = sc->get_data();
 	if(!json.empty())
 	{
@@ -876,16 +874,6 @@ string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port
 		g_logger.log("Local server detection failed.", sinsp_logger::SEV_ERROR);
 	}
 	return "";
-}
-
-sinsp_curl* sinsp_analyzer::make_curl(const uri& url, long tout, std::shared_ptr<sinsp_curl::ssl> ssl)
-{
-	if(url.is_secure() && ssl)
-	{
-		return new sinsp_curl(url, ssl, tout);
-	}
-
-	return new sinsp_curl(url, tout);
 }
 
 mesos* sinsp_analyzer::make_mesos(string&& json)
@@ -968,9 +956,9 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl());
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt());
 #else
-					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl());
+					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt());
 #endif
 				}
 			}
@@ -986,24 +974,22 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 
 	try
 	{
-		if(url.is_secure())
+		if(url.is_secure() && !m_k8s_ssl)
 		{
-			if(!m_k8s_ssl)
-			{
-				const std::string& cert      = m_configuration->get_k8s_ssl_cert();
-				const std::string& key       = m_configuration->get_k8s_ssl_key();
-				const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
-				const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
-				bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
-				const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
-				const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-				if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
-				{
-					m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
-				}
-			}
+			const std::string& cert      = m_configuration->get_k8s_ssl_cert();
+			const std::string& key       = m_configuration->get_k8s_ssl_key();
+			const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
+			const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
+			bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
+			const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
+			m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 		}
-		curl.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+		const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+		if(!bt_auth_token.empty() && !m_k8s_bt)
+		{
+			m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+		}
+		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms()));
 		if(curl)
 		{
 			return make_k8s(*curl, k8s_api);
@@ -3789,7 +3775,7 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if(!m_k8s)
 			{
-				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to K8S API server at: [" + k8s_uri + ']', sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
 			else if(m_k8s && !m_k8s->is_alive())

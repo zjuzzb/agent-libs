@@ -333,7 +333,6 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	sinsp_curl* make_curl(const uri& url, long tout, std::shared_ptr<sinsp_curl::ssl> ssl = 0);
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
 	bool check_k8s_server(const string& addr);
 	void init_k8s_ssl();
@@ -517,7 +516,8 @@ VISIBILITY_PRIVATE
 #endif
 
 	k8s* m_k8s;
-	std::shared_ptr<sinsp_curl::ssl> m_k8s_ssl;
+	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
+	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
 
 	mesos* m_mesos;
 	static bool m_mesos_bad_config;
