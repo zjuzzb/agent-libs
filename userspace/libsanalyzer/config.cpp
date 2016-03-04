@@ -493,4 +493,14 @@ void sinsp_configuration::set_mesos_follow_leader(bool enabled)
 	m_mesos_follow_leader = enabled;
 }
 
+bool sinsp_configuration::get_curl_debug() const
+{
+	return m_curl_debug;
+}
+
+void sinsp_configuration::set_curl_debug(bool enabled)
+{
+	m_curl_debug = enabled;
+}
+
 #endif // HAS_ANALYZER

@@ -710,6 +710,7 @@ app_checks:
 # k8s_ca_certificate: k8s-ca.crt
 # k8s_ssl_verify_certificate: true
 # k8s_timeout_ms: 30000
+# k8s_bt_auth_token: k8s-token.tok
 #
 
 #

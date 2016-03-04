@@ -810,7 +810,7 @@ bool sinsp_analyzer::check_k8s_server(const string& addr)
 	{
 		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
 	}
-	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms()));
+	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 	string json = sc->get_data();
 	if(!json.empty())
 	{
@@ -989,7 +989,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		{
 			m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
 		}
-		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms()));
+		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 		if(curl)
 		{
 			return make_k8s(*curl, k8s_api);
