@@ -2131,7 +2131,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "od\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_com"
     "mon\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\tnode_name\030"
     "\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013internal_ip\030\005 "
-    "\001(\t\022\025\n\rrestart_count\030\006 \002(\r\"E\n\032k8s_replic"
+    "\001(\t\022\025\n\rrestart_count\030\006 \001(\r\"E\n\032k8s_replic"
     "ation_controller\022\'\n\006common\030\001 \002(\0132\027.draio"
     "sproto.k8s_common\"\320\001\n\013k8s_service\022\'\n\006com"
     "mon\030\001 \002(\0132\027.draiosproto.k8s_common\022\022\n\ncl"
@@ -22109,7 +22109,7 @@ bool k8s_pod::MergePartialFromCodedStream(
         break;
       }
 
-      // required uint32 restart_count = 6;
+      // optional uint32 restart_count = 6;
       case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
@@ -22185,7 +22185,7 @@ void k8s_pod::SerializeWithCachedSizes(
       5, this->internal_ip(), output);
   }
 
-  // required uint32 restart_count = 6;
+  // optional uint32 restart_count = 6;
   if (has_restart_count()) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(6, this->restart_count(), output);
   }
@@ -22244,7 +22244,7 @@ void k8s_pod::SerializeWithCachedSizes(
         5, this->internal_ip(), target);
   }
 
-  // required uint32 restart_count = 6;
+  // optional uint32 restart_count = 6;
   if (has_restart_count()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(6, this->restart_count(), target);
   }
@@ -22288,7 +22288,7 @@ int k8s_pod::ByteSize() const {
           this->internal_ip());
     }
 
-    // required uint32 restart_count = 6;
+    // optional uint32 restart_count = 6;
     if (has_restart_count()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
@@ -22362,7 +22362,7 @@ void k8s_pod::CopyFrom(const k8s_pod& from) {
 }
 
 bool k8s_pod::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000021) != 0x00000021) return false;
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
   if (has_common()) {
     if (!this->common().IsInitialized()) return false;

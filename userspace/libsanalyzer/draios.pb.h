@@ -6849,7 +6849,7 @@ class k8s_pod : public ::google::protobuf::Message {
   inline ::std::string* release_internal_ip();
   inline void set_allocated_internal_ip(::std::string* internal_ip);
 
-  // required uint32 restart_count = 6;
+  // optional uint32 restart_count = 6;
   inline bool has_restart_count() const;
   inline void clear_restart_count();
   static const int kRestartCountFieldNumber = 6;
@@ -18697,7 +18697,7 @@ inline void k8s_pod::set_allocated_internal_ip(::std::string* internal_ip) {
   }
 }
 
-// required uint32 restart_count = 6;
+// optional uint32 restart_count = 6;
 inline bool k8s_pod::has_restart_count() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
