@@ -955,10 +955,11 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 				{
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
+					bool curl_dbg = m_configuration->get_curl_debug();
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt());
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
 #else
-					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt());
+					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
 #endif
 				}
 			}

@@ -6849,6 +6849,13 @@ class k8s_pod : public ::google::protobuf::Message {
   inline ::std::string* release_internal_ip();
   inline void set_allocated_internal_ip(::std::string* internal_ip);
 
+  // required uint32 restart_count = 6;
+  inline bool has_restart_count() const;
+  inline void clear_restart_count();
+  static const int kRestartCountFieldNumber = 6;
+  inline ::google::protobuf::uint32 restart_count() const;
+  inline void set_restart_count(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_pod)
  private:
   inline void set_has_common();
@@ -6859,6 +6866,8 @@ class k8s_pod : public ::google::protobuf::Message {
   inline void clear_has_host_ip();
   inline void set_has_internal_ip();
   inline void clear_has_internal_ip();
+  inline void set_has_restart_count();
+  inline void clear_has_restart_count();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -6867,9 +6876,10 @@ class k8s_pod : public ::google::protobuf::Message {
   ::std::string* node_name_;
   ::std::string* host_ip_;
   ::std::string* internal_ip_;
+  ::google::protobuf::uint32 restart_count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -18685,6 +18695,28 @@ inline void k8s_pod::set_allocated_internal_ip(::std::string* internal_ip) {
     clear_has_internal_ip();
     internal_ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// required uint32 restart_count = 6;
+inline bool k8s_pod::has_restart_count() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void k8s_pod::set_has_restart_count() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void k8s_pod::clear_has_restart_count() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void k8s_pod::clear_restart_count() {
+  restart_count_ = 0u;
+  clear_has_restart_count();
+}
+inline ::google::protobuf::uint32 k8s_pod::restart_count() const {
+  return restart_count_;
+}
+inline void k8s_pod::set_restart_count(::google::protobuf::uint32 value) {
+  set_has_restart_count();
+  restart_count_ = value;
 }
 
 // -------------------------------------------------------------------
