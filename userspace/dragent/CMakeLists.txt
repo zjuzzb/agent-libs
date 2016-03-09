@@ -5,6 +5,7 @@ set(DRAIOS_POCO_VERSION "1.4.6p4-all")
 set(DRAIOS_LIBSSH_VERSION "0.7.2")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
+set(DRAIOS_CURL_VERSION "7.45.0")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
@@ -18,6 +19,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 

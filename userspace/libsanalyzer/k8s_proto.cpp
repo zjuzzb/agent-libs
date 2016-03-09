@@ -65,6 +65,7 @@ void k8s_proto::make_protobuf(const k8s_state_t& state)
 		{
 			pods->set_internal_ip(ip);
 		}
+		pods->set_restart_count(pod.get_restart_count());
 	}
 
 	for (auto& rc : state.get_rcs())

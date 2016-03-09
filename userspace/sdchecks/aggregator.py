@@ -360,7 +360,7 @@ class Rate(Metric):
 
         delta = sample2[1] - sample1[1]
         if delta < 0:
-            log.info('Metric %s has a rate < 0. Counter may have been Reset.' % self.name)
+            log.debug('Metric %s has a rate < 0. Counter may have been Reset.' % self.name)
             raise UnknownValue()
 
         return (delta / float(interval))

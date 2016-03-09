@@ -353,6 +353,46 @@ void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
 	m_k8s_autodetect = enabled;
 }
 
+void sinsp_configuration::set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type)
+{
+	m_k8s_ssl_cert_type = k8s_ssl_cert_type;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_cert_type() const
+{
+	return m_k8s_ssl_cert_type;
+}
+
+void sinsp_configuration::set_k8s_ssl_cert(const string& k8s_ssl_cert)
+{
+	m_k8s_ssl_cert = k8s_ssl_cert;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_cert() const
+{
+	return m_k8s_ssl_cert;
+}
+
+void sinsp_configuration::set_k8s_ssl_key(const string& k8s_ssl_key)
+{
+	m_k8s_ssl_key = k8s_ssl_key;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_key() const
+{
+	return m_k8s_ssl_key;
+}
+
+void sinsp_configuration::set_k8s_ssl_key_password(const string& k8s_ssl_key_password)
+{
+	m_k8s_ssl_key_password = k8s_ssl_key_password;
+}
+
+const string & sinsp_configuration::get_k8s_ssl_key_password() const
+{
+	return m_k8s_ssl_key_password;
+}
+
 void sinsp_configuration::set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert)
 {
 	m_k8s_ssl_ca_certificate = k8s_ssl_ca_cert;
@@ -381,6 +421,16 @@ void sinsp_configuration::set_k8s_timeout_ms(int k8s_timeout_ms)
 int sinsp_configuration::get_k8s_timeout_ms() const
 {
 	return m_k8s_timeout_ms;
+}
+
+void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
+{
+	m_k8s_bt_auth_token = k8s_bt_auth_token;
+}
+
+const string & sinsp_configuration::get_k8s_bt_auth_token() const
+{
+	return m_k8s_bt_auth_token;
 }
 
 unsigned sinsp_configuration::get_statsd_limit() const
@@ -421,6 +471,36 @@ bool sinsp_configuration::get_mesos_autodetect_enabled() const
 void sinsp_configuration::set_mesos_autodetect_enabled(bool enabled)
 {
 	m_mesos_autodetect = enabled;
+}
+
+void sinsp_configuration::set_mesos_timeout_ms(int mesos_timeout_ms)
+{
+	m_mesos_timeout_ms = mesos_timeout_ms;
+}
+
+int sinsp_configuration::get_mesos_timeout_ms() const
+{
+	return m_mesos_timeout_ms;
+}
+
+bool sinsp_configuration::get_mesos_follow_leader() const
+{
+	return m_mesos_follow_leader;
+}
+
+void sinsp_configuration::set_mesos_follow_leader(bool enabled)
+{
+	m_mesos_follow_leader = enabled;
+}
+
+bool sinsp_configuration::get_curl_debug() const
+{
+	return m_curl_debug;
+}
+
+void sinsp_configuration::set_curl_debug(bool enabled)
+{
+	m_curl_debug = enabled;
 }
 
 #endif // HAS_ANALYZER

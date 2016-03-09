@@ -281,6 +281,7 @@ public:
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
+	bool m_curl_debug;
 
 	string m_root_dir;
 	string m_conf_file;
@@ -344,14 +345,24 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+
 	std::string m_k8s_api_server;
 	bool m_k8s_autodetect;
+	string m_k8s_ssl_cert_type;
+	string m_k8s_ssl_cert;
+	string m_k8s_ssl_key;
+	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
 	int m_k8s_timeout_ms;
+	string m_k8s_bt_auth_token;
+
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
 	bool m_mesos_autodetect;
+	int m_mesos_timeout_ms;
+	bool m_mesos_follow_leader;
+
 	bool m_enable_coredump;
 
 	bool java_present()
@@ -371,6 +382,7 @@ private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
 	void parse_services_file();
+	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	friend class aws_metadata_refresher;
 };
 

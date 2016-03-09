@@ -89,6 +89,24 @@ Message::Priority dragent_configuration::string_to_priority(const string& priost
 	}
 }
 
+void dragent_configuration::normalize_path(const std::string& file_path, std::string& normalized_path)
+{
+	normalized_path.clear();
+	if(file_path.size())
+	{
+		if(file_path[0] == '/')
+		{
+			normalized_path = file_path;
+		}
+		else
+		{
+			Path path(file_path);
+			path.makeAbsolute(m_root_dir);
+			normalized_path = path.toString();
+		}
+	}
+}
+
 void dragent_configuration::init(Application* app)
 {
 	refresh_machine_id();
@@ -151,6 +169,8 @@ void dragent_configuration::init(Application* app)
 		m_min_console_priority = string_to_priority( m_config->get_scalar<string>("log", "console_priority", "info"));
 #endif		
 	}
+
+	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
@@ -271,9 +291,14 @@ void dragent_configuration::init(Application* app)
 
 	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
-	m_k8s_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("k8s_ca_certificate", "")).toString();
+	m_k8s_ssl_cert_type = m_config->get_scalar<string>("k8s_ssl_cert_type", "PEM");
+	normalize_path(m_config->get_scalar<string>("k8s_ssl_cert", ""), m_k8s_ssl_cert);
+	normalize_path(m_config->get_scalar<string>("k8s_ssl_key", ""), m_k8s_ssl_key);
+	m_k8s_ssl_key_password = m_config->get_scalar<string>("k8s_ssl_key_password", "");
+	normalize_path(m_config->get_scalar<string>("k8s_ca_certificate", ""), m_k8s_ssl_ca_certificate);
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
+	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 
 	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
 	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
@@ -282,6 +307,9 @@ void dragent_configuration::init(Application* app)
 		m_marathon_uris.push_back(u);
 	}
 	m_mesos_autodetect = m_config->get_scalar<bool>("mesos_autodetect", true);
+	m_mesos_timeout_ms = m_config->get_scalar<int>("mesos_timeout_ms", 10000);
+	m_mesos_follow_leader = m_config->get_scalar<bool>("mesos_follow_leader",
+							m_mesos_state_uri.empty() && m_mesos_autodetect ? true : false);
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
 
@@ -313,6 +341,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("collector_port: " + NumberFormatter::format(m_server_port));
 	g_log->information("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
 	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
+	g_log->information("CURL debug: " + bool_as_text(m_curl_debug));
 	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
 	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
@@ -353,15 +382,40 @@ void dragent_configuration::print_configuration()
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
+	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
 	}
+	if (!m_k8s_ssl_cert_type.empty())
+	{
+		g_log->information("K8S certificate type: " + m_k8s_ssl_cert_type);
+	}
+	if (!m_k8s_ssl_cert.empty())
+	{
+		g_log->information("K8S certificate: " + m_k8s_ssl_cert);
+	}
+	if (!m_k8s_ssl_key.empty())
+	{
+		g_log->information("K8S SSL key: " + m_k8s_ssl_key);
+	}
+	if (!m_k8s_ssl_key_password.empty())
+	{
+		g_log->information("K8S key password specified.");
+	}
+	else
+	{
+		g_log->information("K8S key password not specified.");
+	}
 	if (!m_k8s_ssl_ca_certificate.empty())
 	{
-		g_log->information("m_k8s_ssl_certificate: " + m_k8s_ssl_ca_certificate);
+		g_log->information("K8S CA certificate: " + m_k8s_ssl_ca_certificate);
 	}
 	g_log->information("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
+	if (!m_k8s_bt_auth_token.empty())
+	{
+		g_log->information("K8S bearer token authorization: " + m_k8s_bt_auth_token);
+	}
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
@@ -391,6 +445,8 @@ void dragent_configuration::print_configuration()
 		g_log->information("Marathon API server not configured.");
 	}
 	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
+	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
+	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 }
 

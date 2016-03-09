@@ -21,81 +21,51 @@ done
 
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 
-if [ ! -z "$ACCESS_KEY" ]; then
-	echo "* Setting access key"
-	
-	if ! grep ^customerid $CONFIG_FILE > /dev/null 2>&1; then
+if ! [[ -e $CONFIG_FILE ]]; then
+	if [ ! -z "$ACCESS_KEY" ]; then
+		echo "* Setting access key"
 		echo "customerid: $ACCESS_KEY" >> $CONFIG_FILE
-	else
-		sed -i "s/^customerid.*/customerid: $ACCESS_KEY/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$TAGS" ]; then
-	echo "* Setting tags"
-
-	if ! grep ^tags $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$TAGS" ]; then
+		echo "* Setting tags"
 		echo "tags: $TAGS" >> $CONFIG_FILE
-	else
-		sed -i "s/^tags.*/tags: $TAGS/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$COLLECTOR" ]; then
-	echo "* Setting collector endpoint"
-
-	if ! grep ^collector: $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$COLLECTOR" ]; then
+		echo "* Setting collector endpoint"
 		echo "collector: $COLLECTOR" >> $CONFIG_FILE
-	else
-		sed -i "s/^collector:.*/collector: $COLLECTOR/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$COLLECTOR_PORT" ]; then
-	echo "* Setting collector port"
-
-	if ! grep ^collector_port $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$COLLECTOR_PORT" ]; then
+		echo "* Setting collector port"
 		echo "collector_port: $COLLECTOR_PORT" >> $CONFIG_FILE
-	else
-		sed -i "s/^collector_port.*/collector_port: $COLLECTOR_PORT/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$SECURE" ]; then
-	echo "* Setting connection security"
-
-	if ! grep ^ssl: $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$SECURE" ]; then
+		echo "* Setting connection security"
 		echo "ssl: $SECURE" >> $CONFIG_FILE
-	else
-		sed -i "s/^ssl:.*/ssl: $SECURE/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$CHECK_CERTIFICATE" ]; then
-	echo "* Setting SSL certificate check level"
-
-	if ! grep ^ssl_verify_certificate $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$CHECK_CERTIFICATE" ]; then
+		echo "* Setting SSL certificate check level"
 		echo "ssl_verify_certificate: $CHECK_CERTIFICATE" >> $CONFIG_FILE
-	else
-		sed -i "s/^ssl_verify_certificate.*/ssl_verify_certificate: $CHECK_CERTIFICATE/g" $CONFIG_FILE
 	fi
-fi
 
-if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
-	if am_i_a_k8s_delegated_node; then
-		echo "* Setting k8s api URI"
-		if ! grep ^k8s_uri $CONFIG_FILE > /dev/null 2>&1; then
+	if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
+		if am_i_a_k8s_delegated_node; then
+			echo "* Setting k8s api URI"
 			echo "k8s_uri: $K8S_API_URI" >> $CONFIG_FILE
-		else
-			sed -i "s/^k8s_uri.*/k8s_uri: $K8S_API_URI/g" $CONFIG_FILE
 		fi
 	fi
-fi
 
-if [ ! -z "$ADDITIONAL_CONF" ]; then
-	echo "* Setting additional customer configuration:"
-	echo -e "$ADDITIONAL_CONF"
-	echo -e $ADDITIONAL_CONF >> $CONFIG_FILE
+	if [ ! -z "$ADDITIONAL_CONF" ]; then
+		echo "* Setting additional customer configuration:"
+		echo -e "$ADDITIONAL_CONF"
+		echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
+	fi
+else
+	echo "* Using existing dragent.yaml"
 fi
 
 echo "* Mounting memory cgroup fs"

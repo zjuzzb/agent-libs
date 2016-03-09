@@ -68,12 +68,22 @@ public:
 	const string & get_k8s_api_server() const;
 	bool get_k8s_autodetect_enabled() const;
 	void set_k8s_autodetect_enabled(bool enabled);
+	void set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type);
+	const string & get_k8s_ssl_cert_type() const;
+	void set_k8s_ssl_cert(const string& k8s_ssl_cert);
+	const string & get_k8s_ssl_cert() const;
+	void set_k8s_ssl_key(const string& k8s_ssl_key);
+	const string & get_k8s_ssl_key() const;
+	void set_k8s_ssl_key_password(const string& k8s_ssl_key_password);
+	const string & get_k8s_ssl_key_password() const;
 	void set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert);
 	const string & get_k8s_ssl_ca_certificate() const;
 	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
 	bool get_k8s_ssl_verify_certificate() const;
 	void set_k8s_timeout_ms(int k8s_timeout_ms);
 	int get_k8s_timeout_ms() const;
+	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
+	const string & get_k8s_bt_auth_token() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
 	const string & get_mesos_state_uri() const;
@@ -82,6 +92,12 @@ public:
 	void set_marathon_uris(const vector<string> & uris);
 	bool get_mesos_autodetect_enabled() const;
 	void set_mesos_autodetect_enabled(bool enabled);
+	void set_mesos_timeout_ms(int mesos_timeout_ms);
+	int get_mesos_timeout_ms() const;
+	bool get_mesos_follow_leader() const;
+	void set_mesos_follow_leader(bool enabled);
+	bool get_curl_debug() const;
+	void set_curl_debug(bool enabled);
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -108,17 +124,27 @@ private:
 	string m_instance_id;
 	ports_set m_known_ports;
 	ports_set m_blacklisted_ports;
+
 	string m_k8s_api;
 	bool   m_k8s_autodetect;
+	string m_k8s_ssl_cert_type;
+	string m_k8s_ssl_cert;
+	string m_k8s_ssl_key;
+	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
 	int m_k8s_timeout_ms;
+	string m_k8s_bt_auth_token;
 
 	unsigned m_statsd_limit;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
-	bool   m_mesos_autodetect;
+	bool m_mesos_autodetect;
+	int m_mesos_timeout_ms;
+	bool m_mesos_follow_leader;
+
+	bool m_curl_debug;
 };
 
 #endif // HAS_ANALYZER

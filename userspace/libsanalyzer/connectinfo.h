@@ -73,6 +73,13 @@ public:
 	static void filter_and_emit(const unordered_map<uint16_t, sinsp_connection_aggregator>& map,
 							ProtobufType* proto, uint16_t top, uint32_t sampling_ratio);
 private:
+	bool is_active() const
+	{
+		uint32_t totops = m_metrics.m_client.m_count_in + m_metrics.m_client.m_count_out +
+						  m_metrics.m_server.m_count_in + m_metrics.m_server.m_count_out;
+
+		return (totops != 0);
+	}
 	bool operator<(const sinsp_connection_aggregator& other) const;
 	sinsp_connection_counters m_metrics;
 	sinsp_transaction_counters m_transaction_metrics;
@@ -105,6 +112,10 @@ void sinsp_connection_aggregator::filter_and_emit(const unordered_map<uint16_t, 
 
 	for(auto agcit = to_emit_connections.begin(); agcit != to_emit_connections_end; ++agcit)
 	{
+		if(!(*agcit)->second.is_active())
+		{
+			continue;
+		}
 		auto network_by_server_port = proto->add_network_by_serverports();
 		network_by_server_port->set_port((*agcit)->first);
 		auto counters = network_by_server_port->mutable_counters();

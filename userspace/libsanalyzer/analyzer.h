@@ -10,6 +10,7 @@
 #include <atomic>
 #include "app_checks.h"
 #include <unordered_set>
+#include "sinsp_curl.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -148,6 +149,9 @@ private:
 	unsigned m_index;
 	uint64_t m_previouscputime;
 };
+
+class sinsp_curl;
+
 //
 // The main analyzer class
 //
@@ -315,12 +319,9 @@ public:
 
 	void set_fs_usage_from_external_proc(bool value);
 
-	void set_mesos_failover_discovery(bool discover)
-	{
-		m_mesos_failover_discovery = discover;
-	}
-
 VISIBILITY_PRIVATE
+	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
+
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
 	void chisels_do_timeout(sinsp_evt* ev);
@@ -332,11 +333,14 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
+	bool check_k8s_server(const string& addr);
 	void init_k8s_ssl();
-	k8s* make_k8s(const string& json, const string& k8s_api);
+	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api);
 	k8s* get_k8s(const string& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	bool check_mesos_server(const string& addr);
 	mesos* make_mesos(string&& json);
 	mesos* get_mesos(const string& mesos_uri);
 	void get_mesos_data();
@@ -512,12 +516,11 @@ VISIBILITY_PRIVATE
 #endif
 
 	k8s* m_k8s;
-	static bool m_k8s_bad_config;
-	static bool m_k8s_ssl_initialized;
+	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
+	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
 
 	mesos* m_mesos;
 	static bool m_mesos_bad_config;
-	bool m_mesos_failover_discovery = false;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
