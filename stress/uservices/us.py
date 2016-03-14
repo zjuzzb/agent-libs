@@ -27,7 +27,7 @@ def mark( string ):
     global markerfile
 
     if markerfile == None:
-        markerfile = open("/dev/sysdig-events", "w")
+        markerfile = open("/dev/sysdig", "w")
     markerfile.write(string);
     markerfile.flush();
     return
