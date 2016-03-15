@@ -6,7 +6,8 @@ import sys
 s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 # Bind to TCP port
-s.bind(("",17640))
+s.bind(("",8080))
+
 # ... and listen for anyone to contact you
 # queueing up to five requests if you get a backlog
 s.listen(5)
