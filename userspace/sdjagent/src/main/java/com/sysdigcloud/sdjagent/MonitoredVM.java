@@ -249,7 +249,6 @@ public class MonitoredVM {
             for( Config.BeanQuery query : queryList) {
                 if (query.getObjectName().apply(bean)) {
                     matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
-                    break;
                 }
             }
             if (matchingBeans.size() >= BEANS_LIMIT) {
