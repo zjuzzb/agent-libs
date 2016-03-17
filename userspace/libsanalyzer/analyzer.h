@@ -300,7 +300,17 @@ public:
 
 	void set_app_checks(const vector<app_check>& checks)
 	{
-		m_app_checks = checks;
+		unordered_set<string> check_unique_names;
+		for(const auto& c : checks)
+		{
+			auto res = check_unique_names.emplace(c.name());
+			if(res.second)
+			{
+				// This means there wasn't already a check like this
+				m_app_checks.push_back(c);
+			}
+		}
+
 		if(!m_app_checks.empty())
 		{
 			m_app_proxy = make_unique<app_checks_proxy>();
