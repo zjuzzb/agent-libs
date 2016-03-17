@@ -102,7 +102,7 @@ function configure_debian_repo {
 	echo " "$(du -b Packages) >> Release
 	echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
 	echo " "$(du -b Packages.gz) >> Release
-	gpg --yes -abs -o Release.gpg Release
+	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
 	cd -
 
 	cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
