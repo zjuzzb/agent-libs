@@ -934,7 +934,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log("Error connecting to Mesos at [" + mesos_uri + "]. Error: " + ex.what(),
+		g_logger.log("Error connecting to Mesos at [" + uri(mesos_uri).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
@@ -998,7 +998,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log("Error connecting to K8S at [" + k8s_api + "]. Error: " + ex.what(),
+		g_logger.log("Error connecting to K8S at [" + uri(k8s_api).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
@@ -3834,9 +3834,11 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
-	time_t now;
-	time(&now);
-	m_mesos->collect_data();
+	time_t now; time(&now);
+	if(last_mesos_refresh)
+	{
+		m_mesos->collect_data();
+	}
 	if(difftime(now, last_mesos_refresh) > 10)
 	{
 		m_mesos->send_data_request();
