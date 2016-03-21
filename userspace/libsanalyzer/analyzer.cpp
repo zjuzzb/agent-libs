@@ -4314,8 +4314,7 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
-		while(m_statsd_metrics.find("") != m_statsd_metrics.end() &&
-				m_statsd_metrics.at("").at(0).timestamp() < look_for_ts)
+		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
