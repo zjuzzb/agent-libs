@@ -304,6 +304,7 @@ public:
 	void set_app_checks(const vector<app_check>& checks)
 	{
 		unordered_set<string> check_unique_names;
+		m_app_checks.clear();
 		for(const auto& c : checks)
 		{
 			auto res = check_unique_names.emplace(c.name());
