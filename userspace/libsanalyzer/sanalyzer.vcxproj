@@ -116,12 +116,13 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A66E3CF6-4964-4361-9A80-DFCC1D32B5BF}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -131,7 +132,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -181,7 +182,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src;c:\Program Files (x86)\Windows Kits\10\Include\10.0.10586.0\um;c:\Program Files (x86)\Windows Kits\10\Include\10.0.10586.0\ucrt</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -219,7 +220,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../sysdig/common;../../../sysdig/userspace/libscap;../../../sysdig/userspace/libsinsp;../../../sysdig/userspace/libsinsp/third-party/jsoncpp;../../../draios_win32_deps/protobuf-2.5.0/src;../../../draios_win32_deps/LuaJIT/src;c:\Program Files (x86)\Windows Kits\10\Include\10.0.10586.0\um;c:\Program Files (x86)\Windows Kits\10\Include\10.0.10586.0\ucrt</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>

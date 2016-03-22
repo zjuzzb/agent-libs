@@ -2,6 +2,9 @@
 
 #pragma once
 #include <bitset>
+#ifdef max
+#undef max
+#endif
 #include <limits>
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()>;

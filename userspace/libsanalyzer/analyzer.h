@@ -123,6 +123,7 @@ public:
 	uint32_t m_count; // how many times this command has been repeated
 };
 
+#ifndef _WIN32
 class self_cputime_analyzer
 {
 public:
@@ -149,6 +150,7 @@ private:
 	unsigned m_index;
 	uint64_t m_previouscputime;
 };
+#endif // _WIN32
 
 class sinsp_curl;
 
@@ -298,6 +300,7 @@ public:
 #endif
 	}
 
+#ifndef _WIN32
 	void set_app_checks(const vector<app_check>& checks)
 	{
 		unordered_set<string> check_unique_names;
@@ -316,6 +319,7 @@ public:
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
+#endif // _WIN32
 
 	void set_containers_limit(const uint32_t value)
 	{
@@ -526,15 +530,19 @@ VISIBILITY_PRIVATE
 #endif
 
 	k8s* m_k8s;
+#ifndef _WIN32
 	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
 	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
+#endif
 
 	mesos* m_mesos;
 	static bool m_mesos_bad_config;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+#ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
+#endif
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
