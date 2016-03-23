@@ -211,17 +211,29 @@ private:
 class udp_client
 {
 public:
-	udp_client(uint32_t server_ip_address, bool use_connect)
+	udp_client(uint32_t server_ip_address, bool use_connect, uint16_t port = 0):
+			m_use_sendmsg(false),
+			m_recv(true),
+			m_payload(PAYLOAD),
+			m_ignore_errors(false),
+			m_n_transactions(NTRANSACTIONS)
 	{
 		m_use_unix = false;
 		m_server_ip_address = server_ip_address;
 		m_use_connect = use_connect;
+		if(port > 0)
+		{
+			m_port = port;
+		}
+		else
+		{
+			m_port = SERVER_PORT;
+		}
 	}
 
 	void run()
 	{
 		int sd, rc;
-		char buffer[BUFFER_LENGTH];
 		struct sockaddr_in serveraddr;
 		socklen_t serveraddrlen = sizeof(serveraddr);
 		int j;
@@ -244,34 +256,53 @@ public:
 
 		memset(&serveraddr, 0, sizeof(serveraddr));
 		serveraddr.sin_family = domain;
-		serveraddr.sin_port = htons(SERVER_PORT);
+		serveraddr.sin_port = htons(m_port);
 		serveraddr.sin_addr.s_addr = m_server_ip_address;
 
 		if(m_use_connect)
 		{
-			if(connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+			if(connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0 && !m_ignore_errors)
 			{
 				close(sd);
 				FAIL() << "connect() failed";
 			}
 		}
 
-		memset(buffer, 0, sizeof(buffer));
-		strncpy(buffer, PAYLOAD, sizeof(buffer));
-
-		for(j = 0; j < NTRANSACTIONS; j++)
+		for(j = 0; j < m_n_transactions; j++)
 		{
-			if(m_use_connect)
+			if(!m_use_sendmsg)
 			{
-				rc = sendto(sd, buffer, sizeof(buffer), 0, NULL, 0);
+				if(m_use_connect)
+				{
+					rc = sendto(sd, m_payload.data(), m_payload.size(), 0, NULL, 0);
+				}
+				else
+				{
+					rc = sendto(sd, m_payload.data(), m_payload.size(), 0,
+								(struct sockaddr *) &serveraddr,
+								sizeof(serveraddr));
+				}
 			}
 			else
 			{
-				rc = sendto(sd, buffer, sizeof(buffer), 0,
-				            (struct sockaddr *) &serveraddr,
-				            sizeof(serveraddr));
+				struct msghdr msg = { 0 };
+				if(m_use_connect)
+				{
+					msg.msg_name = NULL;
+				}
+				else
+				{
+					msg.msg_name = (void*) &serveraddr;
+					msg.msg_namelen = sizeof(serveraddr);
+				}
+				struct iovec iov;
+				iov.iov_base = (void*)m_payload.data();
+				iov.iov_len = m_payload.size();
+				msg.msg_iov = &iov;
+				msg.msg_iovlen = 1;
+				rc = sendmsg(sd, &msg, MSG_DONTWAIT);
 			}
-			if(rc < 0)
+			if(rc < 0 && !m_ignore_errors)
 			{
 				close(sd);
 				FAIL();
@@ -281,13 +312,17 @@ public:
 			// Use the recvfrom() function to receive the data back from the
 			// server.
 			//
-			rc = recvfrom(sd, buffer, sizeof(buffer), 0,
-			              (struct sockaddr *) &serveraddr,
-			              & serveraddrlen);
-			if(rc < 0)
+			if(m_recv)
 			{
-				close(sd);
-				FAIL();
+				char buffer[1024];
+				rc = recvfrom(sd, buffer, sizeof(buffer), 0,
+							  (struct sockaddr *) &serveraddr,
+							  & serveraddrlen);
+				if(rc < 0 && !m_ignore_errors)
+				{
+					close(sd);
+					FAIL();
+				}
 			}
 		}
 
@@ -297,10 +332,16 @@ public:
 		}
 	}
 
+	bool m_use_sendmsg;
+	bool m_recv;
+	string m_payload;
+	bool m_use_connect;
+	bool m_ignore_errors;
+	int m_n_transactions;
 private:
 	bool m_use_unix;
 	uint32_t m_server_ip_address;
-	bool m_use_connect;
+	uint16_t m_port;
 };
 
 TEST_F(sys_call_test, udp_client_server)
@@ -772,4 +813,58 @@ TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
 	configuration.set_known_ports(known_ports);
 
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
+}
+
+TEST_F(sys_call_test, statsd_client_snaplen)
+{
+	// Test if the driver correctly increase snaplen for statsd traffic
+	string payload = "soluta.necessitatibus.voluptatem.consequuntur.dignissimos.repudiandae.nostrum.lorem.ipsum:18|c";
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) && ( evt->get_type() == PPME_SOCKET_SENDMSG_X || evt->get_type() == PPME_SOCKET_SENDTO_X);
+	};
+
+	//
+	// INITIALIZATION
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// sendto with addr
+		udp_client client(0x0100007F, false, 8125);
+		client.m_payload = payload;
+		client.m_ignore_errors = true;
+		client.m_recv = false;
+		client.m_n_transactions = 1;
+		client.run();
+
+		// sendto without addr (connect)
+		client.m_use_connect = true;
+		client.run();
+
+		// sendmsg with addr
+		client.m_use_connect = false;
+		client.m_use_sendmsg = true;
+		client.run();
+
+		// sendmsg without addr
+		client.m_use_connect = true;
+		client.run();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	unsigned n = 0;
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		++n;
+		EXPECT_EQ(payload, e->get_param_value_str("data")) << "Failure on " << e->get_name() << " n=" << n;
+	};
+
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 }
