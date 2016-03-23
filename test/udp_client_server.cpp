@@ -314,10 +314,11 @@ public:
 			//
 			if(m_recv)
 			{
-				char buffer[1024];
-				rc = recvfrom(sd, buffer, sizeof(buffer), 0,
+				char* buffer = (char*) malloc(m_payload.size());
+				rc = recvfrom(sd, buffer, m_payload.size(), 0,
 							  (struct sockaddr *) &serveraddr,
 							  & serveraddrlen);
+				free(buffer);
 				if(rc < 0 && !m_ignore_errors)
 				{
 					close(sd);
