@@ -1,0 +1,4 @@
+# Staging
+collector: collector-staging.sysdigcloud.com
+customerid: e64a1780-5bbd-4083-8ce1-418c2bb0a356
+tags: "region:us"

@@ -1,0 +1,44 @@
+#!/bin/bash
+. ./assert.sh
+
+if [ -z $DOCKER_IMAGE ]; then
+  DOCKER_IMAGE="sysdig/agent"
+fi
+
+function run_docker_agent() {
+  docker rm -fv sysdig-agent > /dev/null
+  docker run -d --name sysdig-agent --privileged --net host --pid host $1 -v /var/run/docker.sock:/host/var/run/docker.sock -v /dev:/host/dev -v /proc:/host/proc:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro -v /usr:/host/usr:ro $DOCKER_IMAGE > /dev/null 2>&1
+  sleep 5
+  docker exec -i sysdig-agent cat /opt/draios/etc/dragent.yaml 2> /dev/null
+}
+assert_raises run_docker_agent 1
+
+function bind_mount_dragent() {
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml"
+}
+assert bind_mount_dragent "`cat dragent.yaml`"
+
+function bind_mount_and_additional_conf() {
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml -e ADDITIONAL_CONF=\"app_checks_enabled: false\""
+}
+assert bind_mount_and_additional_conf "`cat dragent.yaml`"
+
+function bind_mount_and_override_tags() {
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml -e TAGS=\"region:eu\""|grep tags
+}
+assert bind_mount_and_override_tags "tags: region:eu\n"
+
+function everything_on_cmdline() {
+  run_docker_agent "-e ACCESS_KEY=\"test\" -e ADDITIONAL_CONF=\"app_checks_enabled: false\""
+}
+assert everything_on_cmdline "customerid: test\nappchecks_enabled: false\n"
+
+function everything_on_cmdline_restart() {
+  everything_on_cmdline
+  docker restart sysdig-agent > /dev/null
+  sleep 5
+  docker exec -i sysdig-agent cat /opt/draios/etc/dragent.yaml 2> /dev/null
+}
+assert everything_on_cmdline_restart "customerid: test\nappchecks_enabled: false\ncustomerid: test\nappchecks_enabled: false\n"
+
+assert_end
