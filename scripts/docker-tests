@@ -61,7 +61,7 @@ EOF
 }
 assert custom_image "$DRAGENT_YAML"
 
-function custom_image() {
+function custom_image_tags() {
   cat > Dockerfile <<EOF
 FROM $DOCKER_IMAGE
 ADD dragent.yaml /opt/draios/etc/
@@ -73,5 +73,5 @@ EOF
   run_docker_agent "-e TAGS=region:eu"
   DOCKER_IMAGE=$PDOCKER_IMAGE
 }
-assert custom_image "$DRAGENT_YAML\ntags: region:eu\n"
+assert custom_image_tags "$DRAGENT_YAML\ntags: region:eu\n"
 assert_end
