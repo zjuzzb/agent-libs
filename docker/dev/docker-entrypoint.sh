@@ -104,7 +104,7 @@ if [ ! -z "$ADDITIONAL_CONF" ]; then
 		echo -e "$ADDITIONAL_CONF"
 		echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
 	else
-		echo "* ADDITIONAL_CONF ignored, it's not compatible with a preconfigured dragent.yaml"
+		echo "* ADDITIONAL_CONF ignored"
 	fi
 fi
 
