@@ -1031,13 +1031,14 @@ w_conn_creation_done:
 		}
 
 		// Support for statsd protocol
-		static const uint32_t LOCALHOST_IPV4 = 0x0100007F;
+		static const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
 		static const uint16_t STATSD_PORT = 8125;
 
 #ifndef _WIN32
 		if(m_analyzer->m_statsite_proxy &&
-		   fdinfo->is_role_client() && fdinfo->is_ipv4_socket() && fdinfo->get_serverport() == STATSD_PORT
-		    )
+		   fdinfo->is_role_client() &&
+		   fdinfo->is_udp_socket() &&
+		   fdinfo->get_serverport() == STATSD_PORT)
 		{
 			// This log line it's useful to debug, but it's not suitable for enabling it always
 			/*g_logger.format(sinsp_logger::SEV_DEBUG, "Detected statsd message ipv4: %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u container: %s",
