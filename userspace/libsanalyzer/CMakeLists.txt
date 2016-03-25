@@ -85,6 +85,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
 	statsite_proxy.cpp
