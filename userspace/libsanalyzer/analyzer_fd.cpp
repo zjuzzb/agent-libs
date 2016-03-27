@@ -311,9 +311,9 @@ bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo,
 	ASSERT(false);
 
 	bool is_sip_local = 
-		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip, ptinfo);
 	bool is_dip_local = 
-		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip);
+		m_inspector->m_network_interfaces->is_ipv4addr_in_local_machine(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dip, ptinfo);
 
 	//
 	// If only the client is local, mark the role as client.
