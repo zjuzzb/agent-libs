@@ -63,10 +63,13 @@ public:
 	void on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len);
 	void on_connect(sinsp_evt *evt, uint8_t* packed_data);
 	void on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo);
-	void on_file_create(sinsp_evt* evt, const string& fullpath);
+	void on_file_open(sinsp_evt* evt, const string& fullpath, uint32_t flags);
 	void on_error(sinsp_evt* evt);
 	void on_erase_fd(erase_fd_params* params);
 	void on_socket_shutdown(sinsp_evt *evt);
+	void on_execve(sinsp_evt *evt);
+	void on_bind(sinsp_evt *evt);
+	void on_new_container(const sinsp_container_info& container_info);
 
 	bool patch_network_role(sinsp_threadinfo* ptinfo, 
 		sinsp_fdinfo_t* pfdinfo,

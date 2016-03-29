@@ -1439,7 +1439,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_file_create(sinsp_evt* evt, const string& fullpath)
+void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& fullpath, uint32_t flags)
 {
 	analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fullpath);
 	if(evt->m_fdinfo)
@@ -1507,6 +1507,18 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 			}
 		}
 	}
+}
+
+void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
+{
+}
+
+void sinsp_analyzer_fd_listener::on_bind(sinsp_evt *evt)
+{
+}
+
+void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& container_info)
+{
 }
 
 analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_threadinfo* tinfo, const string& name)
