@@ -1954,8 +1954,8 @@ void protobuf_AddDesc_draios_2eproto() {
     "_kb\030\r \001(\r\022\034\n\024swap_memory_usage_kb\030\016 \001(\r\022"
     "\030\n\020major_pagefaults\030\017 \001(\004\022\030\n\020minor_pagef"
     "aults\030\020 \001(\004\022\020\n\010fd_count\030\025 \001(\r\022\025\n\rcpu_lim"
-    "it_pct\030\027 \001(\r\022\027\n\017memory_limit_kb\030\030 \001(\r\022\025\n"
-    "\rswap_limit_kb\030\031 \001(\r\"\356\002\n\025connection_cate"
+    "it_pct\030\030 \001(\r\022\027\n\017memory_limit_kb\030\031 \001(\r\022\025\n"
+    "\rswap_limit_kb\030\032 \001(\r\"\356\002\n\025connection_cate"
     "gories\022*\n\006server\030\001 \001(\0132\032.draiosproto.cou"
     "nter_bytes\022*\n\006client\030\002 \001(\0132\032.draiosproto"
     ".counter_bytes\022E\n\024transaction_counters\030\003"
@@ -6241,12 +6241,12 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(184)) goto parse_cpu_limit_pct;
+        if (input->ExpectTag(192)) goto parse_cpu_limit_pct;
         break;
       }
 
-      // optional uint32 cpu_limit_pct = 23;
-      case 23: {
+      // optional uint32 cpu_limit_pct = 24;
+      case 24: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_cpu_limit_pct:
@@ -6257,12 +6257,12 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(192)) goto parse_memory_limit_kb;
+        if (input->ExpectTag(200)) goto parse_memory_limit_kb;
         break;
       }
 
-      // optional uint32 memory_limit_kb = 24;
-      case 24: {
+      // optional uint32 memory_limit_kb = 25;
+      case 25: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_memory_limit_kb:
@@ -6273,12 +6273,12 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(200)) goto parse_swap_limit_kb;
+        if (input->ExpectTag(208)) goto parse_swap_limit_kb;
         break;
       }
 
-      // optional uint32 swap_limit_kb = 25;
-      case 25: {
+      // optional uint32 swap_limit_kb = 26;
+      case 26: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_swap_limit_kb:
@@ -6366,19 +6366,19 @@ void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(21, this->fd_count(), output);
   }
 
-  // optional uint32 cpu_limit_pct = 23;
+  // optional uint32 cpu_limit_pct = 24;
   if (has_cpu_limit_pct()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(23, this->cpu_limit_pct(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(24, this->cpu_limit_pct(), output);
   }
 
-  // optional uint32 memory_limit_kb = 24;
+  // optional uint32 memory_limit_kb = 25;
   if (has_memory_limit_kb()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(24, this->memory_limit_kb(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(25, this->memory_limit_kb(), output);
   }
 
-  // optional uint32 swap_limit_kb = 25;
+  // optional uint32 swap_limit_kb = 26;
   if (has_swap_limit_kb()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(25, this->swap_limit_kb(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(26, this->swap_limit_kb(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -6444,19 +6444,19 @@ void resource_categories::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(21, this->fd_count(), target);
   }
 
-  // optional uint32 cpu_limit_pct = 23;
+  // optional uint32 cpu_limit_pct = 24;
   if (has_cpu_limit_pct()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(23, this->cpu_limit_pct(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(24, this->cpu_limit_pct(), target);
   }
 
-  // optional uint32 memory_limit_kb = 24;
+  // optional uint32 memory_limit_kb = 25;
   if (has_memory_limit_kb()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(24, this->memory_limit_kb(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(25, this->memory_limit_kb(), target);
   }
 
-  // optional uint32 swap_limit_kb = 25;
+  // optional uint32 swap_limit_kb = 26;
   if (has_swap_limit_kb()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(25, this->swap_limit_kb(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(26, this->swap_limit_kb(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -6549,21 +6549,21 @@ int resource_categories::ByteSize() const {
           this->fd_count());
     }
 
-    // optional uint32 cpu_limit_pct = 23;
+    // optional uint32 cpu_limit_pct = 24;
     if (has_cpu_limit_pct()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->cpu_limit_pct());
     }
 
-    // optional uint32 memory_limit_kb = 24;
+    // optional uint32 memory_limit_kb = 25;
     if (has_memory_limit_kb()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->memory_limit_kb());
     }
 
-    // optional uint32 swap_limit_kb = 25;
+    // optional uint32 swap_limit_kb = 26;
     if (has_swap_limit_kb()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(

@@ -1546,24 +1546,24 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 fd_count() const;
   inline void set_fd_count(::google::protobuf::uint32 value);
 
-  // optional uint32 cpu_limit_pct = 23;
+  // optional uint32 cpu_limit_pct = 24;
   inline bool has_cpu_limit_pct() const;
   inline void clear_cpu_limit_pct();
-  static const int kCpuLimitPctFieldNumber = 23;
+  static const int kCpuLimitPctFieldNumber = 24;
   inline ::google::protobuf::uint32 cpu_limit_pct() const;
   inline void set_cpu_limit_pct(::google::protobuf::uint32 value);
 
-  // optional uint32 memory_limit_kb = 24;
+  // optional uint32 memory_limit_kb = 25;
   inline bool has_memory_limit_kb() const;
   inline void clear_memory_limit_kb();
-  static const int kMemoryLimitKbFieldNumber = 24;
+  static const int kMemoryLimitKbFieldNumber = 25;
   inline ::google::protobuf::uint32 memory_limit_kb() const;
   inline void set_memory_limit_kb(::google::protobuf::uint32 value);
 
-  // optional uint32 swap_limit_kb = 25;
+  // optional uint32 swap_limit_kb = 26;
   inline bool has_swap_limit_kb() const;
   inline void clear_swap_limit_kb();
-  static const int kSwapLimitKbFieldNumber = 25;
+  static const int kSwapLimitKbFieldNumber = 26;
   inline ::google::protobuf::uint32 swap_limit_kb() const;
   inline void set_swap_limit_kb(::google::protobuf::uint32 value);
 
@@ -11451,7 +11451,7 @@ inline void resource_categories::set_fd_count(::google::protobuf::uint32 value) 
   fd_count_ = value;
 }
 
-// optional uint32 cpu_limit_pct = 23;
+// optional uint32 cpu_limit_pct = 24;
 inline bool resource_categories::has_cpu_limit_pct() const {
   return (_has_bits_[0] & 0x00000800u) != 0;
 }
@@ -11473,7 +11473,7 @@ inline void resource_categories::set_cpu_limit_pct(::google::protobuf::uint32 va
   cpu_limit_pct_ = value;
 }
 
-// optional uint32 memory_limit_kb = 24;
+// optional uint32 memory_limit_kb = 25;
 inline bool resource_categories::has_memory_limit_kb() const {
   return (_has_bits_[0] & 0x00001000u) != 0;
 }
@@ -11495,7 +11495,7 @@ inline void resource_categories::set_memory_limit_kb(::google::protobuf::uint32 
   memory_limit_kb_ = value;
 }
 
-// optional uint32 swap_limit_kb = 25;
+// optional uint32 swap_limit_kb = 26;
 inline bool resource_categories::has_swap_limit_kb() const {
   return (_has_bits_[0] & 0x00002000u) != 0;
 }
