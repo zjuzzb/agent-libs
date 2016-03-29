@@ -3747,10 +3747,10 @@ void sinsp_analyzer::get_k8s_data()
 	}
 	ASSERT(m_metrics);
 	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-	/*if(m_metrics->has_kubernetes())
+	if(m_metrics->has_kubernetes())
 	{
 		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
-	}*/
+	}
 }
 
 void sinsp_analyzer::emit_k8s()
@@ -3830,7 +3830,6 @@ void sinsp_analyzer::emit_k8s()
 void sinsp_analyzer::get_mesos_data()
 {
 	static time_t last_mesos_refresh = 0;
-	g_logger.log("Getting Mesos data ...", sinsp_logger::SEV_DEBUG);
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
