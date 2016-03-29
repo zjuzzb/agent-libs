@@ -170,6 +170,8 @@ void dragent_configuration::init(Application* app)
 #endif		
 	}
 
+	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
+
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
 	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
@@ -339,6 +341,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("collector_port: " + NumberFormatter::format(m_server_port));
 	g_log->information("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
 	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
+	g_log->information("CURL debug: " + bool_as_text(m_curl_debug));
 	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
 	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));

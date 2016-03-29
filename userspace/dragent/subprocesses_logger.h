@@ -24,6 +24,15 @@ public:
 
 	// Attach pipes to child STDIN, STDOUT and STDERR
 	void attach_child_stdio();
+	int inpipe_size() const
+	{
+		return m_inpipe_size;
+	}
+
+	int outpipe_size() const
+	{
+		return m_outpipe_size;
+	}
 private:
 	// TODO: utility, can be moved outside if needed
 	static void enable_nonblocking(int fd);
@@ -40,6 +49,8 @@ private:
 	FILE *m_input_fd;
 	FILE *m_output_fd;
 	FILE *m_error_fd;
+	int m_inpipe_size;
+	int m_outpipe_size;
 };
 
 // A copy of the pipe_manager but that manages only stderr

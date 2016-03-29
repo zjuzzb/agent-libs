@@ -47,6 +47,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
@@ -84,6 +85,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
 	statsite_proxy.cpp

@@ -447,7 +447,10 @@ int dragent_app::sdagent_main()
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
-
+	if(m_statsite_pipes)
+	{
+		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+	}
 	if(m_configuration.m_customer_id.empty())
 	{
 		g_log->error("customerid not specified");

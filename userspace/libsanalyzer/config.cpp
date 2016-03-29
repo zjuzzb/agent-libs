@@ -23,7 +23,7 @@ sinsp_configuration::sinsp_configuration()
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
-
+	m_k8s_autodetect = true;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -491,6 +491,16 @@ bool sinsp_configuration::get_mesos_follow_leader() const
 void sinsp_configuration::set_mesos_follow_leader(bool enabled)
 {
 	m_mesos_follow_leader = enabled;
+}
+
+bool sinsp_configuration::get_curl_debug() const
+{
+	return m_curl_debug;
+}
+
+void sinsp_configuration::set_curl_debug(bool enabled)
+{
+	m_curl_debug = enabled;
 }
 
 #endif // HAS_ANALYZER

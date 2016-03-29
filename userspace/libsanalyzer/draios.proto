@@ -610,7 +610,7 @@ message k8s_pod {
     optional string node_name = 3;
     optional string host_ip = 4;
     optional string internal_ip = 5;
-    // TODO pod_details
+    optional uint32 restart_count = 6;
 }
 
 message k8s_replication_controller {

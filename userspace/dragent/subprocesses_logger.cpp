@@ -41,16 +41,8 @@ pipe_manager::pipe_manager()
 	enable_nonblocking(m_inpipe[PIPE_WRITE]);
 
 	// We need bigger buffers on pipes, for example for JMX data
-	ret = fcntl(m_inpipe[PIPE_READ], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
-	if (ret < 0)
-	{
-		cerr << "Cannot increase pipe size" << endl;
-	}
-	ret = fcntl(m_outpipe[PIPE_WRITE], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
-	if (ret < 0)
-	{
-		cerr << "Cannot increase pipe size" << endl;
-	}
+	m_inpipe_size = fcntl(m_inpipe[PIPE_READ], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
+	m_outpipe_size = fcntl(m_outpipe[PIPE_WRITE], F_SETPIPE_SZ, PIPE_BUFFER_SIZE);
 }
 
 pipe_manager::~pipe_manager()

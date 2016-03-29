@@ -1,0 +1,77 @@
+#!/bin/bash
+. ./assert.sh
+
+if [ -z $DOCKER_IMAGE ]; then
+  DOCKER_IMAGE="sysdig/agent"
+fi
+
+DRAGENT_YAML="collector: collector-staging.sysdigcloud.com\ncustomerid: e64a1780-5bbd-4083-8ce1-418c2bb0a356"
+LOGFILE="docker-tests.log"
+
+function run_docker_agent() {
+  docker rm -fv sysdig-agent >> $LOGFILE
+  docker run -d --name sysdig-agent --privileged --net host --pid host $1 -v /var/run/docker.sock:/host/var/run/docker.sock -v /dev:/host/dev -v /proc:/host/proc:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro -v /usr:/host/usr:ro $DOCKER_IMAGE >> $LOGFILE 2>&1
+  sleep 1
+  docker exec -i sysdig-agent cat /opt/draios/etc/dragent.yaml 2>> $LOGFILE
+}
+assert_raises run_docker_agent 1
+
+function bind_mount_dragent() {
+  echo -e "$DRAGENT_YAML" > dragent.yaml
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml"
+}
+assert bind_mount_dragent "$DRAGENT_YAML"
+
+function bind_mount_and_additional_conf() {
+  echo -e "$DRAGENT_YAML" > dragent.yaml
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml -e ADDITIONAL_CONF=app_checks_enabled:false"
+}
+assert bind_mount_and_additional_conf "$DRAGENT_YAML"
+
+function bind_mount_and_override_tags() {
+  echo -e "$DRAGENT_YAML" > dragent.yaml
+  run_docker_agent "-v $PWD/dragent.yaml:/opt/draios/etc/dragent.yaml -e TAGS=region:eu"|grep tags
+}
+assert bind_mount_and_override_tags "tags: region:eu\n"
+
+function everything_on_cmdline() {
+  run_docker_agent "-e ACCESS_KEY=test -e ADDITIONAL_CONF=app_checks_enabled:false"
+}
+assert everything_on_cmdline "customerid: test\napp_checks_enabled:false"
+
+function everything_on_cmdline_restart() {
+  everything_on_cmdline
+  docker restart sysdig-agent >> $LOGFILE
+  sleep 1
+  docker exec -i sysdig-agent cat /opt/draios/etc/dragent.yaml 2>> $LOGFILE
+}
+assert everything_on_cmdline_restart "customerid: test\napp_checks_enabled:false\ncustomerid: test\napp_checks_enabled:false"
+
+function custom_image() {
+  cat > Dockerfile <<EOF
+FROM $DOCKER_IMAGE
+ADD dragent.yaml /opt/draios/etc/
+EOF
+  echo -e "$DRAGENT_YAML" > dragent.yaml
+  docker build -t custom_image . >> $LOGFILE 2>&1
+  PDOCKER_IMAGE=$DOCKER_IMAGE
+  DOCKER_IMAGE=custom_image
+  run_docker_agent
+  DOCKER_IMAGE=$PDOCKER_IMAGE
+}
+assert custom_image "$DRAGENT_YAML"
+
+function custom_image_tags() {
+  cat > Dockerfile <<EOF
+FROM $DOCKER_IMAGE
+ADD dragent.yaml /opt/draios/etc/
+EOF
+  echo -e "$DRAGENT_YAML" > dragent.yaml
+  docker build -t custom_image . >> $LOGFILE 2>&1
+  PDOCKER_IMAGE=$DOCKER_IMAGE
+  DOCKER_IMAGE=custom_image
+  run_docker_agent "-e TAGS=region:eu"
+  DOCKER_IMAGE=$PDOCKER_IMAGE
+}
+assert custom_image_tags "$DRAGENT_YAML\ntags: region:eu\n"
+assert_end

@@ -75,6 +75,10 @@ public class MonitoredVM {
             // so keep it as last chance
             retrieveVMInfoFromArgs(request);
         }
+        if(this.available && this.address != null) {
+            LOGGER.fine(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+                    request.getVpid(), this.name, this.address));
+        }
 
         connect();
     }
@@ -249,7 +253,6 @@ public class MonitoredVM {
             for( Config.BeanQuery query : queryList) {
                 if (query.getObjectName().apply(bean)) {
                     matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
-                    break;
                 }
             }
             if (matchingBeans.size() >= BEANS_LIMIT) {

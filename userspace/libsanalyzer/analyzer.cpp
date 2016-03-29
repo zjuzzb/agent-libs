@@ -795,24 +795,22 @@ bool sinsp_analyzer::check_k8s_server(const string& addr)
 	uri url(addr + path);
 	g_logger.log("Detecting K8S at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
 	std::unique_ptr<sinsp_curl> sc;
-	if(url.is_secure())
+	if(url.is_secure() && !m_k8s_ssl)
 	{
-		if(!m_k8s_ssl)
-		{
-			const std::string& cert          = m_configuration->get_k8s_ssl_cert();
-			const std::string& key           = m_configuration->get_k8s_ssl_key();
-			const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
-			const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
-			bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
-			const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
-			const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-			if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
-			{
-				m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
-			}
-		}
+		const std::string& cert          = m_configuration->get_k8s_ssl_cert();
+		const std::string& key           = m_configuration->get_k8s_ssl_key();
+		const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
+		const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
+		bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
+		const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
+		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 	}
-	sc.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+	if(!bt_auth_token.empty())
+	{
+		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+	}
+	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 	string json = sc->get_data();
 	if(!json.empty())
 	{
@@ -878,16 +876,6 @@ string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port
 	return "";
 }
 
-sinsp_curl* sinsp_analyzer::make_curl(const uri& url, long tout, std::shared_ptr<sinsp_curl::ssl> ssl)
-{
-	if(url.is_secure() && ssl)
-	{
-		return new sinsp_curl(url, ssl, tout);
-	}
-
-	return new sinsp_curl(url, tout);
-}
-
 mesos* sinsp_analyzer::make_mesos(string&& json)
 {
 	Json::Value root;
@@ -946,7 +934,7 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log("Error connecting to Mesos at [" + mesos_uri + "]. Error: " + ex.what(),
+		g_logger.log("Error connecting to Mesos at [" + uri(mesos_uri).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
@@ -967,10 +955,11 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 				{
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
+					bool curl_dbg = m_configuration->get_curl_debug();
 #ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl());
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
 #else
-					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl());
+					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
 #endif
 				}
 			}
@@ -986,24 +975,22 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 
 	try
 	{
-		if(url.is_secure())
+		if(url.is_secure() && !m_k8s_ssl)
 		{
-			if(!m_k8s_ssl)
-			{
-				const std::string& cert      = m_configuration->get_k8s_ssl_cert();
-				const std::string& key       = m_configuration->get_k8s_ssl_key();
-				const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
-				const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
-				bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
-				const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
-				const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-				if(!cert.empty() || !key.empty() || !ca_cert.empty() || !bt_auth_token.empty())
-				{
-					m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type, bt_auth_token);
-				}
-			}
+			const std::string& cert      = m_configuration->get_k8s_ssl_cert();
+			const std::string& key       = m_configuration->get_k8s_ssl_key();
+			const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
+			const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
+			bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
+			const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
+			m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 		}
-		curl.reset(make_curl(url, m_configuration->get_k8s_timeout_ms(), m_k8s_ssl));
+		const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+		if(!bt_auth_token.empty() && !m_k8s_bt)
+		{
+			m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+		}
+		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 		if(curl)
 		{
 			return make_k8s(*curl, k8s_api);
@@ -1011,7 +998,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log("Error connecting to K8S at [" + k8s_api + "]. Error: " + ex.what(),
+		g_logger.log("Error connecting to K8S at [" + uri(k8s_api).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
@@ -1286,10 +1273,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
 		ainfo->m_metrics.get_total(&ttot);
-		if(!m_inspector->m_islive)
-		{
-			ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-		}
+//		if(!m_inspector->m_islive)
+//		{
+//			ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
+//		}
 #endif
 
 		//
@@ -1491,10 +1478,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		ASSERT(procinfo != NULL);
 
 		procinfo->m_proc_metrics.get_total(&tot);
-		if(!m_inspector->m_islive)
-		{
-			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-		}
+//		if(!m_inspector->m_islive)
+//		{
+//			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+//		}
 
 		if(tot.m_count != 0)
 		{
@@ -1755,10 +1742,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		ASSERT(procinfo != NULL);
 
 		procinfo->m_proc_metrics.get_total(&tot);
-		if(!m_inspector->m_islive)
-		{
-			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-		}
+//		if(!m_inspector->m_islive)
+//		{
+//			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
+//		}
 		//
 		// Inclusion logic
 		//
@@ -3573,7 +3560,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		//
 		// If this is an fd-based syscall that comes after a wait, update the wait time
 		//
-		ppm_event_flags eflags = evt->get_flags();
+		ppm_event_flags eflags = evt->get_info_flags();
 		if(eflags & EF_USES_FD)
 		{
 			add_wait_time(evt, &cat);
@@ -3795,7 +3782,7 @@ void sinsp_analyzer::emit_k8s()
 		{
 			if(!m_k8s)
 			{
-				g_logger.log("Connecting to K8S API server ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to K8S API server at: [" + k8s_uri + ']', sinsp_logger::SEV_INFO);
 				m_k8s = get_k8s(k8s_uri);
 			}
 			else if(m_k8s && !m_k8s->is_alive())
@@ -3853,9 +3840,11 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
-	time_t now;
-	time(&now);
-	m_mesos->collect_data();
+	time_t now; time(&now);
+	if(last_mesos_refresh)
+	{
+		m_mesos->collect_data();
+	}
 	if(difftime(now, last_mesos_refresh) > 10)
 	{
 		m_mesos->send_data_request();
@@ -4364,8 +4353,7 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
-		while(m_statsd_metrics.find("") != m_statsd_metrics.end() &&
-				m_statsd_metrics.at("").at(0).timestamp() < look_for_ts)
+		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics();
 		}
@@ -4569,6 +4557,8 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 							break;
 						case sinsp_protocol_parser::PROTO_MONGODB:
 							ntransactions_mongodb++;
+							break;
+						case sinsp_protocol_parser::PROTO_TLS:
 							break;
 						default:
 							ASSERT(false);

@@ -149,6 +149,9 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
 
+	// curl
+	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
+
 	//
 	// Configure compression in the protocol
 	//

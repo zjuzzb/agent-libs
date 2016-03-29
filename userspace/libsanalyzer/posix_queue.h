@@ -5,6 +5,8 @@
 #pragma once
 
 #include <sinsp.h>
+
+#ifndef _WIN32
 #include "analyzer_utils.h"
 #include <string>
 #include <mqueue.h>
@@ -36,3 +38,4 @@ private:
 	static const long MAX_QUEUES = 10;
 	static const long MAX_MSGS = 3;
 };
+#endif // _WIN32

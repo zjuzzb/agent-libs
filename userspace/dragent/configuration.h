@@ -281,6 +281,7 @@ public:
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
+	bool m_curl_debug;
 
 	string m_root_dir;
 	string m_conf_file;

@@ -123,6 +123,7 @@ public:
 	uint32_t m_count; // how many times this command has been repeated
 };
 
+#ifndef _WIN32
 class self_cputime_analyzer
 {
 public:
@@ -149,6 +150,7 @@ private:
 	unsigned m_index;
 	uint64_t m_previouscputime;
 };
+#endif // _WIN32
 
 class sinsp_curl;
 
@@ -298,14 +300,27 @@ public:
 #endif
 	}
 
+#ifndef _WIN32
 	void set_app_checks(const vector<app_check>& checks)
 	{
-		m_app_checks = checks;
+		unordered_set<string> check_unique_names;
+		m_app_checks.clear();
+		for(const auto& c : checks)
+		{
+			auto res = check_unique_names.emplace(c.name());
+			if(res.second)
+			{
+				// This means there wasn't already a check like this
+				m_app_checks.push_back(c);
+			}
+		}
+
 		if(!m_app_checks.empty())
 		{
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
+#endif // _WIN32
 
 	void set_containers_limit(const uint32_t value)
 	{
@@ -333,7 +348,6 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	sinsp_curl* make_curl(const uri& url, long tout, std::shared_ptr<sinsp_curl::ssl> ssl = 0);
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
 	bool check_k8s_server(const string& addr);
 	void init_k8s_ssl();
@@ -517,14 +531,19 @@ VISIBILITY_PRIVATE
 #endif
 
 	k8s* m_k8s;
-	std::shared_ptr<sinsp_curl::ssl> m_k8s_ssl;
+#ifndef _WIN32
+	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
+	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
+#endif
 
 	mesos* m_mesos;
 	static bool m_mesos_bad_config;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+#ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
+#endif
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

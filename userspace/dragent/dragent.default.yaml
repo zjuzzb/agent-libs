@@ -579,7 +579,7 @@ app_checks:
   - name: nginx 
     check_module: nginx
     pattern:
-      exe: "nginx: master process" # nginx overwrites argv[0] that is parsed as exe on sysdig
+      exe: "nginx: worker process" # nginx overwrites argv[0] that is parsed as exe on sysdig
     conf:
       nginx_status_url: "http://localhost:{port}/nginx_status/"
   - name: apache
@@ -710,6 +710,7 @@ app_checks:
 # k8s_ca_certificate: k8s-ca.crt
 # k8s_ssl_verify_certificate: true
 # k8s_timeout_ms: 30000
+# k8s_bt_auth_token: k8s-token.tok
 #
 
 #
