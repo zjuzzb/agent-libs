@@ -1521,6 +1521,10 @@ void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& co
 {
 }
 
+void sinsp_analyzer_fd_listener::on_clone(sinsp_threadinfo* newtinfo)
+{
+}
+
 analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_threadinfo* tinfo, const string& name)
 {
 #if defined(HAS_CAPTURE)
