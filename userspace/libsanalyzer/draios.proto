@@ -612,7 +612,8 @@ message k8s_pod {
 
 message k8s_replication_controller {
     required k8s_common common = 1;
-    // TODO replica_count
+    optional uint32 spec_replicas = 2;
+    optional uint32 stat_replicas = 3;
 }
 
 message k8s_service {
