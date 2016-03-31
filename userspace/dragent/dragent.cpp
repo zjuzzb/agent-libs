@@ -395,7 +395,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			// Right now we are using default sinsp stderror logger
 			// it does not send priority so we are using a simple euristic
-			if(s.find("Cannot") != string::npos || s.find("error") != string::npos)
+			if(s.find("Error") != string::npos)
 			{
 				g_log->error(s);
 			}

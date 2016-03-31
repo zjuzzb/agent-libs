@@ -943,7 +943,7 @@ int mounted_fs_reader::run()
 					// Back home
 					if(setns(home_fd, CLONE_NEWNS) != 0)
 					{
-						g_logger.log("Cannot setns home, exiting", sinsp_logger::SEV_ERROR);
+						g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 						return ERROR_EXIT;
 					};
 				}
