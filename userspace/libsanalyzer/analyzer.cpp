@@ -876,7 +876,7 @@ string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port
 	return "";
 }
 
-mesos* sinsp_analyzer::make_mesos(string&& json)
+void sinsp_analyzer::make_mesos(string&& json)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -903,20 +903,21 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 						sinsp_logger::SEV_INFO);
 				}
 
-				return new mesos(mesos_state, mesos::default_state_api,
+				if(m_mesos) { m_mesos.reset(); }
+				m_mesos.reset(new mesos(mesos_state, mesos::default_state_api,
 					marathon_uris,
 					mesos::default_groups_api,
 					mesos::default_apps_api,
 					m_configuration->get_mesos_follow_leader(),
-					m_configuration->get_mesos_timeout_ms());
+					m_configuration->get_mesos_timeout_ms()));
 			}
 		}
 	}
-	return 0;
 }
 
-mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
+void sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
+	m_mesos.reset();
 	uri url(mesos_uri + mesos::default_state_api);
 	long tout = m_configuration->get_mesos_timeout_ms();
 
@@ -927,17 +928,15 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 			// TODO
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
 			m_mesos_bad_config = true;
-			return 0;
+			return;
 		}
-
-		return make_mesos(sinsp_curl(url, tout).get_data());
+		make_mesos(sinsp_curl(url, tout).get_data());
 	}
 	catch(std::exception& ex)
 	{
 		g_logger.log("Error connecting to Mesos at [" + uri(mesos_uri).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
-	return 0;
 }
 
 k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
@@ -3834,16 +3833,16 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos->is_alive());
 
 	time_t now; time(&now);
-	if(last_mesos_refresh)
+	if(m_mesos && last_mesos_refresh)
 	{
 		m_mesos->collect_data();
 	}
-	if(difftime(now, last_mesos_refresh) > 10)
+	if(m_mesos && difftime(now, last_mesos_refresh) > 10)
 	{
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
 	}
-	if(m_mesos->get_state().has_data())
+	if(m_mesos && m_mesos->get_state().has_data())
 	{
 		ASSERT(m_metrics);
 		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
@@ -3891,14 +3890,12 @@ void sinsp_analyzer::emit_mesos()
 			if(!m_mesos && !m_mesos_bad_config)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
-				m_mesos = get_mesos(mesos_uri);
+				get_mesos(mesos_uri);
 			}
 			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
 			{
 				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-				delete m_mesos;
-				m_mesos = 0;
-				m_mesos = get_mesos(mesos_uri);
+				get_mesos(mesos_uri);
 			}
 
 			if(m_mesos)
@@ -3910,9 +3907,7 @@ void sinsp_analyzer::emit_mesos()
 				if(!m_mesos->is_alive() && !m_mesos_bad_config)
 				{
 					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-					delete m_mesos;
-					m_mesos = 0;
-					m_mesos = get_mesos(mesos_uri);
+					get_mesos(mesos_uri);
 					if(m_mesos && m_mesos->is_alive())
 					{
 						g_logger.log("Mesos connection re-established.", sinsp_logger::SEV_INFO);
@@ -3932,11 +3927,7 @@ void sinsp_analyzer::emit_mesos()
 		catch(std::exception& e)
 		{
 			g_logger.log(std::string("Error fetching Mesos state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-			if(m_mesos)
-			{
-				delete m_mesos;
-				m_mesos = 0;
-			}
+			m_mesos.reset();
 		}
 	}
 }

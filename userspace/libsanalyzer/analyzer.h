@@ -356,8 +356,8 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	bool check_mesos_server(const string& addr);
-	mesos* make_mesos(string&& json);
-	mesos* get_mesos(const string& mesos_uri);
+	void make_mesos(string&& json);
+	void get_mesos(const string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
 	void emit_top_files();
@@ -536,7 +536,7 @@ VISIBILITY_PRIVATE
 	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
 #endif
 
-	mesos* m_mesos;
+	unique_ptr<mesos> m_mesos;
 	static bool m_mesos_bad_config;
 
 	vector<string> m_container_patterns;
