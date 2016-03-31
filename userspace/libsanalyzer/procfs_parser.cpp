@@ -800,7 +800,7 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 		// Safety check, it should never happen
 		if(item->m_root.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Process root of pid %ld is empty, skipping ", item->m_pid);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Process root of pid %ld is empty, skipping ", item->m_pid);
 			continue;
 		}
 
