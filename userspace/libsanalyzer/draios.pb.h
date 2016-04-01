@@ -1546,24 +1546,31 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 fd_count() const;
   inline void set_fd_count(::google::protobuf::uint32 value);
 
-  // optional uint32 cpu_limit_pct = 24;
-  inline bool has_cpu_limit_pct() const;
-  inline void clear_cpu_limit_pct();
-  static const int kCpuLimitPctFieldNumber = 24;
-  inline ::google::protobuf::uint32 cpu_limit_pct() const;
-  inline void set_cpu_limit_pct(::google::protobuf::uint32 value);
+  // optional uint32 cpu_shares = 24;
+  inline bool has_cpu_shares() const;
+  inline void clear_cpu_shares();
+  static const int kCpuSharesFieldNumber = 24;
+  inline ::google::protobuf::uint32 cpu_shares() const;
+  inline void set_cpu_shares(::google::protobuf::uint32 value);
 
-  // optional uint32 memory_limit_kb = 25;
+  // optional uint32 cpu_shares_usage_pct = 25;
+  inline bool has_cpu_shares_usage_pct() const;
+  inline void clear_cpu_shares_usage_pct();
+  static const int kCpuSharesUsagePctFieldNumber = 25;
+  inline ::google::protobuf::uint32 cpu_shares_usage_pct() const;
+  inline void set_cpu_shares_usage_pct(::google::protobuf::uint32 value);
+
+  // optional uint32 memory_limit_kb = 26;
   inline bool has_memory_limit_kb() const;
   inline void clear_memory_limit_kb();
-  static const int kMemoryLimitKbFieldNumber = 25;
+  static const int kMemoryLimitKbFieldNumber = 26;
   inline ::google::protobuf::uint32 memory_limit_kb() const;
   inline void set_memory_limit_kb(::google::protobuf::uint32 value);
 
-  // optional uint32 swap_limit_kb = 26;
+  // optional uint32 swap_limit_kb = 27;
   inline bool has_swap_limit_kb() const;
   inline void clear_swap_limit_kb();
-  static const int kSwapLimitKbFieldNumber = 26;
+  static const int kSwapLimitKbFieldNumber = 27;
   inline ::google::protobuf::uint32 swap_limit_kb() const;
   inline void set_swap_limit_kb(::google::protobuf::uint32 value);
 
@@ -1591,8 +1598,10 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_minor_pagefaults();
   inline void set_has_fd_count();
   inline void clear_has_fd_count();
-  inline void set_has_cpu_limit_pct();
-  inline void clear_has_cpu_limit_pct();
+  inline void set_has_cpu_shares();
+  inline void clear_has_cpu_shares();
+  inline void set_has_cpu_shares_usage_pct();
+  inline void clear_has_cpu_shares_usage_pct();
   inline void set_has_memory_limit_kb();
   inline void clear_has_memory_limit_kb();
   inline void set_has_swap_limit_kb();
@@ -1611,12 +1620,13 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint64 major_pagefaults_;
   ::google::protobuf::uint64 minor_pagefaults_;
   ::google::protobuf::uint32 fd_count_;
-  ::google::protobuf::uint32 cpu_limit_pct_;
+  ::google::protobuf::uint32 cpu_shares_;
+  ::google::protobuf::uint32 cpu_shares_usage_pct_;
   ::google::protobuf::uint32 memory_limit_kb_;
   ::google::protobuf::uint32 swap_limit_kb_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11451,37 +11461,59 @@ inline void resource_categories::set_fd_count(::google::protobuf::uint32 value) 
   fd_count_ = value;
 }
 
-// optional uint32 cpu_limit_pct = 24;
-inline bool resource_categories::has_cpu_limit_pct() const {
+// optional uint32 cpu_shares = 24;
+inline bool resource_categories::has_cpu_shares() const {
   return (_has_bits_[0] & 0x00000800u) != 0;
 }
-inline void resource_categories::set_has_cpu_limit_pct() {
+inline void resource_categories::set_has_cpu_shares() {
   _has_bits_[0] |= 0x00000800u;
 }
-inline void resource_categories::clear_has_cpu_limit_pct() {
+inline void resource_categories::clear_has_cpu_shares() {
   _has_bits_[0] &= ~0x00000800u;
 }
-inline void resource_categories::clear_cpu_limit_pct() {
-  cpu_limit_pct_ = 0u;
-  clear_has_cpu_limit_pct();
+inline void resource_categories::clear_cpu_shares() {
+  cpu_shares_ = 0u;
+  clear_has_cpu_shares();
 }
-inline ::google::protobuf::uint32 resource_categories::cpu_limit_pct() const {
-  return cpu_limit_pct_;
+inline ::google::protobuf::uint32 resource_categories::cpu_shares() const {
+  return cpu_shares_;
 }
-inline void resource_categories::set_cpu_limit_pct(::google::protobuf::uint32 value) {
-  set_has_cpu_limit_pct();
-  cpu_limit_pct_ = value;
+inline void resource_categories::set_cpu_shares(::google::protobuf::uint32 value) {
+  set_has_cpu_shares();
+  cpu_shares_ = value;
 }
 
-// optional uint32 memory_limit_kb = 25;
-inline bool resource_categories::has_memory_limit_kb() const {
+// optional uint32 cpu_shares_usage_pct = 25;
+inline bool resource_categories::has_cpu_shares_usage_pct() const {
   return (_has_bits_[0] & 0x00001000u) != 0;
 }
-inline void resource_categories::set_has_memory_limit_kb() {
+inline void resource_categories::set_has_cpu_shares_usage_pct() {
   _has_bits_[0] |= 0x00001000u;
 }
-inline void resource_categories::clear_has_memory_limit_kb() {
+inline void resource_categories::clear_has_cpu_shares_usage_pct() {
   _has_bits_[0] &= ~0x00001000u;
+}
+inline void resource_categories::clear_cpu_shares_usage_pct() {
+  cpu_shares_usage_pct_ = 0u;
+  clear_has_cpu_shares_usage_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_shares_usage_pct() const {
+  return cpu_shares_usage_pct_;
+}
+inline void resource_categories::set_cpu_shares_usage_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_shares_usage_pct();
+  cpu_shares_usage_pct_ = value;
+}
+
+// optional uint32 memory_limit_kb = 26;
+inline bool resource_categories::has_memory_limit_kb() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void resource_categories::set_has_memory_limit_kb() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void resource_categories::clear_has_memory_limit_kb() {
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void resource_categories::clear_memory_limit_kb() {
   memory_limit_kb_ = 0u;
@@ -11495,15 +11527,15 @@ inline void resource_categories::set_memory_limit_kb(::google::protobuf::uint32 
   memory_limit_kb_ = value;
 }
 
-// optional uint32 swap_limit_kb = 26;
+// optional uint32 swap_limit_kb = 27;
 inline bool resource_categories::has_swap_limit_kb() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void resource_categories::set_has_swap_limit_kb() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void resource_categories::clear_has_swap_limit_kb() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void resource_categories::clear_swap_limit_kb() {
   swap_limit_kb_ = 0u;

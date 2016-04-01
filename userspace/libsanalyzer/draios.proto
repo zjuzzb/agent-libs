@@ -89,9 +89,10 @@ message resource_categories {
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
     optional uint32 fd_count = 21; // Total number of FDs
-    optional uint32 cpu_limit_pct = 24; // CPU % of a container in terms of the limit assigned to it
-    optional uint32 memory_limit_kb = 25; // Max Resident memory allowed for a container
-    optional uint32 swap_limit_kb = 26; // Max swap memory allowed for a container
+    optional uint32 cpu_shares = 24;
+    optional uint32 cpu_shares_usage_pct = 25; // CPU % of a container in terms of the limit assigned to it
+    optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
+    optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
 }
 
 message connection_categories {
