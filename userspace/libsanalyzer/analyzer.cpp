@@ -4093,24 +4093,38 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 		if(m_inspector->m_container_manager.get_container(id, &container_info))
 		{
 
-			if(container_info.m_name.find("k8s_POD") == std::string::npos &&
-			   (m_container_patterns.empty() ||
-				std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
-							 [&container_info](const string& pattern)
-							 {
-								 return container_info.m_name.find(pattern) != string::npos ||
-										container_info.m_image.find(pattern) != string::npos;
-							 }) != m_container_patterns.end())
-					)
+			if(container_info.m_name.find("k8s_POD") == std::string::npos)
 			{
-				auto analyzer_it = m_containers.find(id);
-				if(analyzer_it != m_containers.end())
+				if((m_container_patterns.empty() ||
+					std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
+								 [&container_info](const string& pattern)
+								 {
+									 return container_info.m_name.find(pattern) != string::npos ||
+											container_info.m_image.find(pattern) != string::npos;
+								 }) != m_container_patterns.end())
+						)
 				{
-					containers_ids.push_back(id);
-					containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+					auto analyzer_it = m_containers.find(id);
+					if(analyzer_it != m_containers.end())
+					{
+						containers_ids.push_back(id);
+						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+					}
 				}
+
+				// This count it's easy to be affected by a lot of noise, for example:
+				// 1. k8s_POD pods
+				// 2. custom containers run from cmdline with no --cpu-shares flag,
+				//    in this case the kernel defaults to 1024
+				// 3. system containers like kubernetes proxy
+				//
+				// we decided to skip 1. to avoid noise (they have usually shares=2,
+				// does not affect the calc, but they pollute the UI)
+				// Also we decided to skip 2. because usually if --cpu-shares flag is not set,
+				// it is meant for troubleshooting containers with few cpu usage or system containers
+				// with a default of 1024 given by the kernel, they pollute a lot the calculation
+				total_cpu_shares += container_info.m_cpu_shares;
 			}
-			total_cpu_shares += container_info.m_cpu_shares;
 		}
 	}
 
