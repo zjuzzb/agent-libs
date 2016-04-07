@@ -4119,9 +4119,10 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 				// 3. system containers like kubernetes proxy
 				//
 				// we decided to skip 1. to avoid noise (they have usually shares=2,
-				// does not affect the calc, but they pollute the UI)
-				// Also we decided to skip 2. because usually if --cpu-shares flag is not set,
-				// it is meant for troubleshooting containers with few cpu usage or system containers
+				// does not affect so much the calc but they may be a lot)
+				// Right now we decided to keep 2. But may be changed in the future
+				// because usually if --cpu-shares flag is not set, it is meant for troubleshooting
+				// containers with few cpu usage or system containers
 				// with a default of 1024 given by the kernel, they pollute a lot the calculation
 				total_cpu_shares += container_info.m_cpu_shares;
 			}
