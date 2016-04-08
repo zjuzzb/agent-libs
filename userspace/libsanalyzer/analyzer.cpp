@@ -1432,6 +1432,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 	}
 
+
 	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
 	{
 		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
@@ -1652,7 +1653,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
-	auto emitted_containers = emit_containers();
+	vector<string> active_containers;
+	for(const auto& item : progtable_by_container)
+	{
+		active_containers.push_back(item.first);
+	}
+	auto emitted_containers = emit_containers(active_containers);
 	bool progtable_needs_filtering = false;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -4041,7 +4047,7 @@ private:
 	Extractor m_extractor;
 };
 
-vector<string> sinsp_analyzer::emit_containers()
+vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_containers)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -4070,26 +4076,50 @@ vector<string> sinsp_analyzer::emit_containers()
 	containers_ids.reserve(m_containers.size());
 	sinsp_protostate_marker containers_protostate_marker;
 
-	for(const auto& container_id_and_info : *m_inspector->m_container_manager.get_containers())
+	uint64_t total_cpu_shares = 0;
+	for(const auto& id : active_containers)
 	{
-		const auto& id = container_id_and_info.first;
-		const auto& container_info = container_id_and_info.second;
-		auto analyzer_it = m_containers.find(id);
-		if(analyzer_it != m_containers.end() && container_info.m_name.find("k8s_POD") == std::string::npos &&
-		   (m_container_patterns.empty() ||
-			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
-						 [&container_info](const string& pattern)
-						 {
-							 return container_info.m_name.find(pattern) != string::npos ||
-									container_info.m_image.find(pattern) != string::npos;
-						 }) != m_container_patterns.end())
-				)
+		sinsp_container_info container_info;
+		if(m_inspector->m_container_manager.get_container(id, &container_info))
 		{
-			containers_ids.push_back(id);
-			containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+
+			if(container_info.m_name.find("k8s_POD") == std::string::npos)
+			{
+				if((m_container_patterns.empty() ||
+					std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
+								 [&container_info](const string& pattern)
+								 {
+									 return container_info.m_name.find(pattern) != string::npos ||
+											container_info.m_image.find(pattern) != string::npos;
+								 }) != m_container_patterns.end())
+						)
+				{
+					auto analyzer_it = m_containers.find(id);
+					if(analyzer_it != m_containers.end())
+					{
+						containers_ids.push_back(id);
+						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+					}
+				}
+
+				// This count it's easy to be affected by a lot of noise, for example:
+				// 1. k8s_POD pods
+				// 2. custom containers run from cmdline with no --cpu-shares flag,
+				//    in this case the kernel defaults to 1024
+				// 3. system containers like kubernetes proxy
+				//
+				// we decided to skip 1. to avoid noise (they have usually shares=2,
+				// does not affect so much the calc but they may be a lot)
+				// Right now we decided to keep 2. But may be changed in the future
+				// because usually if --cpu-shares flag is not set, it is meant for troubleshooting
+				// containers with few cpu usage or system containers
+				// with a default of 1024 given by the kernel, they pollute a lot the calculation
+				total_cpu_shares += container_info.m_cpu_shares;
+			}
 		}
 	}
 
+	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
 	// Pick top N from top_by_cpu
@@ -4100,11 +4130,11 @@ vector<string> sinsp_analyzer::emit_containers()
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = m_configuration->get_statsd_limit();
-	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers](const uint32_t containers_limit)
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers, &total_cpu_shares](const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
-			this->emit_container(containers_ids.front(), &statsd_limit);
+			this->emit_container(containers_ids.front(), &statsd_limit, total_cpu_shares);
 			emitted_containers.emplace_back(containers_ids.front());
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -4156,7 +4186,7 @@ vector<string> sinsp_analyzer::emit_containers()
 	return emitted_containers;
 }
 
-void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit)
+void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -4237,7 +4267,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_kb;
 	if(!it_analyzer->second.m_memory_cgroup.empty())
 	{
-		auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
+		const auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
 		if(cgroup_memory > 0)
 		{
 			res_memory_kb = cgroup_memory / 1024;
@@ -4250,6 +4280,29 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+
+	const auto cpu_shares = it->second.m_cpu_shares;
+	if(cpu_shares > 0)
+	{
+		const double cpu_shares_usage_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/cpu_shares;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f memory=%u/%u",
+						container_id.c_str(),
+						cpu_shares,
+						cpu_shares_usage_pct,
+						res_memory_kb, it->second.m_memory_limit/1024);
+		container->mutable_resource_counters()->set_cpu_shares(cpu_shares);
+		container->mutable_resource_counters()->set_cpu_shares_usage_pct(cpu_shares_usage_pct*100); // * 100 because we convert double to .2 fixed decimal
+	}
+
+	if(it->second.m_memory_limit > 0)
+	{
+		container->mutable_resource_counters()->set_memory_limit_kb(it->second.m_memory_limit/1024);
+	}
+
+	if(it->second.m_swap_limit > 0)
+	{
+		container->mutable_resource_counters()->set_swap_limit_kb(it->second.m_swap_limit/1024);
+	}
 
 	it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 	if(m_protocols_enabled)

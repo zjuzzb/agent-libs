@@ -361,8 +361,8 @@ VISIBILITY_PRIVATE
 	void get_mesos_data();
 	void emit_mesos();
 	void emit_top_files();
-	vector<string> emit_containers();
-	void emit_container(const string &container_id, unsigned* statsd_limit);
+	vector<string> emit_containers(const vector<string>& active_containers);
+	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
