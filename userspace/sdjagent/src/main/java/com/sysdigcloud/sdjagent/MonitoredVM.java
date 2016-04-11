@@ -76,7 +76,7 @@ public class MonitoredVM {
             retrieveVMInfoFromArgs(request);
         }
         if(this.available && this.address != null) {
-            LOGGER.fine(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+            LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
                     request.getVpid(), this.name, this.address));
         }
 
@@ -158,7 +158,7 @@ public class MonitoredVM {
             jvmstat.detach();
             available = true;
         } catch (MonitorException e) {
-            LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
+            LOGGER.warning(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
             return;
         }
 
