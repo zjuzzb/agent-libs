@@ -41,7 +41,10 @@ jmx:
             - name: Count
               type: counter
               alias: cassandra.read.count
-            - name: Mean
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
               alias: cassandra.read.latency
               unit: us
         - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=Latency"
@@ -49,7 +52,10 @@ jmx:
             - name: Count
               type: counter
               alias: cassandra.write.count
-            - name: Mean
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
               alias: cassandra.write.latency
               unit: us
         - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
