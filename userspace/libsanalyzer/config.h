@@ -101,6 +101,8 @@ public:
 	void set_mesos_follow_leader(bool enabled);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
+	uint32_t get_protocols_truncation_size() const;
+	void set_protocols_truncation_size(uint32_t truncation_size);
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -148,6 +150,8 @@ private:
 	bool m_mesos_follow_leader;
 
 	bool m_curl_debug;
+
+	uint32_t m_protocols_truncation_size;
 };
 
 #endif // HAS_ANALYZER

@@ -654,7 +654,7 @@ TEST(sinsp_protostate, test_per_container_distribution)
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
-			protostate.update(transaction.get(), j, false);
+			protostate.update(transaction.get(), j, false, 512);
 		}
 	}
 	sinsp_protostate_marker marker;
@@ -699,7 +699,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
-			protostate.update(transaction.get(), j, false);
+			protostate.update(transaction.get(), j, false, 512);
 		}
 	}
 	{
@@ -712,7 +712,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 		http_parser->m_is_valid = true;
 		transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 		transaction->m_protoparser = http_parser;
-		protostate.update(transaction.get(), 1000, false);
+		protostate.update(transaction.get(), 1000, false, 512);
 	}
 
 	{
@@ -727,7 +727,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
-			protostate.update(transaction.get(), 2, false);
+			protostate.update(transaction.get(), 2, false, 512);
 		}
 	}
 

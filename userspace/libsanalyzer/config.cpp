@@ -24,6 +24,7 @@ sinsp_configuration::sinsp_configuration()
 	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_k8s_autodetect = true;
+	m_protocols_truncation_size = 512;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -501,6 +502,16 @@ bool sinsp_configuration::get_curl_debug() const
 void sinsp_configuration::set_curl_debug(bool enabled)
 {
 	m_curl_debug = enabled;
+}
+
+uint32_t sinsp_configuration::get_protocols_truncation_size() const
+{
+	return m_protocols_truncation_size;
+}
+
+void sinsp_configuration::set_protocols_truncation_size(uint32_t truncation_size)
+{
+	m_protocols_truncation_size = truncation_size;
 }
 
 #endif // HAS_ANALYZER

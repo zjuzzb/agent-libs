@@ -345,7 +345,7 @@ public:
 	void add(sql_state* other);
 	template<typename Parser>
 	void update(sinsp_partial_transaction* tr,
-				uint64_t time_delta, bool is_server);
+				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 	inline bool has_data()
@@ -388,7 +388,7 @@ public:
 	void add(mongodb_state* other);
 
 	void update(sinsp_partial_transaction* tr,
-				uint64_t time_delta, bool is_server);
+				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	void to_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
@@ -429,7 +429,7 @@ public:
 	void add(sinsp_http_state* other);
 
 	inline void update(sinsp_partial_transaction* tr,
-				uint64_t time_delta, bool is_server);
+				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	inline void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
@@ -454,7 +454,7 @@ private:
 class sinsp_protostate
 {
 public:
-	void update(sinsp_partial_transaction* tr, uint64_t time_delta, bool is_server);
+	void update(sinsp_partial_transaction* tr, uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	inline void clear()
 	{

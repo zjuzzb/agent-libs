@@ -51,6 +51,7 @@ dragent_configuration::dragent_configuration()
 	m_capture_dragent_events = false;
 	m_jmx_sampling = 1;
 	m_protocols_enabled = true;
+	m_protocols_truncation_size = 0;
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
 	m_ssh_enabled = true;
@@ -210,6 +211,7 @@ void dragent_configuration::init(Application* app)
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
+	m_protocols_truncation_size = m_config->get_scalar<uint32_t>("protocols_truncation_size", 512);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
 	auto java_home = m_config->get_scalar<string>("java_home", "");
 	for(const auto& bin_path : { string("/usr/bin/java"), java_home + "/jre/bin/java", java_home + "/bin/java"})
@@ -370,6 +372,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
+	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 	g_log->information("java detected: " + bool_as_text(java_present()));

@@ -328,6 +328,7 @@ public:
 	aws_metadata m_aws_metadata;
 	uint16_t m_jmx_sampling;
 	bool m_protocols_enabled;
+	uint32_t m_protocols_truncation_size;
 	bool m_remotefs_enabled;
 	string m_java_binary;
 	string m_sdjagent_opts;
