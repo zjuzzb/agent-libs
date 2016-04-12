@@ -244,8 +244,15 @@ int main(void)
 	int res;
 	struct timeval start_time, end_time;
 	double duration;
-	FILE* f = fopen("/dev/sysdig-events", "wb");
+	FILE* f = fopen("/dev/null", "wb");
 
+fwrite(">:", strlen(">:"), 1, f);
+fflush(f);
+fwrite("10:pippo:e=10:", strlen("10:pippo:e=10:"), 1, f);
+fflush(f);
+exit(0);
+
+	sleep(1000000);
 	printf("%p\n", f);
 
 	char* bigbuf = (char*)malloc(BIGBUFSIZE);
