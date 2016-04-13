@@ -24,7 +24,11 @@ sinsp_configuration::sinsp_configuration()
 	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_k8s_autodetect = true;
+<<<<<<< Updated upstream
 	m_protocols_truncation_size = 512;
+=======
+	m_mesos_autodetect = true;
+>>>>>>> Stashed changes
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)

@@ -112,6 +112,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
+	m_run_chisels = false;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -1439,7 +1440,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		k8s_not_present = true;
 	}
 
-	if(!mesos_not_present && m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
+	if(!mesos_not_present)
 	{
 		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
 		mesos_not_present = true;
