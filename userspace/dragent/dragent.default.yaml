@@ -77,7 +77,7 @@ jmx:
               alias: cassandra.compactions.pending
         - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
           attributes:
-            - name: Value
+            - name: Count
               type: counter
               alias: cassandra.compactions.bytes
               unit: B
