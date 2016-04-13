@@ -45,7 +45,7 @@ jmx:
           attributes:
             - name: Count
               type: counter
-              alias: cassandra.read.latency
+              alias: cassandra.read.total.latency
               unit: us
         - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=Latency"
           attributes:
@@ -56,7 +56,15 @@ jmx:
           attributes:
             - name: Count
               type: counter
+              alias: cassandra.write.total.latency
+              unit: us
+        - query: "org.apache.cassandra.db:type=StorageProxy"  # Bean available only on Cassandra <= 2.1
+          attributes:
+            - name: RecentWriteLatencyMicros
               alias: cassandra.write.latency
+              unit: us
+            - name: RecentReadLatencyMicros
+              alias: cassandra.read.latency
               unit: us
         - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
           attributes:
