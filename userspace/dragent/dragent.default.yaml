@@ -36,7 +36,29 @@ jmx:
     cassandra:
       pattern: "cassandra"
       beans:
-        - query: "org.apache.cassandra.db:type=StorageProxy"
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=Latency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.read.count
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.read.total.latency
+              unit: us
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=Latency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.write.count
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.write.total.latency
+              unit: us
+        - query: "org.apache.cassandra.db:type=StorageProxy"  # Bean available only on Cassandra <= 2.1
           attributes:
             - name: RecentWriteLatencyMicros
               alias: cassandra.write.latency
@@ -44,50 +66,56 @@ jmx:
             - name: RecentReadLatencyMicros
               alias: cassandra.read.latency
               unit: us
-            - name: WriteOperations
-              type: counter
-              alias: cassandra.write.count
-            - name: ReadOperations
-              type: counter
-              alias: cassandra.read.count
-        - query: "org.apache.cassandra.db:type=CompactionManager"
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
           attributes:
-            - name: TotalCompactionsCompleted
+            - name: Count
               type: counter
               alias: cassandra.compactions.count
-            - name: PendingTasks
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=PendingTasks"
+          attributes:
+            - name: Value
               alias: cassandra.compactions.pending
-            - name: TotalBytesCompacted
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.compactions.bytes
               unit: B
-        - query: "org.apache.cassandra.db:type=Caches"
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=KeyCache,name=Hits"
           attributes:
-            - name: KeyCacheHits
+            - name: Count
               type: counter
               alias: cassandra.keycache.hits
-            - name: KeyCacheRequests
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=KeyCache,name=Requests"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.keycache.requests
-            - name: RowCacheHits
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=RowCache,name=Hits"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.rowcache.hits
-            - name: RowCacheRequests
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=RowCache,name=Requests"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.rowcache.requests
-        - query: "org.apache.cassandra.internal:type=HintedHandoff"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=internal,scope=HintedHandoff,name=ActiveTasks"
           attributes:
-            - name: PendingTasks
-              alias: cassandra.hintedhandoff.pending
-            - name: ActiveCount
+            - name: Value
               alias: cassandra.hintedhandoff.active
-        - query: "org.apache.cassandra.request:type=ReadStage"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=internal,scope=HintedHandoff,name=PendingTasks"
           attributes:
-            - name: PendingTasks
+            - name: Value
+              alias: cassandra.hintedhandoff.pending
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=ReadStage,name=PendingTasks"
+          attributes:
+            - name: Value
               alias: cassandra.read.pending
-        - query: "org.apache.cassandra.request:type=MutationStage"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=MutationStage,name=PendingTasks"
           attributes:
-            - name: PendingTasks
+            - name: Value
               alias: cassandra.write.pending
     tomcat:
       pattern: "catalina"
