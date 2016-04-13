@@ -100,6 +100,7 @@ public:
 	{
 		m_ncalls = 0;
 		m_flags = SRF_NONE;
+		m_time_max = 0;
 	}
 
 	inline void to_protobuf(draiosproto::counter_proto_entry* counters, uint32_t sampling_ratio) const
