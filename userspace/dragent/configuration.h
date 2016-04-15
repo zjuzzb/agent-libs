@@ -292,6 +292,7 @@ public:
 	string m_log_dir;
 	string m_customer_id;
 	string m_machine_id;
+	string m_machine_id_prefix;
 	string m_server_addr;
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;

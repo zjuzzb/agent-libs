@@ -153,6 +153,8 @@ void dragent_configuration::init(Application* app)
 		m_server_port = m_config->get_scalar<uint16_t>("collector_port", 6666);
 	}
 
+	m_machine_id_prefix = m_config->get_scalar<string>("machine_id_prefix", "");
+
 	if(m_min_file_priority == 0)
 	{
 #ifdef _DEBUG
@@ -333,7 +335,7 @@ void dragent_configuration::print_configuration()
 		g_log->critical(item);
 	}
 	g_log->information("Distribution: " + get_distribution());
-	g_log->information("machine id: " + m_machine_id);
+	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("conffile: " + m_conf_file);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
