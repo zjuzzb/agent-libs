@@ -1,0 +1,43 @@
+FROM debian:unstable
+
+MAINTAINER Sysdig <support@sysdig.com>
+
+ENV SYSDIG_REPOSITORY dev
+
+ENV SYSDIG_HOST_ROOT /host
+
+ENV AGENT_VERSION 0.1.1dev
+
+ENV HOME /root
+
+RUN cp /etc/skel/.bashrc /root && cp /etc/skel/.profile /root
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+	bash-completion \
+	curl \
+	ca-certificates \
+	gcc \
+	gcc-4.9 \
+	gcc-4.8 \
+	openjdk-8-jre-headless \
+	python \
+  dkms && rm -rf /var/lib/apt/lists/*
+
+# Terribly terrible hacks: since our base Debian image ships with GCC 5.0 which breaks older kernels,
+# revert the default to gcc-4.9. Also, since some customers use some very old distributions whose kernel
+# makefile is hardcoded for gcc-4.6 or so (e.g. Debian Wheezy), we pretend to have gcc 4.6/4.7 by symlinking
+# it to 4.8
+
+RUN rm -rf /usr/bin/gcc \
+ && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc \
+ && ln -s /usr/bin/gcc-4.8 /usr/bin/gcc-4.7 \
+ && ln -s /usr/bin/gcc-4.8 /usr/bin/gcc-4.6
+
+RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+
+ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
+RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb
+COPY ./docker-entrypoint.sh /
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

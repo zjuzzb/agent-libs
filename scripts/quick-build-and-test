@@ -37,3 +37,24 @@ cd sysdig/build/release/userspace/sysdig
 cd -
 rmmod sysdig-probe
 rmmod sysdigcloud-probe
+
+# Integration tests
+make -C agent/build/release VERBOSE=1 package
+mkdir -p agent/build/integtest
+pushd agent/build/integtest
+cp -r ../../integtest/* .
+
+# build agent docker container
+cp -r "../../docker/local" agent-docker
+cp ../release/draios-0.1.1dev-x86_64-agent.deb agent-docker/
+pushd agent-docker
+docker rm -fv sysdig-agent || true
+docker rmi agent debian:unstable || true
+docker build -t agent .
+popd
+
+# run tests
+docker build -t integtest . # Should be cached
+docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/:/code integtest
+
+popd

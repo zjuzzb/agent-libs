@@ -44,7 +44,7 @@ for env_dir in $ENV_DIR/*; do
       -v /usr:/host/usr:ro -e ADDITIONAL_CONF="metricsfile: { location: metrics }\n`cat $env_dir/additional_conf.yaml 2> /dev/null`" $DOCKER_IMAGE
   echo -n "* wait until the agent is up"
   agent_ok=0
-  for i in `seq 20`; do
+  for i in `seq 60`; do
     if docker logs sysdig-agent 2>&1| grep -q "to collector"; then
       agent_ok=1
       break
