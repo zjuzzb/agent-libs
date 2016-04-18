@@ -56,7 +56,7 @@ if [ `uname -m` == "x86_64" ]; then
 
   # run tests
   docker build -t integtest . # Should be cached
-  docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/:/code integtest
+  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/:/code integtest
 
   popd
 fi
