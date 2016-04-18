@@ -7,7 +7,6 @@ import socket
 logfile = None
 markerfile = None
 
-'''
 def log( string ):
     global logfile
 
@@ -21,7 +20,7 @@ def log( string ):
     sys.stdout.write(string);
     sys.stdout.flush();
     return
-
+'''
 
 def mark( string ):
     global markerfile
