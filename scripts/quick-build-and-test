@@ -39,7 +39,7 @@ rmmod sysdig-probe
 rmmod sysdigcloud-probe
 
 # Integration tests
-if [ `uname -m` == "x86_64"]; then
+if [ `uname -m` == "x86_64" ]; then
   make -C agent/build/release VERBOSE=1 package
   mkdir -p agent/build/integtest
   pushd agent/build/integtest
