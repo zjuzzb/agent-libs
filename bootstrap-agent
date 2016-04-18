@@ -60,7 +60,7 @@ if [ ! -d "$POCO_DIR" ]; then
 	tar -xzf poco-1.4.6p4-all.tar.gz
 	cd $POCO_DIR
 	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC --include-path=$OPENSSL_DIR/target/include
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC,PageCompiler --include-path=$OPENSSL_DIR/target/include
 	make install
 	cd ..
 fi
