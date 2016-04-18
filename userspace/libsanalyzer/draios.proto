@@ -93,6 +93,7 @@ message resource_categories {
     optional uint32 cpu_shares_usage_pct = 25; // CPU % of a container in terms of the limit assigned to it
     optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
     optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
+    optional uint32 cpu_quota_used_pct = 28;
 }
 
 message connection_categories {
