@@ -19,7 +19,6 @@ RUN apt-get update \
 	ca-certificates \
 	gcc \
 	gcc-4.9 \
-	gcc-4.8 \
 	openjdk-8-jre-headless \
 	python \
   dkms && rm -rf /var/lib/apt/lists/*
@@ -31,8 +30,9 @@ RUN apt-get update \
 
 RUN rm -rf /usr/bin/gcc \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc \
- && ln -s /usr/bin/gcc-4.8 /usr/bin/gcc-4.7 \
- && ln -s /usr/bin/gcc-4.8 /usr/bin/gcc-4.6
+ && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.8 \
+ && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.7 \
+ && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.6
 
 RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
