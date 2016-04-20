@@ -9,6 +9,9 @@ fi
 if [ -z $DOCKER_IMAGE ]; then
   DOCKER_IMAGE=agent
 fi
+if [ -z $AGENT_SAMPLES ]; then
+  AGENT_SAMPLES=10
+fi
 
 env_start() {
   pushd $1
@@ -55,7 +58,7 @@ for env_dir in $ENV_DIR/*; do
   echo
   if [ $agent_ok == 1 ]; then
     echo "* agent ready, capture a couple of samples"
-    sleep 10
+    sleep $AGENT_SAMPLES
   else
     echo "* error on loading agent"
     exit 1
