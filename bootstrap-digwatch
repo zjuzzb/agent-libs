@@ -37,7 +37,7 @@ if [ -z "$BUILD_DRIVER" ]; then
   BUILD_DRIVER=ON
 fi
 
-DIGWATCH_BUILD_DIR=$WORKDIR/digweatch/build
+DIGWATCH_BUILD_DIR=$WORKDIR/digwatch/build
 mkdir -p $DIGWATCH_BUILD_DIR/debug
 mkdir -p $DIGWATCH_BUILD_DIR/release
 
