@@ -4286,10 +4286,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	if(cpu_shares > 0)
 	{
 		const double cpu_shares_usage_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/cpu_shares;
-		g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f",
-						container_id.c_str(),
-						cpu_shares,
-						cpu_shares_usage_pct);
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f", container_id.c_str(), cpu_shares, cpu_shares_usage_pct);
 		container->mutable_resource_counters()->set_cpu_shares(cpu_shares);
 		container->mutable_resource_counters()->set_cpu_shares_usage_pct(cpu_shares_usage_pct*100); // * 100 because we convert double to .2 fixed decimal
 	}
@@ -4297,20 +4294,14 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	if(it->second.m_cpu_quota > 0 && it->second.m_cpu_period > 0)
 	{
 		const double cpu_quota_used_pct = it_analyzer->second.m_metrics.m_cpuload*it->second.m_cpu_period/it->second.m_cpu_quota;
-		g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f",
-						container_id.c_str(),
-						it->second.m_cpu_quota,
-						it->second.m_cpu_period,
-						cpu_quota_used_pct);
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f", container_id.c_str(), it->second.m_cpu_quota, it->second.m_cpu_period, cpu_quota_used_pct);
 		container->mutable_resource_counters()->set_cpu_quota_used_pct(cpu_quota_used_pct*100);
 	}
 
 	if(it->second.m_memory_limit > 0)
 	{
 		container->mutable_resource_counters()->set_memory_limit_kb(it->second.m_memory_limit/1024);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s memory=%u/%u",
-						container_id.c_str(),
-						res_memory_kb, it->second.m_memory_limit/1024);
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s memory=%u/%u", container_id.c_str(), res_memory_kb, it->second.m_memory_limit/1024);
 	}
 
 	if(it->second.m_swap_limit > 0)
