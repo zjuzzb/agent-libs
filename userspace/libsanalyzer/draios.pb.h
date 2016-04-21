@@ -1574,6 +1574,13 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 swap_limit_kb() const;
   inline void set_swap_limit_kb(::google::protobuf::uint32 value);
 
+  // optional uint32 cpu_quota_used_pct = 28;
+  inline bool has_cpu_quota_used_pct() const;
+  inline void clear_cpu_quota_used_pct();
+  static const int kCpuQuotaUsedPctFieldNumber = 28;
+  inline ::google::protobuf::uint32 cpu_quota_used_pct() const;
+  inline void set_cpu_quota_used_pct(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1606,6 +1613,8 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_memory_limit_kb();
   inline void set_has_swap_limit_kb();
   inline void clear_has_swap_limit_kb();
+  inline void set_has_cpu_quota_used_pct();
+  inline void clear_has_cpu_quota_used_pct();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1624,9 +1633,10 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 cpu_shares_usage_pct_;
   ::google::protobuf::uint32 memory_limit_kb_;
   ::google::protobuf::uint32 swap_limit_kb_;
+  ::google::protobuf::uint32 cpu_quota_used_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11567,6 +11577,28 @@ inline ::google::protobuf::uint32 resource_categories::swap_limit_kb() const {
 inline void resource_categories::set_swap_limit_kb(::google::protobuf::uint32 value) {
   set_has_swap_limit_kb();
   swap_limit_kb_ = value;
+}
+
+// optional uint32 cpu_quota_used_pct = 28;
+inline bool resource_categories::has_cpu_quota_used_pct() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void resource_categories::set_has_cpu_quota_used_pct() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void resource_categories::clear_has_cpu_quota_used_pct() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void resource_categories::clear_cpu_quota_used_pct() {
+  cpu_quota_used_pct_ = 0u;
+  clear_has_cpu_quota_used_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_quota_used_pct() const {
+  return cpu_quota_used_pct_;
+}
+inline void resource_categories::set_cpu_quota_used_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_quota_used_pct();
+  cpu_quota_used_pct_ = value;
 }
 
 // -------------------------------------------------------------------
