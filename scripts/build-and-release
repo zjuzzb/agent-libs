@@ -43,6 +43,7 @@ function build_components {
 			;;
 		digwatch)
 			rm -rf digwatch/build || true
+			agent/bootstrap-sysdig
 			agent/bootstrap-digwatch
 
 			make -C digwatch/build/debug package VERBOSE=1
