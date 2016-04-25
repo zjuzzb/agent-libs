@@ -1,5 +1,4 @@
 require 'mongo'
-
 include Mongo
 
 $stdout.sync = true
@@ -9,14 +8,16 @@ db = client["test"]
 collection = db["customers"]
 
 loop do
-print ">:t:aggregate::\n"
-    collection.aggregate( [
-                        { "$match" => {}},
-                        { "$group" => {
-                                      "_id" => "$country_code",
-                                      "orders_count" => { "$sum" => "$orders_count" }
-                                    }
-                       }
-               ])
-print "<:t:aggregate::\n"
+	print ">:t:aggregate::\n" # Mark the beginning of the query
+
+	collection.aggregate( [
+	                    { "$match" => {}},
+	                    { "$group" => {
+	                                  "_id" => "$country_code",
+	                                  "orders_count" => { "$sum" => "$orders_count" }
+	                                }
+	                   }
+	           ])
+
+	print "<:t:aggregate::\n" # Mark the end of the query
 end
