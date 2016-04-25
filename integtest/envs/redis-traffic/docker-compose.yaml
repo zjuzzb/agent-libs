@@ -1,0 +1,9 @@
+redis:
+  image: redis
+client:
+  build: redis-client/
+  links:
+    - redis:redis
+  environment:
+    - REDIS_HOST=redis
+  command: bundle exec ruby example.rb 0.2 

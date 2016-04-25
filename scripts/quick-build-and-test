@@ -37,3 +37,4 @@ cd sysdig/build/release/userspace/sysdig
 cd -
 rmmod sysdig-probe
 rmmod sysdigcloud-probe
+
