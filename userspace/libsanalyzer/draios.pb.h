@@ -5667,6 +5667,20 @@ class mounted_fs : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 available_bytes() const;
   inline void set_available_bytes(::google::protobuf::uint64 value);
 
+  // optional uint64 total_inodes = 10;
+  inline bool has_total_inodes() const;
+  inline void clear_total_inodes();
+  static const int kTotalInodesFieldNumber = 10;
+  inline ::google::protobuf::uint64 total_inodes() const;
+  inline void set_total_inodes(::google::protobuf::uint64 value);
+
+  // optional uint64 used_inodes = 11;
+  inline bool has_used_inodes() const;
+  inline void clear_used_inodes();
+  static const int kUsedInodesFieldNumber = 11;
+  inline ::google::protobuf::uint64 used_inodes() const;
+  inline void set_used_inodes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs)
  private:
   inline void set_has_device();
@@ -5681,6 +5695,10 @@ class mounted_fs : public ::google::protobuf::Message {
   inline void clear_has_used_bytes();
   inline void set_has_available_bytes();
   inline void clear_has_available_bytes();
+  inline void set_has_total_inodes();
+  inline void clear_has_total_inodes();
+  inline void set_has_used_inodes();
+  inline void clear_has_used_inodes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5690,9 +5708,11 @@ class mounted_fs : public ::google::protobuf::Message {
   ::google::protobuf::uint64 size_bytes_;
   ::google::protobuf::uint64 used_bytes_;
   ::google::protobuf::uint64 available_bytes_;
+  ::google::protobuf::uint64 total_inodes_;
+  ::google::protobuf::uint64 used_inodes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -16890,6 +16910,50 @@ inline ::google::protobuf::uint64 mounted_fs::available_bytes() const {
 inline void mounted_fs::set_available_bytes(::google::protobuf::uint64 value) {
   set_has_available_bytes();
   available_bytes_ = value;
+}
+
+// optional uint64 total_inodes = 10;
+inline bool mounted_fs::has_total_inodes() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void mounted_fs::set_has_total_inodes() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void mounted_fs::clear_has_total_inodes() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void mounted_fs::clear_total_inodes() {
+  total_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_total_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::total_inodes() const {
+  return total_inodes_;
+}
+inline void mounted_fs::set_total_inodes(::google::protobuf::uint64 value) {
+  set_has_total_inodes();
+  total_inodes_ = value;
+}
+
+// optional uint64 used_inodes = 11;
+inline bool mounted_fs::has_used_inodes() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void mounted_fs::set_has_used_inodes() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void mounted_fs::clear_has_used_inodes() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void mounted_fs::clear_used_inodes() {
+  used_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_used_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::used_inodes() const {
+  return used_inodes_;
+}
+inline void mounted_fs::set_used_inodes(::google::protobuf::uint64 value) {
+  set_has_used_inodes();
+  used_inodes_ = value;
 }
 
 // -------------------------------------------------------------------
