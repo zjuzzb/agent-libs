@@ -123,6 +123,7 @@ jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
 
 Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 {
+	static const unsigned MAX_ARG_SIZE = 100;
 	Json::Value ret;
 	ret["pid"] = static_cast<Json::Value::Int64>(tinfo->m_pid);
 	ret["vpid"] = static_cast<Json::Value::Int64>(tinfo->m_vpid);
@@ -134,7 +135,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	Json::Value args_json(Json::arrayValue);
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
-		if(arg.find("jmx") != string::npos && arg.size() < 100)
+		if(arg.find("-D") == 0 && arg.find("jmx") != string::npos && arg.size() < MAX_ARG_SIZE)
 		{
 			args_json.append(arg);
 		}
@@ -142,7 +143,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// Last non empty arg is usually the main class
 	for(auto it = tinfo->m_args.rbegin(); it != tinfo->m_args.rend(); ++it)
 	{
-		if(!it->empty() && it->find('.') != string::npos) {
+		if(!it->empty() && it->find('.') != string::npos && it->size() < MAX_ARG_SIZE) {
 			args_json.append(*it);
 			break;
 		}

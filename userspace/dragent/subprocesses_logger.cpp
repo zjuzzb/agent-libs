@@ -117,7 +117,7 @@ void sdjagent_parser::operator()(const string& data)
 	// Parse log level and use it
 	Json::Value sdjagent_log;
 	bool parsing_ok = m_json_reader.parse(data, sdjagent_log, false);
-	if(parsing_ok)
+	if(parsing_ok && sdjagent_log.isObject())
 	{
 		unsigned pid = sdjagent_log["pid"].asUInt();
 		string log_level = sdjagent_log["level"].asString();
