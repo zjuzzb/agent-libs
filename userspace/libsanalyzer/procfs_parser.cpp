@@ -740,7 +740,9 @@ mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	type(proto.type()),
 	size_bytes(proto.size_bytes()),
 	used_bytes(proto.used_bytes()),
-	available_bytes(proto.available_bytes())
+	available_bytes(proto.available_bytes()),
+	total_inodes(proto.total_inodes()),
+	used_inodes(proto.used_inodes())
 {
 
 }
