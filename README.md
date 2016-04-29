@@ -1,9 +1,9 @@
 # Docker builder
 
-To build agent using docker checkout agent and sysdig repositories on the same directory (ex `/draios`), then run on this directory:
+To build agent using docker checkout agent and sysdig repositories on the same directory (ex `/draios`), then run on from `/draios/agent` directory:
 
 ```
-docker build -t agent-builder:latest .
+docker build -t agent-builder:latest -f Dockerfile.builder .
 ```
 
 After, to build and install the agent run:
@@ -12,7 +12,7 @@ After, to build and install the agent run:
 docker run -it --name agent-install -v /draios:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock agent-builder install
 ```
 
-This command will install agent on `/opt/draios`, to build a package and docker image run:
+This command will install agent on `/opt/draios`. To build a package and docker image run:
 
 ```
 docker run -it --name agent-package -v /draios:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock agent-builder package
