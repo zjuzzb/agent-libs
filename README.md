@@ -1,4 +1,8 @@
-# Docker builder
+# Sysdig Agent
+
+Here there are some instructions to build and run sysdig agent during development.
+
+## Docker builder
 
 To build agent using docker checkout agent and sysdig repositories on the same directory (ex `/draios`), then run on from `/draios/agent` directory:
 
@@ -22,7 +26,7 @@ It will build a debian and rpm package, they will be put on `/draios/pkgs`. And 
 
 You can rerun a build by simply restarting the container with: `docker start -ia agent-install`
 
-# Running
+## Running
 
 To run the previous built docker image use:
 
