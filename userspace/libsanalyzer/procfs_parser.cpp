@@ -539,7 +539,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		fs.available_bytes = blocksize * statfs.f_bavail; 
 		fs.size_bytes = blocksize * statfs.f_blocks; 
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
-
+		fs.total_inodes = statfs.f_files;
+		fs.used_inodes = statfs.f_files - statfs.f_ffree;
 		ret.emplace_back(move(fs));
 	}
 
@@ -739,7 +740,9 @@ mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	type(proto.type()),
 	size_bytes(proto.size_bytes()),
 	used_bytes(proto.used_bytes()),
-	available_bytes(proto.available_bytes())
+	available_bytes(proto.available_bytes()),
+	total_inodes(proto.total_inodes()),
+	used_inodes(proto.used_inodes())
 {
 
 }
@@ -752,6 +755,8 @@ void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 	fs->set_size_bytes(size_bytes);
 	fs->set_used_bytes(used_bytes);
 	fs->set_available_bytes(available_bytes);
+	fs->set_total_inodes(total_inodes);
+	fs->set_used_inodes(used_inodes);
 }
 
 mounted_fs_proxy::mounted_fs_proxy():

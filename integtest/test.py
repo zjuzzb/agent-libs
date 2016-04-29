@@ -154,3 +154,21 @@ def test_ipv4_connections(env):
       assert conn.spid != 0 or conn.dpid != 0
       assert conn.tuple.sport == 0
       assert conn.tuple.dport > 0
+
+@pytest.mark.parametrize("env", [
+    "redis-traffic",
+    "cassandra-latest"
+])
+def test_inodes_data(env):
+  mounts_found = False
+  for m in lastMetricsFile(env):
+    for mfs in m.mounts:
+      mounts_found = True
+      assert mfs.total_inodes > 0
+      assert mfs.used_inodes > 0
+    for c in m.containers:
+      for mfs in m.mounts:
+        mounts_found = True
+        assert mfs.total_inodes > 0
+        assert mfs.used_inodes > 0
+  assert mounts_found
