@@ -515,4 +515,24 @@ void sinsp_configuration::set_protocols_truncation_size(uint32_t truncation_size
 	m_protocols_truncation_size = truncation_size;
 }
 
+user_event_filter_t::ptr_t sinsp_configuration::get_k8s_event_filter() const
+{
+	return m_k8s_event_filter;
+}
+
+void sinsp_configuration::set_k8s_event_filter(user_event_filter_t::ptr_t event_filter)
+{
+	m_k8s_event_filter = event_filter;
+}
+
+user_event_filter_t::ptr_t sinsp_configuration::get_docker_event_filter() const
+{
+	return m_docker_event_filter;
+}
+
+void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t event_filter)
+{
+	m_docker_event_filter = event_filter;
+}
+
 #endif // HAS_ANALYZER

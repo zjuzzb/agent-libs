@@ -7,6 +7,8 @@
 #endif
 #include <limits>
 
+#include "user_event.h"
+
 using ports_set = bitset<numeric_limits<uint16_t>::max()>;
 
 class SINSP_PUBLIC sinsp_configuration
@@ -103,6 +105,11 @@ public:
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
 	void set_protocols_truncation_size(uint32_t truncation_size);
+    user_event_filter_t::ptr_t get_k8s_event_filter() const;
+    void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
+    user_event_filter_t::ptr_t get_docker_event_filter() const;
+    void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+
 private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
@@ -152,6 +159,9 @@ private:
 	bool m_curl_debug;
 
 	uint32_t m_protocols_truncation_size;
+
+    std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
+	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 };
 
 #endif // HAS_ANALYZER

@@ -53,6 +53,8 @@ private:
 	atomic<uint64_t> m_last_loop_s;
 };
 
+class user_event_channel;
+
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,6 +78,8 @@ private:
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
+	Logger* make_console_channel(AutoPtr<Formatter> formatter);
+	Logger* make_event_channel();
 
 	bool m_help_requested;
 	bool m_version_requested;

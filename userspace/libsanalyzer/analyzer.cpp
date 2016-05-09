@@ -45,6 +45,7 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
+#include "docker.h"
 #include "k8s.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
@@ -189,8 +190,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
-
-	delete m_k8s;
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -513,22 +512,22 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		throw sinsp_exception("compression in agent protocol not implemented under windows");
 		return NULL;
 #else
-        ArrayOutputStream array_output(m_serialization_buffer, full_len);
-        GzipOutputStream gzip_output(&array_output);
+		ArrayOutputStream array_output(m_serialization_buffer, full_len);
+		GzipOutputStream gzip_output(&array_output);
 
-        m_metrics->SerializeToZeroCopyStream(&gzip_output);
-        gzip_output.Close();
+		m_metrics->SerializeToZeroCopyStream(&gzip_output);
+		gzip_output.Close();
 
-        uint32_t compressed_size = (uint32_t) array_output.ByteCount();
-        if(compressed_size > full_len)
-        {
-            ASSERT(false);
-            char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
-            throw sinsp_exception(estr);
-        }
+		uint32_t compressed_size = (uint32_t) array_output.ByteCount();
+		if(compressed_size > full_len)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
+			throw sinsp_exception(estr);
+		}
 
-        *len = compressed_size;
-        return m_serialization_buffer;
+		*len = compressed_size;
+		return m_serialization_buffer;
 #endif
 	}
 	else
@@ -539,8 +538,8 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		ArrayOutputStream array_output(m_serialization_buffer, full_len);
 		m_metrics->SerializeToZeroCopyStream(&array_output);
 
-        *len = full_len;
-        return m_serialization_buffer;
+		*len = full_len;
+		return m_serialization_buffer;
 	}
 }
 
@@ -941,7 +940,7 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 }
 
-k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
+k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -957,11 +956,7 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 					bool curl_dbg = m_configuration->get_curl_debug();
-#ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
-#else
-					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
-#endif
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg, event_filter);
 				}
 			}
 		}
@@ -969,9 +964,9 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 	return 0;
 }
 
-k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
+k8s* sinsp_analyzer::get_k8s(const uri& k8s_api)
 {
-	uri url(k8s_api + "/api");
+	uri url(k8s_api.to_string() + "/api");
 	std::unique_ptr<sinsp_curl> curl;
 
 	try
@@ -994,7 +989,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 		if(curl)
 		{
-			return make_k8s(*curl, k8s_api);
+			return make_k8s(*curl, k8s_api.to_string(), m_configuration->get_k8s_event_filter());
 		}
 	}
 	catch(std::exception& ex)
@@ -2999,6 +2994,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Mesos
 			//
 			emit_mesos();
+			
+			//
+			// Docker
+			//
+			emit_docker_events();
 
 			emit_top_files();
 
@@ -3016,6 +3016,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Metrics coming from chisels
 			//
 			emit_chisel_metrics();
+
+			//
+			// User-configured events
+			//
+			emit_user_events();
 
 			//
 			// Transactions
@@ -3748,15 +3753,13 @@ void sinsp_analyzer::get_k8s_data()
 {
 	ASSERT(m_k8s);
 	ASSERT(m_k8s->is_alive());
-	if(!m_k8s->watch_in_thread())
-	{
-		m_k8s->watch();
-	}
+	m_k8s->watch();
 	ASSERT(m_metrics);
 	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 	if(m_metrics->has_kubernetes())
 	{
-		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log("K8s proto data:", sinsp_logger::SEV_TRACE);
+		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
 	}
 }
 
@@ -3776,22 +3779,21 @@ void sinsp_analyzer::emit_k8s()
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
-	const string& k8s_uri = m_configuration->get_k8s_api_server();
-	if(!k8s_uri.empty())
+	const std::string& k8s_api = m_configuration->get_k8s_api_server();
+	if(!k8s_api.empty())
 	{
+		uri k8s_uri(k8s_api);
 		try
 		{
 			if(!m_k8s)
 			{
-				g_logger.log("Connecting to K8S API server at: [" + k8s_uri + ']', sinsp_logger::SEV_INFO);
-				m_k8s = get_k8s(k8s_uri);
+				g_logger.log("Connecting to K8S API server at: [" + k8s_uri.to_string(false) + ']', sinsp_logger::SEV_INFO);
+				m_k8s.reset(get_k8s(k8s_uri));
 			}
 			else if(m_k8s && !m_k8s->is_alive())
 			{
 				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-				delete m_k8s;
-				m_k8s = 0;
-				m_k8s = get_k8s(k8s_uri);
+				m_k8s.reset(get_k8s(k8s_uri));
 			}
 
 			if(m_k8s)
@@ -3803,9 +3805,7 @@ void sinsp_analyzer::emit_k8s()
 				if(!m_k8s->is_alive())
 				{
 					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-					delete m_k8s;
-					m_k8s = 0;
-					m_k8s = get_k8s(k8s_uri);
+					m_k8s.reset(get_k8s(k8s_uri));
 					if(m_k8s && m_k8s->is_alive())
 					{
 						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
@@ -3825,11 +3825,7 @@ void sinsp_analyzer::emit_k8s()
 		catch(std::exception& e)
 		{
 			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-			if(m_k8s)
-			{
-				delete m_k8s;
-				m_k8s = 0;
-			}
+			m_k8s.reset();
 		}
 	}
 }
@@ -3857,7 +3853,7 @@ void sinsp_analyzer::get_mesos_data()
 
 		if(m_metrics->has_mesos())
 		{
-			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_TRACE);
 		}
 
 	}
@@ -3937,6 +3933,40 @@ void sinsp_analyzer::emit_mesos()
 			g_logger.log(std::string("Error fetching Mesos state: ").append(e.what()), sinsp_logger::SEV_ERROR);
 			m_mesos.reset();
 		}
+	}
+}
+
+void sinsp_analyzer::emit_docker_events()
+{
+	try
+	{
+		if(m_docker)
+		{
+			m_docker->collect_data();
+		}
+		else
+		{
+			g_logger.log("Creating Docker object ...", sinsp_logger::SEV_INFO);
+			m_docker.reset(new docker());
+			if(m_docker)
+			{
+				m_docker->set_event_filter(m_configuration->get_docker_event_filter());
+				m_docker->set_machine_id(m_configuration->get_machine_id());
+				g_logger.log("Created Docker object, collecting data...", sinsp_logger::SEV_INFO);
+				m_docker->collect_data();
+				return;
+			}
+			else
+			{
+				g_logger.log("Can't create Docker events object.", sinsp_logger::SEV_ERROR);
+				m_docker.reset();
+			}
+		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(std::string("Docker events error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		m_docker.reset();
 	}
 }
 
@@ -4178,10 +4208,10 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 	}
 	check_and_emit_containers(containers_limit_by_type);
 /*
-	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " Mesos containers.", sinsp_logger::SEV_DEBUG);
+	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
 	for(const auto& c : m_metrics->containers())
 	{
-		g_logger.log(c.DebugString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log(c.DebugString(), sinsp_logger::SEV_TRACE);
 	}
 */
 	m_containers.clear();
@@ -4424,6 +4454,48 @@ void sinsp_analyzer::emit_chisel_metrics()
 	if(j > 0)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "Added %d chisel metrics", j);
+	}
+}
+
+void sinsp_analyzer::emit_user_events()
+{
+	if(m_user_event_queue && m_user_event_queue->count())
+	{
+		sinsp_user_event evt;
+		while(m_user_event_queue->get(evt))
+		{
+			auto user_event = m_metrics->add_events();
+			user_event->set_timestamp_sec(evt.epoch_time_s());
+			user_event->set_severity(evt.severity());
+			const string& n = evt.name();
+			if(!n.empty())
+			{
+				user_event->set_title(n);
+			}
+			const string& desc = evt.description();
+			if(!desc.empty())
+			{
+				user_event->set_description(desc);
+			}
+			const string& sc = evt.scope();
+			if(!sc.empty())
+			{
+				user_event->set_scope(sc);
+			}
+			for(const auto& p : evt.tags())
+			{
+				auto tags = user_event->add_tags();
+				tags->set_key(p.first);
+				tags->set_value(p.second);
+			}
+		}
+		std::ostringstream ostr;
+		ostr << "User event Proto:" << std::endl;
+		for(const auto& e : m_metrics->events())
+		{
+			ostr << e.DebugString() << std::endl;
+		}
+		g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
 	}
 }
 

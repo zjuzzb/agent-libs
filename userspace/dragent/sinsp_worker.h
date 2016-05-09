@@ -100,6 +100,11 @@ public:
 		m_app_checks_enabled = value;
 	}
 
+	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
+	{
+		m_user_event_queue = user_event_queue;
+	}
+
 private:
 	class dump_job_state
 	{
@@ -124,23 +129,13 @@ private:
 		}
 
 		~dump_job_state()
-		{			
-			if(m_dumper)
-			{
-				delete m_dumper;
-				m_dumper = NULL;
-			}
-
-			if(m_filter)
-			{
-				delete m_filter;
-				m_filter = NULL;
-			}
+		{
+			delete m_dumper;
+			delete m_filter;
 
 			if(m_fp)
 			{
 				fclose(m_fp);
-				m_fp = NULL;
 			}
 
 			if(m_delete_file_when_done && !m_file.empty())
@@ -208,6 +203,8 @@ private:
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
 	uint64_t m_next_iflist_refresh_ns;
 	aws_metadata_refresher m_aws_metadata_refresher;
+
+	user_event_queue::ptr_t m_user_event_queue;
 
 	friend class dragent_app;
 };

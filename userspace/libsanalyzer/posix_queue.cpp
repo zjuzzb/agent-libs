@@ -15,7 +15,7 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	ASSERT(name.size() <= NAME_MAX);
 	if(!set_queue_limits())
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot increase posix queue limits");
+		g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot increase posix queue limits");
 	}
 	int flags = dir | O_CREAT;
 	struct mq_attr queue_attrs = {0};
@@ -32,7 +32,7 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	m_queue_d = mq_open(m_name.c_str(), flags, S_IRWXU, &queue_attrs);
 	if(m_queue_d < 0)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot create queue %s, errno: %s", m_name.c_str(), strerror(errno));
+		g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot create queue %s, errno: %s", m_name.c_str(), strerror(errno));
 	}
 }
 
@@ -46,44 +46,54 @@ posix_queue::~posix_queue()
 
 bool posix_queue::send(const string &msg)
 {
-	auto res = mq_send(m_queue_d, msg.c_str(), msg.size(), 0);
-	if(res == 0)
+	if(m_queue_d)
 	{
-		return true;
-	}
-	else
-	{
-		switch(errno)
+		auto res = mq_send(m_queue_d, msg.c_str(), msg.size(), 0);
+		if(res == 0)
 		{
-		case EAGAIN:
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot send on queue %s, is full", m_name.c_str());
-			break;
-		case EMSGSIZE:
-			g_logger.format(sinsp_logger::SEV_WARNING, "Cannot send on queue %s, msg too big", m_name.c_str());
-			break;
-		default:
-			g_logger.format(sinsp_logger::SEV_WARNING, "Cannot send on queue %s, errno: %s", m_name.c_str(), strerror(errno));
-			break;
+			return true;
 		}
-		return false;
+		else
+		{
+			switch(errno)
+			{
+			case EAGAIN:
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Debug: Cannot send on queue %s, is full", m_name.c_str());
+				break;
+			case EMSGSIZE:
+				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, msg too big", m_name.c_str());
+				break;
+			default:
+				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, errno: %s", m_name.c_str(), strerror(errno));
+				break;
+			}
+			return false;
+		}
 	}
+
+	g_logger.log("Error: posix_queue[" + m_name + "]: cannot send (no queue)", sinsp_logger::SEV_ERROR);
+	return false;
 }
 
 string posix_queue::receive(uint64_t timeout_s)
 {
-	char msgbuffer[MAX_MSGSIZE];
-	struct timespec ts = {0};
-	uint64_t now = sinsp_utils::get_current_time_ns();
-	ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
-	auto res = mq_timedreceive(m_queue_d, msgbuffer, MAX_MSGSIZE, NULL, &ts);
-	if(res > 0)
+	if(m_queue_d)
 	{
-		return string(msgbuffer, res);
+		char msgbuffer[MAX_MSGSIZE] = {};
+		struct timespec ts = {0};
+		uint64_t now = sinsp_utils::get_current_time_ns();
+		ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
+		unsigned int prio = 0;
+		auto res = mq_timedreceive(m_queue_d, msgbuffer, MAX_MSGSIZE, &prio, &ts);
+		if(res > 0)
+		{
+			return string(msgbuffer, res);
+		}
 	}
-	else
-	{
-		return "";
-	}
+
+	g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
+	return "";
+
 }
 
 bool posix_queue::limits_set = false;
@@ -99,7 +109,7 @@ bool posix_queue::set_queue_limits()
 		int res = setrlimit(RLIMIT_MSGQUEUE, &r);
 		if(res != 0)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Cannot set queue limits, errno: %s", strerror(errno));
+			g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot set queue limits, errno: %s", strerror(errno));
 		}
 		limits_set = (res == 0);
 	}

@@ -717,6 +717,7 @@ message metrics {
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
+    repeated agent_event events = 26; // user-configured events
 }
 
 message dump_request_start {
@@ -789,4 +790,18 @@ message dirty_shutdown_report {
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required string log = 4; // The log portion
+}
+
+message key_value {
+    required string key = 1;
+    required string value = 2;
+}
+
+message agent_event {
+    optional uint64 timestamp_sec = 1; // The message timestamp, in sec from epoch
+    optional string scope = 2;
+    optional string title = 3;
+    optional string description = 4;
+    optional uint32 severity = 5;
+    repeated key_value tags = 6;
 }

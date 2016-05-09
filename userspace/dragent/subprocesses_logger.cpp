@@ -48,11 +48,11 @@ pipe_manager::pipe_manager()
 pipe_manager::~pipe_manager()
 {
 	close(m_inpipe[PIPE_READ]);
-	fclose(m_input_fd);
+	if(m_input_fd) { fclose(m_input_fd); }
 	close(m_outpipe[PIPE_WRITE]);
-	fclose(m_output_fd);
+	if(m_output_fd) { fclose(m_output_fd); }
 	close(m_errpipe[PIPE_WRITE]);
-	fclose(m_error_fd);
+	if(m_error_fd) { fclose(m_error_fd); }
 }
 
 void pipe_manager::attach_child_stdio()
@@ -61,9 +61,9 @@ void pipe_manager::attach_child_stdio()
 	dup2(m_errpipe[PIPE_WRITE], STDERR_FILENO);
 	dup2(m_inpipe[PIPE_READ], STDIN_FILENO);
 	// Close the other part of the pipes
-	fclose(m_input_fd);
-	fclose(m_output_fd);
-	fclose(m_error_fd);
+	fclose(m_input_fd); m_input_fd = 0;
+	fclose(m_output_fd); m_output_fd = 0;
+	fclose(m_error_fd); m_error_fd = 0;
 }
 
 void pipe_manager::enable_nonblocking(int fd)
@@ -94,7 +94,10 @@ errpipe_manager::errpipe_manager()
 errpipe_manager::~errpipe_manager()
 {
 	close(m_pipe[PIPE_WRITE]);
-	fclose(m_file);
+	if(m_file)
+	{
+		fclose(m_file);
+	}
 }
 
 void errpipe_manager::attach_child()
@@ -102,6 +105,7 @@ void errpipe_manager::attach_child()
 	dup2(m_pipe[PIPE_WRITE], STDERR_FILENO);
 	// Close the other part of the pipes
 	fclose(m_file);
+	m_file = 0;
 }
 
 void errpipe_manager::enable_nonblocking(int fd)
@@ -152,7 +156,7 @@ subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, l
 {
 }
 
-void subprocesses_logger::add_logfd(FILE *fd, function<void(const string &)> &&parser, watchdog_state* state)
+void subprocesses_logger::add_logfd(FILE *fd, function<void(const string&)> &&parser, watchdog_state* state)
 {
 	m_error_fds.emplace(fd, make_pair(parser, state));
 }

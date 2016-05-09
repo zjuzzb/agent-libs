@@ -9,3 +9,9 @@ mybool: true
 server:
   address: "collector.sysdigcloud.com"
   port: 6666
+events:
+  docker:
+    container: [all]
+    image: [all]
+    volume: [all]
+    network: [all]

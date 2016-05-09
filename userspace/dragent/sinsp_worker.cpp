@@ -7,7 +7,7 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue):
+	connection_manager* connection_manager, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
@@ -27,13 +27,11 @@ sinsp_worker::~sinsp_worker()
 {
 	if(m_inspector != NULL)
 	{
+		m_inspector->set_log_callback(0);
 		delete m_inspector;
 	}
 
-	if(m_analyzer != NULL)
-	{
-		delete m_analyzer;
-	}
+	delete m_analyzer;
 }
 
 void sinsp_worker::init()
@@ -66,6 +64,15 @@ void sinsp_worker::init()
 	// Plug the sinsp logger into our one
 	//
 	m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+	if(m_configuration->m_min_console_priority > m_configuration->m_min_file_priority)
+	{
+		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_console_priority));
+	}
+	else
+	{
+		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_file_priority));
+	}
+
 	if(!m_configuration->m_metrics_dir.empty())
 	{
 		//
@@ -151,6 +158,10 @@ void sinsp_worker::init()
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
+
+	// user-configured events
+	m_analyzer->get_configuration()->set_k8s_event_filter(m_configuration->m_k8s_event_filter);
+	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
 
 	//
 	// Configure compression in the protocol
@@ -265,6 +276,8 @@ void sinsp_worker::init()
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
+
+	m_analyzer->set_user_event_queue(m_user_event_queue);
 }
 
 void sinsp_worker::run()
