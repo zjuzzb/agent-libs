@@ -147,7 +147,7 @@ function configure_installers {
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
 	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-sysdig
 
-	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-falco
+	cp $SCRIPTS_DIR/../../sysdig/scripts/install-falco.in $REPOSITORY_DIR/install-falco
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-falco
 	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-falco
 
