@@ -3853,13 +3853,13 @@ void sinsp_analyzer::get_mesos_data()
 	if(m_mesos && m_mesos->get_state().has_data())
 	{
 		ASSERT(m_metrics);
-		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-/*
+		mesos_proto(*m_metrics, m_mesos->get_state()).get_proto();
+
 		if(m_metrics->has_mesos())
 		{
 			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
 		}
-*/
+
 	}
 	else
 	{
