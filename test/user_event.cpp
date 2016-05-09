@@ -1,0 +1,139 @@
+#include <gtest.h>
+#include <string>
+#include <map>
+#include <unordered_map>
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "utils.h"
+#include "user_event.h"
+
+/*
+events:
+  kubernetes:
+    namespace: [all] | [ADDED, MODIFIED, DELETED, ERROR]
+    node: [all] | [ADDED, MODIFIED, DELETED, ERROR]
+    pod: [all] | [ADDED, MODIFIED, DELETED, ERROR]
+    service: [all] | [ADDED, MODIFIED, DELETED, ERROR]
+    replicationController: [all] | [ADDED, MODIFIED, DELETED, ERROR]
+  docker:
+    container: [all] | [attach, commit, copy, create, destroy, die, exec_create, exec_start, export, kill, oom, pause, rename, resize, restart, start, stop, top, unpause, update]
+    image: [all] | [delete, import, pull, push, tag, untag]
+    volume: [all] | [create, mount, unmount, destroy]
+    network: [all] | [create, connect, disconnect, destroy]
+*/
+
+TEST(user_event, meta_t)
+{
+	//event_t::filter_t{ { "pod", {"all"} }, /*{ "node", {"all"} }*/ }
+	user_event_meta_t evt;
+	EXPECT_FALSE(evt.is_kind("pod"));
+	EXPECT_FALSE(evt.is_kind("POD"));
+	EXPECT_FALSE(evt.is_kind("node"));
+	EXPECT_FALSE(evt.is_kind("NODE"));
+	EXPECT_FALSE(evt.has_type("added"));
+	EXPECT_FALSE(evt.has_type("ADDED"));
+	EXPECT_FALSE(evt.has_type("MODIFIED"));
+	EXPECT_FALSE(evt.has_type("DELETED"));
+	EXPECT_FALSE(evt.has_type("ERROR"));
+
+	user_event_meta_t evt0("pod", {"ADDED"});
+	EXPECT_TRUE(evt0.is_kind("pod"));
+	EXPECT_TRUE(evt0.is_kind("POD"));
+	EXPECT_FALSE(evt0.is_kind("node"));
+	EXPECT_FALSE(evt0.is_kind("NODE"));
+	EXPECT_TRUE(evt0.has_type("added"));
+	EXPECT_TRUE(evt0.has_type("ADDED"));
+	EXPECT_FALSE(evt0.has_type("MODIFIED"));
+	EXPECT_FALSE(evt0.has_type("DELETED"));
+	EXPECT_FALSE(evt0.has_type("ERROR"));
+
+	user_event_meta_t evt1("nODe", {"ADDED", "ERROR"});
+	EXPECT_FALSE(evt1.is_kind("pod"));
+	EXPECT_FALSE(evt1.is_kind("POD"));
+	EXPECT_TRUE(evt1.is_kind("node"));
+	EXPECT_TRUE(evt1.is_kind("NODE"));
+	EXPECT_TRUE(evt1.has_type("added"));
+	EXPECT_TRUE(evt1.has_type("ADDED"));
+	EXPECT_FALSE(evt1.has_type("MODIFIED"));
+	EXPECT_FALSE(evt1.has_type("DELETED"));
+	EXPECT_TRUE(evt1.has_type("ERROR"));
+
+	user_event_meta_t evt2("pod", {"all"});
+	EXPECT_TRUE(evt2.is_kind("pod"));
+	EXPECT_TRUE(evt2.is_kind("POD"));
+	EXPECT_FALSE(evt2.is_kind("node"));
+	EXPECT_FALSE(evt2.is_kind("NODE"));
+	EXPECT_TRUE(evt2.has_type("added"));
+	EXPECT_TRUE(evt2.has_type("ADDED"));
+	EXPECT_TRUE(evt2.has_type("MODIFIED"));
+	EXPECT_TRUE(evt2.has_type("DELETED"));
+	EXPECT_TRUE(evt2.has_type("ERROR"));
+	EXPECT_TRUE(evt2.has_type("blah"));
+}
+
+TEST(user_event, filter_t)
+{
+	user_event_meta_t evt_all("all", {"all"});
+	user_event_meta_t evt_none("none", {"none"});
+	user_event_meta_t evt("pod", {"ADDED"});
+	user_event_filter_t flt({evt});
+	EXPECT_TRUE(flt.allows(evt));
+	EXPECT_FALSE(flt.allows(evt_all));
+	flt.add(evt_all);
+	EXPECT_TRUE(flt.allows(evt));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"MODIFIED"})));
+	EXPECT_TRUE(flt.allows(evt_all));
+	EXPECT_TRUE(flt.allows_all("pod"));
+	EXPECT_TRUE(flt.allows_all("node"));
+	flt.clear();
+	EXPECT_FALSE(flt.allows(evt));
+	EXPECT_FALSE(flt.allows(evt_all));
+	EXPECT_FALSE(flt.allows_all("pod"));
+	EXPECT_FALSE(flt.allows_all("node"));
+
+	user_event_meta_t evt0("nODe", {"ADDED", "ERROR"});
+	flt.add(evt0);
+	EXPECT_FALSE(flt.allows(evt));
+	EXPECT_TRUE(flt.allows(evt0));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("nODe", {"ADDED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"AddeD"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"eRRor"})));
+	EXPECT_FALSE(flt.allows(user_event_meta_t("node", {"MODIFIED"})));
+	EXPECT_FALSE(flt.allows(user_event_meta_t("pod", {"ADDED"})));
+	flt.add(evt);
+	EXPECT_TRUE(flt.allows(evt));
+	EXPECT_TRUE(flt.allows(evt0));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("nODe", {"ADDED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"AddeD"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"eRRor"})));
+	EXPECT_FALSE(flt.allows(user_event_meta_t("node", {"MODIFIED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("pod", {"ADDED"})));
+	flt.remove(evt);
+	EXPECT_FALSE(flt.allows(evt));
+	EXPECT_TRUE(flt.allows(evt0));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("nODe", {"ADDED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"AddeD"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"eRRor"})));
+	EXPECT_FALSE(flt.allows(user_event_meta_t("node", {"MODIFIED"})));
+	EXPECT_FALSE(flt.allows(user_event_meta_t("pod", {"ADDED"})));
+	flt.add(evt_all);
+	EXPECT_TRUE(flt.allows(evt));
+	EXPECT_TRUE(flt.allows(evt0));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("NODE", {"ADDED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"AddeD"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"eRRor"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("node", {"MODIFIED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("pod", {"ADDED"})));
+	EXPECT_TRUE(flt.allows(user_event_meta_t("pod", {"ADDED", "MODIFIED", "DELETED", "ERROR"})));
+    flt.clear();
+	flt.add({"node", {"MODIFIED"}});
+	EXPECT_TRUE(flt.allows(user_event_meta_t("Node", {"MODIFIED"})));
+	flt.add({"all", {"all"}});
+	EXPECT_TRUE(flt.allows_all("pod"));
+	EXPECT_TRUE(flt.allows_all());
+	EXPECT_TRUE(flt.allows(user_event_meta_t("NODE", {"MODIFIED"})));
+	flt.clear();
+	EXPECT_FALSE(flt.allows_all("pod"));
+	EXPECT_FALSE(flt.allows_all("node"));
+	EXPECT_FALSE(flt.allows_all());
+}
