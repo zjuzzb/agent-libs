@@ -32,7 +32,7 @@ TEST(yaml_conf, get_merged_sequence)
 {
 	yaml_configuration conf("resources/test.yaml", "resources/test.default.yaml");
 	auto merged = conf.get_merged_sequence<int>("myarray");
-	EXPECT_EQ(4, merged.size());
+	EXPECT_EQ(3, merged.size());
 }
 
 TEST(yaml_conf, get_events)
