@@ -88,6 +88,8 @@ string posix_queue::receive(uint64_t timeout_s)
 		if(res > 0)
 		{
 			return string(msgbuffer, res);
+		} else {
+			return "";
 		}
 	}
 
