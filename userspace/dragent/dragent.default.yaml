@@ -842,16 +842,70 @@ app_checks:
 
 events:
   kubernetes:
-    namespace: [ADDED, MODIFIED, DELETED, ERROR]
-    node: [ADDED, MODIFIED, DELETED, ERROR]
-    pod: [ADDED, MODIFIED, DELETED, ERROR]
-    service: [ADDED, MODIFIED, DELETED, ERROR]
-    replicationController: [ADDED, MODIFIED, DELETED, ERROR]
+    namespace:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
+    node:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
+    pod:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
+    service:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
+    replicationController:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
   docker:
-    container: [attach, commit, copy, create, destroy, die, exec_create, exec_start, export, kill, oom, pause, rename, resize, restart, start, stop, top, unpause, update]
-    image: [delete, import, pull, push, tag, untag]
-    volume: [create, mount, unmount, destroy]
-    network: [create, connect, disconnect, destroy]
+    container:
+      - attach
+      - commit
+      - copy
+      - create
+      - destroy
+      - die
+      - exec_create
+      - exec_start
+      - export
+      - kill
+      - oom
+      - pause
+      - rename
+      - resize
+      - restart
+      - start
+      - stop
+      - top
+      - unpause
+      - update
+    image:
+      - delete
+      - import
+      - pull
+      - push
+      - tag
+      - untag
+    volume:
+      - create
+      - mount
+      - unmount
+      - destroy
+    network:
+      - create
+      - connect
+      - disconnect
+      - destroy
 
 known_ports:
   - 902 # VMware 
