@@ -147,7 +147,6 @@ function configure_installers {
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-$COMPONENT
 	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-$COMPONENT
 
-	aws s3 cp $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 	aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
 }
