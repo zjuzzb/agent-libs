@@ -143,17 +143,11 @@ function configure_installers {
 	cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
 
-	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-sysdig
-	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
-	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-sysdig
+	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-$COMPONENT
+	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-$COMPONENT
+	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-$COMPONENT
 
-	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-falco
-	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-falco
-	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-falco
-
-	aws s3 cp $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
-	aws s3 cp $REPOSITORY_DIR/install-sysdig s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
-	aws s3 cp $REPOSITORY_DIR/install-falco s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
 }
 
