@@ -929,65 +929,53 @@ app_checks:
 events:
   kubernetes:
     node:
-      - TerminatedAllPods       # Terminated All Pods
-      - RegisteredNode          # Node Registered
-      - RemovingNode            # Removing Node
-      - DeletingNode            # Deleting Node
-      - DeletingAllPods         # Deleting All Pods
-      - TerminatingEvictedPod   # Terminating Evicted Pod
-      - NodeReady               # Node Ready
-      - NodeNotReady            # Node not Ready
-      - NodeSchedulable         # Node is Schedulable
-      - NodeNotSchedulable      # Node is not Schedulable
-      - Starting                # Starting Kubelet
-      - KubeletSetupFailed      # Kubelet Setup Failed
-      - FailedMount             # Volume Mount Failed
-      - HostPortConflict        # Host/Port Conflict
-      - NodeSelectorMismatching # Node Selector Mismatch
-      - InsufficientFreeCPU     # Insufficient Free CPU
-      - InsufficientFreeMemory  # Insufficient Free Memory
-      - OutOfDisk               # Out of Disk
-      - HostNetworkNotSupported # Host Network not Supported
-      - NilShaper               # Undefined Shaper
-      - Rebooted                # Node Rebooted
-      - NodeHasSufficientDisk   # Node Has Sufficient Disk
-      - NodeOutOfDisk           # Node Out of Disk
-      - NodeReady               # Node Ready
-      - NodeNotReady            # Node not Ready
-      - NodeSchedulable         # Node is Schedulable
-      - NodeNotSchedulable      # Node is not Schedulable
-      - Starting                # Starting Kubelet
-      - KubeletSetupFailed      # Kubelet Setup Failed
-      - FailedMount             # Volume Mount Failed
-      - HostPortConflict        # Host/Port Conflict
-      - NodeSelectorMismatching # Node Selector Mismatch
-      - InsufficientFreeCPU     # Insufficient Free CPU
-      - InsufficientFreeMemory  # Insufficient Free Memory
-      - OutOfDisk               # Out of Disk
-      - HostNetworkNotSupported # Host Network not Supported
-      - NilShaper               # Undefined Shaper
-      - Rebooted                # Node Rebooted
+      - TerminatedAllPods       # Terminated All Pods          (information)
+      - RegisteredNode          # Node Registered              (information)
+      - RemovingNode            # Removing Node                (information)
+      - DeletingNode            # Deleting Node                (information)
+      - DeletingAllPods         # Deleting All Pods            (information)
+      - TerminatingEvictedPod   # Terminating Evicted Pod      (information)
+      - NodeReady               # Node Ready                   (information)
+      - NodeNotReady            # Node not Ready               (information)
+      - NodeSchedulable         # Node is Schedulable          (information)
+      - NodeNotSchedulable      # Node is not Schedulable      (information)
+      - CIDRNotAvailable        # CIDR not Available           (information)
+      - CIDRAssignmentFailed    # CIDR Assignment Failed       (information)
+      - Starting                # Starting Kubelet             (information)
+      - KubeletSetupFailed      # Kubelet Setup Failed         (warning)
+      - FailedMount             # Volume Mount Failed          (warning)
+      - NodeSelectorMismatching # Node Selector Mismatch       (warning)
+      - InsufficientFreeCPU     # Insufficient Free CPU        (warning)
+      - InsufficientFreeMemory  # Insufficient Free Memory     (warning)
+      - OutOfDisk               # Out of Disk                  (information)
+      - HostNetworkNotSupported # Host Network not Supported   (warning)
+      - NilShaper               # Undefined Shaper             (warning)
+      - Rebooted                # Node Rebooted                (warning)
+      - NodeHasSufficientDisk   # Node Has Sufficient Disk     (information)
+      - NodeOutOfDisk           # Node Out of Disk Space       (information)
+      - InvalidDiskCapacity     # Invalid Disk Capacity        (warning)
+      - FreeDiskSpaceFailed     # Free Disk Space Failed       (warning)
     pod:
-      - Pulling             # Pulling Container Image
-      - Pulled              # Container Image Pulled
-      - Failed              # Container Image Pull Failed
-      - InspectFailed       # Container Image Inspect Failed
-      - ErrImageNeverPull   # Container Image NeverPull Policy Violation
-      - Created             # Container Created
-      - Started             # Container Started
-      - Failed              # Container Create or Start Failed
-      - Killing             # Killing Container
-      - BackOff             # Back Off Container Start or Image Pull
-      - FailedSync          # Pod Sync Failed
-      - InvalidDiskCapacity # Invalid Disk Capacity
-      - FreeDiskSpaceFailed # Free Disk Space Failed
-      - Unhealthy           # Container Unhealthy
-      - FailedValidation    # Failed Pod Configuration Validation
+      - Pulling             # Pulling Container Image                     (information)
+      - Pulled              # Container Image Pulled                      (information)
+      - Failed              # Container Image Pull Failed                 (warning)
+      - InspectFailed       # Container Image Inspect Failed              (warning)
+      - ErrImageNeverPull   # Container Image NeverPull Policy Violation  (warning)
+      - BackOff             # Back Off Container Start or Image Pull      (warning)
+      - Created             # Container Created                           (information)
+      - Started             # Container Started                           (information)
+      - Failed              # Container Create or Start Failed            (warning)
+      - Killing             # Killing Container                           (information)
+      - Unhealthy           # Container Unhealthy                         (warning)
+      - FailedSync          # Pod Sync Failed                             (warning)
+      - FailedValidation    # Failed Pod Configuration Validation         (warning)
+      - OutOfDisk           # Out of Disk                                 (information)
+      - HostPortConflict    # Host/Port Conflict                          (warning)
     replicationController:
-      - SuccessfulCreate    # Pod Created
-      - FailedCreate        # Pod Create Failed
-      - SuccessfulDelete    # Pod Deleted
-      - FailedDelete        # Pod Delete Failed
+      - SuccessfulCreate    # Pod Created                                 (information)
+      - FailedCreate        # Pod Create Failed                           (warning)
+      - SuccessfulDelete    # Pod Deleted                                 (information)
+      - FailedDelete        # Pod Delete Failed                           (warning)
   docker:
     container:
       - attach
