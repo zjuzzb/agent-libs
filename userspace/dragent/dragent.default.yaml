@@ -766,15 +766,15 @@ app_checks:
 # For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/...
 #
 #
-# By default, all events are enabled, but only events with priority "warning" and higher are emitted
+# By default, all events are enabled, but only events with priority "information" and higher are emitted
 # by the default setting of the logging system. To modify the default behavior, use the following
 # priority filter setting example:
 #
 # Example:
-# to enable all except the debug messages, use following setting:
+# to enable all except the information and debug messages, use following setting:
 #
 # log:
-#  event_priority: information
+#  event_priority: warning
 #
 # Valid log levels are:
 #
@@ -784,40 +784,126 @@ app_checks:
 #
 # Kubernetes and docker components have the following sets of types of events supported:
 #
-# events:
-#   kubernetes:
-#     namespace: [ADDED, MODIFIED, DELETED, ERROR]
-#     node: [ADDED, MODIFIED, DELETED, ERROR]
-#     pod: [ADDED, MODIFIED, DELETED, ERROR]
-#     service: [ADDED, MODIFIED, DELETED, ERROR]
-#     replicationController: [ADDED, MODIFIED, DELETED, ERROR]
-#  docker:
-#    container: [attach, commit, copy, create, destroy, die, exec_create, exec_start, export, kill, oom, pause, rename, resize, restart, start, stop, top, unpause, update]
-#    image: [delete, import, pull, push, tag, untag]
-#    volume: [create, mount, unmount, destroy]
-#    network: [create, connect, disconnect, destroy]
-#
-# the sequences can also be specified using bulleted lists, eg.:
-#
-# events:
-#   kubernetes:
-#     pod:
-#       - ADDED
-#       - MODIFIED
-#       - DELETED
-#       - ERROR
-#
-# So, the following two settings are equivalent, permitting only DELETED and ERROR events for nodes to be emitted:
-#
-# events:
-#  kubernetes:
-#    node: [DELETED, ERROR]
-#
-# events:
+#events:
 #  kubernetes:
 #    node:
-#      - DELETED
-#      - ERROR
+#      - TerminatedAllPods       # Terminated All Pods
+#      - RegisteredNode          # Node Registered
+#      - RemovingNode            # Removing Node
+#      - DeletingNode            # Deleting Node
+#      - DeletingAllPods         # Deleting All Pods
+#      - TerminatingEvictedPod   # Terminating Evicted Pod
+#      - NodeReady               # Node Ready
+#      - NodeNotReady            # Node not Ready
+#      - NodeSchedulable         # Node is Schedulable
+#      - NodeNotSchedulable      # Node is not Schedulable
+#      - Starting                # Starting Kubelet
+#      - KubeletSetupFailed      # Kubelet Setup Failed
+#      - FailedMount             # Volume Mount Failed
+#      - HostPortConflict        # Host/Port Conflict
+#      - NodeSelectorMismatching # Node Selector Mismatch
+#      - InsufficientFreeCPU     # Insufficient Free CPU
+#      - InsufficientFreeMemory  # Insufficient Free Memory
+#      - OutOfDisk               # Out of Disk
+#      - HostNetworkNotSupported # Host Network not Supported
+#      - NilShaper               # Undefined Shaper
+#      - Rebooted                # Node Rebooted
+#      - NodeHasSufficientDisk   # Node Has Sufficient Disk
+#      - NodeOutOfDisk           # Node Out of Disk
+#      - NodeReady               # Node Ready
+#      - NodeNotReady            # Node not Ready
+#      - NodeSchedulable         # Node is Schedulable
+#      - NodeNotSchedulable      # Node is not Schedulable
+#      - Starting                # Starting Kubelet
+#      - KubeletSetupFailed      # Kubelet Setup Failed
+#      - FailedMount             # Volume Mount Failed
+#      - HostPortConflict        # Host/Port Conflict
+#      - NodeSelectorMismatching # Node Selector Mismatch
+#      - InsufficientFreeCPU     # Insufficient Free CPU
+#      - InsufficientFreeMemory  # Insufficient Free Memory
+#      - OutOfDisk               # Out of Disk
+#      - HostNetworkNotSupported # Host Network not Supported
+#      - NilShaper               # Undefined Shaper
+#      - Rebooted                # Node Rebooted
+#    pod:
+#      - Pulling             # Pulling Container Image
+#      - Pulled              # Container Image Pulled
+#      - Failed              # Container Image Pull Failed
+#      - InspectFailed       # Container Image Inspect Failed
+#      - ErrImageNeverPull   # Container Image NeverPull Policy Violation
+#      - Created             # Container Created
+#      - Started             # Container Started
+#      - Failed              # Container Create or Start Failed
+#      - Killing             # Killing Container
+#      - BackOff             # Back Off Container Start or Image Pull
+#      - FailedSync          # Pod Sync Failed
+#      - InvalidDiskCapacity # Invalid Disk Capacity
+#      - FreeDiskSpaceFailed # Free Disk Space Failed
+#      - Unhealthy           # Container Unhealthy
+#      - FailedValidation    # Failed Pod Configuration Validation
+#    replicationController:
+#      - SuccessfulCreate    # Pod Created
+#      - FailedCreate        # Pod Create Failed
+#      - SuccessfulDelete    # Pod Deleted
+#      - FailedDelete        # Pod Delete Failed
+#  docker:
+#    container:
+#      - attach
+#      - commit
+#      - copy
+#      - create
+#      - destroy
+#      - die
+#      - exec_create
+#      - exec_start
+#      - export
+#      - kill
+#      - oom
+#      - pause
+#      - rename
+#      - resize
+#      - restart
+#      - start
+#      - stop
+#      - top
+#      - unpause
+#      - update
+#    image:
+#      - delete
+#      - import
+#      - pull
+#      - push
+#      - tag
+#      - untag
+#    volume:
+#      - create
+#      - mount
+#      - unmount
+#      - destroy
+#    network:
+#      - create
+#      - connect
+#      - disconnect
+#      - destroy
+#
+# the sequences can also be specified in a single-line, eg.:
+#
+# events:
+#   kubernetes:
+#     pod: [Pulling, Pulled, Failed]
+#
+# So, the following two settings are equivalent, permitting only Pulling, Pulled, Failed container events for pods to be emitted:
+#
+# events:
+#  kubernetes:
+#    pod: [Pulling, Pulled, Failed]
+#
+# events:
+#  kubernetes:
+#    pod:
+#      - Pulling
+#      - Pulled
+#      - Failed
 #
 # In the following example, kubernetes node and docker image events are disabled, while docker container events
 # are limited to [attach, commit, copy]. All other supported components events will be collected.
@@ -842,31 +928,66 @@ app_checks:
 
 events:
   kubernetes:
-    namespace:
-      - ADDED
-      - MODIFIED
-      - DELETED
-      - ERROR
     node:
-      - ADDED
-      - MODIFIED
-      - DELETED
-      - ERROR
+      - TerminatedAllPods       # Terminated All Pods
+      - RegisteredNode          # Node Registered
+      - RemovingNode            # Removing Node
+      - DeletingNode            # Deleting Node
+      - DeletingAllPods         # Deleting All Pods
+      - TerminatingEvictedPod   # Terminating Evicted Pod
+      - NodeReady               # Node Ready
+      - NodeNotReady            # Node not Ready
+      - NodeSchedulable         # Node is Schedulable
+      - NodeNotSchedulable      # Node is not Schedulable
+      - Starting                # Starting Kubelet
+      - KubeletSetupFailed      # Kubelet Setup Failed
+      - FailedMount             # Volume Mount Failed
+      - HostPortConflict        # Host/Port Conflict
+      - NodeSelectorMismatching # Node Selector Mismatch
+      - InsufficientFreeCPU     # Insufficient Free CPU
+      - InsufficientFreeMemory  # Insufficient Free Memory
+      - OutOfDisk               # Out of Disk
+      - HostNetworkNotSupported # Host Network not Supported
+      - NilShaper               # Undefined Shaper
+      - Rebooted                # Node Rebooted
+      - NodeHasSufficientDisk   # Node Has Sufficient Disk
+      - NodeOutOfDisk           # Node Out of Disk
+      - NodeReady               # Node Ready
+      - NodeNotReady            # Node not Ready
+      - NodeSchedulable         # Node is Schedulable
+      - NodeNotSchedulable      # Node is not Schedulable
+      - Starting                # Starting Kubelet
+      - KubeletSetupFailed      # Kubelet Setup Failed
+      - FailedMount             # Volume Mount Failed
+      - HostPortConflict        # Host/Port Conflict
+      - NodeSelectorMismatching # Node Selector Mismatch
+      - InsufficientFreeCPU     # Insufficient Free CPU
+      - InsufficientFreeMemory  # Insufficient Free Memory
+      - OutOfDisk               # Out of Disk
+      - HostNetworkNotSupported # Host Network not Supported
+      - NilShaper               # Undefined Shaper
+      - Rebooted                # Node Rebooted
     pod:
-      - ADDED
-      - MODIFIED
-      - DELETED
-      - ERROR
-    service:
-      - ADDED
-      - MODIFIED
-      - DELETED
-      - ERROR
+      - Pulling             # Pulling Container Image
+      - Pulled              # Container Image Pulled
+      - Failed              # Container Image Pull Failed
+      - InspectFailed       # Container Image Inspect Failed
+      - ErrImageNeverPull   # Container Image NeverPull Policy Violation
+      - Created             # Container Created
+      - Started             # Container Started
+      - Failed              # Container Create or Start Failed
+      - Killing             # Killing Container
+      - BackOff             # Back Off Container Start or Image Pull
+      - FailedSync          # Pod Sync Failed
+      - InvalidDiskCapacity # Invalid Disk Capacity
+      - FreeDiskSpaceFailed # Free Disk Space Failed
+      - Unhealthy           # Container Unhealthy
+      - FailedValidation    # Failed Pod Configuration Validation
     replicationController:
-      - ADDED
-      - MODIFIED
-      - DELETED
-      - ERROR
+      - SuccessfulCreate    # Pod Created
+      - FailedCreate        # Pod Create Failed
+      - SuccessfulDelete    # Pod Deleted
+      - FailedDelete        # Pod Delete Failed
   docker:
     container:
       - attach
