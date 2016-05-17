@@ -76,8 +76,8 @@ void k8s_proto::make_protobuf(const k8s_state_t& state)
 		int stat_replicas = rc.get_stat_replicas();
 		if(spec_replicas >= 0 && stat_replicas >= 0)
 		{
-			rcs->set_spec_replicas(spec_replicas);
-			rcs->set_stat_replicas(stat_replicas);
+			rcs->set_replicas_desired(spec_replicas);
+			rcs->set_replicas_running(stat_replicas);
 		}
 	}
 

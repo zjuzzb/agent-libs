@@ -7025,34 +7025,34 @@ class k8s_replication_controller : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_common* release_common();
   inline void set_allocated_common(::draiosproto::k8s_common* common);
 
-  // optional uint32 spec_replicas = 2;
-  inline bool has_spec_replicas() const;
-  inline void clear_spec_replicas();
-  static const int kSpecReplicasFieldNumber = 2;
-  inline ::google::protobuf::uint32 spec_replicas() const;
-  inline void set_spec_replicas(::google::protobuf::uint32 value);
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
 
-  // optional uint32 stat_replicas = 3;
-  inline bool has_stat_replicas() const;
-  inline void clear_stat_replicas();
-  static const int kStatReplicasFieldNumber = 3;
-  inline ::google::protobuf::uint32 stat_replicas() const;
-  inline void set_stat_replicas(::google::protobuf::uint32 value);
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_replication_controller)
  private:
   inline void set_has_common();
   inline void clear_has_common();
-  inline void set_has_spec_replicas();
-  inline void clear_has_spec_replicas();
-  inline void set_has_stat_replicas();
-  inline void clear_has_stat_replicas();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::k8s_common* common_;
-  ::google::protobuf::uint32 spec_replicas_;
-  ::google::protobuf::uint32 stat_replicas_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
@@ -19272,48 +19272,48 @@ inline void k8s_replication_controller::set_allocated_common(::draiosproto::k8s_
   }
 }
 
-// optional uint32 spec_replicas = 2;
-inline bool k8s_replication_controller::has_spec_replicas() const {
+// optional uint32 replicas_desired = 2;
+inline bool k8s_replication_controller::has_replicas_desired() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void k8s_replication_controller::set_has_spec_replicas() {
+inline void k8s_replication_controller::set_has_replicas_desired() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void k8s_replication_controller::clear_has_spec_replicas() {
+inline void k8s_replication_controller::clear_has_replicas_desired() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void k8s_replication_controller::clear_spec_replicas() {
-  spec_replicas_ = 0u;
-  clear_has_spec_replicas();
+inline void k8s_replication_controller::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
 }
-inline ::google::protobuf::uint32 k8s_replication_controller::spec_replicas() const {
-  return spec_replicas_;
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_desired() const {
+  return replicas_desired_;
 }
-inline void k8s_replication_controller::set_spec_replicas(::google::protobuf::uint32 value) {
-  set_has_spec_replicas();
-  spec_replicas_ = value;
+inline void k8s_replication_controller::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
 }
 
-// optional uint32 stat_replicas = 3;
-inline bool k8s_replication_controller::has_stat_replicas() const {
+// optional uint32 replicas_running = 3;
+inline bool k8s_replication_controller::has_replicas_running() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void k8s_replication_controller::set_has_stat_replicas() {
+inline void k8s_replication_controller::set_has_replicas_running() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void k8s_replication_controller::clear_has_stat_replicas() {
+inline void k8s_replication_controller::clear_has_replicas_running() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void k8s_replication_controller::clear_stat_replicas() {
-  stat_replicas_ = 0u;
-  clear_has_stat_replicas();
+inline void k8s_replication_controller::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
 }
-inline ::google::protobuf::uint32 k8s_replication_controller::stat_replicas() const {
-  return stat_replicas_;
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_running() const {
+  return replicas_running_;
 }
-inline void k8s_replication_controller::set_stat_replicas(::google::protobuf::uint32 value) {
-  set_has_stat_replicas();
-  stat_replicas_ = value;
+inline void k8s_replication_controller::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
 }
 
 // -------------------------------------------------------------------
