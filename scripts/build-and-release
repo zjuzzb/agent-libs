@@ -19,7 +19,7 @@ function build_components {
 	mkdir -p $BINARIES_DIR/release
 
 	case "$COMPONENT" in
-		agent)
+		draios-agent)
 			rm -rf agent/build || true
 			agent/bootstrap-agent
 			
