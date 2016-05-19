@@ -19,7 +19,7 @@ function build_components {
 	mkdir -p $BINARIES_DIR/release
 
 	case "$COMPONENT" in
-		draios-agent)
+		agent)
 			rm -rf agent/build || true
 			agent/bootstrap-agent
 			
@@ -140,12 +140,18 @@ function configure_tgz_repo {
 }
 
 function configure_installers {
+	if [[ "${COMPONENT}" == "agent" ]]; then
+		BIN_PACKAGE_NAME="draios-agent"
+	else
+		BIN_PACKAGE_NAME=${COMPONENT}
+	fi
+
 	cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
 
 	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-$COMPONENT
 	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-$COMPONENT
-	sed -i s/_COMPONENT_/$COMPONENT/g $REPOSITORY_DIR/install-$COMPONENT
+	sed -i s/_COMPONENT_/${BIN_PACKAGE_NAME}/g $REPOSITORY_DIR/install-$COMPONENT
 
 	aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
