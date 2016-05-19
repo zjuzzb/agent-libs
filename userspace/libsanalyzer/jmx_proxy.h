@@ -4,6 +4,7 @@
 #include "third-party/jsoncpp/json/json.h"
 #include <utility>
 #include "threadinfo.h"
+#include "posix_queue.h"
 
 class jmx_proxy;
 class java_process;
@@ -70,7 +71,7 @@ private:
 class jmx_proxy
 {
 public:
-	jmx_proxy(const std::pair<FILE*, FILE*>& fds);
+	jmx_proxy();
 
 	void send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& processes);
 
@@ -81,11 +82,8 @@ public:
 	bool m_print_json;
 private:
 	static Json::Value tinfo_to_json(sinsp_threadinfo* tinfo);
-	// Input and output of the subprocess
-	// so we'll write on input and read from
-	// output
-	FILE* m_input_fd;
-	FILE* m_output_fd;
+	posix_queue m_inqueue;
+	posix_queue m_outqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
 };

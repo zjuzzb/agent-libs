@@ -263,9 +263,9 @@ public:
 	}
 	
 #ifndef _WIN32
-	inline void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
+	inline void enable_jmx(bool print_json)
 	{
-		m_jmx_proxy = make_unique<jmx_proxy>(iofds);
+		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 	}
 
