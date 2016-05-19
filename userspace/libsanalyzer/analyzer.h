@@ -553,6 +553,7 @@ VISIBILITY_PRIVATE
 	static bool m_mesos_bad_config;
 
 	unique_ptr<docker> m_docker;
+	bool m_has_docker;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

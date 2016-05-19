@@ -25,6 +25,8 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 using namespace google::protobuf::io;
 
+#include "Poco/File.h"
+
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
@@ -118,7 +120,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-	
+
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
@@ -140,11 +142,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
-	
+
 	//
-	// Kubernetes
+	// Docker
 	//
-	m_k8s = 0;
+	m_has_docker = Poco::File(std::string(scap_get_host_root()) + docker::DOCKER_SOCKET_FILE).exists();
 
 	//
 	// Chisels init
@@ -162,7 +164,7 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
 	delete m_delay_calculator;
-	delete(m_threadtable_listener);
+	delete m_threadtable_listener;
 	delete m_fd_listener;
 	delete m_reduced_ipv4_connections;
 	delete m_ipv4_connections;
@@ -3044,7 +3046,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Docker
 			//
-			emit_docker_events();
+			if(m_has_docker)
+			{
+				emit_docker_events();
+			}
 
 			emit_top_files();
 
