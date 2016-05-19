@@ -358,12 +358,14 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
+	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_server(const string& addr);
 	void init_k8s_ssl();
 	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
 	k8s* get_k8s(const uri& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(const string& addr);
 	void make_mesos(string&& json);
 	void get_mesos(const string& mesos_uri);

@@ -103,13 +103,13 @@ public:
 	* single member is returned.
 	*/
 	template<typename T, typename... Args>
-	T get_sequence(Args... args)
+	T get_deep_merged_sequence(Args... args)
 	{
 		T ret;
 		try
 		{
 			get_sequence(ret, m_root, args...);
-			if(m_default_root && !ret.size())
+			if(m_default_root)
 			{
 				get_sequence(ret, *m_default_root, args...);
 			}

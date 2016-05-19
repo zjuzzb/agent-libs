@@ -26,6 +26,16 @@ events:
     image: [delete, import, pull, push, tag, untag]
     volume: [create, mount, unmount, destroy]
     network: [create, connect, disconnect, destroy]
+events2:
+  docker:
+    container:
+      - attach # intentional duplicate with default
+      - commit
+      - copy
+    image:
+      - delete
+      - import
+      - pull
 deep:
   level1:
     level2:

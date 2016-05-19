@@ -133,7 +133,7 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
 	// shortcut to enable or disable all in dragent.yaml (overriding default)
-	std::set<string, ci_compare> user_events = m_config->get_sequence<set<string, ci_compare>>("events", system);
+	std::set<string, ci_compare> user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system);
 	if(user_events.size())
 	{
 		if(user_events.find("all") != user_events.end())
@@ -151,7 +151,7 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 		}
 	}
 
-	user_events = m_config->get_sequence<set<string, ci_compare>>("events", system, component);
+	user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system, component);
 	if(user_events.size())
 	{
 		if(user_events.find("none") == user_events.end())
@@ -159,6 +159,11 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 			if(!flt)
 			{
 				flt = std::make_shared<user_event_filter_t>();
+			}
+			if(user_events.find("all") != user_events.end())
+			{
+				flt->add(user_event_meta_t(component, { "all" }));
+				return;
 			}
 			flt->add(user_event_meta_t(component, user_events));
 		}
@@ -246,10 +251,8 @@ void dragent_configuration::init(Application* app)
 	if(m_min_event_priority != -1)
 	{
 		// kubernetes
-		add_event_filter(m_k8s_event_filter, "kubernetes", "namespace");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "node");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "pod");
-		add_event_filter(m_k8s_event_filter, "kubernetes", "service");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "replicationController");
 
 		// docker

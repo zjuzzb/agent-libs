@@ -15,3 +15,16 @@ events:
     image: [all]
     volume: [all]
     network: [all]
+events2:
+  docker:
+    container:
+      - attach
+#      - commit
+#      - copy
+      - create
+      - destroy
+      - die
+    image:
+#      - delete
+#      - import
+#      - pull

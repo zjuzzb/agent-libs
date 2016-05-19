@@ -780,119 +780,12 @@ app_checks:
 #
 # none, emergency, alert, critical, error, warning, notice, information, debug
 #
-
 #
-# Kubernetes and docker components have the following sets of types of events supported:
+# For a full list of Kubernetes and Docker supported events as well as severities (in comments) and which events are enabled by default,
+# see the "events" config entry below. 
 #
-#events:
-#  kubernetes:
-#    node:
-#      - TerminatedAllPods       # Terminated All Pods
-#      - RegisteredNode          # Node Registered
-#      - RemovingNode            # Removing Node
-#      - DeletingNode            # Deleting Node
-#      - DeletingAllPods         # Deleting All Pods
-#      - TerminatingEvictedPod   # Terminating Evicted Pod
-#      - NodeReady               # Node Ready
-#      - NodeNotReady            # Node not Ready
-#      - NodeSchedulable         # Node is Schedulable
-#      - NodeNotSchedulable      # Node is not Schedulable
-#      - Starting                # Starting Kubelet
-#      - KubeletSetupFailed      # Kubelet Setup Failed
-#      - FailedMount             # Volume Mount Failed
-#      - HostPortConflict        # Host/Port Conflict
-#      - NodeSelectorMismatching # Node Selector Mismatch
-#      - InsufficientFreeCPU     # Insufficient Free CPU
-#      - InsufficientFreeMemory  # Insufficient Free Memory
-#      - OutOfDisk               # Out of Disk
-#      - HostNetworkNotSupported # Host Network not Supported
-#      - NilShaper               # Undefined Shaper
-#      - Rebooted                # Node Rebooted
-#      - NodeHasSufficientDisk   # Node Has Sufficient Disk
-#      - NodeOutOfDisk           # Node Out of Disk
-#      - NodeReady               # Node Ready
-#      - NodeNotReady            # Node not Ready
-#      - NodeSchedulable         # Node is Schedulable
-#      - NodeNotSchedulable      # Node is not Schedulable
-#      - Starting                # Starting Kubelet
-#      - KubeletSetupFailed      # Kubelet Setup Failed
-#      - FailedMount             # Volume Mount Failed
-#      - HostPortConflict        # Host/Port Conflict
-#      - NodeSelectorMismatching # Node Selector Mismatch
-#      - InsufficientFreeCPU     # Insufficient Free CPU
-#      - InsufficientFreeMemory  # Insufficient Free Memory
-#      - OutOfDisk               # Out of Disk
-#      - HostNetworkNotSupported # Host Network not Supported
-#      - NilShaper               # Undefined Shaper
-#      - Rebooted                # Node Rebooted
-#    pod:
-#      - Pulling             # Pulling Container Image
-#      - Pulled              # Container Image Pulled
-#      - Failed              # Container Image Pull Failed
-#      - InspectFailed       # Container Image Inspect Failed
-#      - ErrImageNeverPull   # Container Image NeverPull Policy Violation
-#      - Created             # Container Created
-#      - Started             # Container Started
-#      - Failed              # Container Create or Start Failed
-#      - Killing             # Killing Container
-#      - BackOff             # Back Off Container Start or Image Pull
-#      - FailedSync          # Pod Sync Failed
-#      - InvalidDiskCapacity # Invalid Disk Capacity
-#      - FreeDiskSpaceFailed # Free Disk Space Failed
-#      - Unhealthy           # Container Unhealthy
-#      - FailedValidation    # Failed Pod Configuration Validation
-#    replicationController:
-#      - SuccessfulCreate    # Pod Created
-#      - FailedCreate        # Pod Create Failed
-#      - SuccessfulDelete    # Pod Deleted
-#      - FailedDelete        # Pod Delete Failed
-#  docker:
-#    container:
-#      - attach
-#      - commit
-#      - copy
-#      - create
-#      - destroy
-#      - die
-#      - exec_create
-#      - exec_start
-#      - export
-#      - kill
-#      - oom
-#      - pause
-#      - rename
-#      - resize
-#      - restart
-#      - start
-#      - stop
-#      - top
-#      - unpause
-#      - update
-#    image:
-#      - delete
-#      - import
-#      - pull
-#      - push
-#      - tag
-#      - untag
-#    volume:
-#      - create
-#      - mount
-#      - unmount
-#      - destroy
-#    network:
-#      - create
-#      - connect
-#      - disconnect
-#      - destroy
-#
-# the sequences can also be specified in a single-line, eg.:
-#
-# events:
-#   kubernetes:
-#     pod: [Pulling, Pulled, Failed]
-#
-# So, the following two settings are equivalent, permitting only Pulling, Pulled, Failed container events for pods to be emitted:
+# The sequences can be specified in a single-line or as bulleted list. So, the following two settings are equivalent, 
+# permitting only [Pulling, Pulled, Failed] container events for pods to be emitted:
 #
 # events:
 #  kubernetes:
@@ -929,92 +822,91 @@ app_checks:
 events:
   kubernetes:
     node:
-      - TerminatedAllPods       # Terminated All Pods          (information)
-      - RegisteredNode          # Node Registered              (information)
-      - RemovingNode            # Removing Node                (information)
-      - DeletingNode            # Deleting Node                (information)
-      - DeletingAllPods         # Deleting All Pods            (information)
-      - TerminatingEvictedPod   # Terminating Evicted Pod      (information)
-      - NodeReady               # Node Ready                   (information)
-      - NodeNotReady            # Node not Ready               (information)
-      - NodeSchedulable         # Node is Schedulable          (information)
-      - NodeNotSchedulable      # Node is not Schedulable      (information)
-      - CIDRNotAvailable        # CIDR not Available           (information)
-      - CIDRAssignmentFailed    # CIDR Assignment Failed       (information)
-      - Starting                # Starting Kubelet             (information)
-      - KubeletSetupFailed      # Kubelet Setup Failed         (warning)
-      - FailedMount             # Volume Mount Failed          (warning)
-      - NodeSelectorMismatching # Node Selector Mismatch       (warning)
-      - InsufficientFreeCPU     # Insufficient Free CPU        (warning)
-      - InsufficientFreeMemory  # Insufficient Free Memory     (warning)
-      - OutOfDisk               # Out of Disk                  (information)
-      - HostNetworkNotSupported # Host Network not Supported   (warning)
-      - NilShaper               # Undefined Shaper             (warning)
-      - Rebooted                # Node Rebooted                (warning)
-      - NodeHasSufficientDisk   # Node Has Sufficient Disk     (information)
-      - NodeOutOfDisk           # Node Out of Disk Space       (information)
-      - InvalidDiskCapacity     # Invalid Disk Capacity        (warning)
-      - FreeDiskSpaceFailed     # Free Disk Space Failed       (warning)
+      - TerminatedAllPods       # Terminated All Pods        (information)
+      - RegisteredNode          # Node Registered            (information)
+      - RemovingNode            # Removing Node              (information)
+      - DeletingNode            # Deleting Node              (information)
+      - DeletingAllPods         # Deleting All Pods          (information)
+      - TerminatingEvictedPod   # Terminating Evicted Pod    (information)
+      - NodeReady               # Node Ready                 (information)
+      - NodeNotReady            # Node not Ready             (information)
+      - NodeSchedulable         # Node is Schedulable        (information)
+      - NodeNotSchedulable      # Node is not Schedulable    (information)
+      - CIDRNotAvailable        # CIDR not Available         (information)
+      - CIDRAssignmentFailed    # CIDR Assignment Failed     (information)
+      - Starting                # Starting Kubelet           (information)
+      - KubeletSetupFailed      # Kubelet Setup Failed       (warning)
+      - FailedMount             # Volume Mount Failed        (warning)
+      - NodeSelectorMismatching # Node Selector Mismatch     (warning)
+      - InsufficientFreeCPU     # Insufficient Free CPU      (warning)
+      - InsufficientFreeMemory  # Insufficient Free Memory   (warning)
+      - OutOfDisk               # Out of Disk                (information)
+      - HostNetworkNotSupported # Host Network not Supported (warning)
+      - NilShaper               # Undefined Shaper           (warning)
+      - Rebooted                # Node Rebooted              (warning)
+      - NodeHasSufficientDisk   # Node Has Sufficient Disk   (information)
+      - NodeOutOfDisk           # Node Out of Disk Space     (information)
+      - InvalidDiskCapacity     # Invalid Disk Capacity      (warning)
+      - FreeDiskSpaceFailed     # Free Disk Space Failed     (warning)
     pod:
-      - Pulling             # Pulling Container Image                     (information)
-      - Pulled              # Container Image Pulled                      (information)
-      - Failed              # Container Image Pull Failed                 (warning)
-      - InspectFailed       # Container Image Inspect Failed              (warning)
-      - ErrImageNeverPull   # Container Image NeverPull Policy Violation  (warning)
-      - BackOff             # Back Off Container Start or Image Pull      (warning)
-      - Created             # Container Created                           (information)
-      - Started             # Container Started                           (information)
-      - Failed              # Container Create or Start Failed            (warning)
-      - Killing             # Killing Container                           (information)
-      - Unhealthy           # Container Unhealthy                         (warning)
-      - FailedSync          # Pod Sync Failed                             (warning)
-      - FailedValidation    # Failed Pod Configuration Validation         (warning)
-      - OutOfDisk           # Out of Disk                                 (information)
-      - HostPortConflict    # Host/Port Conflict                          (warning)
+#      - Pulling             # Pulling Container Image                      (information)
+#      - Pulled              # Container Image Pulled                       (information)
+      - Failed              # Container Image Pull, Create or Start Failed (warning)
+      - InspectFailed       # Container Image Inspect Failed               (warning)
+      - ErrImageNeverPull   # Container Image NeverPull Policy Violation   (warning)
+      - BackOff             # Back Off Container Start or Image Pull       (warning)
+      - Created             # Container Created                            (information)
+      - Started             # Container Started                            (information)
+      - Killing             # Killing Container                            (information)
+      - Unhealthy           # Container Unhealthy                          (warning)
+      - FailedSync          # Pod Sync Failed                              (warning)
+      - FailedValidation    # Failed Pod Configuration Validation          (warning)
+      - OutOfDisk           # Out of Disk                                  (information)
+      - HostPortConflict    # Host/Port Conflict                           (warning)
     replicationController:
-      - SuccessfulCreate    # Pod Created                                 (information)
-      - FailedCreate        # Pod Create Failed                           (warning)
-      - SuccessfulDelete    # Pod Deleted                                 (information)
-      - FailedDelete        # Pod Delete Failed                           (warning)
+      - SuccessfulCreate    # Pod Created       (information)
+      - FailedCreate        # Pod Create Failed (warning)
+      - SuccessfulDelete    # Pod Deleted       (information)
+      - FailedDelete        # Pod Delete Failed (warning)
   docker:
     container:
-      - attach
-      - commit
-      - copy
-      - create
-      - destroy
-      - die
-      - exec_create
-      - exec_start
-      - export
-      - kill
-      - oom
-      - pause
-      - rename
-      - resize
-      - restart
-      - start
-      - stop
-      - top
-      - unpause
-      - update
+#      - attach      # Container Attached      (information)
+#      - commit      # Container Committed     (information)
+#      - copy        # Container Copied        (information)
+      - create       # Container Created       (information)
+      - destroy      # Container Destroyed     (warning)
+      - die          # Container Died          (warning)
+#      - exec_create # Container Exec Created  (information)
+#      - exec_start  # Container Exec Started  (information)
+#      - export      # Container Exported      (information)
+      - kill         # Container Killed        (warning)
+      - oom          # Container Out of Memory (warning)
+#      - pause       # Container Paused        (information)
+#      - rename      # Container Renamed       (information)
+#      - resize      # Container Resized       (information)
+      - restart      # Container Restarted     (warning)
+      - start        # Container Started       (information)
+      - stop         # Container Stopped       (information)
+#      - top         # Container Top           (information)
+#      - unpause     # Container Unpaused      (information)
+#      - update      # Container Updated       (information)
     image:
-      - delete
-      - import
-      - pull
-      - push
-      - tag
-      - untag
+#      - delete # Image Deleted  (information)
+#      - import # Image Imported (information)
+#      - pull   # Image Pulled   (information)
+#      - push   # Image Pushed   (information)
+#      - tag    # Image Tagged   (information)
+#      - untag  # Image Untaged  (information)
     volume:
-      - create
-      - mount
-      - unmount
-      - destroy
+#      - create  # Volume Created    (information)
+#      - mount   # Volume Mounted    (information)
+#      - unmount # Volume Unmounted  (information)
+#      - destroy # Volume Destroyed  (information)
     network:
-      - create
-      - connect
-      - disconnect
-      - destroy
+#      - create     # Network Created       (information)
+#      - connect    # Network Connected     (information)
+#      - disconnect # Network Disconnected  (information)
+#      - destroy    # Network Destroyed     (information)
 
 known_ports:
   - 902 # VMware 
