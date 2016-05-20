@@ -1,6 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.logging.Logger;
 
 /**
@@ -28,8 +29,10 @@ public class PosixQueue {
 
     private final int fd;
     private final String name;
+    private final byte[] msgbuffer;
     public PosixQueue(String name, Direction direction) throws IOException {
         this.name = name;
+        this.msgbuffer = new byte[3 << 20];
         if (CLibrary.libraryLoaded) {
             int res = openQueue(name, direction.value, 1);
             if (res > 0) {
@@ -61,9 +64,9 @@ public class PosixQueue {
     }
 
     public String receive(long timeout_s) {
-        byte[] data = queueReceive(fd, timeout_s);
-        if(data != null) {
-            return new String(data);
+        int res = queueReceive(fd, this.msgbuffer, timeout_s);
+        if(res > 0) {
+            return new String(this.msgbuffer, 0, res, Charset.defaultCharset());
         } else {
             return null;
         }
@@ -76,6 +79,6 @@ public class PosixQueue {
     private static native boolean setQueueLimits();
     private static native int openQueue(String name, int flags, int maxmsgs);
     private static native int queueSend(int fd, String message);
-    private static native byte[] queueReceive(int fd, long timeout_s);
+    private static native int queueReceive(int fd, byte[] msgbuffer, long timeout_s);
     private static native boolean queueClose(int fd);
 }

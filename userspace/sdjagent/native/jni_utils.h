@@ -14,13 +14,12 @@ public:
 	{
 		m_java_ptr = java_s;
 		m_env = env;
-		m_is_copy = JNI_FALSE;
-		m_c_str = m_env->GetStringUTFChars(m_java_ptr, &m_is_copy);
+		m_c_str = m_env->GetStringUTFChars(m_java_ptr, NULL);
 	}
 
 	~java_string()
 	{
-		if(m_c_str != NULL && m_is_copy == JNI_TRUE)
+		if(m_c_str != NULL)
 		{
 			m_env->ReleaseStringUTFChars(m_java_ptr, m_c_str);
 		}
@@ -38,12 +37,10 @@ public:
 	java_string(java_string&& other)
 	{
 		m_c_str = other.m_c_str;
-		m_is_copy = other.m_is_copy;
 		m_env = other.m_env;
 		m_java_ptr = other.m_java_ptr;
 
 		other.m_c_str = NULL;
-		other.m_is_copy = JNI_FALSE;
 		other.m_env = NULL;
 		other.m_java_ptr = NULL;
 	}
@@ -51,12 +48,10 @@ public:
 	java_string& operator=(java_string&& other)
 	{
 		m_c_str = other.m_c_str;
-		m_is_copy = other.m_is_copy;
 		m_env = other.m_env;
 		m_java_ptr = other.m_java_ptr;
 
 		other.m_c_str = NULL;
-		other.m_is_copy = JNI_FALSE;
 		other.m_env = NULL;
 		other.m_java_ptr = NULL;
 		return *this;
@@ -69,7 +64,6 @@ public:
 
 private:
 	const char* m_c_str;
-	jboolean m_is_copy;
 	JNIEnv* m_env;
 	jstring m_java_ptr;
 };

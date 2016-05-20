@@ -36,8 +36,8 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueSend
  * Method:    queueReceive
  * Signature: (IJ)Ljava/lang/String;
  */
-JNIEXPORT jbyteArray JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueReceive
-  (JNIEnv *, jclass, jint, jlong);
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueReceive
+  (JNIEnv *, jclass, jint, jbyteArray, jlong);
 
 /*
  * Class:     com_sysdigcloud_sdjagent_PosixQueue

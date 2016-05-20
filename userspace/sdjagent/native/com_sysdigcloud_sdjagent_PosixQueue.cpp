@@ -8,7 +8,7 @@
 
 using namespace std;
 
-static const long MAX_MSGSIZE = 128 << 10; // 128kib
+static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 static const long MAX_QUEUES = 10;
 static const long MAX_MSGS = 3;
 
@@ -87,25 +87,19 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueSend
  * Method:    queueReceive
  * Signature: (IJ)Ljava/lang/String;
  */
-JNIEXPORT jbyteArray JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueReceive
-		(JNIEnv *env, jclass, jint queue_d, jlong timeout)
+JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueReceive
+		(JNIEnv *env, jclass, jint queue_d, jbyteArray buffer, jlong timeout)
 {
-	char msgbuffer[MAX_MSGSIZE] = {};
 	struct timeval now;
 	gettimeofday(&now, NULL);
 
 	struct timespec ts = {0};
 	ts.tv_sec = now.tv_sec + timeout;
-	unsigned int prio = 0;
-	auto res = mq_timedreceive(queue_d, msgbuffer, MAX_MSGSIZE, &prio, &ts);
-	if(res > 0)
-	{
-		jbyteArray ret = env->NewByteArray(res);
-		env->SetByteArrayRegion(ret, 0, res, reinterpret_cast<const jbyte*>(msgbuffer));
-		return ret;
-	} else {
-		return NULL;
-	}
+	auto msgbuffer = env->GetByteArrayElements(buffer, NULL);
+	auto msgbufferlen = env->GetArrayLength(buffer);
+	auto res = mq_timedreceive(queue_d, (char*)msgbuffer, msgbufferlen, NULL, &ts);
+	env->ReleaseByteArrayElements(buffer, msgbuffer, 0);
+	return res;
 }
 
 /*

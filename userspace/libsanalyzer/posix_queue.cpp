@@ -12,6 +12,7 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
 	m_name(move(name))
 {
+	m_readbuffer = new char[MAX_MSGSIZE];
 	ASSERT(name.size() <= NAME_MAX);
 	if(!set_queue_limits())
 	{
@@ -42,6 +43,7 @@ posix_queue::~posix_queue()
 	{
 		mq_close(m_queue_d);
 	}
+	delete[] m_readbuffer;
 }
 
 bool posix_queue::send(const string &msg)
@@ -79,15 +81,14 @@ string posix_queue::receive(uint64_t timeout_s)
 {
 	if(m_queue_d)
 	{
-		char msgbuffer[MAX_MSGSIZE] = {};
 		struct timespec ts = {0};
 		uint64_t now = sinsp_utils::get_current_time_ns();
 		ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
 		unsigned int prio = 0;
-		auto res = mq_timedreceive(m_queue_d, msgbuffer, MAX_MSGSIZE, &prio, &ts);
+		auto res = mq_timedreceive(m_queue_d, m_readbuffer, MAX_MSGSIZE, &prio, &ts);
 		if(res > 0)
 		{
-			return string(msgbuffer, res);
+			return string(m_readbuffer, res);
 		} else {
 			return "";
 		}
