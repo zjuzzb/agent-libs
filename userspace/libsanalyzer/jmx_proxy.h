@@ -82,8 +82,8 @@ public:
 	bool m_print_json;
 private:
 	static Json::Value tinfo_to_json(sinsp_threadinfo* tinfo);
-	posix_queue m_inqueue;
 	posix_queue m_outqueue;
+	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
 };
