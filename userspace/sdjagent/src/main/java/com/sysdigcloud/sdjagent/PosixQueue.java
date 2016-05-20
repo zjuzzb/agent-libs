@@ -32,7 +32,7 @@ public class PosixQueue {
     private final byte[] msgbuffer;
     public PosixQueue(String name, Direction direction) throws IOException {
         this.name = name;
-        this.msgbuffer = new byte[3 << 20];
+        this.msgbuffer = new byte[3 << 20]; // 3MiB
         if (CLibrary.libraryLoaded) {
             int res = openQueue(name, direction.value, 1);
             if (res > 0) {
