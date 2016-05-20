@@ -3046,7 +3046,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Docker
 			//
-			if(m_has_docker)
+			if(m_has_docker && m_configuration->get_docker_event_filter())
 			{
 				emit_docker_events();
 			}
