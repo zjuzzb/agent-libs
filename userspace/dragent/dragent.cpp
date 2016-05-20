@@ -256,15 +256,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
-		m_jmx_pipes = make_shared<pipe_manager>();
-		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+		m_jmx_pipes = make_shared<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
-		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser(), state);
+		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
 		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
-			this->m_jmx_pipes->attach_child_stdio();
+			this->m_jmx_pipes->attach_child();
 
 			// Our option parser is pretty simple, for example an arg with spaces inside
 			// double quotes will not work, eg:

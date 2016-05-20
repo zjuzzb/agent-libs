@@ -10,7 +10,7 @@ import java.util.logging.Logger;
  */
 final public class CLibrary {
     private final static Logger LOGGER = Logger.getLogger(CLibrary.class.getName());
-    private static boolean libraryLoaded;
+    static boolean libraryLoaded;
     private static int pid;
     private static int ppid;
     private static final int initialNamespace;

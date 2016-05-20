@@ -72,11 +72,6 @@ public:
 		return &m_sinsp_handler;
 	}
 
-	void set_jmx_pipes(shared_ptr<pipe_manager> jmx_pipes)
-	{
-		m_jmx_pipes = jmx_pipes;
-	}
-
 	void set_statsite_pipes(shared_ptr<pipe_manager> pipes)
 	{
 		m_statsite_pipes = pipes;
@@ -194,7 +189,6 @@ private:
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
-	shared_ptr<pipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;

@@ -114,10 +114,10 @@ void java_process::to_protobuf(draiosproto::java_info *protobuf) const
 	}
 }
 
-jmx_proxy::jmx_proxy(const std::pair<FILE*, FILE*>& fds):
+jmx_proxy::jmx_proxy():
 		m_print_json(false),
-		m_input_fd(fds.first),
-		m_output_fd(fds.second)
+		m_outqueue("/sdc_sdjagent_in", posix_queue::SEND, 1),
+		m_inqueue("/sdc_sdjagent_out", posix_queue::RECEIVE, 1)
 {
 }
 
@@ -165,8 +165,7 @@ void jmx_proxy::send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& p
 	command_obj["body"] = body;
 	string command_data = m_json_writer.write(command_obj);
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX: %s", command_data.c_str());
-	fprintf(m_input_fd, "%s", command_data.c_str());
-	fflush(m_input_fd);
+	m_outqueue.send(command_data);
 }
 
 pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
@@ -174,17 +173,7 @@ pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 	uint64_t response_id = 0;
 	unordered_map<int, java_process> processes;
 
-	string json_data;
-	static const int READ_BUFFER_SIZE = 1024;
-	char buffer[READ_BUFFER_SIZE] = "";
-	char* fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, m_output_fd);
-	while (fgets_res != NULL && strstr(buffer, "\n") == NULL)
-	{
-		json_data.append(buffer);
-		buffer[0] = '\0'; // Consume the buffer
-		fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, m_output_fd);
-	}
-	json_data.append(buffer);
+	auto json_data = m_inqueue.receive();
 
 	if (json_data.size() > 0)
 	{

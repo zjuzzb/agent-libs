@@ -144,37 +144,39 @@ public class Application {
     }
 
     private void mainLoop() throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        PosixQueue inqueue = new PosixQueue("/sdc_sdjagent_in", PosixQueue.Direction.RECEIVE);
+        PosixQueue outqueue = new PosixQueue("/sdc_sdjagent_out", PosixQueue.Direction.SEND);
+
         Runtime runtime = Runtime.getRuntime();
         while (true)
         {
             System.err.print(String.format("HB,%d,%d,%d\n", CLibrary.getPid(),
                                     runtime.totalMemory()/1024, System.currentTimeMillis()/1000));
             System.err.flush();
-            String cmd_data = reader.readLine();
-            LOGGER.fine(String.format("Received command: %s", cmd_data));
-            Map<String, Object> cmd_obj = MAPPER.readValue(cmd_data, Map.class);
-            List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
-            if (cmd_obj.get("command").equals("getMetrics"))
-            {
-                List<Object> body = (List<Object>) cmd_obj.get("body");
-                for(Object item : body) {
-                    requestedVMs.add(MAPPER.convertValue(item, VMRequest.class));
+            String cmd_data = inqueue.receive(1);
+            if(cmd_data != null) {
+                LOGGER.fine(String.format("Received command: %s", cmd_data));
+                Map<String, Object> cmd_obj = MAPPER.readValue(cmd_data, Map.class);
+                List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
+                if (cmd_obj.get("command").equals("getMetrics"))
+                {
+                    List<Object> body = (List<Object>) cmd_obj.get("body");
+                    for(Object item : body) {
+                        requestedVMs.add(MAPPER.convertValue(item, VMRequest.class));
+                    }
+                    List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);
+                    Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
+                    response_obj.put("id", cmd_obj.get("id"));
+                    response_obj.put("body", vmList);
+                    String response = MAPPER.writeValueAsString(response_obj);
+                    outqueue.send(response);
+                    LOGGER.fine("End getMetrics command");
                 }
-                List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);
-                Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
-                response_obj.put("id", cmd_obj.get("id"));
-                response_obj.put("body", vmList);
-                MAPPER.writeValue(System.out, response_obj);
-                System.out.println();
-                System.out.flush();
-                LOGGER.fine("End getMetrics command");
-            }
-
-            // Cleanup
-            if(System.currentTimeMillis() - lastVmsCleanup > VMS_CLEANUP_INTERVAL) {
-                cleanup(requestedVMs);
-                lastVmsCleanup = System.currentTimeMillis();
+                // Cleanup
+                if(System.currentTimeMillis() - lastVmsCleanup > VMS_CLEANUP_INTERVAL) {
+                    cleanup(requestedVMs);
+                    lastVmsCleanup = System.currentTimeMillis();
+                }
             }
         }
     }
