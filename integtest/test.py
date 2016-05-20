@@ -157,9 +157,9 @@ def test_ipv4_connections(env):
 
 @pytest.mark.parametrize("env", [
     "redis-traffic",
-    "cassandra-latest"
+    "cassandra-latest",
 ])
-def test_inodes_data(env):
+def test_inodes(env):
   mounts_found = False
   for m in lastMetricsFile(env):
     for mfs in m.mounts:
@@ -167,8 +167,28 @@ def test_inodes_data(env):
       assert mfs.total_inodes > 0
       assert mfs.used_inodes > 0
     for c in m.containers:
-      for mfs in m.mounts:
+      for mfs in c.mounts:
+        # No /etc stuff should be present on these containers
+        assert not mfs.mount_dir.startswith("/etc")
         mounts_found = True
+        # test new inode stuff
         assert mfs.total_inodes > 0
         assert mfs.used_inodes > 0
   assert mounts_found
+
+@pytest.mark.parametrize("env", [
+    "mounts",
+])
+def test_mounts(env):
+  mounts_found = False
+  mytestdirFound = False
+  for m in lastMetricsFile(env):
+    for c in m.containers:
+      for mfs in c.mounts:
+        if mfs.mount_dir == "/etc/mytestdir":
+          mytestdirFound = True
+        else:
+          assert not mfs.mount_dir.startswith("/etc")
+        mounts_found = True
+  assert mounts_found
+  assert mytestdirFound

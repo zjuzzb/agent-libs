@@ -501,10 +501,11 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			}
 		}
 
-		if(strstr(entry->mnt_dir, "/etc") == entry->mnt_dir)
+		if(strcmp(entry->mnt_dir, "/etc/resolv.conf") == 0 ||
+			strcmp(entry->mnt_dir, "/etc/hostname") == 0 ||
+			strcmp(entry->mnt_dir, "/etc/hosts") == 0)
 		{
-			// Skipping /etc mounts, because inside docker containers
-			// there are always /etc/hosts, /etc/resolv.conf etc
+			// Skipping these /etc mounts, they are always present inside containers
 			// Usually they are just noise
 			continue;
 		}
