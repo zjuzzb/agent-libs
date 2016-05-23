@@ -14,7 +14,7 @@ loop do
 	                    { "$match" => {}},
 	                    { "$group" => {
 	                                  "_id" => "$country_code",
-	                                  "orders_count" => { "$sum" => "$orders_count" }
+	                                  "value" => { "$sum" => "$orders_count" }
 	                                }
 	                   }
 	           ])

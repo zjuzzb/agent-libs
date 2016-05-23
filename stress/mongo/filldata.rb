@@ -7,7 +7,7 @@ client = MongoClient.new(ENV['MONGODB'], 27017)
 db = client["test"]
 collection = db["customers"]
 
-30000.times do
+30.times do
 	collection.insert({
 			:first_name => Faker::Name.first_name,
 			:last_name => Faker::Name.last_name,
