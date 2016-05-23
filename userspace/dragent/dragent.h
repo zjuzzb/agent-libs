@@ -53,6 +53,8 @@ private:
 	atomic<uint64_t> m_last_loop_s;
 };
 
+class user_event_channel;
+
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,6 +78,8 @@ private:
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
+	Logger* make_console_channel(AutoPtr<Formatter> formatter);
+	Logger* make_event_channel();
 
 	bool m_help_requested;
 	bool m_version_requested;
@@ -83,7 +87,7 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
-	shared_ptr<pipe_manager> m_jmx_pipes;
+	shared_ptr<errpipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	unique_ptr<errpipe_manager> m_sdchecks_pipes;
 	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;

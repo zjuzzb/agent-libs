@@ -104,6 +104,8 @@ class ssh_data;
 class ssh_close_channel;
 class auto_update_request;
 class dirty_shutdown_report;
+class key_value;
+class agent_event;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -1546,6 +1548,41 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 fd_count() const;
   inline void set_fd_count(::google::protobuf::uint32 value);
 
+  // optional uint32 cpu_shares = 24;
+  inline bool has_cpu_shares() const;
+  inline void clear_cpu_shares();
+  static const int kCpuSharesFieldNumber = 24;
+  inline ::google::protobuf::uint32 cpu_shares() const;
+  inline void set_cpu_shares(::google::protobuf::uint32 value);
+
+  // optional uint32 cpu_shares_usage_pct = 25;
+  inline bool has_cpu_shares_usage_pct() const;
+  inline void clear_cpu_shares_usage_pct();
+  static const int kCpuSharesUsagePctFieldNumber = 25;
+  inline ::google::protobuf::uint32 cpu_shares_usage_pct() const;
+  inline void set_cpu_shares_usage_pct(::google::protobuf::uint32 value);
+
+  // optional uint32 memory_limit_kb = 26;
+  inline bool has_memory_limit_kb() const;
+  inline void clear_memory_limit_kb();
+  static const int kMemoryLimitKbFieldNumber = 26;
+  inline ::google::protobuf::uint32 memory_limit_kb() const;
+  inline void set_memory_limit_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 swap_limit_kb = 27;
+  inline bool has_swap_limit_kb() const;
+  inline void clear_swap_limit_kb();
+  static const int kSwapLimitKbFieldNumber = 27;
+  inline ::google::protobuf::uint32 swap_limit_kb() const;
+  inline void set_swap_limit_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 cpu_quota_used_pct = 28;
+  inline bool has_cpu_quota_used_pct() const;
+  inline void clear_cpu_quota_used_pct();
+  static const int kCpuQuotaUsedPctFieldNumber = 28;
+  inline ::google::protobuf::uint32 cpu_quota_used_pct() const;
+  inline void set_cpu_quota_used_pct(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1570,6 +1607,16 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_minor_pagefaults();
   inline void set_has_fd_count();
   inline void clear_has_fd_count();
+  inline void set_has_cpu_shares();
+  inline void clear_has_cpu_shares();
+  inline void set_has_cpu_shares_usage_pct();
+  inline void clear_has_cpu_shares_usage_pct();
+  inline void set_has_memory_limit_kb();
+  inline void clear_has_memory_limit_kb();
+  inline void set_has_swap_limit_kb();
+  inline void clear_has_swap_limit_kb();
+  inline void set_has_cpu_quota_used_pct();
+  inline void clear_has_cpu_quota_used_pct();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1584,9 +1631,14 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint64 major_pagefaults_;
   ::google::protobuf::uint64 minor_pagefaults_;
   ::google::protobuf::uint32 fd_count_;
+  ::google::protobuf::uint32 cpu_shares_;
+  ::google::protobuf::uint32 cpu_shares_usage_pct_;
+  ::google::protobuf::uint32 memory_limit_kb_;
+  ::google::protobuf::uint32 swap_limit_kb_;
+  ::google::protobuf::uint32 cpu_quota_used_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5617,6 +5669,20 @@ class mounted_fs : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 available_bytes() const;
   inline void set_available_bytes(::google::protobuf::uint64 value);
 
+  // optional uint64 total_inodes = 10;
+  inline bool has_total_inodes() const;
+  inline void clear_total_inodes();
+  static const int kTotalInodesFieldNumber = 10;
+  inline ::google::protobuf::uint64 total_inodes() const;
+  inline void set_total_inodes(::google::protobuf::uint64 value);
+
+  // optional uint64 used_inodes = 11;
+  inline bool has_used_inodes() const;
+  inline void clear_used_inodes();
+  static const int kUsedInodesFieldNumber = 11;
+  inline ::google::protobuf::uint64 used_inodes() const;
+  inline void set_used_inodes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs)
  private:
   inline void set_has_device();
@@ -5631,6 +5697,10 @@ class mounted_fs : public ::google::protobuf::Message {
   inline void clear_has_used_bytes();
   inline void set_has_available_bytes();
   inline void clear_has_available_bytes();
+  inline void set_has_total_inodes();
+  inline void clear_has_total_inodes();
+  inline void set_has_used_inodes();
+  inline void clear_has_used_inodes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5640,9 +5710,11 @@ class mounted_fs : public ::google::protobuf::Message {
   ::google::protobuf::uint64 size_bytes_;
   ::google::protobuf::uint64 used_bytes_;
   ::google::protobuf::uint64 available_bytes_;
+  ::google::protobuf::uint64 total_inodes_;
+  ::google::protobuf::uint64 used_inodes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6953,34 +7025,34 @@ class k8s_replication_controller : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_common* release_common();
   inline void set_allocated_common(::draiosproto::k8s_common* common);
 
-  // optional uint32 spec_replicas = 2;
-  inline bool has_spec_replicas() const;
-  inline void clear_spec_replicas();
-  static const int kSpecReplicasFieldNumber = 2;
-  inline ::google::protobuf::uint32 spec_replicas() const;
-  inline void set_spec_replicas(::google::protobuf::uint32 value);
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
 
-  // optional uint32 stat_replicas = 3;
-  inline bool has_stat_replicas() const;
-  inline void clear_stat_replicas();
-  static const int kStatReplicasFieldNumber = 3;
-  inline ::google::protobuf::uint32 stat_replicas() const;
-  inline void set_stat_replicas(::google::protobuf::uint32 value);
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_replication_controller)
  private:
   inline void set_has_common();
   inline void clear_has_common();
-  inline void set_has_spec_replicas();
-  inline void clear_has_spec_replicas();
-  inline void set_has_stat_replicas();
-  inline void clear_has_stat_replicas();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::k8s_common* common_;
-  ::google::protobuf::uint32 spec_replicas_;
-  ::google::protobuf::uint32 stat_replicas_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
@@ -8466,6 +8538,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::draiosproto::mesos_state* release_mesos();
   inline void set_allocated_mesos(::draiosproto::mesos_state* mesos);
 
+  // repeated .draiosproto.agent_event events = 26;
+  inline int events_size() const;
+  inline void clear_events();
+  static const int kEventsFieldNumber = 26;
+  inline const ::draiosproto::agent_event& events(int index) const;
+  inline ::draiosproto::agent_event* mutable_events(int index);
+  inline ::draiosproto::agent_event* add_events();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >&
+      events() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
+      mutable_events();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -8520,9 +8604,10 @@ class metrics : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container > containers_;
   ::draiosproto::k8s_state* kubernetes_;
   ::draiosproto::mesos_state* mesos_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event > events_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(21 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(22 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -9746,6 +9831,258 @@ class dirty_shutdown_report : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static dirty_shutdown_report* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class key_value : public ::google::protobuf::Message {
+ public:
+  key_value();
+  virtual ~key_value();
+
+  key_value(const key_value& from);
+
+  inline key_value& operator=(const key_value& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const key_value& default_instance();
+
+  void Swap(key_value* other);
+
+  // implements Message ----------------------------------------------
+
+  key_value* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const key_value& from);
+  void MergeFrom(const key_value& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // required string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.key_value)
+ private:
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* key_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static key_value* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class agent_event : public ::google::protobuf::Message {
+ public:
+  agent_event();
+  virtual ~agent_event();
+
+  agent_event(const agent_event& from);
+
+  inline agent_event& operator=(const agent_event& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const agent_event& default_instance();
+
+  void Swap(agent_event* other);
+
+  // implements Message ----------------------------------------------
+
+  agent_event* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const agent_event& from);
+  void MergeFrom(const agent_event& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional uint64 timestamp_sec = 1;
+  inline bool has_timestamp_sec() const;
+  inline void clear_timestamp_sec();
+  static const int kTimestampSecFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_sec() const;
+  inline void set_timestamp_sec(::google::protobuf::uint64 value);
+
+  // optional string scope = 2;
+  inline bool has_scope() const;
+  inline void clear_scope();
+  static const int kScopeFieldNumber = 2;
+  inline const ::std::string& scope() const;
+  inline void set_scope(const ::std::string& value);
+  inline void set_scope(const char* value);
+  inline void set_scope(const char* value, size_t size);
+  inline ::std::string* mutable_scope();
+  inline ::std::string* release_scope();
+  inline void set_allocated_scope(::std::string* scope);
+
+  // optional string title = 3;
+  inline bool has_title() const;
+  inline void clear_title();
+  static const int kTitleFieldNumber = 3;
+  inline const ::std::string& title() const;
+  inline void set_title(const ::std::string& value);
+  inline void set_title(const char* value);
+  inline void set_title(const char* value, size_t size);
+  inline ::std::string* mutable_title();
+  inline ::std::string* release_title();
+  inline void set_allocated_title(::std::string* title);
+
+  // optional string description = 4;
+  inline bool has_description() const;
+  inline void clear_description();
+  static const int kDescriptionFieldNumber = 4;
+  inline const ::std::string& description() const;
+  inline void set_description(const ::std::string& value);
+  inline void set_description(const char* value);
+  inline void set_description(const char* value, size_t size);
+  inline ::std::string* mutable_description();
+  inline ::std::string* release_description();
+  inline void set_allocated_description(::std::string* description);
+
+  // optional uint32 severity = 5;
+  inline bool has_severity() const;
+  inline void clear_severity();
+  static const int kSeverityFieldNumber = 5;
+  inline ::google::protobuf::uint32 severity() const;
+  inline void set_severity(::google::protobuf::uint32 value);
+
+  // repeated .draiosproto.key_value tags = 6;
+  inline int tags_size() const;
+  inline void clear_tags();
+  static const int kTagsFieldNumber = 6;
+  inline const ::draiosproto::key_value& tags(int index) const;
+  inline ::draiosproto::key_value* mutable_tags(int index);
+  inline ::draiosproto::key_value* add_tags();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >&
+      tags() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >*
+      mutable_tags();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.agent_event)
+ private:
+  inline void set_has_timestamp_sec();
+  inline void clear_has_timestamp_sec();
+  inline void set_has_scope();
+  inline void clear_has_scope();
+  inline void set_has_title();
+  inline void clear_has_title();
+  inline void set_has_description();
+  inline void clear_has_description();
+  inline void set_has_severity();
+  inline void clear_has_severity();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_sec_;
+  ::std::string* scope_;
+  ::std::string* title_;
+  ::std::string* description_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value > tags_;
+  ::google::protobuf::uint32 severity_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static agent_event* default_instance_;
 };
 // ===================================================================
 
@@ -11439,6 +11776,116 @@ inline ::google::protobuf::uint32 resource_categories::fd_count() const {
 inline void resource_categories::set_fd_count(::google::protobuf::uint32 value) {
   set_has_fd_count();
   fd_count_ = value;
+}
+
+// optional uint32 cpu_shares = 24;
+inline bool resource_categories::has_cpu_shares() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void resource_categories::set_has_cpu_shares() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void resource_categories::clear_has_cpu_shares() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void resource_categories::clear_cpu_shares() {
+  cpu_shares_ = 0u;
+  clear_has_cpu_shares();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_shares() const {
+  return cpu_shares_;
+}
+inline void resource_categories::set_cpu_shares(::google::protobuf::uint32 value) {
+  set_has_cpu_shares();
+  cpu_shares_ = value;
+}
+
+// optional uint32 cpu_shares_usage_pct = 25;
+inline bool resource_categories::has_cpu_shares_usage_pct() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void resource_categories::set_has_cpu_shares_usage_pct() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void resource_categories::clear_has_cpu_shares_usage_pct() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void resource_categories::clear_cpu_shares_usage_pct() {
+  cpu_shares_usage_pct_ = 0u;
+  clear_has_cpu_shares_usage_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_shares_usage_pct() const {
+  return cpu_shares_usage_pct_;
+}
+inline void resource_categories::set_cpu_shares_usage_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_shares_usage_pct();
+  cpu_shares_usage_pct_ = value;
+}
+
+// optional uint32 memory_limit_kb = 26;
+inline bool resource_categories::has_memory_limit_kb() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void resource_categories::set_has_memory_limit_kb() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void resource_categories::clear_has_memory_limit_kb() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void resource_categories::clear_memory_limit_kb() {
+  memory_limit_kb_ = 0u;
+  clear_has_memory_limit_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::memory_limit_kb() const {
+  return memory_limit_kb_;
+}
+inline void resource_categories::set_memory_limit_kb(::google::protobuf::uint32 value) {
+  set_has_memory_limit_kb();
+  memory_limit_kb_ = value;
+}
+
+// optional uint32 swap_limit_kb = 27;
+inline bool resource_categories::has_swap_limit_kb() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void resource_categories::set_has_swap_limit_kb() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void resource_categories::clear_has_swap_limit_kb() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void resource_categories::clear_swap_limit_kb() {
+  swap_limit_kb_ = 0u;
+  clear_has_swap_limit_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_limit_kb() const {
+  return swap_limit_kb_;
+}
+inline void resource_categories::set_swap_limit_kb(::google::protobuf::uint32 value) {
+  set_has_swap_limit_kb();
+  swap_limit_kb_ = value;
+}
+
+// optional uint32 cpu_quota_used_pct = 28;
+inline bool resource_categories::has_cpu_quota_used_pct() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void resource_categories::set_has_cpu_quota_used_pct() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void resource_categories::clear_has_cpu_quota_used_pct() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void resource_categories::clear_cpu_quota_used_pct() {
+  cpu_quota_used_pct_ = 0u;
+  clear_has_cpu_quota_used_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_quota_used_pct() const {
+  return cpu_quota_used_pct_;
+}
+inline void resource_categories::set_cpu_quota_used_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_quota_used_pct();
+  cpu_quota_used_pct_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -16732,6 +17179,50 @@ inline void mounted_fs::set_available_bytes(::google::protobuf::uint64 value) {
   available_bytes_ = value;
 }
 
+// optional uint64 total_inodes = 10;
+inline bool mounted_fs::has_total_inodes() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void mounted_fs::set_has_total_inodes() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void mounted_fs::clear_has_total_inodes() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void mounted_fs::clear_total_inodes() {
+  total_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_total_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::total_inodes() const {
+  return total_inodes_;
+}
+inline void mounted_fs::set_total_inodes(::google::protobuf::uint64 value) {
+  set_has_total_inodes();
+  total_inodes_ = value;
+}
+
+// optional uint64 used_inodes = 11;
+inline bool mounted_fs::has_used_inodes() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void mounted_fs::set_has_used_inodes() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void mounted_fs::clear_has_used_inodes() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void mounted_fs::clear_used_inodes() {
+  used_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_used_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::used_inodes() const {
+  return used_inodes_;
+}
+inline void mounted_fs::set_used_inodes(::google::protobuf::uint64 value) {
+  set_has_used_inodes();
+  used_inodes_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // file_stat
@@ -18781,48 +19272,48 @@ inline void k8s_replication_controller::set_allocated_common(::draiosproto::k8s_
   }
 }
 
-// optional uint32 spec_replicas = 2;
-inline bool k8s_replication_controller::has_spec_replicas() const {
+// optional uint32 replicas_desired = 2;
+inline bool k8s_replication_controller::has_replicas_desired() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void k8s_replication_controller::set_has_spec_replicas() {
+inline void k8s_replication_controller::set_has_replicas_desired() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void k8s_replication_controller::clear_has_spec_replicas() {
+inline void k8s_replication_controller::clear_has_replicas_desired() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void k8s_replication_controller::clear_spec_replicas() {
-  spec_replicas_ = 0u;
-  clear_has_spec_replicas();
+inline void k8s_replication_controller::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
 }
-inline ::google::protobuf::uint32 k8s_replication_controller::spec_replicas() const {
-  return spec_replicas_;
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_desired() const {
+  return replicas_desired_;
 }
-inline void k8s_replication_controller::set_spec_replicas(::google::protobuf::uint32 value) {
-  set_has_spec_replicas();
-  spec_replicas_ = value;
+inline void k8s_replication_controller::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
 }
 
-// optional uint32 stat_replicas = 3;
-inline bool k8s_replication_controller::has_stat_replicas() const {
+// optional uint32 replicas_running = 3;
+inline bool k8s_replication_controller::has_replicas_running() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void k8s_replication_controller::set_has_stat_replicas() {
+inline void k8s_replication_controller::set_has_replicas_running() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void k8s_replication_controller::clear_has_stat_replicas() {
+inline void k8s_replication_controller::clear_has_replicas_running() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void k8s_replication_controller::clear_stat_replicas() {
-  stat_replicas_ = 0u;
-  clear_has_stat_replicas();
+inline void k8s_replication_controller::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
 }
-inline ::google::protobuf::uint32 k8s_replication_controller::stat_replicas() const {
-  return stat_replicas_;
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_running() const {
+  return replicas_running_;
 }
-inline void k8s_replication_controller::set_stat_replicas(::google::protobuf::uint32 value) {
-  set_has_stat_replicas();
-  stat_replicas_ = value;
+inline void k8s_replication_controller::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -20971,6 +21462,31 @@ inline void metrics::set_allocated_mesos(::draiosproto::mesos_state* mesos) {
   } else {
     clear_has_mesos();
   }
+}
+
+// repeated .draiosproto.agent_event events = 26;
+inline int metrics::events_size() const {
+  return events_.size();
+}
+inline void metrics::clear_events() {
+  events_.Clear();
+}
+inline const ::draiosproto::agent_event& metrics::events(int index) const {
+  return events_.Get(index);
+}
+inline ::draiosproto::agent_event* metrics::mutable_events(int index) {
+  return events_.Mutable(index);
+}
+inline ::draiosproto::agent_event* metrics::add_events() {
+  return events_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >&
+metrics::events() const {
+  return events_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
+metrics::mutable_events() {
+  return &events_;
 }
 
 // -------------------------------------------------------------------
@@ -23595,6 +24111,433 @@ inline void dirty_shutdown_report::set_allocated_log(::std::string* log) {
     clear_has_log();
     log_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// -------------------------------------------------------------------
+
+// key_value
+
+// required string key = 1;
+inline bool key_value::has_key() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void key_value::set_has_key() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void key_value::clear_has_key() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void key_value::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& key_value::key() const {
+  return *key_;
+}
+inline void key_value::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void key_value::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void key_value::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* key_value::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* key_value::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void key_value::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string value = 2;
+inline bool key_value::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void key_value::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void key_value::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void key_value::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& key_value::value() const {
+  return *value_;
+}
+inline void key_value::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void key_value::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void key_value::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* key_value::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* key_value::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void key_value::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// agent_event
+
+// optional uint64 timestamp_sec = 1;
+inline bool agent_event::has_timestamp_sec() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void agent_event::set_has_timestamp_sec() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void agent_event::clear_has_timestamp_sec() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void agent_event::clear_timestamp_sec() {
+  timestamp_sec_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_sec();
+}
+inline ::google::protobuf::uint64 agent_event::timestamp_sec() const {
+  return timestamp_sec_;
+}
+inline void agent_event::set_timestamp_sec(::google::protobuf::uint64 value) {
+  set_has_timestamp_sec();
+  timestamp_sec_ = value;
+}
+
+// optional string scope = 2;
+inline bool agent_event::has_scope() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void agent_event::set_has_scope() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void agent_event::clear_has_scope() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void agent_event::clear_scope() {
+  if (scope_ != &::google::protobuf::internal::kEmptyString) {
+    scope_->clear();
+  }
+  clear_has_scope();
+}
+inline const ::std::string& agent_event::scope() const {
+  return *scope_;
+}
+inline void agent_event::set_scope(const ::std::string& value) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(value);
+}
+inline void agent_event::set_scope(const char* value) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(value);
+}
+inline void agent_event::set_scope(const char* value, size_t size) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_scope() {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  return scope_;
+}
+inline ::std::string* agent_event::release_scope() {
+  clear_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = scope_;
+    scope_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_scope(::std::string* scope) {
+  if (scope_ != &::google::protobuf::internal::kEmptyString) {
+    delete scope_;
+  }
+  if (scope) {
+    set_has_scope();
+    scope_ = scope;
+  } else {
+    clear_has_scope();
+    scope_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string title = 3;
+inline bool agent_event::has_title() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void agent_event::set_has_title() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void agent_event::clear_has_title() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void agent_event::clear_title() {
+  if (title_ != &::google::protobuf::internal::kEmptyString) {
+    title_->clear();
+  }
+  clear_has_title();
+}
+inline const ::std::string& agent_event::title() const {
+  return *title_;
+}
+inline void agent_event::set_title(const ::std::string& value) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(value);
+}
+inline void agent_event::set_title(const char* value) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(value);
+}
+inline void agent_event::set_title(const char* value, size_t size) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_title() {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  return title_;
+}
+inline ::std::string* agent_event::release_title() {
+  clear_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = title_;
+    title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_title(::std::string* title) {
+  if (title_ != &::google::protobuf::internal::kEmptyString) {
+    delete title_;
+  }
+  if (title) {
+    set_has_title();
+    title_ = title;
+  } else {
+    clear_has_title();
+    title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string description = 4;
+inline bool agent_event::has_description() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void agent_event::set_has_description() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void agent_event::clear_has_description() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void agent_event::clear_description() {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    description_->clear();
+  }
+  clear_has_description();
+}
+inline const ::std::string& agent_event::description() const {
+  return *description_;
+}
+inline void agent_event::set_description(const ::std::string& value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void agent_event::set_description(const char* value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void agent_event::set_description(const char* value, size_t size) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_description() {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  return description_;
+}
+inline ::std::string* agent_event::release_description() {
+  clear_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = description_;
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_description(::std::string* description) {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (description) {
+    set_has_description();
+    description_ = description;
+  } else {
+    clear_has_description();
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 severity = 5;
+inline bool agent_event::has_severity() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void agent_event::set_has_severity() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void agent_event::clear_has_severity() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void agent_event::clear_severity() {
+  severity_ = 0u;
+  clear_has_severity();
+}
+inline ::google::protobuf::uint32 agent_event::severity() const {
+  return severity_;
+}
+inline void agent_event::set_severity(::google::protobuf::uint32 value) {
+  set_has_severity();
+  severity_ = value;
+}
+
+// repeated .draiosproto.key_value tags = 6;
+inline int agent_event::tags_size() const {
+  return tags_.size();
+}
+inline void agent_event::clear_tags() {
+  tags_.Clear();
+}
+inline const ::draiosproto::key_value& agent_event::tags(int index) const {
+  return tags_.Get(index);
+}
+inline ::draiosproto::key_value* agent_event::mutable_tags(int index) {
+  return tags_.Mutable(index);
+}
+inline ::draiosproto::key_value* agent_event::add_tags() {
+  return tags_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >&
+agent_event::tags() const {
+  return tags_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >*
+agent_event::mutable_tags() {
+  return &tags_;
 }
 
 

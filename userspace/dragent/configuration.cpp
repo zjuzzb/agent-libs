@@ -32,8 +32,9 @@ dragent_configuration::dragent_configuration()
 	m_ssl_verify_certificate = true;
 	m_compression_enabled = false;
 	m_emit_full_connections = false;
-	m_min_file_priority = (Message::Priority) 0;
-	m_min_console_priority = (Message::Priority) 0;
+	m_min_file_priority = (Message::Priority) -1;
+	m_min_console_priority = (Message::Priority) -1;
+	m_min_event_priority = (Message::Priority) -1;
 	m_evtcnt = 0;
 	m_subsampling_ratio = 1;
 	m_autodrop_enabled = false;
@@ -51,6 +52,7 @@ dragent_configuration::dragent_configuration()
 	m_capture_dragent_events = false;
 	m_jmx_sampling = 1;
 	m_protocols_enabled = true;
+	m_protocols_truncation_size = 0;
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
 	m_ssh_enabled = true;
@@ -63,29 +65,50 @@ dragent_configuration::dragent_configuration()
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
 {
-	if(priostr == "error")
+	if(strncasecmp(priostr.c_str(), "emergency", 9) == 0)
+	{
+		return (Message::Priority)0;
+	}
+	else if(strncasecmp(priostr.c_str(), "alert", 5) == 0 ||
+			strncasecmp(priostr.c_str(), "fatal", 5) == 0)
+	{
+		return Message::PRIO_FATAL;
+	}
+	else if(strncasecmp(priostr.c_str(), "critical", 8) == 0)
+	{
+		return Message::PRIO_CRITICAL;
+	}
+	else if(strncasecmp(priostr.c_str(), "error", 5) == 0)
 	{
 		return Message::PRIO_ERROR;
 	}
-	else if(priostr == "warning")
+	else if(strncasecmp(priostr.c_str(), "warn", 4) == 0)
 	{
 		return Message::PRIO_WARNING;
 	}
-	else if(priostr == "info")
+	else if(strncasecmp(priostr.c_str(), "notice", 6) == 0)
+	{
+		return Message::PRIO_NOTICE;
+	}
+	else if(strncasecmp(priostr.c_str(), "info", 4) == 0)
 	{
 		return Message::PRIO_INFORMATION;
 	}
-	else if(priostr == "debug")
+	else if(strncasecmp(priostr.c_str(), "debug", 5) == 0)
 	{
 		return Message::PRIO_DEBUG;
 	}
-	else if(priostr == "" || priostr == "none")
+	else if(strncasecmp(priostr.c_str(), "trace", 5) == 0)
+	{
+		return Message::PRIO_TRACE;
+	}
+	else if(priostr.empty() || strncasecmp(priostr.c_str(), "none", 4) == 0)
 	{
 		return (Message::Priority)-1;
 	}
 	else
 	{
-		throw sinsp_exception("invalid consolepriority. Accepted values are: 'error', 'warning', 'info' or 'debug'.");
+		throw sinsp_exception("Invalid log priority. Accepted values are: 'none', 'emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug', 'trace'.");
 	}
 }
 
@@ -103,6 +126,46 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 			Path path(file_path);
 			path.makeAbsolute(m_root_dir);
 			normalized_path = path.toString();
+		}
+	}
+}
+
+void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
+{
+	// shortcut to enable or disable all in dragent.yaml (overriding default)
+	std::set<string, ci_compare> user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system);
+	if(user_events.size())
+	{
+		if(user_events.find("all") != user_events.end())
+		{
+			if(!flt)
+			{
+				flt = std::make_shared<user_event_filter_t>();
+			}
+			flt->add(user_event_meta_t({ "all", { "all" } }));
+			return;
+		}
+		else if(user_events.find("none") != user_events.end())
+		{
+			return;
+		}
+	}
+
+	user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system, component);
+	if(user_events.size())
+	{
+		if(user_events.find("none") == user_events.end())
+		{
+			if(!flt)
+			{
+				flt = std::make_shared<user_event_filter_t>();
+			}
+			if(user_events.find("all") != user_events.end())
+			{
+				flt->add(user_event_meta_t(component, { "all" }));
+				return;
+			}
+			flt->add(user_event_meta_t(component, user_events));
 		}
 	}
 }
@@ -134,7 +197,7 @@ void dragent_configuration::init(Application* app)
 	{
 		m_metrics_dir = Path(m_root_dir).append(m_config->get_scalar<string>("metricsfile", "location", "")).toString();
 	}
-	
+
 	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 	
 	if(m_customer_id.empty())
@@ -152,22 +215,51 @@ void dragent_configuration::init(Application* app)
 		m_server_port = m_config->get_scalar<uint16_t>("collector_port", 6666);
 	}
 
-	if(m_min_file_priority == 0)
+	m_machine_id_prefix = m_config->get_scalar<string>("machine_id_prefix", "");
+
+	if(m_min_file_priority == -1)
 	{
 #ifdef _DEBUG
-		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "debug"));
+		m_min_file_priority = string_to_priority(m_config->get_scalar<string>("log", "file_priority", "debug"));
 #else
-		m_min_file_priority = string_to_priority( m_config->get_scalar<string>("log", "file_priority", "info"));
+		m_min_file_priority = string_to_priority(m_config->get_scalar<string>("log", "file_priority", "info"));
 #endif
 	}
 
-	if(m_min_console_priority == 0)
+	if(m_min_console_priority == -1)
 	{
 #ifdef _DEBUG
-		m_min_console_priority = string_to_priority( m_config->get_scalar<string>("log", "console_priority", "debug"));
+		m_min_console_priority = string_to_priority(m_config->get_scalar<string>("log", "console_priority", "debug"));
 #else
-		m_min_console_priority = string_to_priority( m_config->get_scalar<string>("log", "console_priority", "info"));
-#endif		
+		m_min_console_priority = string_to_priority(m_config->get_scalar<string>("log", "console_priority", "info"));
+#endif
+	}
+
+	if(m_min_event_priority == -1)
+	{
+#ifdef _DEBUG
+		m_min_event_priority = string_to_priority(m_config->get_scalar<string>("log", "event_priority", "debug"));
+#else
+		m_min_event_priority = string_to_priority(m_config->get_scalar<string>("log", "event_priority", "info"));
+#endif
+	}
+
+	//
+	// user-configured events
+	//
+
+	if(m_min_event_priority != -1)
+	{
+		// kubernetes
+		add_event_filter(m_k8s_event_filter, "kubernetes", "node");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "pod");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "replicationController");
+
+		// docker
+		add_event_filter(m_docker_event_filter, "docker", "container");
+		add_event_filter(m_docker_event_filter, "docker", "image");
+		add_event_filter(m_docker_event_filter, "docker", "volume");
+		add_event_filter(m_docker_event_filter, "docker", "network");
 	}
 
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
@@ -210,6 +302,7 @@ void dragent_configuration::init(Application* app)
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
+	m_protocols_truncation_size = m_config->get_scalar<uint32_t>("protocols_truncation_size", 512);
 	m_remotefs_enabled = m_config->get_scalar<bool>("remotefs", false);
 	auto java_home = m_config->get_scalar<string>("java_home", "");
 	for(const auto& bin_path : { string("/usr/bin/java"), java_home + "/jre/bin/java", java_home + "/bin/java"})
@@ -326,12 +419,12 @@ void dragent_configuration::init(Application* app)
 
 void dragent_configuration::print_configuration()
 {
-	for(auto item : m_config->errors())
+	for(const auto& item : m_config->errors())
 	{
 		g_log->critical(item);
 	}
 	g_log->information("Distribution: " + get_distribution());
-	g_log->information("machine id: " + m_machine_id);
+	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
 	g_log->information("rootdir: " + m_root_dir);
 	g_log->information("conffile: " + m_conf_file);
 	g_log->information("metricsfile.location: " + m_metrics_dir);
@@ -341,6 +434,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("collector_port: " + NumberFormatter::format(m_server_port));
 	g_log->information("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
 	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
+	g_log->information("log.event_priority: " + NumberFormatter::format(m_min_event_priority));
 	g_log->information("CURL debug: " + bool_as_text(m_curl_debug));
 	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
@@ -370,6 +464,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
+	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 	g_log->information("java detected: " + bool_as_text(java_present()));
@@ -448,6 +543,23 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
+
+	if(m_k8s_event_filter)
+	{
+		g_log->information("K8s events filter:\n" + m_k8s_event_filter->to_string());
+	}
+	else
+	{
+		g_log->information("K8s events not enabled.");
+	}
+	if(m_docker_event_filter)
+	{
+		g_log->information("Docker events filter:\n" + m_docker_event_filter->to_string());
+	}
+	else
+	{
+		g_log->information("Docker events not enabled.");
+	}
 }
 
 void dragent_configuration::refresh_aws_metadata()

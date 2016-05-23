@@ -7,7 +7,7 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue):
+	connection_manager* connection_manager, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
@@ -27,13 +27,11 @@ sinsp_worker::~sinsp_worker()
 {
 	if(m_inspector != NULL)
 	{
+		m_inspector->set_log_callback(0);
 		delete m_inspector;
 	}
 
-	if(m_analyzer != NULL)
-	{
-		delete m_analyzer;
-	}
+	delete m_analyzer;
 }
 
 void sinsp_worker::init()
@@ -41,9 +39,9 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 
-	if(m_jmx_pipes)
+	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
-		m_analyzer->set_jmx_iofds(m_jmx_pipes->get_io_fds(), m_configuration->m_print_protobuf);
+		m_analyzer->enable_jmx(m_configuration->m_print_protobuf);
 		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
 	}
 
@@ -66,6 +64,15 @@ void sinsp_worker::init()
 	// Plug the sinsp logger into our one
 	//
 	m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+	if(m_configuration->m_min_console_priority > m_configuration->m_min_file_priority)
+	{
+		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_console_priority));
+	}
+	else
+	{
+		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_file_priority));
+	}
+
 	if(!m_configuration->m_metrics_dir.empty())
 	{
 		//
@@ -84,7 +91,7 @@ void sinsp_worker::init()
 	//
 	// The machine id is the MAC address of the first physical adapter
 	//
-	m_analyzer->get_configuration()->set_machine_id(m_configuration->m_machine_id);
+	m_analyzer->get_configuration()->set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
 
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
@@ -152,6 +159,10 @@ void sinsp_worker::init()
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
 
+	// user-configured events
+	m_analyzer->get_configuration()->set_k8s_event_filter(m_configuration->m_k8s_event_filter);
+	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
+
 	//
 	// Configure compression in the protocol
 	//
@@ -215,6 +226,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
 	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
+	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
 	//
@@ -264,6 +276,8 @@ void sinsp_worker::init()
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
+
+	m_analyzer->set_user_event_queue(m_user_event_queue);
 }
 
 void sinsp_worker::run()
@@ -369,7 +383,7 @@ void sinsp_worker::prepare_response(const string& token, draiosproto::dump_respo
 {
 	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
-	response->set_machine_id(m_configuration->m_machine_id);
+	response->set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
 	response->set_token(token);
 }
 

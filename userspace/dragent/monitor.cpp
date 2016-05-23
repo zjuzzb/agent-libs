@@ -172,7 +172,8 @@ int monitor::run()
 	}
 
 	for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
-							 "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in"})
+							 "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
+							 "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
 	{
 		posix_queue::remove(queue);
 	}

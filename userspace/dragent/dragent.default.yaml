@@ -36,7 +36,29 @@ jmx:
     cassandra:
       pattern: "cassandra"
       beans:
-        - query: "org.apache.cassandra.db:type=StorageProxy"
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=Latency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.read.count
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.read.total.latency
+              unit: us
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=Latency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.write.count
+        - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Write,name=TotalLatency"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.write.total.latency
+              unit: us
+        - query: "org.apache.cassandra.db:type=StorageProxy"  # Bean available only on Cassandra <= 2.1
           attributes:
             - name: RecentWriteLatencyMicros
               alias: cassandra.write.latency
@@ -44,50 +66,56 @@ jmx:
             - name: RecentReadLatencyMicros
               alias: cassandra.read.latency
               unit: us
-            - name: WriteOperations
-              type: counter
-              alias: cassandra.write.count
-            - name: ReadOperations
-              type: counter
-              alias: cassandra.read.count
-        - query: "org.apache.cassandra.db:type=CompactionManager"
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=TotalCompactionsCompleted"
           attributes:
-            - name: TotalCompactionsCompleted
+            - name: Count
               type: counter
               alias: cassandra.compactions.count
-            - name: PendingTasks
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=PendingTasks"
+          attributes:
+            - name: Value
               alias: cassandra.compactions.pending
-            - name: TotalBytesCompacted
+        - query: "org.apache.cassandra.metrics:type=Compaction,name=BytesCompacted"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.compactions.bytes
               unit: B
-        - query: "org.apache.cassandra.db:type=Caches"
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=KeyCache,name=Hits"
           attributes:
-            - name: KeyCacheHits
+            - name: Count
               type: counter
               alias: cassandra.keycache.hits
-            - name: KeyCacheRequests
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=KeyCache,name=Requests"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.keycache.requests
-            - name: RowCacheHits
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=RowCache,name=Hits"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.rowcache.hits
-            - name: RowCacheRequests
+        - query: "org.apache.cassandra.metrics:type=Cache,scope=RowCache,name=Requests"
+          attributes:
+            - name: Count
               type: counter
               alias: cassandra.rowcache.requests
-        - query: "org.apache.cassandra.internal:type=HintedHandoff"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=internal,scope=HintedHandoff,name=ActiveTasks"
           attributes:
-            - name: PendingTasks
-              alias: cassandra.hintedhandoff.pending
-            - name: ActiveCount
+            - name: Value
               alias: cassandra.hintedhandoff.active
-        - query: "org.apache.cassandra.request:type=ReadStage"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=internal,scope=HintedHandoff,name=PendingTasks"
           attributes:
-            - name: PendingTasks
+            - name: Value
+              alias: cassandra.hintedhandoff.pending
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=ReadStage,name=PendingTasks"
+          attributes:
+            - name: Value
               alias: cassandra.read.pending
-        - query: "org.apache.cassandra.request:type=MutationStage"
+        - query: "org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=MutationStage,name=PendingTasks"
           attributes:
-            - name: PendingTasks
+            - name: Value
               alias: cassandra.write.pending
     tomcat:
       pattern: "catalina"
@@ -728,6 +756,157 @@ app_checks:
 # mesos_timeout_ms: 30000
 # mesos_follow_leader: false
 #
+
+#
+# USER-CONFIGURABLE EVENTS
+#
+# Warning: This is the default user-configurable-events configuration. Please do not edit here,
+# use "dragent.yaml" instead to override these settings.
+#
+# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/...
+#
+#
+# By default, all events are enabled, but only events with priority "information" and higher are emitted
+# by the default setting of the logging system. To modify the default behavior, use the following
+# priority filter setting example:
+#
+# Example:
+# to enable all except the information and debug messages, use following setting:
+#
+# log:
+#  event_priority: warning
+#
+# Valid log levels are:
+#
+# none, emergency, alert, critical, error, warning, notice, information, debug
+#
+#
+# For a full list of Kubernetes and Docker supported events as well as severities (in comments) and which events are enabled by default,
+# see the "events" config entry below. 
+#
+# The sequences can be specified in a single-line or as bulleted list. So, the following two settings are equivalent, 
+# permitting only [Pulling, Pulled, Failed] container events for pods to be emitted:
+#
+# events:
+#  kubernetes:
+#    pod: [Pulling, Pulled, Failed]
+#
+# events:
+#  kubernetes:
+#    pod:
+#      - Pulling
+#      - Pulled
+#      - Failed
+#
+# In the following example, kubernetes node and docker image events are disabled, while docker container events
+# are limited to [attach, commit, copy]. All other supported components events will be collected.
+#
+#events:
+#  kubernetes:
+#    node: none
+#  docker:
+#    image: none
+#    container: [attach, commit, copy]
+#
+# To disable all events, set the item to 'none', eg. to disable all events:
+#
+#events:
+#  kubernetes: none
+#  docker: none
+#
+# Alternatively, setting the log event priority to 'none' will have the same effect:
+#
+# log:
+#  event_priority: none
+
+events:
+  kubernetes:
+    node:
+      - TerminatedAllPods       # Terminated All Pods        (information)
+      - RegisteredNode          # Node Registered            (information)
+      - RemovingNode            # Removing Node              (information)
+      - DeletingNode            # Deleting Node              (information)
+      - DeletingAllPods         # Deleting All Pods          (information)
+      - TerminatingEvictedPod   # Terminating Evicted Pod    (information)
+      - NodeReady               # Node Ready                 (information)
+      - NodeNotReady            # Node not Ready             (information)
+      - NodeSchedulable         # Node is Schedulable        (information)
+      - NodeNotSchedulable      # Node is not Schedulable    (information)
+      - CIDRNotAvailable        # CIDR not Available         (information)
+      - CIDRAssignmentFailed    # CIDR Assignment Failed     (information)
+      - Starting                # Starting Kubelet           (information)
+      - KubeletSetupFailed      # Kubelet Setup Failed       (warning)
+      - FailedMount             # Volume Mount Failed        (warning)
+      - NodeSelectorMismatching # Node Selector Mismatch     (warning)
+      - InsufficientFreeCPU     # Insufficient Free CPU      (warning)
+      - InsufficientFreeMemory  # Insufficient Free Memory   (warning)
+      - OutOfDisk               # Out of Disk                (information)
+      - HostNetworkNotSupported # Host Network not Supported (warning)
+      - NilShaper               # Undefined Shaper           (warning)
+      - Rebooted                # Node Rebooted              (warning)
+      - NodeHasSufficientDisk   # Node Has Sufficient Disk   (information)
+      - NodeOutOfDisk           # Node Out of Disk Space     (information)
+      - InvalidDiskCapacity     # Invalid Disk Capacity      (warning)
+      - FreeDiskSpaceFailed     # Free Disk Space Failed     (warning)
+    pod:
+#      - Pulling             # Pulling Container Image                      (information)
+#      - Pulled              # Container Image Pulled                       (information)
+      - Failed              # Container Image Pull, Create or Start Failed (warning)
+      - InspectFailed       # Container Image Inspect Failed               (warning)
+      - ErrImageNeverPull   # Container Image NeverPull Policy Violation   (warning)
+      - BackOff             # Back Off Container Start or Image Pull       (warning)
+      - Created             # Container Created                            (information)
+      - Started             # Container Started                            (information)
+      - Killing             # Killing Container                            (information)
+      - Unhealthy           # Container Unhealthy                          (warning)
+      - FailedSync          # Pod Sync Failed                              (warning)
+      - FailedValidation    # Failed Pod Configuration Validation          (warning)
+      - OutOfDisk           # Out of Disk                                  (information)
+      - HostPortConflict    # Host/Port Conflict                           (warning)
+    replicationController:
+      - SuccessfulCreate    # Pod Created       (information)
+      - FailedCreate        # Pod Create Failed (warning)
+      - SuccessfulDelete    # Pod Deleted       (information)
+      - FailedDelete        # Pod Delete Failed (warning)
+  docker:
+    container:
+#      - attach      # Container Attached      (information)
+#      - commit      # Container Committed     (information)
+#      - copy        # Container Copied        (information)
+      - create       # Container Created       (information)
+      - destroy      # Container Destroyed     (warning)
+      - die          # Container Died          (warning)
+#      - exec_create # Container Exec Created  (information)
+#      - exec_start  # Container Exec Started  (information)
+#      - export      # Container Exported      (information)
+      - kill         # Container Killed        (warning)
+      - oom          # Container Out of Memory (warning)
+#      - pause       # Container Paused        (information)
+#      - rename      # Container Renamed       (information)
+#      - resize      # Container Resized       (information)
+      - restart      # Container Restarted     (warning)
+      - start        # Container Started       (information)
+      - stop         # Container Stopped       (information)
+#      - top         # Container Top           (information)
+#      - unpause     # Container Unpaused      (information)
+#      - update      # Container Updated       (information)
+    image:
+#      - delete # Image Deleted  (information)
+#      - import # Image Imported (information)
+#      - pull   # Image Pulled   (information)
+#      - push   # Image Pushed   (information)
+#      - tag    # Image Tagged   (information)
+#      - untag  # Image Untaged  (information)
+    volume:
+#      - create  # Volume Created    (information)
+#      - mount   # Volume Mounted    (information)
+#      - unmount # Volume Unmounted  (information)
+#      - destroy # Volume Destroyed  (information)
+    network:
+#      - create     # Network Created       (information)
+#      - connect    # Network Connected     (information)
+#      - disconnect # Network Disconnected  (information)
+#      - destroy    # Network Destroyed     (information)
 
 known_ports:
   - 902 # VMware 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <math.h>
 #include <algorithm>
 
 #ifdef _WIN32
@@ -24,6 +25,8 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 using namespace google::protobuf::io;
 
+#include "Poco/File.h"
+
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
@@ -44,6 +47,7 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
+#include "docker.h"
 #include "k8s.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
@@ -112,10 +116,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
+	m_run_chisels = false;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
-	
+
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
@@ -137,11 +142,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
-	
+
 	//
-	// Kubernetes
+	// Docker
 	//
-	m_k8s = 0;
+	m_has_docker = Poco::File(std::string(scap_get_host_root()) + docker::DOCKER_SOCKET_FILE).exists();
 
 	//
 	// Chisels init
@@ -159,7 +164,7 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
 	delete m_delay_calculator;
-	delete(m_threadtable_listener);
+	delete m_threadtable_listener;
 	delete m_fd_listener;
 	delete m_reduced_ipv4_connections;
 	delete m_ipv4_connections;
@@ -187,8 +192,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
-
-	delete m_k8s;
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -511,22 +514,22 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		throw sinsp_exception("compression in agent protocol not implemented under windows");
 		return NULL;
 #else
-        ArrayOutputStream array_output(m_serialization_buffer, full_len);
-        GzipOutputStream gzip_output(&array_output);
+		ArrayOutputStream array_output(m_serialization_buffer, full_len);
+		GzipOutputStream gzip_output(&array_output);
 
-        m_metrics->SerializeToZeroCopyStream(&gzip_output);
-        gzip_output.Close();
+		m_metrics->SerializeToZeroCopyStream(&gzip_output);
+		gzip_output.Close();
 
-        uint32_t compressed_size = (uint32_t) array_output.ByteCount();
-        if(compressed_size > full_len)
-        {
-            ASSERT(false);
-            char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
-            throw sinsp_exception(estr);
-        }
+		uint32_t compressed_size = (uint32_t) array_output.ByteCount();
+		if(compressed_size > full_len)
+		{
+			ASSERT(false);
+			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
+			throw sinsp_exception(estr);
+		}
 
-        *len = compressed_size;
-        return m_serialization_buffer;
+		*len = compressed_size;
+		return m_serialization_buffer;
 #endif
 	}
 	else
@@ -537,8 +540,8 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		ArrayOutputStream array_output(m_serialization_buffer, full_len);
 		m_metrics->SerializeToZeroCopyStream(&array_output);
 
-        *len = full_len;
-        return m_serialization_buffer;
+		*len = full_len;
+		return m_serialization_buffer;
 	}
 }
 
@@ -876,7 +879,7 @@ string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port
 	return "";
 }
 
-mesos* sinsp_analyzer::make_mesos(string&& json)
+void sinsp_analyzer::make_mesos(string&& json)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -903,20 +906,21 @@ mesos* sinsp_analyzer::make_mesos(string&& json)
 						sinsp_logger::SEV_INFO);
 				}
 
-				return new mesos(mesos_state, mesos::default_state_api,
+				if(m_mesos) { m_mesos.reset(); }
+				m_mesos.reset(new mesos(mesos_state, mesos::default_state_api,
 					marathon_uris,
 					mesos::default_groups_api,
 					mesos::default_apps_api,
 					m_configuration->get_mesos_follow_leader(),
-					m_configuration->get_mesos_timeout_ms());
+					m_configuration->get_mesos_timeout_ms()));
 			}
 		}
 	}
-	return 0;
 }
 
-mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
+void sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
+	m_mesos.reset();
 	uri url(mesos_uri + mesos::default_state_api);
 	long tout = m_configuration->get_mesos_timeout_ms();
 
@@ -927,20 +931,18 @@ mesos* sinsp_analyzer::get_mesos(const string& mesos_uri)
 			// TODO
 			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
 			m_mesos_bad_config = true;
-			return 0;
+			return;
 		}
-
-		return make_mesos(sinsp_curl(url, tout).get_data());
+		make_mesos(sinsp_curl(url, tout).get_data());
 	}
 	catch(std::exception& ex)
 	{
 		g_logger.log("Error connecting to Mesos at [" + uri(mesos_uri).to_string(false) + "]. Error: " + ex.what(),
 					sinsp_logger::SEV_ERROR);
 	}
-	return 0;
 }
 
-k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
+k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -956,11 +958,7 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 					bool curl_dbg = m_configuration->get_curl_debug();
-#ifdef K8S_DISABLE_THREAD
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
-#else
-					return new k8s(k8s_api, true, true, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg);
-#endif
+					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg, event_filter);
 				}
 			}
 		}
@@ -968,9 +966,9 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api)
 	return 0;
 }
 
-k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
+k8s* sinsp_analyzer::get_k8s(const uri& k8s_api)
 {
-	uri url(k8s_api + "/api");
+	uri url(k8s_api.to_string() + "/api");
 	std::unique_ptr<sinsp_curl> curl;
 
 	try
@@ -993,7 +991,7 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 		if(curl)
 		{
-			return make_k8s(*curl, k8s_api);
+			return make_k8s(*curl, k8s_api.to_string(), m_configuration->get_k8s_event_filter());
 		}
 	}
 	catch(std::exception& ex)
@@ -1002,6 +1000,101 @@ k8s* sinsp_analyzer::get_k8s(const string& k8s_api)
 					sinsp_logger::SEV_ERROR);
 	}
 	return 0;
+}
+
+std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
+{
+	static bool k8s_not_present = false;
+	static string kube_apiserver_process;
+
+	string k8s_api_server = m_configuration->get_k8s_api_server();
+	if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+	{
+		if(main_tinfo)
+		{
+			if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+			{
+				kube_apiserver_process = "kube-apiserver";
+			}
+			else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+			{
+				for(const auto& arg : main_tinfo->m_args)
+				{
+					if(arg == "apiserver")
+					{
+						kube_apiserver_process = "hyperkube apiserver";
+						break;
+					}
+				}
+			}
+		}
+		if(!kube_apiserver_process.empty())
+		{
+			g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
+			k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
+			if(k8s_api_server.empty())
+			{
+				k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
+			}
+
+			if(!k8s_api_server.empty())
+			{
+				m_configuration->set_k8s_api_server(k8s_api_server);
+				g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+				k8s_not_present = false;
+			}
+			else
+			{
+				g_logger.log("K8S API server process detected but server not found.", sinsp_logger::SEV_WARNING);
+			}
+		}
+	}
+
+	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
+	{
+		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
+		k8s_not_present = true;
+	}
+	return k8s_api_server;
+}
+
+std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
+{
+	static bool mesos_not_present = false;
+	static string mesos_apiserver_process;
+
+	string mesos_api_server = m_configuration->get_mesos_state_uri();
+	if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+	{
+		if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+		{
+			mesos_apiserver_process = "mesos-master";
+		}
+		if(!mesos_apiserver_process.empty())
+		{
+			mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
+			if(!mesos_api_server.empty())
+			{
+				g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
+				m_configuration->set_mesos_state_uri(mesos_api_server);
+				g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
+				mesos_not_present = false;
+				m_configuration->set_mesos_follow_leader(true);
+				g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
+			}
+			else
+			{
+				g_logger.log("Mesos API server process detected but server not found.", sinsp_logger::SEV_WARNING);
+			}
+		}
+	}
+
+	if(!mesos_not_present && m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
+	{
+		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
+		mesos_not_present = true;
+	}
+	return mesos_api_server;
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
@@ -1115,9 +1208,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	static bool k8s_not_present = false;
-	static bool mesos_not_present = false;
-
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
 	// 2. (only on programs) aggregate programs metrics to host and container ones
@@ -1132,7 +1222,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{		
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
-		
+
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 
@@ -1170,59 +1260,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
-				string k8s_api_server = m_configuration->get_k8s_api_server();
-				if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+				if(m_configuration->get_k8s_autodetect_enabled())
 				{
-					string kube_apiserver_process;
-					if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
-					{
-						kube_apiserver_process = "kube-apiserver";
-					}
-					else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-					{
-						for(const auto& arg : main_tinfo->m_args)
-						{
-							if(arg == "apiserver")
-							{
-								kube_apiserver_process = "hyperkube apiserver";
-								break;
-							}
-						}
-					}
-					if(!kube_apiserver_process.empty())
-					{
-						g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
-						k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
-						if(k8s_api_server.empty())
-						{
-							k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
-						}
-						if(!k8s_api_server.empty())
-						{
-							m_configuration->set_k8s_api_server(k8s_api_server);
-							g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
-							k8s_not_present = false;
-						}
-						else
-						{
-							g_logger.log("K8S API server process detected but server not found.", sinsp_logger::SEV_WARNING);
-						}
-					}
+					detect_k8s(main_tinfo);
 				}
-
-				string mesos_api_server = m_configuration->get_mesos_state_uri();
-				if(mesos_api_server.empty() && m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+				if(m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
 				{
-					if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
-					{
-						mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
-						g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
-						m_configuration->set_mesos_state_uri(mesos_api_server);
-						g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
-						mesos_not_present = false;
-						m_configuration->set_mesos_follow_leader(true);
-						g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
-					}
+					detect_mesos(main_tinfo);
 				}
 			}
 			main_tinfo->compute_program_hash();
@@ -1433,6 +1477,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 	}
 
+/*
 	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
 	{
 		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
@@ -1444,7 +1489,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
 		mesos_not_present = true;
 	}
-
+*/
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -1653,7 +1698,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
-	auto emitted_containers = emit_containers();
+	vector<string> active_containers;
+	for(const auto& item : progtable_by_container)
+	{
+		active_containers.push_back(item.first);
+	}
+	auto emitted_containers = emit_containers(active_containers);
 	bool progtable_needs_filtering = false;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -1704,7 +1754,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
 					{
-						return (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+						return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
 					});
 					if(long_running_proc != it->second.end())
 					{
@@ -2992,6 +3042,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Mesos
 			//
 			emit_mesos();
+			
+			//
+			// Docker
+			//
+			if(m_has_docker && m_configuration->get_docker_event_filter())
+			{
+				emit_docker_events();
+			}
 
 			emit_top_files();
 
@@ -3009,6 +3067,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Metrics coming from chisels
 			//
 			emit_chisel_metrics();
+
+			//
+			// User-configured events
+			//
+			emit_user_events();
 
 			//
 			// Transactions
@@ -3741,15 +3804,13 @@ void sinsp_analyzer::get_k8s_data()
 {
 	ASSERT(m_k8s);
 	ASSERT(m_k8s->is_alive());
-	if(!m_k8s->watch_in_thread())
-	{
-		m_k8s->watch();
-	}
+	m_k8s->watch();
 	ASSERT(m_metrics);
 	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-	if(m_metrics->has_kubernetes())
+	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
 	{
-		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log("K8s proto data:", sinsp_logger::SEV_TRACE);
+		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
 	}
 }
 
@@ -3762,29 +3823,33 @@ void sinsp_analyzer::emit_k8s()
 	//
 	//    - implicitly, by k8s autodetect flag (which defaults to true);
 	//      when k8s_uri is empty, autodetect is true and api server is detected on the
-	//      local machine, uri will be automatically set to "http://localhost:8080"
+	//      local machine, uri will be automatically set to "http://{address}:8080", where
+	//      {address} is the IP address of the interface on which API server is listening
 	//
 	// so, at runtime, k8s_uri being empty or not determines whether k8s data
 	// will be collected and emitted; the connection to k8s api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
-	const string& k8s_uri = m_configuration->get_k8s_api_server();
-	if(!k8s_uri.empty())
+	std::string k8s_api = m_configuration->get_k8s_api_server();
+	if(k8s_api.empty() && m_configuration->get_k8s_autodetect_enabled())
 	{
+		k8s_api = detect_k8s();
+	}
+	if(!k8s_api.empty())
+	{
+		uri k8s_uri(k8s_api);
 		try
 		{
 			if(!m_k8s)
 			{
-				g_logger.log("Connecting to K8S API server at: [" + k8s_uri + ']', sinsp_logger::SEV_INFO);
-				m_k8s = get_k8s(k8s_uri);
+				g_logger.log("Connecting to K8S API server at: [" + k8s_uri.to_string(false) + ']', sinsp_logger::SEV_INFO);
+				m_k8s.reset(get_k8s(k8s_uri));
 			}
 			else if(m_k8s && !m_k8s->is_alive())
 			{
 				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-				delete m_k8s;
-				m_k8s = 0;
-				m_k8s = get_k8s(k8s_uri);
+				m_k8s.reset(get_k8s(k8s_uri));
 			}
 
 			if(m_k8s)
@@ -3796,9 +3861,7 @@ void sinsp_analyzer::emit_k8s()
 				if(!m_k8s->is_alive())
 				{
 					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-					delete m_k8s;
-					m_k8s = 0;
-					m_k8s = get_k8s(k8s_uri);
+					m_k8s.reset(get_k8s(k8s_uri));
 					if(m_k8s && m_k8s->is_alive())
 					{
 						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
@@ -3818,11 +3881,7 @@ void sinsp_analyzer::emit_k8s()
 		catch(std::exception& e)
 		{
 			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-			if(m_k8s)
-			{
-				delete m_k8s;
-				m_k8s = 0;
-			}
+			m_k8s.reset();
 		}
 	}
 }
@@ -3834,25 +3893,25 @@ void sinsp_analyzer::get_mesos_data()
 	ASSERT(m_mesos->is_alive());
 
 	time_t now; time(&now);
-	if(last_mesos_refresh)
+	if(m_mesos && last_mesos_refresh)
 	{
 		m_mesos->collect_data();
 	}
-	if(difftime(now, last_mesos_refresh) > 10)
+	if(m_mesos && difftime(now, last_mesos_refresh) > 10)
 	{
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
 	}
-	if(m_mesos->get_state().has_data())
+	if(m_mesos && m_mesos->get_state().has_data())
 	{
 		ASSERT(m_metrics);
-		mesos_proto(*m_metrics).get_proto(m_mesos->get_state());
-/*
-		if(m_metrics->has_mesos())
+		mesos_proto(*m_metrics, m_mesos->get_state()).get_proto();
+
+		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_mesos())
 		{
-			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_DEBUG);
+			g_logger.log(m_metrics->mesos().DebugString(), sinsp_logger::SEV_TRACE);
 		}
-*/
+
 	}
 	else
 	{
@@ -3871,7 +3930,8 @@ void sinsp_analyzer::emit_mesos()
 	//      when mesos_state_uri is empty, autodetect is true and api server is detected on the
 	//      local machine, uris will be automatically set to:
 	//
-	//      mesos state:     "http://localhost:5050/state.json"
+	//      mesos state:     "http://{IP_ADDR}:5050/state.json"
+	//                       with {IP_ADDR} being interface where Mesos is found listening
 	//      marathon groups: will be discovered automatically from mesos master state
 	//                       (eg. "http://localhost:8080/v2/groups")
 	//      marathon uri:    will be discovered automatically from mesos master state
@@ -3882,7 +3942,11 @@ void sinsp_analyzer::emit_mesos()
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
-	const string& mesos_uri = m_configuration->get_mesos_state_uri();
+	string mesos_uri = m_configuration->get_mesos_state_uri();
+	if(mesos_uri.empty() && m_configuration->get_mesos_autodetect_enabled())
+	{
+		mesos_uri = detect_mesos();
+	}
 	if(!mesos_uri.empty())
 	{
 		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
@@ -3891,14 +3955,12 @@ void sinsp_analyzer::emit_mesos()
 			if(!m_mesos && !m_mesos_bad_config)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
-				m_mesos = get_mesos(mesos_uri);
+				get_mesos(mesos_uri);
 			}
 			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
 			{
 				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-				delete m_mesos;
-				m_mesos = 0;
-				m_mesos = get_mesos(mesos_uri);
+				get_mesos(mesos_uri);
 			}
 
 			if(m_mesos)
@@ -3910,9 +3972,7 @@ void sinsp_analyzer::emit_mesos()
 				if(!m_mesos->is_alive() && !m_mesos_bad_config)
 				{
 					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-					delete m_mesos;
-					m_mesos = 0;
-					m_mesos = get_mesos(mesos_uri);
+					get_mesos(mesos_uri);
 					if(m_mesos && m_mesos->is_alive())
 					{
 						g_logger.log("Mesos connection re-established.", sinsp_logger::SEV_INFO);
@@ -3932,12 +3992,42 @@ void sinsp_analyzer::emit_mesos()
 		catch(std::exception& e)
 		{
 			g_logger.log(std::string("Error fetching Mesos state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-			if(m_mesos)
+			m_mesos.reset();
+		}
+	}
+}
+
+void sinsp_analyzer::emit_docker_events()
+{
+	try
+	{
+		if(m_docker)
+		{
+			m_docker->collect_data();
+		}
+		else
+		{
+			g_logger.log("Creating Docker object ...", sinsp_logger::SEV_INFO);
+			m_docker.reset(new docker());
+			if(m_docker)
 			{
-				delete m_mesos;
-				m_mesos = 0;
+				m_docker->set_event_filter(m_configuration->get_docker_event_filter());
+				m_docker->set_machine_id(m_configuration->get_machine_id());
+				g_logger.log("Created Docker object, collecting data...", sinsp_logger::SEV_INFO);
+				m_docker->collect_data();
+				return;
+			}
+			else
+			{
+				g_logger.log("Can't create Docker events object.", sinsp_logger::SEV_ERROR);
+				m_docker.reset();
 			}
 		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.log(std::string("Docker events error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		m_docker.reset();
 	}
 }
 
@@ -4050,7 +4140,7 @@ private:
 	Extractor m_extractor;
 };
 
-vector<string> sinsp_analyzer::emit_containers()
+vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_containers)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -4079,26 +4169,50 @@ vector<string> sinsp_analyzer::emit_containers()
 	containers_ids.reserve(m_containers.size());
 	sinsp_protostate_marker containers_protostate_marker;
 
-	for(const auto& container_id_and_info : *m_inspector->m_container_manager.get_containers())
+	uint64_t total_cpu_shares = 0;
+	for(const auto& id : active_containers)
 	{
-		const auto& id = container_id_and_info.first;
-		const auto& container_info = container_id_and_info.second;
-		auto analyzer_it = m_containers.find(id);
-		if(analyzer_it != m_containers.end() && container_info.m_name.find("k8s_POD") == std::string::npos &&
-		   (m_container_patterns.empty() ||
-			std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
-						 [&container_info](const string& pattern)
-						 {
-							 return container_info.m_name.find(pattern) != string::npos ||
-									container_info.m_image.find(pattern) != string::npos;
-						 }) != m_container_patterns.end())
-				)
+		sinsp_container_info container_info;
+		if(m_inspector->m_container_manager.get_container(id, &container_info))
 		{
-			containers_ids.push_back(id);
-			containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+
+			if(container_info.m_name.find("k8s_POD") == std::string::npos)
+			{
+				if((m_container_patterns.empty() ||
+					std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
+								 [&container_info](const string& pattern)
+								 {
+									 return container_info.m_name.find(pattern) != string::npos ||
+											container_info.m_image.find(pattern) != string::npos;
+								 }) != m_container_patterns.end())
+						)
+				{
+					auto analyzer_it = m_containers.find(id);
+					if(analyzer_it != m_containers.end())
+					{
+						containers_ids.push_back(id);
+						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
+					}
+				}
+
+				// This count it's easy to be affected by a lot of noise, for example:
+				// 1. k8s_POD pods
+				// 2. custom containers run from cmdline with no --cpu-shares flag,
+				//    in this case the kernel defaults to 1024
+				// 3. system containers like kubernetes proxy
+				//
+				// we decided to skip 1. to avoid noise (they have usually shares=2,
+				// does not affect so much the calc but they may be a lot)
+				// Right now we decided to keep 2. But may be changed in the future
+				// because usually if --cpu-shares flag is not set, it is meant for troubleshooting
+				// containers with few cpu usage or system containers
+				// with a default of 1024 given by the kernel, they pollute a lot the calculation
+				total_cpu_shares += container_info.m_cpu_shares;
+			}
 		}
 	}
 
+	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
 	// Pick top N from top_by_cpu
@@ -4109,11 +4223,11 @@ vector<string> sinsp_analyzer::emit_containers()
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = m_configuration->get_statsd_limit();
-	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers](const uint32_t containers_limit)
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers, &total_cpu_shares](const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
-			this->emit_container(containers_ids.front(), &statsd_limit);
+			this->emit_container(containers_ids.front(), &statsd_limit, total_cpu_shares);
 			emitted_containers.emplace_back(containers_ids.front());
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -4155,17 +4269,17 @@ vector<string> sinsp_analyzer::emit_containers()
 	}
 	check_and_emit_containers(containers_limit_by_type);
 /*
-	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " Mesos containers.", sinsp_logger::SEV_DEBUG);
+	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
 	for(const auto& c : m_metrics->containers())
 	{
-		g_logger.log(c.DebugString(), sinsp_logger::SEV_DEBUG);
+		g_logger.log(c.DebugString(), sinsp_logger::SEV_TRACE);
 	}
 */
 	m_containers.clear();
 	return emitted_containers;
 }
 
-void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit)
+void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -4246,7 +4360,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_kb;
 	if(!it_analyzer->second.m_memory_cgroup.empty())
 	{
-		auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
+		const auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
 		if(cgroup_memory > 0)
 		{
 			res_memory_kb = cgroup_memory / 1024;
@@ -4259,6 +4373,33 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+
+	const auto cpu_shares = it->second.m_cpu_shares;
+	if(cpu_shares > 0)
+	{
+		const double cpu_shares_usage_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/cpu_shares;
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f", container_id.c_str(), cpu_shares, cpu_shares_usage_pct);
+		container->mutable_resource_counters()->set_cpu_shares(cpu_shares);
+		container->mutable_resource_counters()->set_cpu_shares_usage_pct(cpu_shares_usage_pct*100); // * 100 because we convert double to .2 fixed decimal
+	}
+
+	if(it->second.m_cpu_quota > 0 && it->second.m_cpu_period > 0)
+	{
+		const double cpu_quota_used_pct = it_analyzer->second.m_metrics.m_cpuload*it->second.m_cpu_period/it->second.m_cpu_quota;
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f", container_id.c_str(), it->second.m_cpu_quota, it->second.m_cpu_period, cpu_quota_used_pct);
+		container->mutable_resource_counters()->set_cpu_quota_used_pct(cpu_quota_used_pct*100);
+	}
+
+	if(it->second.m_memory_limit > 0)
+	{
+		container->mutable_resource_counters()->set_memory_limit_kb(it->second.m_memory_limit/1024);
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s memory=%u/%u", container_id.c_str(), res_memory_kb, it->second.m_memory_limit/1024);
+	}
+
+	if(it->second.m_swap_limit > 0)
+	{
+		container->mutable_resource_counters()->set_swap_limit_kb(it->second.m_swap_limit/1024);
+	}
 
 	it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
 	if(m_protocols_enabled)
@@ -4374,6 +4515,48 @@ void sinsp_analyzer::emit_chisel_metrics()
 	if(j > 0)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "Added %d chisel metrics", j);
+	}
+}
+
+void sinsp_analyzer::emit_user_events()
+{
+	if(m_user_event_queue && m_user_event_queue->count())
+	{
+		sinsp_user_event evt;
+		while(m_user_event_queue->get(evt))
+		{
+			auto user_event = m_metrics->add_events();
+			user_event->set_timestamp_sec(evt.epoch_time_s());
+			user_event->set_severity(evt.severity());
+			const string& n = evt.name();
+			if(!n.empty())
+			{
+				user_event->set_title(n);
+			}
+			const string& desc = evt.description();
+			if(!desc.empty())
+			{
+				user_event->set_description(desc);
+			}
+			const string& sc = evt.scope();
+			if(!sc.empty())
+			{
+				user_event->set_scope(sc);
+			}
+			for(const auto& p : evt.tags())
+			{
+				auto tags = user_event->add_tags();
+				tags->set_key(p.first);
+				tags->set_value(p.second);
+			}
+		}
+		std::ostringstream ostr;
+		ostr << "User event Proto:" << std::endl;
+		for(const auto& e : m_metrics->events())
+		{
+			ostr << e.DebugString() << std::endl;
+		}
+		g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
 	}
 }
 

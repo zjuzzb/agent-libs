@@ -89,6 +89,11 @@ message resource_categories {
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
     optional uint32 fd_count = 21; // Total number of FDs
+    optional uint32 cpu_shares = 24;
+    optional uint32 cpu_shares_usage_pct = 25; // CPU % of a container in terms of the limit assigned to it
+    optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
+    optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
+    optional uint32 cpu_quota_used_pct = 28;
 }
 
 message connection_categories {
@@ -517,6 +522,8 @@ message mounted_fs {
     required uint64 size_bytes = 4;
     required uint64 used_bytes = 5;
     required uint64 available_bytes = 6;
+    optional uint64 total_inodes = 10;
+    optional uint64 used_inodes = 11;
 }
 
 //
@@ -612,8 +619,8 @@ message k8s_pod {
 
 message k8s_replication_controller {
     required k8s_common common = 1;
-    optional uint32 spec_replicas = 2;
-    optional uint32 stat_replicas = 3;
+    optional uint32 replicas_desired = 2;
+    optional uint32 replicas_running = 3;
 }
 
 message k8s_service {
@@ -710,6 +717,7 @@ message metrics {
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
+    repeated agent_event events = 26; // user-configured events
 }
 
 message dump_request_start {
@@ -782,4 +790,18 @@ message dirty_shutdown_report {
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     required string log = 4; // The log portion
+}
+
+message key_value {
+    required string key = 1;
+    required string value = 2;
+}
+
+message agent_event {
+    optional uint64 timestamp_sec = 1; // The message timestamp, in sec from epoch
+    optional string scope = 2;
+    optional string title = 3;
+    optional string description = 4;
+    optional uint32 severity = 5;
+    repeated key_value tags = 6;
 }

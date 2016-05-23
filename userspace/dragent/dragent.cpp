@@ -3,6 +3,7 @@
 #include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
+#include "user_event_channel.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
 #include "sinsp_worker.h"
@@ -42,7 +43,7 @@ dragent_app::dragent_app():
 	m_subprocesses_logger(&m_configuration, &m_log_reporter)
 {
 }
-	
+
 dragent_app::~dragent_app()
 {
 	delete g_log;
@@ -255,15 +256,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
-		m_jmx_pipes = make_shared<pipe_manager>();
-		m_sinsp_worker.set_jmx_pipes(m_jmx_pipes);
+		m_jmx_pipes = make_shared<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
-		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_err_fd(), sdjagent_parser(), state);
+		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
 		monitor_process.emplace_process("sdjagent", [this](void) -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
-			this->m_jmx_pipes->attach_child_stdio();
+			this->m_jmx_pipes->attach_child();
 
 			// Our option parser is pretty simple, for example an arg with spaces inside
 			// double quotes will not work, eg:
@@ -394,10 +394,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
 		{
 			// Right now we are using default sinsp stderror logger
-			// it does not send priority so we are using a simple euristic
-			if(s.find("Cannot") != string::npos || s.find("error") != string::npos)
+			// it does not send priority so we are using a simple heuristic
+			if(s.find("Error") != string::npos)
 			{
 				g_log->error(s);
+			}
+			else if(s.find("Warning") != string::npos)
+			{
+				g_log->warning(s);
+			}
+			else if(s.find("Info") != string::npos)
+			{
+				g_log->information(s);
 			}
 			else
 			{
@@ -704,6 +712,30 @@ void dragent_app::mark_clean_shutdown()
 	}
 }
 
+Logger* dragent_app::make_console_channel(AutoPtr<Formatter> formatter)
+{
+	if(m_configuration.m_min_console_priority != -1)
+	{
+		AutoPtr<Channel> console_channel(new ConsoleChannel());
+		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
+		return &loggerc;
+	}
+	return NULL;
+}
+
+Logger* dragent_app::make_event_channel()
+{
+	if(m_configuration.m_min_event_priority != -1)
+	{
+		AutoPtr<user_event_channel> event_channel = new user_event_channel();
+		Logger& loggere = Logger::create("DraiosLogE", event_channel, m_configuration.m_min_event_priority);
+		m_sinsp_worker.set_user_event_queue(event_channel->get_event_queue());
+		return &loggere;
+	}
+	return NULL;
+}
+
 void dragent_app::initialize_logging()
 {
 	//
@@ -722,7 +754,7 @@ void dragent_app::initialize_logging()
 	//
 	// Setup the logging
 	//
-	AutoPtr<Channel> console_channel(new ConsoleChannel());
+
 	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
 
 	file_channel->setProperty("rotation", "10M");
@@ -732,17 +764,8 @@ void dragent_app::initialize_logging()
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %h:%M:%S.%i, %P, %p, %t"));
 
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
-	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
-	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
-	
-	if(m_configuration.m_min_console_priority != -1)
-	{
-		g_log = new dragent_logger(&loggerf, &loggerc);
-	}
-	else
-	{
-		g_log = new dragent_logger(&loggerf, NULL);
-	}
+
+	g_log = new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel());
 }

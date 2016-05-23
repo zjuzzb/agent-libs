@@ -6,19 +6,6 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 
-template<typename It>
-string sinsp_join(It begin, It end, char delim)
-{
-	std::stringstream ss;
-	ss << *begin;
-	++begin;
-	for(auto it = begin; it < end; ++it)
-	{
-		ss << delim << *it;
-	}
-	return ss.str();
-}
-
 #ifndef _WIN32
 /*
  * Parse a line and fill data structures
@@ -264,54 +251,61 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 
 	unordered_map<string, vector<statsd_metric>> ret;
 	uint64_t timestamp = 0;
-	char buffer[300];
+	char buffer[300] = {};
 	unsigned metric_count = 0;
 
-	bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
-	while (continue_read)
+	if(m_output_fd)
 	{
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "Received from statsite: %s", buffer);
-		//printf(buffer);
-		try {
-			bool parsed = m_metric.parse_line(buffer);
-			if(!parsed)
-			{
-				if(timestamp == 0)
+		bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
+		while (continue_read)
+		{
+			//g_logger.format(sinsp_logger::SEV_DEBUG, "Received from statsite: %s", buffer);
+			//printf(buffer);
+			try {
+				bool parsed = m_metric.parse_line(buffer);
+				if(!parsed)
 				{
-					timestamp = m_metric.timestamp();
-				}
+					if(timestamp == 0)
+					{
+						timestamp = m_metric.timestamp();
+					}
 
-				ret[m_metric.container_id()].push_back(move(m_metric));
-				++metric_count;
-				m_metric = statsd_metric();
+					ret[m_metric.container_id()].push_back(move(m_metric));
+					++metric_count;
+					m_metric = statsd_metric();
 
-				parsed = m_metric.parse_line(buffer);
-				ASSERT(parsed == true);
-				if(timestamp < m_metric.timestamp())
-				{
-					break;
+					parsed = m_metric.parse_line(buffer);
+					ASSERT(parsed == true);
+					if(timestamp < m_metric.timestamp())
+					{
+						break;
+					}
 				}
 			}
-		}
-		catch(const statsd_metric::parse_exception& ex)
-		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "parser exception on statsd, buffer: %s", buffer);
-		}
+			catch(const statsd_metric::parse_exception& ex)
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "parser exception on statsd, buffer: %s", buffer);
+			}
 
-		continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
+			continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
+		}
+		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
+		{
+			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
+			ret[m_metric.container_id()].push_back(move(m_metric));
+			++metric_count;
+			m_metric = statsd_metric();
+		}
+		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
+		if(m_metric.timestamp() > 0)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
+		}
 	}
-	if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
+	else
 	{
-		g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-		ret[m_metric.container_id()].push_back(move(m_metric));
-		++metric_count;
-		m_metric = statsd_metric();
-	}
-	g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
-	if(m_metric.timestamp() > 0)
-	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
+		g_logger.log("statsite_proxy: cannot read metrics (file is null)", sinsp_logger::SEV_ERROR);
 	}
 	return ret;
 }
@@ -320,12 +314,19 @@ void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
 	//string buf_p(buf, len);
 	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", buf_p.c_str());
-	fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
-	if(buf[len-1] != '\n')
+	if(buf && len && m_input_fd)
 	{
-		fputc_unlocked('\n', m_input_fd);
+		fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
+		if(buf[len-1] != '\n')
+		{
+			fputc_unlocked('\n', m_input_fd);
+		}
+		fflush_unlocked(m_input_fd);
 	}
-	fflush_unlocked(m_input_fd);
+	else
+	{
+		g_logger.log("statsite_proxy: cannot send metrics (file or buf is null)", sinsp_logger::SEV_ERROR);
+	}
 }
 
 void statsite_proxy::send_container_metric(const string &container_id, const char *data, uint64_t len)

@@ -11,6 +11,7 @@
 #include "app_checks.h"
 #include <unordered_set>
 #include "sinsp_curl.h"
+#include "user_event.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -40,6 +41,8 @@ class sinsp_chisel;
 class sinsp_chisel_details;
 class k8s;
 class mesos;
+class docker;
+class uri;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -153,6 +156,7 @@ private:
 #endif // _WIN32
 
 class sinsp_curl;
+class uri;
 
 //
 // The main analyzer class
@@ -259,9 +263,9 @@ public:
 	}
 	
 #ifndef _WIN32
-	inline void set_jmx_iofds(const pair<FILE*, FILE*>& iofds, bool print_json)
+	inline void enable_jmx(bool print_json)
 	{
-		m_jmx_proxy = make_unique<jmx_proxy>(iofds);
+		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 	}
 
@@ -334,6 +338,11 @@ public:
 
 	void set_fs_usage_from_external_proc(bool value);
 
+	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
+	{
+		m_user_event_queue = user_event_queue;
+	}
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
 
@@ -349,20 +358,23 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
+	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_server(const string& addr);
 	void init_k8s_ssl();
-	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api);
-	k8s* get_k8s(const string& k8s_api);
+	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
+	k8s* get_k8s(const uri& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(const string& addr);
-	mesos* make_mesos(string&& json);
-	mesos* get_mesos(const string& mesos_uri);
+	void make_mesos(string&& json);
+	void get_mesos(const string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
+	void emit_docker_events();
 	void emit_top_files();
-	vector<string> emit_containers();
-	void emit_container(const string &container_id, unsigned* statsd_limit);
+	vector<string> emit_containers(const vector<string>& active_containers);
+	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
 	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -374,6 +386,7 @@ VISIBILITY_PRIVATE
 						   unsigned limit);
 #endif
 	void emit_chisel_metrics();
+	void emit_user_events();
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
@@ -530,20 +543,25 @@ VISIBILITY_PRIVATE
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 #endif
 
-	k8s* m_k8s;
+	unique_ptr<k8s> m_k8s;
 #ifndef _WIN32
 	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
 	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
 #endif
 
-	mesos* m_mesos;
+	unique_ptr<mesos> m_mesos;
 	static bool m_mesos_bad_config;
+
+	unique_ptr<docker> m_docker;
+	bool m_has_docker;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
+
+	user_event_queue::ptr_t m_user_event_queue;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

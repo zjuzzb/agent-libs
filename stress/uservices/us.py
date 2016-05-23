@@ -7,7 +7,6 @@ import socket
 logfile = None
 markerfile = None
 
-'''
 def log( string ):
     global logfile
 
@@ -21,13 +20,13 @@ def log( string ):
     sys.stdout.write(string);
     sys.stdout.flush();
     return
-
+'''
 
 def mark( string ):
     global markerfile
 
     if markerfile == None:
-        markerfile = open("/dev/sysdig", "w")
+        markerfile = open("/dev/null", "w")
     markerfile.write(string);
     markerfile.flush();
     return

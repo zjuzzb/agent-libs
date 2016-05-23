@@ -51,7 +51,9 @@ add_executable(tests
 	main.cpp
 	yaml_configuration.cpp
 	statsd.cpp
-	jmx_proxy.cpp)
+	jmx_proxy.cpp
+	user_event.cpp
+	uri.cpp)
 
 target_link_libraries(tests
 	pthread

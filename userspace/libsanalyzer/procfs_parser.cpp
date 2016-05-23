@@ -501,10 +501,11 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			}
 		}
 
-		if(strstr(entry->mnt_dir, "/etc") == entry->mnt_dir)
+		if(strcmp(entry->mnt_dir, "/etc/resolv.conf") == 0 ||
+			strcmp(entry->mnt_dir, "/etc/hostname") == 0 ||
+			strcmp(entry->mnt_dir, "/etc/hosts") == 0)
 		{
-			// Skipping /etc mounts, because inside docker containers
-			// there are always /etc/hosts, /etc/resolv.conf etc
+			// Skipping these /etc mounts, they are always present inside containers
 			// Usually they are just noise
 			continue;
 		}
@@ -539,7 +540,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		fs.available_bytes = blocksize * statfs.f_bavail; 
 		fs.size_bytes = blocksize * statfs.f_blocks; 
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
-
+		fs.total_inodes = statfs.f_files;
+		fs.used_inodes = statfs.f_files - statfs.f_ffree;
 		ret.emplace_back(move(fs));
 	}
 
@@ -739,7 +741,9 @@ mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	type(proto.type()),
 	size_bytes(proto.size_bytes()),
 	used_bytes(proto.used_bytes()),
-	available_bytes(proto.available_bytes())
+	available_bytes(proto.available_bytes()),
+	total_inodes(proto.total_inodes()),
+	used_inodes(proto.used_inodes())
 {
 
 }
@@ -752,6 +756,8 @@ void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 	fs->set_size_bytes(size_bytes);
 	fs->set_used_bytes(used_bytes);
 	fs->set_available_bytes(available_bytes);
+	fs->set_total_inodes(total_inodes);
+	fs->set_used_inodes(used_inodes);
 }
 
 mounted_fs_proxy::mounted_fs_proxy():
@@ -800,7 +806,7 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 		// Safety check, it should never happen
 		if(item->m_root.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Process root of pid %ld is empty, skipping ", item->m_pid);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Process root of pid %ld is empty, skipping ", item->m_pid);
 			continue;
 		}
 
@@ -943,7 +949,7 @@ int mounted_fs_reader::run()
 					// Back home
 					if(setns(home_fd, CLONE_NEWNS) != 0)
 					{
-						g_logger.log("Cannot setns home, exiting", sinsp_logger::SEV_ERROR);
+						g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 						return ERROR_EXIT;
 					};
 				}

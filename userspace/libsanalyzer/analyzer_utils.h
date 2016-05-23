@@ -123,7 +123,7 @@ inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
 	}
 }
 
-inline string truncate_str(const string& s, unsigned int max_size = 256)
+inline string truncate_str(const string& s, uint32_t max_size)
 {
 	if (s.size() <= max_size)
 	{

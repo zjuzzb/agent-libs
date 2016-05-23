@@ -60,7 +60,7 @@ if [ ! -d "$POCO_DIR" ]; then
 	tar -xzf poco-1.4.6p4-all.tar.gz
 	cd $POCO_DIR
 	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC --include-path=$OPENSSL_DIR/target/include
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC,PageCompiler --include-path=$OPENSSL_DIR/target/include
 	make install
 	cd ..
 fi
@@ -248,7 +248,7 @@ if [ ! -d "${PYTHON26_DIR}" ]; then
 fi
 
 if [ -z $STATSITE_VERSION ]; then
-  STATSITE_VERSION=0.7.0-sysdig4
+  STATSITE_VERSION=0.7.0-sysdig5
 fi
 STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
 if [ ! -d "${STATSITE_DIR}" ]; then
@@ -280,11 +280,13 @@ if [ -z "$BUILD_DRIVER" ]; then
 	BUILD_DRIVER=ON
 fi
 
-AGENT_BUILD_DIR=$WORKDIR/agent/build
-mkdir -p $AGENT_BUILD_DIR/debug
-mkdir -p $AGENT_BUILD_DIR/release
+if [ -z "$ONLY_DEPS" ]; then
+  AGENT_BUILD_DIR=$WORKDIR/agent/build
+  mkdir -p $AGENT_BUILD_DIR/debug
+  mkdir -p $AGENT_BUILD_DIR/release
 
-cd $AGENT_BUILD_DIR/debug
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
-cd $AGENT_BUILD_DIR/release
-$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
+  cd $AGENT_BUILD_DIR/debug
+  $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
+  cd $AGENT_BUILD_DIR/release
+  $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
+fi

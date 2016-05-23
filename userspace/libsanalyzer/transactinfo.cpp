@@ -151,7 +151,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, true);
+				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, true,
+					m_inspector->m_analyzer->m_configuration->get_protocols_truncation_size());
 			}
 		}
 		else
@@ -191,7 +192,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, false);
+				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, false,
+					m_inspector->m_analyzer->m_configuration->get_protocols_truncation_size());
 			}
 		}
 

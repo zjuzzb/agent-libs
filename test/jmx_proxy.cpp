@@ -5,20 +5,18 @@
 #include <gtest.h>
 #include "sys_call_test.h"
 #include "jmx_proxy.h"
+#include "posix_queue.h"
+#include <fstream>
 
 class jmx_proxy_f : public ::testing::Test {
 protected:
 	virtual void SetUp() {
-		devnull = fopen("/dev/null", "w");
-		ASSERT_TRUE(devnull != NULL);
+		m_inqueue = make_unique<posix_queue>("/sdc_sdjagent_out", posix_queue::SEND, 1);
+		jmx = make_unique<jmx_proxy>();
 	}
 
 	virtual void TearDown() {
-		fclose(devnull);
-		if(json_file)
-		{
-			fclose(json_file);
-		}
+		m_inqueue.reset();
 		jmx.reset();
 	}
 
@@ -26,13 +24,14 @@ protected:
 	{
 		string resource("resources/");
 		resource += json;
-		json_file = fopen(resource.c_str(), "r");
-		ASSERT_TRUE(json_file != NULL);
-		jmx.reset(new jmx_proxy(make_pair(devnull, json_file)));
+		ifstream json_file(resource);
+		string jsondata;
+		json_file >> jsondata;
+
+		m_inqueue->send(jsondata);
 	}
 
-	FILE* devnull;
-	FILE* json_file;
+	unique_ptr<posix_queue> m_inqueue;
 	unique_ptr<jmx_proxy> jmx;
 };
 

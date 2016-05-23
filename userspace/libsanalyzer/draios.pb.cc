@@ -230,6 +230,12 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* dirty_shutdown_report_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   dirty_shutdown_report_reflection_ = NULL;
+const ::google::protobuf::Descriptor* key_value_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  key_value_reflection_ = NULL;
+const ::google::protobuf::Descriptor* agent_event_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  agent_event_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* sql_statement_type_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* mongodb_op_type_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* unit_descriptor_ = NULL;
@@ -399,7 +405,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(counter_syscall_errors));
   resource_categories_descriptor_ = file->message_type(7);
-  static const int resource_categories_offsets_[11] = {
+  static const int resource_categories_offsets_[16] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, capacity_score_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, stolen_capacity_score_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, connection_queue_usage_pct_),
@@ -411,6 +417,11 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, major_pagefaults_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, minor_pagefaults_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, fd_count_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, cpu_shares_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, cpu_shares_usage_pct_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, memory_limit_kb_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, swap_limit_kb_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(resource_categories, cpu_quota_used_pct_),
   };
   resource_categories_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -998,13 +1009,15 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ipv4_network_interface));
   mounted_fs_descriptor_ = file->message_type(39);
-  static const int mounted_fs_offsets_[6] = {
+  static const int mounted_fs_offsets_[8] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, device_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, mount_dir_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, type_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, size_bytes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, used_bytes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, available_bytes_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, total_inodes_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(mounted_fs, used_inodes_),
   };
   mounted_fs_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1192,8 +1205,8 @@ void protobuf_AssignDesc_draios_2eproto() {
   k8s_replication_controller_descriptor_ = file->message_type(49);
   static const int k8s_replication_controller_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(k8s_replication_controller, common_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(k8s_replication_controller, spec_replicas_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(k8s_replication_controller, stat_replicas_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(k8s_replication_controller, replicas_desired_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(k8s_replication_controller, replicas_running_),
   };
   k8s_replication_controller_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1391,7 +1404,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(mesos_state));
   metrics_descriptor_ = file->message_type(60);
-  static const int metrics_offsets_[21] = {
+  static const int metrics_offsets_[22] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, timestamp_ns_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, machine_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, customer_id_),
@@ -1413,6 +1426,7 @@ void protobuf_AssignDesc_draios_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, containers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, kubernetes_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, mesos_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(metrics, events_),
   };
   metrics_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1585,6 +1599,42 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(dirty_shutdown_report));
+  key_value_descriptor_ = file->message_type(69);
+  static const int key_value_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(key_value, key_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(key_value, value_),
+  };
+  key_value_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      key_value_descriptor_,
+      key_value::default_instance_,
+      key_value_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(key_value, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(key_value, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(key_value));
+  agent_event_descriptor_ = file->message_type(70);
+  static const int agent_event_offsets_[6] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, timestamp_sec_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, scope_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, title_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, description_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, severity_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, tags_),
+  };
+  agent_event_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      agent_event_descriptor_,
+      agent_event::default_instance_,
+      agent_event_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(agent_event, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(agent_event));
   sql_statement_type_descriptor_ = file->enum_type(0);
   mongodb_op_type_descriptor_ = file->enum_type(1);
   unit_descriptor_ = file->enum_type(2);
@@ -1748,6 +1798,10 @@ void protobuf_RegisterTypes(const ::std::string&) {
     auto_update_request_descriptor_, &auto_update_request::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     dirty_shutdown_report_descriptor_, &dirty_shutdown_report::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    key_value_descriptor_, &key_value::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    agent_event_descriptor_, &agent_event::default_instance());
 }
 
 }  // namespace
@@ -1893,6 +1947,10 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete auto_update_request_reflection_;
   delete dirty_shutdown_report::default_instance_;
   delete dirty_shutdown_report_reflection_;
+  delete key_value::default_instance_;
+  delete key_value_reflection_;
+  delete agent_event::default_instance_;
+  delete agent_event_reflection_;
 }
 
 void protobuf_AddDesc_draios_2eproto() {
@@ -1944,7 +2002,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "roto.counter_time\"\200\001\n\026counter_syscall_er"
     "rors\022\r\n\005count\030\001 \002(\r\022\027\n\017top_error_codes\030\002"
     " \003(\r\022\022\n\ncount_file\030\004 \001(\r\022\027\n\017count_file_o"
-    "pen\030\005 \001(\r\022\021\n\tcount_net\030\006 \001(\r\"\276\002\n\023resourc"
+    "pen\030\005 \001(\r\022\021\n\tcount_net\030\006 \001(\r\"\274\003\n\023resourc"
     "e_categories\022\026\n\016capacity_score\030\001 \001(\r\022\035\n\025"
     "stolen_capacity_score\030\006 \001(\r\022\"\n\032connectio"
     "n_queue_usage_pct\030\002 \001(\r\022\024\n\014fd_usage_pct\030"
@@ -1952,311 +2010,321 @@ void protobuf_AddDesc_draios_2eproto() {
     "y_usage_kb\030\005 \001(\r\022\037\n\027virtual_memory_usage"
     "_kb\030\r \001(\r\022\034\n\024swap_memory_usage_kb\030\016 \001(\r\022"
     "\030\n\020major_pagefaults\030\017 \001(\004\022\030\n\020minor_pagef"
-    "aults\030\020 \001(\004\022\020\n\010fd_count\030\025 \001(\r\"\356\002\n\025connec"
-    "tion_categories\022*\n\006server\030\001 \001(\0132\032.draios"
-    "proto.counter_bytes\022*\n\006client\030\002 \001(\0132\032.dr"
-    "aiosproto.counter_bytes\022E\n\024transaction_c"
-    "ounters\030\003 \001(\0132\'.draiosproto.counter_time"
-    "_bidirectional\022I\n\030min_transaction_counte"
-    "rs\030\022 \001(\0132\'.draiosproto.counter_time_bidi"
-    "rectional\022I\n\030max_transaction_counters\030\023 "
-    "\001(\0132\'.draiosproto.counter_time_bidirecti"
-    "onal\022 \n\030n_aggregated_connections\030\004 \001(\r\"P"
-    "\n\017process_details\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe\030\002"
-    " \002(\t\022\014\n\004args\030\003 \003(\t\022\024\n\014container_id\030\004 \001(\t"
-    "\"e\n\017command_details\022\021\n\ttimestamp\030\001 \002(\004\022\r"
-    "\n\005count\030\002 \002(\r\022\017\n\007cmdline\030\003 \002(\t\022\013\n\003exe\030\004 "
-    "\002(\t\022\022\n\nparentcomm\030\005 \001(\t\"\177\n\023counter_proto"
-    "_entry\022\016\n\006ncalls\030\001 \002(\r\022\020\n\010time_tot\030\002 \002(\004"
-    "\022\020\n\010time_max\030\003 \002(\004\022\020\n\010bytes_in\030\004 \002(\004\022\021\n\t"
-    "bytes_out\030\005 \002(\004\022\017\n\007nerrors\030\006 \002(\r\"N\n\013url_"
-    "details\022\013\n\003url\030\001 \002(\t\0222\n\010counters\030\002 \002(\0132 "
-    ".draiosproto.counter_proto_entry\":\n\023stat"
-    "us_code_details\022\023\n\013status_code\030\001 \002(\r\022\016\n\006"
-    "ncalls\030\002 \002(\r\"\347\001\n\thttp_info\022-\n\013server_url"
-    "s\030\001 \003(\0132\030.draiosproto.url_details\022-\n\013cli"
-    "ent_urls\030\002 \003(\0132\030.draiosproto.url_details"
-    "\022=\n\023client_status_codes\030\003 \003(\0132 .draiospr"
-    "oto.status_code_details\022=\n\023server_status"
-    "_codes\030\004 \003(\0132 .draiosproto.status_code_d"
-    "etails\"U\n\021sql_entry_details\022\014\n\004name\030\001 \002("
-    "\t\0222\n\010counters\030\002 \002(\0132 .draiosproto.counte"
-    "r_proto_entry\"{\n\026sql_query_type_details\022"
-    "-\n\004type\030\001 \002(\0162\037.draiosproto.sql_statemen"
-    "t_type\0222\n\010counters\030\002 \002(\0132 .draiosproto.c"
-    "ounter_proto_entry\"\352\002\n\010sql_info\0226\n\016serve"
-    "r_queries\030\001 \003(\0132\036.draiosproto.sql_entry_"
-    "details\0226\n\016client_queries\030\002 \003(\0132\036.draios"
-    "proto.sql_entry_details\022\?\n\022server_query_"
-    "types\030\003 \003(\0132#.draiosproto.sql_query_type"
-    "_details\022\?\n\022client_query_types\030\004 \003(\0132#.d"
-    "raiosproto.sql_query_type_details\0225\n\rser"
-    "ver_tables\030\005 \003(\0132\036.draiosproto.sql_entry"
-    "_details\0225\n\rclient_tables\030\006 \003(\0132\036.draios"
-    "proto.sql_entry_details\"^\n\032mongodb_colle"
-    "ction_details\022\014\n\004name\030\001 \002(\t\0222\n\010counters\030"
-    "\002 \002(\0132 .draiosproto.counter_proto_entry\""
-    "w\n\027mongodb_op_type_details\022(\n\002op\030\001 \002(\0162\034"
-    ".draiosproto.mongodb_op_type\0222\n\010counters"
-    "\030\002 \002(\0132 .draiosproto.counter_proto_entry"
-    "\"\215\002\n\014mongodb_info\0229\n\013servers_ops\030\001 \003(\0132$"
-    ".draiosproto.mongodb_op_type_details\0228\n\n"
-    "client_ops\030\002 \003(\0132$.draiosproto.mongodb_o"
-    "p_type_details\022C\n\022server_collections\030\003 \003"
-    "(\0132\'.draiosproto.mongodb_collection_deta"
-    "ils\022C\n\022client_collections\030\004 \003(\0132\'.draios"
-    "proto.mongodb_collection_details\"\336\001\n\rjmx"
-    "_attribute\022\014\n\004name\030\001 \001(\t\022\r\n\005value\030\002 \001(\001\022"
-    "\r\n\005alias\030\005 \001(\t\022*\n\004type\030\007 \001(\0162\034.draiospro"
-    "to.jmx_metric_type\022\037\n\004unit\030\010 \001(\0162\021.draio"
-    "sproto.unit\022!\n\005scale\030\t \001(\0162\022.draiosproto"
-    ".scale\0221\n\rsubattributes\030\003 \003(\0132\032.draiospr"
-    "oto.jmx_attribute\"H\n\010jmx_bean\022\014\n\004name\030\001 "
-    "\001(\t\022.\n\nattributes\030\002 \003(\0132\032.draiosproto.jm"
-    "x_attribute\"G\n\tjava_info\022\024\n\014process_name"
-    "\030\001 \001(\t\022$\n\005beans\030\002 \003(\0132\025.draiosproto.jmx_"
-    "bean\"(\n\nstatsd_tag\022\013\n\003key\030\001 \002(\t\022\r\n\005value"
-    "\030\002 \001(\t\"\366\001\n\rstatsd_metric\022\014\n\004name\030\001 \001(\t\022%"
-    "\n\004tags\030\002 \003(\0132\027.draiosproto.statsd_tag\022-\n"
-    "\004type\030\003 \001(\0162\037.draiosproto.statsd_metric_"
-    "type\022\r\n\005value\030\004 \001(\001\022\013\n\003sum\030\005 \001(\001\022\013\n\003min\030"
-    "\006 \001(\001\022\013\n\003max\030\007 \001(\001\022\r\n\005count\030\010 \001(\001\022\016\n\006med"
-    "ian\030\t \001(\001\022\025\n\rpercentile_95\030\n \001(\001\022\025\n\rperc"
-    "entile_99\030\013 \001(\001\"A\n\013statsd_info\0222\n\016statsd"
-    "_metrics\030\001 \003(\0132\032.draiosproto.statsd_metr"
-    "ic\"%\n\007app_tag\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \001("
-    "\t\"y\n\napp_metric\022\014\n\004name\030\001 \001(\t\022*\n\004type\030\002 "
-    "\001(\0162\034.draiosproto.app_metric_type\022\r\n\005val"
-    "ue\030\003 \001(\001\022\"\n\004tags\030\004 \003(\0132\024.draiosproto.app"
-    "_tag\"j\n\tapp_check\022\014\n\004name\030\001 \001(\t\022+\n\005value"
-    "\030\002 \001(\0162\034.draiosproto.app_check_value\022\"\n\004"
-    "tags\030\003 \003(\0132\024.draiosproto.app_tag\"r\n\010app_"
-    "info\022\024\n\014process_name\030\001 \001(\t\022(\n\007metrics\030\002 "
-    "\003(\0132\027.draiosproto.app_metric\022&\n\006checks\030\003"
-    " \003(\0132\026.draiosproto.app_check\"\241\002\n\nproto_i"
-    "nfo\022$\n\004http\030\001 \001(\0132\026.draiosproto.http_inf"
-    "o\022$\n\005mysql\030\002 \001(\0132\025.draiosproto.sql_info\022"
-    "\'\n\010postgres\030\003 \001(\0132\025.draiosproto.sql_info"
-    "\022*\n\007mongodb\030\004 \001(\0132\031.draiosproto.mongodb_"
-    "info\022$\n\004java\030\005 \001(\0132\026.draiosproto.java_in"
-    "fo\022(\n\006statsd\030\006 \001(\0132\030.draiosproto.statsd_"
-    "info\022\"\n\003app\030\007 \001(\0132\025.draiosproto.app_info"
-    "\"U\n\017network_by_port\022\014\n\004port\030\001 \002(\r\0224\n\010cou"
-    "nters\030\002 \002(\0132\".draiosproto.connection_cat"
-    "egories\"\370\005\n\004host\022\020\n\010hostname\030\001 \001(\t\022\020\n\010nu"
-    "m_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n\tcpu_s"
-    "teal\030\013 \003(\r\022\"\n\032physical_memory_size_bytes"
-    "\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto."
-    "time_categories\022B\n\013reqcounters\030\014 \001(\0132-.d"
-    "raiosproto.transaction_breakdown_categor"
-    "ies\022E\n\024transaction_counters\030\006 \001(\0132\'.drai"
-    "osproto.counter_time_bidirectional\022I\n\030mi"
-    "n_transaction_counters\030\026 \001(\0132\'.draiospro"
-    "to.counter_time_bidirectional\022I\n\030max_tra"
-    "nsaction_counters\030\027 \001(\0132\'.draiosproto.co"
-    "unter_time_bidirectional\022$\n\034transaction_"
-    "processing_delay\030\007 \001(\004\022\030\n\020next_tiers_del"
-    "ay\030\r \001(\004\022;\n\021resource_counters\030\010 \001(\0132 .dr"
-    "aiosproto.resource_categories\022;\n\016syscall"
-    "_errors\030\t \001(\0132#.draiosproto.counter_sysc"
-    "all_errors\0228\n\017external_io_net\030\n \001(\0132\037.dr"
-    "aiosproto.counter_time_bytes\022<\n\026network_"
-    "by_serverports\030\030 \003(\0132\034.draiosproto.netwo"
-    "rk_by_port\"\337\005\n\007process\022-\n\007details\030\002 \001(\0132"
-    "\034.draiosproto.process_details\022\"\n\032is_ipv4"
-    "_transaction_server\030\003 \001(\010\022\"\n\032is_unix_tra"
-    "nsaction_server\030\004 \001(\010\022\"\n\032is_ipv4_transac"
-    "tion_client\030\n \001(\010\022\"\n\032is_unix_transaction"
-    "_client\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/\n\ttcount"
-    "ers\030\005 \001(\0132\034.draiosproto.time_categories\022"
-    "E\n\024transaction_counters\030\006 \001(\0132\'.draiospr"
-    "oto.counter_time_bidirectional\022I\n\030min_tr"
-    "ansaction_counters\030\022 \001(\0132\'.draiosproto.c"
-    "ounter_time_bidirectional\022I\n\030max_transac"
-    "tion_counters\030\023 \001(\0132\'.draiosproto.counte"
-    "r_time_bidirectional\022$\n\034transaction_proc"
-    "essing_delay\030\007 \001(\004\022\030\n\020next_tiers_delay\030\014"
-    " \001(\004\022;\n\021resource_counters\030\010 \001(\0132 .draios"
-    "proto.resource_categories\022;\n\016syscall_err"
-    "ors\030\t \001(\0132#.draiosproto.counter_syscall_"
-    "errors\022\'\n\006protos\030\024 \001(\0132\027.draiosproto.pro"
-    "to_info\022\023\n\013start_count\030\025 \001(\004\"\?\n\007program\022"
-    "&\n\010procinfo\030\001 \002(\0132\024.draiosproto.process\022"
-    "\014\n\004pids\030\002 \003(\004\"T\n\tipv4tuple\022\013\n\003sip\030\001 \002(\r\022"
-    "\013\n\003dip\030\002 \002(\r\022\r\n\005sport\030\003 \002(\r\022\r\n\005dport\030\004 \002"
-    "(\r\022\017\n\007l4proto\030\005 \002(\r\"\212\001\n\017ipv4_connection\022"
-    "%\n\005tuple\030\001 \002(\0132\026.draiosproto.ipv4tuple\022\014"
-    "\n\004spid\030\002 \001(\004\022\014\n\004dpid\030\005 \001(\004\0224\n\010counters\030\010"
-    " \002(\0132\".draiosproto.connection_categories"
-    "\"T\n\026ipv4_network_interface\022\014\n\004name\030\001 \002(\t"
-    "\022\014\n\004addr\030\002 \002(\r\022\017\n\007netmask\030\003 \002(\r\022\r\n\005bcast"
-    "\030\004 \001(\r\"~\n\nmounted_fs\022\016\n\006device\030\001 \002(\t\022\021\n\t"
-    "mount_dir\030\002 \002(\t\022\014\n\004type\030\003 \002(\t\022\022\n\nsize_by"
-    "tes\030\004 \002(\004\022\022\n\nused_bytes\030\005 \002(\004\022\027\n\017availab"
-    "le_bytes\030\006 \002(\004\"]\n\tfile_stat\022\014\n\004name\030\001 \002("
-    "\t\022\r\n\005bytes\030\002 \002(\r\022\017\n\007time_ns\030\003 \002(\004\022\022\n\nope"
-    "n_count\030\004 \002(\r\022\016\n\006errors\030\005 \002(\r\"j\n\026contain"
-    "er_port_mapping\022\017\n\007host_ip\030\001 \001(\r\022\021\n\thost"
-    "_port\030\002 \001(\r\022\024\n\014container_ip\030\003 \001(\r\022\026\n\016con"
-    "tainer_port\030\004 \001(\r\"-\n\017container_label\022\013\n\003"
-    "key\030\001 \002(\t\022\r\n\005value\030\002 \001(\t\"\374\006\n\tcontainer\022\n"
-    "\n\002id\030\001 \002(\t\022)\n\004type\030\002 \001(\0162\033.draiosproto.c"
-    "ontainer_type\022\014\n\004name\030\003 \001(\t\022\r\n\005image\030\004 \001"
-    "(\t\022/\n\ttcounters\030\005 \001(\0132\034.draiosproto.time"
-    "_categories\022B\n\013reqcounters\030\006 \001(\0132-.draio"
-    "sproto.transaction_breakdown_categories\022"
-    "E\n\024transaction_counters\030\007 \001(\0132\'.draiospr"
-    "oto.counter_time_bidirectional\022I\n\030min_tr"
-    "ansaction_counters\030\010 \001(\0132\'.draiosproto.c"
-    "ounter_time_bidirectional\022I\n\030max_transac"
-    "tion_counters\030\t \001(\0132\'.draiosproto.counte"
-    "r_time_bidirectional\022$\n\034transaction_proc"
-    "essing_delay\030\n \001(\004\022\030\n\020next_tiers_delay\030\014"
-    " \001(\004\022;\n\021resource_counters\030\r \001(\0132 .draios"
-    "proto.resource_categories\022;\n\016syscall_err"
-    "ors\030\016 \001(\0132#.draiosproto.counter_syscall_"
-    "errors\022:\n\rport_mappings\030\022 \003(\0132#.draiospr"
-    "oto.container_port_mapping\022\'\n\006protos\030\023 \001"
-    "(\0132\027.draiosproto.proto_info\022,\n\006labels\030\024 "
-    "\003(\0132\034.draiosproto.container_label\022\'\n\006mou"
-    "nts\030\025 \003(\0132\027.draiosproto.mounted_fs\022<\n\026ne"
-    "twork_by_serverports\030\026 \003(\0132\034.draiosproto"
-    ".network_by_port\022\025\n\rmesos_task_id\030\027 \001(\t\""
-    "&\n\010k8s_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \002(\t\""
-    "\213\001\n\nk8s_common\022\014\n\004name\030\001 \002(\t\022\013\n\003uid\030\002 \002("
-    "\t\022\021\n\tnamespace\030\003 \001(\t\022%\n\006labels\030\004 \003(\0132\025.d"
-    "raiosproto.k8s_pair\022(\n\tselectors\030\005 \003(\0132\025"
-    ".draiosproto.k8s_pair\"8\n\rk8s_namespace\022\'"
-    "\n\006common\030\001 \002(\0132\027.draiosproto.k8s_common\""
-    "E\n\010k8s_node\022\'\n\006common\030\001 \002(\0132\027.draiosprot"
-    "o.k8s_common\022\020\n\010host_ips\030\002 \003(\t\"\231\001\n\007k8s_p"
-    "od\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_com"
-    "mon\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\tnode_name\030"
-    "\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013internal_ip\030\005 "
-    "\001(\t\022\025\n\rrestart_count\030\006 \001(\r\"s\n\032k8s_replic"
-    "ation_controller\022\'\n\006common\030\001 \002(\0132\027.draio"
-    "sproto.k8s_common\022\025\n\rspec_replicas\030\002 \001(\r"
-    "\022\025\n\rstat_replicas\030\003 \001(\r\"\320\001\n\013k8s_service\022"
-    "\'\n\006common\030\001 \002(\0132\027.draiosproto.k8s_common"
-    "\022\022\n\ncluster_ip\030\002 \001(\t\0220\n\005ports\030\003 \003(\0132!.dr"
-    "aiosproto.k8s_service.net_port\032R\n\010net_po"
-    "rt\022\014\n\004port\030\001 \002(\r\022\023\n\013target_port\030\002 \002(\r\022\020\n"
-    "\010protocol\030\003 \001(\t\022\021\n\tnode_port\030\004 \001(\r\"\357\001\n\tk"
-    "8s_state\022.\n\nnamespaces\030\001 \003(\0132\032.draiospro"
-    "to.k8s_namespace\022$\n\005nodes\030\002 \003(\0132\025.draios"
-    "proto.k8s_node\022\"\n\004pods\030\003 \003(\0132\024.draiospro"
-    "to.k8s_pod\022<\n\013controllers\030\004 \003(\0132\'.draios"
-    "proto.k8s_replication_controller\022*\n\010serv"
-    "ices\030\005 \003(\0132\030.draiosproto.k8s_service\"(\n\n"
-    "mesos_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \002(\t\"R"
-    "\n\014mesos_common\022\013\n\003uid\030\001 \002(\t\022\014\n\004name\030\002 \001("
-    "\t\022\'\n\006labels\030\003 \003(\0132\027.draiosproto.mesos_pa"
-    "ir\"I\n\nmesos_task\022)\n\006common\030\001 \002(\0132\031.draio"
-    "sproto.mesos_common\022\020\n\010slave_id\030\002 \002(\t\",\n"
-    "\014marathon_app\022\n\n\002id\030\001 \002(\t\022\020\n\010task_ids\030\002 "
-    "\003(\t\"r\n\016marathon_group\022\n\n\002id\030\001 \002(\t\022\'\n\004app"
-    "s\030\002 \003(\0132\031.draiosproto.marathon_app\022+\n\006gr"
-    "oups\030\003 \003(\0132\033.draiosproto.marathon_group\""
-    "d\n\017mesos_framework\022)\n\006common\030\001 \002(\0132\031.dra"
-    "iosproto.mesos_common\022&\n\005tasks\030\002 \003(\0132\027.d"
-    "raiosproto.mesos_task\"8\n\013mesos_slave\022)\n\006"
-    "common\030\001 \002(\0132\031.draiosproto.mesos_common\""
-    "\226\001\n\013mesos_state\0220\n\nframeworks\030\001 \003(\0132\034.dr"
-    "aiosproto.mesos_framework\022+\n\006groups\030\002 \003("
-    "\0132\033.draiosproto.marathon_group\022(\n\006slaves"
-    "\030\003 \003(\0132\030.draiosproto.mesos_slave\"\336\005\n\007met"
-    "rics\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id"
-    "\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\026\n\016sampling_"
-    "ratio\030\n \001(\r\022\030\n\020host_custom_name\030\013 \001(\t\022\021\n"
-    "\thost_tags\030\014 \001(\t\022\026\n\016is_host_hidden\030\016 \001(\010"
-    "\022\030\n\020hidden_processes\030\017 \001(\t\022\017\n\007version\030\020 "
-    "\001(\t\022\023\n\013instance_id\030\025 \001(\t\022#\n\010hostinfo\030\004 \001"
-    "(\0132\021.draiosproto.host\022&\n\010programs\030\t \003(\0132"
-    "\024.draiosproto.program\0226\n\020ipv4_connection"
-    "s\030\007 \003(\0132\034.draiosproto.ipv4_connection\022D\n"
-    "\027ipv4_network_interfaces\030\010 \003(\0132#.draiosp"
-    "roto.ipv4_network_interface\022.\n\010commands\030"
-    "\021 \003(\0132\034.draiosproto.command_details\022\'\n\006m"
-    "ounts\030\022 \003(\0132\027.draiosproto.mounted_fs\022)\n\t"
-    "top_files\030\023 \003(\0132\026.draiosproto.file_stat\022"
-    "\'\n\006protos\030\024 \001(\0132\027.draiosproto.proto_info"
-    "\022*\n\ncontainers\030\026 \003(\0132\026.draiosproto.conta"
-    "iner\022*\n\nkubernetes\030\030 \001(\0132\026.draiosproto.k"
-    "8s_state\022\'\n\005mesos\030\031 \001(\0132\030.draiosproto.me"
-    "sos_state\"\232\001\n\022dump_request_start\022\024\n\014time"
-    "stamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013cu"
-    "stomer_id\030\003 \001(\t\022\023\n\013duration_ns\030\004 \001(\004\022\017\n\007"
-    "filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004\022\r\n\005token"
-    "\030\006 \002(\t\"a\n\021dump_request_stop\022\024\n\014timestamp"
-    "_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custome"
-    "r_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"\322\001\n\rdump_respo"
-    "nse\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030"
-    "\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\020\n\010chunk_no\030\007"
-    " \001(\r\022\023\n\013final_chunk\030\010 \001(\010\022\022\n\nkeep_alive\030"
-    "\t \001(\010\022\017\n\007content\030\004 \001(\014\022\030\n\020final_size_byt"
-    "es\030\n \001(\004\022\r\n\005error\030\005 \001(\t\022\r\n\005token\030\006 \002(\t\"\257"
-    "\001\n\020ssh_open_channel\022\024\n\014timestamp_ns\030\001 \002("
-    "\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001"
-    "(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004user\030\005 \002(\t\022\020\n\010passw"
-    "ord\030\006 \001(\t\022\013\n\003key\030\007 \001(\t\022\022\n\npassphrase\030\010 \001"
-    "(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010ssh_data\022\024\n\014timesta"
-    "mp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013custo"
-    "mer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004data\030\005 \001("
-    "\014\022\r\n\005error\030\006 \001(\t\022\023\n\013exit_status\030\007 \001(\005\"a\n"
-    "\021ssh_close_channel\022\024\n\014timestamp_ns\030\001 \002(\004"
-    "\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001("
-    "\t\022\r\n\005token\030\004 \002(\t\"T\n\023auto_update_request\022"
-    "\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002("
-    "\t\022\023\n\013customer_id\030\003 \001(\t\"c\n\025dirty_shutdown"
-    "_report\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
-    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\013\n\003log\030\004 "
-    "\002(\t*\346\001\n\022sql_statement_type\022\014\n\010SOP_NONE\020\000"
-    "\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_"
-    "SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n"
-    "\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDA"
-    "TE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_L"
-    "OCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\206\003\n"
-    "\017mongodb_op_type\022\023\n\017MONGODB_OP_NONE\020\000\022\025\n"
-    "\021MONGODB_OP_INSERT\020\001\022\025\n\021MONGODB_OP_UPDAT"
-    "E\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022\027\n\023MONGODB_OP"
-    "_GET_MORE\020\004\022\033\n\027MONGODB_OP_KILL_CURSORS\020\005"
-    "\022\023\n\017MONGODB_OP_FIND\020\006\022\030\n\024MONGODB_OP_AGGR"
-    "EGATE\020\007\022\026\n\022MONGODB_OP_COMMAND\020\010\022\024\n\020MONGO"
-    "DB_OP_COUNT\020\t\022\027\n\023MONGODB_OP_DISTINCT\020\n\022\031"
-    "\n\025MONGODB_OP_MAP_REDUCE\020\013\022\027\n\023MONGODB_OP_"
-    "GEO_NEAR\020\014\022\031\n\025MONGODB_OP_GEO_SEARCH\020\r\022\036\n"
-    "\032MONGODB_OP_FIND_AND_MODIFY\020\016*G\n\004unit\022\r\n"
-    "\tUNIT_NONE\020\000\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUNIT_BY"
-    "TE\020\002\022\020\n\014UNIT_PERCENT\020\003*\221\002\n\005scale\022\016\n\nSCAL"
-    "E_NONE\020\000\022\017\n\013SCALE_MILLI\020\001\022\017\n\013SCALE_MICRO"
-    "\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n\014SCALE_MINUTE\020\004\022\016\n\n"
-    "SCALE_HOUR\020\005\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCALE_KIL"
-    "O\020\007\022\016\n\nSCALE_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t\022\016\n\nS"
-    "CALE_TERA\020\n\022\016\n\nSCALE_KIBI\020\013\022\016\n\nSCALE_MEB"
-    "I\020\014\022\016\n\nSCALE_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016\022\025\n\021S"
-    "CALE_PERCENT_0_1\020\017*I\n\017jmx_metric_type\022\033\n"
-    "\027JMX_METRIC_TYPE_COUNTER\020\001\022\031\n\025JMX_METRIC"
-    "_TYPE_GAUGE\020\002*^\n\022statsd_metric_type\022\020\n\014S"
-    "TATSD_COUNT\020\001\022\024\n\020STATSD_HISTOGRAM\020\002\022\020\n\014S"
-    "TATSD_GAUGE\020\003\022\016\n\nSTATSD_SET\020\004*F\n\017app_met"
-    "ric_type\022\031\n\025APP_METRIC_TYPE_GAUGE\020\001\022\030\n\024A"
-    "PP_METRIC_TYPE_RATE\020\002*\201\001\n\017app_check_valu"
-    "e\022\026\n\022APP_CHECK_VALUE_OK\020\000\022\033\n\027APP_CHECK_V"
-    "ALUE_WARNING\020\001\022\034\n\030APP_CHECK_VALUE_CRITIC"
-    "AL\020\002\022\033\n\027APP_CHECK_VALUE_UNKNOWN\020\003*\251\001\n\013ne"
-    "tworkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SER"
-    "VER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_U"
-    "NIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031"
-    "\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLI"
-    "ENT\020 *\314\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022D"
-    "UMP_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST_STOP"
-    "\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNE"
-    "L\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010"
-    "\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTD"
-    "OWN_REPORT\020\n*J\n\016container_type\022\n\n\006DOCKER"
-    "\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022"
-    "\007\n\003RKT\020\005B$\n\031com.draios.model.protobufB\005A"
-    "gentH\001", 14166);
+    "aults\030\020 \001(\004\022\020\n\010fd_count\030\025 \001(\r\022\022\n\ncpu_sha"
+    "res\030\030 \001(\r\022\034\n\024cpu_shares_usage_pct\030\031 \001(\r\022"
+    "\027\n\017memory_limit_kb\030\032 \001(\r\022\025\n\rswap_limit_k"
+    "b\030\033 \001(\r\022\032\n\022cpu_quota_used_pct\030\034 \001(\r\"\356\002\n\025"
+    "connection_categories\022*\n\006server\030\001 \001(\0132\032."
+    "draiosproto.counter_bytes\022*\n\006client\030\002 \001("
+    "\0132\032.draiosproto.counter_bytes\022E\n\024transac"
+    "tion_counters\030\003 \001(\0132\'.draiosproto.counte"
+    "r_time_bidirectional\022I\n\030min_transaction_"
+    "counters\030\022 \001(\0132\'.draiosproto.counter_tim"
+    "e_bidirectional\022I\n\030max_transaction_count"
+    "ers\030\023 \001(\0132\'.draiosproto.counter_time_bid"
+    "irectional\022 \n\030n_aggregated_connections\030\004"
+    " \001(\r\"P\n\017process_details\022\014\n\004comm\030\001 \002(\t\022\013\n"
+    "\003exe\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\022\024\n\014container_id"
+    "\030\004 \001(\t\"e\n\017command_details\022\021\n\ttimestamp\030\001"
+    " \002(\004\022\r\n\005count\030\002 \002(\r\022\017\n\007cmdline\030\003 \002(\t\022\013\n\003"
+    "exe\030\004 \002(\t\022\022\n\nparentcomm\030\005 \001(\t\"\177\n\023counter"
+    "_proto_entry\022\016\n\006ncalls\030\001 \002(\r\022\020\n\010time_tot"
+    "\030\002 \002(\004\022\020\n\010time_max\030\003 \002(\004\022\020\n\010bytes_in\030\004 \002"
+    "(\004\022\021\n\tbytes_out\030\005 \002(\004\022\017\n\007nerrors\030\006 \002(\r\"N"
+    "\n\013url_details\022\013\n\003url\030\001 \002(\t\0222\n\010counters\030\002"
+    " \002(\0132 .draiosproto.counter_proto_entry\":"
+    "\n\023status_code_details\022\023\n\013status_code\030\001 \002"
+    "(\r\022\016\n\006ncalls\030\002 \002(\r\"\347\001\n\thttp_info\022-\n\013serv"
+    "er_urls\030\001 \003(\0132\030.draiosproto.url_details\022"
+    "-\n\013client_urls\030\002 \003(\0132\030.draiosproto.url_d"
+    "etails\022=\n\023client_status_codes\030\003 \003(\0132 .dr"
+    "aiosproto.status_code_details\022=\n\023server_"
+    "status_codes\030\004 \003(\0132 .draiosproto.status_"
+    "code_details\"U\n\021sql_entry_details\022\014\n\004nam"
+    "e\030\001 \002(\t\0222\n\010counters\030\002 \002(\0132 .draiosproto."
+    "counter_proto_entry\"{\n\026sql_query_type_de"
+    "tails\022-\n\004type\030\001 \002(\0162\037.draiosproto.sql_st"
+    "atement_type\0222\n\010counters\030\002 \002(\0132 .draiosp"
+    "roto.counter_proto_entry\"\352\002\n\010sql_info\0226\n"
+    "\016server_queries\030\001 \003(\0132\036.draiosproto.sql_"
+    "entry_details\0226\n\016client_queries\030\002 \003(\0132\036."
+    "draiosproto.sql_entry_details\022\?\n\022server_"
+    "query_types\030\003 \003(\0132#.draiosproto.sql_quer"
+    "y_type_details\022\?\n\022client_query_types\030\004 \003"
+    "(\0132#.draiosproto.sql_query_type_details\022"
+    "5\n\rserver_tables\030\005 \003(\0132\036.draiosproto.sql"
+    "_entry_details\0225\n\rclient_tables\030\006 \003(\0132\036."
+    "draiosproto.sql_entry_details\"^\n\032mongodb"
+    "_collection_details\022\014\n\004name\030\001 \002(\t\0222\n\010cou"
+    "nters\030\002 \002(\0132 .draiosproto.counter_proto_"
+    "entry\"w\n\027mongodb_op_type_details\022(\n\002op\030\001"
+    " \002(\0162\034.draiosproto.mongodb_op_type\0222\n\010co"
+    "unters\030\002 \002(\0132 .draiosproto.counter_proto"
+    "_entry\"\215\002\n\014mongodb_info\0229\n\013servers_ops\030\001"
+    " \003(\0132$.draiosproto.mongodb_op_type_detai"
+    "ls\0228\n\nclient_ops\030\002 \003(\0132$.draiosproto.mon"
+    "godb_op_type_details\022C\n\022server_collectio"
+    "ns\030\003 \003(\0132\'.draiosproto.mongodb_collectio"
+    "n_details\022C\n\022client_collections\030\004 \003(\0132\'."
+    "draiosproto.mongodb_collection_details\"\336"
+    "\001\n\rjmx_attribute\022\014\n\004name\030\001 \001(\t\022\r\n\005value\030"
+    "\002 \001(\001\022\r\n\005alias\030\005 \001(\t\022*\n\004type\030\007 \001(\0162\034.dra"
+    "iosproto.jmx_metric_type\022\037\n\004unit\030\010 \001(\0162\021"
+    ".draiosproto.unit\022!\n\005scale\030\t \001(\0162\022.draio"
+    "sproto.scale\0221\n\rsubattributes\030\003 \003(\0132\032.dr"
+    "aiosproto.jmx_attribute\"H\n\010jmx_bean\022\014\n\004n"
+    "ame\030\001 \001(\t\022.\n\nattributes\030\002 \003(\0132\032.draiospr"
+    "oto.jmx_attribute\"G\n\tjava_info\022\024\n\014proces"
+    "s_name\030\001 \001(\t\022$\n\005beans\030\002 \003(\0132\025.draiosprot"
+    "o.jmx_bean\"(\n\nstatsd_tag\022\013\n\003key\030\001 \002(\t\022\r\n"
+    "\005value\030\002 \001(\t\"\366\001\n\rstatsd_metric\022\014\n\004name\030\001"
+    " \001(\t\022%\n\004tags\030\002 \003(\0132\027.draiosproto.statsd_"
+    "tag\022-\n\004type\030\003 \001(\0162\037.draiosproto.statsd_m"
+    "etric_type\022\r\n\005value\030\004 \001(\001\022\013\n\003sum\030\005 \001(\001\022\013"
+    "\n\003min\030\006 \001(\001\022\013\n\003max\030\007 \001(\001\022\r\n\005count\030\010 \001(\001\022"
+    "\016\n\006median\030\t \001(\001\022\025\n\rpercentile_95\030\n \001(\001\022\025"
+    "\n\rpercentile_99\030\013 \001(\001\"A\n\013statsd_info\0222\n\016"
+    "statsd_metrics\030\001 \003(\0132\032.draiosproto.stats"
+    "d_metric\"%\n\007app_tag\022\013\n\003key\030\001 \002(\t\022\r\n\005valu"
+    "e\030\002 \001(\t\"y\n\napp_metric\022\014\n\004name\030\001 \001(\t\022*\n\004t"
+    "ype\030\002 \001(\0162\034.draiosproto.app_metric_type\022"
+    "\r\n\005value\030\003 \001(\001\022\"\n\004tags\030\004 \003(\0132\024.draiospro"
+    "to.app_tag\"j\n\tapp_check\022\014\n\004name\030\001 \001(\t\022+\n"
+    "\005value\030\002 \001(\0162\034.draiosproto.app_check_val"
+    "ue\022\"\n\004tags\030\003 \003(\0132\024.draiosproto.app_tag\"r"
+    "\n\010app_info\022\024\n\014process_name\030\001 \001(\t\022(\n\007metr"
+    "ics\030\002 \003(\0132\027.draiosproto.app_metric\022&\n\006ch"
+    "ecks\030\003 \003(\0132\026.draiosproto.app_check\"\241\002\n\np"
+    "roto_info\022$\n\004http\030\001 \001(\0132\026.draiosproto.ht"
+    "tp_info\022$\n\005mysql\030\002 \001(\0132\025.draiosproto.sql"
+    "_info\022\'\n\010postgres\030\003 \001(\0132\025.draiosproto.sq"
+    "l_info\022*\n\007mongodb\030\004 \001(\0132\031.draiosproto.mo"
+    "ngodb_info\022$\n\004java\030\005 \001(\0132\026.draiosproto.j"
+    "ava_info\022(\n\006statsd\030\006 \001(\0132\030.draiosproto.s"
+    "tatsd_info\022\"\n\003app\030\007 \001(\0132\025.draiosproto.ap"
+    "p_info\"U\n\017network_by_port\022\014\n\004port\030\001 \002(\r\022"
+    "4\n\010counters\030\002 \002(\0132\".draiosproto.connecti"
+    "on_categories\"\370\005\n\004host\022\020\n\010hostname\030\001 \001(\t"
+    "\022\020\n\010num_cpus\030\002 \001(\r\022\021\n\tcpu_loads\030\003 \003(\r\022\021\n"
+    "\tcpu_steal\030\013 \003(\r\022\"\n\032physical_memory_size"
+    "_bytes\030\004 \002(\004\022/\n\ttcounters\030\005 \001(\0132\034.draios"
+    "proto.time_categories\022B\n\013reqcounters\030\014 \001"
+    "(\0132-.draiosproto.transaction_breakdown_c"
+    "ategories\022E\n\024transaction_counters\030\006 \001(\0132"
+    "\'.draiosproto.counter_time_bidirectional"
+    "\022I\n\030min_transaction_counters\030\026 \001(\0132\'.dra"
+    "iosproto.counter_time_bidirectional\022I\n\030m"
+    "ax_transaction_counters\030\027 \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\022$\n\034transa"
+    "ction_processing_delay\030\007 \001(\004\022\030\n\020next_tie"
+    "rs_delay\030\r \001(\004\022;\n\021resource_counters\030\010 \001("
+    "\0132 .draiosproto.resource_categories\022;\n\016s"
+    "yscall_errors\030\t \001(\0132#.draiosproto.counte"
+    "r_syscall_errors\0228\n\017external_io_net\030\n \001("
+    "\0132\037.draiosproto.counter_time_bytes\022<\n\026ne"
+    "twork_by_serverports\030\030 \003(\0132\034.draiosproto"
+    ".network_by_port\"\337\005\n\007process\022-\n\007details\030"
+    "\002 \001(\0132\034.draiosproto.process_details\022\"\n\032i"
+    "s_ipv4_transaction_server\030\003 \001(\010\022\"\n\032is_un"
+    "ix_transaction_server\030\004 \001(\010\022\"\n\032is_ipv4_t"
+    "ransaction_client\030\n \001(\010\022\"\n\032is_unix_trans"
+    "action_client\030\013 \001(\010\022\017\n\007netrole\030\r \001(\r\022/\n\t"
+    "tcounters\030\005 \001(\0132\034.draiosproto.time_categ"
+    "ories\022E\n\024transaction_counters\030\006 \001(\0132\'.dr"
+    "aiosproto.counter_time_bidirectional\022I\n\030"
+    "min_transaction_counters\030\022 \001(\0132\'.draiosp"
+    "roto.counter_time_bidirectional\022I\n\030max_t"
+    "ransaction_counters\030\023 \001(\0132\'.draiosproto."
+    "counter_time_bidirectional\022$\n\034transactio"
+    "n_processing_delay\030\007 \001(\004\022\030\n\020next_tiers_d"
+    "elay\030\014 \001(\004\022;\n\021resource_counters\030\010 \001(\0132 ."
+    "draiosproto.resource_categories\022;\n\016sysca"
+    "ll_errors\030\t \001(\0132#.draiosproto.counter_sy"
+    "scall_errors\022\'\n\006protos\030\024 \001(\0132\027.draiospro"
+    "to.proto_info\022\023\n\013start_count\030\025 \001(\004\"\?\n\007pr"
+    "ogram\022&\n\010procinfo\030\001 \002(\0132\024.draiosproto.pr"
+    "ocess\022\014\n\004pids\030\002 \003(\004\"T\n\tipv4tuple\022\013\n\003sip\030"
+    "\001 \002(\r\022\013\n\003dip\030\002 \002(\r\022\r\n\005sport\030\003 \002(\r\022\r\n\005dpo"
+    "rt\030\004 \002(\r\022\017\n\007l4proto\030\005 \002(\r\"\212\001\n\017ipv4_conne"
+    "ction\022%\n\005tuple\030\001 \002(\0132\026.draiosproto.ipv4t"
+    "uple\022\014\n\004spid\030\002 \001(\004\022\014\n\004dpid\030\005 \001(\004\0224\n\010coun"
+    "ters\030\010 \002(\0132\".draiosproto.connection_cate"
+    "gories\"T\n\026ipv4_network_interface\022\014\n\004name"
+    "\030\001 \002(\t\022\014\n\004addr\030\002 \002(\r\022\017\n\007netmask\030\003 \002(\r\022\r\n"
+    "\005bcast\030\004 \001(\r\"\251\001\n\nmounted_fs\022\016\n\006device\030\001 "
+    "\002(\t\022\021\n\tmount_dir\030\002 \002(\t\022\014\n\004type\030\003 \002(\t\022\022\n\n"
+    "size_bytes\030\004 \002(\004\022\022\n\nused_bytes\030\005 \002(\004\022\027\n\017"
+    "available_bytes\030\006 \002(\004\022\024\n\014total_inodes\030\n "
+    "\001(\004\022\023\n\013used_inodes\030\013 \001(\004\"]\n\tfile_stat\022\014\n"
+    "\004name\030\001 \002(\t\022\r\n\005bytes\030\002 \002(\r\022\017\n\007time_ns\030\003 "
+    "\002(\004\022\022\n\nopen_count\030\004 \002(\r\022\016\n\006errors\030\005 \002(\r\""
+    "j\n\026container_port_mapping\022\017\n\007host_ip\030\001 \001"
+    "(\r\022\021\n\thost_port\030\002 \001(\r\022\024\n\014container_ip\030\003 "
+    "\001(\r\022\026\n\016container_port\030\004 \001(\r\"-\n\017container"
+    "_label\022\013\n\003key\030\001 \002(\t\022\r\n\005value\030\002 \001(\t\"\374\006\n\tc"
+    "ontainer\022\n\n\002id\030\001 \002(\t\022)\n\004type\030\002 \001(\0162\033.dra"
+    "iosproto.container_type\022\014\n\004name\030\003 \001(\t\022\r\n"
+    "\005image\030\004 \001(\t\022/\n\ttcounters\030\005 \001(\0132\034.draios"
+    "proto.time_categories\022B\n\013reqcounters\030\006 \001"
+    "(\0132-.draiosproto.transaction_breakdown_c"
+    "ategories\022E\n\024transaction_counters\030\007 \001(\0132"
+    "\'.draiosproto.counter_time_bidirectional"
+    "\022I\n\030min_transaction_counters\030\010 \001(\0132\'.dra"
+    "iosproto.counter_time_bidirectional\022I\n\030m"
+    "ax_transaction_counters\030\t \001(\0132\'.draiospr"
+    "oto.counter_time_bidirectional\022$\n\034transa"
+    "ction_processing_delay\030\n \001(\004\022\030\n\020next_tie"
+    "rs_delay\030\014 \001(\004\022;\n\021resource_counters\030\r \001("
+    "\0132 .draiosproto.resource_categories\022;\n\016s"
+    "yscall_errors\030\016 \001(\0132#.draiosproto.counte"
+    "r_syscall_errors\022:\n\rport_mappings\030\022 \003(\0132"
+    "#.draiosproto.container_port_mapping\022\'\n\006"
+    "protos\030\023 \001(\0132\027.draiosproto.proto_info\022,\n"
+    "\006labels\030\024 \003(\0132\034.draiosproto.container_la"
+    "bel\022\'\n\006mounts\030\025 \003(\0132\027.draiosproto.mounte"
+    "d_fs\022<\n\026network_by_serverports\030\026 \003(\0132\034.d"
+    "raiosproto.network_by_port\022\025\n\rmesos_task"
+    "_id\030\027 \001(\t\"&\n\010k8s_pair\022\013\n\003key\030\001 \002(\t\022\r\n\005va"
+    "lue\030\002 \002(\t\"\213\001\n\nk8s_common\022\014\n\004name\030\001 \002(\t\022\013"
+    "\n\003uid\030\002 \002(\t\022\021\n\tnamespace\030\003 \001(\t\022%\n\006labels"
+    "\030\004 \003(\0132\025.draiosproto.k8s_pair\022(\n\tselecto"
+    "rs\030\005 \003(\0132\025.draiosproto.k8s_pair\"8\n\rk8s_n"
+    "amespace\022\'\n\006common\030\001 \002(\0132\027.draiosproto.k"
+    "8s_common\"E\n\010k8s_node\022\'\n\006common\030\001 \002(\0132\027."
+    "draiosproto.k8s_common\022\020\n\010host_ips\030\002 \003(\t"
+    "\"\231\001\n\007k8s_pod\022\'\n\006common\030\001 \002(\0132\027.draiospro"
+    "to.k8s_common\022\025\n\rcontainer_ids\030\002 \003(\t\022\021\n\t"
+    "node_name\030\003 \001(\t\022\017\n\007host_ip\030\004 \001(\t\022\023\n\013inte"
+    "rnal_ip\030\005 \001(\t\022\025\n\rrestart_count\030\006 \001(\r\"y\n\032"
+    "k8s_replication_controller\022\'\n\006common\030\001 \002"
+    "(\0132\027.draiosproto.k8s_common\022\030\n\020replicas_"
+    "desired\030\002 \001(\r\022\030\n\020replicas_running\030\003 \001(\r\""
+    "\320\001\n\013k8s_service\022\'\n\006common\030\001 \002(\0132\027.draios"
+    "proto.k8s_common\022\022\n\ncluster_ip\030\002 \001(\t\0220\n\005"
+    "ports\030\003 \003(\0132!.draiosproto.k8s_service.ne"
+    "t_port\032R\n\010net_port\022\014\n\004port\030\001 \002(\r\022\023\n\013targ"
+    "et_port\030\002 \002(\r\022\020\n\010protocol\030\003 \001(\t\022\021\n\tnode_"
+    "port\030\004 \001(\r\"\357\001\n\tk8s_state\022.\n\nnamespaces\030\001"
+    " \003(\0132\032.draiosproto.k8s_namespace\022$\n\005node"
+    "s\030\002 \003(\0132\025.draiosproto.k8s_node\022\"\n\004pods\030\003"
+    " \003(\0132\024.draiosproto.k8s_pod\022<\n\013controller"
+    "s\030\004 \003(\0132\'.draiosproto.k8s_replication_co"
+    "ntroller\022*\n\010services\030\005 \003(\0132\030.draiosproto"
+    ".k8s_service\"(\n\nmesos_pair\022\013\n\003key\030\001 \002(\t\022"
+    "\r\n\005value\030\002 \002(\t\"R\n\014mesos_common\022\013\n\003uid\030\001 "
+    "\002(\t\022\014\n\004name\030\002 \001(\t\022\'\n\006labels\030\003 \003(\0132\027.drai"
+    "osproto.mesos_pair\"I\n\nmesos_task\022)\n\006comm"
+    "on\030\001 \002(\0132\031.draiosproto.mesos_common\022\020\n\010s"
+    "lave_id\030\002 \002(\t\",\n\014marathon_app\022\n\n\002id\030\001 \002("
+    "\t\022\020\n\010task_ids\030\002 \003(\t\"r\n\016marathon_group\022\n\n"
+    "\002id\030\001 \002(\t\022\'\n\004apps\030\002 \003(\0132\031.draiosproto.ma"
+    "rathon_app\022+\n\006groups\030\003 \003(\0132\033.draiosproto"
+    ".marathon_group\"d\n\017mesos_framework\022)\n\006co"
+    "mmon\030\001 \002(\0132\031.draiosproto.mesos_common\022&\n"
+    "\005tasks\030\002 \003(\0132\027.draiosproto.mesos_task\"8\n"
+    "\013mesos_slave\022)\n\006common\030\001 \002(\0132\031.draiospro"
+    "to.mesos_common\"\226\001\n\013mesos_state\0220\n\nframe"
+    "works\030\001 \003(\0132\034.draiosproto.mesos_framewor"
+    "k\022+\n\006groups\030\002 \003(\0132\033.draiosproto.marathon"
+    "_group\022(\n\006slaves\030\003 \003(\0132\030.draiosproto.mes"
+    "os_slave\"\210\006\n\007metrics\022\024\n\014timestamp_ns\030\001 \002"
+    "(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 "
+    "\001(\t\022\026\n\016sampling_ratio\030\n \001(\r\022\030\n\020host_cust"
+    "om_name\030\013 \001(\t\022\021\n\thost_tags\030\014 \001(\t\022\026\n\016is_h"
+    "ost_hidden\030\016 \001(\010\022\030\n\020hidden_processes\030\017 \001"
+    "(\t\022\017\n\007version\030\020 \001(\t\022\023\n\013instance_id\030\025 \001(\t"
+    "\022#\n\010hostinfo\030\004 \001(\0132\021.draiosproto.host\022&\n"
+    "\010programs\030\t \003(\0132\024.draiosproto.program\0226\n"
+    "\020ipv4_connections\030\007 \003(\0132\034.draiosproto.ip"
+    "v4_connection\022D\n\027ipv4_network_interfaces"
+    "\030\010 \003(\0132#.draiosproto.ipv4_network_interf"
+    "ace\022.\n\010commands\030\021 \003(\0132\034.draiosproto.comm"
+    "and_details\022\'\n\006mounts\030\022 \003(\0132\027.draiosprot"
+    "o.mounted_fs\022)\n\ttop_files\030\023 \003(\0132\026.draios"
+    "proto.file_stat\022\'\n\006protos\030\024 \001(\0132\027.draios"
+    "proto.proto_info\022*\n\ncontainers\030\026 \003(\0132\026.d"
+    "raiosproto.container\022*\n\nkubernetes\030\030 \001(\013"
+    "2\026.draiosproto.k8s_state\022\'\n\005mesos\030\031 \001(\0132"
+    "\030.draiosproto.mesos_state\022(\n\006events\030\032 \003("
+    "\0132\030.draiosproto.agent_event\"\232\001\n\022dump_req"
+    "uest_start\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmach"
+    "ine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013dur"
+    "ation_ns\030\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_s"
+    "ize\030\007 \001(\004\022\r\n\005token\030\006 \002(\t\"a\n\021dump_request"
+    "_stop\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_i"
+    "d\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 "
+    "\002(\t\"\322\001\n\rdump_response\022\024\n\014timestamp_ns\030\001 "
+    "\002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003"
+    " \001(\t\022\020\n\010chunk_no\030\007 \001(\r\022\023\n\013final_chunk\030\010 "
+    "\001(\010\022\022\n\nkeep_alive\030\t \001(\010\022\017\n\007content\030\004 \001(\014"
+    "\022\030\n\020final_size_bytes\030\n \001(\004\022\r\n\005error\030\005 \001("
+    "\t\022\r\n\005token\030\006 \002(\t\"\257\001\n\020ssh_open_channel\022\024\n"
+    "\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022"
+    "\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\022\014\n\004u"
+    "ser\030\005 \002(\t\022\020\n\010password\030\006 \001(\t\022\013\n\003key\030\007 \001(\t"
+    "\022\022\n\npassphrase\030\010 \001(\t\022\014\n\004port\030\t \001(\r\"\212\001\n\010s"
+    "sh_data\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine"
+    "_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t\022\r\n\005token\030"
+    "\004 \002(\t\022\014\n\004data\030\005 \001(\014\022\r\n\005error\030\006 \001(\t\022\023\n\013ex"
+    "it_status\030\007 \001(\005\"a\n\021ssh_close_channel\022\024\n\014"
+    "timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023"
+    "\n\013customer_id\030\003 \001(\t\022\r\n\005token\030\004 \002(\t\"T\n\023au"
+    "to_update_request\022\024\n\014timestamp_ns\030\001 \002(\004\022"
+    "\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_id\030\003 \001(\t"
+    "\"c\n\025dirty_shutdown_report\022\024\n\014timestamp_n"
+    "s\030\001 \002(\004\022\022\n\nmachine_id\030\002 \002(\t\022\023\n\013customer_"
+    "id\030\003 \001(\t\022\013\n\003log\030\004 \002(\t\"\'\n\tkey_value\022\013\n\003ke"
+    "y\030\001 \002(\t\022\r\n\005value\030\002 \002(\t\"\217\001\n\013agent_event\022\025"
+    "\n\rtimestamp_sec\030\001 \001(\004\022\r\n\005scope\030\002 \001(\t\022\r\n\005"
+    "title\030\003 \001(\t\022\023\n\013description\030\004 \001(\t\022\020\n\010seve"
+    "rity\030\005 \001(\r\022$\n\004tags\030\006 \003(\0132\026.draiosproto.k"
+    "ey_value*\346\001\n\022sql_statement_type\022\014\n\010SOP_N"
+    "ONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n"
+    "\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DELETE"
+    "\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP"
+    "_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010"
+    "SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020"
+    "\r*\206\003\n\017mongodb_op_type\022\023\n\017MONGODB_OP_NONE"
+    "\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022\025\n\021MONGODB_OP_"
+    "UPDATE\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022\027\n\023MONGO"
+    "DB_OP_GET_MORE\020\004\022\033\n\027MONGODB_OP_KILL_CURS"
+    "ORS\020\005\022\023\n\017MONGODB_OP_FIND\020\006\022\030\n\024MONGODB_OP"
+    "_AGGREGATE\020\007\022\026\n\022MONGODB_OP_COMMAND\020\010\022\024\n\020"
+    "MONGODB_OP_COUNT\020\t\022\027\n\023MONGODB_OP_DISTINC"
+    "T\020\n\022\031\n\025MONGODB_OP_MAP_REDUCE\020\013\022\027\n\023MONGOD"
+    "B_OP_GEO_NEAR\020\014\022\031\n\025MONGODB_OP_GEO_SEARCH"
+    "\020\r\022\036\n\032MONGODB_OP_FIND_AND_MODIFY\020\016*G\n\004un"
+    "it\022\r\n\tUNIT_NONE\020\000\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUN"
+    "IT_BYTE\020\002\022\020\n\014UNIT_PERCENT\020\003*\221\002\n\005scale\022\016\n"
+    "\nSCALE_NONE\020\000\022\017\n\013SCALE_MILLI\020\001\022\017\n\013SCALE_"
+    "MICRO\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n\014SCALE_MINUTE\020"
+    "\004\022\016\n\nSCALE_HOUR\020\005\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCAL"
+    "E_KILO\020\007\022\016\n\nSCALE_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t"
+    "\022\016\n\nSCALE_TERA\020\n\022\016\n\nSCALE_KIBI\020\013\022\016\n\nSCAL"
+    "E_MEBI\020\014\022\016\n\nSCALE_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016"
+    "\022\025\n\021SCALE_PERCENT_0_1\020\017*I\n\017jmx_metric_ty"
+    "pe\022\033\n\027JMX_METRIC_TYPE_COUNTER\020\001\022\031\n\025JMX_M"
+    "ETRIC_TYPE_GAUGE\020\002*^\n\022statsd_metric_type"
+    "\022\020\n\014STATSD_COUNT\020\001\022\024\n\020STATSD_HISTOGRAM\020\002"
+    "\022\020\n\014STATSD_GAUGE\020\003\022\016\n\nSTATSD_SET\020\004*F\n\017ap"
+    "p_metric_type\022\031\n\025APP_METRIC_TYPE_GAUGE\020\001"
+    "\022\030\n\024APP_METRIC_TYPE_RATE\020\002*\201\001\n\017app_check"
+    "_value\022\026\n\022APP_CHECK_VALUE_OK\020\000\022\033\n\027APP_CH"
+    "ECK_VALUE_WARNING\020\001\022\034\n\030APP_CHECK_VALUE_C"
+    "RITICAL\020\002\022\033\n\027APP_CHECK_VALUE_UNKNOWN\020\003*\251"
+    "\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV"
+    "4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n"
+    "\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIEN"
+    "T\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNI"
+    "X_CLIENT\020 *\314\001\n\014message_type\022\013\n\007METRICS\020\001"
+    "\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_REQUEST"
+    "_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_C"
+    "HANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_D"
+    "ATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_"
+    "SHUTDOWN_REPORT\020\n*J\n\016container_type\022\n\n\006D"
+    "OCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MES"
+    "OS\020\004\022\007\n\003RKT\020\005B$\n\031com.draios.model.protob"
+    "ufB\005AgentH\001", 14571);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -2329,6 +2397,8 @@ void protobuf_AddDesc_draios_2eproto() {
   ssh_close_channel::default_instance_ = new ssh_close_channel();
   auto_update_request::default_instance_ = new auto_update_request();
   dirty_shutdown_report::default_instance_ = new dirty_shutdown_report();
+  key_value::default_instance_ = new key_value();
+  agent_event::default_instance_ = new agent_event();
   counter_time::default_instance_->InitAsDefaultInstance();
   counter_time_bidirectional::default_instance_->InitAsDefaultInstance();
   counter_bytes::default_instance_->InitAsDefaultInstance();
@@ -2399,6 +2469,8 @@ void protobuf_AddDesc_draios_2eproto() {
   ssh_close_channel::default_instance_->InitAsDefaultInstance();
   auto_update_request::default_instance_->InitAsDefaultInstance();
   dirty_shutdown_report::default_instance_->InitAsDefaultInstance();
+  key_value::default_instance_->InitAsDefaultInstance();
+  agent_event::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_draios_2eproto);
 }
 
@@ -5972,6 +6044,11 @@ const int resource_categories::kSwapMemoryUsageKbFieldNumber;
 const int resource_categories::kMajorPagefaultsFieldNumber;
 const int resource_categories::kMinorPagefaultsFieldNumber;
 const int resource_categories::kFdCountFieldNumber;
+const int resource_categories::kCpuSharesFieldNumber;
+const int resource_categories::kCpuSharesUsagePctFieldNumber;
+const int resource_categories::kMemoryLimitKbFieldNumber;
+const int resource_categories::kSwapLimitKbFieldNumber;
+const int resource_categories::kCpuQuotaUsedPctFieldNumber;
 #endif  // !_MSC_VER
 
 resource_categories::resource_categories()
@@ -6001,6 +6078,11 @@ void resource_categories::SharedCtor() {
   major_pagefaults_ = GOOGLE_ULONGLONG(0);
   minor_pagefaults_ = GOOGLE_ULONGLONG(0);
   fd_count_ = 0u;
+  cpu_shares_ = 0u;
+  cpu_shares_usage_pct_ = 0u;
+  memory_limit_kb_ = 0u;
+  swap_limit_kb_ = 0u;
+  cpu_quota_used_pct_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -6049,6 +6131,11 @@ void resource_categories::Clear() {
     major_pagefaults_ = GOOGLE_ULONGLONG(0);
     minor_pagefaults_ = GOOGLE_ULONGLONG(0);
     fd_count_ = 0u;
+    cpu_shares_ = 0u;
+    cpu_shares_usage_pct_ = 0u;
+    memory_limit_kb_ = 0u;
+    swap_limit_kb_ = 0u;
+    cpu_quota_used_pct_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -6231,6 +6318,86 @@ bool resource_categories::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(192)) goto parse_cpu_shares;
+        break;
+      }
+
+      // optional uint32 cpu_shares = 24;
+      case 24: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_shares:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &cpu_shares_)));
+          set_has_cpu_shares();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(200)) goto parse_cpu_shares_usage_pct;
+        break;
+      }
+
+      // optional uint32 cpu_shares_usage_pct = 25;
+      case 25: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_shares_usage_pct:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &cpu_shares_usage_pct_)));
+          set_has_cpu_shares_usage_pct();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(208)) goto parse_memory_limit_kb;
+        break;
+      }
+
+      // optional uint32 memory_limit_kb = 26;
+      case 26: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_memory_limit_kb:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &memory_limit_kb_)));
+          set_has_memory_limit_kb();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(216)) goto parse_swap_limit_kb;
+        break;
+      }
+
+      // optional uint32 swap_limit_kb = 27;
+      case 27: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_swap_limit_kb:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &swap_limit_kb_)));
+          set_has_swap_limit_kb();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(224)) goto parse_cpu_quota_used_pct;
+        break;
+      }
+
+      // optional uint32 cpu_quota_used_pct = 28;
+      case 28: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cpu_quota_used_pct:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &cpu_quota_used_pct_)));
+          set_has_cpu_quota_used_pct();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -6308,6 +6475,31 @@ void resource_categories::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(21, this->fd_count(), output);
   }
 
+  // optional uint32 cpu_shares = 24;
+  if (has_cpu_shares()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(24, this->cpu_shares(), output);
+  }
+
+  // optional uint32 cpu_shares_usage_pct = 25;
+  if (has_cpu_shares_usage_pct()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(25, this->cpu_shares_usage_pct(), output);
+  }
+
+  // optional uint32 memory_limit_kb = 26;
+  if (has_memory_limit_kb()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(26, this->memory_limit_kb(), output);
+  }
+
+  // optional uint32 swap_limit_kb = 27;
+  if (has_swap_limit_kb()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(27, this->swap_limit_kb(), output);
+  }
+
+  // optional uint32 cpu_quota_used_pct = 28;
+  if (has_cpu_quota_used_pct()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(28, this->cpu_quota_used_pct(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -6369,6 +6561,31 @@ void resource_categories::SerializeWithCachedSizes(
   // optional uint32 fd_count = 21;
   if (has_fd_count()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(21, this->fd_count(), target);
+  }
+
+  // optional uint32 cpu_shares = 24;
+  if (has_cpu_shares()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(24, this->cpu_shares(), target);
+  }
+
+  // optional uint32 cpu_shares_usage_pct = 25;
+  if (has_cpu_shares_usage_pct()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(25, this->cpu_shares_usage_pct(), target);
+  }
+
+  // optional uint32 memory_limit_kb = 26;
+  if (has_memory_limit_kb()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(26, this->memory_limit_kb(), target);
+  }
+
+  // optional uint32 swap_limit_kb = 27;
+  if (has_swap_limit_kb()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(27, this->swap_limit_kb(), target);
+  }
+
+  // optional uint32 cpu_quota_used_pct = 28;
+  if (has_cpu_quota_used_pct()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(28, this->cpu_quota_used_pct(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -6461,6 +6678,41 @@ int resource_categories::ByteSize() const {
           this->fd_count());
     }
 
+    // optional uint32 cpu_shares = 24;
+    if (has_cpu_shares()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->cpu_shares());
+    }
+
+    // optional uint32 cpu_shares_usage_pct = 25;
+    if (has_cpu_shares_usage_pct()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->cpu_shares_usage_pct());
+    }
+
+    // optional uint32 memory_limit_kb = 26;
+    if (has_memory_limit_kb()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->memory_limit_kb());
+    }
+
+    // optional uint32 swap_limit_kb = 27;
+    if (has_swap_limit_kb()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->swap_limit_kb());
+    }
+
+    // optional uint32 cpu_quota_used_pct = 28;
+    if (has_cpu_quota_used_pct()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->cpu_quota_used_pct());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -6523,6 +6775,21 @@ void resource_categories::MergeFrom(const resource_categories& from) {
     if (from.has_fd_count()) {
       set_fd_count(from.fd_count());
     }
+    if (from.has_cpu_shares()) {
+      set_cpu_shares(from.cpu_shares());
+    }
+    if (from.has_cpu_shares_usage_pct()) {
+      set_cpu_shares_usage_pct(from.cpu_shares_usage_pct());
+    }
+    if (from.has_memory_limit_kb()) {
+      set_memory_limit_kb(from.memory_limit_kb());
+    }
+    if (from.has_swap_limit_kb()) {
+      set_swap_limit_kb(from.swap_limit_kb());
+    }
+    if (from.has_cpu_quota_used_pct()) {
+      set_cpu_quota_used_pct(from.cpu_quota_used_pct());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -6557,6 +6824,11 @@ void resource_categories::Swap(resource_categories* other) {
     std::swap(major_pagefaults_, other->major_pagefaults_);
     std::swap(minor_pagefaults_, other->minor_pagefaults_);
     std::swap(fd_count_, other->fd_count_);
+    std::swap(cpu_shares_, other->cpu_shares_);
+    std::swap(cpu_shares_usage_pct_, other->cpu_shares_usage_pct_);
+    std::swap(memory_limit_kb_, other->memory_limit_kb_);
+    std::swap(swap_limit_kb_, other->swap_limit_kb_);
+    std::swap(cpu_quota_used_pct_, other->cpu_quota_used_pct_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -18197,6 +18469,8 @@ const int mounted_fs::kTypeFieldNumber;
 const int mounted_fs::kSizeBytesFieldNumber;
 const int mounted_fs::kUsedBytesFieldNumber;
 const int mounted_fs::kAvailableBytesFieldNumber;
+const int mounted_fs::kTotalInodesFieldNumber;
+const int mounted_fs::kUsedInodesFieldNumber;
 #endif  // !_MSC_VER
 
 mounted_fs::mounted_fs()
@@ -18221,6 +18495,8 @@ void mounted_fs::SharedCtor() {
   size_bytes_ = GOOGLE_ULONGLONG(0);
   used_bytes_ = GOOGLE_ULONGLONG(0);
   available_bytes_ = GOOGLE_ULONGLONG(0);
+  total_inodes_ = GOOGLE_ULONGLONG(0);
+  used_inodes_ = GOOGLE_ULONGLONG(0);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -18283,6 +18559,8 @@ void mounted_fs::Clear() {
     size_bytes_ = GOOGLE_ULONGLONG(0);
     used_bytes_ = GOOGLE_ULONGLONG(0);
     available_bytes_ = GOOGLE_ULONGLONG(0);
+    total_inodes_ = GOOGLE_ULONGLONG(0);
+    used_inodes_ = GOOGLE_ULONGLONG(0);
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -18388,6 +18666,38 @@ bool mounted_fs::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_total_inodes;
+        break;
+      }
+
+      // optional uint64 total_inodes = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_total_inodes:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &total_inodes_)));
+          set_has_total_inodes();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_used_inodes;
+        break;
+      }
+
+      // optional uint64 used_inodes = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_used_inodes:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &used_inodes_)));
+          set_has_used_inodes();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -18452,6 +18762,16 @@ void mounted_fs::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(6, this->available_bytes(), output);
   }
 
+  // optional uint64 total_inodes = 10;
+  if (has_total_inodes()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(10, this->total_inodes(), output);
+  }
+
+  // optional uint64 used_inodes = 11;
+  if (has_used_inodes()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->used_inodes(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -18503,6 +18823,16 @@ void mounted_fs::SerializeWithCachedSizes(
   // required uint64 available_bytes = 6;
   if (has_available_bytes()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(6, this->available_bytes(), target);
+  }
+
+  // optional uint64 total_inodes = 10;
+  if (has_total_inodes()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(10, this->total_inodes(), target);
+  }
+
+  // optional uint64 used_inodes = 11;
+  if (has_used_inodes()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->used_inodes(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -18558,6 +18888,20 @@ int mounted_fs::ByteSize() const {
           this->available_bytes());
     }
 
+    // optional uint64 total_inodes = 10;
+    if (has_total_inodes()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->total_inodes());
+    }
+
+    // optional uint64 used_inodes = 11;
+    if (has_used_inodes()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->used_inodes());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -18603,6 +18947,12 @@ void mounted_fs::MergeFrom(const mounted_fs& from) {
     if (from.has_available_bytes()) {
       set_available_bytes(from.available_bytes());
     }
+    if (from.has_total_inodes()) {
+      set_total_inodes(from.total_inodes());
+    }
+    if (from.has_used_inodes()) {
+      set_used_inodes(from.used_inodes());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -18633,6 +18983,8 @@ void mounted_fs::Swap(mounted_fs* other) {
     std::swap(size_bytes_, other->size_bytes_);
     std::swap(used_bytes_, other->used_bytes_);
     std::swap(available_bytes_, other->available_bytes_);
+    std::swap(total_inodes_, other->total_inodes_);
+    std::swap(used_inodes_, other->used_inodes_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -22401,8 +22753,8 @@ void k8s_pod::Swap(k8s_pod* other) {
 
 #ifndef _MSC_VER
 const int k8s_replication_controller::kCommonFieldNumber;
-const int k8s_replication_controller::kSpecReplicasFieldNumber;
-const int k8s_replication_controller::kStatReplicasFieldNumber;
+const int k8s_replication_controller::kReplicasDesiredFieldNumber;
+const int k8s_replication_controller::kReplicasRunningFieldNumber;
 #endif  // !_MSC_VER
 
 k8s_replication_controller::k8s_replication_controller()
@@ -22423,8 +22775,8 @@ k8s_replication_controller::k8s_replication_controller(const k8s_replication_con
 void k8s_replication_controller::SharedCtor() {
   _cached_size_ = 0;
   common_ = NULL;
-  spec_replicas_ = 0u;
-  stat_replicas_ = 0u;
+  replicas_desired_ = 0u;
+  replicas_running_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -22464,8 +22816,8 @@ void k8s_replication_controller::Clear() {
     if (has_common()) {
       if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
     }
-    spec_replicas_ = 0u;
-    stat_replicas_ = 0u;
+    replicas_desired_ = 0u;
+    replicas_running_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -22486,35 +22838,35 @@ bool k8s_replication_controller::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(16)) goto parse_spec_replicas;
+        if (input->ExpectTag(16)) goto parse_replicas_desired;
         break;
       }
 
-      // optional uint32 spec_replicas = 2;
+      // optional uint32 replicas_desired = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_spec_replicas:
+         parse_replicas_desired:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &spec_replicas_)));
-          set_has_spec_replicas();
+                 input, &replicas_desired_)));
+          set_has_replicas_desired();
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(24)) goto parse_stat_replicas;
+        if (input->ExpectTag(24)) goto parse_replicas_running;
         break;
       }
 
-      // optional uint32 stat_replicas = 3;
+      // optional uint32 replicas_running = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_stat_replicas:
+         parse_replicas_running:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &stat_replicas_)));
-          set_has_stat_replicas();
+                 input, &replicas_running_)));
+          set_has_replicas_running();
         } else {
           goto handle_uninterpreted;
         }
@@ -22546,14 +22898,14 @@ void k8s_replication_controller::SerializeWithCachedSizes(
       1, this->common(), output);
   }
 
-  // optional uint32 spec_replicas = 2;
-  if (has_spec_replicas()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->spec_replicas(), output);
+  // optional uint32 replicas_desired = 2;
+  if (has_replicas_desired()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->replicas_desired(), output);
   }
 
-  // optional uint32 stat_replicas = 3;
-  if (has_stat_replicas()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->stat_replicas(), output);
+  // optional uint32 replicas_running = 3;
+  if (has_replicas_running()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->replicas_running(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -22571,14 +22923,14 @@ void k8s_replication_controller::SerializeWithCachedSizes(
         1, this->common(), target);
   }
 
-  // optional uint32 spec_replicas = 2;
-  if (has_spec_replicas()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->spec_replicas(), target);
+  // optional uint32 replicas_desired = 2;
+  if (has_replicas_desired()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->replicas_desired(), target);
   }
 
-  // optional uint32 stat_replicas = 3;
-  if (has_stat_replicas()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->stat_replicas(), target);
+  // optional uint32 replicas_running = 3;
+  if (has_replicas_running()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->replicas_running(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -22599,18 +22951,18 @@ int k8s_replication_controller::ByteSize() const {
           this->common());
     }
 
-    // optional uint32 spec_replicas = 2;
-    if (has_spec_replicas()) {
+    // optional uint32 replicas_desired = 2;
+    if (has_replicas_desired()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->spec_replicas());
+          this->replicas_desired());
     }
 
-    // optional uint32 stat_replicas = 3;
-    if (has_stat_replicas()) {
+    // optional uint32 replicas_running = 3;
+    if (has_replicas_running()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->stat_replicas());
+          this->replicas_running());
     }
 
   }
@@ -22643,11 +22995,11 @@ void k8s_replication_controller::MergeFrom(const k8s_replication_controller& fro
     if (from.has_common()) {
       mutable_common()->::draiosproto::k8s_common::MergeFrom(from.common());
     }
-    if (from.has_spec_replicas()) {
-      set_spec_replicas(from.spec_replicas());
+    if (from.has_replicas_desired()) {
+      set_replicas_desired(from.replicas_desired());
     }
-    if (from.has_stat_replicas()) {
-      set_stat_replicas(from.stat_replicas());
+    if (from.has_replicas_running()) {
+      set_replicas_running(from.replicas_running());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -22677,8 +23029,8 @@ bool k8s_replication_controller::IsInitialized() const {
 void k8s_replication_controller::Swap(k8s_replication_controller* other) {
   if (other != this) {
     std::swap(common_, other->common_);
-    std::swap(spec_replicas_, other->spec_replicas_);
-    std::swap(stat_replicas_, other->stat_replicas_);
+    std::swap(replicas_desired_, other->replicas_desired_);
+    std::swap(replicas_running_, other->replicas_running_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -25997,6 +26349,7 @@ const int metrics::kProtosFieldNumber;
 const int metrics::kContainersFieldNumber;
 const int metrics::kKubernetesFieldNumber;
 const int metrics::kMesosFieldNumber;
+const int metrics::kEventsFieldNumber;
 #endif  // !_MSC_VER
 
 metrics::metrics()
@@ -26155,6 +26508,7 @@ void metrics::Clear() {
   mounts_.Clear();
   top_files_.Clear();
   containers_.Clear();
+  events_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -26488,6 +26842,21 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(210)) goto parse_events;
+        break;
+      }
+
+      // repeated .draiosproto.agent_event events = 26;
+      case 26: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_events:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_events()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(210)) goto parse_events;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -26652,6 +27021,12 @@ void metrics::SerializeWithCachedSizes(
   if (has_mesos()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       25, this->mesos(), output);
+  }
+
+  // repeated .draiosproto.agent_event events = 26;
+  for (int i = 0; i < this->events_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      26, this->events(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -26824,6 +27199,13 @@ void metrics::SerializeWithCachedSizes(
         25, this->mesos(), target);
   }
 
+  // repeated .draiosproto.agent_event events = 26;
+  for (int i = 0; i < this->events_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        26, this->events(i), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -26992,6 +27374,14 @@ int metrics::ByteSize() const {
         this->containers(i));
   }
 
+  // repeated .draiosproto.agent_event events = 26;
+  total_size += 2 * this->events_size();
+  for (int i = 0; i < this->events_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->events(i));
+  }
+
   if (!unknown_fields().empty()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
@@ -27024,6 +27414,7 @@ void metrics::MergeFrom(const metrics& from) {
   mounts_.MergeFrom(from.mounts_);
   top_files_.MergeFrom(from.top_files_);
   containers_.MergeFrom(from.containers_);
+  events_.MergeFrom(from.events_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_timestamp_ns()) {
       set_timestamp_ns(from.timestamp_ns());
@@ -27123,6 +27514,9 @@ bool metrics::IsInitialized() const {
   if (has_mesos()) {
     if (!this->mesos().IsInitialized()) return false;
   }
+  for (int i = 0; i < events_size(); i++) {
+    if (!this->events(i).IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -27149,6 +27543,7 @@ void metrics::Swap(metrics* other) {
     containers_.Swap(&other->containers_);
     std::swap(kubernetes_, other->kubernetes_);
     std::swap(mesos_, other->mesos_);
+    events_.Swap(&other->events_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -30966,6 +31361,751 @@ void dirty_shutdown_report::Swap(dirty_shutdown_report* other) {
   ::google::protobuf::Metadata metadata;
   metadata.descriptor = dirty_shutdown_report_descriptor_;
   metadata.reflection = dirty_shutdown_report_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int key_value::kKeyFieldNumber;
+const int key_value::kValueFieldNumber;
+#endif  // !_MSC_VER
+
+key_value::key_value()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void key_value::InitAsDefaultInstance() {
+}
+
+key_value::key_value(const key_value& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void key_value::SharedCtor() {
+  _cached_size_ = 0;
+  key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+key_value::~key_value() {
+  SharedDtor();
+}
+
+void key_value::SharedDtor() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void key_value::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* key_value::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return key_value_descriptor_;
+}
+
+const key_value& key_value::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+key_value* key_value::default_instance_ = NULL;
+
+key_value* key_value::New() const {
+  return new key_value;
+}
+
+void key_value::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_key()) {
+      if (key_ != &::google::protobuf::internal::kEmptyString) {
+        key_->clear();
+      }
+    }
+    if (has_value()) {
+      if (value_ != &::google::protobuf::internal::kEmptyString) {
+        value_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool key_value::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required string key = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_key()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->key().data(), this->key().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_value;
+        break;
+      }
+
+      // required string value = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_value:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_value()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->value().data(), this->value().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void key_value::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required string key = 1;
+  if (has_key()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->key().data(), this->key().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      1, this->key(), output);
+  }
+
+  // required string value = 2;
+  if (has_value()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->value().data(), this->value().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->value(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* key_value::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required string key = 1;
+  if (has_key()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->key().data(), this->key().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        1, this->key(), target);
+  }
+
+  // required string value = 2;
+  if (has_value()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->value().data(), this->value().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->value(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int key_value::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required string key = 1;
+    if (has_key()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->key());
+    }
+
+    // required string value = 2;
+    if (has_value()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->value());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void key_value::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const key_value* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const key_value*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void key_value::MergeFrom(const key_value& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_key()) {
+      set_key(from.key());
+    }
+    if (from.has_value()) {
+      set_value(from.value());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void key_value::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void key_value::CopyFrom(const key_value& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool key_value::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
+  return true;
+}
+
+void key_value::Swap(key_value* other) {
+  if (other != this) {
+    std::swap(key_, other->key_);
+    std::swap(value_, other->value_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata key_value::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = key_value_descriptor_;
+  metadata.reflection = key_value_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int agent_event::kTimestampSecFieldNumber;
+const int agent_event::kScopeFieldNumber;
+const int agent_event::kTitleFieldNumber;
+const int agent_event::kDescriptionFieldNumber;
+const int agent_event::kSeverityFieldNumber;
+const int agent_event::kTagsFieldNumber;
+#endif  // !_MSC_VER
+
+agent_event::agent_event()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void agent_event::InitAsDefaultInstance() {
+}
+
+agent_event::agent_event(const agent_event& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void agent_event::SharedCtor() {
+  _cached_size_ = 0;
+  timestamp_sec_ = GOOGLE_ULONGLONG(0);
+  scope_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  severity_ = 0u;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+agent_event::~agent_event() {
+  SharedDtor();
+}
+
+void agent_event::SharedDtor() {
+  if (scope_ != &::google::protobuf::internal::kEmptyString) {
+    delete scope_;
+  }
+  if (title_ != &::google::protobuf::internal::kEmptyString) {
+    delete title_;
+  }
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void agent_event::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* agent_event::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return agent_event_descriptor_;
+}
+
+const agent_event& agent_event::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+agent_event* agent_event::default_instance_ = NULL;
+
+agent_event* agent_event::New() const {
+  return new agent_event;
+}
+
+void agent_event::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    timestamp_sec_ = GOOGLE_ULONGLONG(0);
+    if (has_scope()) {
+      if (scope_ != &::google::protobuf::internal::kEmptyString) {
+        scope_->clear();
+      }
+    }
+    if (has_title()) {
+      if (title_ != &::google::protobuf::internal::kEmptyString) {
+        title_->clear();
+      }
+    }
+    if (has_description()) {
+      if (description_ != &::google::protobuf::internal::kEmptyString) {
+        description_->clear();
+      }
+    }
+    severity_ = 0u;
+  }
+  tags_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool agent_event::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional uint64 timestamp_sec = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &timestamp_sec_)));
+          set_has_timestamp_sec();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_scope;
+        break;
+      }
+
+      // optional string scope = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_scope:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_scope()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->scope().data(), this->scope().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_title;
+        break;
+      }
+
+      // optional string title = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_title:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_title()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->title().data(), this->title().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_description;
+        break;
+      }
+
+      // optional string description = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_description:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_description()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->description().data(), this->description().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(40)) goto parse_severity;
+        break;
+      }
+
+      // optional uint32 severity = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_severity:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &severity_)));
+          set_has_severity();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_tags;
+        break;
+      }
+
+      // repeated .draiosproto.key_value tags = 6;
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_tags:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_tags()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(50)) goto parse_tags;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void agent_event::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional uint64 timestamp_sec = 1;
+  if (has_timestamp_sec()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->timestamp_sec(), output);
+  }
+
+  // optional string scope = 2;
+  if (has_scope()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->scope().data(), this->scope().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->scope(), output);
+  }
+
+  // optional string title = 3;
+  if (has_title()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->title().data(), this->title().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      3, this->title(), output);
+  }
+
+  // optional string description = 4;
+  if (has_description()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->description().data(), this->description().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      4, this->description(), output);
+  }
+
+  // optional uint32 severity = 5;
+  if (has_severity()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(5, this->severity(), output);
+  }
+
+  // repeated .draiosproto.key_value tags = 6;
+  for (int i = 0; i < this->tags_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      6, this->tags(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* agent_event::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // optional uint64 timestamp_sec = 1;
+  if (has_timestamp_sec()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(1, this->timestamp_sec(), target);
+  }
+
+  // optional string scope = 2;
+  if (has_scope()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->scope().data(), this->scope().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->scope(), target);
+  }
+
+  // optional string title = 3;
+  if (has_title()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->title().data(), this->title().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        3, this->title(), target);
+  }
+
+  // optional string description = 4;
+  if (has_description()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->description().data(), this->description().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        4, this->description(), target);
+  }
+
+  // optional uint32 severity = 5;
+  if (has_severity()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(5, this->severity(), target);
+  }
+
+  // repeated .draiosproto.key_value tags = 6;
+  for (int i = 0; i < this->tags_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        6, this->tags(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int agent_event::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional uint64 timestamp_sec = 1;
+    if (has_timestamp_sec()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->timestamp_sec());
+    }
+
+    // optional string scope = 2;
+    if (has_scope()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->scope());
+    }
+
+    // optional string title = 3;
+    if (has_title()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->title());
+    }
+
+    // optional string description = 4;
+    if (has_description()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->description());
+    }
+
+    // optional uint32 severity = 5;
+    if (has_severity()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->severity());
+    }
+
+  }
+  // repeated .draiosproto.key_value tags = 6;
+  total_size += 1 * this->tags_size();
+  for (int i = 0; i < this->tags_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->tags(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void agent_event::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const agent_event* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const agent_event*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void agent_event::MergeFrom(const agent_event& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  tags_.MergeFrom(from.tags_);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_timestamp_sec()) {
+      set_timestamp_sec(from.timestamp_sec());
+    }
+    if (from.has_scope()) {
+      set_scope(from.scope());
+    }
+    if (from.has_title()) {
+      set_title(from.title());
+    }
+    if (from.has_description()) {
+      set_description(from.description());
+    }
+    if (from.has_severity()) {
+      set_severity(from.severity());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void agent_event::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void agent_event::CopyFrom(const agent_event& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool agent_event::IsInitialized() const {
+
+  for (int i = 0; i < tags_size(); i++) {
+    if (!this->tags(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void agent_event::Swap(agent_event* other) {
+  if (other != this) {
+    std::swap(timestamp_sec_, other->timestamp_sec_);
+    std::swap(scope_, other->scope_);
+    std::swap(title_, other->title_);
+    std::swap(description_, other->description_);
+    std::swap(severity_, other->severity_);
+    tags_.Swap(&other->tags_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata agent_event::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = agent_event_descriptor_;
+  metadata.reflection = agent_event_reflection_;
   return metadata;
 }
 

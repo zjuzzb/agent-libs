@@ -7,3 +7,41 @@ myarray:
   - 6
 server:
   address: "collector-staging.sysdigcloud.com"
+events:
+  kubernetes:
+    namespace:
+      - all
+    node: all
+    pod:
+      - ADDED
+      - MODIFIED
+      - DELETED
+      - ERROR
+    service:
+      - all
+    replicationController:
+      - all
+  docker:
+    container: [attach, commit, copy, create, destroy, die, exec_create, exec_start, export, kill, oom, pause, rename, resize, restart, start, stop, top, unpause, update]
+    image: [delete, import, pull, push, tag, untag]
+    volume: [create, mount, unmount, destroy]
+    network: [create, connect, disconnect, destroy]
+events2:
+  docker:
+    container:
+      - attach # intentional duplicate with default
+      - commit
+      - copy
+    image:
+      - delete
+      - import
+      - pull
+deep:
+  level1:
+    level2:
+      level3:
+        level4:
+          level5:
+            - 1
+            - 2
+            - 3

@@ -907,4 +907,31 @@ TEST_F(sys_call_test, tracers_fast_16)
 	EXPECT_EQ(string("mysql"), string(p.m_tags[0]));
 }
 
+TEST_F(sys_call_test, DISABLED_tracers_fast_17)
+{
+	sinsp_tracerparser p(NULL);
+
+	char doc[] = ">:1111:u\\:\\>.aaa.u\\:\\=a.33.aa\\::a=b\\:\\=,c=d\\:\\=a:";
+	char buffer[sizeof(doc)];
+	memcpy(buffer, doc, sizeof(doc));
+
+	p.process_event_data(buffer, sizeof(doc) - 1, 10);
+
+	EXPECT_EQ(sinsp_tracerparser::RES_OK, p.m_res);
+	EXPECT_EQ(">", string(p.m_type_str));
+	EXPECT_EQ(1111, (int)p.m_id);
+	EXPECT_EQ(5, (int)p.m_tags.size());
+	EXPECT_EQ(string("u:>"), string(p.m_tags[0]));
+	EXPECT_EQ(string("aaa"), string(p.m_tags[1]));
+	EXPECT_EQ(string("u:=a"), string(p.m_tags[2]));
+	EXPECT_EQ(string("33"), string(p.m_tags[3]));
+	EXPECT_EQ(string("aa:"), string(p.m_tags[4]));
+	EXPECT_EQ(2, (int)p.m_argnames.size());
+	EXPECT_EQ(2, (int)p.m_argvals.size());
+	EXPECT_EQ(string("a"), string(p.m_argnames[0]));
+	EXPECT_EQ(string("c"), string(p.m_argnames[1]));
+	EXPECT_EQ(string("b:="), string(p.m_argvals[0]));
+	EXPECT_EQ(string("d:=a"), string(p.m_argvals[1]));
+}
+
 #endif // 0

@@ -15,7 +15,7 @@ public:
 	pair<FILE*, FILE*> get_io_fds()
 	{
 		return make_pair(m_input_fd, m_output_fd);
-	};
+	}
 
 	FILE* get_err_fd()
 	{
@@ -46,9 +46,9 @@ private:
 	int m_inpipe[2];
 	int m_outpipe[2];
 	int m_errpipe[2];
-	FILE *m_input_fd;
-	FILE *m_output_fd;
-	FILE *m_error_fd;
+	FILE *m_input_fd = 0;
+	FILE *m_output_fd = 0;
+	FILE *m_error_fd = 0;
 	int m_inpipe_size;
 	int m_outpipe_size;
 };
@@ -74,7 +74,7 @@ private:
 	};
 
 	int m_pipe[2];
-	FILE* m_file;
+	FILE* m_file = 0;
 };
 
 class sdjagent_parser

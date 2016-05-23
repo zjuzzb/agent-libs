@@ -5,19 +5,52 @@
 class dragent_logger
 {
 public:
-	dragent_logger(Logger* file_log, Logger* console_log);
+	dragent_logger(Logger* file_log, Logger* console_log, Logger* event_log = NULL);
 
+	// regular logging
+	void trace(const string& str);
 	void debug(const string& str);
 	void information(const string& str);
+	void notice(const string& str);
 	void warning(const string& str);
 	void error(const string& str);
 	void critical(const string& str);
+	void fatal(const string& str);
 
-	static void sinsp_logger_callback(char* str, uint32_t sev);
+    void trace(string&& str);
+	void debug(string&& str);
+	void information(string&& str);
+	void notice(string&& str);
+	void warning(string&& str);
+	void error(string&& str);
+	void critical(string&& str);
+	void fatal(string&& str);
+
+	// user event logging
+	void fatal_event(const string& str );
+	void critical_event(const string& str );
+	void error_event(const string& str );
+	void warning_event(const string& str );
+	void notice_event(const string& str );
+	void information_event(const string& str );
+	void debug_event(const string& str );
+	void trace_event(const string& str );
+
+	void fatal_event(string&& str);
+	void critical_event(string&& str);
+	void error_event(string&& str);
+	void warning_event(string&& str);
+	void notice_event(string&& str);
+	void information_event(string&& str);
+	void debug_event(string&& str);
+	void trace_event(string&& str);
+
+	static void sinsp_logger_callback(string&& str, uint32_t sev);
 
 private:
 	Logger* m_file_log;
 	Logger* m_console_log;
+	Logger* m_event_log;
 };
 
 extern dragent_logger* g_log;

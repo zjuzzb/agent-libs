@@ -23,6 +23,8 @@ private:
 	uint64_t size_bytes;
 	uint64_t used_bytes;
 	uint64_t available_bytes;
+	uint64_t total_inodes;
+	uint64_t used_inodes;
 
 	friend class sinsp_procfs_parser;
 };

@@ -41,6 +41,17 @@ function build_components {
 			cp sysdig/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
 			;;
+		falco)
+			rm -rf falco/build || true
+			agent/bootstrap-sysdig
+			agent/bootstrap-falco
+
+			make -C falco/build/debug package VERBOSE=1
+			make -C falco/build/release package VERBOSE=1
+
+			cp falco/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+			cp falco/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+			;;
 		*)
 			false
 			;;
@@ -54,6 +65,7 @@ function configure_rpm_repo {
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
 	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
 	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
@@ -72,6 +84,7 @@ function configure_debian_repo {
 	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 
 	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
@@ -120,19 +133,24 @@ function configure_tgz_repo {
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
 	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
 	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
 }
 
 function configure_installers {
-	cp $SCRIPTS_DIR/install-agent $REPOSITORY_DIR
-	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-agent
-	cp $SCRIPTS_DIR/../../sysdig/scripts/install-sysdig.in $REPOSITORY_DIR/install-sysdig
-	sed -i s/_REPOSITORY_NAME_/$REPOSITORY_NAME/g $REPOSITORY_DIR/install-sysdig
+	if [[ "${COMPONENT}" == "agent" ]]; then
+		TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
+		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
+	else
+		TEMPLATE_FILE="${SCRIPTS_DIR}/../../sysdig/scripts/install-sysdig.in"
+		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
+		sed -i s/_COMPONENT_/${COMPONENT}/g ${REPOSITORY_DIR}/install-${COMPONENT}
+	fi
 
-	aws s3 cp $REPOSITORY_DIR/install-agent s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
-	aws s3 cp $REPOSITORY_DIR/install-sysdig s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+	sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
+	aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
 	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
 }
 

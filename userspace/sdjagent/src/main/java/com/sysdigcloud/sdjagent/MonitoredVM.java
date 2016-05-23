@@ -76,7 +76,7 @@ public class MonitoredVM {
             retrieveVMInfoFromArgs(request);
         }
         if(this.available && this.address != null) {
-            LOGGER.fine(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+            LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
                     request.getVpid(), this.name, this.address));
         }
 
@@ -158,7 +158,7 @@ public class MonitoredVM {
             jvmstat.detach();
             available = true;
         } catch (MonitorException e) {
-            LOGGER.severe(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
+            LOGGER.warning(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
             return;
         }
 
@@ -191,6 +191,7 @@ public class MonitoredVM {
         int port = -1;
         String hostname = "localhost";
         boolean authenticate = false;
+        String name = null;
         for(String arg : request.getArgs()) {
             if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
@@ -201,13 +202,18 @@ public class MonitoredVM {
                 hostname = arg.substring(arg.indexOf("=") + 1);
             } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
+                name = "cassandra"; // To avoid false negatives force cassandra here
             }
         }
         if (port != -1 && authenticate == false) {
-            // Assume the last arg is the main class, gross assumption but
-            // we don't have better ways at this point
-            if(request.getArgs().length > 0) {
+            if(name != null) {
+                this.name = name;
+            } else if(request.getArgs().length > 0) {
+                // Assume the last arg is the main class, gross assumption but
+                // we don't have better ways at this point
                 this.name = request.getArgs()[request.getArgs().length-1];
+            } else {
+                this.name = "unknown";
             }
             this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
             this.available = true;

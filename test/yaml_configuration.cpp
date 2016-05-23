@@ -34,3 +34,75 @@ TEST(yaml_conf, get_merged_sequence)
 	auto merged = conf.get_merged_sequence<int>("myarray");
 	EXPECT_EQ(3, merged.size());
 }
+
+TEST(yaml_conf, get_deep_merged_sequence)
+{
+	yaml_configuration conf("resources/test.yaml", "resources/test.default.yaml");
+	set<string> evts = conf.get_deep_merged_sequence<set<string>>("events", "docker", "volume");
+	ASSERT_EQ(evts.size(), 5);
+	ASSERT_TRUE(evts.find("all") != evts.end());
+	ASSERT_TRUE(evts.find("create") != evts.end());
+	ASSERT_TRUE(evts.find("destroy") != evts.end());
+	ASSERT_TRUE(evts.find("mount") != evts.end());
+	ASSERT_TRUE(evts.find("unmount") != evts.end());
+
+	evts = conf.get_deep_merged_sequence<set<string>>("events", "docker", "container");
+	ASSERT_EQ(evts.size(), 21);
+	ASSERT_TRUE(evts.find("all") != evts.end());
+	ASSERT_TRUE(evts.find("attach") != evts.end());
+	ASSERT_TRUE(evts.find("commit") != evts.end());
+	ASSERT_TRUE(evts.find("copy") != evts.end());
+	ASSERT_TRUE(evts.find("create") != evts.end());
+	ASSERT_TRUE(evts.find("destroy") != evts.end());
+	ASSERT_TRUE(evts.find("die") != evts.end());
+	ASSERT_TRUE(evts.find("exec_create") != evts.end());
+	ASSERT_TRUE(evts.find("exec_start") != evts.end());
+	ASSERT_TRUE(evts.find("export") != evts.end());
+	ASSERT_TRUE(evts.find("kill") != evts.end());
+	ASSERT_TRUE(evts.find("oom") != evts.end());
+	ASSERT_TRUE(evts.find("pause") != evts.end());
+	ASSERT_TRUE(evts.find("rename") != evts.end());
+	ASSERT_TRUE(evts.find("resize") != evts.end());
+	ASSERT_TRUE(evts.find("restart") != evts.end());
+	ASSERT_TRUE(evts.find("start") != evts.end());
+	ASSERT_TRUE(evts.find("stop") != evts.end());
+	ASSERT_TRUE(evts.find("top") != evts.end());
+	ASSERT_TRUE(evts.find("unpause") != evts.end());
+	ASSERT_TRUE(evts.find("update") != evts.end());
+
+	set<string, ci_compare> evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "replicationController");
+	ASSERT_EQ(evts2.size(), 1);
+	ASSERT_TRUE(evts2.find("ALL") != evts2.end());
+
+	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "node");
+	ASSERT_EQ(evts2.size(), 1);
+	ASSERT_TRUE(evts2.find("ALL") != evts2.end());
+
+	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "pod");
+	ASSERT_EQ(evts2.size(), 4);
+	ASSERT_TRUE(evts2.find("added") != evts2.end());
+	ASSERT_TRUE(evts2.find("modified") != evts2.end());
+	ASSERT_TRUE(evts2.find("deleted") != evts2.end());
+	ASSERT_TRUE(evts2.find("error") != evts2.end());
+
+	vector<int> ints = conf.get_deep_merged_sequence<vector<int>>("deep", "level1", "level2", "level3", "level4", "level5");
+	ASSERT_EQ(ints.size(), 3);
+	ASSERT_EQ(ints[0], 1);
+	ASSERT_EQ(ints[1], 2);
+	ASSERT_EQ(ints[2], 3);
+
+	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events2", "docker", "container");
+	ASSERT_EQ(evts2.size(), 6);
+	ASSERT_TRUE(evts2.find("attach") != evts2.end());
+	ASSERT_TRUE(evts2.find("commit") != evts2.end());
+	ASSERT_TRUE(evts2.find("copy") != evts2.end());
+	ASSERT_TRUE(evts2.find("create") != evts2.end());
+	ASSERT_TRUE(evts2.find("destroy") != evts2.end());
+	ASSERT_TRUE(evts2.find("die") != evts2.end());
+
+	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events2", "docker", "image");
+	ASSERT_EQ(evts2.size(), 3);
+	ASSERT_TRUE(evts2.find("delete") != evts2.end());
+	ASSERT_TRUE(evts2.find("import") != evts2.end());
+	ASSERT_TRUE(evts2.find("pull") != evts2.end());
+}

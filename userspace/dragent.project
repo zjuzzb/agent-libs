@@ -138,6 +138,8 @@
     <File Name="dragent/ssh_worker.cpp"/>
     <File Name="dragent/ssh_worker.h"/>
     <File Name="dragent/monitor.h"/>
+    <File Name="dragent/user_event_channel.h"/>
+    <File Name="dragent/user_event_channel.cpp"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>

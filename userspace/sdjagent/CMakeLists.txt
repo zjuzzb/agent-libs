@@ -13,9 +13,13 @@ endif()
 if(JNI_FOUND)
     include(UseJava)
     include_directories(${JAVA_INCLUDE_PATH} ${JAVA_INCLUDE_PATH2})
-    add_library(sdjagentjni SHARED native/com_sysdigcloud_sdjagent_CLibrary.h
-                                native/com_sysdigcloud_sdjagent_CLibrary.cpp)
-    target_link_libraries(sdjagentjni ${JAVA_JVM_LIBRARY})
+    add_library(sdjagentjni SHARED
+            native/com_sysdigcloud_sdjagent_CLibrary.h
+            native/com_sysdigcloud_sdjagent_CLibrary.cpp
+            native/com_sysdigcloud_sdjagent_PosixQueue.h
+            native/com_sysdigcloud_sdjagent_PosixQueue.cpp
+            native/jni_utils.h)
+    target_link_libraries(sdjagentjni ${JAVA_JVM_LIBRARY} rt)
     install (TARGETS sdjagentjni
              DESTINATION ${DRAIOS_BIN_PREFIX}/lib
              COMPONENT agent)

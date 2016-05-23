@@ -20,7 +20,7 @@
 // Transaction table update support
 ///////////////////////////////////////////////////////////////////////////////
 inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
-						uint64_t time_delta, bool is_server)
+						uint64_t time_delta, bool is_server, uint32_t truncation_size)
 {
 	ASSERT(tr->m_protoparser != NULL);
 
@@ -43,7 +43,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 				return;
 			}
 
-			entry = &(m_server_urls[truncate_str(pp->m_url)]);
+			entry = &(m_server_urls[truncate_str(pp->m_url, truncation_size)]);
 		}
 		else
 		{
@@ -55,7 +55,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 				return;
 			}
 
-			entry = &(m_client_urls[truncate_str(pp->m_url)]);
+			entry = &(m_client_urls[truncate_str(pp->m_url, truncation_size)]);
 		}
 
 		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
@@ -79,7 +79,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 
 template<typename Parser>
 inline void sql_state::update(sinsp_partial_transaction* tr,
-						uint64_t time_delta, bool is_server)
+						uint64_t time_delta, bool is_server, uint32_t truncation_size)
 {
 	ASSERT(tr->m_protoparser != NULL);
 
@@ -107,14 +107,14 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		{
 			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_server_queries[truncate_str(pp->m_statement)]);
+				entry = &(m_server_queries[truncate_str(pp->m_statement, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
 			if(tablename != NULL &&
 				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table)]);
+				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -125,14 +125,14 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		{
 			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_client_queries[truncate_str(pp->m_statement)]);
+				entry = &(m_client_queries[truncate_str(pp->m_statement, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
 			if(tablename != NULL &&
 				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table)]);
+				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
 			}
 
@@ -144,22 +144,22 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 
 void sinsp_protostate::update(sinsp_partial_transaction* tr,
 	uint64_t time_delta,
-	bool is_server)
+	bool is_server, uint32_t truncation_size)
 {
 	if(tr->m_type == sinsp_partial_transaction::TYPE_HTTP)
 	{
-		m_http.update(tr, time_delta, is_server);
+		m_http.update(tr, time_delta, is_server, truncation_size);
 	}
 	else if(tr->m_type == sinsp_partial_transaction::TYPE_MYSQL)
 	{
-		m_mysql.update<sinsp_mysql_parser>(tr, time_delta, is_server);
+		m_mysql.update<sinsp_mysql_parser>(tr, time_delta, is_server, truncation_size);
 	}
 	else if(tr->m_type == sinsp_partial_transaction::TYPE_POSTGRES)
 	{
-		m_postgres.update<sinsp_postgres_parser>(tr, time_delta, is_server);
+		m_postgres.update<sinsp_postgres_parser>(tr, time_delta, is_server, truncation_size);
 	} else if(tr->m_type == sinsp_partial_transaction::TYPE_MONGODB)
 	{
-		m_mongodb.update(tr, time_delta, is_server);
+		m_mongodb.update(tr, time_delta, is_server, truncation_size);
 	}
 }
 
@@ -432,7 +432,7 @@ inline void mongodb_state::add(mongodb_state *other)
 	request_sorter<std::string, sinsp_query_details>::merge_maps(&m_client_collections, &(other->m_client_collections));
 }
 
-inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_delta, bool is_server)
+inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_delta, bool is_server, uint32_t truncation_size)
 {
 	ASSERT(tr->m_protoparser != NULL);
 
@@ -451,7 +451,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			}
 			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				collection_entry =&(m_server_collections[truncate_str(pp->m_collection)]);
+				collection_entry =&(m_server_collections[truncate_str(pp->m_collection, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
 			}
 		}
@@ -464,7 +464,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			}
 			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
-				collection_entry =&(m_client_collections[truncate_str(pp->m_collection)]);
+				collection_entry =&(m_client_collections[truncate_str(pp->m_collection, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
 			}
 		}

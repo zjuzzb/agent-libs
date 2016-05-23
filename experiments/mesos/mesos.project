@@ -422,7 +422,6 @@
     <File Name="src/marathon_dispatcher.cpp"/>
     <File Name="src/marathon_dispatcher.h"/>
     <File Name="src/utils.h"/>
-    <File Name="src/memmem.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
