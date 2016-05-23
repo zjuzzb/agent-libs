@@ -143,7 +143,7 @@ function configure_installers {
 	if [[ "${COMPONENT}" == "agent" ]]; then
 		TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
 		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
-		sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g $REPOSITORY_DIR/install-${COMPONENT}
+		sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
 	else
 		TEMPLATE_FILE="${SCRIPTS_DIR}/../../sysdig/scripts/install-sysdig.in"
 		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
