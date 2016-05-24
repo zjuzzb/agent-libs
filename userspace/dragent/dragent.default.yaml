@@ -767,7 +767,7 @@ app_checks:
 # Warning: This is the default user-configurable-events configuration. Please do not uncomment or
 # edit here, use "dragent.yaml" instead to override these settings.
 #
-# For User Guide, see http://support.sysdigcloud.com/hc/en-us/articles/...
+# For User Guide, see http://support.sysdigcloud.com/hc/en-us/articles/210530163
 #
 #
 # By default, events are enabled as defined by the configuration below, but only events with priority
