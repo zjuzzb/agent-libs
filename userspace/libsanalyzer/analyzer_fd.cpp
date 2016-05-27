@@ -1187,17 +1187,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	uint8_t family = *packed_data;
 
 	//
-	// Baseline update
-	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_connect(evt);
-	}
-
-	//
 	// Connection and transaction handling
 	//
 	if((family == PPM_AF_INET || family == PPM_AF_INET6) &&
@@ -1287,12 +1276,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    evt->get_ts());
 #endif // HAS_UNIX_CONNECTIONS
 	}
-}
-
-void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
-{
-	string scomm = evt->m_tinfo->get_comm();
-	int64_t tid = evt->get_tid();
 
 	//
 	// Baseline update
@@ -1302,8 +1285,14 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	// We only do baseline calculatation if the agent's resource usage is low 
 	if(m_analyzer->m_do_baseline_calculation)
 	{
-		m_analyzer->m_falco_baseliner->on_accept(evt, new_fdinfo);
+		m_analyzer->m_falco_baseliner->on_connect(evt);
 	}
+}
+
+void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
+{
+	string scomm = evt->m_tinfo->get_comm();
+	int64_t tid = evt->get_tid();
 
 	//
 	// Connection and transaction handling
@@ -1332,13 +1321,13 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    false,
 		    evt->get_ts());
 #else
-		return;
+		goto blupdate;
 #endif
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNINITIALIZED)
 	{
 		ASSERT(false);
-		return;
+		goto blupdate;
 	}
 
 	//
@@ -1347,6 +1336,18 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	if(new_fdinfo->m_usrstate == NULL)
 	{
 		new_fdinfo->m_usrstate = new sinsp_partial_transaction();
+	}
+
+blupdate:
+	//
+	// Baseline update
+	//
+	ASSERT(m_analyzer->m_falco_baseliner != NULL);
+
+	// We only do baseline calculatation if the agent's resource usage is low 
+	if(m_analyzer->m_do_baseline_calculation)
+	{
+		m_analyzer->m_falco_baseliner->on_accept(evt, new_fdinfo);
 	}
 }
 
@@ -1471,17 +1472,6 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& fullpath, uint32_t flags)
 {
 	//
-	// Baseline update
-	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_file_open(evt, (string&)fullpath, flags);
-	}
-
-	//
 	// File open count update
 	//
 	analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fullpath);
@@ -1503,6 +1493,17 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 		{
 			++file_stat->m_errors;
 		}		
+	}
+
+	//
+	// Baseline update
+	//
+	ASSERT(m_analyzer->m_falco_baseliner != NULL);
+
+	// We only do baseline calculatation if the agent's resource usage is low 
+	if(m_analyzer->m_do_baseline_calculation)
+	{
+		m_analyzer->m_falco_baseliner->on_file_open(evt, (string&)fullpath, flags);
 	}
 }
 

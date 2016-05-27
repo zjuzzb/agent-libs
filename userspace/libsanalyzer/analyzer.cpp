@@ -3188,7 +3188,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				if(m_last_falco_dump_ts != 0)
 				{
-printf("^^^^\n");
 //					auto falco_baseline = m_metrics->add_falco_baseline();
 
 					m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());

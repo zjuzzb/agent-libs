@@ -473,22 +473,22 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 
 		blprogram& pinfo = it->second;
 
-		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
+		ipv4tuple* tuple = &(fdinfo->m_sockinfo.m_ipv4info);
 
-		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
+		if(tuple->m_fields.m_l4proto == SCAP_L4_TCP)
 		{
-			pinfo.m_server_ports.add_r_tcp(tuple.m_fields.m_dport);
-			pinfo.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip);
+			pinfo.m_server_ports.add_r_tcp(tuple->m_fields.m_dport);
+			pinfo.m_ip_endpoints.add_s_tcp(tuple->m_fields.m_dip);
 			pinfo.m_c_subnet_endpoints.add_s_tcp(
-				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip));
+				bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_dip));
 		}
 		else
 		{
-			ASSERT(tuple.m_fields.m_l4proto == SCAP_L4_UDP);
-			pinfo.m_server_ports.add_r_udp(tuple.m_fields.m_dport);
-			pinfo.m_ip_endpoints.add_udp(tuple.m_fields.m_dip);
+			ASSERT(tuple->m_fields.m_l4proto == SCAP_L4_UDP);
+			pinfo.m_server_ports.add_r_udp(tuple->m_fields.m_dport);
+			pinfo.m_ip_endpoints.add_udp(tuple->m_fields.m_dip);
 			pinfo.m_c_subnet_endpoints.add_udp(
-				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip));
+				bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_dip));
 		}
 	}
 }
@@ -512,11 +512,11 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 
 		blprogram& pinfo = it->second;
 
-		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
-		pinfo.m_server_ports.add_l_tcp(tuple.m_fields.m_dport);
-		pinfo.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip);
+		ipv4tuple* tuple = &(fdinfo->m_sockinfo.m_ipv4info);
+		pinfo.m_server_ports.add_l_tcp(tuple->m_fields.m_dport);
+		pinfo.m_ip_endpoints.add_c_tcp(tuple->m_fields.m_sip);
 		pinfo.m_c_subnet_endpoints.add_c_tcp(
-			bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip));
+			bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_sip));
 	}
 }
 
@@ -527,9 +527,9 @@ void sisnp_baseliner::on_bind(sinsp_evt *evt)
 	//       we don't need to check it
 	//
 	sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
-	ipv4serverinfo tuple = fdinfo->m_sockinfo.m_ipv4serverinfo;
+	ipv4serverinfo* tuple = &(fdinfo->m_sockinfo.m_ipv4serverinfo);
 
-	if(tuple.m_l4proto == SCAP_L4_TCP &&
+	if(tuple->m_l4proto == SCAP_L4_TCP &&
 		fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
 ASSERT(false); // Remove this assertion when this code is tested and validated
@@ -548,7 +548,7 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 		blprogram& pinfo = it->second;
 
-		pinfo.m_bound_ports.add_l_tcp(tuple.m_port);
+		pinfo.m_bound_ports.add_l_tcp(tuple->m_port);
 	}
 }
 
