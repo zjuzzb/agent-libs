@@ -10394,17 +10394,33 @@ class falco_prog : public ::google::protobuf::Message {
   inline ::std::string* release_exe();
   inline void set_allocated_exe(::std::string* exe);
 
-  // required uint64 user_id = 3;
+  // repeated string args = 3;
+  inline int args_size() const;
+  inline void clear_args();
+  static const int kArgsFieldNumber = 3;
+  inline const ::std::string& args(int index) const;
+  inline ::std::string* mutable_args(int index);
+  inline void set_args(int index, const ::std::string& value);
+  inline void set_args(int index, const char* value);
+  inline void set_args(int index, const char* value, size_t size);
+  inline ::std::string* add_args();
+  inline void add_args(const ::std::string& value);
+  inline void add_args(const char* value);
+  inline void add_args(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& args() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_args();
+
+  // required uint64 user_id = 4;
   inline bool has_user_id() const;
   inline void clear_user_id();
-  static const int kUserIdFieldNumber = 3;
+  static const int kUserIdFieldNumber = 4;
   inline ::google::protobuf::uint64 user_id() const;
   inline void set_user_id(::google::protobuf::uint64 value);
 
-  // optional string container_id = 4;
+  // optional string container_id = 5;
   inline bool has_container_id() const;
   inline void clear_container_id();
-  static const int kContainerIdFieldNumber = 4;
+  static const int kContainerIdFieldNumber = 5;
   inline const ::std::string& container_id() const;
   inline void set_container_id(const ::std::string& value);
   inline void set_container_id(const char* value);
@@ -10413,10 +10429,10 @@ class falco_prog : public ::google::protobuf::Message {
   inline ::std::string* release_container_id();
   inline void set_allocated_container_id(::std::string* container_id);
 
-  // repeated .draiosproto.falco_category cats = 5;
+  // repeated .draiosproto.falco_category cats = 6;
   inline int cats_size() const;
   inline void clear_cats();
-  static const int kCatsFieldNumber = 5;
+  static const int kCatsFieldNumber = 6;
   inline const ::draiosproto::falco_category& cats(int index) const;
   inline ::draiosproto::falco_category* mutable_cats(int index);
   inline ::draiosproto::falco_category* add_cats();
@@ -10440,12 +10456,13 @@ class falco_prog : public ::google::protobuf::Message {
 
   ::std::string* comm_;
   ::std::string* exe_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> args_;
   ::google::protobuf::uint64 user_id_;
   ::std::string* container_id_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category > cats_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -25416,15 +25433,59 @@ inline void falco_prog::set_allocated_exe(::std::string* exe) {
   }
 }
 
-// required uint64 user_id = 3;
+// repeated string args = 3;
+inline int falco_prog::args_size() const {
+  return args_.size();
+}
+inline void falco_prog::clear_args() {
+  args_.Clear();
+}
+inline const ::std::string& falco_prog::args(int index) const {
+  return args_.Get(index);
+}
+inline ::std::string* falco_prog::mutable_args(int index) {
+  return args_.Mutable(index);
+}
+inline void falco_prog::set_args(int index, const ::std::string& value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void falco_prog::set_args(int index, const char* value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void falco_prog::set_args(int index, const char* value, size_t size) {
+  args_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_prog::add_args() {
+  return args_.Add();
+}
+inline void falco_prog::add_args(const ::std::string& value) {
+  args_.Add()->assign(value);
+}
+inline void falco_prog::add_args(const char* value) {
+  args_.Add()->assign(value);
+}
+inline void falco_prog::add_args(const char* value, size_t size) {
+  args_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+falco_prog::args() const {
+  return args_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+falco_prog::mutable_args() {
+  return &args_;
+}
+
+// required uint64 user_id = 4;
 inline bool falco_prog::has_user_id() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void falco_prog::set_has_user_id() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void falco_prog::clear_has_user_id() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void falco_prog::clear_user_id() {
   user_id_ = GOOGLE_ULONGLONG(0);
@@ -25438,15 +25499,15 @@ inline void falco_prog::set_user_id(::google::protobuf::uint64 value) {
   user_id_ = value;
 }
 
-// optional string container_id = 4;
+// optional string container_id = 5;
 inline bool falco_prog::has_container_id() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void falco_prog::set_has_container_id() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void falco_prog::clear_has_container_id() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void falco_prog::clear_container_id() {
   if (container_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -25508,7 +25569,7 @@ inline void falco_prog::set_allocated_container_id(::std::string* container_id) 
   }
 }
 
-// repeated .draiosproto.falco_category cats = 5;
+// repeated .draiosproto.falco_category cats = 6;
 inline int falco_prog::cats_size() const {
   return cats_.size();
 }

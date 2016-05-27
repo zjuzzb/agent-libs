@@ -747,7 +747,7 @@ public:
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // argv[0] (e.g. "sshd: user@pts/4")
 	//string m_parent_comm; // Parent command name (e.g. "top")
-	//vector<string> m_args; // Command line arguments (e.g. "-d1")
+	vector<string> m_args; // Command line arguments (e.g. "-d1")
 	//vector<string> m_env; // Environment variables
 	string m_container_id; // heuristic-based container id
 	uint32_t m_user_id; // user id

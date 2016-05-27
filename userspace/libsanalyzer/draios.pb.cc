@@ -1682,9 +1682,10 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(falco_category));
   falco_prog_descriptor_ = file->message_type(73);
-  static const int falco_prog_offsets_[5] = {
+  static const int falco_prog_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, comm_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, exe_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, args_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, user_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, container_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, cats_),
@@ -2378,58 +2379,58 @@ void protobuf_AddDesc_draios_2eproto() {
     "roto.key_value\":\n\021falco_subcategory\022\014\n\004n"
     "ame\030\001 \002(\t\022\t\n\001d\030\002 \003(\t\022\014\n\004full\030\003 \001(\010\"O\n\016fa"
     "lco_category\022\014\n\004name\030\001 \002(\t\022/\n\007subcats\030\002 "
-    "\003(\0132\036.draiosproto.falco_subcategory\"y\n\nf"
-    "alco_prog\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe\030\002 \002(\t\022\017\n\007"
-    "user_id\030\003 \002(\004\022\024\n\014container_id\030\004 \001(\t\022)\n\004c"
-    "ats\030\005 \003(\0132\033.draiosproto.falco_category\"8"
-    "\n\016falco_baseline\022&\n\005progs\030\001 \003(\0132\027.draios"
-    "proto.falco_prog*\346\001\n\022sql_statement_type\022"
-    "\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INS"
-    "ERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSO"
-    "P_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020"
-    "\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SH"
-    "OW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSO"
-    "P_ALTER\020\r*\206\003\n\017mongodb_op_type\022\023\n\017MONGODB"
-    "_OP_NONE\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022\025\n\021MON"
-    "GODB_OP_UPDATE\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022"
-    "\027\n\023MONGODB_OP_GET_MORE\020\004\022\033\n\027MONGODB_OP_K"
-    "ILL_CURSORS\020\005\022\023\n\017MONGODB_OP_FIND\020\006\022\030\n\024MO"
-    "NGODB_OP_AGGREGATE\020\007\022\026\n\022MONGODB_OP_COMMA"
-    "ND\020\010\022\024\n\020MONGODB_OP_COUNT\020\t\022\027\n\023MONGODB_OP"
-    "_DISTINCT\020\n\022\031\n\025MONGODB_OP_MAP_REDUCE\020\013\022\027"
-    "\n\023MONGODB_OP_GEO_NEAR\020\014\022\031\n\025MONGODB_OP_GE"
-    "O_SEARCH\020\r\022\036\n\032MONGODB_OP_FIND_AND_MODIFY"
-    "\020\016*G\n\004unit\022\r\n\tUNIT_NONE\020\000\022\017\n\013UNIT_SECOND"
-    "\020\001\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT_PERCENT\020\003*\221\002\n\005"
-    "scale\022\016\n\nSCALE_NONE\020\000\022\017\n\013SCALE_MILLI\020\001\022\017"
-    "\n\013SCALE_MICRO\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n\014SCALE"
-    "_MINUTE\020\004\022\016\n\nSCALE_HOUR\020\005\022\r\n\tSCALE_DAY\020\006"
-    "\022\016\n\nSCALE_KILO\020\007\022\016\n\nSCALE_MEGA\020\010\022\016\n\nSCAL"
-    "E_GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022\016\n\nSCALE_KIBI\020\013"
-    "\022\016\n\nSCALE_MEBI\020\014\022\016\n\nSCALE_GIBI\020\r\022\016\n\nSCAL"
-    "E_TEBI\020\016\022\025\n\021SCALE_PERCENT_0_1\020\017*I\n\017jmx_m"
-    "etric_type\022\033\n\027JMX_METRIC_TYPE_COUNTER\020\001\022"
-    "\031\n\025JMX_METRIC_TYPE_GAUGE\020\002*^\n\022statsd_met"
-    "ric_type\022\020\n\014STATSD_COUNT\020\001\022\024\n\020STATSD_HIS"
-    "TOGRAM\020\002\022\020\n\014STATSD_GAUGE\020\003\022\016\n\nSTATSD_SET"
-    "\020\004*F\n\017app_metric_type\022\031\n\025APP_METRIC_TYPE"
-    "_GAUGE\020\001\022\030\n\024APP_METRIC_TYPE_RATE\020\002*\201\001\n\017a"
-    "pp_check_value\022\026\n\022APP_CHECK_VALUE_OK\020\000\022\033"
-    "\n\027APP_CHECK_VALUE_WARNING\020\001\022\034\n\030APP_CHECK"
-    "_VALUE_CRITICAL\020\002\022\033\n\027APP_CHECK_VALUE_UNK"
-    "NOWN\020\003*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_L"
-    "OCAL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SER"
-    "VER\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IP"
-    "V4_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022"
-    "\n\016IS_UNIX_CLIENT\020 *\314\001\n\014message_type\022\013\n\007M"
-    "ETRICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP"
-    "_REQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SS"
-    "H_OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022"
-    "\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031"
-    "\n\025DIRTY_SHUTDOWN_REPORT\020\n*J\n\016container_t"
-    "ype\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020"
-    "\003\022\t\n\005MESOS\020\004\022\007\n\003RKT\020\005B$\n\031com.draios.mode"
-    "l.protobufB\005AgentH\001", 14939);
+    "\003(\0132\036.draiosproto.falco_subcategory\"\207\001\n\n"
+    "falco_prog\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n"
+    "\004args\030\003 \003(\t\022\017\n\007user_id\030\004 \002(\004\022\024\n\014containe"
+    "r_id\030\005 \001(\t\022)\n\004cats\030\006 \003(\0132\033.draiosproto.f"
+    "alco_category\"8\n\016falco_baseline\022&\n\005progs"
+    "\030\001 \003(\0132\027.draiosproto.falco_prog*\346\001\n\022sql_"
+    "statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELE"
+    "CT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP"
+    "_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022"
+    "\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_"
+    "USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP"
+    "_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\206\003\n\017mongodb_op_"
+    "type\022\023\n\017MONGODB_OP_NONE\020\000\022\025\n\021MONGODB_OP_"
+    "INSERT\020\001\022\025\n\021MONGODB_OP_UPDATE\020\002\022\025\n\021MONGO"
+    "DB_OP_DELETE\020\003\022\027\n\023MONGODB_OP_GET_MORE\020\004\022"
+    "\033\n\027MONGODB_OP_KILL_CURSORS\020\005\022\023\n\017MONGODB_"
+    "OP_FIND\020\006\022\030\n\024MONGODB_OP_AGGREGATE\020\007\022\026\n\022M"
+    "ONGODB_OP_COMMAND\020\010\022\024\n\020MONGODB_OP_COUNT\020"
+    "\t\022\027\n\023MONGODB_OP_DISTINCT\020\n\022\031\n\025MONGODB_OP"
+    "_MAP_REDUCE\020\013\022\027\n\023MONGODB_OP_GEO_NEAR\020\014\022\031"
+    "\n\025MONGODB_OP_GEO_SEARCH\020\r\022\036\n\032MONGODB_OP_"
+    "FIND_AND_MODIFY\020\016*G\n\004unit\022\r\n\tUNIT_NONE\020\000"
+    "\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT"
+    "_PERCENT\020\003*\221\002\n\005scale\022\016\n\nSCALE_NONE\020\000\022\017\n\013"
+    "SCALE_MILLI\020\001\022\017\n\013SCALE_MICRO\020\002\022\016\n\nSCALE_"
+    "NANO\020\003\022\020\n\014SCALE_MINUTE\020\004\022\016\n\nSCALE_HOUR\020\005"
+    "\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCALE_KILO\020\007\022\016\n\nSCALE"
+    "_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022"
+    "\016\n\nSCALE_KIBI\020\013\022\016\n\nSCALE_MEBI\020\014\022\016\n\nSCALE"
+    "_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016\022\025\n\021SCALE_PERCENT"
+    "_0_1\020\017*I\n\017jmx_metric_type\022\033\n\027JMX_METRIC_"
+    "TYPE_COUNTER\020\001\022\031\n\025JMX_METRIC_TYPE_GAUGE\020"
+    "\002*^\n\022statsd_metric_type\022\020\n\014STATSD_COUNT\020"
+    "\001\022\024\n\020STATSD_HISTOGRAM\020\002\022\020\n\014STATSD_GAUGE\020"
+    "\003\022\016\n\nSTATSD_SET\020\004*F\n\017app_metric_type\022\031\n\025"
+    "APP_METRIC_TYPE_GAUGE\020\001\022\030\n\024APP_METRIC_TY"
+    "PE_RATE\020\002*\201\001\n\017app_check_value\022\026\n\022APP_CHE"
+    "CK_VALUE_OK\020\000\022\033\n\027APP_CHECK_VALUE_WARNING"
+    "\020\001\022\034\n\030APP_CHECK_VALUE_CRITICAL\020\002\022\033\n\027APP_"
+    "CHECK_VALUE_UNKNOWN\020\003*\251\001\n\013networkrole\022\010\n"
+    "\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_"
+    "REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004"
+    "\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_"
+    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014me"
+    "ssage_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_"
+    "START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_R"
+    "ESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
+    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPD"
+    "ATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\n"
+    "*J\n\016container_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022"
+    "\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022\007\n\003RKT\020\005B$\n\031"
+    "com.draios.model.protobufB\005AgentH\001", 14954);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -32857,6 +32858,7 @@ void falco_category::Swap(falco_category* other) {
 #ifndef _MSC_VER
 const int falco_prog::kCommFieldNumber;
 const int falco_prog::kExeFieldNumber;
+const int falco_prog::kArgsFieldNumber;
 const int falco_prog::kUserIdFieldNumber;
 const int falco_prog::kContainerIdFieldNumber;
 const int falco_prog::kCatsFieldNumber;
@@ -32943,6 +32945,7 @@ void falco_prog::Clear() {
       }
     }
   }
+  args_.Clear();
   cats_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -32983,12 +32986,31 @@ bool falco_prog::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(24)) goto parse_user_id;
+        if (input->ExpectTag(26)) goto parse_args;
         break;
       }
 
-      // required uint64 user_id = 3;
+      // repeated string args = 3;
       case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_args:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->add_args()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->args(this->args_size() - 1).data(),
+            this->args(this->args_size() - 1).length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_args;
+        if (input->ExpectTag(32)) goto parse_user_id;
+        break;
+      }
+
+      // required uint64 user_id = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_user_id:
@@ -32999,12 +33021,12 @@ bool falco_prog::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_container_id;
+        if (input->ExpectTag(42)) goto parse_container_id;
         break;
       }
 
-      // optional string container_id = 4;
-      case 4: {
+      // optional string container_id = 5;
+      case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_container_id:
@@ -33016,12 +33038,12 @@ bool falco_prog::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_cats;
+        if (input->ExpectTag(50)) goto parse_cats;
         break;
       }
 
-      // repeated .draiosproto.falco_category cats = 5;
-      case 5: {
+      // repeated .draiosproto.falco_category cats = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_cats:
@@ -33030,7 +33052,7 @@ bool falco_prog::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_cats;
+        if (input->ExpectTag(50)) goto parse_cats;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -33071,24 +33093,33 @@ void falco_prog::SerializeWithCachedSizes(
       2, this->exe(), output);
   }
 
-  // required uint64 user_id = 3;
-  if (has_user_id()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->user_id(), output);
+  // repeated string args = 3;
+  for (int i = 0; i < this->args_size(); i++) {
+  ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+    this->args(i).data(), this->args(i).length(),
+    ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      3, this->args(i), output);
   }
 
-  // optional string container_id = 4;
+  // required uint64 user_id = 4;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->user_id(), output);
+  }
+
+  // optional string container_id = 5;
   if (has_container_id()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->container_id().data(), this->container_id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      4, this->container_id(), output);
+      5, this->container_id(), output);
   }
 
-  // repeated .draiosproto.falco_category cats = 5;
+  // repeated .draiosproto.falco_category cats = 6;
   for (int i = 0; i < this->cats_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      5, this->cats(i), output);
+      6, this->cats(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -33119,26 +33150,35 @@ void falco_prog::SerializeWithCachedSizes(
         2, this->exe(), target);
   }
 
-  // required uint64 user_id = 3;
-  if (has_user_id()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(3, this->user_id(), target);
+  // repeated string args = 3;
+  for (int i = 0; i < this->args_size(); i++) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->args(i).data(), this->args(i).length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteStringToArray(3, this->args(i), target);
   }
 
-  // optional string container_id = 4;
+  // required uint64 user_id = 4;
+  if (has_user_id()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(4, this->user_id(), target);
+  }
+
+  // optional string container_id = 5;
   if (has_container_id()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->container_id().data(), this->container_id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        4, this->container_id(), target);
+        5, this->container_id(), target);
   }
 
-  // repeated .draiosproto.falco_category cats = 5;
+  // repeated .draiosproto.falco_category cats = 6;
   for (int i = 0; i < this->cats_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        5, this->cats(i), target);
+        6, this->cats(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -33166,14 +33206,14 @@ int falco_prog::ByteSize() const {
           this->exe());
     }
 
-    // required uint64 user_id = 3;
+    // required uint64 user_id = 4;
     if (has_user_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->user_id());
     }
 
-    // optional string container_id = 4;
+    // optional string container_id = 5;
     if (has_container_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -33181,7 +33221,14 @@ int falco_prog::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.falco_category cats = 5;
+  // repeated string args = 3;
+  total_size += 1 * this->args_size();
+  for (int i = 0; i < this->args_size(); i++) {
+    total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
+      this->args(i));
+  }
+
+  // repeated .draiosproto.falco_category cats = 6;
   total_size += 1 * this->cats_size();
   for (int i = 0; i < this->cats_size(); i++) {
     total_size +=
@@ -33214,6 +33261,7 @@ void falco_prog::MergeFrom(const ::google::protobuf::Message& from) {
 
 void falco_prog::MergeFrom(const falco_prog& from) {
   GOOGLE_CHECK_NE(&from, this);
+  args_.MergeFrom(from.args_);
   cats_.MergeFrom(from.cats_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_comm()) {
@@ -33245,7 +33293,7 @@ void falco_prog::CopyFrom(const falco_prog& from) {
 }
 
 bool falco_prog::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
 
   for (int i = 0; i < cats_size(); i++) {
     if (!this->cats(i).IsInitialized()) return false;
@@ -33257,6 +33305,7 @@ void falco_prog::Swap(falco_prog* other) {
   if (other != this) {
     std::swap(comm_, other->comm_);
     std::swap(exe_, other->exe_);
+    args_.Swap(&other->args_);
     std::swap(user_id_, other->user_id_);
     std::swap(container_id_, other->container_id_);
     cats_.Swap(&other->cats_);

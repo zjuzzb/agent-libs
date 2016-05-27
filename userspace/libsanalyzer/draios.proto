@@ -821,9 +821,10 @@ message falco_category {
 message falco_prog {
     required string comm = 1;
     required string exe = 2;
-    required uint64 user_id = 3;
-    optional string container_id = 4;
-    repeated falco_category cats = 5;
+    repeated string args = 3;
+    required uint64 user_id = 4;
+    optional string container_id = 5;
+    repeated falco_category cats = 6;
 }
 
 message falco_baseline {

@@ -52,7 +52,7 @@ void sisnp_baseliner::init_programs()
 			//
 			np.m_comm = tinfo->m_comm;
 			np.m_exe = tinfo->m_exe;
-			//np.m_args = tinfo->m_args;
+			np.m_args = tinfo->m_args;
 			//np.m_env = tinfo->m_env;
 			np.m_container_id = tinfo->m_container_id;
 			np.m_user_id = tinfo->m_uid;
@@ -199,7 +199,6 @@ void sisnp_baseliner::serialize_json(string filename)
 			eprog["container_id"] = it.second.m_container_id;
 		}
 
-/*
 		// Args
 		if(it.second.m_args.size() != 0)
 		{
@@ -212,7 +211,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 			eprog["args"] = echild;
 		}
-
+/*
 		// Env
 		if(it.second.m_env.size() != 0)
 		{
@@ -309,8 +308,28 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	for(auto& it : m_progtable)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
+
 		prog->set_comm(it.second.m_comm);
 		prog->set_exe(it.second.m_exe);
+
+		for(auto arg_it = it.second.m_args.begin();
+			arg_it != it.second.m_args.end(); ++arg_it)
+		{
+			if(*arg_it != "")
+			{
+				if(arg_it->size() <= ARG_SIZE_LIMIT)
+				{
+					prog->add_args(*arg_it);
+				}
+				else
+				{
+					auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+					prog->add_args(arg_capped);
+				}
+			}
+		}
+
+
 		prog->set_user_id(it.second.m_user_id);
 		if(!it.second.m_container_id.empty())
 		{
@@ -416,7 +435,7 @@ void sisnp_baseliner::on_new_proc(sinsp_threadinfo* tinfo)
 
 		insert_res.first->second.m_comm = tinfo->m_comm;
 		insert_res.first->second.m_exe = tinfo->m_exe;
-		//insert_res.first->second.m_args = tinfo->m_args;
+		insert_res.first->second.m_args = tinfo->m_args;
 		//insert_res.first->second.m_parent_comm = tinfo->m_comm;
 		//insert_res.first->second.m_env = tinfo->m_env;
 		insert_res.first->second.m_container_id = tinfo->m_container_id;
