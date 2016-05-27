@@ -145,6 +145,7 @@ public:
 		}
 	}
 
+#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_r.size() != 0)
@@ -195,6 +196,7 @@ public:
 			}
 		}
 	}
+#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -287,6 +289,7 @@ public:
 		}
 	}
 
+#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_p.size() != 0)
@@ -302,6 +305,7 @@ public:
 		}
 
 	}
+#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -435,6 +439,7 @@ printf("ru+%d\n", (int)port);
 		}
 	}
 
+#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_l_tcp.size() != 0)
@@ -487,6 +492,7 @@ printf("#2)%d\n", (int)it);
 			}
 		}
 	}
+#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -638,6 +644,7 @@ public:
 		return ip & 0x00FFFFFF;
 	}
 
+#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		char addrbuff[32];
@@ -679,6 +686,7 @@ public:
 		}
 
 	}
+#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -769,9 +777,11 @@ public:
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
-	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_json(uint64_t time);
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(draiosproto::falco_baseline* pbentry);
+#endif
 
 	void on_file_open(sinsp_evt *evt, string& name, uint32_t openflags);
 	void on_new_proc(sinsp_threadinfo* tinfo);

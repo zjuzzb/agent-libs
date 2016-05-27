@@ -2,7 +2,9 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include "utils.h"
+#ifdef HAS_ANALYZER
 #include "draios.pb.h"
+#endif
 #include <baseliner.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -301,6 +303,7 @@ void sisnp_baseliner::serialize_json(string filename)
 	ofs << root << std::endl;
 }
 
+#ifdef HAS_ANALYZER
 void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
 	for(auto& it : m_progtable)
@@ -350,6 +353,7 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		it.second.m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
 	}
 }
+#endif
 
 void sisnp_baseliner::emit_as_json(uint64_t time)
 {	
@@ -359,6 +363,7 @@ void sisnp_baseliner::emit_as_json(uint64_t time)
 	load_tables();
 }
 
+#ifdef HAS_ANALYZER
 void sisnp_baseliner::emit_as_protobuf(draiosproto::falco_baseline* pbentry)
 {
 
@@ -367,6 +372,7 @@ void sisnp_baseliner::emit_as_protobuf(draiosproto::falco_baseline* pbentry)
 	clear_tables();
 	load_tables();
 }
+#endif
 
 void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
