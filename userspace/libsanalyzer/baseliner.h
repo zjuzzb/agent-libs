@@ -354,7 +354,6 @@ public:
 
 	inline void add_l_tcp(uint16_t port)
 	{
-printf("l+%d\n", (int)port);
 		if(!m_is_l_tcp_full)
 		{
 			m_l_tcp.insert(port);
@@ -367,7 +366,6 @@ printf("l+%d\n", (int)port);
 
 	inline void add_r_tcp(uint16_t port)
 	{
-printf("r+%d\n", (int)port);
 		if(!m_is_r_tcp_full)
 		{
 			m_r_tcp.insert(port);
@@ -380,7 +378,6 @@ printf("r+%d\n", (int)port);
 
 	inline void add_l_udp(uint16_t port)
 	{
-printf("lu+%d\n", (int)port);
 		if(!m_is_l_udp_full)
 		{
 			m_l_udp.insert(port);
@@ -393,7 +390,6 @@ printf("lu+%d\n", (int)port);
 
 	inline void add_r_udp(uint16_t port)
 	{
-printf("ru+%d\n", (int)port);
 		if(!m_is_r_udp_full)
 		{
 			m_r_udp.insert(port);
