@@ -3179,21 +3179,53 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// If it's time to emit the falco baseline, do the serialization and then restart it
 			//
-//			if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
-			if(is_eof)
+			if(m_do_baseline_calculation)
 			{
-				m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
-			}
-			else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (3LL * 1000000000))
-			{
-				if(m_last_falco_dump_ts != 0)
+				if(is_eof)
 				{
-//					auto falco_baseline = m_metrics->add_falco_baseline();
-
+					//
+					// Make sure to push a baseline when reading from file and we reached EOF
+					//
 					m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
 				}
+				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (3LL * 1000000000))
+				{
+					if(m_last_falco_dump_ts != 0)
+					{
+						m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
+					}
 
-				m_last_falco_dump_ts = evt->get_ts();
+					m_last_falco_dump_ts = evt->get_ts();
+				}
+			}
+			else
+			{
+				//
+				// Once in a while, try to turn baseline calculation on again
+				//
+				if(m_sampling_ratio == 1)
+				{
+					if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (10LL * 1000000000))
+					{
+						//
+						// It's safe to turn baselining on again.
+						// Reset the tables and restart the baseline time counter.
+						//
+						m_do_baseline_calculation = true;
+						m_falco_baseliner->clear_tables();
+						m_falco_baseliner->load_tables();
+						m_last_falco_dump_ts = evt->get_ts();
+						g_logger.format("enabling falco baselining creation after %lus pause",
+							FALCOBL_DISABLE_TIME / 1000000000);
+					}
+				}
+				else
+				{
+					//
+					// Sampling ratio is still high, reset the baseline counter
+					//
+					m_last_falco_dump_ts = evt->get_ts();					
+				}
 			}
 
 			////////////////////////////////////////////////////////////////////////////
