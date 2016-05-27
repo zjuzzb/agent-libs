@@ -718,6 +718,7 @@ message metrics {
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
+    optional falco_baseline falcobl = 27; // baseline information for falco
 }
 
 message dump_request_start {
@@ -804,4 +805,27 @@ message agent_event {
     optional string description = 4;
     optional uint32 severity = 5;
     repeated key_value tags = 6;
+}
+
+message falco_subcategory {
+    required string name = 1;
+    repeated string d = 2;
+    optional bool full = 3;
+}
+
+message falco_category {
+    required string name = 1;
+    repeated falco_subcategory subcats = 2;
+}
+
+message falco_prog {
+    required string comm = 1;
+    required string exe = 2;
+    required uint64 user_id = 3;
+    optional string container_id = 4;
+    repeated falco_category cats = 5;
+}
+
+message falco_baseline {
+    repeated falco_prog progs = 1;
 }

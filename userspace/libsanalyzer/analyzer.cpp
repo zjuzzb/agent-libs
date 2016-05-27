@@ -54,6 +54,7 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
+#include "baseliner.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
 #include "uri.h"
@@ -125,6 +126,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
+	m_falco_baseliner = new sisnp_baseliner();
+
 	//
 	// Listeners
 	//
@@ -192,6 +195,11 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete *it;
 	}
 	m_chisels.clear();
+
+	if(m_falco_baseliner != NULL)
+	{
+		delete m_falco_baseliner;
+	}
 
 	google::protobuf::ShutdownProtobufLibrary();
 }
@@ -268,6 +276,11 @@ void sinsp_analyzer::on_capture_start()
 	// Call the chisels on_capture_start callback
 	//
 	chisels_on_capture_start();
+
+	//
+	// Start the falco baseliner
+	//
+	m_falco_baseliner->init(m_inspector);
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -2464,6 +2477,13 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 					m_new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
+				if(m_new_sampling_ratio == 2)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baseliling");
+					m_do_baseline_calculation = false;
+					m_falco_baseliner->clear_tables();
+				}
+
 				start_dropping_mode(m_new_sampling_ratio);
 			}
 			else
@@ -3154,6 +3174,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						m_host_req_metrics.get_net_percentage() * 100,
 						m_host_req_metrics.get_other_percentage() * 100);
 				}
+			}
+
+			//
+			// If it's time to emit the falco baseline, do the serialization and then restart it
+			//
+//			if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+			if(is_eof)
+			{
+				m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
+			}
+			else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (3LL * 1000000000))
+			{
+				if(m_last_falco_dump_ts != 0)
+				{
+printf("^^^^\n");
+//					auto falco_baseline = m_metrics->add_falco_baseline();
+
+					m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
+				}
+
+				m_last_falco_dump_ts = evt->get_ts();
 			}
 
 			////////////////////////////////////////////////////////////////////////////

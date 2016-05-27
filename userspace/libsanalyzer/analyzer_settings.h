@@ -176,6 +176,11 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define CHISEL_METRIC_LIMIT 300
 
 //
+// Falco baseline emit interval
+//
+#define FALCOBL_DUMP_DELTA_NS (60LL * 5LL * 1000000000)
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

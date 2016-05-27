@@ -43,6 +43,7 @@ class k8s;
 class mesos;
 class docker;
 class uri;
+class sisnp_baseliner;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -519,6 +520,13 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+
+	//
+	// Falco stuff
+	//
+	sisnp_baseliner* m_falco_baseliner = NULL;
+	bool m_do_baseline_calculation = true;
+	uint64_t m_last_falco_dump_ts = 0;
 
 	//
 	// Chisel-generated metrics infrastructure
