@@ -126,6 +126,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
+	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	m_falco_baseliner = new sisnp_baseliner();
 
 	//
@@ -3200,31 +3201,34 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			else
 			{
-				//
-				// Once in a while, try to turn baseline calculation on again
-				//
-				if(m_sampling_ratio == 1)
+				if(m_configuration->get_falco_baselining_enabled())
 				{
-					if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (10LL * 1000000000))
+					//
+					// Once in a while, try to turn baseline calculation on again
+					//
+					if(m_sampling_ratio == 1)
+					{
+						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (10LL * 1000000000))
+						{
+							//
+							// It's safe to turn baselining on again.
+							// Reset the tables and restart the baseline time counter.
+							//
+							m_do_baseline_calculation = true;
+							m_falco_baseliner->clear_tables();
+							m_falco_baseliner->load_tables();
+							m_last_falco_dump_ts = evt->get_ts();
+							g_logger.format("enabling falco baselining creation after %lus pause",
+								FALCOBL_DISABLE_TIME / 1000000000);
+						}
+					}
+					else
 					{
 						//
-						// It's safe to turn baselining on again.
-						// Reset the tables and restart the baseline time counter.
+						// Sampling ratio is still high, reset the baseline counter
 						//
-						m_do_baseline_calculation = true;
-						m_falco_baseliner->clear_tables();
-						m_falco_baseliner->load_tables();
-						m_last_falco_dump_ts = evt->get_ts();
-						g_logger.format("enabling falco baselining creation after %lus pause",
-							FALCOBL_DISABLE_TIME / 1000000000);
+						m_last_falco_dump_ts = evt->get_ts();					
 					}
-				}
-				else
-				{
-					//
-					// Sampling ratio is still high, reset the baseline counter
-					//
-					m_last_falco_dump_ts = evt->get_ts();					
 				}
 			}
 

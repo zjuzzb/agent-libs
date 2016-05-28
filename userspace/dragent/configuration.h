@@ -468,6 +468,8 @@ public:
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
 
+	bool m_falco_baselining_enabled;
+
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
 

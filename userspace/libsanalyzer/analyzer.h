@@ -525,7 +525,7 @@ VISIBILITY_PRIVATE
 	// Falco stuff
 	//
 	sisnp_baseliner* m_falco_baseliner = NULL;
-	bool m_do_baseline_calculation = true;
+	bool m_do_baseline_calculation;
 	uint64_t m_last_falco_dump_ts = 0;
 
 	//
