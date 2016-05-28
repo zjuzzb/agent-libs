@@ -187,6 +187,12 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define FALCOBL_DISABLE_TIME (60LL * 30LL * 1000000000)
 
 //
+// Time after which we should try to reenable the falco baseliner after
+// we disable it for mperformance reasons.
+//
+#define FALCOBL_MAX_PROG_TABLE_SIZE 2000
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"

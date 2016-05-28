@@ -769,6 +769,7 @@ public:
 	void init(sinsp* inspector);
 	void load_tables();
 	void clear_tables();
+	void add_prog(size_t key, blprogram* info);
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
 	void emit_as_json(uint64_t time);
@@ -791,7 +792,9 @@ private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram> m_progtable;
+#ifdef HAS_ANALYZER
 	unordered_map<string, sinsp_container_info> m_container_table;
+#endif
 	string m_hostname;
 	uint64_t m_hostid;
 };

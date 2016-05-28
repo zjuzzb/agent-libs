@@ -29,7 +29,9 @@ void sisnp_baseliner::load_tables()
 void sisnp_baseliner::clear_tables()
 {
 	m_progtable.clear();
+#ifdef HAS_ANALYZER
 	m_container_table.clear();
+#endif
 }
 
 void sisnp_baseliner::init_programs()
@@ -152,11 +154,15 @@ void sisnp_baseliner::init_programs()
 				}
 			}
 
-			m_progtable[tinfo->m_program_hash] = np;
+			if(m_progtable.size() < FALCOBL_MAX_PROG_TABLE_SIZE)
+			{
+				m_progtable[tinfo->m_program_hash] = np;
+			}
 		}
 	}
 }
 
+#ifdef HAS_ANALYZER
 void sisnp_baseliner::init_containers()
 {
 	//
@@ -164,6 +170,7 @@ void sisnp_baseliner::init_containers()
 	//
 	m_container_table = *(m_inspector->m_container_manager.get_containers());
 }
+#endif
 
 void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 {
@@ -284,6 +291,7 @@ void sisnp_baseliner::serialize_json(string filename)
 		table.append(eprog);
 	}
 
+#ifdef HAS_ANALYZER
 	for(auto& it : m_container_table)
 	{
 		Json::Value cinfo;
@@ -292,6 +300,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		ctable[it.second.m_id] = cinfo;
 	}
+#endif
 
 	root["progs"] = table;
 	root["containers"] = ctable;
@@ -305,6 +314,7 @@ void sisnp_baseliner::serialize_json(string filename)
 #ifdef HAS_ANALYZER
 void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
+	return;
 	for(auto& it : m_progtable)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
@@ -422,6 +432,11 @@ void sisnp_baseliner::on_new_proc(sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
 	size_t phash = tinfo->m_program_hash;
+
+	if(m_progtable.size() >= FALCOBL_MAX_PROG_TABLE_SIZE)
+	{
+		return;
+	}
 
 	//
 	// Find the program entry
@@ -573,5 +588,7 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
+#ifdef HAS_ANALYZER
 	m_container_table[container_info.m_id] = container_info;
+#endif
 }
