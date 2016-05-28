@@ -3189,7 +3189,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
 				}
-				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (3LL * 1000000000))
+				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{
 					if(m_last_falco_dump_ts != 0)
 					{
@@ -3208,7 +3208,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					if(m_sampling_ratio == 1)
 					{
-						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > (10LL * 1000000000))
+						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DISABLE_TIME)
 						{
 							//
 							// It's safe to turn baselining on again.
