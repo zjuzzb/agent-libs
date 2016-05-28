@@ -224,8 +224,9 @@ void sinsp_worker::init()
 	if(m_configuration->m_falco_baselining_enabled)
 	{
 		g_log->information("Setting falco baselining");
-		m_analyzer->get_configuration()->set_falco_baselining_enabled(true);
 	}
+	m_analyzer->get_configuration()->set_falco_baselining_enabled(
+		m_configuration->m_falco_baselining_enabled);
 
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
