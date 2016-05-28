@@ -626,7 +626,7 @@ app_checks:
     pattern:
       comm: etcd
     conf:
-      url: "http://localhost:4001"
+      url: "http://localhost:2379"
   - name: couchdb
     check_module: couch
     pattern:
@@ -726,7 +726,7 @@ app_checks:
 # Warning: This is an example of kubernetes configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
 #
-# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/206606883
+# For User Guide, see http://support.sysdigcloud.com/hc/en-us/articles/206606883
 #
 # Example (overrides default setting):
 #
@@ -741,11 +741,13 @@ app_checks:
 # k8s_bt_auth_token: k8s-token.tok
 #
 
+# End of kubernetes section
+
 #
 # Warning: This is an example of mesos configuration. Please do not uncomment and edit here,
 # use "dragent.yaml" instead.
 #
-# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/207886103
+# For User Guide, see http://support.sysdigcloud.com/hc/en-us/articles/207886103
 #
 # Example (overrides default setting):
 #
@@ -757,76 +759,89 @@ app_checks:
 # mesos_follow_leader: false
 #
 
+# End of mesos section
+
 #
 # USER-CONFIGURABLE EVENTS
 #
-# Warning: This is the default user-configurable-events configuration. Please do not edit here,
-# use "dragent.yaml" instead to override these settings.
+# Warning: This is the default user-configurable-events configuration. Please do not uncomment or
+# edit here, use "dragent.yaml" instead to override these settings.
 #
-# For documentation, see http://support.sysdigcloud.com/hc/en-us/articles/...
-#
-#
-# By default, all events are enabled, but only events with priority "information" and higher are emitted
-# by the default setting of the logging system. To modify the default behavior, use the following
-# priority filter setting example:
-#
-# Example:
-# to enable all except the information and debug messages, use following setting:
-#
-# log:
-#  event_priority: warning
-#
-# Valid log levels are:
-#
-# none, emergency, alert, critical, error, warning, notice, information, debug
+# For User Guide, see http://support.sysdigcloud.com/hc/en-us/articles/210530163
 #
 #
-# For a full list of Kubernetes and Docker supported events as well as severities (in comments) and which events are enabled by default,
-# see the "events" config entry below. 
+# By default, events are enabled as defined by the configuration below, but only events with priority
+# "information" and higher are emitted by the default setting of the logging system.
+# 
+# The following events setting examples demonstrate modifying of the default behavior:
 #
-# The sequences can be specified in a single-line or as bulleted list. So, the following two settings are equivalent, 
-# permitting only [Pulling, Pulled, Failed] container events for pods to be emitted:
+# An entry in a section in dragent.yaml overrides the entire section in the default configuration in this file. 
+#
+# For example, the Pulling entry in the example below will permit only kubernetes pod Pulling events to be
+# emitted and all other kubernetes pod events settings in this file will be ignored (however, other kubernetes
+# sections - node and replicationController - remain intact and will be used as specified in the settings below):
 #
 # events:
-#  kubernetes:
-#    pod: [Pulling, Pulled, Failed]
+#   kubernetes:
+#     pod:
+#       - Pulling
+#
+# Disable all kubernetes node and docker image events and limit docker container events to [attach, commit, copy]
+# (components events in other sections will be collected as specified by default):
 #
 # events:
-#  kubernetes:
-#    pod:
-#      - Pulling
-#      - Pulled
-#      - Failed
+#   kubernetes:
+#     node: none
+#   docker:
+#     image: none
+#     container:
+#       - attach
+#       - commit
+#       - copy
 #
-# In the following example, kubernetes node and docker image events are disabled, while docker container events
-# are limited to [attach, commit, copy]. All other supported components events will be collected.
+# To disable all events, set the kubernetes and docker items to none:
+#   events:
+#     kubernetes: none
+#     docker: none
 #
-#events:
-#  kubernetes:
-#    node: none
-#  docker:
-#    image: none
-#    container: [attach, commit, copy]
+# Setting the log event priority to none will have the same effect as previous setting (no events transmitted):
+#   log:
+#     event_priority: none
 #
-# To disable all events, set the item to 'none', eg. to disable all events:
+# Enable all except the debug messages:
+#   log:
+#     event_priority: information
 #
-#events:
-#  kubernetes: none
-#  docker: none
+# In addition to bulleted lists, sequences can also be specified in a bracketed single line, eg.:
 #
-# Alternatively, setting the log event priority to 'none' will have the same effect:
+# events:
+#   kubernetes:
+#     pod: [Pulling, Pulled, Failed]
 #
-# log:
-#  event_priority: none
+# So, the following two settings are equivalent, permitting only Pulling, Pulled, Failed events for pods to be emitted:
+#
+# events:
+#   kubernetes:
+#     pod: [Pulling, Pulled, Failed]
+#
+# events:
+#   kubernetes:
+#     pod:
+#       - Pulling
+#       - Pulled
+#       - Failed
+#
+# Default settings for runtime follow below. Commented entries are disabled by default.
+#
 
 events:
   kubernetes:
     node:
-      - TerminatedAllPods       # Terminated All Pods        (information)
+#      - TerminatedAllPods       # Terminated All Pods        (information)
       - RegisteredNode          # Node Registered            (information)
       - RemovingNode            # Removing Node              (information)
       - DeletingNode            # Deleting Node              (information)
-      - DeletingAllPods         # Deleting All Pods          (information)
+#      - DeletingAllPods         # Deleting All Pods          (information)
       - TerminatingEvictedPod   # Terminating Evicted Pod    (information)
       - NodeReady               # Node Ready                 (information)
       - NodeNotReady            # Node not Ready             (information)
@@ -854,13 +869,13 @@ events:
       - Failed              # Container Image Pull, Create or Start Failed (warning)
       - InspectFailed       # Container Image Inspect Failed               (warning)
       - ErrImageNeverPull   # Container Image NeverPull Policy Violation   (warning)
-      - BackOff             # Back Off Container Start or Image Pull       (warning)
-      - Created             # Container Created                            (information)
-      - Started             # Container Started                            (information)
+#      - BackOff             # Back Off Container Start or Image Pull       (warning)
+#      - Created             # Container Created                            (information)
+#      - Started             # Container Started                            (information)
       - Killing             # Killing Container                            (information)
-      - Unhealthy           # Container Unhealthy                          (warning)
-      - FailedSync          # Pod Sync Failed                              (warning)
-      - FailedValidation    # Failed Pod Configuration Validation          (warning)
+#      - Unhealthy           # Container Unhealthy                          (warning)
+#      - FailedSync          # Pod Sync Failed                              (warning)
+#      - FailedValidation    # Failed Pod Configuration Validation          (warning)
       - OutOfDisk           # Out of Disk                                  (information)
       - HostPortConflict    # Host/Port Conflict                           (warning)
     replicationController:
@@ -873,9 +888,9 @@ events:
 #      - attach      # Container Attached      (information)
 #      - commit      # Container Committed     (information)
 #      - copy        # Container Copied        (information)
-      - create       # Container Created       (information)
-      - destroy      # Container Destroyed     (warning)
-      - die          # Container Died          (warning)
+#      - create       # Container Created       (information)
+#      - destroy      # Container Destroyed     (warning)
+#      - die          # Container Died          (warning)
 #      - exec_create # Container Exec Created  (information)
 #      - exec_start  # Container Exec Started  (information)
 #      - export      # Container Exported      (information)
@@ -884,9 +899,9 @@ events:
 #      - pause       # Container Paused        (information)
 #      - rename      # Container Renamed       (information)
 #      - resize      # Container Resized       (information)
-      - restart      # Container Restarted     (warning)
-      - start        # Container Started       (information)
-      - stop         # Container Stopped       (information)
+#      - restart      # Container Restarted     (warning)
+#      - start        # Container Started       (information)
+#      - stop         # Container Stopped       (information)
 #      - top         # Container Top           (information)
 #      - unpause     # Container Unpaused      (information)
 #      - update      # Container Updated       (information)
@@ -907,6 +922,8 @@ events:
 #      - connect    # Network Connected     (information)
 #      - disconnect # Network Disconnected  (information)
 #      - destroy    # Network Destroyed     (information)
+
+# End of events section
 
 known_ports:
   - 902 # VMware 

@@ -133,8 +133,12 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
+	if(!m_config) { return; }
+
+	typedef std::set<string, ci_compare> seq_t;
+
 	// shortcut to enable or disable all in dragent.yaml (overriding default)
-	std::set<string, ci_compare> user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system);
+	seq_t user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_root(), "events", system);
 	if(user_events.size())
 	{
 		if(user_events.find("all") != user_events.end())
@@ -152,7 +156,11 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 		}
 	}
 
-	user_events = m_config->get_deep_merged_sequence<set<string, ci_compare>>("events", system, component);
+	user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_root(), "events", system, component);
+	if(user_events.empty()) // nothing in dragent.yaml, fail over to dragent.default.yaml
+	{
+		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, *m_config->get_default_root(), "events", system, component);
+	}
 	if(user_events.size())
 	{
 		if(user_events.find("none") == user_events.end())
@@ -363,7 +371,7 @@ void dragent_configuration::init(Application* app)
 	}
 	m_blacklisted_ports = m_config->get_merged_sequence<uint16_t>("blacklisted_ports");
 
-	for(auto ch : m_config->m_root["chisels"])
+	for(auto ch : m_config->get_root()["chisels"])
 	{
 		sinsp_chisel_details details;
 
@@ -549,7 +557,7 @@ void dragent_configuration::print_configuration()
 
 	if(m_k8s_event_filter)
 	{
-		g_log->information("K8s events filter:\n" + m_k8s_event_filter->to_string());
+		g_log->information("K8s events filter:" + m_k8s_event_filter->to_string());
 	}
 	else
 	{
@@ -557,7 +565,7 @@ void dragent_configuration::print_configuration()
 	}
 	if(m_docker_event_filter)
 	{
-		g_log->information("Docker events filter:\n" + m_docker_event_filter->to_string());
+		g_log->information("Docker events filter:" + m_docker_event_filter->to_string());
 	}
 	else
 	{

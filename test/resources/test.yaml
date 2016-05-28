@@ -30,6 +30,7 @@ events2:
   docker:
     container:
       - attach # intentional duplicate with default
+      - create
       - commit
       - copy
     image:

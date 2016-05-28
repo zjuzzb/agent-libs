@@ -122,6 +122,27 @@ public:
 	}
 
 	/**
+	* Will retrieve arbitrarily deeply nested sequence
+	* into an STL container T. Also supports scalars;
+	* if found entity is scalar, a container with a
+	* single member is returned.
+	*/
+	template<typename T, typename... Args>
+	static T get_deep_sequence(yaml_configuration& config, const YAML::Node& root, Args... args)
+	{
+		T ret;
+		try
+		{
+			get_sequence(ret, root, args...);
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			config.add_error(string("Config file error."));
+		}
+		return ret;
+	}
+
+	/**
 	* Get a scalar value from config, like:
 	* customerid: "578c60dc-c8b2-11e4-a615-6c4008aec9fe"
 	* Throws if value is not found.
@@ -315,7 +336,25 @@ public:
 		return m_errors;
 	}
 
-	YAML::Node m_root;
+	const YAML::Node& get_root() const
+	{
+		return m_root;
+	}
+
+	const std::shared_ptr<YAML::Node> get_default_root() const
+	{
+		if(m_default_root)
+		{
+			return m_default_root;
+		}
+		m_errors.emplace_back("Non-existing default root requested.");
+		return nullptr;
+	}
+
+	void add_error(const std::string& err)
+	{
+		m_errors.emplace_back(err);
+	}
 
 private:
 	// no-op needed to compile and terminate recursion
@@ -352,8 +391,9 @@ private:
 		get_sequence(ret, child_node, args...);
 	}
 
-	std::unique_ptr<YAML::Node> m_default_root;
-	vector<string> m_errors;
+	YAML::Node m_root;
+	std::shared_ptr<YAML::Node> m_default_root;
+	mutable vector<string> m_errors;
 };
 
 namespace YAML {
