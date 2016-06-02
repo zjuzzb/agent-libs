@@ -305,6 +305,7 @@ public class MonitoredVM {
     public List<BeanData> getMetrics() {
         final List<BeanData> metrics = new ArrayList<BeanData>();
         if (agentActive) {
+            setNetworkNamespaceIfNeeded();
             try {
                 if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
                     refreshMatchingBeans();
@@ -333,6 +334,7 @@ public class MonitoredVM {
                 LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
                 disconnect();
             }
+            setInitialNamespaceIfNeeded();
         }
         return metrics;
     }
@@ -340,13 +342,7 @@ public class MonitoredVM {
     private void connect() {
         if (this.address != null)
         {
-            if (isOnAnotherContainer) {
-                boolean namespaceChanged = CLibrary.setNamespace(pid);
-
-                if(!namespaceChanged) {
-                    LOGGER.warning(String.format("Cannot set namespace to pid: %d", pid));
-                }
-            }
+            setNetworkNamespaceIfNeeded();
             try {
                 connection = new Connection(address);
                 agentActive = true;
@@ -355,11 +351,25 @@ public class MonitoredVM {
             } catch (IOException e) {
                 LOGGER.warning(String.format("Cannot connect to JMX address %s of process %d: %s", address, pid, e.getMessage()));
             }
-            if (isOnAnotherContainer) {
-                boolean namespaceSet = CLibrary.setInitialNamespace();
-                if(!namespaceSet) {
-                    LOGGER.severe("Cannot set initial namespace");
-                }
+            setInitialNamespaceIfNeeded();
+        }
+    }
+
+    private void setInitialNamespaceIfNeeded() {
+        if (isOnAnotherContainer) {
+            boolean namespaceSet = CLibrary.setInitialNamespace();
+            if(!namespaceSet) {
+                LOGGER.severe("Cannot set initial namespace");
+            }
+        }
+    }
+
+    private void setNetworkNamespaceIfNeeded() {
+        if (isOnAnotherContainer) {
+            boolean namespaceChanged = CLibrary.setNamespace(pid);
+
+            if(!namespaceChanged) {
+                LOGGER.warning(String.format("Cannot set namespace to pid: %d", pid));
             }
         }
     }
