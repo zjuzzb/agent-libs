@@ -1,5 +1,5 @@
 #define BL_MAX_FILE_TABLE_SIZE 256
-#define BL_INIT_TIME_NS (5LL * 1000000000)
+#define BL_STARTUP_TIME_NS (5LL * 1000000000)
 
 //
 // This class stores the set of files that a program accesses
@@ -269,15 +269,15 @@ class blfiletable_split
 public:
 	void clear()
 	{
-		m_init_table.clear();
+		m_startup_table.clear();
 		m_regular_table.clear();
 	}
 
 	inline void add(string& name, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add(name, openflags, uncategorized);
+			m_startup_table.add(name, openflags, uncategorized);
 		}
 		else
 		{
@@ -287,9 +287,9 @@ public:
 
 	inline void add_dir(string& filename, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_dir(filename, openflags, uncategorized);
+			m_startup_table.add_dir(filename, openflags, uncategorized);
 		}
 		else
 		{
@@ -307,10 +307,10 @@ public:
 	void serialize_json(Json::Value& element)
 	{
 		Json::Value vsi;
-		m_init_table.serialize_json(vsi);
+		m_startup_table.serialize_json(vsi);
 		if(!vsi.empty())
 		{
-			element["init"] = vsi;
+			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
@@ -321,7 +321,7 @@ public:
 		}
 	}
 
-	blfiletable m_init_table;
+	blfiletable m_startup_table;
 	blfiletable m_regular_table;
 };
 
@@ -401,15 +401,15 @@ class blprogtable_split
 public:
 	void clear()
 	{
-		m_init_table.clear();
+		m_startup_table.clear();
 		m_regular_table.clear();
 	}
 
 	inline void add(string& name, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add(name);
+			m_startup_table.add(name);
 		}
 		else
 		{
@@ -427,10 +427,10 @@ public:
 	void serialize_json(Json::Value& element)
 	{
 		Json::Value vsi;
-		m_init_table.serialize_json(vsi);
+		m_startup_table.serialize_json(vsi);
 		if(!vsi.empty())
 		{
-			element["init"] = vsi;
+			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
@@ -441,7 +441,7 @@ public:
 		}
 	}
 
-	blprogtable m_init_table;
+	blprogtable m_startup_table;
 	blprogtable m_regular_table;
 };
 
@@ -677,15 +677,15 @@ class blporttable_split
 public:
 	void clear()
 	{
-		m_init_table.clear();
+		m_startup_table.clear();
 		m_regular_table.clear();
 	}
 
 	inline void add_l_tcp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_l_tcp(port);
+			m_startup_table.add_l_tcp(port);
 		}
 		else
 		{
@@ -695,9 +695,9 @@ public:
 
 	inline void add_r_tcp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_r_tcp(port);
+			m_startup_table.add_r_tcp(port);
 		}
 		else
 		{
@@ -707,9 +707,9 @@ public:
 
 	inline void add_l_udp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_l_udp(port);
+			m_startup_table.add_l_udp(port);
 		}
 		else
 		{
@@ -719,9 +719,9 @@ public:
 
 	inline void add_r_udp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_r_udp(port);
+			m_startup_table.add_r_udp(port);
 		}
 		else
 		{
@@ -739,10 +739,10 @@ public:
 	void serialize_json(Json::Value& element)
 	{
 		Json::Value vsi;
-		m_init_table.serialize_json(vsi);
+		m_startup_table.serialize_json(vsi);
 		if(!vsi.empty())
 		{
-			element["init"] = vsi;
+			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
@@ -753,7 +753,7 @@ public:
 		}
 	}
 
-	blporttable m_init_table;
+	blporttable m_startup_table;
 	blporttable m_regular_table;
 };
 
@@ -948,15 +948,15 @@ class bl_ip_endpoint_table_split
 public:
 	void clear()
 	{
-		m_init_table.clear();
+		m_startup_table.clear();
 		m_regular_table.clear();
 	}
 
 	inline void add_c_tcp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_c_tcp(ip);
+			m_startup_table.add_c_tcp(ip);
 		}
 		else
 		{
@@ -966,9 +966,9 @@ public:
 
 	inline void add_s_tcp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_s_tcp(ip);
+			m_startup_table.add_s_tcp(ip);
 		}
 		else
 		{
@@ -978,9 +978,9 @@ public:
 
 	inline void add_udp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_INIT_TIME_NS)
+		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_init_table.add_udp(ip);
+			m_startup_table.add_udp(ip);
 		}
 		else
 		{
@@ -998,10 +998,10 @@ public:
 	void serialize_json(Json::Value& element)
 	{
 		Json::Value vsi;
-		m_init_table.serialize_json(vsi);
+		m_startup_table.serialize_json(vsi);
 		if(!vsi.empty())
 		{
-			element["init"] = vsi;
+			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
@@ -1012,7 +1012,7 @@ public:
 		}
 	}
 
-	bl_ip_endpoint_table m_init_table;
+	bl_ip_endpoint_table m_startup_table;
 	bl_ip_endpoint_table m_regular_table;
 };
 
