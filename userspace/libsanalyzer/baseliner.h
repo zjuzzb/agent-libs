@@ -1,4 +1,5 @@
 #define BL_MAX_FILE_TABLE_SIZE 256
+#define BL_INIT_TIME_NS (5LL * 1000000000)
 
 //
 // This class stores the set of files that a program accesses
@@ -260,8 +261,72 @@ public:
 };
 
 //
+// This class manages two blfiletable tables, one for the process startup phase and one
+// for regular long term activity
 //
-// This class stores the set of files that a program accesses
+class blfiletable_split
+{
+public:
+	void clear()
+	{
+		m_init_table.clear();
+		m_regular_table.clear();
+	}
+
+	inline void add(string& name, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add(name, openflags, uncategorized);
+		}
+		else
+		{
+			m_regular_table.add(name, openflags, uncategorized);
+		}
+	}
+
+	inline void add_dir(string& filename, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_dir(filename, openflags, uncategorized);
+		}
+		else
+		{
+			m_regular_table.add_dir(filename, openflags, uncategorized);
+		}
+	}
+
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_category* cat)
+	{
+		xxx
+	}
+#endif
+
+	void serialize_json(Json::Value& element)
+	{
+		Json::Value vsi;
+		m_init_table.serialize_json(vsi);
+		if(!vsi.empty())
+		{
+			element["init"] = vsi;
+		}
+
+		Json::Value vsl;
+		m_regular_table.serialize_json(vsl);
+		if(!vsl.empty())
+		{
+			element["regular"] = vsl;
+		}
+	}
+
+	blfiletable m_init_table;
+	blfiletable m_regular_table;
+};
+
+//
+// This class stores the set of programs that a process executes
 //
 class blprogtable
 {
@@ -327,6 +392,60 @@ public:
 	bool m_is_p_full;
 };
 
+//
+// This class manages two blprogtable tables, one for the process startup phase and one
+// for regular long term activity
+//
+class blprogtable_split
+{
+public:
+	void clear()
+	{
+		m_init_table.clear();
+		m_regular_table.clear();
+	}
+
+	inline void add(string& name, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add(name);
+		}
+		else
+		{
+			m_regular_table.add(name);
+		}
+	}
+
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_category* cat)
+	{
+		xxx
+	}
+#endif
+
+	void serialize_json(Json::Value& element)
+	{
+		Json::Value vsi;
+		m_init_table.serialize_json(vsi);
+		if(!vsi.empty())
+		{
+			element["init"] = vsi;
+		}
+
+		Json::Value vsl;
+		m_regular_table.serialize_json(vsl);
+		if(!vsl.empty())
+		{
+			element["regular"] = vsl;
+		}
+	}
+
+	blprogtable m_init_table;
+	blprogtable m_regular_table;
+};
+
+//
 // This class keeps track of the ports that a program uses
 //
 class blporttable
@@ -456,8 +575,10 @@ public:
 			sr_tcp->set_name("r_tcp");
 			sr_tcp->set_full(m_is_r_tcp_full);
 
+printf("#1)%d\n", (int)m_r_tcp.size());
 			for(auto it : m_r_tcp)
 			{
+printf("#2)%d\n", (int)it);
 				sr_tcp->add_d(to_string(it));
 			}
 		}
@@ -545,6 +666,95 @@ public:
 	bool m_is_r_tcp_full;
 	bool m_is_l_udp_full;
 	bool m_is_r_udp_full;
+};
+
+//
+// This class manages two blporttable tables, one for the process startup phase and one
+// for regular long term activity
+//
+class blporttable_split
+{
+public:
+	void clear()
+	{
+		m_init_table.clear();
+		m_regular_table.clear();
+	}
+
+	inline void add_l_tcp(uint16_t port, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_l_tcp(port);
+		}
+		else
+		{
+			m_regular_table.add_l_tcp(port);
+		}
+	}
+
+	inline void add_r_tcp(uint16_t port, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_r_tcp(port);
+		}
+		else
+		{
+			m_regular_table.add_r_tcp(port);
+		}
+	}
+
+	inline void add_l_udp(uint16_t port, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_l_udp(port);
+		}
+		else
+		{
+			m_regular_table.add_l_udp(port);
+		}
+	}
+
+	inline void add_r_udp(uint16_t port, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_r_udp(port);
+		}
+		else
+		{
+			m_regular_table.add_r_udp(port);
+		}
+	}
+
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_category* cat)
+	{
+		xxx
+	}
+#endif
+
+	void serialize_json(Json::Value& element)
+	{
+		Json::Value vsi;
+		m_init_table.serialize_json(vsi);
+		if(!vsi.empty())
+		{
+			element["init"] = vsi;
+		}
+
+		Json::Value vsl;
+		m_regular_table.serialize_json(vsl);
+		if(!vsl.empty())
+		{
+			element["regular"] = vsl;
+		}
+	}
+
+	blporttable m_init_table;
+	blporttable m_regular_table;
 };
 
 //
@@ -730,6 +940,83 @@ public:
 };
 
 //
+// This class manages two bl_ip_endpoint_table tables, one for the process startup phase and one
+// for regular long term activity
+//
+class bl_ip_endpoint_table_split
+{
+public:
+	void clear()
+	{
+		m_init_table.clear();
+		m_regular_table.clear();
+	}
+
+	inline void add_c_tcp(uint32_t ip, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_c_tcp(ip);
+		}
+		else
+		{
+			m_regular_table.add_c_tcp(ip);
+		}
+	}
+
+	inline void add_s_tcp(uint32_t ip, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_s_tcp(ip);
+		}
+		else
+		{
+			m_regular_table.add_s_tcp(ip);
+		}
+	}
+
+	inline void add_udp(uint32_t ip, uint64_t time_from_clone)
+	{
+		if(time_from_clone < BL_INIT_TIME_NS)
+		{
+			m_init_table.add_udp(ip);
+		}
+		else
+		{
+			m_regular_table.add_udp(ip);
+		}
+	}
+
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_category* cat)
+	{
+		xxx
+	}
+#endif
+
+	void serialize_json(Json::Value& element)
+	{
+		Json::Value vsi;
+		m_init_table.serialize_json(vsi);
+		if(!vsi.empty())
+		{
+			element["init"] = vsi;
+		}
+
+		Json::Value vsl;
+		m_regular_table.serialize_json(vsl);
+		if(!vsl.empty())
+		{
+			element["regular"] = vsl;
+		}
+	}
+
+	bl_ip_endpoint_table m_init_table;
+	bl_ip_endpoint_table m_regular_table;
+};
+
+//
 // Program State
 //
 class blprogram
@@ -747,17 +1034,17 @@ public:
 	string m_comm; // Command name (e.g. "top")
 	string m_exe; // argv[0] (e.g. "sshd: user@pts/4")
 	//string m_parent_comm; // Parent command name (e.g. "top")
-	vector<string> m_args; // Command line arguments (e.g. "-d1")
+	//vector<string> m_args; // Command line arguments (e.g. "-d1")
 	//vector<string> m_env; // Environment variables
 	string m_container_id; // heuristic-based container id
 	uint32_t m_user_id; // user id
-	blfiletable m_files;
-	blfiletable m_dirs;
-	blprogtable m_executed_programs;
-	blporttable m_server_ports;
-	blporttable m_bound_ports;
-	bl_ip_endpoint_table m_ip_endpoints;
-	bl_ip_endpoint_table m_c_subnet_endpoints;
+	blfiletable_split m_files;
+	blfiletable_split m_dirs;
+	blprogtable_split m_executed_programs;
+	blporttable_split m_server_ports;
+	blporttable_split m_bound_ports;
+	bl_ip_endpoint_table_split m_ip_endpoints;
+	bl_ip_endpoint_table_split m_c_subnet_endpoints;
 };
 
 //
@@ -769,7 +1056,6 @@ public:
 	void init(sinsp* inspector);
 	void load_tables();
 	void clear_tables();
-	void add_prog(size_t key, blprogram* info);
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
 	void emit_as_json(uint64_t time);
@@ -779,7 +1065,7 @@ public:
 #endif
 
 	void on_file_open(sinsp_evt *evt, string& name, uint32_t openflags);
-	void on_new_proc(sinsp_threadinfo* tinfo);
+	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
 	void on_connect(sinsp_evt *evt);
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
 	void on_bind(sinsp_evt *evt);
@@ -792,9 +1078,7 @@ private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram> m_progtable;
-#ifdef HAS_ANALYZER
 	unordered_map<string, sinsp_container_info> m_container_table;
-#endif
 	string m_hostname;
 	uint64_t m_hostid;
 };

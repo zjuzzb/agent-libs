@@ -16,8 +16,12 @@ void sisnp_baseliner::init(sinsp* inspector)
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables();
 	const scap_machine_info* minfo = m_inspector->get_machine_info();
+#ifdef HAS_ANALYZER
+XXX implement this
+#else
 	m_hostname = minfo->hostname;
 	m_hostid = 12345;	// XXX implement this
+#endif
 }
 
 void sisnp_baseliner::load_tables()
@@ -29,9 +33,7 @@ void sisnp_baseliner::load_tables()
 void sisnp_baseliner::clear_tables()
 {
 	m_progtable.clear();
-#ifdef HAS_ANALYZER
 	m_container_table.clear();
-#endif
 }
 
 void sisnp_baseliner::init_programs()
@@ -54,7 +56,7 @@ void sisnp_baseliner::init_programs()
 			//
 			np.m_comm = tinfo->m_comm;
 			np.m_exe = tinfo->m_exe;
-			np.m_args = tinfo->m_args;
+			//np.m_args = tinfo->m_args;
 			//np.m_env = tinfo->m_env;
 			np.m_container_id = tinfo->m_container_id;
 			np.m_user_id = tinfo->m_uid;
@@ -78,12 +80,12 @@ void sisnp_baseliner::init_programs()
 						//
 						// Add the entry to the file table
 						//
-						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true);
+						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, 0);
 
 						//
 						// Add the entry to the directory table
 						//
-						np.m_dirs.add_dir(fdinfo->m_name, fdinfo->m_openflags, true);
+						np.m_dirs.add_dir(fdinfo->m_name, fdinfo->m_openflags, true, 0);
 
 						break;
 					}
@@ -91,7 +93,7 @@ void sisnp_baseliner::init_programs()
 						//
 						// Add the entry to the directory table
 						//
-						np.m_dirs.add(fdinfo->m_name, fdinfo->m_openflags, true);
+						np.m_dirs.add(fdinfo->m_name, fdinfo->m_openflags, true, 0);
 
 						break;
 					case SCAP_FD_IPV4_SOCK:
@@ -101,34 +103,34 @@ void sisnp_baseliner::init_programs()
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_l_tcp(tuple.m_fields.m_dport);
-									np.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip);
+									np.m_server_ports.add_l_tcp(tuple.m_fields.m_dport, 0);
+									np.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, 0);
 									np.m_c_subnet_endpoints.add_c_tcp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip));
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), 0);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_l_udp(tuple.m_fields.m_dport);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_sip);
+									np.m_server_ports.add_l_udp(tuple.m_fields.m_dport, 0);
+									np.m_ip_endpoints.add_udp(tuple.m_fields.m_sip, 0);
 									np.m_c_subnet_endpoints.add_udp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip));
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), 0);
 								}
 							}
 							else
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_r_tcp(tuple.m_fields.m_dport);
-									np.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip);
+									np.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 0);
+									np.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, 0);
 									np.m_c_subnet_endpoints.add_s_tcp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip));
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), 0);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_r_udp(tuple.m_fields.m_dport);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_dip);
+									np.m_server_ports.add_r_udp(tuple.m_fields.m_dport, 0);
+									np.m_ip_endpoints.add_udp(tuple.m_fields.m_dip, 0);
 									np.m_c_subnet_endpoints.add_udp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip));
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), 0);
 								}
 							}
 						}
@@ -137,11 +139,11 @@ void sisnp_baseliner::init_programs()
 					{
 						if(fdinfo->m_sockinfo.m_ipv4serverinfo.m_l4proto == SCAP_L4_TCP)
 						{
-							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port);
+							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, 0);
 						}
 						else
 						{
-							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port);
+							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, 0);
 						}
 						break;
 					}
@@ -154,15 +156,11 @@ void sisnp_baseliner::init_programs()
 				}
 			}
 
-			if(m_progtable.size() < FALCOBL_MAX_PROG_TABLE_SIZE)
-			{
-				m_progtable[tinfo->m_program_hash] = np;
-			}
+			m_progtable[tinfo->m_program_hash] = np;
 		}
 	}
 }
 
-#ifdef HAS_ANALYZER
 void sisnp_baseliner::init_containers()
 {
 	//
@@ -170,7 +168,6 @@ void sisnp_baseliner::init_containers()
 	//
 	m_container_table = *(m_inspector->m_container_manager.get_containers());
 }
-#endif
 
 void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 {
@@ -206,6 +203,7 @@ void sisnp_baseliner::serialize_json(string filename)
 			eprog["container_id"] = it.second.m_container_id;
 		}
 
+/*
 		// Args
 		if(it.second.m_args.size() != 0)
 		{
@@ -218,7 +216,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 			eprog["args"] = echild;
 		}
-/*
+
 		// Env
 		if(it.second.m_env.size() != 0)
 		{
@@ -291,7 +289,6 @@ void sisnp_baseliner::serialize_json(string filename)
 		table.append(eprog);
 	}
 
-#ifdef HAS_ANALYZER
 	for(auto& it : m_container_table)
 	{
 		Json::Value cinfo;
@@ -300,7 +297,6 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		ctable[it.second.m_id] = cinfo;
 	}
-#endif
 
 	root["progs"] = table;
 	root["containers"] = ctable;
@@ -314,32 +310,11 @@ void sisnp_baseliner::serialize_json(string filename)
 #ifdef HAS_ANALYZER
 void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
-	return;
 	for(auto& it : m_progtable)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
-
 		prog->set_comm(it.second.m_comm);
 		prog->set_exe(it.second.m_exe);
-
-		for(auto arg_it = it.second.m_args.begin();
-			arg_it != it.second.m_args.end(); ++arg_it)
-		{
-			if(*arg_it != "")
-			{
-				if(arg_it->size() <= ARG_SIZE_LIMIT)
-				{
-					prog->add_args(*arg_it);
-				}
-				else
-				{
-					auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
-					prog->add_args(arg_capped);
-				}
-			}
-		}
-
-
 		prog->set_user_id(it.second.m_user_id);
 		if(!it.second.m_container_id.empty())
 		{
@@ -420,23 +395,22 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 
 	blprogram& pinfo = it->second;
 
-	pinfo.m_files.add(name, openflags, false);
+	uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+
+	pinfo.m_files.add(name, openflags, false, 
+		evt->get_ts() - clone_ts);
 
 	//
 	// Add the entry to the directory table
 	//
-	pinfo.m_dirs.add_dir(name, openflags, false);
+	pinfo.m_dirs.add_dir(name, openflags, false,
+		evt->get_ts() - clone_ts);
 }
 
-void sisnp_baseliner::on_new_proc(sinsp_threadinfo* tinfo)
+void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
 	size_t phash = tinfo->m_program_hash;
-
-	if(m_progtable.size() >= FALCOBL_MAX_PROG_TABLE_SIZE)
-	{
-		return;
-	}
 
 	//
 	// Find the program entry
@@ -450,7 +424,7 @@ void sisnp_baseliner::on_new_proc(sinsp_threadinfo* tinfo)
 
 		insert_res.first->second.m_comm = tinfo->m_comm;
 		insert_res.first->second.m_exe = tinfo->m_exe;
-		insert_res.first->second.m_args = tinfo->m_args;
+		//insert_res.first->second.m_args = tinfo->m_args;
 		//insert_res.first->second.m_parent_comm = tinfo->m_comm;
 		//insert_res.first->second.m_env = tinfo->m_env;
 		insert_res.first->second.m_container_id = tinfo->m_container_id;
@@ -464,7 +438,10 @@ void sisnp_baseliner::on_new_proc(sinsp_threadinfo* tinfo)
 
 			if(itp != m_progtable.end())
 			{
-				itp->second.m_executed_programs.add(tinfo->m_exe);
+				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+
+				itp->second.m_executed_programs.add(tinfo->m_exe,
+					evt->get_ts() - clone_ts);
 			}
 		}
 	}
@@ -507,22 +484,31 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 
 		blprogram& pinfo = it->second;
 
-		ipv4tuple* tuple = &(fdinfo->m_sockinfo.m_ipv4info);
+		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		uint64_t cdelta = evt->get_ts() - clone_ts;
 
-		if(tuple->m_fields.m_l4proto == SCAP_L4_TCP)
+		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
+
+		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 		{
-			pinfo.m_server_ports.add_r_tcp(tuple->m_fields.m_dport);
-			pinfo.m_ip_endpoints.add_s_tcp(tuple->m_fields.m_dip);
+			pinfo.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 
+				cdelta);
+			pinfo.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip,
+				cdelta);
 			pinfo.m_c_subnet_endpoints.add_s_tcp(
-				bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_dip));
+				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
+				cdelta);
 		}
 		else
 		{
-			ASSERT(tuple->m_fields.m_l4proto == SCAP_L4_UDP);
-			pinfo.m_server_ports.add_r_udp(tuple->m_fields.m_dport);
-			pinfo.m_ip_endpoints.add_udp(tuple->m_fields.m_dip);
+			ASSERT(tuple.m_fields.m_l4proto == SCAP_L4_UDP);
+			pinfo.m_server_ports.add_r_udp(tuple.m_fields.m_dport,
+				cdelta);
+			pinfo.m_ip_endpoints.add_udp(tuple.m_fields.m_dip,
+				cdelta);
 			pinfo.m_c_subnet_endpoints.add_udp(
-				bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_dip));
+				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
+				cdelta);
 		}
 	}
 }
@@ -546,11 +532,17 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 
 		blprogram& pinfo = it->second;
 
-		ipv4tuple* tuple = &(fdinfo->m_sockinfo.m_ipv4info);
-		pinfo.m_server_ports.add_l_tcp(tuple->m_fields.m_dport);
-		pinfo.m_ip_endpoints.add_c_tcp(tuple->m_fields.m_sip);
+		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		uint64_t cdelta = evt->get_ts() - clone_ts;
+
+		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
+		pinfo.m_server_ports.add_l_tcp(tuple.m_fields.m_dport,
+			cdelta);
+		pinfo.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip,
+			cdelta);
 		pinfo.m_c_subnet_endpoints.add_c_tcp(
-			bl_ip_endpoint_table::c_subnet(tuple->m_fields.m_sip));
+			bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip),
+			cdelta);
 	}
 }
 
@@ -561,9 +553,9 @@ void sisnp_baseliner::on_bind(sinsp_evt *evt)
 	//       we don't need to check it
 	//
 	sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
-	ipv4serverinfo* tuple = &(fdinfo->m_sockinfo.m_ipv4serverinfo);
+	ipv4serverinfo tuple = fdinfo->m_sockinfo.m_ipv4serverinfo;
 
-	if(tuple->m_l4proto == SCAP_L4_TCP &&
+	if(tuple.m_l4proto == SCAP_L4_TCP &&
 		fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
 ASSERT(false); // Remove this assertion when this code is tested and validated
@@ -582,13 +574,14 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 		blprogram& pinfo = it->second;
 
-		pinfo.m_bound_ports.add_l_tcp(tuple->m_port);
+		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+
+		pinfo.m_bound_ports.add_l_tcp(tuple.m_port,
+			evt->get_ts() - clone_ts);
 	}
 }
 
 void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
-#ifdef HAS_ANALYZER
 	m_container_table[container_info.m_id] = container_info;
-#endif
 }
