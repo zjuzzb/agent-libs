@@ -17,19 +17,16 @@
 
 static void g_signal_callback(int sig)
 {
-	g_log->information("Received signal " + NumberFormatter::format(sig) + ", terminating"); 
 	dragent_configuration::m_terminate = true;
 }
 
 static void g_usr_signal_callback(int sig)
 {
-	g_log->information("Received SIGUSR1, starting dump"); 
 	dragent_configuration::m_signal_dump = true;
 }
 
 static void g_usr2_signal_callback(int sig)
 {
-	g_log->information("Received SIGUSR2");
 	dragent_configuration::m_send_log_report = true;
 }
 
