@@ -26,7 +26,10 @@ public class MonitoredVM {
     private static final long RECONNECTION_TIMEOUT_MS = 1 * 60 * 1000; // 1 minute
     private static final int BEANS_LIMIT = 100;
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
+    /**
+     * Default hostname used to connect to JMX, "localhost" does not play well with containers
+     */
+    private static final String DEFAULT_LOCALHOST = "127.0.0.1";
     private String address;
     private Connection connection;
     private final int pid;
@@ -189,7 +192,7 @@ public class MonitoredVM {
 
     private void retrieveVMInfoFromArgs(VMRequest request) {
         int port = -1;
-        String hostname = "localhost";
+        String hostname = DEFAULT_LOCALHOST;
         boolean authenticate = false;
         String name = null;
         for(String arg : request.getArgs()) {
