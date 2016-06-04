@@ -68,7 +68,7 @@ public:
 	void on_erase_fd(erase_fd_params* params);
 	void on_socket_shutdown(sinsp_evt *evt);
 	void on_execve(sinsp_evt *evt);
-	void on_clone(sinsp_threadinfo* newtinfo);
+	void on_clone(sinsp_evt* evt, sinsp_threadinfo* newtinfo);
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info);
 

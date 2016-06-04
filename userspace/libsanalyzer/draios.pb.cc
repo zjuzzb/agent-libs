@@ -239,6 +239,9 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* falco_subcategory_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   falco_subcategory_reflection_ = NULL;
+const ::google::protobuf::Descriptor* falco_subcategory_container_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  falco_subcategory_container_reflection_ = NULL;
 const ::google::protobuf::Descriptor* falco_category_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   falco_category_reflection_ = NULL;
@@ -1665,10 +1668,26 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(falco_subcategory));
-  falco_category_descriptor_ = file->message_type(72);
-  static const int falco_category_offsets_[2] = {
+  falco_subcategory_container_descriptor_ = file->message_type(72);
+  static const int falco_subcategory_container_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_subcategory_container, subcats_),
+  };
+  falco_subcategory_container_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      falco_subcategory_container_descriptor_,
+      falco_subcategory_container::default_instance_,
+      falco_subcategory_container_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_subcategory_container, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_subcategory_container, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(falco_subcategory_container));
+  falco_category_descriptor_ = file->message_type(73);
+  static const int falco_category_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_category, name_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_category, subcats_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_category, startup_subcats_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_category, regular_subcats_),
   };
   falco_category_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -1681,7 +1700,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(falco_category));
-  falco_prog_descriptor_ = file->message_type(73);
+  falco_prog_descriptor_ = file->message_type(74);
   static const int falco_prog_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, comm_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_prog, exe_),
@@ -1701,7 +1720,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(falco_prog));
-  falco_baseline_descriptor_ = file->message_type(74);
+  falco_baseline_descriptor_ = file->message_type(75);
   static const int falco_baseline_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(falco_baseline, progs_),
   };
@@ -1886,6 +1905,8 @@ void protobuf_RegisterTypes(const ::std::string&) {
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     falco_subcategory_descriptor_, &falco_subcategory::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    falco_subcategory_container_descriptor_, &falco_subcategory_container::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     falco_category_descriptor_, &falco_category::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     falco_prog_descriptor_, &falco_prog::default_instance());
@@ -2042,6 +2063,8 @@ void protobuf_ShutdownFile_draios_2eproto() {
   delete agent_event_reflection_;
   delete falco_subcategory::default_instance_;
   delete falco_subcategory_reflection_;
+  delete falco_subcategory_container::default_instance_;
+  delete falco_subcategory_container_reflection_;
   delete falco_category::default_instance_;
   delete falco_category_reflection_;
   delete falco_prog::default_instance_;
@@ -2377,60 +2400,64 @@ void protobuf_AddDesc_draios_2eproto() {
     "(\t\022\r\n\005title\030\003 \001(\t\022\023\n\013description\030\004 \001(\t\022\020"
     "\n\010severity\030\005 \001(\r\022$\n\004tags\030\006 \003(\0132\026.draiosp"
     "roto.key_value\":\n\021falco_subcategory\022\014\n\004n"
-    "ame\030\001 \002(\t\022\t\n\001d\030\002 \003(\t\022\014\n\004full\030\003 \001(\010\"O\n\016fa"
-    "lco_category\022\014\n\004name\030\001 \002(\t\022/\n\007subcats\030\002 "
-    "\003(\0132\036.draiosproto.falco_subcategory\"\207\001\n\n"
-    "falco_prog\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n"
-    "\004args\030\003 \003(\t\022\017\n\007user_id\030\004 \002(\004\022\024\n\014containe"
-    "r_id\030\005 \001(\t\022)\n\004cats\030\006 \003(\0132\033.draiosproto.f"
-    "alco_category\"8\n\016falco_baseline\022&\n\005progs"
-    "\030\001 \003(\0132\027.draiosproto.falco_prog*\346\001\n\022sql_"
-    "statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELE"
-    "CT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP"
-    "_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022"
-    "\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_"
-    "USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP"
-    "_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\206\003\n\017mongodb_op_"
-    "type\022\023\n\017MONGODB_OP_NONE\020\000\022\025\n\021MONGODB_OP_"
-    "INSERT\020\001\022\025\n\021MONGODB_OP_UPDATE\020\002\022\025\n\021MONGO"
-    "DB_OP_DELETE\020\003\022\027\n\023MONGODB_OP_GET_MORE\020\004\022"
-    "\033\n\027MONGODB_OP_KILL_CURSORS\020\005\022\023\n\017MONGODB_"
-    "OP_FIND\020\006\022\030\n\024MONGODB_OP_AGGREGATE\020\007\022\026\n\022M"
-    "ONGODB_OP_COMMAND\020\010\022\024\n\020MONGODB_OP_COUNT\020"
-    "\t\022\027\n\023MONGODB_OP_DISTINCT\020\n\022\031\n\025MONGODB_OP"
-    "_MAP_REDUCE\020\013\022\027\n\023MONGODB_OP_GEO_NEAR\020\014\022\031"
-    "\n\025MONGODB_OP_GEO_SEARCH\020\r\022\036\n\032MONGODB_OP_"
-    "FIND_AND_MODIFY\020\016*G\n\004unit\022\r\n\tUNIT_NONE\020\000"
-    "\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT"
-    "_PERCENT\020\003*\221\002\n\005scale\022\016\n\nSCALE_NONE\020\000\022\017\n\013"
-    "SCALE_MILLI\020\001\022\017\n\013SCALE_MICRO\020\002\022\016\n\nSCALE_"
-    "NANO\020\003\022\020\n\014SCALE_MINUTE\020\004\022\016\n\nSCALE_HOUR\020\005"
-    "\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCALE_KILO\020\007\022\016\n\nSCALE"
-    "_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022"
-    "\016\n\nSCALE_KIBI\020\013\022\016\n\nSCALE_MEBI\020\014\022\016\n\nSCALE"
-    "_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016\022\025\n\021SCALE_PERCENT"
-    "_0_1\020\017*I\n\017jmx_metric_type\022\033\n\027JMX_METRIC_"
-    "TYPE_COUNTER\020\001\022\031\n\025JMX_METRIC_TYPE_GAUGE\020"
-    "\002*^\n\022statsd_metric_type\022\020\n\014STATSD_COUNT\020"
-    "\001\022\024\n\020STATSD_HISTOGRAM\020\002\022\020\n\014STATSD_GAUGE\020"
-    "\003\022\016\n\nSTATSD_SET\020\004*F\n\017app_metric_type\022\031\n\025"
-    "APP_METRIC_TYPE_GAUGE\020\001\022\030\n\024APP_METRIC_TY"
-    "PE_RATE\020\002*\201\001\n\017app_check_value\022\026\n\022APP_CHE"
-    "CK_VALUE_OK\020\000\022\033\n\027APP_CHECK_VALUE_WARNING"
-    "\020\001\022\034\n\030APP_CHECK_VALUE_CRITICAL\020\002\022\033\n\027APP_"
-    "CHECK_VALUE_UNKNOWN\020\003*\251\001\n\013networkrole\022\010\n"
-    "\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_"
-    "REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004"
-    "\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_"
-    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\314\001\n\014me"
-    "ssage_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_"
-    "START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_R"
-    "ESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
-    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPD"
-    "ATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\n"
-    "*J\n\016container_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022"
-    "\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022\007\n\003RKT\020\005B$\n\031"
-    "com.draios.model.protobufB\005AgentH\001", 14954);
+    "ame\030\001 \002(\t\022\t\n\001d\030\002 \003(\t\022\014\n\004full\030\003 \001(\010\"N\n\033fa"
+    "lco_subcategory_container\022/\n\007subcats\030\001 \003"
+    "(\0132\036.draiosproto.falco_subcategory\"\244\001\n\016f"
+    "alco_category\022\014\n\004name\030\001 \002(\t\022A\n\017startup_s"
+    "ubcats\030\002 \003(\0132(.draiosproto.falco_subcate"
+    "gory_container\022A\n\017regular_subcats\030\003 \003(\0132"
+    "(.draiosproto.falco_subcategory_containe"
+    "r\"\207\001\n\nfalco_prog\022\014\n\004comm\030\001 \002(\t\022\013\n\003exe\030\002 "
+    "\002(\t\022\014\n\004args\030\003 \003(\t\022\017\n\007user_id\030\004 \002(\004\022\024\n\014co"
+    "ntainer_id\030\005 \001(\t\022)\n\004cats\030\006 \003(\0132\033.draiosp"
+    "roto.falco_category\"8\n\016falco_baseline\022&\n"
+    "\005progs\030\001 \003(\0132\027.draiosproto.falco_prog*\346\001"
+    "\n\022sql_statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSO"
+    "P_SELECT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022"
+    "\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_D"
+    "ROP\020\006\022\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013"
+    "\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022"
+    "\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\206\003\n\017mongo"
+    "db_op_type\022\023\n\017MONGODB_OP_NONE\020\000\022\025\n\021MONGO"
+    "DB_OP_INSERT\020\001\022\025\n\021MONGODB_OP_UPDATE\020\002\022\025\n"
+    "\021MONGODB_OP_DELETE\020\003\022\027\n\023MONGODB_OP_GET_M"
+    "ORE\020\004\022\033\n\027MONGODB_OP_KILL_CURSORS\020\005\022\023\n\017MO"
+    "NGODB_OP_FIND\020\006\022\030\n\024MONGODB_OP_AGGREGATE\020"
+    "\007\022\026\n\022MONGODB_OP_COMMAND\020\010\022\024\n\020MONGODB_OP_"
+    "COUNT\020\t\022\027\n\023MONGODB_OP_DISTINCT\020\n\022\031\n\025MONG"
+    "ODB_OP_MAP_REDUCE\020\013\022\027\n\023MONGODB_OP_GEO_NE"
+    "AR\020\014\022\031\n\025MONGODB_OP_GEO_SEARCH\020\r\022\036\n\032MONGO"
+    "DB_OP_FIND_AND_MODIFY\020\016*G\n\004unit\022\r\n\tUNIT_"
+    "NONE\020\000\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUNIT_BYTE\020\002\022\020"
+    "\n\014UNIT_PERCENT\020\003*\221\002\n\005scale\022\016\n\nSCALE_NONE"
+    "\020\000\022\017\n\013SCALE_MILLI\020\001\022\017\n\013SCALE_MICRO\020\002\022\016\n\n"
+    "SCALE_NANO\020\003\022\020\n\014SCALE_MINUTE\020\004\022\016\n\nSCALE_"
+    "HOUR\020\005\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCALE_KILO\020\007\022\016\n"
+    "\nSCALE_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t\022\016\n\nSCALE_T"
+    "ERA\020\n\022\016\n\nSCALE_KIBI\020\013\022\016\n\nSCALE_MEBI\020\014\022\016\n"
+    "\nSCALE_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016\022\025\n\021SCALE_P"
+    "ERCENT_0_1\020\017*I\n\017jmx_metric_type\022\033\n\027JMX_M"
+    "ETRIC_TYPE_COUNTER\020\001\022\031\n\025JMX_METRIC_TYPE_"
+    "GAUGE\020\002*^\n\022statsd_metric_type\022\020\n\014STATSD_"
+    "COUNT\020\001\022\024\n\020STATSD_HISTOGRAM\020\002\022\020\n\014STATSD_"
+    "GAUGE\020\003\022\016\n\nSTATSD_SET\020\004*F\n\017app_metric_ty"
+    "pe\022\031\n\025APP_METRIC_TYPE_GAUGE\020\001\022\030\n\024APP_MET"
+    "RIC_TYPE_RATE\020\002*\201\001\n\017app_check_value\022\026\n\022A"
+    "PP_CHECK_VALUE_OK\020\000\022\033\n\027APP_CHECK_VALUE_W"
+    "ARNING\020\001\022\034\n\030APP_CHECK_VALUE_CRITICAL\020\002\022\033"
+    "\n\027APP_CHECK_VALUE_UNKNOWN\020\003*\251\001\n\013networkr"
+    "ole\022\010\n\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022"
+    "\031\n\025IS_REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SE"
+    "RVER\020\004\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_R"
+    "EMOTE_IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *"
+    "\314\001\n\014message_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_RE"
+    "QUEST_START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\r"
+    "DUMP_RESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n"
+    "\021SSH_CLOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AU"
+    "TO_UPDATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_RE"
+    "PORT\020\n*J\n\016container_type\022\n\n\006DOCKER\020\001\022\007\n\003"
+    "LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022\007\n\003RKT"
+    "\020\005B$\n\031com.draios.model.protobufB\005AgentH\001", 15120);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -2506,6 +2533,7 @@ void protobuf_AddDesc_draios_2eproto() {
   key_value::default_instance_ = new key_value();
   agent_event::default_instance_ = new agent_event();
   falco_subcategory::default_instance_ = new falco_subcategory();
+  falco_subcategory_container::default_instance_ = new falco_subcategory_container();
   falco_category::default_instance_ = new falco_category();
   falco_prog::default_instance_ = new falco_prog();
   falco_baseline::default_instance_ = new falco_baseline();
@@ -2582,6 +2610,7 @@ void protobuf_AddDesc_draios_2eproto() {
   key_value::default_instance_->InitAsDefaultInstance();
   agent_event::default_instance_->InitAsDefaultInstance();
   falco_subcategory::default_instance_->InitAsDefaultInstance();
+  falco_subcategory_container::default_instance_->InitAsDefaultInstance();
   falco_category::default_instance_->InitAsDefaultInstance();
   falco_prog::default_instance_->InitAsDefaultInstance();
   falco_baseline::default_instance_->InitAsDefaultInstance();
@@ -32587,8 +32616,215 @@ void falco_subcategory::Swap(falco_subcategory* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int falco_subcategory_container::kSubcatsFieldNumber;
+#endif  // !_MSC_VER
+
+falco_subcategory_container::falco_subcategory_container()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void falco_subcategory_container::InitAsDefaultInstance() {
+}
+
+falco_subcategory_container::falco_subcategory_container(const falco_subcategory_container& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void falco_subcategory_container::SharedCtor() {
+  _cached_size_ = 0;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+falco_subcategory_container::~falco_subcategory_container() {
+  SharedDtor();
+}
+
+void falco_subcategory_container::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void falco_subcategory_container::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* falco_subcategory_container::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return falco_subcategory_container_descriptor_;
+}
+
+const falco_subcategory_container& falco_subcategory_container::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_draios_2eproto();
+  return *default_instance_;
+}
+
+falco_subcategory_container* falco_subcategory_container::default_instance_ = NULL;
+
+falco_subcategory_container* falco_subcategory_container::New() const {
+  return new falco_subcategory_container;
+}
+
+void falco_subcategory_container::Clear() {
+  subcats_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool falco_subcategory_container::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // repeated .draiosproto.falco_subcategory subcats = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_subcats:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_subcats()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(10)) goto parse_subcats;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void falco_subcategory_container::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // repeated .draiosproto.falco_subcategory subcats = 1;
+  for (int i = 0; i < this->subcats_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      1, this->subcats(i), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* falco_subcategory_container::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // repeated .draiosproto.falco_subcategory subcats = 1;
+  for (int i = 0; i < this->subcats_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        1, this->subcats(i), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int falco_subcategory_container::ByteSize() const {
+  int total_size = 0;
+
+  // repeated .draiosproto.falco_subcategory subcats = 1;
+  total_size += 1 * this->subcats_size();
+  for (int i = 0; i < this->subcats_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->subcats(i));
+  }
+
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void falco_subcategory_container::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const falco_subcategory_container* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const falco_subcategory_container*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void falco_subcategory_container::MergeFrom(const falco_subcategory_container& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  subcats_.MergeFrom(from.subcats_);
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void falco_subcategory_container::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void falco_subcategory_container::CopyFrom(const falco_subcategory_container& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool falco_subcategory_container::IsInitialized() const {
+
+  for (int i = 0; i < subcats_size(); i++) {
+    if (!this->subcats(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void falco_subcategory_container::Swap(falco_subcategory_container* other) {
+  if (other != this) {
+    subcats_.Swap(&other->subcats_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata falco_subcategory_container::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = falco_subcategory_container_descriptor_;
+  metadata.reflection = falco_subcategory_container_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int falco_category::kNameFieldNumber;
-const int falco_category::kSubcatsFieldNumber;
+const int falco_category::kStartupSubcatsFieldNumber;
+const int falco_category::kRegularSubcatsFieldNumber;
 #endif  // !_MSC_VER
 
 falco_category::falco_category()
@@ -32652,7 +32888,8 @@ void falco_category::Clear() {
       }
     }
   }
-  subcats_.Clear();
+  startup_subcats_.Clear();
+  regular_subcats_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -32675,21 +32912,36 @@ bool falco_category::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_subcats;
+        if (input->ExpectTag(18)) goto parse_startup_subcats;
         break;
       }
 
-      // repeated .draiosproto.falco_subcategory subcats = 2;
+      // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_subcats:
+         parse_startup_subcats:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-                input, add_subcats()));
+                input, add_startup_subcats()));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_subcats;
+        if (input->ExpectTag(18)) goto parse_startup_subcats;
+        if (input->ExpectTag(26)) goto parse_regular_subcats;
+        break;
+      }
+
+      // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_regular_subcats:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_regular_subcats()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_regular_subcats;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -32721,10 +32973,16 @@ void falco_category::SerializeWithCachedSizes(
       1, this->name(), output);
   }
 
-  // repeated .draiosproto.falco_subcategory subcats = 2;
-  for (int i = 0; i < this->subcats_size(); i++) {
+  // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+  for (int i = 0; i < this->startup_subcats_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      2, this->subcats(i), output);
+      2, this->startup_subcats(i), output);
+  }
+
+  // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+  for (int i = 0; i < this->regular_subcats_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      3, this->regular_subcats(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -32745,11 +33003,18 @@ void falco_category::SerializeWithCachedSizes(
         1, this->name(), target);
   }
 
-  // repeated .draiosproto.falco_subcategory subcats = 2;
-  for (int i = 0; i < this->subcats_size(); i++) {
+  // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+  for (int i = 0; i < this->startup_subcats_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        2, this->subcats(i), target);
+        2, this->startup_subcats(i), target);
+  }
+
+  // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+  for (int i = 0; i < this->regular_subcats_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        3, this->regular_subcats(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -32771,12 +33036,20 @@ int falco_category::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.falco_subcategory subcats = 2;
-  total_size += 1 * this->subcats_size();
-  for (int i = 0; i < this->subcats_size(); i++) {
+  // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+  total_size += 1 * this->startup_subcats_size();
+  for (int i = 0; i < this->startup_subcats_size(); i++) {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-        this->subcats(i));
+        this->startup_subcats(i));
+  }
+
+  // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+  total_size += 1 * this->regular_subcats_size();
+  for (int i = 0; i < this->regular_subcats_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->regular_subcats(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -32804,7 +33077,8 @@ void falco_category::MergeFrom(const ::google::protobuf::Message& from) {
 
 void falco_category::MergeFrom(const falco_category& from) {
   GOOGLE_CHECK_NE(&from, this);
-  subcats_.MergeFrom(from.subcats_);
+  startup_subcats_.MergeFrom(from.startup_subcats_);
+  regular_subcats_.MergeFrom(from.regular_subcats_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_name()) {
       set_name(from.name());
@@ -32828,8 +33102,11 @@ void falco_category::CopyFrom(const falco_category& from) {
 bool falco_category::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
-  for (int i = 0; i < subcats_size(); i++) {
-    if (!this->subcats(i).IsInitialized()) return false;
+  for (int i = 0; i < startup_subcats_size(); i++) {
+    if (!this->startup_subcats(i).IsInitialized()) return false;
+  }
+  for (int i = 0; i < regular_subcats_size(); i++) {
+    if (!this->regular_subcats(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -32837,7 +33114,8 @@ bool falco_category::IsInitialized() const {
 void falco_category::Swap(falco_category* other) {
   if (other != this) {
     std::swap(name_, other->name_);
-    subcats_.Swap(&other->subcats_);
+    startup_subcats_.Swap(&other->startup_subcats_);
+    regular_subcats_.Swap(&other->regular_subcats_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

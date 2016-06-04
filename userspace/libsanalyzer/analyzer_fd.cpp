@@ -1563,7 +1563,7 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
 	// We only do baseline calculatation if the agent's resource usage is low 
 	if(m_analyzer->m_do_baseline_calculation)
 	{
-		m_analyzer->m_falco_baseliner->on_new_proc(evt->get_thread_info());
+		m_analyzer->m_falco_baseliner->on_new_proc(evt, evt->get_thread_info());
 	}
 }
 
@@ -1595,7 +1595,7 @@ void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& co
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_clone(sinsp_threadinfo* newtinfo)
+void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newtinfo)
 {
 	//
 	// Baseline update
@@ -1605,7 +1605,7 @@ void sinsp_analyzer_fd_listener::on_clone(sinsp_threadinfo* newtinfo)
 	// We only do baseline calculatation if the agent's resource usage is low 
 	if(m_analyzer->m_do_baseline_calculation)
 	{
-		m_analyzer->m_falco_baseliner->on_new_proc(newtinfo);
+		m_analyzer->m_falco_baseliner->on_new_proc(evt, newtinfo);
 	}
 }
 

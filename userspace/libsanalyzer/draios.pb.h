@@ -107,6 +107,7 @@ class dirty_shutdown_report;
 class key_value;
 class agent_event;
 class falco_subcategory;
+class falco_subcategory_container;
 class falco_category;
 class falco_prog;
 class falco_baseline;
@@ -10216,6 +10217,91 @@ class falco_subcategory : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class falco_subcategory_container : public ::google::protobuf::Message {
+ public:
+  falco_subcategory_container();
+  virtual ~falco_subcategory_container();
+
+  falco_subcategory_container(const falco_subcategory_container& from);
+
+  inline falco_subcategory_container& operator=(const falco_subcategory_container& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_subcategory_container& default_instance();
+
+  void Swap(falco_subcategory_container* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_subcategory_container* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_subcategory_container& from);
+  void MergeFrom(const falco_subcategory_container& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.falco_subcategory subcats = 1;
+  inline int subcats_size() const;
+  inline void clear_subcats();
+  static const int kSubcatsFieldNumber = 1;
+  inline const ::draiosproto::falco_subcategory& subcats(int index) const;
+  inline ::draiosproto::falco_subcategory* mutable_subcats(int index);
+  inline ::draiosproto::falco_subcategory* add_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
+      subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
+      mutable_subcats();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_subcategory_container)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory > subcats_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_subcategory_container* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class falco_category : public ::google::protobuf::Message {
  public:
   falco_category();
@@ -10282,17 +10368,29 @@ class falco_category : public ::google::protobuf::Message {
   inline ::std::string* release_name();
   inline void set_allocated_name(::std::string* name);
 
-  // repeated .draiosproto.falco_subcategory subcats = 2;
-  inline int subcats_size() const;
-  inline void clear_subcats();
-  static const int kSubcatsFieldNumber = 2;
-  inline const ::draiosproto::falco_subcategory& subcats(int index) const;
-  inline ::draiosproto::falco_subcategory* mutable_subcats(int index);
-  inline ::draiosproto::falco_subcategory* add_subcats();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
-      subcats() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
-      mutable_subcats();
+  // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+  inline int startup_subcats_size() const;
+  inline void clear_startup_subcats();
+  static const int kStartupSubcatsFieldNumber = 2;
+  inline const ::draiosproto::falco_subcategory_container& startup_subcats(int index) const;
+  inline ::draiosproto::falco_subcategory_container* mutable_startup_subcats(int index);
+  inline ::draiosproto::falco_subcategory_container* add_startup_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+      startup_subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+      mutable_startup_subcats();
+
+  // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+  inline int regular_subcats_size() const;
+  inline void clear_regular_subcats();
+  static const int kRegularSubcatsFieldNumber = 3;
+  inline const ::draiosproto::falco_subcategory_container& regular_subcats(int index) const;
+  inline ::draiosproto::falco_subcategory_container* mutable_regular_subcats(int index);
+  inline ::draiosproto::falco_subcategory_container* add_regular_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+      regular_subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+      mutable_regular_subcats();
 
   // @@protoc_insertion_point(class_scope:draiosproto.falco_category)
  private:
@@ -10302,10 +10400,11 @@ class falco_category : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* name_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory > subcats_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container > startup_subcats_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container > regular_subcats_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -25192,6 +25291,35 @@ inline void falco_subcategory::set_full(bool value) {
 
 // -------------------------------------------------------------------
 
+// falco_subcategory_container
+
+// repeated .draiosproto.falco_subcategory subcats = 1;
+inline int falco_subcategory_container::subcats_size() const {
+  return subcats_.size();
+}
+inline void falco_subcategory_container::clear_subcats() {
+  subcats_.Clear();
+}
+inline const ::draiosproto::falco_subcategory& falco_subcategory_container::subcats(int index) const {
+  return subcats_.Get(index);
+}
+inline ::draiosproto::falco_subcategory* falco_subcategory_container::mutable_subcats(int index) {
+  return subcats_.Mutable(index);
+}
+inline ::draiosproto::falco_subcategory* falco_subcategory_container::add_subcats() {
+  return subcats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
+falco_subcategory_container::subcats() const {
+  return subcats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
+falco_subcategory_container::mutable_subcats() {
+  return &subcats_;
+}
+
+// -------------------------------------------------------------------
+
 // falco_category
 
 // required string name = 1;
@@ -25264,29 +25392,54 @@ inline void falco_category::set_allocated_name(::std::string* name) {
   }
 }
 
-// repeated .draiosproto.falco_subcategory subcats = 2;
-inline int falco_category::subcats_size() const {
-  return subcats_.size();
+// repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+inline int falco_category::startup_subcats_size() const {
+  return startup_subcats_.size();
 }
-inline void falco_category::clear_subcats() {
-  subcats_.Clear();
+inline void falco_category::clear_startup_subcats() {
+  startup_subcats_.Clear();
 }
-inline const ::draiosproto::falco_subcategory& falco_category::subcats(int index) const {
-  return subcats_.Get(index);
+inline const ::draiosproto::falco_subcategory_container& falco_category::startup_subcats(int index) const {
+  return startup_subcats_.Get(index);
 }
-inline ::draiosproto::falco_subcategory* falco_category::mutable_subcats(int index) {
-  return subcats_.Mutable(index);
+inline ::draiosproto::falco_subcategory_container* falco_category::mutable_startup_subcats(int index) {
+  return startup_subcats_.Mutable(index);
 }
-inline ::draiosproto::falco_subcategory* falco_category::add_subcats() {
-  return subcats_.Add();
+inline ::draiosproto::falco_subcategory_container* falco_category::add_startup_subcats() {
+  return startup_subcats_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
-falco_category::subcats() const {
-  return subcats_;
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+falco_category::startup_subcats() const {
+  return startup_subcats_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
-falco_category::mutable_subcats() {
-  return &subcats_;
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+falco_category::mutable_startup_subcats() {
+  return &startup_subcats_;
+}
+
+// repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+inline int falco_category::regular_subcats_size() const {
+  return regular_subcats_.size();
+}
+inline void falco_category::clear_regular_subcats() {
+  regular_subcats_.Clear();
+}
+inline const ::draiosproto::falco_subcategory_container& falco_category::regular_subcats(int index) const {
+  return regular_subcats_.Get(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::mutable_regular_subcats(int index) {
+  return regular_subcats_.Mutable(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::add_regular_subcats() {
+  return regular_subcats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+falco_category::regular_subcats() const {
+  return regular_subcats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+falco_category::mutable_regular_subcats() {
+  return &regular_subcats_;
 }
 
 // -------------------------------------------------------------------

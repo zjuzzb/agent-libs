@@ -807,15 +807,23 @@ message agent_event {
     repeated key_value tags = 6;
 }
 
+//
+// FALCO BASELINE
+//
 message falco_subcategory {
     required string name = 1;
     repeated string d = 2;
     optional bool full = 3;
 }
 
+message falco_subcategory_container {
+    repeated falco_subcategory subcats = 1;
+}
+
 message falco_category {
     required string name = 1;
-    repeated falco_subcategory subcats = 2;
+    repeated falco_subcategory_container startup_subcats = 2;
+    repeated falco_subcategory_container regular_subcats = 3;
 }
 
 message falco_prog {

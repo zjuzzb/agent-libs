@@ -32,19 +32,6 @@ public:
 
 	inline void add(string& name, uint32_t openflags, bool uncategorized)
 	{
-/*
-		if(openflags & PPM_O_CREAT)
-		{
-			if(!m_is_c_full)
-			{
-				m_c.insert(name);
-				if(m_c.size() >= BL_MAX_FILE_TABLE_SIZE)
-				{
-					m_is_c_full = true;
-				}
-			}
-		}
-*/
 		if(openflags & PPM_O_WRONLY)
 		{
 			if(!m_is_rw_full)
@@ -147,7 +134,7 @@ public:
 	}
 
 #ifdef HAS_ANALYZER
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_r.size() != 0)
 		{
@@ -248,6 +235,15 @@ public:
 		}
 	}
 
+	bool has_data()
+	{
+		return (m_r.size() != 0) ||
+			(m_rw.size() != 0) ||
+			(m_c.size() != 0) ||
+			(m_other.size() != 0) ||
+			(m_uncategorized.size() != 0);
+	}
+
 	set<string> m_r;	// entries opened for reading only
 	set<string> m_rw;	// entries opened for read and write
 	set<string> m_c;	// entries opened with the create flag
@@ -300,7 +296,17 @@ public:
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
-		xxx
+		if(m_startup_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			m_startup_table.serialize_protobuf(sc);
+		}
+
+		if(m_regular_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			m_regular_table.serialize_protobuf(sc);
+		}
 	}
 #endif
 
@@ -319,6 +325,11 @@ public:
 		{
 			element["regular"] = vsl;
 		}
+	}
+
+	bool has_data()
+	{
+		return m_startup_table.has_data() || m_regular_table.has_data();
 	}
 
 	blfiletable m_startup_table;
@@ -355,7 +366,7 @@ public:
 	}
 
 #ifdef HAS_ANALYZER
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_p.size() != 0)
 		{
@@ -368,7 +379,6 @@ public:
 				sp->add_d(it);
 			}
 		}
-
 	}
 #endif
 
@@ -386,6 +396,11 @@ public:
 			element["p"]["full"] = m_is_p_full;
 			echild.clear();
 		}
+	}
+
+	bool has_data()
+	{
+		return (m_p.size() != 0);
 	}
 
 	set<string> m_p;
@@ -420,7 +435,17 @@ public:
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
-		xxx
+		if(m_startup_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			m_startup_table.serialize_protobuf(sc);
+		}
+
+		if(m_regular_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			m_regular_table.serialize_protobuf(sc);
+		}
 	}
 #endif
 
@@ -439,6 +464,11 @@ public:
 		{
 			element["regular"] = vsl;
 		}
+	}
+
+	bool has_data()
+	{
+		return m_startup_table.has_data() || m_regular_table.has_data();
 	}
 
 	blprogtable m_startup_table;
@@ -555,7 +585,7 @@ public:
 	}
 
 #ifdef HAS_ANALYZER
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_l_tcp.size() != 0)
 		{
@@ -658,6 +688,14 @@ printf("#2)%d\n", (int)it);
 		}
 	}
 
+	bool has_data()
+	{
+		return (m_l_tcp.size() != 0) ||
+			(m_r_tcp.size() != 0) ||
+			(m_l_udp.size() != 0) ||
+			(m_r_udp.size() != 0);
+	}
+
 	set<uint16_t> m_l_tcp;	// local TCP server ports
 	set<uint16_t> m_r_tcp;	// remote TCP server ports
 	set<uint16_t> m_l_udp;	// local TCP server ports
@@ -732,7 +770,17 @@ public:
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
-		xxx
+		if(m_startup_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			m_startup_table.serialize_protobuf(sc);
+		}
+
+		if(m_regular_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			m_regular_table.serialize_protobuf(sc);
+		}
 	}
 #endif
 
@@ -751,6 +799,11 @@ public:
 		{
 			element["regular"] = vsl;
 		}
+	}
+
+	bool has_data()
+	{
+		return m_startup_table.has_data() || m_regular_table.has_data();
 	}
 
 	blporttable m_startup_table;
@@ -849,7 +902,7 @@ public:
 	}
 
 #ifdef HAS_ANALYZER
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		char addrbuff[32];
 
@@ -931,6 +984,13 @@ public:
 		}
 	}
 
+	bool has_data()
+	{
+		return (m_c_tcp.size() != 0) ||
+			(m_s_tcp.size() != 0) ||
+			(m_udp.size() != 0);
+	}
+
 	set<uint32_t> m_c_tcp;	// TCP client endpoints
 	set<uint32_t> m_s_tcp;	// TCP server endpoints
 	set<uint32_t> m_udp;	// UDP endpoints
@@ -991,7 +1051,17 @@ public:
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
-		xxx
+		if(m_startup_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			m_startup_table.serialize_protobuf(sc);
+		}
+
+		if(m_regular_table.has_data())
+		{
+			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			m_regular_table.serialize_protobuf(sc);
+		}
 	}
 #endif
 
@@ -1010,6 +1080,11 @@ public:
 		{
 			element["regular"] = vsl;
 		}
+	}
+
+	bool has_data()
+	{
+		return m_startup_table.has_data() || m_regular_table.has_data();
 	}
 
 	bl_ip_endpoint_table m_startup_table;
@@ -1058,10 +1133,11 @@ public:
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
-	void emit_as_json(uint64_t time);
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(draiosproto::falco_baseline* pbentry);
+#else
+	void emit_as_json(uint64_t time);
 #endif
 
 	void on_file_open(sinsp_evt *evt, string& name, uint32_t openflags);
@@ -1079,6 +1155,8 @@ private:
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram> m_progtable;
 	unordered_map<string, sinsp_container_info> m_container_table;
+#ifndef HAS_ANALYZER
 	string m_hostname;
 	uint64_t m_hostid;
+#endif	
 };
