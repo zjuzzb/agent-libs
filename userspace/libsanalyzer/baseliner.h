@@ -1,5 +1,5 @@
 #define BL_MAX_FILE_TABLE_SIZE 256
-#define BL_STARTUP_TIME_NS (5LL * 1000000000)
+#define BL_STARTUP_TIME_NS (30LL * 1000000000)
 
 //
 // This class stores the set of files that a program accesses
@@ -1135,7 +1135,7 @@ public:
 	void serialize_json(string filename);
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
-	void emit_as_protobuf(draiosproto::falco_baseline* pbentry);
+	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
 #else
 	void emit_as_json(uint64_t time);
 #endif

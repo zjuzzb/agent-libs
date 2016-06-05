@@ -3187,13 +3187,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					// Make sure to push a baseline when reading from file and we reached EOF
 					//
-					m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
+					m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
 				}
 				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{
 					if(m_last_falco_dump_ts != 0)
 					{
-						m_falco_baseliner->emit_as_protobuf(m_metrics->mutable_falcobl());
+						m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
 					}
 
 					m_last_falco_dump_ts = evt->get_ts();

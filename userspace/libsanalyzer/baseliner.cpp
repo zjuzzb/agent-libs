@@ -389,8 +389,9 @@ void sisnp_baseliner::emit_as_json(uint64_t time)
 	load_tables();
 }
 #else
-void sisnp_baseliner::emit_as_protobuf(draiosproto::falco_baseline* pbentry)
+void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
 {
+	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, time);
 
 	serialize_protobuf(pbentry);
 
