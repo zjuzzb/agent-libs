@@ -68,6 +68,7 @@ bool sinsp_analyzer::m_mesos_bad_config = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
+	m_initialized = false;
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
@@ -207,6 +208,8 @@ sinsp_analyzer::~sinsp_analyzer()
 
 void sinsp_analyzer::on_capture_start()
 {
+	m_initialized = true;
+
 	if(m_procfs_parser != NULL)
 	{
 		throw sinsp_exception("analyzer can be opened only once");
@@ -2719,6 +2722,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
+	//
+	// Skip the events if the analyzer has not been initialized yet
+	//
+	if(!m_initialized)
+	{
+		return;
+	}
+	
 	if(evt != NULL)
 	{
 		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
@@ -3187,7 +3198,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					// Make sure to push a baseline when reading from file and we reached EOF
 					//
-					m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 				}
 				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{

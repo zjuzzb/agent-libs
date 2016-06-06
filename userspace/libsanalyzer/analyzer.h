@@ -400,6 +400,9 @@ VISIBILITY_PRIVATE
 	uint64_t m_serialize_prev_sample_time;
 	
 	sinsp_analyzer_parsers* m_parser;
+	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go 
+						// through the analyzer before on_capture_start is called. We use this flag to skip 
+						// processing those events.
 
 	//
 	// Tables
