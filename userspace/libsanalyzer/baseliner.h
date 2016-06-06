@@ -1129,7 +1129,7 @@ class sisnp_baseliner
 {
 public:
 	void init(sinsp* inspector);
-	void load_tables();
+	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
@@ -1148,7 +1148,7 @@ public:
 	void on_new_container(const sinsp_container_info& container_info);
 
 private:
-	void init_programs();
+	void init_programs(uint64_t time);
 	void init_containers();
 
 	sinsp* m_inspector;

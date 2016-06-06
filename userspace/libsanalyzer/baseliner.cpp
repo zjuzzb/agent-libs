@@ -14,7 +14,7 @@ void sisnp_baseliner::init(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
-	load_tables();
+	load_tables(0);
 #ifndef HAS_ANALYZER
 	const scap_machine_info* minfo = m_inspector->get_machine_info();
 	m_hostname = minfo->hostname;
@@ -22,10 +22,10 @@ void sisnp_baseliner::init(sinsp* inspector)
 #endif
 }
 
-void sisnp_baseliner::load_tables()
+void sisnp_baseliner::load_tables(uint64_t time)
 {
 	init_containers();
-	init_programs();
+	init_programs(time);
 }
 
 void sisnp_baseliner::clear_tables()
@@ -34,7 +34,7 @@ void sisnp_baseliner::clear_tables()
 	m_container_table.clear();
 }
 
-void sisnp_baseliner::init_programs()
+void sisnp_baseliner::init_programs(uint64_t time)
 {
 	//
 	// Go through the thread list and identify the main threads
@@ -386,7 +386,7 @@ void sisnp_baseliner::emit_as_json(uint64_t time)
 	serialize_json(string("bline/") + to_string(m_hostid) + "_" + to_string(time) + ".json");
 
 	clear_tables();
-	load_tables();
+	load_tables(time);
 }
 #else
 void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
@@ -396,7 +396,7 @@ void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baselin
 	serialize_protobuf(pbentry);
 
 	clear_tables();
-	load_tables();
+	load_tables(time);
 }
 #endif
 
@@ -417,7 +417,17 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 
 	blprogram& pinfo = it->second;
 
-	uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	sinsp_threadinfo* mt = tinfo->get_main_thread();
+	uint64_t clone_ts;
+
+	if(mt != NULL)
+	{
+		clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	else
+	{
+		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
 
 	pinfo.m_files.add(name, openflags, false, 
 		evt->get_ts() - clone_ts);
@@ -460,7 +470,17 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 			if(itp != m_progtable.end())
 			{
-				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+				sinsp_threadinfo* mt = tinfo->get_main_thread();
+				uint64_t clone_ts;
+
+				if(mt != NULL)
+				{
+					clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+				}
+				else
+				{
+					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+				}
 
 				itp->second.m_executed_programs.add(tinfo->m_exe,
 					evt->get_ts() - clone_ts);
@@ -506,7 +526,18 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 
 		blprogram& pinfo = it->second;
 
-		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		sinsp_threadinfo* mt = tinfo->get_main_thread();
+		uint64_t clone_ts;
+
+		if(mt != NULL)
+		{
+			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
+		else
+		{
+			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
+
 		uint64_t cdelta = evt->get_ts() - clone_ts;
 
 		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
@@ -554,7 +585,18 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 
 		blprogram& pinfo = it->second;
 
-		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		sinsp_threadinfo* mt = tinfo->get_main_thread();
+		uint64_t clone_ts;
+
+		if(mt != NULL)
+		{
+			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
+		else
+		{
+			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
+
 		uint64_t cdelta = evt->get_ts() - clone_ts;
 
 		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
@@ -596,10 +638,20 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 		blprogram& pinfo = it->second;
 
-		uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		sinsp_threadinfo* mt = tinfo->get_main_thread();
+		uint64_t clone_ts;
+
+		if(mt != NULL)
+		{
+			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
+		else
+		{
+			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+		}
 
 		pinfo.m_bound_ports.add_l_tcp(tuple.m_port,
-			evt->get_ts() - clone_ts);
+				evt->get_ts() - clone_ts);
 	}
 }
 
