@@ -204,8 +204,7 @@ public class Application {
                 vm = new MonitoredVM(request);
                 vm.addQueries(config.getDefaultBeanQueries());
                 // Configure VM name if it matches a pattern on configurations
-                if(vm.isAvailable())
-                {
+                if(vm.isAvailable()) {
                     Map<String, Config.Process> processes = config.getProcesses();
                     for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
                         if (vm.getName().contains(config.getValue().getPattern())) {
@@ -214,8 +213,9 @@ public class Application {
                             break;
                         }
                     }
+                    LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+                            request.getVpid(), vm.getName(), vm.getAddress()));
                 }
-
                 // Add it to known VMs
                 vms.put(request.getPid(), vm);
             }
