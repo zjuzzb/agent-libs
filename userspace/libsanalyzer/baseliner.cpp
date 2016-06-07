@@ -61,6 +61,19 @@ void sisnp_baseliner::init_programs(uint64_t time)
 			np.m_comm = tinfo->m_comm;
 
 			//
+			// Calculate the delta from program creation.
+			// Note: we don't search for the main process thread because this loop already makes 
+			//       sure to go through main threads only.
+			//
+			uint64_t cdelta = 0;
+
+			if(time != 0)
+			{
+				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+				cdelta = time - clone_ts;
+			}
+
+			//
 			// Process the FD table
 			//
 			sinsp_fdtable* fdt = tinfo->get_fd_table();
@@ -78,12 +91,12 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						//
 						// Add the entry to the file table
 						//
-						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, 0);
+						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
 
 						//
 						// Add the entry to the directory table
 						//
-						np.m_dirs.add_dir(fdinfo->m_name, fdinfo->m_openflags, true, 0);
+						np.m_dirs.add_dir(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
@@ -91,7 +104,7 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						//
 						// Add the entry to the directory table
 						//
-						np.m_dirs.add(fdinfo->m_name, fdinfo->m_openflags, true, 0);
+						np.m_dirs.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					case SCAP_FD_IPV4_SOCK:
@@ -101,34 +114,34 @@ void sisnp_baseliner::init_programs(uint64_t time)
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_l_tcp(tuple.m_fields.m_dport, 0);
-									np.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, 0);
+									np.m_server_ports.add_l_tcp(tuple.m_fields.m_dport, cdelta);
+									np.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, cdelta);
 									np.m_c_subnet_endpoints.add_c_tcp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), 0);
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_l_udp(tuple.m_fields.m_dport, 0);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_sip, 0);
+									np.m_server_ports.add_l_udp(tuple.m_fields.m_dport, cdelta);
+									np.m_ip_endpoints.add_udp(tuple.m_fields.m_sip, cdelta);
 									np.m_c_subnet_endpoints.add_udp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), 0);
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
 								}
 							}
 							else
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 0);
-									np.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, 0);
+									np.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, cdelta);
+									np.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, cdelta);
 									np.m_c_subnet_endpoints.add_s_tcp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), 0);
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_r_udp(tuple.m_fields.m_dport, 0);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_dip, 0);
+									np.m_server_ports.add_r_udp(tuple.m_fields.m_dport, cdelta);
+									np.m_ip_endpoints.add_udp(tuple.m_fields.m_dip, cdelta);
 									np.m_c_subnet_endpoints.add_udp(
-										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), 0);
+										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
 								}
 							}
 						}
@@ -137,11 +150,11 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					{
 						if(fdinfo->m_sockinfo.m_ipv4serverinfo.m_l4proto == SCAP_L4_TCP)
 						{
-							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, 0);
+							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
 						else
 						{
-							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, 0);
+							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
 						break;
 					}
