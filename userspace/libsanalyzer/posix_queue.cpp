@@ -63,7 +63,7 @@ bool posix_queue::send(const string &msg)
 				g_logger.format(sinsp_logger::SEV_DEBUG, "Debug: Cannot send on queue %s, is full", m_name.c_str());
 				break;
 			case EMSGSIZE:
-				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, msg too big", m_name.c_str());
+				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, msg too big size=%u", m_name.c_str(), msg.size());
 				break;
 			default:
 				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, errno: %s", m_name.c_str(), strerror(errno));

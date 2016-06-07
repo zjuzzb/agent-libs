@@ -98,44 +98,37 @@ public class Application {
             vmInfo.put("available", vm.isAvailable());
             if (vm.isAvailable()) {
                 vmInfo.put("name", vm.getName());
-                vmInfo.put("agentActive", vm.isAgentActive());
-                if (vm.isAgentActive()) {
-                    vmInfo.put("address", vm.getAddress());
-                }
+                vmInfo.put("address", vm.getAddress());
             }
             MAPPER.writeValue(System.out, vmInfo);
         } else if (args[0].equals("availableMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
             final MonitoredVM vm = new MonitoredVM(request);
 
-            if(vm.isAgentActive()) {
-                DumperOptions options = new DumperOptions();
-                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-                Yaml yaml = new Yaml(options);
+            DumperOptions options = new DumperOptions();
+            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+            Yaml yaml = new Yaml(options);
 
-                Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
-                vmInfo.put("pattern", vm.getName());
-                vmInfo.put("beans", vm.availableMetrics());
+            Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
+            vmInfo.put("pattern", vm.getName());
+            vmInfo.put("beans", vm.availableMetrics());
 
-                final String dump = yaml.dump(vmInfo);
-                System.out.println(dump);
-            }
+            final String dump = yaml.dump(vmInfo);
+            System.out.println(dump);
         } else if (args[0].equals("getMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
             final MonitoredVM vm = new MonitoredVM(request);
             vm.addQueries(config.getDefaultBeanQueries());
-            if(vm.isAgentActive()) {
-                Map<String, Config.Process> processes = config.getProcesses();
-                for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                    if (vm.getName().contains(config.getValue().getPattern())) {
-                        vm.setName(config.getKey());
-                        vm.addQueries(config.getValue().getQueries());
-                        break;
-                    }
+            Map<String, Config.Process> processes = config.getProcesses();
+            for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
+                if (vm.getName().contains(config.getValue().getPattern())) {
+                    vm.setName(config.getKey());
+                    vm.addQueries(config.getValue().getQueries());
+                    break;
                 }
-                MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-                MAPPER.writeValue(System.out, vm.getMetrics());
             }
+            MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+            MAPPER.writeValue(System.out, vm.getMetrics());
         } else {
             System.out.print(HELP_TEXT);
         }
@@ -211,8 +204,7 @@ public class Application {
                 vm = new MonitoredVM(request);
                 vm.addQueries(config.getDefaultBeanQueries());
                 // Configure VM name if it matches a pattern on configurations
-                if(vm.isAvailable())
-                {
+                if(vm.isAvailable()) {
                     Map<String, Config.Process> processes = config.getProcesses();
                     for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
                         if (vm.getName().contains(config.getValue().getPattern())) {
@@ -221,8 +213,9 @@ public class Application {
                             break;
                         }
                     }
+                    LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+                            request.getVpid(), vm.getName(), vm.getAddress()));
                 }
-
                 // Add it to known VMs
                 vms.put(request.getPid(), vm);
             }
@@ -231,10 +224,8 @@ public class Application {
                 vmObject.put("pid", request.getPid());
                 vmObject.put("name", vm.getName());
 
-                if (vm.isAgentActive()) {
-                    List<BeanData> beanDataList = vm.getMetrics();
-                    vmObject.put("beans", beanDataList);
-                }
+                List<BeanData> beanDataList = vm.getMetrics();
+                vmObject.put("beans", beanDataList);
                 vmList.add(vmObject);
             }
         }

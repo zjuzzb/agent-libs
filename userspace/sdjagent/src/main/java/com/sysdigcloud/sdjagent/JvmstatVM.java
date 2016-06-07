@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 public class JvmstatVM {
     private final static Logger LOGGER = Logger.getLogger(JvmstatVM.class.getName());
     private final MonitoredVm vm;
+    private static final String DEFAULT_LOCALHOST = "127.0.0.1";
 
     public JvmstatVM(int pid) throws MonitorException {
         VmIdentifier vmId;
@@ -84,6 +85,7 @@ public class JvmstatVM {
             StringTokenizer st = new StringTokenizer(jvmArgs);
             int port = -1;
             boolean authenticate = false;
+            String hostname = DEFAULT_LOCALHOST;
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
                 if (token.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
@@ -91,10 +93,12 @@ public class JvmstatVM {
                 } else if (token.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
                     LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", vm.getVmIdentifier().getLocalVmId()));
                     authenticate = true;
+                } else if (token.startsWith("-Dcom.sun.management.jmxremote.host=")) {
+                    hostname = token.substring(token.indexOf("=") + 1);
                 }
             }
             if (port != -1 && authenticate == false) {
-                address = String.format("service:jmx:rmi:///jndi/rmi://localhost:%d/jmxrmi", port);
+                address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
             }
         }
         return address;
