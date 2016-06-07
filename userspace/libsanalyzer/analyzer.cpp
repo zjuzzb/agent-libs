@@ -3227,7 +3227,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 							//
 							m_do_baseline_calculation = true;
 							m_falco_baseliner->clear_tables();
-							m_falco_baseliner->load_tables();
+							m_falco_baseliner->load_tables(evt->get_ts());
 							m_last_falco_dump_ts = evt->get_ts();
 							g_logger.format("enabling falco baselining creation after %lus pause",
 								FALCOBL_DISABLE_TIME / 1000000000);
