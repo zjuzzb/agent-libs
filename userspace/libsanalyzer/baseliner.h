@@ -605,10 +605,8 @@ public:
 			sr_tcp->set_name("r_tcp");
 			sr_tcp->set_full(m_is_r_tcp_full);
 
-printf("#1)%d\n", (int)m_r_tcp.size());
 			for(auto it : m_r_tcp)
 			{
-printf("#2)%d\n", (int)it);
 				sr_tcp->add_d(to_string(it));
 			}
 		}
