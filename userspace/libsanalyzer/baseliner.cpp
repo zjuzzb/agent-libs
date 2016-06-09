@@ -167,7 +167,12 @@ void sisnp_baseliner::init_programs(uint64_t time)
 				}
 			}
 
-			m_progtable[tinfo->m_program_hash] = np;
+			if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
+			{
+				return;
+			}
+		
+			m_progtable[tinfo->m_program_hash_falco] = np;
 		}
 	}
 }
@@ -420,11 +425,10 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	//
 	// Find the program entry
 	//
-	auto it = m_progtable.find(tinfo->m_program_hash);
+	auto it = m_progtable.find(tinfo->m_program_hash_falco);
 
 	if(it == m_progtable.end())
 	{
-		ASSERT(false);
 		return;
 	}
 
@@ -455,7 +459,7 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
-	size_t phash = tinfo->m_program_hash;
+	size_t phash = tinfo->m_program_hash_falco;
 
 	//
 	// Find the program entry
@@ -464,6 +468,11 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 	if(it == m_progtable.end())
 	{
+		if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
+		{
+			return;
+		}
+
 		pair<unordered_map<size_t, blprogram>::iterator, bool> insert_res = 
 			m_progtable.emplace(phash, tinfo->m_comm);
 
@@ -479,7 +488,7 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 		if(ptinfo != NULL)
 		{
-			auto itp = m_progtable.find(ptinfo->m_program_hash);
+			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
 
 			if(itp != m_progtable.end())
 			{
@@ -529,11 +538,10 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash);
+		auto it = m_progtable.find(tinfo->m_program_hash_falco);
 
 		if(it == m_progtable.end())
 		{
-			ASSERT(false);
 			return;
 		}
 
@@ -588,11 +596,10 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash);
+		auto it = m_progtable.find(tinfo->m_program_hash_falco);
 
 		if(it == m_progtable.end())
 		{
-			ASSERT(false);
 			return;
 		}
 
@@ -641,11 +648,10 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash);
+		auto it = m_progtable.find(tinfo->m_program_hash_falco);
 
 		if(it == m_progtable.end())
 		{
-			ASSERT(false);
 			return;
 		}
 
