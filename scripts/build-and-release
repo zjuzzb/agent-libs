@@ -166,9 +166,11 @@ function trigger_docker_build {
 	case "${COMPONENT}" in
 		agent)
 			trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
+			tag=${AGENT_VERSION}
 			;;
 		sysdig)
 			trigger_url='https://registry.hub.docker.com/u/sysdig/sysdig/trigger/bbe66701-880f-42a0-a8df-14f410587d97/'
+			tag=${SYSDIG_VERSION}
 			;;
 		*)
 			echo "docker hub trigger_url is not configured for ${COMPONENT}"
@@ -188,7 +190,7 @@ function trigger_docker_build {
 			-X POST ${trigger_url}
 
 			curl -H "Content-Type: application/json" \
-			--data '{"source_type": "Tag", "source_name": "'"${AGENT_VERSION}"'"}' \
+			--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
 			-X POST ${trigger_url}
 	fi
 }
