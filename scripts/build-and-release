@@ -162,6 +162,37 @@ function upload_binaries {
 	configure_installers
 }
 
+function trigger_docker_build {
+	case "${COMPONENT}" in
+		agent)
+			trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
+			;;
+		sysdig)
+			trigger_url='https://registry.hub.docker.com/u/sysdig/sysdig/trigger/bbe66701-880f-42a0-a8df-14f410587d97/'
+			;;
+		*)
+			echo "docker hub trigger_url is not configured for ${COMPONENT}"
+			return
+			;;
+	esac
+
+	if [[ "${REPOSITORY_BASENAME}" == 'dev' ]]; then
+			curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Branch", "source_name": "dev"}' \
+			-X POST ${trigger_url}
+	fi
+
+	if [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
+			curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Branch", "source_name": "master"}' \
+			-X POST ${trigger_url}
+
+			curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Tag", "source_name": "'"${AGENT_VERSION}"'"}' \
+			-X POST ${trigger_url}
+	fi
+}
+
 build_components
 
 REPOSITORY_NAME=$REPOSITORY_BASENAME
@@ -171,3 +202,4 @@ upload_binaries
 REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
 PACKAGES_DIR=$BINARIES_DIR/debug
 upload_binaries
+trigger_docker_build
