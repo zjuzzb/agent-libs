@@ -189,6 +189,8 @@ function trigger_docker_build {
 			--data '{"source_type": "Branch", "source_name": "master"}' \
 			-X POST ${trigger_url}
 
+			sleep 60s
+
 			curl -H "Content-Type: application/json" \
 			--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
 			-X POST ${trigger_url}
