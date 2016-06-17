@@ -30,6 +30,9 @@
     <VirtualDirectory Name="native">
       <File Name="sdjagent/native/com_sysdigcloud_sdjagent_CLibrary.h"/>
       <File Name="sdjagent/native/com_sysdigcloud_sdjagent_CLibrary.cpp"/>
+      <File Name="sdjagent/native/com_sysdigcloud_sdjagent_PosixQueue.h"/>
+      <File Name="sdjagent/native/com_sysdigcloud_sdjagent_PosixQueue.cpp"/>
+      <File Name="sdjagent/native/jni_utils.h"/>
     </VirtualDirectory>
   </VirtualDirectory>
   <VirtualDirectory Name="libsanalyzer">
@@ -105,6 +108,8 @@
     <File Name="libsanalyzer/sdc_internal.pb.h"/>
     <File Name="libsanalyzer/mesos_proto.h"/>
     <File Name="libsanalyzer/mesos_proto.cpp"/>
+    <File Name="libsanalyzer/k8s_delegator.cpp"/>
+    <File Name="libsanalyzer/k8s_delegator.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

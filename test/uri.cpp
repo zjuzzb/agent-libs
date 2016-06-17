@@ -75,7 +75,7 @@ TEST(uri, parse)
 	EXPECT_EQ("https://k8s_admin:!12%34abcd$efg4@123.45.67.89:54321/my/path/to/file.ext?query=xyz&me=123", uss.to_string());
 	EXPECT_EQ("https://***:***@123.45.67.89:54321/my/path/to/file.ext?query=xyz&me=123", uss.to_string(false));
 
-	uri usa("https://k8s_admin:!12%34ab%40cd$e%3Afg4@123.45.67.89:54321/my/path/to/@file.ext?query=xyz&me=123");
+	uri usa("HTTPS://k8s_admin:!12%34ab%40cd$e%3Afg4@123.45.67.89:54321/my/path/to/@file.ext?query=xyz&me=123");
 	EXPECT_EQ("https", usa.get_scheme());
 	EXPECT_TRUE(usa.is_secure());
 	EXPECT_EQ(usa.get_user(), "k8s_admin");
@@ -106,6 +106,19 @@ TEST(uri, parse)
 		ASSERT_TRUE(false);
 	}
 	catch(sinsp_exception&) {}
+
+	uri f("  file:///var/run/docker.sock  ");
+	EXPECT_EQ("file", f.get_scheme());
+	EXPECT_FALSE(f.is_secure());
+	EXPECT_EQ(f.get_user(), "");
+	EXPECT_EQ(f.get_password(), "");
+	EXPECT_EQ("", f.get_credentials());
+	EXPECT_EQ("", f.get_host());
+	EXPECT_EQ(0, f.get_port());
+	EXPECT_EQ("/var/run/docker.sock", f.get_path());
+	EXPECT_EQ("", f.get_query());
+	EXPECT_EQ("file:///var/run/docker.sock", f.to_string());
+	EXPECT_EQ("file:///var/run/docker.sock", f.to_string(false));
 }
 
 TEST(uri, encode)

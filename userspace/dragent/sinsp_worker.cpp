@@ -139,6 +139,8 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
 
+	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
+
 	//
 	// mesos
 	//

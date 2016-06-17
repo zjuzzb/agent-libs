@@ -501,6 +501,7 @@ public:
 	bool m_k8s_ssl_verify_certificate;
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
+	int m_k8s_delegated_nodes;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
@@ -532,6 +533,7 @@ private:
 	void parse_services_file();
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
+	void configure_k8s_from_env();
 	friend class aws_metadata_refresher;
 };
 

@@ -6,6 +6,7 @@ set(DRAIOS_GTEST_VERSION "1.7.0")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_CURL_VERSION "7.45.0")
+set(DRAIOS_JQ_VERSION "1.5")
 
 add_subdirectory(resources)
 
@@ -25,6 +26,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -53,7 +55,8 @@ add_executable(tests
 	statsd.cpp
 	jmx_proxy.cpp
 	user_event.cpp
-	uri.cpp)
+	uri.cpp
+	json_query.cpp)
 
 target_link_libraries(tests
 	pthread
@@ -62,7 +65,8 @@ target_link_libraries(tests
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
 

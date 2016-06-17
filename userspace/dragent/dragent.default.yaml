@@ -730,7 +730,7 @@ app_checks:
 #
 # Example (overrides default setting):
 #
-# k8s_uri: https://vagrant:vagrant@localhost:4430
+# k8s_uri: https://vagrant:vagrant@10.0.2.231:4430
 # k8s_autodetect: false
 # k8s_ssl_cert_type: "PEM"
 # k8s_ssl_cert: k8s-cfg.crt
@@ -739,6 +739,7 @@ app_checks:
 # k8s_ssl_verify_certificate: true
 # k8s_timeout_ms: 30000
 # k8s_bt_auth_token: k8s-token.tok
+# k8s_delegated_nodes: 2
 #
 
 # End of kubernetes section

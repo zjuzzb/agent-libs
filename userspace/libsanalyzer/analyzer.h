@@ -40,6 +40,7 @@ class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
 class k8s;
+class k8s_delegator;
 class mesos;
 class docker;
 class uri;
@@ -359,10 +360,12 @@ VISIBILITY_PRIVATE
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
+	bool check_k8s_delegation();
 	bool check_k8s_server(const string& addr);
-	void init_k8s_ssl();
+	void init_k8s_ssl(const uri& url);
 	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
 	k8s* get_k8s(const uri& k8s_api);
+	void connect_k8s(const std::string& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
@@ -388,6 +391,8 @@ VISIBILITY_PRIVATE
 	void emit_chisel_metrics();
 	void emit_user_events();
 
+	static bool is_local_uri(const uri& url);
+
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -397,7 +402,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_time;
-	
+
 	sinsp_analyzer_parsers* m_parser;
 
 	//
@@ -427,8 +432,8 @@ VISIBILITY_PRIVATE
 	// This is the protobuf class that we use to pack things
 	//
 	draiosproto::metrics* m_metrics;
-    char* m_serialization_buffer;
-    uint32_t m_serialization_buffer_size;
+	char* m_serialization_buffer;
+	uint32_t m_serialization_buffer_size;
 	FILE* m_protobuf_fp;
 
 	//
@@ -544,6 +549,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
 	sinsp_curl::bearer_token::ptr_t m_k8s_bt;

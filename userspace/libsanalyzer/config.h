@@ -87,6 +87,8 @@ public:
 	bool get_k8s_ssl_verify_certificate() const;
 	void set_k8s_timeout_ms(int k8s_timeout_ms);
 	int get_k8s_timeout_ms() const;
+	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
+	int get_k8s_delegated_nodes() const;
 	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
 	const string & get_k8s_bt_auth_token() const;
 	unsigned get_statsd_limit() const;
@@ -147,6 +149,7 @@ private:
 	bool m_k8s_ssl_verify_certificate;
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
+	int m_k8s_delegated_nodes;
 
 	unsigned m_statsd_limit;
 

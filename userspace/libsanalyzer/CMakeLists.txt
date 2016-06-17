@@ -7,6 +7,7 @@ set(DRAIOS_POCO_VERSION "1.4.6p4-all")
 set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
+set(DRAIOS_JQ_VERSION "1.5")
 
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
@@ -15,6 +16,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
@@ -60,7 +62,9 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_net.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_http.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
 	k8s_proto.cpp
+	k8s_delegator.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
@@ -109,6 +113,7 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
 	rt
 	dl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a

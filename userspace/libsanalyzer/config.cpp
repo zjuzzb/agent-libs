@@ -425,6 +425,16 @@ int sinsp_configuration::get_k8s_timeout_ms() const
 	return m_k8s_timeout_ms;
 }
 
+void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
+{
+	m_k8s_delegated_nodes = k8s_delegated_nodes;
+}
+
+int sinsp_configuration::get_k8s_delegated_nodes() const
+{
+	return m_k8s_delegated_nodes;
+}
+
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
 {
 	m_k8s_bt_auth_token = k8s_bt_auth_token;
