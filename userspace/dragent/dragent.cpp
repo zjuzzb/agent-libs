@@ -761,7 +761,7 @@ void dragent_app::initialize_logging()
 	file_channel->setProperty("purgeCount", "10");
 	file_channel->setProperty("archive", "timestamp");
 
-	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %h:%M:%S.%i, %P, %p, %t"));
+	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P, %p, %t"));
 
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, file_channel));
 

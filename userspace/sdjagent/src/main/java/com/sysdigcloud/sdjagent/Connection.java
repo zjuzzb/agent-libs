@@ -1,5 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
+import sun.rmi.transport.proxy.RMIDirectSocketFactory;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
@@ -47,6 +49,12 @@ public class Connection {
 
     protected void createConnection() throws IOException {
         this.env.put("attribute.remote.x.request.waiting.timeout", CONNECTION_TIMEOUT);
+        // In file jdk/src/share/classes/com/sun/jndi/rmi/registry/RegistryContext.java
+        // looks like a socketfactory is used to connect to RMI server and get the RMIServer stub
+        // the default socket factory caches the connections and causes troubles because many containers
+        // can have the same host ip (127.0.0.1 for example).
+        // With this line we force to use this factory that just creates a new socket every time
+        this.env.put("com.sun.jndi.rmi.factory.socket", new RMIDirectSocketFactory());
         closeConnector();
         LOGGER.fine("Connecting to: " + this.address);
         connector = connectWithTimeout(this.address, this.env);
