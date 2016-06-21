@@ -185,8 +185,8 @@ void dragent_configuration::configure_k8s_from_env()
 	static const string k8s_bearer_token_file_name = "/var/run/secrets/kubernetes.io/serviceaccount/token";
 	if(m_k8s_api_server.empty())
 	{
-		// K8s API server no set by user, try to auto-discover
-		// this will only work when agent runs in a K8s pod
+		// K8s API server not set by user, try to auto-discover.
+		// This will work only when agent runs in a K8s pod.
 		char* sh = getenv("KUBERNETES_SERVICE_HOST");
 		if(sh && strlen(sh))
 		{
@@ -462,20 +462,25 @@ void dragent_configuration::init(Application* app)
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
-	if(m_k8s_api_server.empty()) { configure_k8s_from_env(); }
-	int k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 3);
-	m_k8s_delegated_nodes = 0;
-	if(k8s_delegated_nodes)
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is 
+	// - discovered automatically because (process is running on localhost):
+	//     collection enabled and delegation disabled (handled in analyzer)
+	// - discovered automatically via environment variables (agent running in a K8s pod):
+	//     collection enabled and delegation enabled
+	// - configured statically:
+	//     collection enabled and delegation disabled, unless delegation is manually enabled
+	//////////////////////////////////////////////////////////////////////////////////////////
+	bool k8s_api_server_empty = m_k8s_api_server.empty();
+	if(k8s_api_server_empty) { configure_k8s_from_env(); }
+	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
-		if(!m_k8s_api_server.empty())
-		{
-			m_k8s_delegated_nodes = k8s_delegated_nodes;
-		}
-		else
-		{
-			g_logger.log("K8s API server not specified or discovered, k8s_delegated_nodes (" +
-						 std::to_string(k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
-		}
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 3);
+	}
+	else if(!k8s_api_server_empty && !uri(m_k8s_api_server).is_local()) // configured but not localhost
+	{
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
 	}
 	// End K8s
 
@@ -566,13 +571,19 @@ void dragent_configuration::print_configuration()
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
 	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
-	if(m_k8s_delegated_nodes)
-	{
-		g_log->information("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
-	}
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
+		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local())
+		{
+			m_k8s_delegated_nodes = 0;
+			g_logger.log("K8s API server not auto-discovered from environment, k8s_delegated_nodes (" +
+						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
+		}
+	}
+	if(m_k8s_delegated_nodes)
+	{
+		g_log->information("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
 	}
 	if (!m_k8s_ssl_cert_type.empty())
 	{

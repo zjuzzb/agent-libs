@@ -119,6 +119,13 @@ TEST(uri, parse)
 	EXPECT_EQ("", f.get_query());
 	EXPECT_EQ("file:///var/run/docker.sock", f.to_string());
 	EXPECT_EQ("file:///var/run/docker.sock", f.to_string(false));
+	EXPECT_TRUE(f.is_local());
+
+	uri l("http://localhost:8080");
+	EXPECT_TRUE(l.is_local());
+
+	uri ll("http://127.0.0.1:8080");
+	EXPECT_TRUE(ll.is_local());
 }
 
 TEST(uri, encode)

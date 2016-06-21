@@ -3901,23 +3901,32 @@ void sinsp_analyzer::emit_k8s()
 
 	std::string k8s_api = m_configuration->get_k8s_api_server();
 
-	if(m_configuration->get_k8s_delegated_nodes())
+	if(!k8s_api.empty())
 	{
-		if(check_k8s_delegation())
+		if(uri(k8s_api).is_local())
 		{
-			connect_k8s(k8s_api);
+			if(m_configuration->get_k8s_delegated_nodes())
+			{
+				g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
+										 "node auto-delegation ignored"),
+							 sinsp_logger::SEV_WARNING);
+			}
+		}
+		else if(m_configuration->get_k8s_delegated_nodes())
+		{
+			if(!check_k8s_delegation()) { return; }
 		}
 	}
 	else
 	{
-		if(k8s_api.empty() && m_configuration->get_k8s_autodetect_enabled())
+		if(m_configuration->get_k8s_autodetect_enabled())
 		{
 			k8s_api = detect_k8s();
 		}
-		if(!k8s_api.empty())
-		{
-			connect_k8s(k8s_api);
-		}
+	}
+	if(!k8s_api.empty())
+	{
+		connect_k8s(k8s_api);
 	}
 }
 
@@ -4032,54 +4041,60 @@ void sinsp_analyzer::emit_mesos()
 	}
 }
 
-bool sinsp_analyzer::is_local_uri(const uri& url)
-{
-	const std::string& host = url.get_host();
-	return host == "localhost" || host == "127.0.0.1";
-}
-
 bool sinsp_analyzer::check_k8s_delegation()
 {
 	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
-	if(delegated_nodes && !k8s_uri.empty() && !is_local_uri(k8s_uri))
+	if(!k8s_uri.empty())
 	{
-		try
+		if(uri(k8s_uri).is_local())
 		{
-			if(m_k8s_delegator)
+			if(delegated_nodes)
 			{
-				m_k8s_delegator->collect_data();
-				return m_k8s_delegator->is_delegated();
+				g_logger.log(std::string("K8s: incompatible settings (local URI and auto-delegation), auto-delegation ignored"),
+							sinsp_logger::SEV_WARNING);
 			}
-			else
+			return true;
+		}
+		else if(delegated_nodes)
+		{
+			try
 			{
-				g_logger.log("Creating K8s delegator object ...", sinsp_logger::SEV_INFO);
-				if(uri(k8s_uri).is_secure()) { init_k8s_ssl(k8s_uri); }
-				m_k8s_delegator.reset(new k8s_delegator(m_inspector,
-														k8s_uri,
-														delegated_nodes,
-														"1.0", // http version
-														m_configuration->get_k8s_timeout_ms(),
-														m_k8s_ssl,
-														m_k8s_bt,
-														m_configuration->get_curl_debug()));
 				if(m_k8s_delegator)
 				{
-					g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
 					m_k8s_delegator->collect_data();
 					return m_k8s_delegator->is_delegated();
 				}
 				else
 				{
-					g_logger.log("Can't create K8s delegator object.", sinsp_logger::SEV_ERROR);
-					m_k8s_delegator.reset();
+					g_logger.log("Creating K8s delegator object ...", sinsp_logger::SEV_INFO);
+					if(uri(k8s_uri).is_secure()) { init_k8s_ssl(k8s_uri); }
+					m_k8s_delegator.reset(new k8s_delegator(m_inspector,
+															k8s_uri,
+															delegated_nodes,
+															"1.0", // http version
+															m_configuration->get_k8s_timeout_ms(),
+															m_k8s_ssl,
+															m_k8s_bt,
+															m_configuration->get_curl_debug()));
+					if(m_k8s_delegator)
+					{
+						g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
+						m_k8s_delegator->collect_data();
+						return m_k8s_delegator->is_delegated();
+					}
+					else
+					{
+						g_logger.log("Can't create K8s delegator object.", sinsp_logger::SEV_ERROR);
+						m_k8s_delegator.reset();
+					}
 				}
 			}
-		}
-		catch(std::exception& ex)
-		{
-			g_logger.log(std::string("K8s delegator error: ") + ex.what(), sinsp_logger::SEV_ERROR);
-			m_k8s_delegator.reset();
+			catch(std::exception& ex)
+			{
+				g_logger.log(std::string("K8s delegator error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+				m_k8s_delegator.reset();
+			}
 		}
 	}
 	return false;

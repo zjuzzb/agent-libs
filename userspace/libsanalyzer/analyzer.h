@@ -391,8 +391,6 @@ VISIBILITY_PRIVATE
 	void emit_chisel_metrics();
 	void emit_user_events();
 
-	static bool is_local_uri(const uri& url);
-
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
