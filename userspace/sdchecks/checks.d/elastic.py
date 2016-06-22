@@ -38,6 +38,7 @@ class ESCheck(AgentCheck):
     # Clusterwise metrics, pre aggregated on ES, compatible with all ES versions
     PRIMARY_SHARD_METRICS = {
         "elasticsearch.primaries.docs.count": ("gauge", "_all.primaries.docs.count"),
+        "elasticsearch.primaries.docs.growth": ("rate", "_all.primaries.docs.count"),
         "elasticsearch.primaries.docs.deleted": ("gauge", "_all.primaries.docs.deleted"),
         "elasticsearch.primaries.store.size": ("gauge", "_all.primaries.store.size_in_bytes"),
         "elasticsearch.primaries.indexing.index.total": ("gauge", "_all.primaries.indexing.index_total"),

@@ -595,6 +595,7 @@ app_checks:
     check_module: elastic
     pattern:
       port: 9200
+      comm: java
     conf:
       url: http://localhost:9200
   - name: jenkins
