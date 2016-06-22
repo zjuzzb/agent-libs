@@ -344,7 +344,7 @@ void k8s_delegator::handle_json(Json::Value&& root)
 					if(add_node(tm, node["addresses"]))
 					{ g_logger.log("K8s delegator: Added node to list: " + nname, sinsp_logger::SEV_DEBUG); }
 					else
-					{ g_logger.log("K8s delegator: Added node already exists: " + nname, sinsp_logger::SEV_TRACE); }
+					{ g_logger.log("K8s delegator: Node not added to list: " + nname, sinsp_logger::SEV_TRACE); }
 				}
 				else if(deleted)
 				{
