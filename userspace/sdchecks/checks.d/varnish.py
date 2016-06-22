@@ -78,7 +78,7 @@ class Varnish(AgentCheck):
         else:
             tags = list(set(tags))
         varnishstat_path = instance.get("varnishstat")
-        name = instance.get('name')
+        name = instance.get('instance_name')
 
         # Get version and version-specific args from varnishstat -V.
         version, use_xml = self._get_version_info(varnishstat_path)
@@ -87,11 +87,11 @@ class Varnish(AgentCheck):
         arg = '-x' if use_xml else '-1'
         cmd = [varnishstat_path, arg]
 
-        #if name is not None:
-        #    cmd.extend(['-n', name])
-        #    tags += [u'varnish_name:%s' % name]
-        #else:
-        #    tags += [u'varnish_name:default']
+        if name is not None:
+            cmd.extend(['-n', name])
+            tags += [u'varnish_name:%s' % name]
+        else:
+            tags += [u'varnish_name:default']
 
         output, _, _ = get_subprocess_output(cmd, self.log)
 
