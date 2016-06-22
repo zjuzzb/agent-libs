@@ -178,15 +178,23 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 			if(addr.isConvertibleTo(Json::stringValue))
 			{
 				std::string address = addr.asString();
-				if(is_ip_address(address))
+				if(is_ip_address(address) && (address != "127.0.0.1"))
 				{
 					node_addrs.insert(address);
 				}
 				else // likely not possible, but just in case ...
 				{
-					g_logger.log("K8s delegator: node address [" + address + "] "
-								 "is not an IP address, ignoring.",
-								 sinsp_logger::SEV_ERROR);
+					if(address != "127.0.0.1")
+					{
+						g_logger.log("K8s delegator: node address [" + address + "] "
+									 "is not an IP address, ignoring.",
+									 sinsp_logger::SEV_ERROR);
+					}
+					else
+					{
+						g_logger.log("K8s delegator: ignored local node address [" + address + "] ",
+									 sinsp_logger::SEV_INFO);
+					}
 				}
 			}
 			else
@@ -202,18 +210,21 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 bool k8s_delegator::add_node(time_t timestamp, const Json::Value& addrs)
 {
 	node_ip_addr_list_t node_addrs = get_node_addresses(addrs);
-
-	for(auto it= m_nodes.begin(), end = m_nodes.end(); it != end; ++it)
+	if(node_addrs.size() > 0)
 	{
-		if(it->second == node_addrs)
+		for(auto it= m_nodes.begin(), end = m_nodes.end(); it != end; ++it)
 		{
-			if(timestamp == it->first) { return false; }
-			else { m_nodes.erase(it); }
+			if(it->second == node_addrs)
+			{
+				if(timestamp == it->first) { return false; }
+				else { m_nodes.erase(it); }
+			}
 		}
-	}
 
-	m_nodes.insert({timestamp, node_addrs});
-	return true;
+		m_nodes.insert({timestamp, node_addrs});
+		return true;
+	}
+	return false;
 }
 
 bool k8s_delegator::remove_node(time_t timestamp, const Json::Value& addrs)
