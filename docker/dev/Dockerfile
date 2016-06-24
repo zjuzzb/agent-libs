@@ -19,6 +19,7 @@ RUN apt-get update \
 	ca-certificates \
 	gcc \
 	gcc-4.9 \
+	libelf1 \
 	openjdk-8-jre-headless \
 	python && rm -rf /var/lib/apt/lists/*
 
