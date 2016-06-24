@@ -1,17 +1,6 @@
 #!/bin/bash
 #set -e
 
-function am_i_a_k8s_delegated_node(){
-	ip_addresses=$(hostname --all-ip-addresses)
-	for ip in ${ip_addresses[@]}
-	do
-		if [ "${K8S_DELEGATED_NODE}" == "${ip}" ]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
 echo "* Setting up /usr/src links from host"
 
 for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
