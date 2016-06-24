@@ -87,17 +87,6 @@ if [ ! -z "$CHECK_CERTIFICATE" ]; then
 	fi
 fi
 
-if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
-	if am_i_a_k8s_delegated_node; then
-		echo "* Setting k8s api URI"
-		if ! grep ^k8s_uri $CONFIG_FILE > /dev/null 2>&1; then
-			echo "k8s_uri: $K8S_API_URI" >> $CONFIG_FILE
-		else
-			sed -i "s/^k8s_uri.*/k8s_uri: $K8S_API_URI/g" $CONFIG_FILE
-		fi
-	fi
-fi
-
 if [ ! -z "$ADDITIONAL_CONF" ]; then
 	if [ $PRECONFIGURED == 0 ]; then
 		echo "* Setting additional customer configuration:"

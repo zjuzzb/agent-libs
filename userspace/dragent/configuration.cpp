@@ -476,7 +476,7 @@ void dragent_configuration::init(Application* app)
 	if(k8s_api_server_empty) { configure_k8s_from_env(); }
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
-		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 3);
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
 	}
 	else if(!k8s_api_server_empty && !uri(m_k8s_api_server).is_local()) // configured but not localhost
 	{
