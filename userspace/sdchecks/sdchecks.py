@@ -62,9 +62,15 @@ class YamlConfig:
     def get_merged_sequence(self, key, default=[]):
         ret = default
         if self._root.has_key(key):
-            ret += self._root[key]
+            try:
+                ret += self._root[key]
+            except TypeError as ex:
+                logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         if self._default_root.has_key(key):
-            ret += self._default_root[key]
+            try:
+                ret += self._default_root[key]
+            except TypeError as ex:
+                logging.error("Cannot parse default config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
 
     def get_single(self, key, subkey, default_value=None):

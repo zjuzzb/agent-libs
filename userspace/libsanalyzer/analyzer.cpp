@@ -49,6 +49,7 @@ using namespace google::protobuf::io;
 #include "chisel.h"
 #include "docker.h"
 #include "k8s.h"
+#include "k8s_delegator.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
 #include "mesos.h"
@@ -151,7 +152,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	//
 	// Docker
 	//
-	m_has_docker = Poco::File(std::string(scap_get_host_root()) + docker::DOCKER_SOCKET_FILE).exists();
+	m_has_docker = Poco::File(docker::get_socket_file()).exists();
 
 	//
 	// Chisels init
@@ -983,6 +984,25 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api, user_even
 	return 0;
 }
 
+void sinsp_analyzer::init_k8s_ssl(const uri& url)
+{
+	if(url.is_secure() && !m_k8s_ssl)
+	{
+		const std::string& cert      = m_configuration->get_k8s_ssl_cert();
+		const std::string& key       = m_configuration->get_k8s_ssl_key();
+		const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
+		const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
+		bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
+		const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
+		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
+	}
+	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+	if(!bt_auth_token.empty() && !m_k8s_bt)
+	{
+		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+	}
+}
+
 k8s* sinsp_analyzer::get_k8s(const uri& k8s_api)
 {
 	uri url(k8s_api.to_string() + "/api");
@@ -990,21 +1010,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api)
 
 	try
 	{
-		if(url.is_secure() && !m_k8s_ssl)
-		{
-			const std::string& cert      = m_configuration->get_k8s_ssl_cert();
-			const std::string& key       = m_configuration->get_k8s_ssl_key();
-			const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
-			const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
-			bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
-			const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
-			m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
-		}
-		const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-		if(!bt_auth_token.empty() && !m_k8s_bt)
-		{
-			m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
-		}
+		if(url.is_secure()) { init_k8s_ssl(url); }
 		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
 		if(curl)
 		{
@@ -3078,7 +3084,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Docker
 			//
-			if(m_has_docker && m_configuration->get_docker_event_filter())
+			m_has_docker = Poco::File(docker::get_socket_file()).exists();
+			static bool first_time = true;
+			if(!m_has_docker)
+			{
+				if(first_time)
+				{
+					g_logger.log("Docker service not running, events will not be available.", sinsp_logger::SEV_INFO);
+				}
+				first_time = false;
+			}
+			else if(m_configuration->get_docker_event_filter())
 			{
 				emit_docker_events();
 			}
@@ -3901,28 +3917,8 @@ void sinsp_analyzer::get_k8s_data()
 	}
 }
 
-void sinsp_analyzer::emit_k8s()
+void sinsp_analyzer::connect_k8s(const std::string& k8s_api)
 {
-	// k8s_uri string config setting can be set:
-	//
-	//    - explicitly in configuration file; when present, this setting has priority
-	//      over anything else in regards to presence/location of the api server
-	//
-	//    - implicitly, by k8s autodetect flag (which defaults to true);
-	//      when k8s_uri is empty, autodetect is true and api server is detected on the
-	//      local machine, uri will be automatically set to "http://{address}:8080", where
-	//      {address} is the IP address of the interface on which API server is listening
-	//
-	// so, at runtime, k8s_uri being empty or not determines whether k8s data
-	// will be collected and emitted; the connection to k8s api server is entirely managed
-	// in this function - if it is dropped, the attempts to re-establish it will keep on going
-	// forever, once per cycle, until either connection is re-established or agent shut down
-
-	std::string k8s_api = m_configuration->get_k8s_api_server();
-	if(k8s_api.empty() && m_configuration->get_k8s_autodetect_enabled())
-	{
-		k8s_api = detect_k8s();
-	}
 	if(!k8s_api.empty())
 	{
 		uri k8s_uri(k8s_api);
@@ -3970,6 +3966,54 @@ void sinsp_analyzer::emit_k8s()
 			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
 			m_k8s.reset();
 		}
+	}
+}
+
+void sinsp_analyzer::emit_k8s()
+{
+	// k8s_uri string config setting can be set:
+	//
+	//    - explicitly in configuration file; when present, this setting has priority
+	//      over anything else in regards to presence/location of the api server
+	//
+	//    - implicitly, by k8s autodetect flag (which defaults to true);
+	//      when k8s_uri is empty, autodetect is true and api server is detected on the
+	//      local machine, uri will be automatically set to "http://{address}:8080", where
+	//      {address} is the IP address of the interface on which API server is listening
+	//
+	// so, at runtime, k8s_uri being empty or not determines whether k8s data
+	// will be collected and emitted; the connection to k8s api server is entirely managed
+	// in this function - if it is dropped, the attempts to re-establish it will keep on going
+	// forever, once per cycle, until either connection is re-established or agent shut down
+
+	std::string k8s_api = m_configuration->get_k8s_api_server();
+
+	if(!k8s_api.empty())
+	{
+		if(uri(k8s_api).is_local())
+		{
+			if(m_configuration->get_k8s_delegated_nodes())
+			{
+				g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
+										 "node auto-delegation ignored"),
+							 sinsp_logger::SEV_WARNING);
+			}
+		}
+		else if(m_configuration->get_k8s_delegated_nodes())
+		{
+			if(!check_k8s_delegation()) { return; }
+		}
+	}
+	else
+	{
+		if(m_configuration->get_k8s_autodetect_enabled())
+		{
+			k8s_api = detect_k8s();
+		}
+	}
+	if(!k8s_api.empty())
+	{
+		connect_k8s(k8s_api);
 	}
 }
 
@@ -4082,6 +4126,65 @@ void sinsp_analyzer::emit_mesos()
 			m_mesos.reset();
 		}
 	}
+}
+
+bool sinsp_analyzer::check_k8s_delegation()
+{
+	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
+	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
+	if(!k8s_uri.empty())
+	{
+		if(uri(k8s_uri).is_local())
+		{
+			if(delegated_nodes)
+			{
+				g_logger.log(std::string("K8s: incompatible settings (local URI and auto-delegation), auto-delegation ignored"),
+							sinsp_logger::SEV_WARNING);
+			}
+			return true;
+		}
+		else if(delegated_nodes)
+		{
+			try
+			{
+				if(m_k8s_delegator)
+				{
+					m_k8s_delegator->collect_data();
+					return m_k8s_delegator->is_delegated();
+				}
+				else
+				{
+					g_logger.log("Creating K8s delegator object ...", sinsp_logger::SEV_INFO);
+					if(uri(k8s_uri).is_secure()) { init_k8s_ssl(k8s_uri); }
+					m_k8s_delegator.reset(new k8s_delegator(m_inspector,
+															k8s_uri,
+															delegated_nodes,
+															"1.0", // http version
+															m_configuration->get_k8s_timeout_ms(),
+															m_k8s_ssl,
+															m_k8s_bt,
+															m_configuration->get_curl_debug()));
+					if(m_k8s_delegator)
+					{
+						g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
+						m_k8s_delegator->collect_data();
+						return m_k8s_delegator->is_delegated();
+					}
+					else
+					{
+						g_logger.log("Can't create K8s delegator object.", sinsp_logger::SEV_ERROR);
+						m_k8s_delegator.reset();
+					}
+				}
+			}
+			catch(std::exception& ex)
+			{
+				g_logger.log(std::string("K8s delegator error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+				m_k8s_delegator.reset();
+			}
+		}
+	}
+	return false;
 }
 
 void sinsp_analyzer::emit_docker_events()

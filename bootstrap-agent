@@ -30,6 +30,16 @@ if [ ! -d "$ZLIB_DIR" ]; then
 	make
 fi
 
+JQ_DIR=$DEPENDENCIES/jq-1.5
+if [ ! -d "$JQ_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/jq-1.5.tar.gz
+	tar -xzf jq-1.5.tar.gz
+	cd $JQ_DIR
+	./configure --disable-maintainer-mode --enable-all-static --disable-dependency-tracking
+	make LDFLAGS=-all-static
+fi
+
 PROTBUF_DIR=$DEPENDENCIES/protobuf-2.5.0
 if [ ! -d "$PROTBUF_DIR" ]; then
 	cd $DEPENDENCIES

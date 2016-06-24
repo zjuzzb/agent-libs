@@ -4,6 +4,7 @@
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
 #include "Poco/StreamCopier.h"
+#include "Poco/File.h"
 #include <netdb.h>
 
 #include "logger.h"
@@ -175,6 +176,66 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 				return;
 			}
 			flt->add(user_event_meta_t(component, user_events));
+		}
+	}
+}
+
+void dragent_configuration::configure_k8s_from_env()
+{
+	static const string k8s_ca_crt = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
+	static const string k8s_bearer_token_file_name = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+	if(m_k8s_api_server.empty())
+	{
+		// K8s API server not set by user, try to auto-discover.
+		// This will work only when agent runs in a K8s pod.
+		char* sh = getenv("KUBERNETES_SERVICE_HOST");
+		if(sh && strlen(sh))
+		{
+			char* sp = getenv("KUBERNETES_SERVICE_PORT_HTTPS");
+			if(sp && strlen(sp)) // secure
+			{
+				m_k8s_api_server = "https://";
+				m_k8s_api_server.append(sh).append(1, ':').append(sp);
+				if(m_k8s_bt_auth_token.empty())
+				{
+					if(File(k8s_bearer_token_file_name).exists())
+					{
+						m_k8s_bt_auth_token = k8s_bearer_token_file_name;
+					}
+					else
+					{
+						g_logger.log("Berarer token not found at default location (" + k8s_bearer_token_file_name +
+									 "), authentication may not work. "
+									 "If needed, please specify the location using k8s_bt_auth_token config entry.",
+									 sinsp_logger::SEV_WARNING);
+					}
+				}
+				if(m_k8s_ssl_verify_certificate && m_k8s_ssl_ca_certificate.empty())
+				{
+					if(File(k8s_ca_crt).exists())
+					{
+						m_k8s_ssl_ca_certificate = k8s_ca_crt;
+					}
+					else
+					{
+						g_logger.log("CA certificate verification configured, but CA certificate "
+									 "not specified nor found at default location (" + k8s_ca_crt +
+									 "), server authentication will not work. If server authentication "
+									 "is desired, please specify the CA certificate file location using "
+									 "k8s_ca_certificate config entry.",
+									 sinsp_logger::SEV_WARNING);
+					}
+				}
+			}
+			else
+			{
+				sp = getenv("KUBERNETES_SERVICE_PORT");
+				if(sp && strlen(sp))
+				{
+					m_k8s_api_server = "http://";
+					m_k8s_api_server.append(sh).append(1, ':').append(sp);
+				}
+			}
 		}
 	}
 }
@@ -392,6 +453,7 @@ void dragent_configuration::init(Application* app)
 		}
 	}
 
+	// K8s
 	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
 	m_k8s_ssl_cert_type = m_config->get_scalar<string>("k8s_ssl_cert_type", "PEM");
@@ -403,6 +465,28 @@ void dragent_configuration::init(Application* app)
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is 
+	// - discovered automatically because (process is running on localhost):
+	//     collection enabled and delegation disabled (handled in analyzer)
+	// - discovered automatically via environment variables (agent running in a K8s pod):
+	//     collection enabled and delegation enabled
+	// - configured statically:
+	//     collection enabled and delegation disabled, unless delegation is manually enabled
+	//////////////////////////////////////////////////////////////////////////////////////////
+	bool k8s_api_server_empty = m_k8s_api_server.empty();
+	if(k8s_api_server_empty) { configure_k8s_from_env(); }
+	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
+	{
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 3);
+	}
+	else if(!k8s_api_server_empty && !uri(m_k8s_api_server).is_local()) // configured but not localhost
+	{
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
+	}
+	// End K8s
+
+	// Mesos
 	m_mesos_state_uri = m_config->get_scalar<string>("mesos_state_uri", "");
 	auto marathon_uris = m_config->get_merged_sequence<string>("marathon_uris");
 	for(auto u : marathon_uris)
@@ -413,6 +497,7 @@ void dragent_configuration::init(Application* app)
 	m_mesos_timeout_ms = m_config->get_scalar<int>("mesos_timeout_ms", 10000);
 	m_mesos_follow_leader = m_config->get_scalar<bool>("mesos_follow_leader",
 							m_mesos_state_uri.empty() && m_mesos_autodetect ? true : false);
+	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
 
@@ -492,6 +577,16 @@ void dragent_configuration::print_configuration()
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
+		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local())
+		{
+			m_k8s_delegated_nodes = 0;
+			g_logger.log("K8s API server not auto-discovered from environment, k8s_delegated_nodes (" +
+						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
+		}
+	}
+	if(m_k8s_delegated_nodes)
+	{
+		g_log->information("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
 	}
 	if (!m_k8s_ssl_cert_type.empty())
 	{
