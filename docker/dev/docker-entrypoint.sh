@@ -1,17 +1,6 @@
 #!/bin/bash
 #set -e
 
-function am_i_a_k8s_delegated_node(){
-	ip_addresses=$(hostname --all-ip-addresses)
-	for ip in ${ip_addresses[@]}
-	do
-		if [ "${K8S_DELEGATED_NODE}" == "${ip}" ]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
 echo "* Setting up /usr/src links from host"
 
 for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
@@ -84,17 +73,6 @@ if [ ! -z "$CHECK_CERTIFICATE" ]; then
 		echo "ssl_verify_certificate: $CHECK_CERTIFICATE" >> $CONFIG_FILE
 	else
 		sed -i "s/^ssl_verify_certificate.*/ssl_verify_certificate: $CHECK_CERTIFICATE/g" $CONFIG_FILE
-	fi
-fi
-
-if [ ! -z "$K8S_DELEGATED_NODE" ] && [ ! -z "$K8S_API_URI" ]; then
-	if am_i_a_k8s_delegated_node; then
-		echo "* Setting k8s api URI"
-		if ! grep ^k8s_uri $CONFIG_FILE > /dev/null 2>&1; then
-			echo "k8s_uri: $K8S_API_URI" >> $CONFIG_FILE
-		else
-			sed -i "s/^k8s_uri.*/k8s_uri: $K8S_API_URI/g" $CONFIG_FILE
-		fi
 	fi
 fi
 

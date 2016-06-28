@@ -3992,11 +3992,13 @@ void sinsp_analyzer::emit_k8s()
 	{
 		if(uri(k8s_api).is_local())
 		{
-			if(m_configuration->get_k8s_delegated_nodes())
+			static bool logged = false;
+			if(!logged && m_configuration->get_k8s_delegated_nodes())
 			{
 				g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
 										 "node auto-delegation ignored"),
 							 sinsp_logger::SEV_WARNING);
+				logged = true;
 			}
 		}
 		else if(m_configuration->get_k8s_delegated_nodes())
@@ -4136,10 +4138,12 @@ bool sinsp_analyzer::check_k8s_delegation()
 	{
 		if(uri(k8s_uri).is_local())
 		{
-			if(delegated_nodes)
+			static bool logged = false;
+			if(!logged && delegated_nodes)
 			{
 				g_logger.log(std::string("K8s: incompatible settings (local URI and auto-delegation), auto-delegation ignored"),
 							sinsp_logger::SEV_WARNING);
+				logged = true;
 			}
 			return true;
 		}

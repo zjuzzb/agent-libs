@@ -55,7 +55,7 @@ public:
 		std::ostringstream json;
 		get_json(component, json);
 		//std::cout << json.str() << std::endl;
-		m_k8s.parse_json(json.str(), k8s_component::component_map::value_type(k8s_component::get_type(component), component));
+		m_k8s.parse_json(json.str(), k8s_component::type_map::value_type(k8s_component::get_type(component), component));
 	}
 
 	k8s& get_k8s()
@@ -66,10 +66,10 @@ public:
 private:
 	static void get_json(const std::string& component, std::ostringstream& json)
 	{
-		std::string fname = "test/airware/";
+		std::string fname = "./test/";
 		try
 		{
-			FileInputStream fis(fname.append(component).append("-prod").append((".json")));
+			FileInputStream fis(fname.append(component).append((".json")));
 			StreamCopier::copyStream(fis, json);
 		}
 		catch(FileNotFoundException& ex)
@@ -325,13 +325,29 @@ int main(int argc, char** argv)
 #endif
 //#if 0
 	k8s_test k8stest;
-	//k8stest.get_data("namespaces");
+	Stopwatch sw;
+	sw.start();
+	k8stest.get_data("namespaces");
+	sw.stop();
+	std::cout << "************" << (double)sw.elapsed()/1000000 << "************" << std::endl;
+	sw.restart();
 	k8stest.get_data("nodes");
+	sw.stop();
+	std::cout << "************" << (double)sw.elapsed()/1000000 << "************" << std::endl;
+	sw.restart();
 	k8stest.get_data("pods");
-	//k8stest.get_data("replicationcontrollers");
-	//k8stest.get_data("services");
-	print_proto(k8stest.get_k8s());
-	print_cache(k8stest.get_k8s());
+	sw.stop();
+	std::cout << "************" << (double)sw.elapsed()/1000000 << "************" << std::endl;
+	sw.restart();
+	k8stest.get_data("replicationcontrollers");
+	sw.stop();
+	std::cout << "************" << (double)sw.elapsed()/1000000 << "************" << std::endl;
+	sw.restart();
+	k8stest.get_data("services");
+	sw.stop();
+	std::cout << "************" << (double)sw.elapsed()/1000000 << "************" << std::endl;
+	//print_proto(k8stest.get_k8s());
+	//print_cache(k8stest.get_k8s());
 	return 0;
 
 	//draiosproto::metrics met;
