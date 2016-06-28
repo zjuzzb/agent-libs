@@ -110,7 +110,8 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					case SCAP_FD_IPV4_SOCK:
 						{
 							ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
-							if(m_ifaddr_list->is_ipv4addr_in_local_machine(tuple.m_fields.m_dip, tinfo))
+
+							if(fdinfo->is_role_server())
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
