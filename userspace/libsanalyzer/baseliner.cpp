@@ -56,6 +56,10 @@ void sisnp_baseliner::init_programs(uint64_t time)
 			//
 			np.m_comm = tinfo->m_comm;
 			np.m_exe = tinfo->m_exe;
+			if(tinfo->m_comm == "java")
+			{
+				np.m_pids.push_back(tinfo->m_pid);
+			}
 			//np.m_args = tinfo->m_args;
 			//np.m_env = tinfo->m_env;
 			np.m_container_id = tinfo->m_container_id;
@@ -513,9 +517,12 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	}
 	else
 	{
-#ifdef _DEBUG
 		blprogram& pinfo = it->second;
-#endif
+		if(tinfo->m_comm == "java" && tinfo->is_main_thread())
+		{
+			pinfo.m_pids.push_back(tinfo->m_pid);
+		}
+
 		//ASSERT(pinfo.m_comm == tinfo->m_comm);
 		ASSERT(pinfo.m_exe == tinfo->m_exe);
 		//ASSERT(pinfo.m_args == tinfo->m_args);
