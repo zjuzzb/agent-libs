@@ -3216,7 +3216,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 				}
-				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > 5000000000)
+//				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{
 					if(m_last_falco_dump_ts != 0)
 					{

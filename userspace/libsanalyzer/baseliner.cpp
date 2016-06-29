@@ -4,6 +4,8 @@
 #include "utils.h"
 #ifdef HAS_ANALYZER
 #include "draios.pb.h"
+#include "analyzer_int.h"
+#include "analyzer.h"
 #endif
 #include <baseliner.h>
 
@@ -311,6 +313,9 @@ void sisnp_baseliner::serialize_json(string filename)
 		table.append(eprog);
 	}
 
+	root["progs"] = table;
+	
+#ifndef HAS_ANALYZER
 	for(auto& it : m_container_table)
 	{
 		Json::Value cinfo;
@@ -320,10 +325,8 @@ void sisnp_baseliner::serialize_json(string filename)
 		ctable[it.second.m_id] = cinfo;
 	}
 
-	root["progs"] = table;
 	root["containers"] = ctable;
 
-#ifndef HAS_ANALYZER
 	root["machine"]["hostname"] = m_hostname;
 	root["machine"]["hostid"] = to_string(m_hostid);
 #endif
@@ -337,8 +340,27 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	for(auto& it : m_progtable)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
+
 		prog->set_comm(it.second.m_comm);
 		prog->set_exe(it.second.m_exe);
+
+		//
+		// For java processes, we patch the comm and exe with the name coming from
+		// the JMX information for the first process associated with this program
+		//
+		if(it.second.m_comm == "java")
+		{
+			ASSERT(it.second.m_pids.size() != 0);
+
+			if(it.second.m_pids.size() != 0)
+			{
+//lo("EEE %d", (int)m_inspector->m_analyzer->m_jmx_metrics.size());
+				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second.m_pids[0]);
+				string jname = el->second.name();
+				prog->set_comm(jname);
+				prog->set_exe(jname);
+			}
+		}
 		prog->set_user_id(it.second.m_user_id);
 		if(!it.second.m_container_id.empty())
 		{

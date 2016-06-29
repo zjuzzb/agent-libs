@@ -600,6 +600,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
+	friend class sisnp_baseliner;
 };
 
 #endif // HAS_ANALYZER
