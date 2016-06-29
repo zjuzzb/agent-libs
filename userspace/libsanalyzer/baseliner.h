@@ -1153,8 +1153,8 @@ private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram> m_progtable;
-	unordered_map<string, sinsp_container_info> m_container_table;
 #ifndef HAS_ANALYZER
+	unordered_map<string, sinsp_container_info> m_container_table;
 	string m_hostname;
 	uint64_t m_hostid;
 #endif	

@@ -31,7 +31,9 @@ void sisnp_baseliner::load_tables(uint64_t time)
 void sisnp_baseliner::clear_tables()
 {
 	m_progtable.clear();
+#ifndef HAS_ANALYZER
 	m_container_table.clear();
+#endif
 }
 
 void sisnp_baseliner::init_programs(uint64_t time)
@@ -180,10 +182,9 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 void sisnp_baseliner::init_containers()
 {
-	//
-	// Go through the thread list and identify the main threads
-	//
+#ifndef HAS_ANALYZER
 	m_container_table = *(m_inspector->m_container_manager.get_containers());
+#endif
 }
 
 void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
@@ -677,5 +678,7 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
+#ifndef HAS_ANALYZER
 	m_container_table[container_info.m_id] = container_info;
+#endif
 }
