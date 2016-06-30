@@ -111,7 +111,9 @@ public class Application {
 
             Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
             vmInfo.put("pattern", vm.getName());
-            vmInfo.put("beans", vm.availableMetrics());
+            if(vm.isAvailable()) {
+                vmInfo.put("beans", vm.availableMetrics());
+            }
 
             final String dump = yaml.dump(vmInfo);
             System.out.println(dump);

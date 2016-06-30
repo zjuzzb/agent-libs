@@ -250,7 +250,7 @@ public class MonitoredVM {
     }
 
     public List<Map<String, Object>> availableMetrics() throws IOException {
-        setInitialNamespaceIfNeeded();
+        setNetworkNamespaceIfNeeded();
         if (connection == null) {
             connection = new Connection(this.address);
         }
