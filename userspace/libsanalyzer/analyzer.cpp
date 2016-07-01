@@ -2024,7 +2024,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		++m_external_command_id;
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 		{
-			m_jmx_metrics.clear();
+//			m_jmx_metrics.clear();
 			m_jmx_proxy->send_get_metrics(m_external_command_id, java_process_requests);
 		}
 		if(m_app_proxy && !app_checks_processes.empty())

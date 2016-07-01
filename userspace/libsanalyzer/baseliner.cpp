@@ -354,11 +354,12 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 
 			if(it.second.m_pids.size() != 0)
 			{
-//lo("EEE %d", (int)m_inspector->m_analyzer->m_jmx_metrics.size());
 				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second.m_pids[0]);
-				string jname = el->second.name();
-				prog->set_comm(jname);
-				prog->set_exe(jname);
+				if(el != m_inspector->m_analyzer->m_jmx_metrics.end())
+				{
+					string jname = el->second.name();
+					prog->set_comm(jname);
+				}
 			}
 		}
 		prog->set_user_id(it.second.m_user_id);
